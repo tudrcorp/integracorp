@@ -10,6 +10,8 @@ class ViewCorporateQuoteRequest extends ViewRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
+    protected static ?string $title = 'Información general';
+
     protected function getHeaderActions(): array
     {
         return [

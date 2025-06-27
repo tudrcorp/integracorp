@@ -33,8 +33,7 @@ class CorporateQuotesTable
         return $table
         ->defaultSort('created_at', 'desc')
             ->query(CorporateQuote::query()->where('agent_id', Auth::user()->agent_id))
-            ->heading('COTIZACIONES CORPORATIVAS')
-            ->description('Lista de cotizaciones corporativas generadas por el agente')
+            ->heading('Lista de cotizaciones corporativas generadas por el agente')
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')

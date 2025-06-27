@@ -99,7 +99,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('quote_multiple')
-                    ->label('Pre-Afiliacion')
+                    ->label('Preparar afiliación')
                     ->color('success')
                     ->icon('heroicon-c-receipt-percent')
                     // ->requiresConfirmation()

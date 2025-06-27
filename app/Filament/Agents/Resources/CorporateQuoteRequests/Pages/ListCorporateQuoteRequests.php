@@ -10,13 +10,13 @@ class ListCorporateQuoteRequests extends ListRecords
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'SOLICITUDES DE COTEIZACION CORPORATIVA';
+    protected static ?string $title = 'Solicitudes de cotización corporativa';
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('Nueva solicitud')
+                ->label('Crea solicitud')
                 ->icon('heroicon-s-plus'),
         ];
     }

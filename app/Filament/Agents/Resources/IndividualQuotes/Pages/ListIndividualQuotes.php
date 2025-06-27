@@ -10,14 +10,14 @@ class ListIndividualQuotes extends ListRecords
 {
     protected static string $resource = IndividualQuoteResource::class;
 
-    protected static ?string $title = 'COTIZACIONES INDIVIDULAES';
+    protected static ?string $title = 'Table de cotizaciones individuales';
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('Crear')
-                ->icon('heroicon-m-tag')
+                ->label('Crear cotización individual')
+                ->icon('heroicon-s-plus')
         ];
     }
 }

@@ -2,37 +2,70 @@
 
 namespace App\Filament\Agents\Resources\CorporateQuoteRequests\Schemas;
 
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use App\Models\CorporateQuoteRequest;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Infolists\Components\TextEntry;
 
 class CorporateQuoteRequestInfolist
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->components([
-                TextEntry::make('code'),
-                TextEntry::make('code_agent'),
-                TextEntry::make('owner_code'),
-                TextEntry::make('agent_id')
-                    ->numeric(),
-                TextEntry::make('code_agency'),
-                TextEntry::make('full_name'),
-                TextEntry::make('rif'),
-                TextEntry::make('email'),
-                TextEntry::make('phone'),
-                TextEntry::make('state_id')
-                    ->numeric(),
-                TextEntry::make('region'),
-                TextEntry::make('status'),
-                TextEntry::make('created_by'),
-                TextEntry::make('created_at')
-                    ->dateTime(),
-                TextEntry::make('updated_at')
-                    ->dateTime(),
-                TextEntry::make('document'),
-                TextEntry::make('observations'),
-                TextEntry::make('owner_application'),
+        ->components([
+                Section::make()
+                    ->heading('Información de la solicitud')
+                    ->description(fn(CorporateQuoteRequest $record) => 'Solicitud de cotizacion corpotariva generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                    ->icon(Heroicon::OutlinedPencil)
+                    ->schema([
+                        TextEntry::make('code')
+                            ->label('Número de solicitud')
+                            ->badge()
+                            ->color('success')
+                            ->numeric(),
+                        Grid::make()
+                            ->schema([
+                                TextEntry::make('code_agent')
+                                    ->label('Código del agente')
+                                    ->default(fn(CorporateQuoteRequest $record) => 'AGT-000' . $record->agent_id)
+                                    ->badge(),
+                                TextEntry::make('agent.name')
+                                    ->label('Agente:')
+                                    ->badge(),
+                                TextEntry::make('code_agency')
+                                    ->label('Codigo de agencia:')
+                                    ->badge(),
+                            ])->columnSpanFull()->columns(4),
+                        Grid::make()
+                            ->schema([
+                                TextEntry::make('full_name')
+                                    ->label('Nombre completo/Razón social:'),
+                                TextEntry::make('rif')
+                                    ->label('Rif:'),
+                                TextEntry::make('email')
+                                    ->label('Email:'),
+                                TextEntry::make('phone')
+                                    ->label('Telefono:'),
+                                TextEntry::make('state.definition')
+                                    ->label('Estado')
+                                    ->numeric(),
+                                TextEntry::make('region')
+                                    ->label('Región:'),
+                                TextEntry::make('status')
+                                    ->label('Estatus de la solicitud:')
+                                    ->badge()
+                                    ->color('warning'),
+                                TextEntry::make('created_by')
+                                    ->label('Registrado por:'),
+                                TextEntry::make('created_at')
+                                    ->label('Fecha de regitro en sistema:')
+                                    ->dateTime(),
+                                TextEntry::make('observations')->label('Observaciones del agente:'),
+                            ])->columnSpanFull()->columns(4),
+                    ])->columnSpanFull(),
+
             ]);
     }
 }

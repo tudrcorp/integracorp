@@ -12,18 +12,20 @@ use Filament\Schemas\Schema;
 use App\Models\IndividualQuote;
 use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Radio;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
+use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
+
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-
-use Filament\Schemas\Components\Wizard;
-use Filament\Schemas\Components\Wizard\Step;
+use Filament\Forms\Components\Repeater\TableColumn;
 
 class IndividualQuoteForm
 {
@@ -33,6 +35,7 @@ class IndividualQuoteForm
             ->components([
                 Wizard::make([
                     Step::make('SOLICITANTE')
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('code')
                                 ->label('Nro. de cotización')
@@ -225,9 +228,10 @@ class IndividualQuoteForm
                             }),
                         ])->columns(4),
                     Step::make('PLANES A COTIZAR')
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Radio::make('plan')
-                                ->label(false)
+                                ->label('Selecciona el/los planes que desea cotizar:')
                                 ->required()
                                 ->inLine()
                                 ->live()
@@ -244,12 +248,14 @@ class IndividualQuoteForm
                                 }),
                         ]),
                     Step::make('RANGO DE EDAD')
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             /**
                              * REPETER PLAN INICIAl
                              */
                             Repeater::make('details_quote_plan_inicial')
-                                ->label(false)
+                                ->grid(2)
+                                ->label('Indique edad y número de afiliados al plan:')
                                 ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 1)->count())
                                 ->addable(false)
                                 ->hidden(function (Get $get) {
@@ -258,6 +264,10 @@ class IndividualQuoteForm
                                     }
                                     return true;
                                 })
+                                ->table([
+                                    TableColumn::make('Rango de Edad'),
+                                    TableColumn::make('Total de personas'),
+                                ])
                                 ->schema([
                                     Hidden::make('plan_id')->default(1),
                                     Radio::make('age_range_id')
@@ -274,12 +284,8 @@ class IndividualQuoteForm
                                         ->options(function (Get $get) {
                                             return AgeRange::where('plan_id', 1)->pluck('range', 'id');
                                         })->columnSpan(4),
-                                    // TextInput::make('total_persons')
-                                    //     ->label(false)
-                                    //     ->placeholder('Cantidad de personas')
-                                    //     ->numeric(),
                                     Select::make('total_persons')
-                                        ->label(false)
+                                        // ->label(false)
                                         ->native(false)
                                         ->options([
                                             1 => 1,
@@ -300,7 +306,8 @@ class IndividualQuoteForm
                              * REPETER PLAN IDEAL
                              */
                             Repeater::make('details_quote_plan_ideal')
-                                ->label(false)
+                                ->grid(2)
+                                ->label('Indique edad y número de afiliados al plan:')
                                 ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 2)->count())
                                 ->addable(false)
                                 ->hidden(function (Get $get) {
@@ -309,11 +316,14 @@ class IndividualQuoteForm
                                     }
                                     return true;
                                 })
+                                ->table([
+                                    TableColumn::make('Rango de Edad'),
+                                    TableColumn::make('Total de personas'),
+                                ])
                                 ->schema([
                                     Hidden::make('plan_id')->default(2),
                                     Radio::make('age_range_id')
                                         ->label(false)
-
                                         ->inLine()
                                         ->live()
                                         ->disableOptionWhen(function ($value, $state, Get $get) {
@@ -325,13 +335,9 @@ class IndividualQuoteForm
                                         ->options(function (Get $get) {
                                             return AgeRange::where('plan_id', 2)->pluck('range', 'id');
                                         })->columnSpan(4),
-                                    // TextInput::make('total_persons')
-                                    //     ->label(false)
-                                    //     ->placeholder('Cantidad de personas')
-                                    //     ->numeric(),
                                     Select::make('total_persons')
                                         ->label(false)
-                                        ->native(false)
+                                        // ->native(false)
                                         ->options([
                                             1 => 1,
                                             2 => 2,
@@ -351,7 +357,8 @@ class IndividualQuoteForm
                              * REPETER PLAN ESPECIAL
                              */
                             Repeater::make('details_quote_plan_especial')
-                                ->label(false)
+                                ->grid(2)
+                                ->label('Indique edad y número de afiliados al plan:')
                                 ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 3)->count())
                                 ->addable(false)
                                 ->hidden(function (Get $get) {
@@ -360,11 +367,14 @@ class IndividualQuoteForm
                                     }
                                     return true;
                                 })
+                                ->table([
+                                    TableColumn::make('Rango de Edad'),
+                                    TableColumn::make('Total de personas'),
+                                ])
                                 ->schema([
                                     Hidden::make('plan_id')->default(3),
                                     Radio::make('age_range_id')
                                         ->label(false)
-
                                         ->inLine()
                                         ->live()
                                         ->disableOptionWhen(function ($value, $state, Get $get) {
@@ -376,13 +386,7 @@ class IndividualQuoteForm
                                         ->options(function (Get $get) {
                                             return AgeRange::where('plan_id', 3)->pluck('range', 'id');
                                         })->columnSpan(4),
-                                    // TextInput::make('total_persons')
-                                    //     ->label(false)
-                                    //     ->placeholder('Cantidad de personas')
-                                    //     ->numeric(),
                                     Select::make('total_persons')
-                                        ->label(false)
-                                        ->native(false)
                                         ->options([
                                             1 => 1,
                                             2 => 2,

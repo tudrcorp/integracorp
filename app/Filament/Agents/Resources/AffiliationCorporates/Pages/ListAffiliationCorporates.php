@@ -10,7 +10,7 @@ class ListAffiliationCorporates extends ListRecords
 {
     protected static string $resource = AffiliationCorporateResource::class;
 
-    protected static ?string $title = 'AFILIACIONES CORPORATIVA';
+    protected static ?string $title = 'Afiliaciones corporativas';
 
     protected function getHeaderActions(): array
     {

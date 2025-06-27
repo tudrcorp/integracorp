@@ -16,10 +16,15 @@ use Filament\Schemas\Components\Section;
 use App\Jobs\SendNotificacionAdministrador;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Agents\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
+use BackedEnum;
 
 class DetailsRelationManager extends RelationManager
 {
     protected static string $relationship = 'details';
+
+    protected static ?string $title = 'PLANES A COTIZAR';
+
+    protected static string|BackedEnum|null $icon = 'heroicon-s-squares-plus';
 
     public function form(Schema $schema): Schema
     {

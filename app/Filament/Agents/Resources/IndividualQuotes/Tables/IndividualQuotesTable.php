@@ -33,8 +33,7 @@ class IndividualQuotesTable
         return $table
             ->query(IndividualQuote::query()->where('agent_id', Auth::user()->agent_id))
             ->defaultSort('created_at', 'desc')
-            ->heading('COTIZACIONES INDIVIDUALES')
-            ->description('Lista de cotizaciones generadas por el agente')
+            ->heading('Lista de cotizaciones generadas por el agente')
             ->columns([
                 // Tables\Columns\TextColumn::make('id')
                 //     ->label('Código')
@@ -118,11 +117,6 @@ class IndividualQuotesTable
                         return $indicators;
                     }),
             ])
-            ->filtersTriggerAction(
-                fn(Action $action) => $action
-                    ->button()
-                    ->label('Filtros'),
-            )
             ->recordActions([
                 ActionGroup::make([
                     /**EDIT */

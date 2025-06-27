@@ -65,7 +65,7 @@ class AdminPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->databaseTransactions()
             // ->sidebarCollapsibleOnDesktop()
-            ->maxContentWidth(Width::ScreenTwoExtraLarge)
+            // ->maxContentWidth(Width::ScreenTwoExtraLarge)
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label('TDEC')

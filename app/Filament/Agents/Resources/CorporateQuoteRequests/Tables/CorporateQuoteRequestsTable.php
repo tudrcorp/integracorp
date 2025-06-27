@@ -2,11 +2,13 @@
 
 namespace App\Filament\Agents\Resources\CorporateQuoteRequests\Tables;
 
+use Carbon\Carbon;
 use App\Models\Agency;
 use Filament\Tables\Table;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use App\Models\CorporateQuoteRequest;
 use Filament\Actions\BulkActionGroup;
@@ -14,13 +16,16 @@ use Filament\Support\Enums\Alignment;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
 
 class CorporateQuoteRequestsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-        ->query(CorporateQuoteRequest::query()->where('agent_id', Auth::user()->agent_id))
+            ->query(CorporateQuoteRequest::query()->where('agent_id', Auth::user()->agent_id))
+            ->heading('Lista de solicitudes de cotización corporativa generadas por el agente')
             ->defaultSort('id', 'desc')
             ->columns([
                 TextColumn::make('owner_code')
@@ -102,18 +107,42 @@ class CorporateQuoteRequestsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->recordActions([
-            ActionGroup::make([
-                /**EDIT */
-                EditAction::make()
-                    ->label('Editar')
-                    ->icon('heroicon-m-pencil')
-                    ->color('warning'),
-            ])
-                ->icon('heroicon-c-ellipsis-vertical')
-                ->color('azulOscuro')
+                ActionGroup::make([
+                    /**EDIT */
+                    EditAction::make()
+                        ->label('Editar')
+                        ->icon('heroicon-m-pencil')
+                        ->color('warning'),
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

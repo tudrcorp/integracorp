@@ -82,25 +82,52 @@ class DetailsQuoteRelationManager extends RelationManager
                     ->relationship('coverage', 'price')
                     ->attribute('sucursal_id'),
             ])
-            ->filtersTriggerAction(
-                fn(Action $action) => $action
-                    ->button()
-                    ->label('Filtro'),
-            )
             ->headerActions([
                 // CreateAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                 BulkAction::make('quote_multiple')
-                    ->label('Pre-Afiliacion')
+                    ->label('Preparar afiliación')
                     ->color('success')
                     ->icon('heroicon-c-receipt-percent')
                     ->requiresConfirmation()
                     ->deselectRecordsAfterCompletion()
-                    ->action(function (Collection $records) {
-                        dd($records->toArray());
+                    ->action(function (Collection $records, RelationManager $livewire) {
+                        try {
+
+                            // dd($records->count(), $records);
+
+                            //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+
+                            session()->get('data_records', []);
+
+                            session()->put('data_records', $records->toArray());
+
+                            // $data_records = session()->get('data_records');
+
+                            /**
+                             * Actualizo el status a APROBADA
+                             */
+
+                            $livewire->ownerRecord->status = 'APROBADA';
+                            $livewire->ownerRecord->save();
+
+                            $record = $records->first();
+
+                            if ($records->count() == 1) {
+                                return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->individual_quote_id, 'plan_id' => $record->plan_id]);
+                            }
+
+                            if ($records->count() > 1) {
+                                return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->plan_id, 'plan_id' => null]);
+                            }
+                        } catch (\Throwable $th) {
+                            dd($th);
+                            // $part
+                        }
                     }),
+                    
                 DeleteBulkAction::make(),
                 ]),
             ]);

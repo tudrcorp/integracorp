@@ -10,10 +10,15 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Imports\CorporateQuoteRequestDataImporter;
 use App\Filament\Agents\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
+use BackedEnum;
 
 class DetailsDataRelationManager extends RelationManager
 {
     protected static string $relationship = 'detailsData';
+
+    protected static ?string $title = 'POBLACIÓN';
+
+    protected static string|BackedEnum|null $icon = 'heroicon-s-user-plus';
 
     public function table(Table $table): Table
     {
@@ -31,11 +36,11 @@ class DetailsDataRelationManager extends RelationManager
 
             ])
             ->headerActions([
+                /**Importar data de poblacion */
                 ImportAction::make()
                     ->importer(CorporateQuoteRequestDataImporter::class)
-                    ->label('Importar CSV')
-                    ->color('verde')
-                    ->outlined()
+                    ->label('Importar CSV(Población)')
+                    ->color('warning')
                     ->icon('heroicon-s-cloud-arrow-up')
                     ->options(function (RelationManager $livewire) {
                         return [

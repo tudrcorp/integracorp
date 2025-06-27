@@ -11,11 +11,14 @@ class EditIndividualQuote extends EditRecord
 {
     protected static string $resource = IndividualQuoteResource::class;
 
+    protected static ?string $title = 'Editar cotización individual';
+
     protected function getHeaderActions(): array
     {
         return [
             ViewAction::make(),
-            DeleteAction::make(),
+            DeleteAction::make()
+            ->requiresConfirmation(),
         ];
     }
 }
