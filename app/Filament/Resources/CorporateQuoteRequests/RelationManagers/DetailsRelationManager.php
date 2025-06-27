@@ -91,9 +91,6 @@ class DetailsRelationManager extends RelationManager
                     ->color('warning'),
 
             ])
-            ->filters([
-                //
-            ])
             ->headerActions([
                 /**Crear cotización */
                 Action::make('create_corporate_quote')

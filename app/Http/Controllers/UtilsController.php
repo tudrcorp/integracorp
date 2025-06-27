@@ -51,6 +51,11 @@ class UtilsController extends Controller
             $corporate_quote = new CorporateQuote($data);
             $corporate_quote->save();
 
+            //Cambiamos el estatus de la solicitud a aprobada
+            $corporate_quote_request = CorporateQuoteRequest::find($livewire->id);
+            $corporate_quote_request->status = 'APROBADA';
+            $corporate_quote_request->save();
+
             // dd($corporate_quote);
 
             /**
@@ -368,7 +373,6 @@ class UtilsController extends Controller
                 $data_agent_or_agency = CorporateQuoteRequest::select('agent_id', 'code_agency', 'owner_code', 'id')
                     ->where('id', $data['corporate_quote_request_id'])
                     ->first();
-
                 $data['owner_code']     = $data_agent_or_agency->owner_code;
                 $data['agent_id']       = $data_agent_or_agency->owner_code != null ? $data_agent_or_agency->agent_id : null;
                 $data['code_agency']    =  $data_agent_or_agency->code_agency;
@@ -384,6 +388,11 @@ class UtilsController extends Controller
 
             $corporate_quote = new CorporateQuote($data);
             $corporate_quote->save();
+
+            //Cambiamos el estatus de la solicitud a aprobada
+            $corporate_quote_request = CorporateQuoteRequest::find($livewire->id);
+            $corporate_quote_request->status = 'APROBADA';
+            $corporate_quote_request->save();
 
             $details = DetailsCorporateQuoteRequest::where('corporate_quote_request_id', $livewire->id)->get()->toArray();
             // dd($details);

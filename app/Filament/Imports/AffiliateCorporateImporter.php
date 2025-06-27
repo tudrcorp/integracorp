@@ -19,10 +19,7 @@ class AffiliateCorporateImporter extends Importer
                 ->requiredMapping()
                 ->numeric()
                 ->rules(['required', 'integer']),
-            ImportColumn::make('last_name')
-                ->requiredMapping()
-                ->rules(['required', 'max:255']),
-            ImportColumn::make('first_name')
+            ImportColumn::make('full_name')
                 ->requiredMapping()
                 ->rules(['required', 'max:255']),
             ImportColumn::make('nro_identificacion')

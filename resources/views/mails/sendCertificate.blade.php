@@ -69,7 +69,8 @@
     <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">
         <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrEnCasa! 🌟</span> </p>
 
-        <p>Estimado(a): <span style="font-weight: bold">{{ $titular['full_name_ti'] }}</span> ,</p>
+        <p>Estimado(a): <span style="font-weight: bold">{{ $titular }}</span> ,</p>
+        {{-- <p>Estimado(a): <span style="font-weight: bold">{{ $titular['full_name_ti'] }}</span> ,</p> --}}
 
         <p>¡Nos complace darte la más cordial bienvenida🌟, queremos informarte que tu preafiliación ha sido procesada con éxito, y estamos muy contentos de tenerte como parte de nuestra comunidad.
 

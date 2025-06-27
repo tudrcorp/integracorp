@@ -29,7 +29,8 @@ class CorporateQuoteRequest extends Model
         'status',
         'created_by',
         'document',
-        'observations'
+        'observations',
+        'assignment_status'
      ];
 
     public function details()

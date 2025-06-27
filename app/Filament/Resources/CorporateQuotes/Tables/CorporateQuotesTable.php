@@ -130,8 +130,75 @@ class CorporateQuotesTable
                         ->icon('heroicon-o-pencil')
                         ->color('warning'),
 
-                    /**REEN\VIO DE COTIZACION CORPORATIVA */
-                    Action::make('forward')
+                /**EMIT */
+                Action::make('emit')
+                    // ->hidden(function (CorporateQuote $record) {
+                    //     if ($record->status == 'APROBADA') {
+                    //         return true;
+                    //     }
+                    //     return false;
+                    // })
+                    ->label('Emitir')
+                    ->icon('heroicon-m-power')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('APROBACIÓN DIRECTA PARA PR-AFILIACIÓN')
+                    ->modalWidth(Width::FiveExtraLarge)
+                    ->action(function (CorporateQuote $record) {
+
+                        try {
+
+                            /**
+                             * Actualizo el status a APROBADA
+                             */
+                            $record->status = 'APROBADA';
+                            $record->save();
+
+                            Notification::make()
+                                ->title('COTIZACION CORPORATIVA APROBADA')
+                                ->body('Se realizo la aprobacion directa de la cotizacion Nro.' . $record->code . ' para realizar la pre-afiliacion')
+                                ->icon('heroicon-s-user-group')
+                                ->iconColor('success')
+                                ->success()
+                                ->send();
+
+                            /**
+                             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+                             * ----------------------------------------------------------------------------------------------------
+                             * $record [Data de la cotizacion guardada en la base de dastos]
+                             */
+
+
+                            /**
+                             * LOG
+                             */
+                            LogController::log(Auth::user()->id, 'Aprobacion directa de la cotizacion Nro.' . $record->code, 'Modulo Cotizacion Individual', 'APROBADA');
+
+                            /**
+                             * Redirecciono a la pagina para crear la afiliacion
+                             */
+                            $count_plans = $record->detailCoporateQuotes()->distinct()->pluck('plan_id');
+                            // dd($count_plans[0]);
+                            if ($count_plans->count() == 1) {
+                                return redirect()->route('filament.admin.resources.affiliation-corporates.create', ['id' => $record->id, 'plan_id' => $count_plans[0]]);
+                            }
+
+                            return redirect()->route('filament.admin.resources.affiliation-corporates.create', ['id' => $record->id, 'plan_id' => null]);
+                            
+                        } catch (\Throwable $th) {
+                            LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.emit', $th->getMessage());
+                            Notification::make()
+                                ->title('ERROR')
+                                ->body($th->getMessage())
+                                ->icon('heroicon-s-x-circle')
+                                ->iconColor('danger')
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                /**REEN\VIO DE COTIZACION CORPORATIVA */
+                Action::make('forward')
                         ->label('Reenviar Cotizacion')
                         ->icon('heroicon-o-arrow-uturn-right')
                         ->color('primary')

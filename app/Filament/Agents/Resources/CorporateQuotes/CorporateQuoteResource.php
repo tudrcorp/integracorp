@@ -47,7 +47,7 @@ class CorporateQuoteResource extends Resource
     public static function getRelations(): array
     {
         return [
-            DetailCoporateQuotesRelationManager::class,
+            // DetailCoporateQuotesRelationManager::class,
         ];
     }
 

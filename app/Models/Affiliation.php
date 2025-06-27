@@ -181,8 +181,8 @@ class Affiliation extends Model
         $data_ti['colorTitle']      = $colorTitle;
         $data_ti['titleBeneficios'] = $titleBeneficios;
         $data_ti['imageBeneficios'] = $imageBeneficios;
-
-        SendNotificacionAfiliacionIndividual::dispatch($titular->full_name, $titular->email_ti, $name_pdf, $data_ti, $afiliates);
+        
+        SendNotificacionAfiliacionIndividual::dispatch($titular['full_name_ti'], $titular['email_ti'], $name_pdf, $data_ti, $afiliates);
 
     }
 

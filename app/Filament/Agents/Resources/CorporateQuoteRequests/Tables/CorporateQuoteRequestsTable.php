@@ -148,6 +148,6 @@ class CorporateQuoteRequestsTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])->striped();
     }
 }

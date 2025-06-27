@@ -6,6 +6,7 @@ use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Support\Enums\FontWeight;
@@ -18,7 +19,7 @@ class DownloadZonesTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->columns([
+            ->columns([
                 Stack::make([
                     ImageColumn::make('image_icon')
                         ->height('auto')
@@ -37,26 +38,18 @@ class DownloadZonesTable
                 'xl' => 3,
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
-            Action::make('download')
-                ->label('Descargar')
-                ->icon('heroicon-o-arrow-down-tray')
-                // ->url(function ($record) {
-                //     return asset('storage/' . $record->document);
-                // }),
-                ->color('verde')
-                // ->icon('heroicon-o-document-download')
-                ->url(function ($record) {
-                    return asset('storage/' . $record->document);
-                })
-                ->button()
-                ->openUrlInNewTab(),
+                Action::make('download')
+                    ->label('Descargar')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('verde')
+                    ->url(function ($record) {
+                        return asset('storage/' . $record->document);
+                    })
+                    ->button()
+                    ->openUrlInNewTab(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+                
+            ])->striped();
     }
 }

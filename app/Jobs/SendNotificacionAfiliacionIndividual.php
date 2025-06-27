@@ -49,6 +49,12 @@ class SendNotificacionAfiliacionIndividual implements ShouldQueue
         $name_pdf = $this->name_pdf;
         $data_ti = $this->data_ti;
         $afiliates = $this->afiliates;
+
+        Log::info($full_name);
+        Log::info($email);
+        Log::info($name_pdf);
+        Log::info($data_ti);
+        Log::info($afiliates);
         
         $pdf = Pdf::loadView('documents.certificate', compact('data_ti', 'afiliates'));
         $pdf->save(public_path('storage/' . $name_pdf));
