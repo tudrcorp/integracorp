@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class BenefitIndividualQuote extends Model
+{
+    protected $table = 'benefit_individual_quotes';
+
+    public static function booted(): void
+    {
+        static::creating(function ($record) {
+            $record->description =  Benefit::where('id', $record->benefit_id)->first()->description;
+        });
+    }
+}
