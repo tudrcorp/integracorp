@@ -56,7 +56,7 @@ class AgentForm
                     Hidden::make('owner_code')->default(function (Get $get) {
                         return Auth::user()->code_agency;
                     })
-                ])->columns(4),
+                ])->columnSpanFull()->columns(4),
             Section::make('INFORMACION PRINCIPAL DE LA AGENCIA')
                 ->description('Fomulario. Campo Requerido(*)')
                 ->collapsed()
@@ -311,7 +311,7 @@ class AgentForm
                         ->label('Usuario de Instagram')
                         ->prefixIcon('heroicon-s-user')
                         ->maxLength(255),
-                ])->columns(4),
+                ])->columnSpanFull()->columns(4),
             Section::make('DATOS BANCARIOS MONEDA NACIONAL')
                 ->description('Fomulario. Campo Requerido(*)')
                 ->collapsed()
@@ -387,9 +387,9 @@ class AgentForm
                                     $set('local_beneficiary_phone_pm', $countryCode . $cleanNumber);
                                 }
                             }),
-                    ]),
+                    ])->columnSpanFull(),
 
-                ])->columns(3),
+                ])->columnSpanFull()->columns(3),
             Section::make('DATOS BANCARIOS MONEDA EXTRANJERA')
                 ->description('Fomulario. Campo Requerido(*)')
                 ->collapsed()
@@ -511,7 +511,7 @@ class AgentForm
                         ->live(onBlur: true)
                         ->prefixIcon('heroicon-s-identification')
                         ->maxLength(255),
-                ])->columns(4),
+                ])->columnSpanFull()->columns(4),
             Section::make('CARGA DE DOCUMENTOS')
                 ->collapsed()
                 ->description('El tamaño máximo de los documentos es de 2MB. Acepta .jpg, .jpeg, .pdf, .txt, .xls, .xlsx')
@@ -539,7 +539,7 @@ class AgentForm
                     FileUpload::make('file_account_zelle')
                         ->label('Cta. Zelle')
                         ->uploadingMessage('Cargando documento...'),
-                ])->columns(3),
+                ])->columnSpanFull()->columns(3),
             Section::make('COMENTARIOS')
                 ->collapsed()
                 ->icon('heroicon-m-folder-plus')

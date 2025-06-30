@@ -15,12 +15,15 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class AgentResource extends Resource
 {
     protected static ?string $model = Agent::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string | UnitEnum | null $navigationGroup = 'Organización';
+
+    protected static ?string $navigationLabel = 'Agentes';
 
     public static function form(Schema $schema): Schema
     {

@@ -15,12 +15,17 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CommissionResource extends Resource
 {
     protected static ?string $model = Commission::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-currency-dollar';
+
+    protected static ?string $navigationLabel = 'COMISIONES';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Ventas';
 
     public static function form(Schema $schema): Schema
     {

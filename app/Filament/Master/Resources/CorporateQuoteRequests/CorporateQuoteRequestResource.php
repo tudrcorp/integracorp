@@ -17,12 +17,15 @@ use App\Filament\Master\Resources\CorporateQuoteRequests\Tables\CorporateQuoteRe
 use App\Filament\Master\Resources\CorporateQuoteRequests\Schemas\CorporateQuoteRequestInfolist;
 use App\Filament\Master\Resources\CorporateQuoteRequests\RelationManagers\DetailsRelationManager;
 use App\Filament\Master\Resources\CorporateQuoteRequests\RelationManagers\DetailsDataRelationManager;
+use UnitEnum;
 
 class CorporateQuoteRequestResource extends Resource
 {
     protected static ?string $model = CorporateQuoteRequest::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+
+    protected static ?string $navigationLabel = 'SOLICITUDES DE COTIZACIÓN';
 
     public static function form(Schema $schema): Schema
     {

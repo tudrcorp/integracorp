@@ -32,6 +32,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\AffiliationController;
 use App\Jobs\ResendMailNotificacionAfiliacionIndividual;
+use App\Filament\Resources\Affiliations\AffiliationResource;
 
 class AffiliationsTable
 {
@@ -40,7 +41,6 @@ class AffiliationsTable
         return $table
         ->query(Affiliation::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
             ->defaultSort('created_at', 'desc')
-            ->heading('AFILIACIONES INDIVIDUALES')
             ->description('Lista de cotizaciones generadas por el agente')
             ->columns([
                 TextColumn::make('code_agency')

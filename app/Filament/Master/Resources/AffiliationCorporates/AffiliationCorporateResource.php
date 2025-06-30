@@ -15,12 +15,17 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
     protected static ?string $model = AffiliationCorporate::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user-group';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Afiliaciones';
+
+    protected static ?string $navigationLabel = 'AFILIACIONES CORPORATIVAS';
 
     public static function form(Schema $schema): Schema
     {

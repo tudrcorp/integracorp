@@ -116,18 +116,45 @@ class AffiliationCorporateForm
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->preload(),
+                        Section::make()
+                            ->heading('Referencias')
+                            ->schema([
+                                Select::make('code_agency')
+                                    ->label('Agencia')
+                                    ->options(Agency::select('code')->pluck('code', 'code'))
+                                    ->live()
+                                    ->helperText('Si el campo vacio se asignará la agencia asociada en la solicitud de cotizacion seleccionada por el usuario.')
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                    ->preload(),
+                                Select::make('agent_id')
+                                    ->label('Agente')
+                                    ->options(function (Get $get) {
+                                        return Agent::select('owner_code', 'name', 'id')->where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                    })
+                                    ->live()
+                                    ->helperText('Si el campo vacio se asignará el agente asociado en la solicitud de cotizacion seleccionada por el usuario.')
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                    ->preload(),
+                            ])->columnSpanFull()->columns(2),
                         Hidden::make('created_by')->default(Auth::user()->name),
                         Hidden::make('status')->default('PRE-APROBADA'),
-                        Hidden::make('agent_id')->default(Auth::user()->agent_id),
+
+                        //Jerarquía
+                        //---------------------------------
+                        Hidden::make('owner_code')->default(null),
+                        //---------------------------------
+                        
                     ])->columnSpanFull()->columns(3),
-                Section::make('INFORMACION CORPORATIVA DEL CONTRATANTE')
+                Section::make('INFORMACIÓN CORPORATIVA DEL CONTRATANTE')
                     ->description('Campo Requerido(*)')
                     ->collapsed('edit')
                     // ->collapsed()
                     ->icon('heroicon-s-building-office-2')
                     ->schema([
                         TextInput::make('full_name_con')
-                            ->label('Razon social')
+                            ->label('Razón social')
                             ->afterStateUpdated(function (Set $set, $state) {
                                 $set('full_name_con', strtoupper($state));
                             })

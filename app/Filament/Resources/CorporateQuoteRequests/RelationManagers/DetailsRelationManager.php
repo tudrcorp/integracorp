@@ -329,6 +329,13 @@ class DetailsRelationManager extends RelationManager
                     ->action(function (RelationManager $livewire, array $data) {
 
                         $create = UtilsController::createCorporateQuoteWithoutPersons($livewire->getOwnerRecord(), $data);
+
+                        if ($create) {
+                            Notification::make()
+                                ->title('Cotizacion creada con exito')
+                                ->success()
+                                ->send();
+                        }
                     }),
                 CreateAction::make()
                     ->label('Agregar Plan')

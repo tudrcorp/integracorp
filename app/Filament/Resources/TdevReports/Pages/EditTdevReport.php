@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Filament\General\Resources\Collections\Pages;
+namespace App\Filament\Resources\TdevReports\Pages;
 
-use App\Filament\General\Resources\Collections\CollectionResource;
+use App\Filament\Resources\TdevReports\TdevReportResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 
-class EditCollection extends EditRecord
+class EditTdevReport extends EditRecord
 {
-    protected static string $resource = CollectionResource::class;
+    protected static string $resource = TdevReportResource::class;
 
     protected function getHeaderActions(): array
     {

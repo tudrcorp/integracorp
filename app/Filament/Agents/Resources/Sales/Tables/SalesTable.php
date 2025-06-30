@@ -8,19 +8,22 @@ use Filament\Tables\Table;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Filters\Filter;
+use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Columns\Summarizers\Sum;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Columns\Summarizers\Sum;
 
 class SalesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+        ->query(Sale::query()->where('agent_id', Auth::user()->agent_id))
+        ->defaultSort('created_at', 'desc')
         ->columns([
                 TextColumn::make('date')
                     ->label('Fecha')
@@ -155,8 +158,8 @@ class SalesTable
 
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                // ViewAction::make(),
+                // EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -31,16 +31,8 @@ class AgentsTable
         return $table
         ->query(Agent::query()->where('owner_code', 'like', '%' . str_replace('TDG-', '', Auth::user()->code_agency) . '%'))
             ->defaultSort('id', 'desc')
-            ->heading('AGENTES')
             ->description('Lista de Agentes registrados en el sistema.')
             ->columns([
-                // Tables\Columns\TextColumn::make('owner_code')
-                //     ->label('Jerarquía')
-                //     ->prefix(Auth::user()->agency_type . '-')
-                //     ->badge()
-                //     ->color('warning')
-                //     ->icon('heroicon-s-building-library')
-                //     ->searchable(),
                 TextColumn::make('id')
                     ->label('Código')
                     ->prefix('AGT-000')

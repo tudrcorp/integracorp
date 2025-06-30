@@ -17,6 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -301,7 +302,44 @@ class CorporateQuotesTable
                                     ->send();
                             }
                         }),
-                ])
+
+                /**OBSERVACIONES */
+                Action::make('observations')
+                    ->label('Registrar observaciones')
+                    ->icon('heroicon-s-hand-raised')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('OBSERVACIONES DEL AGENTE')
+                    ->modalIcon('heroicon-s-hand-raised')
+                    ->form([
+                        Textarea::make('description')
+                            ->label('Observaciones')
+                            ->rows(5)
+                    ])
+                    ->action(function (CorporateQuote $record, array $data) {
+
+                        try {
+
+                            $record->observations = $data['description'];
+                            $record->save();
+
+                            Notification::make()
+                                ->body('Las observaciones fueron registradas exitosamente.')
+                                ->success()
+                                ->send();
+                                
+                        } catch (\Throwable $th) {
+                            LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                            Notification::make()
+                                ->title('ERROR')
+                                ->body($th->getMessage())
+                                ->icon('heroicon-s-x-circle')
+                                ->iconColor('danger')
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+            ])
                     ->icon('heroicon-c-ellipsis-vertical')
                     ->color('azulOscuro')
                     ->hidden(function (CorporateQuote $record) {

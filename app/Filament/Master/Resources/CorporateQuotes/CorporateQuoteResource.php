@@ -16,12 +16,15 @@ use App\Filament\Master\Resources\CorporateQuotes\Schemas\CorporateQuoteForm;
 use App\Filament\Master\Resources\CorporateQuotes\Tables\CorporateQuotesTable;
 use App\Filament\Master\Resources\CorporateQuotes\Schemas\CorporateQuoteInfolist;
 use App\Filament\Master\Resources\CorporateQuotes\RelationManagers\DetailCoporateQuotesRelationManager;
+use UnitEnum;
 
 class CorporateQuoteResource extends Resource
 {
     protected static ?string $model = CorporateQuote::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+
+    protected static ?string $navigationLabel = 'COTIZACIONES CORPORATIVAS';
 
     public static function form(Schema $schema): Schema
     {

@@ -15,12 +15,16 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CorporateQuoteResource extends Resource
 {
     protected static ?string $model = CorporateQuote::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+
+    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+
+    protected static ?string $navigationLabel = 'Corporativas';
 
     public static function form(Schema $schema): Schema
     {

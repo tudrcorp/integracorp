@@ -2,49 +2,38 @@
 
 namespace App\Livewire;
 
-
 use App\Models\City;
-
 use App\Models\User;
 use App\Models\Agent;
 use App\Models\State;
 use Pages\EditAgency;
 use App\Models\Agency;
 use App\Models\Region;
+
 use App\Models\Country;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Livewire\Component;
-use Filament\Forms\Form;
 use App\Models\AgentType;
-use App\Models\TypeAgent;
-use App\Models\AgencyType;
-use Filament\MarkdownEditor;
+use Filament\Schemas\Schema;
 use App\Models\AgentDocument;
 use App\Models\AgencyDocument;
-use Filament\Forms\Components\Grid;
-use Illuminate\Contracts\View\View;
-use Filament\Support\Enums\MaxWidth;
-use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Wizard;
+use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\Crypt;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use App\Http\Controllers\AgentController;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
 
 
-class CreateAgent extends Component implements HasForms
+class CreateAgent extends Component implements HasSchemas
 {
-    use InteractsWithForms;
+    use InteractsWithSchemas;
 
     public ?array $data = [];
     public $code;
@@ -55,12 +44,12 @@ class CreateAgent extends Component implements HasForms
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         $code_decrypted = isset($this->code) ? Crypt::decryptString($this->code) : 'TDG-100';
 
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('SELECCION DE TIPO DE AGENTE O AGENCIA')
                     ->description('Fomulario para el registro de usuarios. Campo Requerido(*)')
                     ->collapsible()
@@ -1350,7 +1339,7 @@ class CreateAgent extends Component implements HasForms
         $this->redirect('/at/c');
     }
     
-    public function render(): View
+    public function render()
     {
         return view('livewire.create-agent');
     }

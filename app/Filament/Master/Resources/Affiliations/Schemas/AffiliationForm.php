@@ -3,12 +3,14 @@
 namespace App\Filament\Master\Resources\Affiliations\Schemas;
 
 use App\Models\City;
+use App\Models\Agent;
 use App\Models\State;
 use App\Models\Region;
 use App\Models\Country;
 use App\Models\Affiliation;
 use Filament\Schemas\Schema;
 use App\Models\IndividualQuote;
+use Illuminate\Support\Facades\DB;
 use Filament\Forms\Components\Radio;
 use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
@@ -53,8 +55,7 @@ class AffiliationForm
                                 return 'TDEC-AFI-000' . $parte_entera + 1;
                             })
                             ->required(),
-
-                    ]),
+                    ])->columnSpanFull(),
                     Select::make('individual_quote_id')
                         ->default(fn() => request()->query('id'))
                         ->label('Código de cotización')
@@ -202,6 +203,13 @@ class AffiliationForm
                         ->disabled()
                         ->dehydrated()
                         ->live(),
+                    Select::make('agent_id')
+                        ->label('Agente')
+                        ->options(function (Get $get) {
+                            // return Agent::where('owner_code', Auth::user()->code_agency)->pluck('name', 'id');
+                            return DB::table('agents')->select('name', 'id')->where('owner_code', Auth::user()->code_agency)->get()->pluck('name', 'id'); //Agent::where('owner_code', Auth::user()->code_agency)->pluck('name', 'id');
+                        })
+                        ->searchable(),
 
                     /**
                      * Campos referenciales para jerarquia
@@ -212,7 +220,7 @@ class AffiliationForm
                     Hidden::make('code_agency')->default(Auth::user()->code_agency),
                     Hidden::make('owner_code')->default(Auth::user()->code_agency),
 
-                ])->columns(3),
+                ])->columnSpanFull()->columns(3),
             Section::make('INFORMACION PRINCIPAL DEL CONTRATANTE')
                 ->collapsible()
                 ->collapsed('edit')
@@ -440,7 +448,7 @@ class AffiliationForm
                             'required'  => 'Campo Requerido',
                         ])
                         ->preload(),
-                ])->columns(4),
+                ])->columnSpanFull()->columns(4),
             Section::make('INFORMACION PRINCIPAL DEL TITULAR')
                 ->collapsible()
                 ->collapsed('edit')
@@ -456,7 +464,7 @@ class AffiliationForm
                                 ->boolean()
                                 ->inline()
                                 ->inlineLabel(false)
-                        ])->hiddenOn('edit'),
+                        ])->columnSpanFull()->hiddenOn('edit'),
                     Grid::make(4)
                         ->schema([
                             TextInput::make('full_name_ti')
@@ -650,9 +658,9 @@ class AffiliationForm
                                 ->searchable()
                                 ->prefixIcon('heroicon-s-globe-europe-africa')
                                 ->preload(),
-                        ])->hidden(fn(Get $get) => $get('feedback')),
+                        ])->columnSpanFull()->hidden(fn(Get $get) => $get('feedback')),
 
-                ])->columns(4),
+                ])->columnSpanFull()->columns(4),
 
             Section::make('AFILIADOS')
                 ->description('Campo Requerido(*)')
@@ -724,7 +732,7 @@ class AffiliationForm
                         ->addActionLabel('Agregar afiliado')
                         ->columns(5)
 
-                ]),
+                ])->columnSpanFull(),
 
             Section::make('DECLARACION DE CONDICIONES MEDICAS')
                 ->description('(Sólo para solicitantes del Plan Especial). Responda Si o No, tomando en cuenta todos los solicitantes. Las respuestas afirmativas deben ser ampliadas.')
@@ -847,6 +855,7 @@ class AffiliationForm
                         ])->columnSpan('full')
 
                 ])
+                ->columnSpanFull()
                 ->hidden(fn(Get $get) => $get('plan_id') == 1 || $get('plan_id') == 2),
             Section::make('ACUERDO Y CONDICIONES')
                 ->collapsed()
@@ -872,6 +881,7 @@ class AffiliationForm
                         ->required(),
                 ])
                 ->hiddenOn('edit')
+                ->columnSpanFull()
                 ->columns(3),
             ]);
     }

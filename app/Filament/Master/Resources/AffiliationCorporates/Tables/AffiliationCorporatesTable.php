@@ -17,98 +17,137 @@ class AffiliationCorporatesTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->query(AffiliationCorporate::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->query(AffiliationCorporate::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->defaultSort('created_at', 'desc')
+            ->description('Lista de afiliaciones corporativas registradas en el sistema')
             ->columns([
                 TextColumn::make('code')
+                    ->label('Código')
+                    ->badge()
+                    ->color('success')
+                    ->icon('heroicon-m-tag')
                     ->searchable(),
-                TextColumn::make('code_agency')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('corporate_quote_id')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('plan_id')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('agent_id')
-                    ->numeric()
-                    ->sortable(),
+                TextColumn::make('corporate_quote.code')
+                    ->label('Nro. de cotización')
+                    ->badge()
+                    ->color('primary')
+                    ->icon('heroicon-m-tag')
+                    ->searchable(),
+                TextColumn::make('plan.description')
+                    ->label('Plan')
+                    ->searchable(),
                 TextColumn::make('full_name_con')
+                    ->label('Nombre contratante')
+                    ->badge()
+                    ->color('verde')
                     ->searchable(),
                 TextColumn::make('rif')
-                    ->searchable(),
-                TextColumn::make('adress_con')
-                    ->searchable(),
-                TextColumn::make('city_id_con')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('state_id_con')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('country_id_con')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('region_con')
-                    ->searchable(),
-                TextColumn::make('phone_con')
+                    ->label('Rif')
+                    ->badge()
+                    ->color('verde')
                     ->searchable(),
                 TextColumn::make('email_con')
+                    ->label('Email contratante')
+                    ->badge()
+                    ->color('verde')
                     ->searchable(),
+                TextColumn::make('phone_con')
+                    ->label('Telefono contratante')
+                    ->badge()
+                    ->color('verde')
+                    ->searchable(),
+                TextColumn::make('adress_con')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('city_id_con')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('state_id_con')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('country_id_con')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('region_con')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 IconColumn::make('cuestion_1')
-                    ->boolean(),
+                    ->label('Prgunta 1')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_2')
-                    ->boolean(),
+                    ->label('Prgunta 2')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_3')
-                    ->boolean(),
+                    ->label('Prgunta 3')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_4')
-                    ->boolean(),
+                    ->label('Prgunta 4')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_5')
-                    ->boolean(),
+                    ->label('Prgunta 5')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_6')
-                    ->boolean(),
+                    ->label('Prgunta 6')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_7')
-                    ->boolean(),
+                    ->label('Prgunta 7')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_8')
-                    ->boolean(),
+                    ->label('Prgunta 8')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_9')
-                    ->boolean(),
+                    ->label('Prgunta 9')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_10')
-                    ->boolean(),
+                    ->label('Prgunta 10')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_11')
-                    ->boolean(),
+                    ->label('Prgunta 11')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_12')
-                    ->boolean(),
+                    ->label('Prgunta 12')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_13')
-                    ->boolean(),
+                    ->label('Prgunta 13')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('cuestion_14')
-                    ->boolean(),
-                IconColumn::make('cuestion_15')
-                    ->boolean(),
-                TextColumn::make('full_name_applicant')
-                    ->searchable(),
-                TextColumn::make('signature_applicant')
-                    ->searchable(),
-                TextColumn::make('nro_identificacion_applicant')
-                    ->searchable(),
-                TextColumn::make('date_applicant')
-                    ->searchable(),
-                TextColumn::make('full_name_agent')
-                    ->searchable(),
-                TextColumn::make('signature_agent')
-                    ->searchable(),
-                TextColumn::make('payment_frequency')
-                    ->searchable(),
-                TextColumn::make('activated_at')
-                    ->searchable(),
-                TextColumn::make('corporate_members')
-                    ->searchable(),
-                TextColumn::make('document')
-                    ->searchable(),
+                    ->label('Prgunta 14')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('date_today')
+                    ->label('Fecha')
+                    // ->dateTime()
                     ->searchable(),
                 TextColumn::make('created_by')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
+                    ->label('Estatus')
+
+                    ->badge()
+                    ->color(function (mixed $state): string {
+                        return match ($state) {
+                            'PRE-APROBADA'          => 'success',
+                            'ACTIVA'                => 'success',
+                            'PENDIENTE'             => 'warning',
+                            'EXCLUIDO'              => 'danger',
+                        };
+                    })
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()

@@ -203,11 +203,6 @@ class CommissionsTable
                     }),
 
             ])
-            ->filtersTriggerAction(
-                fn(Action $action) => $action
-                    ->button()
-                    ->label('Filtros'),
-            )
             ->recordActions([
 
             ])

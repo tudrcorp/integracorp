@@ -193,11 +193,6 @@ class SalesTable
                     ->label('Banco'),
 
             ])
-            ->filtersTriggerAction(
-                fn(Action $action) => $action
-                    ->button()
-                    ->label('Filtros'),
-            )
             ->recordActions([
             ActionGroup::make([
                 Action::make('download_pdf')

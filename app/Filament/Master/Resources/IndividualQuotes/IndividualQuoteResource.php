@@ -16,13 +16,16 @@ use App\Filament\Master\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
 use App\Filament\Master\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
 use App\Filament\Master\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
 use App\Filament\Master\Resources\IndividualQuotes\RelationManagers\DetailsQuoteRelationManager;
+use UnitEnum;
 
 class IndividualQuoteResource extends Resource
 {
     protected static ?string $model = IndividualQuote::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
 
+    protected static ?string $navigationLabel = 'COTIZACIONES INDIVIDUALES';
+    
     public static function form(Schema $schema): Schema
     {
         return IndividualQuoteForm::configure($schema);

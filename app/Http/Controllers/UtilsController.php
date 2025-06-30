@@ -19,7 +19,6 @@ class UtilsController extends Controller
 {
     public static function createCorporateQuote($livewire, $data)
     {
-
         try {
 
             /**
@@ -52,15 +51,17 @@ class UtilsController extends Controller
             $corporate_quote->save();
 
             //Cambiamos el estatus de la solicitud a aprobada
-            $corporate_quote_request = CorporateQuoteRequest::find($livewire->id);
-            $corporate_quote_request->status = 'APROBADA';
-            $corporate_quote_request->save();
+            // $corporate_quote_request = CorporateQuoteRequest::find($livewire->id);
+            // $corporate_quote_request->status = 'APROBADA';
+            // $corporate_quote_request->save();
 
             // dd($corporate_quote);
 
             /**
              * Array para el detalle de la solicutud
              * Con ente array obtenemos los planes asociados a la solicitud
+             * 
+             * En este paso tambien actualizamos la solicitud de cotizacion
              */
             $details = CorporateQuoteRequest::find($livewire->ownerRecord->id);
             $details_plan = $details->details->toArray();
@@ -90,8 +91,6 @@ class UtilsController extends Controller
                 }
             }
 
-            // dd($array);
-
             $resultado = collect($array)
                 ->groupBy('plan_id')
                 ->flatMap(function ($grupoPorPlan, $planId) {
@@ -103,7 +102,6 @@ class UtilsController extends Controller
                 })
                 ->values()
                 ->toArray();
-            
 
             /**
              * Verificamos si tenemos mas de un plan
@@ -348,10 +346,13 @@ class UtilsController extends Controller
                 $corporate_quote->sendPropuestaEconomicaMultiple($collect_final);
             }
 
+            //Actualizamos la solicitud de cotizacion
+            $livewire->status = 'APROBADA';
+            $livewire->save();
+
             return true;
             
         } catch (\Throwable $th) {
-            dd($th);
             Log::error('Error al calcular edades: ' . $th->getMessage());
             return false;
         }
@@ -360,10 +361,10 @@ class UtilsController extends Controller
     public static function createCorporateQuoteWithoutPersons($livewire, $data)
     {
         try {
-
+            
             /**
              * Caso Unico
-             * La los select de agencia y agente bien vasios
+             * los select de agencia y agente esta vasios
              * ya que el usuario no selecciono ningun agente ni agencia
              * ----------------------------------------------------------------------------------------------------
              */
@@ -388,11 +389,6 @@ class UtilsController extends Controller
 
             $corporate_quote = new CorporateQuote($data);
             $corporate_quote->save();
-
-            //Cambiamos el estatus de la solicitud a aprobada
-            $corporate_quote_request = CorporateQuoteRequest::find($livewire->id);
-            $corporate_quote_request->status = 'APROBADA';
-            $corporate_quote_request->save();
 
             $details = DetailsCorporateQuoteRequest::where('corporate_quote_request_id', $livewire->id)->get()->toArray();
             // dd($details);
@@ -663,13 +659,16 @@ class UtilsController extends Controller
                 $corporate_quote->sendPropuestaEconomicaMultiple($collect_final);
             }
 
+            //Actualizamos la solicitud de cotizacion
+            $livewire->status = 'APROBADA';
+            $livewire->save();
+
             return true;
             
         } catch (\Throwable $th) {
             Log::error('Error al calcular edades: ' . $th->getMessage());
             return false;
         }
-
 
     }
 }
