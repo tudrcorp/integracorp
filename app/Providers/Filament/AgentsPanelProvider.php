@@ -39,7 +39,7 @@ class AgentsPanelProvider extends PanelProvider
                 'primary' => '#00DCCD',
             ])
             ->brandLogo(asset('image/logo_new.png'))
-            ->brandLogoHeight('2.8rem')
+            ->brandLogoHeight('2.5rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/Agents/Resources'), for: 'App\Filament\Agents\Resources')
             ->discoverPages(in: app_path('Filament/Agents/Pages'), for: 'App\Filament\Agents\Pages')
@@ -49,7 +49,7 @@ class AgentsPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Agents/Widgets'), for: 'App\Filament\Agents\Widgets')
             ->widgets([
                 AccountWidget::class,
-                FilamentInfoWidget::class,
+                // FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

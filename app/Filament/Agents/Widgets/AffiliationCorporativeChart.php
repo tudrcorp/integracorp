@@ -2,7 +2,11 @@
 
 namespace App\Filament\Agents\Widgets;
 
+use Carbon\Carbon;
+use Flowframe\Trend\Trend;
+use Flowframe\Trend\TrendValue;
 use Filament\Widgets\ChartWidget;
+use App\Models\AffiliationCorporate;
 
 class AffiliationCorporativeChart extends ChartWidget
 {
@@ -22,22 +26,60 @@ class AffiliationCorporativeChart extends ChartWidget
         ];
     }
 
-    public function getDescription(): ?string
-    {
-        return 'Cotizaciones individuales creadas por el agente en el periodo seleccionado';
-    }
-
     protected function getData(): array
     {
+        $activeFilter = $this->filter;
+
+        if ($activeFilter === 'today') {
+            $rangeStartDate = now()->startOfDay();
+            $rangeEndDate   = now()->endOfDay();
+        } elseif ($activeFilter === 'week') {
+            $rangeStartDate = now()->startOfWeek();
+            $rangeEndDate   = now()->endOfWeek();
+        } elseif ($activeFilter === 'month') {
+            $rangeStartDate = now()->startOfMonth();
+            $rangeEndDate   = now()->endOfMonth();
+        } elseif ($activeFilter === 'year') {
+            $rangeStartDate     = now()->startOfYear();
+            $rangeEndDate       = now()->endOfYear();
+        }
+
+        $data = Trend::model(AffiliationCorporate::class)
+            ->between(
+                start: $rangeStartDate,
+                end: $rangeEndDate,
+            )
+            ->perDay()
+            ->count();
+
         return [
             'datasets' => [
                 [
-                    'label' => 'Blog posts created',
-                    'data' => [0, 10, 5, 2, 21, 32, 45, 74, 65, 45, 77, 89],
+                    'label' => 'Afiliaciones Corporativas',
+                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    // 'backgroundColor' => 'rgba(53, 162, 235, 0.5)',
+                    // 'borderColor' => 'rgb(53, 162, 235)',
+                    'fill' => true,
                 ],
             ],
-            'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            'labels' => ($data->map(fn(TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
         ];
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'plugins' => [
+                'legend' => [
+                    'display' => false,
+                ],
+            ],
+        ];
+    }
+
+    public function getDescription(): ?string
+    {
+        return 'Cotizaciones individuales creadas por el agente en el periodo seleccionado';
     }
 
     protected function getType(): string
