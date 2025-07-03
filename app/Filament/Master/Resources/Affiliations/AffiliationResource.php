@@ -23,7 +23,7 @@ class AffiliationResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Afiliaciones';
+    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
 
     protected static ?string $navigationLabel = 'Individuales';
 

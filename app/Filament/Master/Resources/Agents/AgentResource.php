@@ -25,7 +25,7 @@ class AgentResource extends Resource
 
     protected static ?string $navigationLabel = 'Agentes';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Organización';
+    protected static string | UnitEnum | null $navigationGroup = 'ORGANIZACIÓN';
 
     protected static ?int $navigationSort = 2;
 

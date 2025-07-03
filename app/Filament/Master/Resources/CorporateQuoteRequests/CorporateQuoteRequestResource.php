@@ -23,7 +23,7 @@ class CorporateQuoteRequestResource extends Resource
 {
     protected static ?string $model = CorporateQuoteRequest::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+    protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
 
     protected static ?string $navigationLabel = 'Solicitudes de cotización';
 

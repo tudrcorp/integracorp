@@ -13,7 +13,7 @@ use App\Jobs\SendNotificacionWhatsApp;
 
 class NotificationController extends Controller
 {
-    static function agency_activated($code, $phone, $email, $path_panel)
+    static function agency_activated($code, $phone, $email, $path_panel, $pass)
     {
         try {
 

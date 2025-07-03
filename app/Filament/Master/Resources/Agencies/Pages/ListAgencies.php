@@ -21,7 +21,7 @@ class ListAgencies extends ListRecords
 {
     protected static string $resource = AgencyResource::class;
 
-    protected static ?string $title = 'INFORMCION PRINCIPAL';
+    protected static ?string $title = 'Agencias Generales Asociadas';
 
     protected function getHeaderActions(): array
     {

@@ -10,7 +10,7 @@ class ListCorporateQuotes extends ListRecords
 {
     protected static string $resource = CorporateQuoteResource::class;
 
-    protected static ?string $title = 'Cotizaciones corporativas';
+    protected static ?string $title = 'Cotizaciones Corporativas';
 
     protected function getHeaderActions(): array
     {

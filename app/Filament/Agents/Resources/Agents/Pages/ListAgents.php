@@ -10,10 +10,12 @@ class ListAgents extends ListRecords
 {
     protected static string $resource = AgentResource::class;
 
+    protected static ?string $title = 'Subagentes Asignados';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            // CreateAction::make(),
         ];
     }
 }

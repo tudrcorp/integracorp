@@ -25,7 +25,7 @@ class CommissionResource extends Resource
 
     protected static ?string $navigationLabel = 'Comisiones';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Ventas';
+    protected static string | UnitEnum | null $navigationGroup = 'VENTAS';
 
     public static function form(Schema $schema): Schema
     {

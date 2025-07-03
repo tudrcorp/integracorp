@@ -25,7 +25,7 @@ class DownloadZoneResource extends Resource
 
     protected static ?string $navigationLabel = 'Zona de descarga';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Organización';
+    protected static string | UnitEnum | null $navigationGroup = 'ORGANIZACIÓN';
 
     protected static ?int $navigationSort = 5;
 

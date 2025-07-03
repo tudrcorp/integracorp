@@ -22,7 +22,7 @@ class CorporateQuoteResource extends Resource
 {
     protected static ?string $model = CorporateQuote::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+    protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
 
     protected static ?string $navigationLabel = 'Corporativas';
 

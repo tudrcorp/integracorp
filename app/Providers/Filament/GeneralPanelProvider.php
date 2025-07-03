@@ -38,7 +38,7 @@ class GeneralPanelProvider extends PanelProvider
                 // 'gray' => '#ffffff',
             ])
             ->brandLogo(asset('image/logo_new.png'))
-            ->brandLogoHeight('3rem')
+            ->brandLogoHeight('2.8rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/General/Resources'), for: 'App\Filament\General\Resources')
             ->discoverPages(in: app_path('Filament/General/Pages'), for: 'App\Filament\General\Pages')

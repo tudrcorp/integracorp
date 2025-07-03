@@ -10,10 +10,12 @@ class ListDownloadZones extends ListRecords
 {
     protected static string $resource = DownloadZoneResource::class;
 
+    protected static ?string $title = 'Zona de Descargas';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            // CreateAction::make(),
         ];
     }
 }

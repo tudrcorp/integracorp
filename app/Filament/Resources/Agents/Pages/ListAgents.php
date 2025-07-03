@@ -31,10 +31,12 @@ class ListAgents extends ListRecords
             Action::make('send_link')
                 ->label('Enviar link')
                 ->icon('heroicon-m-link')
+                ->color('success')
+                ->modalHeading('Envio de link para registro externo')
+                ->modalIcon('heroicon-m-link')
                 ->modalWidth(Width::ExtraLarge)
                 ->form([
                     Section::make()
-                        ->heading('Informacion')
                         ->description('El link puede sera enviado por email y/o telefono!')
                         ->schema([
                             TextInput::make('email')

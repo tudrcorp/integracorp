@@ -2,6 +2,7 @@
 
 namespace App\Filament\Agents\Resources\Agents\Tables;
 
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Agent;
 use Filament\Tables\Table;
@@ -9,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
@@ -19,6 +21,8 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use App\Http\Controllers\AgentController;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
 use App\Http\Controllers\NotificationController;
 
 class AgentsTable
@@ -426,93 +430,119 @@ class AgentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->recordActions([
-                ActionGroup::make([
-                    Action::make('Activate')
-                        ->action(function (Agent $record) {
+                // ActionGroup::make([
+                //     Action::make('Activate')
+                //         ->action(function (Agent $record) {
 
-                            if ($record->status == 'ACTIVO') {
-                                Notification::make()
-                                    ->title('AGENTE YA ACTIVADO')
-                                    ->body('El agente ya se encuentra activo.')
-                                    ->color('danger')
-                                    ->send();
+                //             if ($record->status == 'ACTIVO') {
+                //                 Notification::make()
+                //                     ->title('AGENTE YA ACTIVADO')
+                //                     ->body('El agente ya se encuentra activo.')
+                //                     ->color('danger')
+                //                     ->send();
 
-                                return true;
-                            }
+                //                 return true;
+                //             }
 
-                            //Generamos la parte entera del codigo
-                            $integer_code_agent = str_replace('TDG-', '', Auth::user()->code_agent);
-                            // dd($integer_code_agent);
+                //             //Generamos la parte entera del codigo
+                //             $integer_code_agent = str_replace('TDG-', '', Auth::user()->code_agent);
+                //             // dd($integer_code_agent);
 
-                            $last_code = Agent::select('code_agent', 'id')->whereLike('code_agent', $integer_code_agent . '-%')->orderBy('id', 'desc')->first();
-                            // dd($last_code);
+                //             $last_code = Agent::select('code_agent', 'id')->whereLike('code_agent', $integer_code_agent . '-%')->orderBy('id', 'desc')->first();
+                //             // dd($last_code);
 
-                            /**
-                             * Logica para generar el codigo del agente despues de su activacion
-                             * -------------------------------------------------------------------
-                             * @param $last_code
-                             */
-                            if (isset($last_code)) {
-                                $code_agent = AgentController::generate_code_agent($last_code->code_agent);
-                            } else {
-                                $code_agent = $integer_code_agent . '-1';
-                            }
+                //             /**
+                //              * Logica para generar el codigo del agente despues de su activacion
+                //              * -------------------------------------------------------------------
+                //              * @param $last_code
+                //              */
+                //             if (isset($last_code)) {
+                //                 $code_agent = AgentController::generate_code_agent($last_code->code_agent);
+                //             } else {
+                //                 $code_agent = $integer_code_agent . '-1';
+                //             }
 
-                            // dd($code_agent);
+                //             // dd($code_agent);
 
-                            $record->code_agent = $code_agent;
-                            $record->status = 'ACTIVO';
-                            $record->save();
-                            LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
+                //             $record->code_agent = $code_agent;
+                //             $record->status = 'ACTIVO';
+                //             $record->save();
+                //             LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
 
-                            //4. creamos el usuario en la tabla users (SUBAGENTES)
-                            $user = new User();
-                            $user->name = $record->name;
-                            $user->email = $record->email;
-                            $user->password = Hash::make('12345678');
-                            $user->is_subagent = true;
-                            $user->code_agent =  $record->code_agent;
-                            $user->agent_id = $record->id;
-                            $user->status = 'ACTIVO';
-                            $user->save();
+                //             //4. creamos el usuario en la tabla users (SUBAGENTES)
+                //             $user = new User();
+                //             $user->name = $record->name;
+                //             $user->email = $record->email;
+                //             $user->password = Hash::make('12345678');
+                //             $user->is_subagent = true;
+                //             $user->code_agent =  $record->code_agent;
+                //             $user->agent_id = $record->id;
+                //             $user->status = 'ACTIVO';
+                //             $user->save();
 
-                            //Envio de NOtificaciones por WHATSAAP
-                            $message = "Hola, Usted ha sido activado(a). \n\n" .
-                                "Nombre: " . $record->name . "\n" .
-                                "RIF: " . $record->ci ? $record->ci : $record->rif . "\n" .
-                                "Teléfono: " . $record->phone . "\n" .
-                                "Email: " . $record->email . "\n\n" .
-                                "Saludos, \n";
+                //             //Envio de NOtificaciones por WHATSAAP
+                //             $message = "Hola, Usted ha sido activado(a). \n\n" .
+                //                 "Nombre: " . $record->name . "\n" .
+                //                 "RIF: " . $record->ci ? $record->ci : $record->rif . "\n" .
+                //                 "Teléfono: " . $record->phone . "\n" .
+                //                 "Email: " . $record->email . "\n\n" .
+                //                 "Saludos, \n";
 
-                            $phone = $record->phone;
+                //             $phone = $record->phone;
 
-                            $send = NotificationController::agent_activated($phone, $message);
-                            if ($send['success']) {
-                                Notification::make()
-                                    ->title('NOTIFICACION ENVIADA')
-                                    ->body($send['message'])
-                                    ->color($send['color'])
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('ERROR EN EL ENVIO')
-                                    ->body('La notificación no fue enviada.')
-                                    ->body($send['message'])
-                                    ->color($send['color'])
-                                    ->send();
-                            }
-                        })
-                        ->icon('heroicon-s-check-circle')
-                        ->color('success')
-                        ->requiresConfirmation(),
-                ])
+                //             $send = NotificationController::agent_activated($phone, $message);
+                //             if ($send['success']) {
+                //                 Notification::make()
+                //                     ->title('NOTIFICACION ENVIADA')
+                //                     ->body($send['message'])
+                //                     ->color($send['color'])
+                //                     ->send();
+                //             } else {
+                //                 Notification::make()
+                //                     ->title('ERROR EN EL ENVIO')
+                //                     ->body('La notificación no fue enviada.')
+                //                     ->body($send['message'])
+                //                     ->color($send['color'])
+                //                     ->send();
+                //             }
+                //         })
+                //         ->icon('heroicon-s-check-circle')
+                //         ->color('success')
+                //         ->requiresConfirmation(),
+                // ])
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // DeleteBulkAction::make(),
                 ]),
             ]);
     }

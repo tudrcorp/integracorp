@@ -10,7 +10,7 @@ class ListCorporateQuoteRequests extends ListRecords
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'SOLICITUDES DE COTEIZACION CORPORATIVA';
+    protected static ?string $title = 'Splicitudes de cotizaciones corporativas';
 
     protected function getHeaderActions(): array
     {

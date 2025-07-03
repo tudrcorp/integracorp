@@ -20,7 +20,7 @@ class ListAgents extends ListRecords
 {
     protected static string $resource = AgentResource::class;
 
-    protected static ?string $title = 'GESTION DE AGENTES';
+    protected static ?string $title = 'Agentes Asociados';
 
     protected function getHeaderActions(): array
     {

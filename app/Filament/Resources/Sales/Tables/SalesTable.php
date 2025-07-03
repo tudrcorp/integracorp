@@ -12,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Tables\Filters\Filter;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -23,8 +24,8 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Sum;
-use App\Filament\Resources\Commissions\CommissionResource;
 
+use App\Filament\Resources\Commissions\CommissionResource;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 
@@ -274,9 +275,22 @@ class SalesTable
                             $desde = $livewire->getTableFilterState('created_at')['desde'];
                             $hasta = $livewire->getTableFilterState('created_at')['hasta'];
 
+                            //El usuario debe seleccionar un periodo, de lo contrario no se realiza el calculo
+                            if(!$desde || !$hasta){
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body('Debe seleccionar un periodo de fechas. Por favor intente nuevamente.')
+                                    ->icon(Heroicon::ShieldExclamation)
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+
                             $preCalculateCommissions = SaleController::preCalculateCommission($records, $desde, $hasta);
 
                             if ($preCalculateCommissions) {
+                                
                                 /**Notificacion de proceso realizado con boton para redireccionar al resultado */
                                 $desde = $livewire->getTableFilterState('created_at')['desde'];
                                 $hasta = $livewire->getTableFilterState('created_at')['hasta'];

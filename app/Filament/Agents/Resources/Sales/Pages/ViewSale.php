@@ -24,7 +24,6 @@ class ViewSale extends ViewRecord
                 ->icon('heroicon-s-hand-raised')
                 ->color('warning')
                 ->requiresConfirmation()
-                ->requiresConfirmation()
                 ->modalHeading('OBSERVACIONES DEL AGENTE')
                 ->modalIcon('heroicon-s-hand-raised')
                 ->form([

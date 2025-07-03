@@ -50,14 +50,14 @@ Route::get('/plk/c/{id}', function ($id) {
     ]);
 })->name('corporate-pre-affiliation.create');
 
-// Route::redirect('/', '/admin');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-Volt::route('/agent/c/{code?}', 'agentformcreate');
-Volt::route('/agency/c', 'agencyformcreate');
+Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
+Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');
+Volt::route('/m/o/c/{code?}', 'agencymasterform')->name('master.organization.create');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');

@@ -39,7 +39,7 @@ class AgentsPanelProvider extends PanelProvider
                 'primary' => '#00DCCD',
             ])
             ->brandLogo(asset('image/logo_new.png'))
-            ->brandLogoHeight('3.2rem')
+            ->brandLogoHeight('2.8rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/Agents/Resources'), for: 'App\Filament\Agents\Resources')
             ->discoverPages(in: app_path('Filament/Agents/Pages'), for: 'App\Filament\Agents\Pages')
@@ -99,6 +99,6 @@ class AgentsPanelProvider extends PanelProvider
                     ->label('Enviar Notificación')
                     ->icon('heroicon-s-bell'),
                 // // ...
-        ]);
+            ]);
     }
 }

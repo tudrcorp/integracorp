@@ -22,7 +22,7 @@ class IndividualQuoteResource extends Resource
 {
     protected static ?string $model = IndividualQuote::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+    protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
 
     protected static ?string $navigationLabel = 'Individuales';
     
