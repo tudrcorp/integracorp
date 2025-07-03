@@ -2,10 +2,11 @@
 
 namespace App\Filament\Agents\Resources\CorporateQuoteRequests\Pages;
 
-use App\Filament\Agents\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use App\Filament\Agents\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
 
 class EditCorporateQuoteRequest extends EditRecord
 {
@@ -16,7 +17,17 @@ class EditCorporateQuoteRequest extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
+            Action::make('regresar')
+                ->label('Regresar')
+                ->button()
+                ->icon('heroicon-s-arrow-left')
+                ->color('warning')
+                ->url(CorporateQuoteRequestResource::getUrl('index')),
         ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
     }
 }

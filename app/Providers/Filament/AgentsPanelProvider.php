@@ -6,6 +6,7 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
+use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Support\Facades\Auth;
@@ -99,6 +100,9 @@ class AgentsPanelProvider extends PanelProvider
                     ->label('Enviar Notificación')
                     ->icon('heroicon-s-bell'),
                 // // ...
-            ]);
+            ])
+            ->breadcrumbs(false)
+            ->maxContentWidth(Width::ScreenTwoExtraLarge);
+
     }
 }

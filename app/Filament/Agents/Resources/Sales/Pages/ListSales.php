@@ -10,7 +10,7 @@ class ListSales extends ListRecords
 {
     protected static string $resource = SaleResource::class;
 
-    protected static ?string $title = 'GESTION DE VENTAS';
+    protected static ?string $title = 'Ventas Individuales y Corporativas';
 
 
     protected function getHeaderActions(): array

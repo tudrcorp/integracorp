@@ -19,6 +19,23 @@ class CreateIndividualQuote extends CreateRecord
 
     protected static ?string $title = 'Crear Cotización';
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('regresar')
+                ->label('Regresar')
+                ->button()
+                ->icon('heroicon-s-arrow-left')
+                ->color('warning')
+                ->url(IndividualQuoteResource::getUrl('index')),
+        ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');

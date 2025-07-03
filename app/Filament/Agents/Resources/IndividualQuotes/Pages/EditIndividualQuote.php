@@ -2,10 +2,11 @@
 
 namespace App\Filament\Agents\Resources\IndividualQuotes\Pages;
 
-use App\Filament\Agents\Resources\IndividualQuotes\IndividualQuoteResource;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use App\Filament\Agents\Resources\IndividualQuotes\IndividualQuoteResource;
 
 class EditIndividualQuote extends EditRecord
 {
@@ -16,9 +17,17 @@ class EditIndividualQuote extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
-            DeleteAction::make()
-            ->requiresConfirmation(),
+            Action::make('regresar')
+                ->label('Regresar')
+                ->button()
+                ->icon('heroicon-s-arrow-left')
+                ->color('warning')
+                ->url(IndividualQuoteResource::getUrl('index')),
         ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
     }
 }
