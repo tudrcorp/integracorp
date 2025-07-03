@@ -38,7 +38,8 @@ class Sale extends Model
         "type_roll",
         "bank_usd",
         "bank_ves",
-        "payment_date"
+        "payment_date",
+        "observations"
     ];
 
     public function affiliation()

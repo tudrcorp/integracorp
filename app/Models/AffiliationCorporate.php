@@ -64,7 +64,7 @@ class AffiliationCorporate extends Model
         'payment_frequency',
         'coverage_id',
         'activated_at',
-        'family_members',
+        'corporate_members',
         'code_corporate_quote',
         'vaucher_ils',
         'date_payment_initial_ils',
@@ -92,7 +92,7 @@ class AffiliationCorporate extends Model
 
     public function corporate_quote()
     {
-        return $this->belongsTo(IndividualQuote::class);
+        return $this->belongsTo(CorporateQuote::class);
     }
 
     public function paid_membership_corporates()
@@ -108,6 +108,21 @@ class AffiliationCorporate extends Model
     public function affiliationCorporatePlans(): HasMany
     {
         return $this->hasMany(AfilliationCorporatePlan::class);
+    }
+
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class);
+    }
+
+    public function state()
+    {
+        return $this->belongsTo(State::class, 'state_id_con', 'id');
+    }
+
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country_id_con', 'id');
     }
 
     

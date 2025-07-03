@@ -10,7 +10,7 @@ class ListIndividualQuotes extends ListRecords
 {
     protected static string $resource = IndividualQuoteResource::class;
 
-    protected static ?string $title = 'Table de cotizaciones individuales';
+    protected static ?string $title = 'Cotizaciones individuales';
 
     protected function getHeaderActions(): array
     {

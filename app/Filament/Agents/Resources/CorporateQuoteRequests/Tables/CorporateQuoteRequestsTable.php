@@ -82,6 +82,9 @@ class CorporateQuoteRequestsTable
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Creada el:')
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->icon('heroicon-s-calendar')
                     ->dateTime()
                     ->sortable(),
                 IconColumn::make('document')
@@ -135,18 +138,9 @@ class CorporateQuoteRequestsTable
                         return $indicators;
                     }),
             ])
-            ->recordActions([
-                ActionGroup::make([
-                    /**EDIT */
-                    EditAction::make()
-                        ->label('Editar')
-                        ->icon('heroicon-m-pencil')
-                        ->color('warning'),
-                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
-            ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // DeleteBulkAction::make(),
                 ]),
             ])->striped();
     }

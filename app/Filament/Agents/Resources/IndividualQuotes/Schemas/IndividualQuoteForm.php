@@ -10,18 +10,20 @@ use App\Models\Region;
 use App\Models\AgeRange;
 use Filament\Schemas\Schema;
 use App\Models\IndividualQuote;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Radio;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Repeater;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
+
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
-
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -35,6 +37,8 @@ class IndividualQuoteForm
             ->components([
                 Wizard::make([
                     Step::make('SOLICITANTE')
+                        ->description('Información principal del solicitante')
+                        ->icon(Heroicon::User)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('code')
@@ -48,7 +52,6 @@ class IndividualQuoteForm
                                     }
                                     return 'TDEC-CI-000' . $parte_entera + 1;
                                 })
-                                ->required()
                                 ->disabled()
                                 ->dehydrated()
                                 ->maxLength(255),
@@ -63,8 +66,7 @@ class IndividualQuoteForm
 
                             DatePicker::make('birth_date')
                                 ->label('Fecha de Nacimiento')
-                                ->prefixIcon('heroicon-m-calendar-days')
-                                ->required(),
+                                ->prefixIcon('heroicon-m-calendar-days'),
 
                             Select::make('country_code')
                                 ->label('Código de país')
@@ -145,7 +147,6 @@ class IndividualQuoteForm
                                 ])
                                 ->searchable()
                                 ->default('+58')
-                                ->required()
                                 ->live(onBlur: true)
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
@@ -155,7 +156,6 @@ class IndividualQuoteForm
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
                                 ->label('Número de teléfono')
-                                ->required()
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
                                 ])
@@ -172,7 +172,6 @@ class IndividualQuoteForm
                             TextInput::make('email')
                                 ->label('Email')
                                 ->prefixIcon('heroicon-m-user')
-                                ->required()
                                 ->validationMessages([
                                     'required' => 'Campo requerido',
                                 ])
@@ -190,7 +189,6 @@ class IndividualQuoteForm
                                 ->live()
                                 ->searchable()
                                 ->prefixIcon('heroicon-s-globe-europe-africa')
-                                ->required()
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
                                 ])
@@ -228,6 +226,8 @@ class IndividualQuoteForm
                             }),
                         ])->columns(4),
                     Step::make('PLANES A COTIZAR')
+                        ->description('Plan(es) que desea cotizar:')
+                        ->icon(Heroicon::Swatch)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             Radio::make('plan')
@@ -248,6 +248,8 @@ class IndividualQuoteForm
                                 }),
                         ]),
                     Step::make('RANGO DE EDAD')
+                        ->description('Rango de edad y población:')
+                        ->icon(Heroicon::AdjustmentsVertical)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             /**
@@ -452,7 +454,16 @@ class IndividualQuoteForm
                                         ->numeric(),
                                 ])->columns(2),
                         ])
-                ])->columnSpanFull(),
+                ])
+                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    <x-filament::button
+                        type="submit"
+                        size="sm"
+                    >
+                        Crear cotización
+                    </x-filament::button>
+                BLADE)))
+                ->columnSpanFull(),
             ]);
     }
 }

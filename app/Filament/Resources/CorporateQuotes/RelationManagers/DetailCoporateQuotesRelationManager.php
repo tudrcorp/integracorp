@@ -24,12 +24,14 @@ class DetailCoporateQuotesRelationManager extends RelationManager
 {
     protected static string $relationship = 'detailCoporateQuotes';
 
+    protected static ?string $title = 'CALCULO DE COTIZACIÓN';
+
     protected static ?string $relatedResource = CorporateQuoteResource::class;
 
     public function table(Table $table): Table
     {
         return $table
-        ->heading('DETALLE DE COTIZACION')
+            ->heading('DETALLE DE COTIZACION')
             ->description('Lista de detalles de planes y coberturas con sus tarifas, agrupas por rango de edades')
             ->recordTitleAttribute('individual_quote_id')
             ->columns([

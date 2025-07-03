@@ -575,7 +575,7 @@ class AffiliationsTable
                                                     'numeric'   => 'El campo es numerico',
                                                 ]),
 
-                                        ]),
+                                        ])->columnSpanFull(),
                                         Select::make('payment_method_usd')
                                             ->native(false)
                                             ->label('Metodo de pago en dolares(US$)')
@@ -695,7 +695,9 @@ class AffiliationsTable
                                                 '4:3',
                                                 '1:1',
                                             ]),
-                                    ])->hidden(function (Get $get) {
+                                    ])
+                                    ->columnSpanFull()
+                                    ->hidden(function (Get $get) {
                                         if ($get('payment_method') == 'MULTIPLE') {
                                             return false;
                                         }

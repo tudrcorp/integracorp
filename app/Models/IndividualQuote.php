@@ -11,6 +11,7 @@ use App\Jobs\SendEmailPropuestaEconomicaMultiple;
 use App\Jobs\SendEmailPropuestaEconomicaPlanIdeal;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Jobs\SendEmailPropuestaEconomicaPlanEspecial;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class IndividualQuote extends Model
@@ -35,6 +36,26 @@ class IndividualQuote extends Model
         'plan'
         
     ];
+
+    /**
+     * Get all of the comments for the IndividualQuote
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(Agent::class);
+    }
+
+    /**
+     * Get all of the comments for the IndividualQuote
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function state(): BelongsTo
+    {
+        return $this->belongsTo(State::class);
+    }
 
     /**
      * Get all of the comments for the IndividualQuote

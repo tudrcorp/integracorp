@@ -17,7 +17,7 @@ class CreateIndividualQuote extends CreateRecord
 {
     protected static string $resource = IndividualQuoteResource::class;
 
-    protected static ?string $title = 'Crear Cotización';
+    protected static ?string $title = 'Crear cotización individual';
 
     protected function getRedirectUrl(): string
     {

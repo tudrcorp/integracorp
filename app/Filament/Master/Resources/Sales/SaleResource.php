@@ -23,7 +23,7 @@ class SaleResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-shield-check';
 
-    protected static ?string $navigationLabel = 'VENTAS';
+    protected static ?string $navigationLabel = 'Ventas';
 
     protected static string | UnitEnum | null $navigationGroup = 'Ventas';
 

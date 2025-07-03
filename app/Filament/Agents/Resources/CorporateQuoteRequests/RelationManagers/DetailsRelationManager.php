@@ -2,6 +2,7 @@
 
 namespace App\Filament\Agents\Resources\CorporateQuoteRequests\RelationManagers;
 
+use BackedEnum;
 use Filament\Forms;
 use App\Models\Plan;
 use Filament\Tables;
@@ -14,9 +15,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use App\Jobs\SendNotificacionAdministrador;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Agents\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
-use BackedEnum;
 
 class DetailsRelationManager extends RelationManager
 {
@@ -36,15 +37,10 @@ class DetailsRelationManager extends RelationManager
                     ->schema([
                         Repeater::make('details_corporate_quote_requests')
                             ->label('Planes a cotizar:')
-                            // ->headers([
-                            //     Header::make('Planes'),
-                            //     Header::make('Cantidad de personas'),
-                            // ])
-                            // ->renderHeader(false)
-                            // // ->showLabels()
-                            // ->stackAt(MaxWidth::ExtraSmall)
-                            // ->reorderable(false)
-                            // // ->relationship('detailCoporateQuotes')
+                            ->table([
+                                TableColumn::make('Plan'),
+                                TableColumn::make('Nro. de personas'),
+                            ])
                             ->schema([
                                 Forms\Components\Select::make('plan_id')
                                     ->options(function () {

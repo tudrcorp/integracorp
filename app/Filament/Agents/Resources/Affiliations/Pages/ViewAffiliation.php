@@ -10,10 +10,12 @@ class ViewAffiliation extends ViewRecord
 {
     protected static string $resource = AffiliationResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            EditAction::make(),
-        ];
-    }
+    protected static ?string $title = 'Información General';
+
+    // protected function getHeaderActions(): array
+    // {
+    //     return [
+    //         EditAction::make(),
+    //     ];
+    // }
 }

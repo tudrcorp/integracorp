@@ -2,27 +2,32 @@
 
 namespace App\Filament\Agents\Resources\Agents;
 
-use App\Filament\Agents\Resources\Agents\Pages\CreateAgent;
-use App\Filament\Agents\Resources\Agents\Pages\EditAgent;
-use App\Filament\Agents\Resources\Agents\Pages\ListAgents;
-use App\Filament\Agents\Resources\Agents\Pages\ViewAgent;
-use App\Filament\Agents\Resources\Agents\Schemas\AgentForm;
-use App\Filament\Agents\Resources\Agents\Schemas\AgentInfolist;
-use App\Filament\Agents\Resources\Agents\Tables\AgentsTable;
-use App\Models\Agent;
+use UnitEnum;
 use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
+use App\Models\Agent;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Agents\Resources\Agents\Pages\EditAgent;
+use App\Filament\Agents\Resources\Agents\Pages\ViewAgent;
+use App\Filament\Agents\Resources\Agents\Pages\ListAgents;
+use App\Filament\Agents\Resources\Agents\Pages\CreateAgent;
+use App\Filament\Agents\Resources\Agents\Schemas\AgentForm;
+use App\Filament\Agents\Resources\Agents\Tables\AgentsTable;
+use App\Filament\Agents\Resources\Agents\Schemas\AgentInfolist;
+use App\Filament\Agents\Resources\Agents\RelationManagers\DocumentsRelationManager;
 
 class AgentResource extends Resource
 {
     protected static ?string $model = Agent::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user';
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user';
 
-    protected static ?string $navigationLabel = 'SUBAGENTES';
+    protected static ?string $navigationLabel = 'Subagentes';
+
+    protected static string | UnitEnum | null $navigationGroup = 'ORGANIZACIÓN';
+
 
     public static function form(Schema $schema): Schema
     {
@@ -42,7 +47,7 @@ class AgentResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DocumentsRelationManager::class
         ];
     }
 

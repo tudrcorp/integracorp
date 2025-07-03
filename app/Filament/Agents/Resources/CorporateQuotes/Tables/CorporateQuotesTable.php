@@ -303,48 +303,47 @@ class CorporateQuotesTable
                             }
                         }),
 
-                /**OBSERVACIONES */
-                Action::make('observations')
-                    ->label('Registrar observaciones')
-                    ->icon('heroicon-s-hand-raised')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading('OBSERVACIONES DEL AGENTE')
-                    ->modalIcon('heroicon-s-hand-raised')
-                    ->form([
-                        Textarea::make('description')
-                            ->label('Observaciones')
-                            ->rows(5)
-                    ])
-                    ->action(function (CorporateQuote $record, array $data) {
+                    /**OBSERVACIONES */
+                    Action::make('observations')
+                        ->label('Registrar observaciones')
+                        ->icon('heroicon-s-hand-raised')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('OBSERVACIONES DEL AGENTE')
+                        ->modalIcon('heroicon-s-hand-raised')
+                        ->form([
+                            Textarea::make('description')
+                                ->label('Observaciones')
+                                ->rows(5)
+                        ])
+                        ->action(function (CorporateQuote $record, array $data) {
 
-                        try {
+                            try {
 
-                            $record->observations = $data['description'];
-                            $record->save();
+                                $record->observations = $data['description'];
+                                $record->save();
 
-                            Notification::make()
-                                ->body('Las observaciones fueron registradas exitosamente.')
-                                ->success()
-                                ->send();
-                                
-                        } catch (\Throwable $th) {
-                            LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
-                            Notification::make()
-                                ->title('ERROR')
-                                ->body($th->getMessage())
-                                ->icon('heroicon-s-x-circle')
-                                ->iconColor('danger')
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-            ])
-                    ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
-                    ->hidden(function (CorporateQuote $record) {
-                        return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                    })
+                                Notification::make()
+                                    ->body('Las observaciones fueron registradas exitosamente.')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $th) {
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                ])
+                ->icon('heroicon-c-ellipsis-vertical')
+                ->color('azulOscuro')
+                ->hidden(function (CorporateQuote $record) {
+                    return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
+                })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

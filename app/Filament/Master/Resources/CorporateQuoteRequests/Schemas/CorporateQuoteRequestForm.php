@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Forms\Components\Repeater\TableColumn;
 
 class CorporateQuoteRequestForm
 {
@@ -174,30 +175,39 @@ class CorporateQuoteRequestForm
                                 $set('phone', $countryCode . $cleanNumber);
                             }
                         }),
-                    Select::make('state_id')
-                        ->label('Estado')
-                        ->options(function (Get $get) {
-                            return State::all()->pluck('definition', 'id');
-                        })
-                        ->afterStateUpdated(function (Set $set, $state) {
-                            $region_id = State::where('id', $state)->value('region_id');
-                            $region = Region::where('id', $region_id)->value('definition');
-                            $set('region', $region);
-                        })
-                        ->live()
-                        ->searchable()
-                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                        ->required()
-                        ->validationMessages([
-                            'required'  => 'Campo Requerido',
-                        ])
-                        ->preload(),
-                    TextInput::make('region')
-                        ->label('Región')
-                        ->prefixIcon('heroicon-m-map')
-                        ->disabled()
-                        ->dehydrated()
-                        ->maxLength(255),
+
+                    /** 
+                     * GRID: Para estado y region
+                     * ---------------------------------------------------------------------------------
+                     */
+                    Grid::make(2)
+                        ->schema([
+                            Select::make('state_id')
+                                ->label('Estado')
+                                ->options(function (Get $get) {
+                                    return State::all()->pluck('definition', 'id');
+                                })
+                                ->afterStateUpdated(function (Set $set, $state) {
+                                    $region_id = State::where('id', $state)->value('region_id');
+                                    $region = Region::where('id', $region_id)->value('definition');
+                                    $set('region', $region);
+                                })
+                                ->live()
+                                ->searchable()
+                                ->prefixIcon('heroicon-s-globe-europe-africa')
+                                ->required()
+                                ->validationMessages([
+                                    'required'  => 'Campo Requerido',
+                                ])
+                                ->preload(),
+                            TextInput::make('region')
+                                ->label('Región')
+                                ->prefixIcon('heroicon-m-map')
+                                ->disabled()
+                                ->dehydrated()
+                                ->maxLength(255),
+                        ])->columnSpanFull(),
+                    /**------------------------------------------------------------------------------------ */
 
                     Hidden::make('status')->default('PRE-APROBADA'),
                     Hidden::make('created_by')->default(Auth::user()->name),
@@ -214,26 +224,13 @@ class CorporateQuoteRequestForm
                         ->description('Interactividad de seleccion de planes')
                         ->schema([
                             Repeater::make('details_corporate_quote_requests')
-                                ->label('Planes a cotizar:')
-                                ->defaultItems(function () {
-                                    $planesConBeneficios = Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
-                                        ->select('plans.id as plan_id', 'plans.description as description')
-                                        ->distinct() // Asegurarse de que no haya duplicados
-                                        ->get()
-                                        ->count();
-
-                                    return $planesConBeneficios;
-                                })
-                                // ->addable(false)
-                                // ->headers([
-                                //     Header::make('Planes'),
-                                //     Header::make('Cantidad de personas'),
-                                // ])
-                                // ->renderHeader(false)
-                                // // ->showLabels()
-                                // ->stackAt(MaxWidth::ExtraSmall)
-                                // ->reorderable(false)
-                                // // ->relationship('detailCoporateQuotes')
+                                ->addActionLabel('Agregar fila')
+                                // ->defaultItems(3)
+                                ->label('Por favor selecciona el tipo de plan e indica la cantidad de personas que desea cotizar!')
+                                ->table([
+                                    TableColumn::make('Plan'),
+                                    TableColumn::make('Nro. de personas'),
+                                ])
                                 ->schema([
                                     Select::make('plan_id')
                                         ->options(function () {
@@ -252,21 +249,19 @@ class CorporateQuoteRequestForm
                                                 ->contains($value);
                                         })
                                         ->label('Plan')
-                                        ->preload()
-                                        ->searchable()
+                                        ->live()
                                         ->placeholder('Seleccione un plan'),
                                     TextInput::make('total_persons')
                                         ->label('Nro. de personas')
                                         ->placeholder('Nro. de personas ')
                                         ->numeric(),
                                 ])
-                                ->columns(2)
-
+                                ->columns(3)
                         ])
                         ->columnSpanFull()
                         ->hiddenOn('edit'),
 
-                ])->columns(2)->columnSpan(2),
+                ])->columns(3)->columnSpan(2),
             Section::make('ARCHIVO Y OBSERVACIONES')
                 ->description('Archivos adjutos a la solicitud de cotización y observaciones')
                 ->icon('heroicon-m-tag')

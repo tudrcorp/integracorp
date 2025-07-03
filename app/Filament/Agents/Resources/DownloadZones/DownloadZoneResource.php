@@ -15,14 +15,17 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class DownloadZoneResource extends Resource
 {
     protected static ?string $model = DownloadZone::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-down-tray';
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-down-tray';
 
-    protected static ?string $navigationLabel = 'ZONA DE DESCARGA';
+    protected static ?string $navigationLabel = 'Documentos';
+
+    protected static string | UnitEnum | null $navigationGroup = 'ZONA DE DESCARGA';
 
     public static function form(Schema $schema): Schema
     {

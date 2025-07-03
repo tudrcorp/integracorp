@@ -21,11 +21,12 @@ class SaleResource extends Resource
 {
     protected static ?string $model = Sale::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-calculator';
 
-    protected static ?string $navigationLabel = 'VENTAS';
+    protected static ?string $navigationLabel = 'Ventas Concretadas';
 
     protected static string | UnitEnum | null $navigationGroup = 'VENTAS';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

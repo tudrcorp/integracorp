@@ -25,7 +25,7 @@ class AffiliationResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'Afiliaciones';
 
-    protected static ?string $navigationLabel = 'AFILIACIONES INDIVIDUALES';
+    protected static ?string $navigationLabel = 'Individuales';
 
     public static function form(Schema $schema): Schema
     {

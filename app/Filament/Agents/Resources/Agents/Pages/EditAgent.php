@@ -2,20 +2,20 @@
 
 namespace App\Filament\Agents\Resources\Agents\Pages;
 
-use App\Filament\Agents\Resources\Agents\AgentResource;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
+use App\Filament\Agents\Resources\Agents\AgentResource;
 
 class EditAgent extends EditRecord
 {
     protected static string $resource = AgentResource::class;
 
-    protected function getHeaderActions(): array
+    public function getTitle(): string | Htmlable
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
+        $name = $this->record->name;
+        return 'Perfil del Agente: ' . $name;
     }
+
 }

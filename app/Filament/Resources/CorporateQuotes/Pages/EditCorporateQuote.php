@@ -11,5 +11,5 @@ class EditCorporateQuote extends EditRecord
 {
     protected static string $resource = CorporateQuoteResource::class;
 
-    protected static ?string $title = 'DETALLE';
+    protected static ?string $title = 'Detalle de cotización corporativa';
 }

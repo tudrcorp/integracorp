@@ -28,7 +28,7 @@ class IndividualQuoteForm
     {
         return $schema
             ->components([
-            Section::make('COTIZACIÓN INDIVIDUAL')
+            Section::make()
                 ->description('Formulario para el registro de cotizaciones individuales. Campo Requerido(*)')
                 ->icon('heroicon-m-tag')
                 ->schema([
@@ -195,12 +195,14 @@ class IndividualQuoteForm
                         ->maxLength(255),
                     Hidden::make('status')->default('PRE-APROBADA'),
                     Hidden::make('created_by')->default(Auth::user()->name),
+                    
                     /**
                      * Campos referenciales para jerarquia
                      * -----------------------------------------------------------------
                      */
                     Hidden::make('code_agency')->default(Auth::user()->code_agency),
                     Hidden::make('owner_code')->default(Auth::user()->code_agency),
+                    /**---------------------------------------------------------------- */
 
                     Section::make('PLAN DE COTIZACION')
                         ->description('Interactividad de seleccion de beneficios')

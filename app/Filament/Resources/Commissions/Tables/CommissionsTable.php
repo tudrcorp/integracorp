@@ -25,6 +25,8 @@ use App\Http\Controllers\CommissionController;
 use App\Tables\Columns\DetailCommissionMaster;
 use App\Tables\Columns\DetailCommissionGeneral;
 
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+
 class CommissionsTable
 {
     public static function configure(Table $table): Table
@@ -282,7 +284,7 @@ class CommissionsTable
                         ->color('success')
                         ->icon('heroicon-s-check-circle')
                         ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records) {
+                        ->action(function (EloquentCollection $records) {
 
                             $dataArray = $records->toArray();
 

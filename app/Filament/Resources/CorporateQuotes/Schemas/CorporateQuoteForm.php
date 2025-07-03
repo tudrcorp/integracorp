@@ -31,6 +31,7 @@ class CorporateQuoteForm
         return $schema
             ->components([
                 Section::make('COTIZACION CORPORATIVA')
+                    ->collapsed('edit')
                     ->description('Formulario para el registro de cotizaciones corporativas. Campo Requerido(*)')
                     ->icon('heroicon-m-tag')
                     ->schema([
@@ -46,12 +47,12 @@ class CorporateQuoteForm
                                 })
                                 ->label('Solicitante')
                                 ->helperText('Este campo debe ser llenado cuando la cotización debe ser asociada a una solicitud.')
-                                ->options(CorporateQuoteRequest::select('id', 'full_name', 'status')->where('status', 'PRE-APROBADA')->pluck('id', 'full_name'))
+                                ->options(CorporateQuoteRequest::select('id', 'full_name', 'status')->where('status', 'APROBADA')->pluck('id', 'full_name'))
                                 ->relationship(titleAttribute: 'code')
                                 ->relationship(
                                     name: 'corporateQuoteRequest',
                                     titleAttribute: 'code',
-                                    modifyQueryUsing: fn(Builder $query) => $query->where('status', 'PRE-APROBADA'),
+                                    modifyQueryUsing: fn(Builder $query) => $query->where('status', 'APROBADA'),
                                 )
                                 ->getOptionLabelFromRecordUsing(fn(CorporateQuoteRequest $record) => "{$record->code} - {$record->full_name}")
                                 ->searchable()

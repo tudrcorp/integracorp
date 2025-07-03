@@ -23,7 +23,7 @@ class CommissionResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-currency-dollar';
 
-    protected static ?string $navigationLabel = 'COMISIONES';
+    protected static ?string $navigationLabel = 'Comisiones';
 
     protected static string | UnitEnum | null $navigationGroup = 'Ventas';
 

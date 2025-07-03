@@ -25,7 +25,7 @@ class CorporateQuoteRequestResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
 
-    protected static ?string $navigationLabel = 'SOLICITUDES DE COTIZACIÓN';
+    protected static ?string $navigationLabel = 'Solicitudes de cotización';
 
     public static function form(Schema $schema): Schema
     {

@@ -23,11 +23,11 @@ class IndividualQuoteResource extends Resource
 {
     protected static ?string $model = IndividualQuote::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-tag';
-
     protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
 
-    protected static ?string $navigationLabel = 'INDIVIDUALES';
+    protected static ?string $navigationLabel = 'Individuales';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

@@ -42,35 +42,80 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->label('Pago total')
                     ->numeric()
                     ->suffix(' US$'),
-                TextColumn::make('currency')
+                TextColumn::make('payment_method')
+                    ->badge()
                     ->searchable()
                     ->label('Metodo de pago'),
-                TextColumn::make('reference_payment')
+                TextColumn::make('payment_method_usd')
+                    ->label('Pago multiple')
+                    ->prefix('US$: ')
+                    ->description(function ($record) {
+                        return $record->payment_method_ves != 'N/A' ? 'VES: ' . $record->payment_method_ves : 'VES: N/A';
+                    })
+                    ->searchable(),
+                TextColumn::make('bank_usd')
                     ->searchable()
-                    ->label('Referencia'),
-                IconColumn::make('document_usd')
+                    ->label('Banco')
+                    ->description(function ($record) {
+                        return $record->bank_ves != 'N/A' ? $record->bank_ves : 'N/A';
+                    }),
+                TextColumn::make('reference_payment_zelle')
+                    ->label('Referencia de pago')
+                    ->prefix('Ref(Zelle): ')
+                    ->description(function ($record) {
+                        return $record->reference_payment_ves != 'N/A' ?  'Ref(VES): ' . $record->reference_payment_ves : 'Ref(VES): N/A';
+                    })
+                    ->searchable(),
+                IconColumn::make('document_ves')
                     ->alignment(Alignment::Center)
                     ->label('Comprobante')
                     ->icon(function ($record) {
-                // Muestra un ícono si la imagen existe
-                return $record->document_usd
-                // return Storage::disk('local')->files($record->document_usd)
+                        // Muestra un ícono si la imagen existe
+                        return $record->document_ves != 'N/A'
                             ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
                             : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
                     })
                     // ->iconPosition(IconPosition::After), // Posición del ícono
                     ->color(function ($record) {
-                // Color del ícono basado en la existencia de la imagen
-                return $record->document_usd
-                // return Storage::disk('local')->files($record->document_usd)
+                        // Color del ícono basado en la existencia de la imagen
+                        return $record->document_ves != 'N/A'
                             ? 'success' // Verde si la imagen existe
                             : 'danger'; // Rojo si no existe
                     })
                     ->url(function ($record) {
-                        // return Storage::disk('local')->files($record->document_usd);
+                        return asset('storage/' . $record->document_ves);
+                    })
+                    ->openUrlInNewTab(),
+                IconColumn::make('document_usd')
+                    ->alignment(Alignment::Center)
+                    ->label('Comprobante')
+                    ->icon(function ($record) {
+                        // Muestra un ícono si la imagen existe
+                        return $record->document_usd != 'N/A'
+                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
+                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
+                    })
+                    // ->iconPosition(IconPosition::After), // Posición del ícono
+                    ->color(function ($record) {
+                        // Color del ícono basado en la existencia de la imagen
+                        return $record->document_usd != 'N/A'
+                            ? 'success' // Verde si la imagen existe
+                            : 'danger'; // Rojo si no existe
+                    })
+                    ->url(function ($record) {
                         return asset('storage/' . $record->document_usd);
                     })
                     ->openUrlInNewTab(),
+                TextColumn::make('pay_amount_usd')
+                    ->label('Pago registrado')
+                    ->suffix(' US$')
+                    ->description(function ($record) {
+                        return $record->pay_amount_ves != 'N/A' ? $record->pay_amount_ves . ' VES' : 'N/A';
+                    }),
+                TextColumn::make('tasa_bcv')
+                    ->label('Tasa BCV')
+                    ->suffix(' VES')
+                    ->numeric(),
                 TextColumn::make('payment_date')
                     ->label('Pagado desde'),
                 TextColumn::make('prox_payment_date')

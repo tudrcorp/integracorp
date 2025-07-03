@@ -119,11 +119,18 @@ class IndividualQuotesTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    
                     /**EDIT */
                     EditAction::make()
                         ->label('Editar')
                         ->color('warning')
-                        ->icon('heroicon-s-pencil'),
+                        ->icon('heroicon-s-pencil')
+                        ->hidden(function (IndividualQuote $record) {
+                            if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
+                                return true;
+                            }
+                            return false;
+                        }),
 
                     /**EMIT */
                     Action::make('emit')
@@ -189,6 +196,12 @@ class IndividualQuotesTable
                                     ->danger()
                                     ->send();
                             }
+                        })
+                        ->hidden(function (IndividualQuote $record) {
+                            if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
+                                return true;
+                            }
+                            return false;
                         }),
 
                     /**FORWARD */
@@ -388,15 +401,15 @@ class IndividualQuotesTable
                             }
                         }),
                 ])
-                    ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
-                    // ->hidden(function (IndividualQuote $record) {
-                    //     return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                    // })
+                ->icon('heroicon-c-ellipsis-vertical')
+                ->color('azulOscuro')
+                ->hidden(function (IndividualQuote $record) {
+                    return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
+                })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // DeleteBulkAction::make(),
                 ]),
             ])->striped();
     }

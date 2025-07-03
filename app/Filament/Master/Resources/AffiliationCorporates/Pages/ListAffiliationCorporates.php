@@ -12,10 +12,12 @@ class ListAffiliationCorporates extends ListRecords
 
     protected static ?string $title = 'Afiliaciones corporativas';
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            // CreateAction::make(),
-        ];
-    }
+    // protected function getHeaderActions(): array
+    // {
+    //     return [
+    //         CreateAction::make()
+    //             ->label('Crear')
+    //             ->icon('heroicon-s-user-group'),
+    //     ];
+    // }
 }

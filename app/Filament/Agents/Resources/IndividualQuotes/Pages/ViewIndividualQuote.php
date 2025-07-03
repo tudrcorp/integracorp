@@ -10,6 +10,9 @@ class ViewIndividualQuote extends ViewRecord
 {
     protected static string $resource = IndividualQuoteResource::class;
 
+    protected static ?string $title = 'Información General';
+
+
     protected function getHeaderActions(): array
     {
         return [

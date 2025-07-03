@@ -8,11 +8,14 @@ use App\Models\State;
 use App\Models\Agency;
 use App\Models\Region;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\CorporateQuoteRequest;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
@@ -31,7 +34,10 @@ class CorporateQuoteRequestForm
         return $schema
             ->components([
                 Wizard::make([
-                    Step::make('Información principal')
+                    Step::make('SOLICITANTE')
+                        ->description('Información principal del solicitante')
+                        ->icon(Heroicon::User)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('code')
                                 ->label('Nro. de solicitud corporativa')
@@ -44,7 +50,6 @@ class CorporateQuoteRequestForm
                                     }
                                     return 'TDEC-SCC-000' . $parte_entera + 1;
                                 })
-                                ->required()
                                 ->disabled()
                                 ->dehydrated()
                                 ->maxLength(255),
@@ -64,7 +69,6 @@ class CorporateQuoteRequestForm
                                 ->label('Rif:')
                                 ->numeric()
                                 ->prefix('J-')
-                                ->required()
                                 ->validationMessages([
                                     'required' => 'Campo requerido',
                                 ])
@@ -148,7 +152,6 @@ class CorporateQuoteRequestForm
                                 ])
                                 ->searchable()
                                 ->default('+58')
-                                ->required()
                                 ->live(onBlur: true)
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
@@ -158,7 +161,6 @@ class CorporateQuoteRequestForm
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
                                 ->label('Número de teléfono')
-                                ->required()
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
                                 ])
@@ -173,7 +175,6 @@ class CorporateQuoteRequestForm
                             TextInput::make('email')
                                 ->label('Email')
                                 ->prefixIcon('heroicon-m-user')
-                                ->required()
                                 ->validationMessages([
                                     'required' => 'Campo requerido',
                                 ])
@@ -192,7 +193,6 @@ class CorporateQuoteRequestForm
                                 ->live()
                                 ->searchable()
                                 ->prefixIcon('heroicon-s-globe-europe-africa')
-                                ->required()
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
                                 ])
@@ -230,7 +230,10 @@ class CorporateQuoteRequestForm
                                 }
                             }),
                         ])->columns(3),
-                    Step::make('Documento')
+                    Step::make('DOCUMENTO')
+                        ->description('Agrega la lista de personas que deseas cotizar')
+                        ->icon(Heroicon::DocumentText)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(2)
                                 ->schema([
@@ -241,7 +244,10 @@ class CorporateQuoteRequestForm
                                         ->uploadingMessage('Cargando documento...'),
                                 ])->columnSpanFull(),
                         ]),
-                    Step::make('Planes')
+                    Step::make('PLANES A COTIZAR')
+                        ->description('Por favor selecciona el tipo de plan e indica la cantidad de personas que desea cotizar!')
+                        ->icon(Heroicon::DocumentText)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Repeater::make('details_corporate_quote_requests')
                                 ->addActionLabel('Agregar fila')
@@ -270,15 +276,19 @@ class CorporateQuoteRequestForm
                                         })
                                         ->label('Plan')
                                         ->live()
+                                        ->required()
                                         ->placeholder('Seleccione un plan'),
                                     TextInput::make('total_persons')
                                         ->label('Nro. de personas')
+                                        ->required()
                                         ->placeholder('Nro. de personas ')
                                         ->numeric(),
                                 ])
                                 ->columns(3)
                         ]),
-                    Step::make('Observaciones del agente')
+                    Step::make('OBSERVACIONES')
+                        ->icon(Heroicon::InformationCircle)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(2)
                                 ->schema([
@@ -289,7 +299,16 @@ class CorporateQuoteRequestForm
                                         ->placeholder('Observaciones')
                                 ])->columnSpanFull(),
                         ]),
-                ])->columnSpanFull()
+                ])
+                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    <x-filament::button
+                        type="submit"
+                        size="sm"
+                    >
+                        Crear cotización
+                    </x-filament::button>
+                BLADE)))
+                ->columnSpanFull()
             ]);
     }
 }

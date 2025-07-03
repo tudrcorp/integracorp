@@ -305,10 +305,11 @@ class AffiliationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    Action::make('affiliation_activate')
-                        ->label('Activar')
-                        ->color('success')
-                        ->icon('heroicon-s-check-circle')
+                    
+                    Action::make('upload_info_ils')
+                        ->label('Vaucher ILS')
+                        ->color('warning')
+                        ->icon('heroicon-o-paper-clip')
                         ->requiresConfirmation()
                         ->modalWidth(Width::ExtraLarge)
                         ->modalHeading('Activar afiliacion')
@@ -347,7 +348,6 @@ class AffiliationsTable
                                 'date_payment_initial_ils' => $data['date_payment_initial_ils'],
                                 'date_payment_final_ils' => $data['date_payment_final_ils'],
                                 'document_ils' => $data['document_ils'],
-                                'status' => 'ACTIVA',
                             ]);
 
                             $record->status_log_affiliations()->create([
@@ -365,8 +365,12 @@ class AffiliationsTable
                                 ->send();
                         })
                         ->hidden(function (Affiliation $record): bool {
-                            return $record->status !== 'PRE-APROBADA';
+                            if($record->vaucher_ils != null){  
+                                return true;
+                            }
+                            return false;
                         }),
+                        
                     Action::make('upload')
                         ->label('Cargar pago')
                         ->color('verde')
@@ -853,6 +857,7 @@ class AffiliationsTable
 
                             return false;
                         }),
+                        
                     Action::make('change_status')
                         ->label('Actualizar estatus')
                         ->color('azulOscuro')

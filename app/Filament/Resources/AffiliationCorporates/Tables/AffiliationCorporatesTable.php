@@ -44,7 +44,7 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('code_corporate_quote')
+                TextColumn::make('corporate_quote.code')
                     ->label('Cotizacion')
                     ->badge()
                     ->color('azulOscuro')
@@ -54,7 +54,8 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('code_agent')
+                TextColumn::make('agent_id')
+                ->prefix('AGT-000')
                     ->label('Agente')
                     ->badge()
                     ->color('azulOscuro')
@@ -64,26 +65,23 @@ class AffiliationCorporatesTable
                     ->searchable(),
                 TextColumn::make('plan.description')
                     ->label('Plan')
+                    ->badge()
+                    ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('full_name_con')
                     ->label('Nombre contratante')
-                    ->badge()
-                    ->color('verde')
                     ->searchable(),
                 TextColumn::make('rif')
                     ->label('Rif')
+                    ->prefix('J-')
                     ->badge()
                     ->color('verde')
                     ->searchable(),
                 TextColumn::make('email_con')
                     ->label('Email contratante')
-                    ->badge()
-                    ->color('verde')
                     ->searchable(),
                 TextColumn::make('phone_con')
                     ->label('Telefono contratante')
-                    ->badge()
-                    ->color('verde')
                     ->searchable(),
                 TextColumn::make('adress_con')
                     ->searchable()
@@ -235,10 +233,10 @@ class AffiliationCorporatesTable
             ])
             ->recordActions([
             ActionGroup::make([
-                Action::make('affiliation_activate')
-                    ->label('Activar')
-                    ->color('success')
-                    ->icon('heroicon-s-check-circle')
+                Action::make('upload_info_ils')
+                    ->label('Vaucher ILS')
+                    ->color('warning')
+                    ->icon('heroicon-o-paper-clip')
                     ->requiresConfirmation()
                     ->modalWidth(Width::ExtraLarge)
                     ->modalHeading('Activar afiliacion')
@@ -276,7 +274,6 @@ class AffiliationCorporatesTable
                             'date_payment_initial_ils'  => $data['date_payment_initial_ils'],
                             'date_payment_final_ils'    => $data['date_payment_final_ils'],
                             'document_ils'              => $data['document_ils'],
-                            'status'                    => 'ACTIVA',
                         ]);
 
                         $record->status_log_corporate_affiliations()->create([
@@ -292,7 +289,10 @@ class AffiliationCorporatesTable
                             ->send();
                     })
                     ->hidden(function (AffiliationCorporate $record): bool {
-                        return $record->status !== 'PRE-APROBADA';
+                        if ($record->vaucher_ils != null) {
+                            return true;
+                        }
+                        return false;
                     }),
                 Action::make('upload')
                     ->label('Cargar pago')

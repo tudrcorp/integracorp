@@ -24,11 +24,11 @@ class CorporateQuoteRequestResource extends Resource
 {
     protected static ?string $model = CorporateQuoteRequest::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-hand-raised';
-
     protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
 
-    protected static ?string $navigationLabel = 'SOLICITUDES';
+    protected static ?string $navigationLabel = 'Solicitudes de cotizaciones';
+
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {

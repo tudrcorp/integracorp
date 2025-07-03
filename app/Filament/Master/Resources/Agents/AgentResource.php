@@ -23,7 +23,7 @@ class AgentResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-academic-cap';
 
-    protected static ?string $navigationLabel = 'AGENTES';
+    protected static ?string $navigationLabel = 'Agentes';
 
     protected static string | UnitEnum | null $navigationGroup = 'Organización';
 

@@ -14,7 +14,7 @@ class CreateCorporateQuoteRequest extends CreateRecord
     protected static string $resource = CorporateQuoteRequestResource::class;
 
     protected static ?string $title = 'CREAR SOLICITUD';
-
+    
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         session()->put('details_corporate_quote_requests', $data['details_corporate_quote_requests']);

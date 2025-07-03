@@ -34,8 +34,8 @@ class GeneralPanelProvider extends PanelProvider
             ->topNavigation()
             ->colors([
                 'primary' => '#063467',
-                // 'info' => '#58C0DB',
-                // 'gray' => '#cee5d7',
+                'info' => '#58C0DB',
+                // 'gray' => '#ffffff',
             ])
             ->brandLogo(asset('image/logo_new.png'))
             ->brandLogoHeight('3rem')

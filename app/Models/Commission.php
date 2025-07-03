@@ -47,7 +47,9 @@ class Commission extends Model
 
         'code',
         'date_ini',
-        'date_end'
+        'date_end',
+        'document',
+        'affiliation_code'
     ];
 
     public function sale()

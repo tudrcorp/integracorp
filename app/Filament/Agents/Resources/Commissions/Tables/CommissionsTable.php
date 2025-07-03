@@ -2,14 +2,18 @@
 
 namespace App\Filament\Agents\Resources\Commissions\Tables;
 
+use Carbon\Carbon;
 use App\Models\Commission;
 use Filament\Tables\Table;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Sum;
 
 class CommissionsTable
@@ -26,23 +30,6 @@ class CommissionsTable
                     ->icon('heroicon-s-calendar-days')
                     ->datetime('d/m/Y')
                     ->searchable(),
-                TextColumn::make('code_agency')
-                    ->label('Agencia')
-                    ->badge()
-                    ->icon('heroicon-s-user-group')
-
-                    ->searchable(),
-                TextColumn::make('owner_code')
-                    ->label('Master')
-                    ->badge()
-                    ->icon('heroicon-s-building-library')
-                    ->searchable(),
-                TextColumn::make('agent.name')
-                    ->label('Agente')
-                    ->badge()
-                    ->icon('heroicon-s-user')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('affiliate_full_name')
                     ->label('Afiliado')
                     ->searchable(),
@@ -125,15 +112,41 @@ class CommissionsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                // ViewAction::make(),
+                // EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // DeleteBulkAction::make(),
                 ]),
             ]);
     }

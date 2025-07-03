@@ -5,11 +5,11 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
 
-// Route::get('/', function () {
-//     return view('welcome');
-// })->name('home');
+Route::get('/', function () {
+    return view('welcome');
+})->name('home');
 
-Route::redirect('/', '/admin');
+// Route::redirect('/', '/admin');
 
 Route::get('/at/c', function () {
     return view('create-agent');
@@ -55,6 +55,9 @@ Route::get('/plk/c/{id}', function ($id) {
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Volt::route('/agent/c/{code?}', 'agentformcreate');
+Volt::route('/agency/c', 'agencyformcreate');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');

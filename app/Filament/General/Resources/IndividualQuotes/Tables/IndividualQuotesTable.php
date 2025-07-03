@@ -35,8 +35,7 @@ class IndividualQuotesTable
         return $table
             ->query(IndividualQuote::query()->where('code_agency', Auth::user()->code_agency))
             ->defaultSort('created_at', 'desc')
-            ->heading('COTIZACIONES INDIVIDUALES')
-            ->description('Lista de cotizaciones generadas por el agente')
+            ->description('Lista de cotizaciones generadas por los agentes.')
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')

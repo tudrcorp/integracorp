@@ -10,10 +10,12 @@ class ViewCommission extends ViewRecord
 {
     protected static string $resource = CommissionResource::class;
 
+    protected static ?string $title = 'Información General';
+
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
+            // EditAction::make(),
         ];
     }
 }

@@ -10,5 +10,5 @@ class ListCollections extends ListRecords
 {
     protected static string $resource = CollectionResource::class;
 
-    protected static ?string $title = 'MODULO DE COBRANZAS';
+    protected static ?string $title = 'Reporde de cobranza TDEC';
 }

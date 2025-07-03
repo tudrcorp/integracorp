@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Sales\Tables;
 
 use Carbon\Carbon;
 use App\Models\Sale;
+use App\Models\Collection;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
@@ -15,11 +17,16 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\TextColumn;
+use App\Http\Controllers\SaleController;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Sum;
+use App\Filament\Resources\Commissions\CommissionResource;
+
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+
 
 class SalesTable
 {
@@ -47,26 +54,9 @@ class SalesTable
                     ->searchable(),
                 TextColumn::make('agencyMasterName.name_corporative')
                     ->label('Agencia Master')
-                    // ->description(function (Sale $record) {
-                    //     $data = DB::table('agencies')->select('name_corporative', 'agency_type_id')->where('code', $record->owner_code)->first();
-                    //     $parte1 = $data->agency_type_id == 1 ? 'MASTER: ' : 'GENERAL: ';
-                    //     $parte2 = $data->name_corporative;
-                    //     return $parte1 . $parte2;
-                    // })
                     ->badge()
                     ->icon('heroicon-s-building-library')
                     ->color('success'),
-                // TextColumn::make('code_agency')
-                // ->label('Agencia General')
-                //     ->description(function (Sale $record) {
-                //         $data = DB::table('agencies')->select('name_corporative', 'agency_type_id')->where('code', $record->code_agency)->first();
-                //         $parte1 = $data->agency_type_id == 1 ? 'MASTER: ' : 'GENERAL: ';
-                //         $parte2 = $data->name_corporative;
-                //         return $parte1 . $parte2;
-                //     })
-                //     ->badge()
-                //     ->icon('heroicon-s-building-library')
-                //     ->searchable(),
                 TextColumn::make('agency.name_corporative')
                     ->label('Agencia General')
                     ->badge()
@@ -275,7 +265,38 @@ class SalesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    BulkAction::make('calculate_commission')
+                        ->label('Calcular Comisiones')
+                        ->color('verde')
+                        ->icon('heroicon-s-calculator')
+                        ->action(function (EloquentCollection $records, $livewire) {
+
+                            $desde = $livewire->getTableFilterState('created_at')['desde'];
+                            $hasta = $livewire->getTableFilterState('created_at')['hasta'];
+
+                            $preCalculateCommissions = SaleController::preCalculateCommission($records, $desde, $hasta);
+
+                            if ($preCalculateCommissions) {
+                                /**Notificacion de proceso realizado con boton para redireccionar al resultado */
+                                $desde = $livewire->getTableFilterState('created_at')['desde'];
+                                $hasta = $livewire->getTableFilterState('created_at')['hasta'];
+
+                                Notification::make()
+                                    ->title('CALCULO DE COMISIONES')
+                                    ->body('El calculo de las comisiones del periodo: DESDE: ' . $desde . ' HASTA: ' . $hasta . ' se ha realizado con exito')
+                                    ->icon('heroicon-m-user-plus')
+                                    ->iconColor('success')
+                                    ->success()
+                                    ->seconds(10)
+                                    ->actions([
+                                        Action::make('view')
+                                            ->label('Ver detalle de claculo')
+                                            ->button()
+                                            ->url(CommissionResource::getUrl(panel: 'admin') . '?tableFilters[created_at][desde]=' . $desde . '&tableFilters[created_at][hasta]=' . $hasta),
+                                    ])
+                                    ->send();
+                            }
+                        }),
                 ]),
             ]);
     }

@@ -11,13 +11,16 @@ use App\Models\Country;
 use App\Models\Affiliation;
 use Filament\Schemas\Schema;
 use App\Models\IndividualQuote;
+use Illuminate\Support\HtmlString;
 use Filament\Forms\Components\Radio;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
@@ -39,6 +42,9 @@ class AffiliationForm
             ->components([
                 Wizard::make([
                     Step::make('Información principal')
+                        ->description('Datos de la cotización')
+                        ->icon(Heroicon::ClipboardDocumentList)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make()->schema([
                                 TextInput::make('code')
@@ -250,7 +256,10 @@ class AffiliationForm
                                 }),
                             ])
                         ]),
-                    Step::make('Datos del contratante')
+                    Step::make('Contratante')
+                        ->description('Información del contratante')
+                        ->icon(Heroicon::HandRaised)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(3)->schema([
                                 TextInput::make('full_name_con')
@@ -476,7 +485,10 @@ class AffiliationForm
                                     ->preload(),
                             ])
                         ]),
-                    Step::make('Datos del titular')
+                    Step::make('Titular')
+                        ->description('Información del titular')
+                        ->icon(Heroicon::User)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(2)
                                 ->schema([
@@ -684,6 +696,9 @@ class AffiliationForm
                                 ])->hidden(fn(Get $get) => $get('feedback')),
                         ]),
                     Step::make('Afiliados')
+                        ->description('Data de afiliados')
+                        ->icon(Heroicon::UserGroup)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Repeater::make('affiliates')
                                 ->label('Información de afiliados')
@@ -732,6 +747,9 @@ class AffiliationForm
                                 ->addActionLabel('Agregar afiliado')
                         ]),
                     Step::make('Acuerdo y condiciones')
+                        ->description('Leer y aceptar las condiciones')
+                        ->icon(Heroicon::ShieldCheck)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {
@@ -757,7 +775,16 @@ class AffiliationForm
                                 ])
                                 ->hiddenOn('edit')
                         ]),
-                ])->columnSpanFull(),
+                ])
+                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    <x-filament::button
+                        type="submit"
+                        size="sm"
+                    >
+                        Crear cotización
+                    </x-filament::button>
+                BLADE)))
+                ->columnSpanFull(),
 
             ]);
     }

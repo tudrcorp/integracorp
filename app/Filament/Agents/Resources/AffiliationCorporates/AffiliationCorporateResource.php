@@ -2,30 +2,34 @@
 
 namespace App\Filament\Agents\Resources\AffiliationCorporates;
 
-use App\Filament\Agents\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
-use App\Filament\Agents\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
-use App\Filament\Agents\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
-use App\Filament\Agents\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
-use App\Filament\Agents\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
-use App\Filament\Agents\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
-use App\Filament\Agents\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
-use App\Models\AffiliationCorporate;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use App\Models\AffiliationCorporate;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Agents\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
+use App\Filament\Agents\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
+use App\Filament\Agents\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Filament\Agents\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
+use App\Filament\Agents\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
+use App\Filament\Agents\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Filament\Agents\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
+use App\Filament\Agents\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
+use App\Filament\Agents\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
 
 class AffiliationCorporateResource extends Resource
 {
     protected static ?string $model = AffiliationCorporate::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user-group';
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user-group';
 
-    protected static ?string $navigationLabel = 'CORPORATIVAS';
+    protected static ?string $navigationLabel = 'Corporativas';
 
     protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {
@@ -45,7 +49,9 @@ class AffiliationCorporateResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            CorporateAffiliatesRelationManager::class,
+            PaidMembershipCorporatesRelationManager::class,
+            
         ];
     }
 

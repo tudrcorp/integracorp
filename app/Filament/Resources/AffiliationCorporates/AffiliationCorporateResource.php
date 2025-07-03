@@ -2,19 +2,22 @@
 
 namespace App\Filament\Resources\AffiliationCorporates;
 
-use App\Filament\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
-use App\Filament\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
-use App\Filament\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
-use App\Filament\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
-use App\Filament\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
-use App\Filament\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
-use App\Filament\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
-use App\Models\AffiliationCorporate;
 use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use App\Models\AffiliationCorporate;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
+use App\Filament\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
+use App\Filament\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Filament\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
+use App\Filament\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
+use App\Filament\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Filament\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
+use App\Filament\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
+use App\Filament\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
+use App\Filament\Resources\AffiliationCorporates\RelationManagers\StatusLogCorporateAffiliationsRelationManager;
 
 class AffiliationCorporateResource extends Resource
 {
@@ -42,7 +45,10 @@ class AffiliationCorporateResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            CorporateAffiliatesRelationManager::class,
+            PaidMembershipCorporatesRelationManager::class,
+            StatusLogCorporateAffiliationsRelationManager::class
+            
         ];
     }
 

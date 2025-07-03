@@ -29,8 +29,7 @@ class CollectionsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('COBRANZA')
-            ->description('Registro de indicadores de cobranza')
+            ->description('Registro de indicadores de cobranza según frecuencia de cobro')
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('include_date')
@@ -82,11 +81,28 @@ class CollectionsTable
                     ->label('Correo')
                     ->searchable(),
                 TextColumn::make('affiliate_status')
-                    ->label('Estado')
+                    ->label('Estatus afiliación')
+                    ->badge()
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'ACTIVA' => 'success',
+                            'INACTIVA' => 'danger',
+                            default => 'secondary',
+                        };
+                    })
                     ->searchable(),
                 TextColumn::make('plan.description')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('Plan')
+                    ->badge()
+                    ->color(function ($state) {
+                        return match ($state) {
+                            'PLAN INICIAL'  => 'azul',
+                            'PLAN IDEAL'    => 'azulOscuro',
+                            'PLAN ESPECIAL' => 'verde',
+                            default => 'secondary',
+                        };
+                    })
+                    ->searchable(),
                 TextColumn::make('coverage.price')
                     ->suffix('US$')
                     ->numeric()
@@ -98,6 +114,13 @@ class CollectionsTable
                     ->searchable(),
                 TextColumn::make('type')
                     ->label('Tipo')
+                    ->badge()
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'AFILIACION INDIVIDUAL' => 'primary',
+                            'AFILIACIÓN CORPORATIVA' => 'verdeOpaco',
+                        };
+                    })
                     ->searchable(),
                 TextColumn::make('reference')
                     ->label('Referencia')
