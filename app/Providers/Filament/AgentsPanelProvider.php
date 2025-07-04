@@ -102,7 +102,10 @@ class AgentsPanelProvider extends PanelProvider
                 // // ...
             ])
             ->breadcrumbs(false)
-            ->maxContentWidth(Width::ScreenTwoExtraLarge);
+            // ->sidebarCollapsibleOnDesktop()
+            // ->maxContentWidth(Width::ScreenTwoExtraLarge);
+            ->maxContentWidth(Width::Full);
+
 
     }
 }

@@ -3,9 +3,10 @@
 namespace App\Filament\Agents\Widgets;
 
 use App\Models\Sale;
+use App\Models\Commission;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
-use App\Models\Commission;
+use Filament\Support\Enums\IconSize;
 use Illuminate\Support\Facades\Auth;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -18,6 +19,7 @@ class StatsOverview extends StatsOverviewWidget
     {
         return [
             Stat::make('Afiliaciones Individuales', '+'.Affiliation::where('agent_id', Auth::user()->agent_id)->where('status', 'ACTIVA')->count())
+                ->icon('heroicon-o-document-text')
                 ->description('32k increase')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->chart([7, 2, 10, 3, 15, 4, 17])
