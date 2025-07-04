@@ -387,7 +387,7 @@ class MasterPanelProvider extends PanelProvider
 
                             if ($data['email'] != null) {
 
-                                $link = config('parameters.register_agent');
+                                $link = Auth::user()->link_agency;
                                 $sendEmail  = NotificationController::send_email_agent_register($link, $data['email']);
                                 if ($sendEmail == true) {
                                     LogController::log(Auth::user()->id, 'ENVIAO DE LINK PARA REGISTRO DE AGENCIA', 'ListAgencies::getHeaderActions:action()', 'NOTIFICACION ENVIADA');
@@ -409,7 +409,7 @@ class MasterPanelProvider extends PanelProvider
 
                             if ($data['phone'] != null) {
 
-                                $link = config('parameters.register_agent');
+                                $link = Auth::user()->link_agency;
                                 $phone = $data['country_code'] . ltrim(preg_replace('/[^0-9]/', '', $data['phone']), '0');
                                 $sendWp     = NotificationController::send_link_agent_register_wp($link, $phone);
                                 if ($sendWp['success']) {
