@@ -208,10 +208,26 @@ class IndividualQuoteForm
                             }),
                             Hidden::make('owner_code')->default(function () {
                                 $owner      = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
-                                $jerarquia  = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
+                                
+                                if ($owner == 'TDG-100') {
+                                    /**
+                                     * Cuando el agente pertenece a TDG-100
+                                     * ------------------------------------------
+                                     */
+                                    return $owner;
+                                    
+                                }else{
+                                    /**
+                                     * Cuando el agente pertenece a una agencia Master
+                                     * ---------------------------------------------------------------------------------------------
+                                     */
+                                    $jerarquia  = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
+                                    return $jerarquia;
+                                }
 
                                 /**
                                  * Cuando el agente pertenece a una AGENCIA GENERAL
+                                 * ------------------------------------------------------
                                  */
                                 if ($owner != $jerarquia && $jerarquia != 'TDG-100') {
                                     return $jerarquia;
@@ -219,6 +235,7 @@ class IndividualQuoteForm
 
                                 /**
                                  * Cuando el agente pertenece a una AGENCIA MASTER
+                                 * ------------------------------------------------------
                                  */
                                 if ($owner != $jerarquia && $jerarquia == 'TDG-100') {
                                     return $owner;
@@ -288,7 +305,6 @@ class IndividualQuoteForm
                                         })->columnSpan(4),
                                     Select::make('total_persons')
                                         // ->label(false)
-                                        ->native(false)
                                         ->options([
                                             1 => 1,
                                             2 => 2,

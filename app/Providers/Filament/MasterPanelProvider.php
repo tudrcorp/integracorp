@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
+use Illuminate\Support\Facades\DB;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
@@ -27,6 +28,7 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
+use App\Filament\Master\Resources\Agencies\AgencyResource;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -95,10 +97,13 @@ class MasterPanelProvider extends PanelProvider
                 statusCode: 404,
             )
             ->userMenuItems([
+                'profile' => fn(Action $action) => $action->label('Perfil Master')
+                    ->icon('heroicon-o-user-circle')
+                    ->url(AgencyResource::getUrl('edit', ['record' => DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id], panel: 'master')),
                 // // ...
                 Action::make('send_link_agencies')
                     ->label('Link Agencias')
-                    ->icon('heroicon-c-building-library') //heroicon-c-building-library
+                    ->icon('heroicon-o-building-library') //heroicon-c-building-library
                     ->modalHeading('Envio de link para registro externo')
                     ->modalIcon('heroicon-m-link')
                     ->modalWidth(Width::ExtraLarge)
@@ -267,7 +272,7 @@ class MasterPanelProvider extends PanelProvider
                 // // ...
                 Action::make('send_link_agents')
                     ->label('Link Agentes')
-                    ->icon('heroicon-c-user-plus')
+                    ->icon('heroicon-o-user-plus')
                     ->modalHeading('Envio de link para registro externo')
                     ->modalIcon('heroicon-m-link')
                     ->modalWidth(Width::ExtraLarge)

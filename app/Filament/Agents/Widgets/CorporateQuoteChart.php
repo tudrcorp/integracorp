@@ -7,6 +7,7 @@ use Flowframe\Trend\Trend;
 use App\Models\CorporateQuote;
 use Flowframe\Trend\TrendValue;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Auth;
 
 class CorporateQuoteChart extends ChartWidget
 {
@@ -49,7 +50,7 @@ class CorporateQuoteChart extends ChartWidget
             $rangeEndDate       = now()->endOfYear();
         }
 
-        $data = Trend::model(CorporateQuote::class)
+        $data = Trend::query(CorporateQuote::where('agent_id', Auth::user()->agent_id))
             ->between(
                 start: $rangeStartDate,
                 end: $rangeEndDate,

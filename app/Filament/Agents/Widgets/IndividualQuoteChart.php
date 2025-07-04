@@ -8,6 +8,7 @@ use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use Flowframe\Trend\TrendValue;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Auth;
 
 class IndividualQuoteChart extends ChartWidget
 {
@@ -50,7 +51,7 @@ class IndividualQuoteChart extends ChartWidget
             $rangeEndDate       = now()->endOfYear();
         }
 
-        $data = Trend::model(IndividualQuote::class)
+        $data = Trend::query(IndividualQuote::where('agent_id', Auth::user()->agent_id))
             ->between(
                 start: $rangeStartDate,
                 end: $rangeEndDate,

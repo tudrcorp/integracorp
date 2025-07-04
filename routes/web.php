@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
@@ -139,3 +140,8 @@ Route::get('/pp', function () {
 });
 
 Route::get('/pdf', [PdfController::class, 'generatePdf_aviso_de_pago']);
+
+Route::get('/ppp', function () {
+    $p = \Illuminate\Support\Facades\DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id;
+    dd($p);
+});

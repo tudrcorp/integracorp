@@ -11,7 +11,7 @@ class EditAgent extends EditRecord
 {
     protected static string $resource = AgentResource::class;
 
-    protected static ?string $title = 'EDITAR AGENTE';
+    protected static ?string $title = 'Perfil de Agente';
 
     protected function getRedirectUrl(): string
     {

@@ -11,11 +11,13 @@ class EditAgency extends EditRecord
 {
     protected static string $resource = AgencyResource::class;
 
+    protected static ?string $title = 'Perfil de Agencia';
+
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
-            DeleteAction::make(),
+            // ViewAction::make(),
+            // DeleteAction::make(),
         ];
     }
 }

@@ -110,27 +110,27 @@ class AffiliationInfolist
                                 ->numeric(),
                         ])->columnSpanFull()->columns(4),
 
-                    Fieldset::make('ILS')
-                        ->schema([
-                            TextEntry::make('vaucher_ils')
-                                ->label('Voucher')
-                                ->prefix('ILS-')
-                                ->badge()
-                                ->color('primary')
-                                ->numeric(),
-                            TextEntry::make('date_payment_initial_ils')
-                                ->label('Fecha de inicio')
-                                ->badge()
-                                ->icon(Heroicon::CalendarDays)
-                                ->dateTime('d/m/Y'),
-                            TextEntry::make('date_payment_final_ils')
-                                ->label('Fecha de final')
-                                ->badge()
-                                ->icon(Heroicon::CalendarDays)
-                                ->dateTime('d/m/Y'),
-                            ImageEntry::make('document_ils')
-                                ->label('Comprobante ILS')
-                        ])->columnSpanFull()->columns(3),
+                    // Fieldset::make('ILS')
+                    //     ->schema([
+                    //         TextEntry::make('vaucher_ils')
+                    //             ->label('Voucher')
+                    //             ->prefix('ILS-')
+                    //             ->badge()
+                    //             ->color('primary')
+                    //             ->numeric(),
+                    //         TextEntry::make('date_payment_initial_ils')
+                    //             ->label('Fecha de inicio')
+                    //             ->badge()
+                    //             ->icon(Heroicon::CalendarDays)
+                    //             ->dateTime('d/m/Y'),
+                    //         TextEntry::make('date_payment_final_ils')
+                    //             ->label('Fecha de final')
+                    //             ->badge()
+                    //             ->icon(Heroicon::CalendarDays)
+                    //             ->dateTime('d/m/Y'),
+                    //         ImageEntry::make('document_ils')
+                    //             ->label('Comprobante ILS')
+                    //     ])->columnSpanFull()->columns(3),
                 ])->columnSpanFull(),
             ]);
     }

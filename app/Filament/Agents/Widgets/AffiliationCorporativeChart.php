@@ -7,6 +7,7 @@ use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Filament\Widgets\ChartWidget;
 use App\Models\AffiliationCorporate;
+use Illuminate\Support\Facades\Auth;
 
 class AffiliationCorporativeChart extends ChartWidget
 {
@@ -44,7 +45,7 @@ class AffiliationCorporativeChart extends ChartWidget
             $rangeEndDate       = now()->endOfYear();
         }
 
-        $data = Trend::model(AffiliationCorporate::class)
+        $data = Trend::query(AffiliationCorporate::where('agent_id', Auth::user()->agent_id))
             ->between(
                 start: $rangeStartDate,
                 end: $rangeEndDate,

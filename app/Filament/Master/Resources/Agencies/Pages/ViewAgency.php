@@ -10,6 +10,8 @@ class ViewAgency extends ViewRecord
 {
     protected static string $resource = AgencyResource::class;
 
+    protected static ?string $title = 'Información General';
+
     protected function getHeaderActions(): array
     {
         return [
