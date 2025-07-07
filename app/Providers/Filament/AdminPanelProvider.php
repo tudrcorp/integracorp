@@ -43,9 +43,11 @@ class AdminPanelProvider extends PanelProvider
             ->registration()
             ->passwordReset()
             ->profile()
+            ->spa()
             ->colors([
                 'primary' => '#052F60',
             ])
+            ->sidebarCollapsibleOnDesktop()
             ->brandLogo(asset('image/logo_new.png'))
             ->brandLogoHeight('2.8rem')
             ->favicon(asset('image/favicon.png'))

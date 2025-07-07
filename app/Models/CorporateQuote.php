@@ -35,6 +35,7 @@ class CorporateQuote extends Model
         'owner_code',
         'plan',
         'observations',
+        'data_doc'
 
     ];
 

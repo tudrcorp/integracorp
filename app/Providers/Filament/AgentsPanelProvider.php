@@ -73,6 +73,9 @@ class AgentsPanelProvider extends PanelProvider
                     ->label('AFILIACIONES')
                     ->icon('heroicon-s-user-group'),
                 NavigationGroup::make()
+                    ->label('SOLICITUD')
+                    ->icon('heroicon-m-hand-raised'),
+                NavigationGroup::make()
                     ->label('COTIZACIONES')
                     ->icon('heroicon-s-swatch'),
                 NavigationGroup::make()
@@ -103,8 +106,8 @@ class AgentsPanelProvider extends PanelProvider
             ])
             ->breadcrumbs(false)
             // ->sidebarCollapsibleOnDesktop()
-            // ->maxContentWidth(Width::ScreenTwoExtraLarge);
-            ->maxContentWidth(Width::Full);
+            ->maxContentWidth(Width::ScreenExtraLarge);
+            // ->maxContentWidth(Width::Screen);
 
 
     }

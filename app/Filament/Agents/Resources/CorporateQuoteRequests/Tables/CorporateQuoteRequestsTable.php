@@ -8,16 +8,20 @@ use Filament\Tables\Table;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\ImportAction;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use App\Models\CorporateQuoteRequest;
 use Filament\Actions\BulkActionGroup;
 use Filament\Support\Enums\Alignment;
+use Illuminate\Validation\Rules\File;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Imports\CorporateQuoteRequestDataImporter;
 
 class CorporateQuoteRequestsTable
 {
@@ -137,6 +141,25 @@ class CorporateQuoteRequestsTable
 
                         return $indicators;
                     }),
+            ])
+            ->recordActions([
+                ActionGroup::make([
+                    /**Importar data de poblacion */
+                    ImportAction::make()
+                        ->importer(CorporateQuoteRequestDataImporter::class)
+                        ->label('Importar CSV(Población)')
+                        ->color('warning')
+                        ->icon('heroicon-s-cloud-arrow-up')
+                        ->options(function (CorporateQuoteRequest $record) {
+                            return [
+                                'corporate_quote_request_id' => $record->id,
+                            ];
+                        })
+                        ->fileRules([
+                            File::types(['csv', 'txt'])->max(1024),
+                        ]),
+                    
+                ])
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

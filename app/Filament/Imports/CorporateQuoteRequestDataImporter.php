@@ -16,16 +16,64 @@ class CorporateQuoteRequestDataImporter extends Importer
     public static function getColumns(): array
     {
         return [
-            ImportColumn::make('full_name')
+            ImportColumn::make('last_name')
+                ->label('Apellido')
                 ->requiredMapping()
-                ->example('Gustavo Camacho')
-                ->rules(['required', 'max:255']),
+                ->example('Garcia'),
+            ImportColumn::make('first_name')
+                ->label('Nombre')
+                ->requiredMapping()
+                ->example('Luis'),
+            ImportColumn::make('nro_identificacion')
+                ->label('C.I.')
+                ->requiredMapping()
+                ->numeric()
+                ->example('12345678'),
             ImportColumn::make('birth_date')
-                ->example('01-01-2025')
-                ->rules(['max:255']),
+                ->label('Fecha de Nacimiento')
+                ->requiredMapping()
+                ->example('21-01-2025'),
             ImportColumn::make('age')
-                ->example('45')
-                ->rules(['max:255']),
+                ->label('Edad')
+                ->requiredMapping()
+                ->numeric()
+                ->example('25'),
+            ImportColumn::make('sex')
+                ->label('Sexo')
+                ->requiredMapping()
+                ->example('M'),
+            ImportColumn::make('phone')
+                ->label('Telefono')
+                ->requiredMapping()
+                ->example('04127018390'),
+            ImportColumn::make('email')
+                ->label('Email')
+                ->requiredMapping()
+                ->example('h7e6h@example.com'),
+            ImportColumn::make('condition_medical')
+                ->label('Condicion Medica')
+                ->requiredMapping()
+                ->example('Sano'),
+            ImportColumn::make('initial_date')
+                ->label('Fecha de Ingreso')
+                ->requiredMapping()
+                ->example('01-01-2025'),
+            ImportColumn::make('position_company')
+                ->label('Cargo')
+                ->requiredMapping()
+                ->example('Desarrollador'),
+            ImportColumn::make('address')
+                ->label('Direccion')
+                ->requiredMapping()
+                ->example('Calle 123'),
+            ImportColumn::make('full_name_emergency')
+                ->label('Contacto de Emergencia')
+                ->requiredMapping()
+                ->example('Luis Garcia'),
+            ImportColumn::make('phone_emergency')
+                ->label('Telefono de Emergencia')
+                ->requiredMapping()
+                ->example('04127018390'),
         ];
     }
 
@@ -36,9 +84,20 @@ class CorporateQuoteRequestDataImporter extends Importer
         // ]);
         return CorporateQuoteRequestData::create([
             // Update existing records, matching them by `$this->data['column_name']`
-            'full_name' => $this->data['full_name'],
-            'birth_date' => $this->data['birth_date'],
-            'age' => $this->data['age'],
+            'last_name'             => $this->data['last_name'],
+            'first_name'            => $this->data['first_name'],
+            'nro_identificacion'    => $this->data['nro_identificacion'],
+            'birth_date'            => $this->data['birth_date'],
+            'age'                   => $this->data['age'],
+            'sex'                   => $this->data['sex'],
+            'phone'                 => $this->data['phone'],
+            'email'                 => $this->data['email'],
+            'condition_medical'     => $this->data['condition_medical'],
+            'initial_date'          => $this->data['initial_date'],
+            'position_company'      => $this->data['position_company'],
+            'address'               => $this->data['address'],
+            'full_name_emergency'   => $this->data['full_name_emergency'],
+            'phone_emergency'       => $this->data['phone_emergency'],
             'corporate_quote_request_id' => $this->options['corporate_quote_request_id'],
         ]);
     }

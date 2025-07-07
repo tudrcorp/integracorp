@@ -52,8 +52,14 @@ class DetailsDataRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('corporate_quote_request_id')
             ->columns([
-                TextColumn::make('full_name')
-                    ->label('Nombre completo')
+                TextColumn::make('first_name')
+                    ->label('Nombre')
+                    ->searchable(),
+                TextColumn::make('last_name')
+                    ->label('Apellido')
+                    ->searchable(),
+                TextColumn::make('nro_identificacion')
+                    ->label('Cédula de Identidad')
                     ->searchable(),
                 TextColumn::make('birth_date')
                     ->label('Fecha de nacimiento')
@@ -62,7 +68,27 @@ class DetailsDataRelationManager extends RelationManager
                     ->label('Edad')
                     ->suffix(' años')
                     ->searchable(),
-            ])
+                TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable(),
+                TextColumn::make('phone')
+                    ->label('Teléfono')
+                    ->searchable(),
+                TextColumn::make('address')
+                    ->label('Dirección')
+                    ->searchable(),
+                TextColumn::make('condition_medical')
+                    ->label('Condición Medica')
+                    ->searchable(),
+                TextColumn::make('initial_date')
+                    ->label('Fecha de Ingreso')
+                    ->searchable(),
+                TextColumn::make('position_company')
+                    ->label('Cargo')
+                    ->suffix(' años')
+                    ->searchable(),
+
+        ])
             ->filters([
                 //
             ])

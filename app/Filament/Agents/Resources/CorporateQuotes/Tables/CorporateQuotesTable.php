@@ -10,11 +10,13 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
+use Filament\Actions\ImportAction;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Validation\Rules\File;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Forms\Components\Textarea;
@@ -23,9 +25,13 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Illuminate\Database\Eloquent\Builder;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use Filament\Schemas\Components\Utilities\Get;
+use App\Filament\Imports\AffiliateCorporateImporter;
+use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Imports\CorporateQuoteRequestDataImporter;
 
 class CorporateQuotesTable
 {
@@ -307,7 +313,7 @@ class CorporateQuotesTable
                     Action::make('observations')
                         ->label('Registrar observaciones')
                         ->icon('heroicon-s-hand-raised')
-                        ->color('warning')
+                        ->color('info')
                         ->requiresConfirmation()
                         ->modalHeading('OBSERVACIONES DEL AGENTE')
                         ->modalIcon('heroicon-s-hand-raised')

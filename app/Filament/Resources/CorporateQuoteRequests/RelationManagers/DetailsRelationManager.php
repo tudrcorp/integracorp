@@ -297,30 +297,6 @@ class DetailsRelationManager extends RelationManager
                                 ->maxLength(255),
                         ])->columns(2),
 
-
-                        Section::make()
-                            ->heading('Referencias')
-                            ->schema([
-                                Select::make('code_agency')
-                                    ->label('Agencia')
-                                    ->options(Agency::select('code')->pluck('code', 'code'))
-                                    ->live()
-                                    ->helperText('Si el campo vacio se asignará la agencia asociada en la solicitud de cotizacion seleccionada por el usuario.')
-                                    ->searchable()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->preload(),
-                                Select::make('agent_id')
-                                    ->label('Agente')
-                                    ->options(function (Get $get) {
-                                        return Agent::select('owner_code', 'name', 'id')->where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                    })
-                                    ->live()
-                                    ->helperText('Si el campo vacio se asignará el agente asociado en la solicitud de cotizacion seleccionada por el usuario.')
-                                    ->searchable()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->preload(),
-                            ])->columns(2),
-
                         Hidden::make('status')->default('PRE-APROBADA'),
                         Hidden::make('created_by')->default(Auth::user()->name),
                         /**Codigo del owner de la cotizacion */

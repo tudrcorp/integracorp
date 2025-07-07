@@ -16,7 +16,7 @@ class CorporateQuoteInfolist
         return $schema
             ->components([
             Section::make()
-                ->description(fn(CorporateQuote $record) => 'Cotización Individual generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                ->description(fn(CorporateQuote $record) => 'Cotización Corporativa generada el: ' . $record->created_at->format('d/m/Y H:ma'))
                 ->columnSpanFull()
                 ->icon(Heroicon::Bars3BottomLeft)
                 ->schema([

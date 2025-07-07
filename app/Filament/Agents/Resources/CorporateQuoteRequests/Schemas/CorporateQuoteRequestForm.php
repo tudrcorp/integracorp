@@ -248,20 +248,20 @@ class CorporateQuoteRequestForm
                                 }
                             }),
                         ])->columns(3),
-                    Step::make('DOCUMENTO')
-                        ->description('Agrega la lista de personas que deseas cotizar')
-                        ->icon(Heroicon::DocumentText)
-                        ->completedIcon(Heroicon::Check)
-                        ->schema([
-                            Grid::make(2)
-                                ->schema([
-                                    FileUpload::make('document')
-                                    ->helperText('Tamaño máximo de los documentos es de 2MB. Acepta .jpg, .jpeg, .pdf, .txt, .xls, .xlsx')
-                                        ->label('Lista de personas')
-                                        ->live()
-                                        ->uploadingMessage('Cargando documento...'),
-                                ])->columnSpanFull(),
-                        ]),
+                    // Step::make('DOCUMENTO')
+                    //     ->description('Agrega la lista de personas que deseas cotizar')
+                    //     ->icon(Heroicon::DocumentText)
+                    //     ->completedIcon(Heroicon::Check)
+                    //     ->schema([
+                    //         Grid::make(2)
+                    //             ->schema([
+                    //                 FileUpload::make('document')
+                    //                 ->helperText('Tamaño máximo de los documentos es de 2MB. Acepta .jpg, .jpeg, .pdf, .txt, .xls, .xlsx')
+                    //                     ->label('Lista de personas')
+                    //                     ->live()
+                    //                     ->uploadingMessage('Cargando documento...'),
+                    //             ])->columnSpanFull(),
+                    //     ]),
                     Step::make('PLANES A COTIZAR')
                         ->description('Por favor selecciona el tipo de plan e indica la cantidad de personas que desea cotizar!')
                         ->icon(Heroicon::DocumentText)
