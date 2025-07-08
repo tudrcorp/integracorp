@@ -24,32 +24,45 @@ class DetailsDataRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('full_name')
-                    ->label('Nombre completo')
+                TextColumn::make('first_name')
+                    ->label('Nombre')
+                    ->searchable(),
+                TextColumn::make('last_name')
+                    ->label('Apellido')
+                    ->searchable(),
+                TextColumn::make('nro_identificacion')
+                    ->label('Cédula de Identidad')
                     ->searchable(),
                 TextColumn::make('birth_date')
                     ->label('Fecha de nacimiento')
                     ->searchable(),
                 TextColumn::make('age')
                     ->label('Edad')
+                    ->suffix(' años')
+                    ->searchable(),
+                TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable(),
+                TextColumn::make('phone')
+                    ->label('Teléfono')
+                    ->searchable(),
+                TextColumn::make('address')
+                    ->label('Dirección')
+                    ->searchable(),
+                TextColumn::make('condition_medical')
+                    ->label('Condición Medica')
+                    ->searchable(),
+                TextColumn::make('initial_date')
+                    ->label('Fecha de Ingreso')
+                    ->searchable(),
+                TextColumn::make('position_company')
+                    ->label('Cargo')
+                    ->suffix(' años')
                     ->searchable(),
 
             ])
             ->headerActions([
-                /**Importar data de poblacion */
-                ImportAction::make()
-                    ->importer(CorporateQuoteRequestDataImporter::class)
-                    ->label('Importar CSV(Población)')
-                    ->color('warning')
-                    ->icon('heroicon-s-cloud-arrow-up')
-                    ->options(function (RelationManager $livewire) {
-                        return [
-                            'corporate_quote_request_id' => $livewire->ownerRecord->id,
-                        ];
-                    })
-                    ->fileRules([
-                        File::types(['csv', 'txt'])->max(1024),
-                    ]),
+
             ]);
     }
 }

@@ -195,18 +195,10 @@ class CorporateQuoteRequestForm
                         ->dehydrated()
                         ->maxLength(255),
                 ])->columns(2),
-            Section::make('ARCHIVO Y OBSERVACIONES')
+            Section::make('OBSERVACIONES')
                 ->description('Archivos adjutos a la solicitud de cotización y observaciones')
                 ->icon('heroicon-m-tag')
                 ->schema([
-                    Grid::make(1)
-                        ->schema([
-                            FileUpload::make('document')
-                                ->label('Documento')
-                                ->live()
-                                ->uploadingMessage('Cargando documento...'),
-                        ]),
-
                     Grid::make()
                         ->schema([
                             Textarea::make('observations')

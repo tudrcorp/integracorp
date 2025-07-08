@@ -121,7 +121,7 @@ class AffiliationCorporateForm
                             ->schema([
                                 Select::make('code_agency')
                                     ->label('Agencia')
-                                    ->options(Agency::select('code')->pluck('code', 'code'))
+                                    ->options(Agency::all()->pluck('code', 'code'))
                                     ->live()
                                     ->helperText('Si el campo vacio se asignará la agencia asociada en la solicitud de cotizacion seleccionada por el usuario.')
                                     ->searchable()
