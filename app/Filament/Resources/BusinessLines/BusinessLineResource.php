@@ -16,6 +16,7 @@ use App\Filament\Resources\BusinessLines\Schemas\BusinessLineForm;
 use App\Filament\Resources\BusinessLines\Tables\BusinessLinesTable;
 use App\Filament\Resources\BusinessLines\Schemas\BusinessLineInfolist;
 use App\Filament\Resources\BusinessLines\RelationManagers\PlansRelationManager;
+use UnitEnum;
 
 class BusinessLineResource extends Resource
 {
@@ -23,7 +24,9 @@ class BusinessLineResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowTrendingUp;
 
-    protected static ?string $navigationLabel = 'LÍNEAS DE SERVICIO';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Lineas de Servicios';
 
     public static function form(Schema $schema): Schema
     {

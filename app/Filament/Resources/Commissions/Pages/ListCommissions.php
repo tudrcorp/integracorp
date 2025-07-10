@@ -10,5 +10,5 @@ class ListCommissions extends ListRecords
 {
     protected static string $resource = CommissionResource::class;
 
-    protected static ?string $title = 'DETALLE DE COMISIONES POR AGENCIAS Y AGENTES';
+    protected static ?string $title = 'Detallado de Comisiones';
 }

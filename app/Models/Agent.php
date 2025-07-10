@@ -85,6 +85,8 @@ class Agent extends Model
         'file_account_zelle',
         'comments',
 
+        'conf_position_menu',
+
     ];
 
     /**

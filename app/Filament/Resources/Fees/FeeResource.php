@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class FeeResource extends Resource
 {
@@ -22,7 +23,9 @@ class FeeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BookOpen;
 
-    protected static ?string $navigationLabel = 'TARIFAS';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Tarifas';
 
     public static function form(Schema $schema): Schema
     {

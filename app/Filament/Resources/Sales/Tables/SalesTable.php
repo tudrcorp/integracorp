@@ -53,13 +53,8 @@ class SalesTable
                     ->icon('heroicon-s-user-group')
                     ->label('Afiliación')
                     ->searchable(),
-                TextColumn::make('agencyMasterName.name_corporative')
-                    ->label('Agencia Master')
-                    ->badge()
-                    ->icon('heroicon-s-building-library')
-                    ->color('success'),
                 TextColumn::make('agency.name_corporative')
-                    ->label('Agencia General')
+                    ->label('Agencia')
                     ->badge()
                     ->color('verde')
                     ->icon('heroicon-s-building-library')

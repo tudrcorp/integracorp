@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class PlanResource extends Resource
 {
@@ -22,7 +23,9 @@ class PlanResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::SquaresPlus;
 
-    protected static ?string $navigationLabel = 'PLANES';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Planes';
 
     public static function getNavigationBadge(): ?string
     {

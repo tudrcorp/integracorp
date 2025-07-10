@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CommissionPayrollResource extends Resource
 {
@@ -22,7 +23,9 @@ class CommissionPayrollResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::RectangleStack;
 
-    protected static ?string $navigationLabel = 'REPORTE DE COMISIONES';
+    protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
+
+    protected static ?string $navigationLabel = 'Reporte de Comisiones';
 
     public static function form(Schema $schema): Schema
     {

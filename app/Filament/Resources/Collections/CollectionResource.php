@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CollectionResource extends Resource
 {
@@ -22,7 +23,9 @@ class CollectionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
-    protected static ?string $navigationLabel = 'COBRANZA';
+    protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
+
+    protected static ?string $navigationLabel = 'Gestión de Cobranza';
 
     public static function form(Schema $schema): Schema
     {

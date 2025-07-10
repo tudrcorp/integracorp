@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class AgeRangeResource extends Resource
 {
@@ -22,7 +23,9 @@ class AgeRangeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::AdjustmentsVertical;
 
-    protected static ?string $navigationLabel = 'RANGO DE EDADES';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Rango de Edades';
 
     public static function form(Schema $schema): Schema
     {

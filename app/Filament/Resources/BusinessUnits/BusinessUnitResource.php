@@ -16,6 +16,7 @@ use App\Filament\Resources\BusinessUnits\Schemas\BusinessUnitForm;
 use App\Filament\Resources\BusinessUnits\Tables\BusinessUnitsTable;
 use App\Filament\Resources\BusinessUnits\Schemas\BusinessUnitInfolist;
 use App\Filament\Resources\BusinessUnits\RelationManagers\BusinessLineRelationManager;
+use UnitEnum;
 
 class BusinessUnitResource extends Resource
 {
@@ -23,7 +24,9 @@ class BusinessUnitResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::RectangleGroup;
 
-    protected static ?string $navigationLabel = 'UNIDADES DE NEGOCIO';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Unidades de Negocios';
 
     public static function form(Schema $schema): Schema
     {

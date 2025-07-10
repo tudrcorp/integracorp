@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CollaboratorResource extends Resource
 {
@@ -22,7 +23,9 @@ class CollaboratorResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserPlus;
 
-    protected static ?string $navigationLabel = 'COLABORADORES';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Colaboradores';
 
     public static function form(Schema $schema): Schema
     {

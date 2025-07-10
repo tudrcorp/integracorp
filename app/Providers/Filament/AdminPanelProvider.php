@@ -79,13 +79,19 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label('TDEC')
-                    ->icon('heroicon-m-academic-cap'),
+                    ->icon('heroicon-s-shopping-bag'),
+                NavigationGroup::make()
+                    ->label('TDEV')
+                    ->icon('heroicon-m-globe-asia-australia'),
+                NavigationGroup::make()
+                    ->label('SOLICITUDES')
+                    ->icon('heroicon-m-hand-raised'),
                 NavigationGroup::make()
                     ->label('COTIZACIONES')
-                    ->icon('heroicon-s-folder-plus'),
+                    ->icon('heroicon-m-adjustments-vertical'),
                 NavigationGroup::make()
                     ->label('AFILIACIONES')
-                    ->icon('heroicon-s-user-plus'),
+                    ->icon('heroicon-m-user-group'),
                 NavigationGroup::make()
                     ->label('ADMINISTRACIÓN')
                     ->icon('heroicon-s-calculator'),

@@ -32,6 +32,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\AffiliationController;
 use App\Jobs\ResendMailNotificacionAfiliacionIndividual;
+use App\Filament\Resources\Affiliations\AffiliationResource;
 
 class AffiliationsTable
 {

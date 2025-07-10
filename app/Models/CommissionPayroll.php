@@ -36,6 +36,28 @@ class CommissionPayroll extends Model
         'amount_commission_subagent',
         'amount_commission_subagent_usd',
         'amount_commission_subagent_ves',
+
+        'local_beneficiary_name',
+        'local_beneficiary_rif',
+        'local_beneficiary_account_number',
+        'local_beneficiary_account_bank',
+        'local_beneficiary_account_type',
+        'local_beneficiary_phone_pm',
+
+
+        //datos bancarios moneda extrangera
+        'extra_beneficiary_name',
+        'extra_beneficiary_ci_rif',
+        'extra_beneficiary_account_number',
+        'extra_beneficiary_account_bank',
+        'extra_beneficiary_account_type',
+        'extra_beneficiary_route',
+        'extra_beneficiary_zelle',
+        'extra_beneficiary_ach',
+        'extra_beneficiary_swift',
+        'extra_beneficiary_aba',
+        'extra_beneficiary_address',
+        
     ];
 
     public function ownerNameAgency()

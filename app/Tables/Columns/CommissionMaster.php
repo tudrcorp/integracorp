@@ -10,6 +10,6 @@ class CommissionMaster extends Column
 
     public function getNameCorporative(): string
     {
-        return $this->getRecord()->ownerNameAgency->name_corporative;
+        return isset($this->getRecord()->ownerNameAgency->name_corporative) ? $this->getRecord()->ownerNameAgency->name_corporative : '----';
     }
 }

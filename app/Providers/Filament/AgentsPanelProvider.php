@@ -3,14 +3,20 @@
 namespace App\Providers\Filament;
 
 use Filament\Panel;
+use App\Models\Agent;
+use App\Models\Option;
+use Livewire\Component;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
+use Filament\Forms\Components\Radio;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Toggle;
 use Filament\Navigation\NavigationGroup;
+use Filament\Notifications\Notification;
 use Filament\Widgets\FilamentInfoWidget;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
@@ -35,7 +41,9 @@ class AgentsPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
-            ->topNavigation()
+            ->topNavigation(function () {
+                return Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu;
+            })
             ->colors([
                 'primary' => '#00DCCD',
             ])
@@ -103,6 +111,32 @@ class AgentsPanelProvider extends PanelProvider
                     ->label('Enviar Notificación')
                     ->icon('heroicon-s-bell'),
                 // // ...
+                Action::make('options')
+                    ->label('Preferencias')
+                    ->icon('heroicon-s-cog')
+                    ->modalHeading('Preferencias de Menu')
+                    ->modalIcon('heroicon-s-cog')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->form([
+                        Toggle::make('value')
+                            ->label('Posicion de Menu? Top(Default)')
+                            ->helperText('Al desactivar la opción el mune se posicionara en la parte izquierda de la pantalla.')
+                            ->inline()
+                            ->onColor('success')
+                            ->offColor('danger')
+                            ->default(fn () => Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu == true ? true : false),
+                    ])
+                    ->action(function (array $data, Component $livewire) {
+                        
+                        $user = Agent::where('id', Auth::user()->agent_id)->first();
+                        
+                        if(isset($user)) {
+                            $user->conf_position_menu = $data['value'];
+                            $user->save();
+
+                            return redirect('/agents');
+                        }
+                    }),
             ])
             ->breadcrumbs(false)
             // ->sidebarCollapsibleOnDesktop()

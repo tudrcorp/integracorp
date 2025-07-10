@@ -10,11 +10,7 @@ class CommissionGeneral extends Column
 
     public function getNameCorporative(): string
     {
-        if($this->getRecord()->generalNameAgency->agency_type_id == 3){
-            return $this->getRecord()->generalNameAgency->name_corporative;
-        }else{
-            return '----';
-        }
+        return isset($this->getRecord()->generalNameAgency->name_corporative) ? $this->getRecord()->generalNameAgency->name_corporative : '----';
 
     }
 }

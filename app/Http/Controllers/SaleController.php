@@ -15,7 +15,7 @@ class SaleController extends Controller
     public static function preCalculateCommission($records, $desde, $hasta)
     {
         try {
-            // dd($records);
+
             $data = $records->toArray();
             // dd($data, $desde, $hasta);
 
@@ -24,8 +24,8 @@ class SaleController extends Controller
             for ($i = 0; $i < count($data); $i++) {
 
                 //Si la comision fue pagada no la toma en cuenta
-                if($data[$i]['status_payment_commission'] != 'COMISION PAGADA'){
-                    
+                if ($data[$i]['status_payment_commission'] != 'COMISION PAGADA') {
+
                     $commission = new Commission();
                     /**Datos principales de la tabla commission */
                     $commission->code                   = $code;
@@ -34,7 +34,6 @@ class SaleController extends Controller
                     $commission->plan_id                = $data[$i]['plan_id'];
                     $commission->coverage_id            = $data[$i]['coverage_id'] ?? null;
                     $commission->agent_id               = $data[$i]['agent_id'] ?? null;
-                    $commission->agency_id              = $data[$i]['agency_id'] ?? null;
                     $commission->code_agency            = $data[$i]['code_agency'] ?? null;
                     $commission->owner_code             = $data[$i]['owner_code'] ?? null;
                     $commission->amount                 = $data[$i]['total_amount'];
@@ -48,89 +47,93 @@ class SaleController extends Controller
                     $commission->payment_method_ves     = $data[$i]['payment_method_ves'];
                     $commission->date_ini               = $desde;
                     $commission->date_end               = $hasta;
-    
-    
+
+
                     /** 1-. Preguntamos si el pago esta a nombre de un agente */
                     if ($data[$i]['agent'] != null) {
-    
+
                         $commission->commission_agent       = ($data[$i]['total_amount'] * $data[$i]['agent']['commission_tdec']) / 100; //Calculo de la comision del agente
                         $commission->commission_agent_tdec  = $data[$i]['agent']['commission_tdec'];
-                        
+
                         /**Calculo de la comision segun el tipo de pago */
                         $commission->commission_agent_usd       = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agent']['commission_tdec']) / 100 : 0;
-                        $commission->commission_agent_ves       = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agent']['commission_tdec']) / 100 : 0;
-                        
-    
-                        /** 2.- Pregunta a que tipo de agencia pertenece */
-                        if ($data[$i]['agency']['agency_type_id'] == 1) {
-    
-                            /** Pertenece a una agencia MASTER */
-                            $commission->commission_agency_master       = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia master
-                            $commission->commission_agency_master_tdec  = $data[$i]['agency']['commission_tdec'];
-    
-                            /**Calculo de la comision segun el tipo de pago */
-                            $commission->commission_agency_master_usd       = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
-                            $commission->commission_agency_master_ves       = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
-                        }
-    
-                        if ($data[$i]['agency']['agency_type_id'] == 3) {
-    
-                            /** Pertenece a una agencia GENERAL */
-                            $commission->commission_agency_general  = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia general
-                            $commission->commission_agency_master   = ($data[$i]['total_amount'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec) / 100; //Calculo de la comision de la agencia general
-    
-                            $commission->commission_agency_general_tdec = $data[$i]['agency']['commission_tdec'];
-                            $commission->commission_agency_master_tdec  = DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec;
-                            
-                            /**Calculo de la comision segun el tipo de pago */
-                            $commission->commission_agency_general_usd  = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
-                            $commission->commission_agency_general_ves  = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
-    
-                            $commission->commission_agency_master_usd   = $data[$i]['pay_amount_usd'] > 0 ? $data[$i]['pay_amount_usd'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
-                            $commission->commission_agency_master_ves   = $data[$i]['pay_amount_ves'] > 0 ? $data[$i]['pay_amount_ves'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
-                            
+
+                        /** ?? Validamos si el agente pertenece a una agencia master/general o pertenece a TDG-100 */
+                        /**
+                         * Si $data[$i]['agency'] != null entonces el agente pertenece a una agencia master o general
+                         * Si $data[$i]['agency'] == null entonces el agente pertenece a TDG-100
+                         */
+                        if ($data[$i]['agency'] != null) {
+                            /** ?? Pregunta a que tipo de agencia pertenece master */
+                            if ($data[$i]['agency']['agency_type_id'] == 1) {
+
+                                /** Pertenece a una agencia MASTER */
+                                $commission->commission_agency_master       = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia master
+                                $commission->commission_agency_master_tdec  = $data[$i]['agency']['commission_tdec'];
+
+                                /**Calculo de la comision segun el tipo de pago */
+                                $commission->commission_agency_master_usd       = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
+                                $commission->commission_agency_master_ves       = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
+                            }
+
+                            /** ?? Pregunta a que tipo de agencia pertenece general */
+                            if ($data[$i]['agency']['agency_type_id'] == 3) {
+
+                                /** Pertenece a una agencia GENERAL */
+                                $commission->commission_agency_general  = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia general
+                                $commission->commission_agency_master   = ($data[$i]['total_amount'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec) / 100; //Calculo de la comision de la agencia general
+
+                                $commission->commission_agency_general_tdec = $data[$i]['agency']['commission_tdec'];
+                                $commission->commission_agency_master_tdec  = DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec;
+
+                                /**Calculo de la comision segun el tipo de pago */
+                                $commission->commission_agency_general_usd  = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
+                                $commission->commission_agency_general_ves  = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
+
+                                $commission->commission_agency_master_usd   = $data[$i]['pay_amount_usd'] > 0 ? $data[$i]['pay_amount_usd'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
+                                $commission->commission_agency_master_ves   = $data[$i]['pay_amount_ves'] > 0 ? $data[$i]['pay_amount_ves'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
+                            }
                         }
                     }
-    
+
                     /** 3-. Preguntamos si el pago esta a nombre de un agencia */
                     if ($data[$i]['agent'] == null) {
-    
+
                         /** 4.- Pregunta a que tipo de agencia pertenece */
                         if ($data[$i]['agency']['agency_type_id'] == 1) {
-    
+
                             /** Pertenece a una agencia MASTER */
                             $commission->commission_agency_master       = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia master
                             $commission->commission_agency_master_tdec  = $data[$i]['agency']['commission_tdec'];
-    
+
                             /**Calculo de la comision segun el tipo de pago */
                             $commission->commission_agency_master_usd       = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
                             $commission->commission_agency_master_ves       = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
                         }
-    
+
                         if ($data[$i]['agency']['agency_type_id'] == 3) {
-    
+
                             /** Pertenece a una agencia GENERAL */
                             $commission->commission_agency_general  = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia general
                             $commission->commission_agency_master   = ($data[$i]['total_amount'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec) / 100; //Calculo de la comision de la agencia general
-    
+
                             $commission->commission_agency_general_tdec = $data[$i]['agency']['commission_tdec'];
                             $commission->commission_agency_master_tdec  = DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec;
-    
+
                             /**Calculo de la comision segun el tipo de pago */
                             $commission->commission_agency_general_usd  = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
                             $commission->commission_agency_general_ves  = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
-    
+
                             $commission->commission_agency_master_usd   = $data[$i]['pay_amount_usd'] > 0 ? $data[$i]['pay_amount_usd'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
                             $commission->commission_agency_master_ves   = $data[$i]['pay_amount_ves'] > 0 ? $data[$i]['pay_amount_ves'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
                         }
                     }
-    
-                    $commission->total_payment_commission   = $commission->commission_agent + $commission->commission_agency_master + $commission->commission_agency_general;
+
+                    $commission->total_payment_commission   = $data[$i]['agency'] != null ? $commission->commission_agent + $commission->commission_agency_master + $commission->commission_agency_general : $commission->commission_agent;
                     $commission->date_payment_commission    = Carbon::now()->format('d/m/Y');
                     $commission->created_by                 = Auth::user()->name;
                     $commission->save();
-                    
-                }else{
+                } else {
                     Notification::make()
                         ->title('EXCEPCION')
                         ->body('No se pudo crear la comision, por favor verifique la informacion de la venta. Recuerde que los registros deben estar en estatus POR PAGAR.')
@@ -141,7 +144,6 @@ class SaleController extends Controller
 
                     return false;
                 }
-
             }
 
             /**4-. Actualizo el estatus de mi venta */
@@ -151,7 +153,6 @@ class SaleController extends Controller
             }
 
             return true;
-            
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
             Notification::make()

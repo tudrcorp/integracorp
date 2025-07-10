@@ -18,6 +18,7 @@ use App\Filament\Resources\Affiliations\Schemas\AffiliationInfolist;
 use App\Filament\Resources\Affiliations\RelationManagers\AffiliatesRelationManager;
 use App\Filament\Resources\Affiliations\RelationManagers\PaidMembershipsRelationManager;
 use App\Filament\Resources\Affiliations\RelationManagers\StatusLogAffiliationsRelationManager;
+use UnitEnum;
 
 class AffiliationResource extends Resource
 {
@@ -25,7 +26,9 @@ class AffiliationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user-group';
 
-    protected static ?string $navigationLabel = 'INDIVIDUAL';
+    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+
+    protected static ?string $navigationLabel = 'Individuales';
 
     public static function form(Schema $schema): Schema
     {

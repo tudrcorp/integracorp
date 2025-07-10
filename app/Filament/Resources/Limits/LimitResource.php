@@ -16,6 +16,7 @@ use App\Filament\Resources\Limits\Schemas\LimitForm;
 use App\Filament\Resources\Limits\Tables\LimitsTable;
 use App\Filament\Resources\Limits\Schemas\LimitInfolist;
 use App\Filament\Resources\Limits\RelationManagers\BenefitsRelationManager;
+use UnitEnum;
 
 class LimitResource extends Resource
 {
@@ -23,7 +24,9 @@ class LimitResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::AdjustmentsHorizontal;
 
-    protected static ?string $navigationLabel = 'LÍMITES';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Limites';
 
     public static function form(Schema $schema): Schema
     {

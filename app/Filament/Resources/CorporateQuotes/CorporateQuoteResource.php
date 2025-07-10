@@ -17,6 +17,7 @@ use App\Filament\Resources\CorporateQuotes\Tables\CorporateQuotesTable;
 use App\Filament\Resources\CorporateQuotes\Schemas\CorporateQuoteInfolist;
 use App\Filament\Resources\CorporateQuotes\RelationManagers\StatusLogsRelationManager;
 use App\Filament\Resources\CorporateQuotes\RelationManagers\DetailCoporateQuotesRelationManager;
+use UnitEnum;
 
 class CorporateQuoteResource extends Resource
 {
@@ -24,7 +25,9 @@ class CorporateQuoteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Wallet;
 
-    protected static ?string $navigationLabel = 'COTIZACION CORPORATIVA';
+    protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
+
+    protected static ?string $navigationLabel = 'Corporativas';
 
     public static function form(Schema $schema): Schema
     {

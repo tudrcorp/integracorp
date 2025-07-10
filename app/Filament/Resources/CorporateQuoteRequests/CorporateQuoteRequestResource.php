@@ -17,6 +17,7 @@ use App\Filament\Resources\CorporateQuoteRequests\Tables\CorporateQuoteRequestsT
 use App\Filament\Resources\CorporateQuoteRequests\Schemas\CorporateQuoteRequestInfolist;
 use App\Filament\Resources\CorporateQuoteRequests\RelationManagers\DetailsRelationManager;
 use App\Filament\Resources\CorporateQuoteRequests\RelationManagers\DetailsDataRelationManager;
+use UnitEnum;
 
 class CorporateQuoteRequestResource extends Resource
 {
@@ -24,7 +25,9 @@ class CorporateQuoteRequestResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::HandRaised;
 
-    protected static ?string $navigationLabel = 'SOLICITUD';
+    protected static string | UnitEnum | null $navigationGroup = 'SOLICITUDES';
+
+    protected static ?string $navigationLabel = 'Solicitud';
 
     public static function form(Schema $schema): Schema
     {

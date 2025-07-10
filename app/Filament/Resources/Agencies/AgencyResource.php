@@ -16,6 +16,7 @@ use App\Filament\Resources\Agencies\Schemas\AgencyForm;
 use App\Filament\Resources\Agencies\Tables\AgenciesTable;
 use App\Filament\Resources\Agencies\Schemas\AgencyInfolist;
 use App\Filament\Resources\Agencies\RelationManagers\DocumentsRelationManager;
+use UnitEnum;
 
 class AgencyResource extends Resource
 {
@@ -23,7 +24,9 @@ class AgencyResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-building-library';
 
-    protected static ?string $navigationLabel = 'AGENCIAS';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Gestión de Agencias';
 
     public static function form(Schema $schema): Schema
     {

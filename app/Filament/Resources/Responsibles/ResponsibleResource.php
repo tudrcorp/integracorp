@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ResponsibleResource extends Resource
 {
@@ -22,7 +23,9 @@ class ResponsibleResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Star;
 
-    protected static ?string $navigationLabel = 'RESPONSABLES';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Responsables';
 
     public static function form(Schema $schema): Schema
     {

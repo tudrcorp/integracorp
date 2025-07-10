@@ -18,6 +18,7 @@ use App\Filament\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInf
 use App\Filament\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
 use App\Filament\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
 use App\Filament\Resources\AffiliationCorporates\RelationManagers\StatusLogCorporateAffiliationsRelationManager;
+use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
@@ -25,7 +26,9 @@ class AffiliationCorporateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-rectangle-stack';
 
-    protected static ?string $navigationLabel = 'CORPORATIVA';
+    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+
+    protected static ?string $navigationLabel = 'Corporativas';
 
     public static function form(Schema $schema): Schema
     {

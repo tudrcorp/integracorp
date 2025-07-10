@@ -17,6 +17,7 @@ use App\Filament\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
 use App\Filament\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
 use App\Filament\Resources\IndividualQuotes\RelationManagers\StatusLogsRelationManager;
 use App\Filament\Resources\IndividualQuotes\RelationManagers\DetailsQuoteRelationManager;
+use UnitEnum;
 
 class IndividualQuoteResource extends Resource
 {
@@ -24,7 +25,9 @@ class IndividualQuoteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Tag;
 
-    protected static ?string $navigationLabel = 'INDIVIDUALES';
+    protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
+
+    protected static ?string $navigationLabel = 'Individuales';
 
     public static function form(Schema $schema): Schema
     {

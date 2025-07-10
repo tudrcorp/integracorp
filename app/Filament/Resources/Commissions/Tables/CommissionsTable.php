@@ -20,11 +20,12 @@ use Filament\Notifications\Notification;
 use App\Tables\Columns\CommissionGeneral;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Columns\Summarizers\Sum;
 use App\Tables\Columns\DetailCommissionAgent;
 use App\Http\Controllers\CommissionController;
 use App\Tables\Columns\DetailCommissionMaster;
-use App\Tables\Columns\DetailCommissionGeneral;
 
+use App\Tables\Columns\DetailCommissionGeneral;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class CommissionsTable
@@ -115,16 +116,16 @@ class CommissionsTable
                 //     ->color('warning')
                 //     ->numeric()
                 //     ->sortable(),
-                // Tables\Columns\TextColumn::make('commission_agency_master')
-                //     ->label('Pago Agencia Master')
-                //     ->badge()
-                //     ->suffix(' US$')
-                //     ->numeric()
-                //     ->sortable()
-                //     ->summarize(Sum::make()
-                //         ->label(('Subtotal Agencia Master'))
-                //         ->suffix(' US$')
-                //         ->numeric()),
+                TextColumn::make('commission_agency_master')
+                    ->label('Pago Agencia Master')
+                    ->badge()
+                    ->suffix(' US$')
+                    ->numeric()
+                    ->sortable()
+                    ->summarize(Sum::make()
+                        ->label(('Subtotal Agencia Master'))
+                        ->suffix(' US$')
+                        ->numeric()),
                 // Tables\Columns\TextColumn::make('commission_agency_general_tdec')
                 //     ->label('% General TDEC')
                 //     ->badge()
@@ -132,16 +133,16 @@ class CommissionsTable
                 //     ->color('warning')
                 //     ->numeric()
                 //     ->sortable(),
-                // Tables\Columns\TextColumn::make('commission_agency_general')
-                //     ->label('Pago Agencia General')
-                //     ->badge()
-                //     ->suffix(' US$')
-                //     ->numeric()
-                //     ->sortable()
-                //     ->summarize(Sum::make()
-                //         ->label(('Subtotal Agencia General'))
-                //         ->suffix(' US$')
-                //         ->numeric()),
+                TextColumn::make('commission_agency_general')
+                    ->label('Pago Agencia General')
+                    ->badge()
+                    ->suffix(' US$')
+                    ->numeric()
+                    ->sortable()
+                    ->summarize(Sum::make()
+                        ->label(('Subtotal Agencia General'))
+                        ->suffix(' US$')
+                        ->numeric()),
                 // Tables\Columns\TextColumn::make('commission_agent_tdec')
                 //     ->label('% Agente TDEC')
                 //     ->badge()
@@ -149,16 +150,16 @@ class CommissionsTable
                 //     ->color('warning')
                 //     ->numeric()
                 //     ->sortable(),
-                // Tables\Columns\TextColumn::make('commission_agent')
-                //     ->label('Pago Agente')
-                //     ->badge()
-                //     ->suffix(' US$')
-                //     ->numeric()
-                //     ->sortable()
-                //     ->summarize(Sum::make()
-                //         ->label(('Subtotal Agentes'))
-                //         ->suffix(' US$')
-                //         ->numeric()),
+                TextColumn::make('commission_agent')
+                    ->label('Pago Agente')
+                    ->badge()
+                    ->suffix(' US$')
+                    ->numeric()
+                    ->sortable()
+                    ->summarize(Sum::make()
+                        ->label(('Subtotal Agentes'))
+                        ->suffix(' US$')
+                        ->numeric()),
                 // Tables\Columns\TextColumn::make('total_payment_commission')
                 //     ->label('Total Pagos')
                 //     ->badge()
@@ -184,30 +185,30 @@ class CommissionsTable
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                CommissionMaster::make('commision_master')
-                    ->label('Comisión agencia master')
-                    ->alignCenter(),
-                CommissionGeneral::make('commision_general')
-                    ->label('Comisión agencia general')
-                    ->alignCenter(),
-                CommissionAgent::make('commision_agent')
-                    ->label('Comisión Agente')
-                    ->alignCenter(),
-                PaymentInfo::make('payment_info')
-                    ->label('Información de pago')
-                    ->alignCenter(),
-                AmountInfo::make('amount_info')
-                    ->label('Información de importe')
-                    ->alignCenter(),
-                DetailCommissionMaster::make('detail_commission_master')
-                    ->label('Detalle comisión agencia master')
-                    ->alignCenter(),
-                DetailCommissionGeneral::make('detail_commission_general')
-                    ->label('Detalle comisión agencia general')
-                    ->alignCenter(),
-                DetailCommissionAgent::make('detail_commission_agent')
-                    ->label('Detalle comisión agente')
-                    ->alignCenter(),
+                // CommissionMaster::make('commision_master')
+                //     ->label('Comisión agencia master')
+                //     ->alignCenter(),
+                // CommissionGeneral::make('commision_general')
+                //     ->label('Comisión agencia general')
+                //     ->alignCenter(),
+                // CommissionAgent::make('commision_agent')
+                //     ->label('Comisión Agente')
+                //     ->alignCenter(),
+                // PaymentInfo::make('payment_info')
+                //     ->label('Información de pago')
+                //     ->alignCenter(),
+                // AmountInfo::make('amount_info')
+                //     ->label('Información de importe')
+                //     ->alignCenter(),
+                // DetailCommissionMaster::make('detail_commission_master')
+                //     ->label('Detalle comisión agencia master')
+                //     ->alignCenter(),
+                // DetailCommissionGeneral::make('detail_commission_general')
+                //     ->label('Detalle comisión agencia general')
+                //     ->alignCenter(),
+                // DetailCommissionAgent::make('detail_commission_agent')
+                //     ->label('Detalle comisión agente')
+                //     ->alignCenter(),
 
 
 
@@ -274,8 +275,8 @@ class CommissionsTable
 
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                // ViewAction::make(),
+                // EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

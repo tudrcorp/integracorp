@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class DownloadZoneResource extends Resource
 {
@@ -22,7 +23,9 @@ class DownloadZoneResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowDownTray;
 
-    protected static ?string $navigationLabel = 'ZONA DE DESCARGAS';
+    protected static string | UnitEnum | null $navigationGroup = 'TDEC';
+
+    protected static ?string $navigationLabel = 'Zona de Descarga';
 
     public static function form(Schema $schema): Schema
     {
