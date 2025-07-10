@@ -23,8 +23,6 @@ class DownloadZoneForm
                                 ->label('Documento')
                                 ->required(),
                             FileUpload::make('image_icon')
-                                ->label('Icono')
-                                ->image()
                                 ->label('previsualizacion')
                                 ->required(),
                         ])->columnSpanFull()->columns(2),
