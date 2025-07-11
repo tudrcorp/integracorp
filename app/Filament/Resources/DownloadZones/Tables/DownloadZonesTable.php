@@ -19,19 +19,16 @@ class DownloadZonesTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->columns([
+            ->columns([
                 Stack::make([
                     ImageColumn::make('image_icon')
-                    ->imageWidth(250)
-                    ->imageHeight(250),
+                        ->imageWidth(250)
+                        ->imageHeight(250),
                     Stack::make([
                         TextColumn::make('description')
                             ->weight(FontWeight::Bold),
                     ]),
                 ])->space(3),
-            ])
-            ->filters([
-                //
             ])
             ->contentGrid([
                 'md' => 2,
@@ -41,16 +38,12 @@ class DownloadZonesTable
                 Action::make('download')
                     ->label('Descargar')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->color('verde')
+                    ->color('verdeOpaco')
                     ->url(function ($record) {
                         return asset('storage/' . $record->document);
                     })
                     ->button()
                     ->openUrlInNewTab(),
-                DeleteAction::make()
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->icon('heroicon-s-trash'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

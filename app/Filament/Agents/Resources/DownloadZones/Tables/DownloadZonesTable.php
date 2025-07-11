@@ -22,15 +22,13 @@ class DownloadZonesTable
             ->columns([
                 Stack::make([
                     ImageColumn::make('image_icon')
-                        ->visibility('public'),
+                        ->imageWidth(250)
+                        ->imageHeight(250),
                     Stack::make([
                         TextColumn::make('description')
                             ->weight(FontWeight::Bold),
                     ]),
                 ])->space(3),
-            ])
-            ->filters([
-                //
             ])
             ->contentGrid([
                 'md' => 2,
@@ -40,7 +38,7 @@ class DownloadZonesTable
                 Action::make('download')
                     ->label('Descargar')
                     ->icon('heroicon-o-folder-open')
-                    ->color('verde')
+                    ->color('verdeOpaco')
                     ->url(function ($record) {
                         return asset('storage/' . $record->document);
                     })
