@@ -4,6 +4,8 @@ namespace App\Filament\Resources\IndividualQuotes\Pages;
 
 use App\Models\Fee;
 use App\Models\User;
+use App\Models\Agent;
+use App\Models\Agency;
 use App\Models\AgeRange;
 use Filament\Actions\Action;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,18 @@ class CreateIndividualQuote extends CreateRecord
     protected static string $resource = IndividualQuoteResource::class;
 
     protected static ?string $title = 'CREAR COTIZACIÓN INDIVIDUAL';
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('regresar')
+                ->label('Regresar')
+                ->button()
+                ->icon('heroicon-s-arrow-left')
+                ->color('warning')
+                ->url(IndividualQuoteResource::getUrl('index')),
+        ];
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -39,6 +53,23 @@ class CreateIndividualQuote extends CreateRecord
             session()->put('details_quote', $data['details_quote']);
         }
 
+        if ($data['agent_id'] != null) {
+
+            $owner = Agent::select('owner_code', 'id')->where('id', $data['agent_id'])->first()->owner_code;
+
+            if ($owner == 'TDG-100') {
+
+                $data['owner_code']  = 'TDG-100';
+                $data['code_agency'] = 'TDG-100';
+            } else {
+
+                $data['owner_code']  = Agency::select('owner_code', 'code')->where('code', $data['code_agency'])->first()->owner_code;
+            }
+        } else {
+            $data['code_agency'] = $data['code_agency'];
+            $data['owner_code']  = Agency::select('owner_code', 'code')->where('code', $data['code_agency'])->first()->owner_code;
+        }
+        
         return $data;
     }
 
@@ -324,25 +355,47 @@ class CreateIndividualQuote extends CreateRecord
                 $this->getRecord()->sendPropuestaEconomicaMultiple($collect_final);
             }
 
+            /**
+             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+             * ----------------------------------------------------------------------------------------------------
+             * $record [Data de la cotizacion guardada en la base de dastos]
+             */
 
-            // $email = $this->data['email'];
+            if ($record->agent_id != null) {
+                $recipient = User::where('is_agent', 1)->where('agent_id', $record->agent_id)->get();
+                foreach ($recipient as $user) {
+                    $recipient_for_user = User::find($user->id);
+                    Notification::make()
+                        ->title('COTIZACION INDIVIDUAL CREADA')
+                        ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
+                        ->icon('heroicon-s-user-group')
+                        ->iconColor('success')
+                        ->success()
+                        ->actions([
+                            Action::make('view')
+                                ->label('Ver detalle de solicitud')
+                                ->button()
+                                ->url(IndividualQuoteResource::getUrl('view', ['record' => $record->id], panel: 'agents')),
+                        ])
+                        ->sendToDatabase($recipient_for_user);
+                }
+            }
 
-            // $send_email = NotificationController::sendEmail_propuesta_economica($email, $record, $detalle);
-            // Log::info($send_email);
+            if ($record->agent_id == null) {
+                $recipient = User::where('is_agency', 1)->where('code_agency', $record->code_agency)->get();
+                foreach ($recipient as $user) {
+                    $recipient_for_user = User::find($user->id);
+                    Notification::make()
+                        ->title('COTIZACION INDIVIDUAL CREADA')
+                        ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
+                        ->icon('heroicon-s-user-group')
+                        ->iconColor('success')
+                        ->success()
+                        ->sendToDatabase($recipient_for_user);
+                }
+            }
 
-            Notification::make()
-                ->title('NOTIFICACION')
-                ->body('El documento fue generado de forma exitosa.')
-                ->icon('heroicon-m-tag')
-                ->iconColor('success')
-                ->success()
-                ->actions([
-                    Action::make('view')
-                        ->label('Ver cotizacion individual')
-                        ->button()
-                        ->url(IndividualQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                ])
-                ->sendToDatabase($recipient_for_user);
+            
         } catch (\Throwable $th) {
             dd($th);
             Notification::make()

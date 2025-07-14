@@ -2,8 +2,12 @@
 
 namespace App\Filament\Resources\IndividualQuotes\Schemas;
 
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
+use App\Models\IndividualQuote;
+use Filament\Support\Icons\Heroicon;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Infolists\Components\TextEntry;
 
 class IndividualQuoteInfolist
 {
@@ -11,30 +15,59 @@ class IndividualQuoteInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('owner_code'),
-                TextEntry::make('code_agency'),
-                TextEntry::make('code'),
-                TextEntry::make('code_agent'),
-                TextEntry::make('agent_id')
-                    ->numeric(),
-                TextEntry::make('state_id')
-                    ->numeric(),
-                TextEntry::make('count_days')
-                    ->numeric(),
-                TextEntry::make('region'),
-                TextEntry::make('full_name'),
-                TextEntry::make('birth_date'),
-                TextEntry::make('email'),
-                TextEntry::make('phone'),
-                TextEntry::make('status'),
-                TextEntry::make('created_by'),
-                TextEntry::make('created_at')
-                    ->dateTime(),
-                TextEntry::make('updated_at')
-                    ->dateTime(),
-                TextEntry::make('owner_agent'),
-                TextEntry::make('plan'),
-                TextEntry::make('type'),
+                Section::make()
+                    ->description(fn(IndividualQuote $record) => 'Cotización Individual generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                    ->columnSpanFull()
+                    ->icon(Heroicon::Bars3BottomLeft)
+                    ->schema([
+                        Fieldset::make('Solicitud de cotización individual')
+                            ->schema([
+                                TextEntry::make('code')
+                                    ->label('Número de solicitud')
+                                    ->badge()
+                                    ->color('success'),
+                                // ...
+                                TextEntry::make('code_agency')
+                                    ->label('Código de agencia')
+                                    ->badge()
+                                    ->color('primary'),
+                                TextEntry::make('registrated_by')
+                                    ->label('Registrado por:')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->default(fn(IndividualQuote $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
+                                TextEntry::make('created_at')
+                                    ->label('Fecha de solicitud')
+                                    ->badge()
+                                    ->dateTime(),
+                            ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make()
+                            ->schema([
+                                TextEntry::make('full_name')
+                                    ->label('Nombre completo'),
+                                TextEntry::make('birth_date')
+                                    ->label('Fecha de nacimiento'),
+                                TextEntry::make('email')
+                                    ->label('Correo electrónico'),
+                                TextEntry::make('phone')
+                                    ->label('Teléfono'),
+                                TextEntry::make('state.definition')
+                                    ->numeric()
+                                    ->label('Estado'),
+                                TextEntry::make('region')
+                                    ->label('Región'),
+                                TextEntry::make('status')
+                                    ->label('Estatus')
+                                    ->badge()
+                                    ->color('success'),
+                                TextEntry::make('created_by')
+                                    ->label('Registrado por:')
+                                    ->badge()
+                                    ->color('primary'),
+                            ])->columnSpanFull()->columns(4),
+
+                    ])->columnSpanFull(),
             ]);
     }
 }

@@ -38,8 +38,7 @@ class IndividualQuotesTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->heading('COTIZACIONES INDIVIDUALES')
-            ->description('Lista de cotizaciones generadas por el agente')
+            ->description('Lista de cotizaciones generadas por las agencias y/o agentes.')
             ->columns([
                 TextColumn::make('code_agency')
                     ->prefix(function ($record) {

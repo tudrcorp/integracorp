@@ -35,6 +35,37 @@ class IndividualQuoteForm
         return $schema
             ->components([
                 Wizard::make([
+                Step::make('ASOCIACION')
+                    ->description('Asociar a una agencia y/o agente')
+                    ->icon(Heroicon::Share)
+                    ->completedIcon(Heroicon::Check)
+                    ->schema([
+                        Select::make('code_agency')
+                            ->label('Lista de Agencias')
+                            ->options(function (Get $get) {
+                                return Agency::all()->pluck('name_corporative', 'code');
+                            })
+                            ->live()
+                            ->searchable()
+                            ->prefixIcon('heroicon-c-building-library')
+                            ->preload(),
+                        Select::make('agent_id')
+                            ->label('Agentes')
+                            ->options(function (Get $get) {
+                                if ($get('code_agency') == null) {
+                                    return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
+                                }
+                                return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                            })
+                            ->live()
+                            ->searchable()
+                            ->prefixIcon('fontisto-person')
+                            ->preload(),
+                        Hidden::make('owner_code'),
+                        Hidden::make('status')->default('PRE-APROBADA'),
+                        Hidden::make('created_by')->default(Auth::user()->name),
+
+                    ])->columns(4),
                     Step::make('SOLICITANTE')
                         ->description('Información principal del solicitante')
                         ->icon(Heroicon::User)
@@ -185,10 +216,8 @@ class IndividualQuoteForm
                                 ->disabled()
                                 ->dehydrated()
                                 ->maxLength(255),
-                            Hidden::make('status')->default('PRE-APROBADA'),
-                            Hidden::make('created_by')->default(Auth::user()->name),
 
-                            Select::make('code_agency')
+                            Select::make('state_id')
                                 ->label('Estado')
                                 ->options(function (Get $get) {
                                     return State::all()->pluck('definition', 'id');

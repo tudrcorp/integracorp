@@ -237,6 +237,7 @@ class IndividualQuoteForm
                                     return $owner;
                                 }
                             }),
+                            
                         ])->columns(4),
                     Step::make('PLANES A COTIZAR')
                         ->description('Plan(es) que desea cotizar:')
