@@ -17,7 +17,7 @@ class StatusLogsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        ->defaultSort('created_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->recordTitleAttribute('individual_quote_id')
             ->columns([
                 TextColumn::make('status')

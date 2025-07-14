@@ -13,11 +13,13 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
 use Filament\Forms\Components\Radio;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
 use Filament\Navigation\NavigationGroup;
 use Filament\Notifications\Notification;
 use Filament\Widgets\FilamentInfoWidget;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -78,23 +80,24 @@ class AgentsPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 NavigationGroup::make()
+                    ->label('INDIVIDUALES')
+                    ->icon('heroicon-s-swatch'),
+                NavigationGroup::make()
+                    ->label('CORPORATIVAS')
+                    ->icon('heroicon-m-hand-raised'),
+                NavigationGroup::make()
                     ->label('AFILIACIONES')
                     ->icon('heroicon-s-user-group'),
                 NavigationGroup::make()
-                    ->label('SOLICITUD')
-                    ->icon('heroicon-m-hand-raised'),
-                NavigationGroup::make()
-                    ->label('COTIZACIONES')
-                    ->icon('heroicon-s-swatch'),
+                    ->label('VENTAS')
+                    ->icon('fontisto-wallet'),
                 NavigationGroup::make()
                     ->label('ORGANIZACIÓN')
                     ->icon('heroicon-m-share'),
                 NavigationGroup::make()
                     ->label('ZONA DE DESCARGA')
                     ->icon('heroicon-c-arrow-down-tray'),
-                NavigationGroup::make()
-                    ->label('VENTAS')
-                    ->icon('heroicon-s-calculator'),
+                
             ])
             ->registerErrorNotification(
                 title: 'Registro No Encontrado',
@@ -114,17 +117,23 @@ class AgentsPanelProvider extends PanelProvider
                 Action::make('options')
                     ->label('Preferencias')
                     ->icon('heroicon-s-cog')
-                    ->modalHeading('Preferencias de Menu')
+                    ->modalHeading('Preferencias')
                     ->modalIcon('heroicon-s-cog')
                     ->modalWidth(Width::ExtraLarge)
                     ->form([
-                        Toggle::make('value')
-                            ->label('Posicion de Menu? Top(Default)')
-                            ->helperText('Al desactivar la opción el mune se posicionara en la parte izquierda de la pantalla.')
-                            ->inline()
-                            ->onColor('success')
-                            ->offColor('danger')
-                            ->default(fn () => Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu == true ? true : false),
+                        Fieldset::make('Ubicación de Menu')
+                            ->schema([
+                                Toggle::make('value')
+                                    ->label('Posicion de Menu? Top(Default)')
+                                    ->helperText('Al desactivar la opción del menu se posicionara en la parte izquierda de la pantalla.')
+                                    ->inline()
+                                    ->onIcon('heroicon-m-arrow-small-up')
+                                    ->offIcon('heroicon-m-arrow-small-left')
+                                    ->onColor('success')
+                                    ->offColor('danger')
+                                    ->default(fn () => Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu == true ? true : false),
+                                
+                            ])->columns(1),
                     ])
                     ->action(function (array $data, Component $livewire) {
                         

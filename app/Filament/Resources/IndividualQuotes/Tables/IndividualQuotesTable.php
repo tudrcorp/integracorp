@@ -5,6 +5,7 @@ namespace App\Filament\Resources\IndividualQuotes\Tables;
 use Carbon\Carbon;
 use App\Models\Agent;
 use App\Models\Agency;
+use App\Models\Bitacora;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
@@ -441,6 +442,79 @@ class IndividualQuotesTable
                                     ->send();
                             }
                         }),
+
+                Action::make('change_status')
+                    ->label('Actualizar estatus')
+                    ->color('azulOscuro')
+                    ->icon('heroicon-s-check-circle')
+                    ->requiresConfirmation()
+                    ->modalWidth(Width::ExtraLarge)
+                    ->modalHeading('ACCIONES')
+                    ->form([
+                        Section::make()
+                            ->schema([
+                                Grid::make(1)->schema([
+                                    Select::make('status')
+                                        ->label('Estatus')
+                                        ->options([
+                                            'PRE-APROBADA'  => 'PRE-APROBADA',
+                                            'APROBADA'      => 'APROBADA',
+                                            'ANULADA'       => 'ANULADA',
+                                            'DECLINADA'     => 'DECLINADA',
+                                            'EJECUTADA'     => 'EJECUTADA',
+                                        ])
+                                        ->required()
+                                        ->searchable()
+                                        ->preload(),
+                                    Textarea::make('description')
+                                        ->autosize()
+                                        ->label('Observaciones')
+                                        ->placeholder('Describa las razones de la acción')
+                                        ->required()
+                                        ->afterStateUpdated(function (Set $set, $state) {
+                                            $set('description', strtoupper($state));
+                                        })
+                                ])
+                                
+                            ])
+                    ])
+                    ->action(function (IndividualQuote $record, array $data): void {
+
+                        try {
+                            
+                            $record->status = $data['status'];
+                            $record->save();
+
+                            $bitacora = new Bitacora();
+                            $bitacora->individual_quote()->associate($record);
+                            $bitacora->user()->associate(Auth::user());
+                            $bitacora->details = 'Se ha actualizado el estatus de la cotizacion a: ' . $data['status'] . '. Razón del cambio: ' . $data['description'] . '.';
+                            $bitacora->save();
+
+                            /**
+                             * LOG
+                             */
+                            LogController::log(Auth::user()->id, 'Actualizacion de estatus', 'Modulo Cotizacion Individual', 'ACTUALIZAR ESTATUS');
+
+                            Notification::make()
+                                ->title('ESTATUS ACTUALIZADO EXITOSAMENTE')
+                                ->body('El estatus de la cotizacion ha sido actualizado exitosamente.')
+                                ->icon('heroicon-s-check-circle')
+                                ->iconColor('verde')
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $th) {
+                            LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                            Notification::make()
+                                ->title('ERROR')
+                                ->body($th->getMessage())
+                                ->icon('heroicon-s-x-circle')
+                                ->iconColor('danger')
+                                ->danger()
+                                ->send();
+                        }
+                        
+                    }),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
             ])
             ->toolbarActions([

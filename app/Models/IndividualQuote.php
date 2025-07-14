@@ -162,4 +162,10 @@ class IndividualQuote extends Model
         }
         
     }
+
+    //hasMany 
+    public function bitacoras()
+    {
+        return $this->hasMany(Bitacora::class);
+    }
 }

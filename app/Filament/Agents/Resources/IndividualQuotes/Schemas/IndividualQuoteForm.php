@@ -64,10 +64,6 @@ class IndividualQuoteForm
                                 ])
                                 ->maxLength(255),
 
-                            DatePicker::make('birth_date')
-                                ->label('Fecha de Nacimiento')
-                                ->prefixIcon('heroicon-m-calendar-days'),
-
                             Select::make('country_code')
                                 ->label('Código de país')
                                 ->options([

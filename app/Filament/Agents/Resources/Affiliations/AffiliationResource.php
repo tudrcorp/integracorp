@@ -26,11 +26,13 @@ class AffiliationResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user';
 
-    protected static ?string $navigationLabel = 'Individuales';
+    protected static ?string $navigationLabel = 'Consultar Afiliaciones';
 
-    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+    // protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
 
-    protected static ?int $navigationSort = 1;
+    protected static string | UnitEnum | null $navigationGroup = 'INDIVIDUALES';
+
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {

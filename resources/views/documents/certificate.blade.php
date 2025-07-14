@@ -167,7 +167,6 @@
 
 </head>
 <body>
-
     <div>
         <!-- Content here -->
         <div>
@@ -185,30 +184,30 @@
             <tbody class="tb_table_info_ti">
                 <tr class="tr_table_info_ti">
                     <td class="td_table_info_ti" style="font-weight: bold">Contratante:</td>
-                    <td class="td_table_info_ti">{{ $data_ti['full_name_con'] }}</td>
+                    <td class="td_table_info_ti">{{ $data['full_name_con'] }}</td>
 
                     <td class="td_table_info_ti" style="font-weight: bold">Agente:</td>
-                    <td class="td_table_info_ti">{{ $data_ti['name_agent'] }}</td>
+                    <td class="td_table_info_ti">{{ $data['name_agent'] }}</td>
 
 
                 </tr>
                 <tr class="tr_table_info_ti">
                     <td class="td_table_info_ti" style="font-weight: bold">Código de Afiliación:</td>
-                    <td class="td_table_info_ti">{{ $data_ti['code'] }}</td>
+                    <td class="td_table_info_ti">{{ $data['code'] }}</td>
 
 
                     <td class="td_table_info_ti" style="font-weight: bold">Tarifa Anual:</td>
-                    <td class="td_table_info_ti">US$ {{ $data_ti['fee_anual'] }}</td>
+                    <td class="td_table_info_ti">US$ {{ $data['fee_anual'] }}</td>
 
 
                 </tr>
                 <tr class="tr_table_info_ti">
                     <td class="td_table_info_ti" style="font-weight: bold">Plan:</td>
-                    <td class="td_table_info_ti">{{ $data_ti['plan'] }}</td>
+                    <td class="td_table_info_ti">{{ $data['plan'] }}</td>
 
 
                     <td class="td_table_info_ti" style="font-weight: bold">Frecuencia de Pago:</td>
-                    <td class="td_table_info_ti">{{ $data_ti['payment_frequency'] }}</td>
+                    <td class="td_table_info_ti">{{ $data['payment_frequency'] }}</td>
 
 
                     
@@ -219,7 +218,7 @@
 
 
                     <td class="td_table_info_ti" style="font-weight: bold">Tarifa Periodo:</td>
-                    <td class="td_table_info_ti">US$ {{ $data_ti['total_amount'] }}</td>
+                    <td class="td_table_info_ti">US$ {{ $data['total_amount'] }}</td>
 
 
 
@@ -257,32 +256,36 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>{{ strtoupper($data_ti['full_name_ti']) }}</td>
-                    <td>{{ $data_ti['nro_identificacion_ti'] }}</td>
-                    <td>{{ $data_ti['birth_date_ti'] }}</td>
-                    <td>TITULAR</td>
-                </tr>
-                @foreach ($afiliates as $affiliate)
-                <tr>
-                    <td>{{ $affiliate['full_name'] }}</td>
-                    <td>{{ $affiliate['nro_identificacion'] }}</td>
-                    <td>{{ $affiliate['birth_date'] }}</td>
-                    <td>{{ $affiliate['relationship'] }}</td>
-                </tr>
-                @endforeach
+                @if (count($afiliates) > 1)
+                    @foreach ($afiliates as $affiliate)
+                    <tr>
+                        <td>{{ $affiliate['full_name'] }}</td>
+                        <td>{{ $affiliate['nro_identificacion'] }}</td>
+                        <td>{{ $affiliate['birth_date'] }}</td>
+                        <td>{{ $affiliate['relationship'] }}</td>
+                    </tr>
+                    @endforeach
+                @endif
+                @if (count($afiliates) == 1)
+                    <tr>
+                        <td>{{ $afiliates[0]['full_name'] }}</td>
+                        <td>{{ $afiliates[0]['nro_identificacion'] }}</td>
+                        <td>{{ $afiliates[0]['birth_date'] }}</td>
+                        <td>{{ $afiliates[0]['relationship'] }}</td>
+                    </tr>
+                @endif
             </tbody>
         </table>
     </div>
 
     <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 5px">
-        <p style="text-align: center; margin-bottom: 5px; color: {{ $data_ti['colorTitle'] }}; font-weight: bold; font-size: 20px; text-transform: uppercase;">{{ $data_ti['titleBeneficios'] }}</p>
-        <img src="{{ public_path('storage/'.$data_ti['imageBeneficios']) }}" style="width: 100%;" alt="">
+        <p style="text-align: center; margin-bottom: 5px; color: {{ $data['colorTitle'] }}; font-weight: bold; font-size: 20px; text-transform: uppercase;">{{ $data['titleBeneficios'] }}</p>
+        <img src="{{ public_path('storage/'.$data['imageBeneficios']) }}" style="width: 100%;" alt="">
 
     </div>
 
 
-    @if($data_ti['plan'] == 'PLAN ESPECIAL')
+    @if($data['plan'] == 'PLAN ESPECIAL')
         <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 1px">
             <p style="text-align: justify; font-size: 10px; font-weight: bold">Exclusiones:<br>
                 Luego del análisis técnico y médico de la solicitud, queda excluido del beneficio de emergencias médicas por patologías listadas, toda ocurrencia relacionada y/o a consecuencia de las preexistencias declaradas o no.

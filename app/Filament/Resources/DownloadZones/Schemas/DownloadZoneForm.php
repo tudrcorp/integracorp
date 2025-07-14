@@ -31,7 +31,6 @@ class DownloadZoneForm
                             ->searchable()
                             ->preload()
                             ->required(),
-                        
                         TextInput::make('description')
                             ->label('Descripcion')
                             ->required()

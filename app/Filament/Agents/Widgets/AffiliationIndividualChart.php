@@ -64,27 +64,30 @@ class AffiliationIndividualChart extends ChartWidget
                     'label' => 'Afiliaciones Individuales',
                     'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
                     'backgroundColor' => [
-                        '#280120',
-                        '#450063',
-                        '#ffcd00',
-                        '#27e9b5',
-                        '#3b5265',
-                        '#df2531',
-                        '#0033ff',
-                        '#522a6f',
-                        '#222023',
-                        '#ff8a02',
-                        '#09080d',
-                        '#fe6807',
-                        '#0033ff',
-                        '#522a6f',
-                        '#222023',
-                        '#ff8a02',
-                        '#450063',
-                        '#ffcd00',
-                        '#27e9b5',
-                        '#3b5265',
-                        '#ff1800',
+                        '#FFE6E6', // Rosado muy claro
+                        '#E6FFF0', // Verde menta claro
+                        '#E6F5FF', // Azul hielo
+                        '#FFF5E6', // Amarillo suave
+                        '#F0DCFF', // Lavanda claro
+                        '#FAFAEA', // Beige claro
+                        '#DCF0DC', // Verde claro
+                        '#FFE6F0', // Magenta pastel
+                        '#EBEBEB', // Gris claro
+                        '#B8E6FF', // Celeste claro
+                        '#FFD2D2', // Rosado cálido
+                        '#D2FFD2', // Verde pálido
+                        '#FFFAEA', // Amarillo dorado claro
+                        '#D2D2FF', // Azul lavanda
+                        '#FFDCDC', // Rosado suave
+                        '#DCFFFF', // Cyan claro
+                        '#F5DCDC', // Coral suave
+                        '#DCE0FF', // Azul claro
+                        '#FFE7DC', // Naranja melocotón
+                        '#DCDCDC', // Gris plata
+                        '#E6FFE6', // Verde agua
+                        '#FFE6FF', // Lila claro
+                        '#F0F0FF', // Azul niebla
+                        '#FFF0F0', // Rosado nieve
                     ],
                     'borderColor' => false,
                     'fill' => true,

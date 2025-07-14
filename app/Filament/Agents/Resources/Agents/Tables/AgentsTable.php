@@ -31,8 +31,8 @@ class AgentsTable
     {
         return $table
             ->query(Agent::query()->where('owner_agent', Auth::user()->agent_id))
-            ->heading('SUB-AGENTES')
-            ->description('Tabla que contiene la informacion general de los subagentes')
+            // ->heading('SUBAGENTES')
+            ->description('Tabla que contiene la información general de los subagentes')
             ->columns([
 
                 TextColumn::make('id')

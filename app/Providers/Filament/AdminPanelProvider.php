@@ -79,10 +79,10 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label('TDEC')
-                    ->icon('heroicon-s-shopping-bag'),
+                    ->icon('fontisto-doctor'),
                 NavigationGroup::make()
                     ->label('TDEV')
-                    ->icon('heroicon-m-globe-asia-australia'),
+                    ->icon('fontisto-plane'),
                 NavigationGroup::make()
                     ->label('SOLICITUDES')
                     ->icon('heroicon-m-hand-raised'),

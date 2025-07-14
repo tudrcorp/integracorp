@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\IndividualQuotes;
 
+use UnitEnum;
 use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
@@ -15,9 +16,8 @@ use App\Filament\Resources\IndividualQuotes\Pages\CreateIndividualQuote;
 use App\Filament\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
 use App\Filament\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
 use App\Filament\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
-use App\Filament\Resources\IndividualQuotes\RelationManagers\StatusLogsRelationManager;
+use App\Filament\Resources\IndividualQuotes\RelationManagers\BitacorasRelationManager;
 use App\Filament\Resources\IndividualQuotes\RelationManagers\DetailsQuoteRelationManager;
-use UnitEnum;
 
 class IndividualQuoteResource extends Resource
 {
@@ -48,7 +48,7 @@ class IndividualQuoteResource extends Resource
     {
         return [
             DetailsQuoteRelationManager::class,
-            StatusLogsRelationManager::class
+            BitacorasRelationManager::class
             
         ];
     }

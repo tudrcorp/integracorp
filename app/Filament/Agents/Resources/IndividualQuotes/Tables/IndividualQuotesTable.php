@@ -3,6 +3,7 @@
 namespace App\Filament\Agents\Resources\IndividualQuotes\Tables;
 
 use Carbon\Carbon;
+use App\Models\Bitacora;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
@@ -17,6 +18,7 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -144,8 +146,7 @@ class IndividualQuotesTable
                         ->icon('heroicon-m-power')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('APROBACIÓN DIRECTA PARA PR-AFILIACIÓN')
-                        ->modalWidth(Width::FiveExtraLarge)
+                        ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
                         ->action(function (IndividualQuote $record) {
 
                             try {
@@ -155,6 +156,9 @@ class IndividualQuotesTable
                                  */
                                 $record->status = 'APROBADA';
                                 $record->save();
+                                
+                                /**Creamos una variable de session con la cantidad dde personas en la cotizacion */
+                                session()->put('persons', $record->detailsQuote()->first()->total_persons);
 
                                 Notification::make()
                                     ->title('COTIZACION INDIVIDUAL APROBADA')
@@ -389,6 +393,46 @@ class IndividualQuotesTable
                                  * LOG
                                  */
                                 LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                            } catch (\Throwable $th) {
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
+                    Action::make('add_observations')
+                        ->label('Agregar Observaciones')
+                        ->icon('heroicon-s-hand-raised')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->requiresConfirmation()
+                        ->modalHeading('OBSERVACIONES DEL AGENTE')
+                        ->modalIcon('heroicon-s-hand-raised')
+                        ->form([
+                            Textarea::make('description')
+                                ->label('Observaciones')
+                                ->rows(5)
+                        ])
+                        ->action(function (IndividualQuote $record, array $data) {
+
+                            try {
+
+                                $bitacora = new Bitacora();
+                                $bitacora->individual_quote()->associate($record);
+                                $bitacora->user()->associate(Auth::user());
+                                $bitacora->details = $data['description'];
+                                $bitacora->save();
+
+                                Notification::make()
+                                    ->body('Las observaciones fueron registradas exitosamente.')
+                                    ->success()
+                                    ->send();
+                                    
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()

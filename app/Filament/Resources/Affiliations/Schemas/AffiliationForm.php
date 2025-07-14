@@ -522,20 +522,6 @@ class AffiliationForm
                 ->schema([
                     Repeater::make('affiliates')
                         ->label('afiliados')
-                        // ->headers([
-                        //     Header::make('Nombre completo'),
-                        //     Header::make('C.I.'),
-                        //     Header::make('Sexo'),
-                        //     Header::make('Fecha de nacimiento'),
-                        //     // Header::make('Estatura'),
-                        //     // Header::make('Peso'),
-                        //     Header::make('Parentesco'),
-                        // ])
-                        // ->renderHeader(false)
-                        // ->showLabels()
-                        // ->stackAt(MaxWidth::ExtraSmall)
-                        // ->reorderable(false)
-                        // ->relationship()
                         ->schema([
                             TextInput::make('full_name')
                                 ->label('Nombre completo')
@@ -551,12 +537,6 @@ class AffiliationForm
                                 ]),
                             DatePicker::make('birth_date')
                                 ->format('d-m-Y'),
-                            // TextInput::make('stature')
-                            //     ->label('Nro. de personas')
-                            //     ->numeric(),
-                            // TextInput::make('weight')
-                            //     ->label('Nro. de personas')
-                            //     ->numeric(),
                             Select::make('relationship')
                                 ->label('Parentesco')
                                 ->options([

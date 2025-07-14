@@ -139,22 +139,6 @@ class CreateIndividualQuote extends CreateRecord
             //elimino la variable de sesion para evitar sobrecargar
             session()->forget('details_quote');
 
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            $recipient = User::where('is_admin', 1)->get();
-            foreach ($recipient as $user) {
-                $recipient_for_user = User::find($user->id);
-                Notification::make()
-                    ->title('NUEVA COTIZACION INDIVUDUAL')
-                    ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('success')
-                    ->success()
-                    ->sendToDatabase($recipient_for_user);
-            }
 
             /**
              * LOgica para el envio de correo con los detalles de la cotizacion
@@ -347,28 +331,30 @@ class CreateIndividualQuote extends CreateRecord
                 $this->getRecord()->sendPropuestaEconomicaMultiple($collect_final);
             }
 
-
-            // $email = $this->data['email'];
-
-            // $send_email = NotificationController::sendEmail_propuesta_economica($email, $record, $detalle);
-            // Log::info($send_email);
-
-            Notification::make()
-                ->title('NOTIFICACION')
-                ->body('El documento fue generado de forma exitosa.')
-                ->icon('heroicon-m-tag')
-                ->iconColor('success')
-                ->success()
-                ->actions([
-                    Action::make('view')
-                        ->label('Ver cotizacion individual')
-                        ->button()
-                        ->url(IndividualQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                ])
-                ->sendToDatabase($recipient_for_user);
+            /**
+             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+             * ----------------------------------------------------------------------------------------------------
+             * $record [Data de la cotizacion guardada en la base de dastos]
+             */
+            $recipient = User::where('is_admin', 1)->get();
+            foreach ($recipient as $user) {
+                $recipient_for_user = User::find($user->id);
+                Notification::make()
+                    ->title('NUEVA COTIZACION INDIVUDUAL')
+                    ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
+                    ->icon('heroicon-m-tag')
+                    ->iconColor('success')
+                    ->success()
+                    ->actions([
+                        Action::make('view')
+                            ->label('Ver cotizacion individual')
+                            ->button()
+                            ->url(IndividualQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+                    ])
+                    ->sendToDatabase($recipient_for_user);
+            }
                 
         } catch (\Throwable $th) {
-            dd($th);
             Notification::make()
                 ->title('ERROR')
                 ->body($th->getMessage())

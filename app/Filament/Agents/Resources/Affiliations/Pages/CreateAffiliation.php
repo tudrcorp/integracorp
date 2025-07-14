@@ -3,9 +3,12 @@
 namespace App\Filament\Agents\Resources\Affiliations\Pages;
 
 use App\Models\User;
+use App\Models\Affiliate;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
+use Illuminate\Support\Facades\DB;
 use App\Models\DetailIndividualQuote;
+use App\Http\Controllers\PdfController;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Agents\Resources\Affiliations\AffiliationResource;
@@ -14,29 +17,26 @@ class CreateAffiliation extends CreateRecord
 {
     protected static string $resource = AffiliationResource::class;
 
-    protected static ?string $title = 'PREAFILIACION INDIVIDUAL';
+    protected static ?string $title = 'Pre-afiliación';
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('regresar')
+                ->label('Regresar')
+                ->button()
+                ->icon('heroicon-s-arrow-left')
+                ->color('warning')
+                ->url(AffiliationResource::getUrl('index')),
+        ];
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
 
-        // dd($data['affiliates']);
-        session()->put('affiliates', $data['affiliates']);
+        session()->put('affiliates', isset($data['affiliates']) ? $data['affiliates'] : []);
 
-        if ($data['feedback'] == 1) {
-
-            $data['full_name_ti'] = $data['full_name_con'];
-            $data['nro_identificacion_ti'] = $data['nro_identificacion_con'];
-            $data['sex_ti'] = $data['sex_con'];
-            $data['birth_date_ti'] = $data['birth_date_con'];
-            $data['adress_ti'] = $data['adress_con'];
-            $data['city_id_ti'] = $data['city_id_con'];
-            $data['state_id_ti'] = $data['state_id_con'];
-            $data['country_id_ti'] = $data['country_id_con'];
-            $data['region_ti'] = $data['region_con'];
-            $data['phone_ti'] = $data['phone_con'];
-            $data['full_name_ti'] = $data['full_name_con'];
-            $data['email_ti'] = $data['email_con'];
-        }
+        $data['feedback'] = $data['feedback'] == 1 ? 1 : 0;
 
         return $data;
     }
@@ -45,100 +45,212 @@ class CreateAffiliation extends CreateRecord
     {
         try {
 
-            $record = $this->getRecord();
+                $record = $this->getRecord();
+                
+                /** ? Preguntamos si e l contratante es el mismo titular de la cotizacion 
+                 * $feedback == 0 significa que el contratante no es el titular, y debemos agregar afiliados
+                 * $feedback == 1 significa que el contratante es el titular, y debemos afiliar al contratante
+                 * -----------------------------------------------------------------------------------------------------------------------------
+                */
+                // dd($record->feedback);
+                if($record->feedback == 0)
+                {
+                    // dd($record);
+                    /**
+                     * Recupero los detalles de los afiliados
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $affiliates = session()->get('affiliates');
+                    // dd($affiliates);
+                    // dd(count($affiliates), $record);
 
-            /**
-             * Recupero los detalles de los afiliados
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $affiliates = session()->get('affiliates');
+                    /**
+                     * Validamos si el numeros de personas en la cotizacion es el mismo numero de personas
+                     * afiliadas en el formulario
+                     * Si el numero es diferente mostramos actualizamos la cotizacion para que el cliente pueda volver a pre-afiliarse
+                     * -----------------------------------------------------------------------------------------------------------------------------
+                     */
 
-
-            /**
-             * For para cargar la data de los afiliados en la tabla de affiliates
-             * ----------------------------------------------------------------------------------------------------
-             */
-            for ($i = 0; $i < count($affiliates); $i++) {
-                $record->affiliates()->create([
-                    'full_name' => $affiliates[$i]['full_name'],
-                    'nro_identificacion' => $affiliates[$i]['nro_identificacion'],
-                    'sex' => $affiliates[$i]['sex'],
-                    'birth_date' => $affiliates[$i]['birth_date'],
-                    'relationship' => $affiliates[$i]['relationship'],
-                ]);
-            }
-
-            /**
-             * Actualizamos el estatus de la cotizacion a EJECUTADA
-             * para evitar que pueda volverse a pre-afiliarse
-             * 
-             * Esta actualizacion se realiza en ambas tablas
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $quote = IndividualQuote::select('status', 'id')->where('id', $record->individual_quote_id)->firstOrFail();
-            $quote->status = 'EJECUTADA';
-            $quote->save();
-
-            $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
+                    /** NUmero de personas en la cotizacion */
+                    $persons = session()->get('persons');
 
 
-            /**
-             * Actualizacion de la cotizacion
-             * Se cambia el estatus de la cobertura de la cotizacion que selecciono el cliente
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
-                ->where('individual_quote_id', $record->individual_quote_id)
-                ->where('coverage_id', $record->coverage_id)
-                ->firstOrFail();
-            $quote_detail->status = 'APROBADA';
-            $quote_detail->save();
+                    /**Actualizo el calculo de la cotizacion */
+                    if (count($affiliates) != $persons) {
+                        $quote = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)->get();
+                        foreach ($quote as $item) {
+                            $item->total_persons        = count($affiliates);
+                            $item->subtotal_anual       = count($affiliates) * $item->fee;
+                            $item->subtotal_quarterly   = $item->subtotal_anual / 4;
+                            $item->subtotal_biannual    = $item->subtotal_anual / 2;
+                            $item->subtotal_monthly     = $item->subtotal_anual / 12;
+                            $item->save();
+                        }
+
+                        /** Actualizo el PDF de la cotizacion */
+                        $individual_quote = IndividualQuote::where('id', $record->individual_quote_id)->first();
+                        $update_pdf = PdfController::generatePdfIndividualQuote($individual_quote);
+                    }
+
+                    
+                    /**----------------------------------------------------------------------------------------------------------------------------- */
 
 
-            /**
-             * Se envia el certificado del afiliado
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $this->getRecord()->sendCertificate($record, $affiliates);
+                    /**
+                     * For para cargar la data de los afiliados en la tabla de affiliates
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    for ($i = 0; $i < count($affiliates); $i++) {
+                        $record->affiliates()->create([
+                            'full_name' => $affiliates[$i]['full_name'],
+                            'nro_identificacion' => $affiliates[$i]['nro_identificacion'],
+                            'sex' => $affiliates[$i]['sex'],
+                            'birth_date' => $affiliates[$i]['birth_date'],
+                            'relationship' => $affiliates[$i]['relationship'],
+                        ]);
+                    }
+
+                    /**
+                     * Actualizamos el estatus de la cotizacion a EJECUTADA
+                     * para evitar que pueda volverse a pre-afiliarse
+                     * 
+                     * Esta actualizacion se realiza en ambas tablas
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $quote = IndividualQuote::select('status', 'id')->where('id', $record->individual_quote_id)->firstOrFail();
+                    $quote->status = 'EJECUTADA';
+                    $quote->save();
+
+                    $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
 
 
-            /**
-             * Elimino la variable de sesion para evitar sobrecargar
-             * ----------------------------------------------------------------------------------------------------
-             */
-            session()->forget('affiliates');
-
-            /**
-             * Actualizo el numero de afiliados (poblacion)
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $record->family_members = $record->affiliates()->count();
-            $record->save();
-
+                    /**
+                     * Actualizacion de la cotizacion
+                     * Se cambia el estatus de la cobertura de la cotizacion que selecciono el cliente
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
+                        ->where('individual_quote_id', $record->individual_quote_id)
+                        ->where('coverage_id', $record->coverage_id)
+                        ->firstOrFail();
+                    $quote_detail->status = 'APROBADA';
+                    $quote_detail->save();
 
 
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            $recipient = User::where('is_admin', 1)->get();
-            foreach ($recipient as $user) {
-                $recipient_for_user = User::find($user->id);
-                Notification::make()
-                    ->title('PRE-AFILIACION INDIVIDUAL CREADA')
-                    ->body('Se ha registrado una nueva pre-afiliacion individual de forma exitosa. Codigo: ' . $record->code)
-                    ->icon('heroicon-s-user-group')
-                    ->iconColor('success')
-                    ->success()
-                    ->actions([
-                        Action::make('view')
-                            ->label('Ver detalle de pre-afiliacion')
-                            ->button()
-                            ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                    ])
-                    ->sendToDatabase($recipient_for_user);
-            }
+                    /**
+                     * Se envia el certificado del afiliado
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $data_titular = Affiliate::where('affiliation_id', $record->id)->where('relationship', 'TITULAR')->firstOrFail()->toArray();
+                    
+                    $this->getRecord()->sendCertificate($record, $data_titular, $affiliates);
+
+
+                    /** 
+                     * Elimino las variable de sesion para evitar sobrecargar
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    session()->forget('affiliates');
+                    session()->forget('persons');
+
+                    /**
+                     * Actualizo el numero de afiliados (poblacion)
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $record->family_members = $record->affiliates()->count();
+                    $record->save();
+
+
+
+                    /**
+                     * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+                     * ----------------------------------------------------------------------------------------------------
+                     * $record [Data de la cotizacion guardada en la base de dastos]
+                     */
+                    $recipient = User::where('is_admin', 1)->get();
+                    foreach ($recipient as $user) {
+                        $recipient_for_user = User::find($user->id);
+                        Notification::make()
+                            ->title('PRE-AFILIACION INDIVIDUAL CREADA')
+                            ->body('Se ha registrado una nueva pre-afiliacion individual de forma exitosa. Codigo: ' . $record->code)
+                            ->icon('heroicon-s-user-group')
+                            ->iconColor('success')
+                            ->success()
+                            ->actions([
+                                Action::make('view')
+                                    ->label('Ver detalle de pre-afiliacion')
+                                    ->button()
+                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+                            ])
+                            ->sendToDatabase($recipient_for_user);
+                    }
+            
+                }
+
+                /**----------------------------------------------------------------------------------------------------------------------------- */
+
+                if($record->feedback == 1){
+                    /** 1- Registro los datos de contratante como los datos del afiliado ya que la cotizacion es para el mismo*/
+                    $record->affiliates()->create([
+                        'full_name'             => $record->full_name_con,
+                        'nro_identificacion'    => $record->nro_identificacion_con,
+                        'sex'                   => $record->sex_con,
+                        'birth_date'            => $record->birth_date_con,
+                        'relationship'          => 'TITULAR',
+                    ]);
+
+                    /**
+                     * Actualizamos el estatus de la cotizacion a EJECUTADA
+                     * para evitar que pueda volverse a pre-afiliarse
+                     * 
+                     * Esta actualizacion se realiza en ambas tablas
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $quote = IndividualQuote::select('status', 'id')->where('id', $record->individual_quote_id)->firstOrFail();
+                    $quote->status = 'EJECUTADA';
+                    $quote->save();
+
+                    $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
+
+
+                    /**
+                     * Actualizacion de la cotizacion
+                     * Se cambia el estatus de la cobertura de la cotizacion que selecciono el cliente
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
+                        ->where('individual_quote_id', $record->individual_quote_id)
+                        ->where('coverage_id', $record->coverage_id)
+                        ->firstOrFail();
+                    $quote_detail->status = 'APROBADA';
+                    $quote_detail->save();
+                    
+
+                    /**
+                     * Elimino las variable de sesion para evitar sobrecargar
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    session()->forget('persons');
+
+
+                    /**
+                     * Se envia el certificado del afiliado
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    // $data_titular = Affiliate::where('affiliation_id', $record->id)->where('relationship', 'TITULAR')->firstOrFail()->toArray();
+                    $affiliate = Affiliate::where('affiliation_id', $record->id)->get()->toArray();
+                    // dd($data_titular, $affiliate);
+                    $this->getRecord()->sendCertificateOnlyHolder($record, $affiliate);
+
+                    /**
+                     * Actualizo el numero de afiliados (poblacion)
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $record->family_members = 1;
+                    $record->save();
+                    
+                }
+                
         } catch (\Throwable $th) {
             dd($th);
         }

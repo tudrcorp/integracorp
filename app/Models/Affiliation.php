@@ -8,6 +8,7 @@ use App\Jobs\SendTarjetaAfiliado;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Model;
 use App\Jobs\SendNotificacionAfiliacionIndividual;
+use Illuminate\Support\Facades\Auth;
 
 class Affiliation extends Model
 {
@@ -83,7 +84,8 @@ class Affiliation extends Model
         'date_payment_final_ils',
         'document_ils',
         'total_amount',
-        'observations'
+        'observations',
+        'feedback',
         
     ];
 
@@ -132,57 +134,63 @@ class Affiliation extends Model
         return $this->hasMany(StatusLogAffiliation::class);
     }
 
-    public function sendCertificate($titular, $afiliates)
+    public function sendCertificate($record, $titular, $afiliates)
     {
-        // dd($titular);
-        $name_pdf = 'CER-'.$titular['code'].'.pdf';
+        try {
+
+            $data = $record->toArray();
+
+            $name_pdf = 'CER-' . $record->code . '.pdf';
+
+            if (isset($record->agent)) {
+                $name_agent = $record->agent->name;
+            } else {
+                $name_agent = $record->agency->name_corporative;
+            }
+
+            $plan = $record->plan->description;
+
+            if (isset($record->coverage_id)) {
+                $coverage   = $record->coverage->price;
+            } else {
+                $coverage   = 0;
+            }
+
+            /**
+             * Agregamos la informacion al array principal que viaja a la vista del certificado
+             * ----------------------------------------------------------------------------------------------------
+             */
+            $data['name_agent']  = $name_agent;
+            $data['plan']        = $plan;
+            $data['coverage']    = $coverage;
+
+            if ($plan == 'PLAN INICIAL') {
+                $colorTitle      = '#305B93';
+                $titleBeneficios = 'beneficios del plan inicial';
+                $imageBeneficios = 'beneficiosInicial.png';
+            }
+            if ($plan == 'PLAN IDEAL') {
+                $colorTitle      = '#052F60';
+                $titleBeneficios = 'beneficios del plan ideal';
+                $imageBeneficios = 'beneficiosIdeal.png';
+            }
+            if ($plan == 'PLAN ESPECIAL') {
+                $colorTitle      = '#529471';
+                $titleBeneficios = 'beneficios del plan emergencias medicas';
+                $imageBeneficios = 'beneficiosEspecial.png';
+            }
+
+            $data['colorTitle']      = $colorTitle;
+            $data['titleBeneficios'] = $titleBeneficios;
+            $data['imageBeneficios'] = $imageBeneficios;
+
+            SendNotificacionAfiliacionIndividual::dispatch($titular['full_name'], Auth::user()->email, $name_pdf, $data, $afiliates);
+            //code...
+        } catch (\Throwable $th) {
+            dd($th);
+            //throw $th;
+        }
         
-        $data_ti = $titular->toArray();
-        
-        if(isset($titular->agent)) {
-            $name_agent = $titular->agent->name;
-            
-        }else{
-            $name_agent = $titular->agency->name_corporative;
-            
-        }
-
-        $plan = $titular->plan->description;
-        if(isset($titular->coverage_id)) {
-            $coverage   = $titular->coverage->price;
-        }else{
-            $coverage   = 0;
-        }
-
-        /**
-         * Agregamos la informacion al array principal que viaja a la vista del certificado
-         * ----------------------------------------------------------------------------------------------------
-         */
-        $data_ti['name_agent']  = $name_agent;
-        $data_ti['plan']        = $plan;
-        $data_ti['coverage']    = $coverage;
-
-        if ($plan == 'PLAN INICIAL') {
-            $colorTitle      = '#305B93';
-            $titleBeneficios = 'beneficios del plan inicial';
-            $imageBeneficios = 'beneficiosInicial.png';
-        }
-        if ($plan == 'PLAN IDEAL') {
-            $colorTitle      = '#052F60';
-            $titleBeneficios = 'beneficios del plan ideal';
-            $imageBeneficios = 'beneficiosIdeal.png';
-        }
-        if ($plan == 'PLAN ESPECIAL') {
-            $colorTitle      = '#529471';
-            $titleBeneficios = 'beneficios del plan emergencias medicas';
-            $imageBeneficios = 'beneficiosEspecial.png';
-        }
-
-        $data_ti['colorTitle']      = $colorTitle;
-        $data_ti['titleBeneficios'] = $titleBeneficios;
-        $data_ti['imageBeneficios'] = $imageBeneficios;
-        
-        SendNotificacionAfiliacionIndividual::dispatch($titular['full_name_ti'], $titular['email_ti'], $name_pdf, $data_ti, $afiliates);
 
     }
 
@@ -197,5 +205,63 @@ class Affiliation extends Model
          * JOB
          */
         SendTarjetaAfiliado::dispatch($details);
+    }
+
+    public function sendCertificateOnlyHolder($record, $afiliates)
+    {
+        try {
+
+            $data = $record->toArray();
+
+            $name_pdf = 'CER-' . $record->code . '.pdf';
+
+            if (isset($record->agent)) {
+                $name_agent = $record->agent->name;
+            } else {
+                $name_agent = $record->agency->name_corporative;
+            }
+
+            $plan = $record->plan->description;
+
+            if (isset($record->coverage_id)) {
+                $coverage   = $record->coverage->price;
+            } else {
+                $coverage   = 0;
+            }
+
+            /**
+             * Agregamos la informacion al array principal que viaja a la vista del certificado
+             * ----------------------------------------------------------------------------------------------------
+             */
+            $data['name_agent']  = $name_agent;
+            $data['plan']        = $plan;
+            $data['coverage']    = $coverage;
+
+            if ($plan == 'PLAN INICIAL') {
+                $colorTitle      = '#305B93';
+                $titleBeneficios = 'beneficios del plan inicial';
+                $imageBeneficios = 'beneficiosInicial.png';
+            }
+            if ($plan == 'PLAN IDEAL') {
+                $colorTitle      = '#052F60';
+                $titleBeneficios = 'beneficios del plan ideal';
+                $imageBeneficios = 'beneficiosIdeal.png';
+            }
+            if ($plan == 'PLAN ESPECIAL') {
+                $colorTitle      = '#529471';
+                $titleBeneficios = 'beneficios del plan emergencias medicas';
+                $imageBeneficios = 'beneficiosEspecial.png';
+            }
+
+            $data['colorTitle']      = $colorTitle;
+            $data['titleBeneficios'] = $titleBeneficios;
+            $data['imageBeneficios'] = $imageBeneficios;
+            // dd(count($afiliates), $afiliates);
+            SendNotificacionAfiliacionIndividual::dispatch($afiliates[0]['full_name'], Auth::user()->email, $name_pdf, $data, $afiliates);
+            //code...
+        } catch (\Throwable $th) {
+            dd($th);
+            //throw $th;
+        }
     }
 }

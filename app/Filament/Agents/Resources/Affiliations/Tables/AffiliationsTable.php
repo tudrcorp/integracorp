@@ -3,6 +3,7 @@
 namespace App\Filament\Agents\Resources\Affiliations\Tables;
 
 use Carbon\Carbon;
+use App\Models\Plan;
 use App\Models\User;
 use Filament\Tables\Table;
 use App\Models\Affiliation;
@@ -107,45 +108,45 @@ class AffiliationsTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email_con')
                     ->label('Email contratante')
-
                     ->searchable(),
                 TextColumn::make('phone_con')
                     ->label('Telefono contratante')
-
                     ->searchable(),
-                TextColumn::make('full_name_ti')
-                    ->label('Nombre titular')
-                    ->searchable(),
-                TextColumn::make('nro_identificacion_ti')
-                    ->label('CI. titular')
-                    ->searchable(),
-                TextColumn::make('sex_ti')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('birth_date_ti')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('adress_ti')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('city_id_ti')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('state_id_ti')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('country_id_ti')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('region_ti')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('phone_ti')
-                    ->label('Telefono titular')
-                    ->searchable(),
-                TextColumn::make('email_ti')
-                    ->label('Email titular')
-                    ->searchable(),
+                    
+                // TextColumn::make('full_name_ti')
+                //     ->label('Nombre titular')
+                //     ->searchable(),
+                // TextColumn::make('nro_identificacion_ti')
+                //     ->label('CI. titular')
+                //     ->searchable(),
+                // TextColumn::make('sex_ti')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('birth_date_ti')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('adress_ti')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('city_id_ti')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('state_id_ti')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('country_id_ti')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('region_ti')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('phone_ti')
+                //     ->label('Telefono titular')
+                //     ->searchable(),
+                // TextColumn::make('email_ti')
+                //     ->label('Email titular')
+                //     ->searchable(),
+                    
                 IconColumn::make('cuestion_1')
                     ->label('Prgunta 1')
                     ->boolean()
@@ -280,8 +281,25 @@ class AffiliationsTable
                                 ->schema([
                                     Grid::make()->schema([
                                         Select::make('plan_id')
-                                            ->label('Plan(es) cotizados')
+                                            ->label('Plan afiliado')
                                             ->live()
+                                            ->default(function (Affiliation $record) {
+                                                $plan_id = $record->plan_id;
+                                                if (isset($plan_id)) {
+                                                    return $plan_id;
+                                                }
+                                                return null;
+                                            })
+                                            ->disabled(function (Affiliation $record) {
+                                                $plan_id = $record->plan_id;
+                                                if (isset($plan_id) && $plan_id != null) {
+                                                    return true;
+                                                }
+                                                return false;
+                                            })
+                                            ->dehydrated()
+                                            ->searchable()
+                                            ->preload()
                                             ->options(function (Affiliation $record) {
                                                 $plans = DetailIndividualQuote::join('plans', 'detail_individual_quotes.plan_id', '=', 'plans.id')
                                                     ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
@@ -295,17 +313,28 @@ class AffiliationsTable
                                                 // Log::info($record);
 
                                             })
-                                            ->searchable()
-                                            ->live()
                                             ->prefixIcon('heroicon-s-globe-europe-africa')
                                             ->required()
                                             ->validationMessages([
                                                 'required'  => 'Campo Requerido',
-                                            ])
-                                            ->preload(),
+                                            ]),
                                         Select::make('coverage_id')
-                                            ->label('Cobertura(s) cotizadas')
+                                            ->label('Cobertura afiliada')
                                             ->live()
+                                            ->default(function (Affiliation $record) {
+                                                $coverage_id = $record->coverage_id;
+                                                if (isset($coverage_id)) {
+                                                    return $coverage_id;
+                                                }
+                                                return null;
+                                            })
+                                            ->disabled(function (Affiliation $record) {
+                                                $coverage_id = $record->coverage_id;
+                                                if (isset($coverage_id) && $coverage_id != null) {
+                                                    return true;
+                                                }
+                                                return false;
+                                            })
                                             ->options(function (Affiliation $record, Get $get) {
                                                 $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
                                                     ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
@@ -325,6 +354,20 @@ class AffiliationsTable
                                         Select::make('payment_frequency')
                                             ->label('Frecuencia de pago')
                                             ->live()
+                                            ->default(function (Affiliation $record) {
+                                                $payment_frequency = $record->payment_frequency;
+                                                if (isset($payment_frequency)) {
+                                                    return $payment_frequency;
+                                                }
+                                                return null;
+                                            })
+                                            ->disabled(function (Affiliation $record) {
+                                                $payment_frequency = $record->payment_frequency;
+                                                if (isset($payment_frequency) && $payment_frequency != null) {
+                                                    return true;
+                                                }
+                                                return false;
+                                            })
                                             ->options([
                                                 'ANUAL'      => 'ANUAL',
                                                 'TRIMESTRAL' => 'TRIMESTRAL',
@@ -388,6 +431,27 @@ class AffiliationsTable
                                             ->label('Total a pagar')
                                             // ->helperText('Punto(.) para separar decimales')
                                             ->prefix('US$')
+                                            ->default(function ($state, $set, Get $get, Affiliation $record) {
+                                                $amount = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)
+                                                ->where('plan_id', $record->plan_id)
+                                                ->where('coverage_id', $record->coverage_id)
+                                                ->first();
+                                            
+                                                if($record->payment_frequency == 'ANUAL'){
+                                                    return $amount->subtotal_anual;
+                                                }
+
+                                                if($record->payment_frequency == 'TRIMESTRAL'){
+                                                    return $amount->subtotal_quarterly;
+                                                }
+
+                                                if($record->payment_frequency == 'SEMESTRAL'){
+                                                    return $amount->subtotal_biannual;
+                                                }
+
+                                                return null;
+                                                
+                                            })
                                             ->numeric()
                                             ->live(),
 
@@ -451,42 +515,16 @@ class AffiliationsTable
                                             FileUpload::make('document_usd')
                                                 ->label('Comprobante(US$)')
                                                 ->uploadingMessage('Cargando...')
-                                                ->image()
-                                                ->imageEditor()
-                                                ->required()
-                                                ->imageEditorAspectRatios([
-                                                    '16:9',
-                                                    '4:3',
-                                                    '1:1',
-                                                ]),
+                                                ->required(),
                                         ])
                                     ])->hidden(function (Get $get) {
                                         if ($get('payment_method') == 'ZELLE') {
                                             return false;
                                         }
                                         return true;
-                                    })->columnSpan(2),
+                                    })->columnSpanFull(),
 
                                     /** PAGO EN DOLARES EFECTIVO */
-                                    Grid::make(1)->schema([
-                                        FileUpload::make('document_usd')
-                                            ->label('Comprobante(US$)')
-                                            ->disk('public')
-                                            ->uploadingMessage('Cargando...')
-                                            ->image()
-                                            ->imageEditor()
-                                            ->required()
-                                            ->imageEditorAspectRatios([
-                                                '16:9',
-                                                '4:3',
-                                                '1:1',
-                                            ]),
-                                    ])->hidden(function (Get $get) {
-                                        if ($get('payment_method') == 'EFECTIVO US$') {
-                                            return false;
-                                        }
-                                        return true;
-                                    }),
 
                                     /* PAGO EN BOLIVARES */
                                     Grid::make(2)->schema([
@@ -542,14 +580,7 @@ class AffiliationsTable
                                                 ->label('Comprobante(VES)')
                                                 ->disk('public')
                                                 ->uploadingMessage('Cargando...')
-                                                ->image()
-                                                ->imageEditor()
                                                 ->required()
-                                                ->imageEditorAspectRatios([
-                                                    '16:9',
-                                                    '4:3',
-                                                    '1:1',
-                                                ]),
                                         ])
 
                                     ])->hidden(function (Get $get) {
@@ -557,7 +588,7 @@ class AffiliationsTable
                                             return false;
                                         }
                                         return true;
-                                    }),
+                                    })->columnSpanFull(),
 
                                     /** PAGO MULTIPLE */
                                     Grid::make(2)->schema([
@@ -674,27 +705,13 @@ class AffiliationsTable
                                         FileUpload::make('document_usd')
                                             ->label('Comprobante(US$)')
                                             ->disk('public')
-                                            ->uploadingMessage('Cargando...')
-                                            ->image()
-                                            ->imageEditor()
-                                            ->imageEditorAspectRatios([
-                                                '16:9',
-                                                '4:3',
-                                                '1:1',
-                                            ]),
+                                            ->uploadingMessage('Cargando...'),
 
                                         FileUpload::make('document_ves')
                                             ->label('Comprobante(VES)')
                                             ->disk('public')
                                             ->uploadingMessage('Cargando...')
-                                            ->image()
-                                            ->imageEditor()
                                             ->required()
-                                            ->imageEditorAspectRatios([
-                                                '16:9',
-                                                '4:3',
-                                                '1:1',
-                                            ]),
                                     ])
                                     ->columnSpanFull()
                                     ->hidden(function (Get $get) {
