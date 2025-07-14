@@ -85,7 +85,7 @@
         <div style="position: absolute; top: 250px; left: 85px;">
             <h1>Propuesta económica</h1>
             <div class="caja">
-                <p style="position: absolute; top: 0; left: 5; font-size: 16px; font-weight: bold; font-color: #000000; margin-top: 7px;">Sr(a): {{ $name }}</p>
+                <p style="position: absolute; top: 0; left: 5; font-size: 16px; font-weight: bold; font-color: #ffffff; margin-top: 7px;">Sr(a): {{ $name }}</p>
             </div>
         </div>
 
