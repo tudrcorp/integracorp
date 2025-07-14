@@ -197,7 +197,7 @@
             <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">
                 <tbody>
                     <tr>
-                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 115px; background-color: #082f62">TARIFA GRUPAL ANUAL</td>
+                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 88px; background-color: #082f62">TARIFA GRUPAL ANUAL</td>
 
                         @foreach ($totalColumns as $total)
                         <td style="text-align: center; font-weight: bold; font-size: 10px;">
@@ -206,7 +206,7 @@
                         @endforeach
                     </tr>
                     <tr>
-                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 115px; background-color: #082f62">TARIFA GRUPAL SEMESTRAL</td>
+                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 88px; background-color: #082f62">TARIFA GRUPAL SEMESTRAL</td>
 
 
                         @foreach ($totalColumns as $total)
@@ -216,7 +216,7 @@
                         @endforeach
                     </tr>
                     <tr>
-                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 115px; background-color: #082f62">TARIFA GRUPAL TRIMESTRAL</td>
+                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 88px; background-color: #082f62">TARIFA GRUPAL TRIMESTRAL</td>
 
 
                         @foreach ($totalColumns as $total)

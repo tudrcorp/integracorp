@@ -200,7 +200,7 @@
 
                 <tbody>
                     <tr>
-                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 130px; background-color: #529471">TARIFA GRUPAL ANUAL</td>
+                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 98px; background-color: #529471">TARIFA GRUPAL ANUAL</td>
                         @foreach ($totalColumns as $total)
                         <td style="text-align: center; font-weight: bold; font-size: 10px;">
                             {{ round($total, 2) }} US$
@@ -208,7 +208,7 @@
                         @endforeach
                     </tr>
                     <tr>
-                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 130px; background-color: #529471">TARIFA GRUPAL SEMESTRAL</td>
+                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 98px; background-color: #529471">TARIFA GRUPAL SEMESTRAL</td>
                         @foreach ($totalColumns as $total)
                         <td style="text-align: center; font-weight: bold; font-size: 10px;">
                             {{ round($total / 2) }} US$
@@ -216,7 +216,7 @@
                         @endforeach
                     </tr>
                     <tr>
-                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 130px; background-color: #529471">TARIFA GRUPAL TRIMESTRAL</td>
+                        <td colspan="3" style="font-weight: bold; color: white; font-size: 10px; width: 98px; background-color: #529471">TARIFA GRUPAL TRIMESTRAL</td>
                         @foreach ($totalColumns as $total)
                         <td style="text-align: center; font-weight: bold; font-size: 10px;">
                             {{ round($total / 4) }} US$
