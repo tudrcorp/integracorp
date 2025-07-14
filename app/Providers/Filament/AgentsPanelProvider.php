@@ -26,8 +26,10 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use App\Filament\Agents\Resources\Agents\AgentResource;
 use Filament\Http\Middleware\DisableBladeIconComponents;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -149,7 +151,14 @@ class AgentsPanelProvider extends PanelProvider
             ])
             ->breadcrumbs(false)
             // ->sidebarCollapsibleOnDesktop()
-            ->maxContentWidth(Width::ScreenExtraLarge);
+            ->maxContentWidth(Width::ScreenExtraLarge)
+            ->plugins([
+                FilamentBackgroundsPlugin::make()
+                    ->imageProvider(
+                        MyImages::make()
+                            ->directory('backgroundAgentPanelLogin')
+                    ),
+            ]);
             // ->maxContentWidth(Width::Screen);
 
 
