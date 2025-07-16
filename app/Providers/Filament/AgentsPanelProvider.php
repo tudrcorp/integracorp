@@ -28,6 +28,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use App\Filament\Agents\Resources\Agents\AgentResource;
+use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -151,14 +152,16 @@ class AgentsPanelProvider extends PanelProvider
             ])
             ->breadcrumbs(false)
             // ->sidebarCollapsibleOnDesktop()
-            ->maxContentWidth(Width::ScreenExtraLarge)
+            ->maxContentWidth(Width::Full)
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(
                         MyImages::make()
                             ->directory('backgroundAgentPanelLogin')
                     ),
-            ]);
+            ])
+            ->defaultAvatarProvider(BoringAvatarsProvider::class)
+            ->viteTheme('resources/css/filament/agents/theme.css');
             // ->maxContentWidth(Width::Screen);
 
 

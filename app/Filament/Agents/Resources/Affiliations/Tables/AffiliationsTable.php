@@ -47,28 +47,27 @@ class AffiliationsTable
                 // ->orWhere('owner_agent', Auth::user()->agent_id)
             )
             ->defaultSort('created_at', 'desc')
-            ->heading('AFILIACIONES INDIVIDUALES')
-            ->description('Lista de cotizaciones generadas por el agente')
+            ->heading('Lista de afiliaciones generadas por el agente')
             ->columns([
                 TextColumn::make('code')
-                    ->label('Código')
+                    ->label('Código de afiliación')
                     ->badge()
                     ->color('success')
                     ->icon('heroicon-m-tag')
                     ->searchable(),
-                TextColumn::make('individual_quote.code')
-                    ->label('Nro. de cotización')
-                    ->badge()
-                    ->color('primary')
-                    ->icon('heroicon-m-tag')
-                    ->searchable(),
+                // TextColumn::make('individual_quote.code')
+                //     ->label('Nro. de cotización')
+                //     ->badge()
+                //     ->color('primary')
+                //     ->icon('heroicon-m-tag')
+                //     ->searchable(),
                 TextColumn::make('plan.description')
                     ->label('Plan')
                     ->badge()
                     ->color('primary')
                     ->searchable(),
                 TextColumn::make('coverage.price')
-                    ->label('Covertura')
+                    ->label('Cobertura')
                     ->numeric()
                     ->suffix('US$')
                     ->badge()
@@ -80,10 +79,10 @@ class AffiliationsTable
                     ->color('primary')
                     ->searchable(),
                 TextColumn::make('full_name_con')
-                    ->label('Nombre contratante')
+                    ->label('Nombre y Apellido')
                     ->searchable(),
                 TextColumn::make('nro_identificacion_con')
-                    ->label('CI. contratante')
+                    ->label('Nro. de Identificación')
                     ->searchable(),
                 TextColumn::make('sex_con')
                     ->searchable()
@@ -106,12 +105,13 @@ class AffiliationsTable
                 TextColumn::make('region_con')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('email_con')
-                    ->label('Email contratante')
-                    ->searchable(),
                 TextColumn::make('phone_con')
-                    ->label('Telefono contratante')
+                    ->label('Nro. de Teléfono')
                     ->searchable(),
+                TextColumn::make('email_con')
+                    ->label('Email')
+                    ->searchable(),
+
                     
                 // TextColumn::make('full_name_ti')
                 //     ->label('Nombre titular')
@@ -211,15 +211,15 @@ class AffiliationsTable
                     ->searchable(),
 
                 TextColumn::make('created_by')
-                    ->label('Creado por')
+                    ->label('Agente')
                     ->searchable(),
 
                 TextColumn::make('family_members')
-                    ->label('Miembros familiares')
-                    ->suffix(' personas')
+                    ->label('Afiliados')
+                    ->suffix(' Persona(s)')
                     ->searchable(),
                 TextColumn::make('activated_at')
-                    ->label('Activado el:')
+                    ->label('Activado')
                     ->searchable(),
 
                 TextColumn::make('status')
@@ -992,11 +992,11 @@ class AffiliationsTable
                             }
                         }),
                 ])
-                    ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
-                    ->hidden(function (Affiliation $record) {
-                        return $record->status == 'ANULADA' || $record->status == 'EXCLUIDO';
-                    })
+                ->icon('heroicon-c-ellipsis-vertical')
+                ->color('azulOscuro')
+                ->hidden(function (Affiliation $record) {
+                    return $record->status == 'ANULADA' || $record->status == 'EXCLUIDO';
+                })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

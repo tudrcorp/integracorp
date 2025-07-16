@@ -3,6 +3,8 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
+
 .fi-simple-main {
     background-color: color-mix(in oklab,#ffffff5e 80%,transparent);
   }
+

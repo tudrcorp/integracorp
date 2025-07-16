@@ -29,7 +29,7 @@ class CorporateQuoteChart extends ChartWidget
 
     public function getDescription(): ?string
     {
-        return 'Cotizaciones individuales creadas por el agente en el periodo seleccionado';
+        return 'Creadas por el agente en el período seleccionado';
     }
 
     protected function getData(): array
@@ -62,7 +62,8 @@ class CorporateQuoteChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Cotizaciones Corporativas',
-                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    // 'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    'data' => [30, 10, 5, 40, 21, 32, 1, 74, 65, 45, 77, 89],
                     'backgroundColor' => [
                         '#FFE6E6', // Rosado muy claro
                         '#E6FFF0', // Verde menta claro
@@ -89,7 +90,32 @@ class CorporateQuoteChart extends ChartWidget
                         '#F0F0FF', // Azul niebla
                         '#FFF0F0', // Rosado nieve
                     ],
-                    'borderColor' => false,
+                    'borderColor' => [
+                        '#FFE6E6', // Rosado muy claro
+                        '#E6FFF0', // Verde menta claro
+                        '#E6F5FF', // Azul hielo
+                        '#FFF5E6', // Amarillo suave
+                        '#F0DCFF', // Lavanda claro
+                        '#FAFAEA', // Beige claro
+                        '#DCF0DC', // Verde claro
+                        '#FFE6F0', // Magenta pastel
+                        '#EBEBEB', // Gris claro
+                        '#B8E6FF', // Celeste claro
+                        '#FFD2D2', // Rosado cálido
+                        '#D2FFD2', // Verde pálido
+                        '#FFFAEA', // Amarillo dorado claro
+                        '#D2D2FF', // Azul lavanda
+                        '#FFDCDC', // Rosado suave
+                        '#DCFFFF', // Cyan claro
+                        '#F5DCDC', // Coral suave
+                        '#DCE0FF', // Azul claro
+                        '#FFE7DC', // Naranja melocotón
+                        '#DCDCDC', // Gris plata
+                        '#E6FFE6', // Verde agua
+                        '#FFE6FF', // Lila claro
+                        '#F0F0FF', // Azul niebla
+                        '#FFF0F0', // Rosado nieve
+                    ],
                     'fill' => true,
                 ],
             ],

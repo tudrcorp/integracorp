@@ -86,6 +86,7 @@ class Affiliation extends Model
         'total_amount',
         'observations',
         'feedback',
+        // 'is_accepted',
         
     ];
 

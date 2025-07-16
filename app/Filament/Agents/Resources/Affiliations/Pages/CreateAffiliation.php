@@ -2,6 +2,7 @@
 
 namespace App\Filament\Agents\Resources\Affiliations\Pages;
 
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Affiliate;
 use Filament\Actions\Action;
@@ -19,6 +20,11 @@ class CreateAffiliation extends CreateRecord
 
     protected static ?string $title = 'Pre-afiliación';
 
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -26,19 +32,38 @@ class CreateAffiliation extends CreateRecord
                 ->label('Regresar')
                 ->button()
                 ->icon('heroicon-s-arrow-left')
-                ->color('warning')
+                ->color('gray')
                 ->url(AffiliationResource::getUrl('index')),
         ];
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // dd($data['feedback']);
 
         session()->put('affiliates', isset($data['affiliates']) ? $data['affiliates'] : []);
 
-        $data['feedback'] = $data['feedback'] == 1 ? 1 : 0;
+        $data['feedback'] = $data['feedback'] == true ? true : false;
 
         return $data;
+    }
+
+    protected function beforeCreate(): void
+    {
+        //Si el titular en menor de edad no puede afiliarse
+        if(Carbon::parse($this->data['birth_date_con'])->age < 18)  
+        {
+            Notification::make()
+                ->title('El titular debe ser mayor de 18 años')
+                ->icon('heroicon-s-exclamation-triangle')
+                ->danger()
+                ->send();
+                
+            $this->halt();
+        }
+
+        return;
+        
     }
 
     protected function afterCreate(): void
@@ -47,22 +72,46 @@ class CreateAffiliation extends CreateRecord
 
                 $record = $this->getRecord();
                 
-                /** ? Preguntamos si e l contratante es el mismo titular de la cotizacion 
-                 * $feedback == 0 significa que el contratante no es el titular, y debemos agregar afiliados
-                 * $feedback == 1 significa que el contratante es el titular, y debemos afiliar al contratante
+                /** 
+                 * ? Preguntamos si e l contratante es el mismo titular de la cotizacion 
+                 * $feedback == false significa que el contratante no es el titular, y debemos agregar afiliados
+                 * $feedback == true significa que el contratante es el titular, y debemos afiliar al contratante
                  * -----------------------------------------------------------------------------------------------------------------------------
                 */
-                // dd($record->feedback);
-                if($record->feedback == 0)
+                // El titular desea agregar afiliados
+                if($record->feedback == true)
                 {
-                    // dd($record);
                     /**
                      * Recupero los detalles de los afiliados
                      * ----------------------------------------------------------------------------------------------------
                      */
                     $affiliates = session()->get('affiliates');
+
+                    //Agregamos al titular al array de afiliados
+                    $affiliates[] = [
+                            "full_name"          => $record->full_name_con,
+                            "nro_identificacion" => $record->nro_identificacion_con,
+                            "sex"                => $record->sex_con,
+                            "birth_date"         => $record->birth_date_con,
+                            "relationship"       => "TITULAR"
+                        ];
+
+                    //Ordenamos los afiliados por fecha de nacimiento
+                    usort($affiliates, function ($a, $b) {
+                        // Si uno es TITULAR, va primero
+                        if ($a['relationship'] === 'TITULAR' && $b['relationship'] !== 'TITULAR') {
+                            return -1;
+                        }
+                        if ($a['relationship'] !== 'TITULAR' && $b['relationship'] === 'TITULAR') {
+                            return 1;
+                        }
+
+                        // Si ambos son distintos de TITULAR, ordenar alfabéticamente descendente por relationship
+                        return $b['relationship'] <=> $a['relationship'];
+                    });
+
+
                     // dd($affiliates);
-                    // dd(count($affiliates), $record);
 
                     /**
                      * Validamos si el numeros de personas en la cotizacion es el mismo numero de personas
@@ -73,10 +122,11 @@ class CreateAffiliation extends CreateRecord
 
                     /** NUmero de personas en la cotizacion */
                     $persons = session()->get('persons');
-
+                    // dd($persons, count($affiliates));
 
                     /**Actualizo el calculo de la cotizacion */
                     if (count($affiliates) != $persons) {
+                        // dd(count($affiliates));
                         $quote = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)->get();
                         foreach ($quote as $item) {
                             $item->total_persons        = count($affiliates);
@@ -104,9 +154,10 @@ class CreateAffiliation extends CreateRecord
                         $record->affiliates()->create([
                             'full_name' => $affiliates[$i]['full_name'],
                             'nro_identificacion' => $affiliates[$i]['nro_identificacion'],
-                            'sex' => $affiliates[$i]['sex'],
-                            'birth_date' => $affiliates[$i]['birth_date'],
-                            'relationship' => $affiliates[$i]['relationship'],
+                            'sex'                => $affiliates[$i]['sex'],
+                            'birth_date'         => $affiliates[$i]['birth_date'],
+                            'age'                => Carbon::parse($affiliates[$i]['birth_date'])->age,
+                            'relationship'       => $affiliates[$i]['relationship'],
                         ]);
                     }
 
@@ -189,13 +240,16 @@ class CreateAffiliation extends CreateRecord
 
                 /**----------------------------------------------------------------------------------------------------------------------------- */
 
-                if($record->feedback == 1){
+                // El titular ese el unico afiliado
+                if($record->feedback == false){
+
                     /** 1- Registro los datos de contratante como los datos del afiliado ya que la cotizacion es para el mismo*/
                     $record->affiliates()->create([
                         'full_name'             => $record->full_name_con,
                         'nro_identificacion'    => $record->nro_identificacion_con,
                         'sex'                   => $record->sex_con,
                         'birth_date'            => $record->birth_date_con,
+                        'age'                   => Carbon::parse($record->birth_date_con)->age,
                         'relationship'          => 'TITULAR',
                     ]);
 
@@ -255,6 +309,8 @@ class CreateAffiliation extends CreateRecord
             dd($th);
         }
     }
+
+    
 
     protected function getRedirectUrl(): string
     {

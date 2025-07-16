@@ -45,33 +45,18 @@ class AffiliationInfolist
                                 ->dateTime(),
                         ])->columnSpanFull()->columns(5),
 
-                    Fieldset::make('Información del Contratante')
+                    Fieldset::make('Información del Titular')
                         ->schema([
                             TextEntry::make('full_name_con')
                                 ->label('Nombre completo:'),
                             TextEntry::make('birth_date_con')
                                 ->badge()
                                 ->icon(Heroicon::CalendarDays)
-                                ->dateTime('d/m/Y')
+                                ->dateTime('d-m-Y')
                                 ->label('Fecha de nacimiento:'),
-                            TextEntry::make('email_con:')
+                            TextEntry::make('email_con')
                                 ->label('Correo electrónico:'),
                             TextEntry::make('phone_con')
-                                ->label('Teléfono:'),
-                        ])->columnSpanFull()->columns(4),
-
-                    Fieldset::make('Información del Titular')
-                        ->schema([
-                            TextEntry::make('full_name_ti')
-                                ->label('Nombre completo:'),
-                            TextEntry::make('birth_date_ti')
-                                ->badge()
-                                ->icon(Heroicon::CalendarDays)
-                                ->dateTime('d/m/Y')
-                                ->label('Fecha de nacimiento:'),
-                            TextEntry::make('email_ti')
-                                ->label('Correo electrónico:'),
-                            TextEntry::make('phone_ti')
                                 ->label('Teléfono:'),
                         ])->columnSpanFull()->columns(4),
 
@@ -109,28 +94,6 @@ class AffiliationInfolist
                                 ->color('primary')
                                 ->numeric(),
                         ])->columnSpanFull()->columns(4),
-
-                    // Fieldset::make('ILS')
-                    //     ->schema([
-                    //         TextEntry::make('vaucher_ils')
-                    //             ->label('Voucher')
-                    //             ->prefix('ILS-')
-                    //             ->badge()
-                    //             ->color('primary')
-                    //             ->numeric(),
-                    //         TextEntry::make('date_payment_initial_ils')
-                    //             ->label('Fecha de inicio')
-                    //             ->badge()
-                    //             ->icon(Heroicon::CalendarDays)
-                    //             ->dateTime('d/m/Y'),
-                    //         TextEntry::make('date_payment_final_ils')
-                    //             ->label('Fecha de final')
-                    //             ->badge()
-                    //             ->icon(Heroicon::CalendarDays)
-                    //             ->dateTime('d/m/Y'),
-                    //         ImageEntry::make('document_ils')
-                    //             ->label('Comprobante ILS')
-                    //     ])->columnSpanFull()->columns(3),
                 ])->columnSpanFull(),
             ]);
     }

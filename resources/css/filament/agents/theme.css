@@ -1,0 +1,23 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/Agents/**/*';
+@source '../../../../resources/views/filament/agents/**/*';
+
+
+.fi-simple-main {
+    background-color: color-mix(in oklab,#ffffff5e 80%,transparent);
+}
+
+.fi-fo-repeater-add .fi-btn {
+    @apply bg-[#00cdbd];
+}
+
+.fi-fo-repeater-add .fi-btn:hover {
+    @apply bg-[#7fe6de];
+}
+
+/* .fi-sc-wizard-footer .fi-btn {
+    @apply bg-[#008000];
+    background: url(http://notrealdomain2.com/newbanner.png)
+} */
+

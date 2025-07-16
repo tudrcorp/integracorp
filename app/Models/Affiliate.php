@@ -14,8 +14,7 @@ class Affiliate extends Model
         'birth_date',
         'nro_identificacion',
         'sex',
-        'stature',
-        'weight',
+        'age',
         'relationship',
     ];
 

@@ -37,7 +37,7 @@ class IndividualQuoteForm
             ->components([
                 Wizard::make([
                     Step::make('SOLICITANTE')
-                        ->description('Información principal del solicitante')
+                        ->description('Datos del Cliente')
                         ->icon(Heroicon::User)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
@@ -50,7 +50,7 @@ class IndividualQuoteForm
                                     } else {
                                         $parte_entera = IndividualQuote::max('id');
                                     }
-                                    return 'TDEC-CI-000' . $parte_entera + 1;
+                                    return 'COT-IND-000' . $parte_entera + 1;
                                 })
                                 ->disabled()
                                 ->dehydrated()
@@ -62,7 +62,10 @@ class IndividualQuoteForm
                                 ->validationMessages([
                                     'required' => 'Campo requerido',
                                 ])
-                                ->maxLength(255),
+                                ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
+                                    $set('full_name', strtoupper($state));
+                                })
+                                ->live(onBlur: true),
 
                             Select::make('country_code')
                                 ->label('Código de país')
@@ -172,29 +175,29 @@ class IndividualQuoteForm
                                     'required' => 'Campo requerido',
                                 ])
                                 ->maxLength(255),
-                            Select::make('state_id')
-                                ->label('Estado')
-                                ->options(function (Get $get) {
-                                    return State::all()->pluck('definition', 'id');
-                                })
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $region_id = State::where('id', $state)->value('region_id');
-                                    $region = Region::where('id', $region_id)->value('definition');
-                                    $set('region', $region);
-                                })
-                                ->live()
-                                ->searchable()
-                                ->prefixIcon('heroicon-s-globe-europe-africa')
-                                ->validationMessages([
-                                    'required'  => 'Campo Requerido',
-                                ])
-                                ->preload(),
-                            TextInput::make('region')
-                                ->label('Región')
-                                ->prefixIcon('heroicon-m-map')
-                                ->disabled()
-                                ->dehydrated()
-                                ->maxLength(255),
+                            // Select::make('state_id')
+                            //     ->label('Estado')
+                            //     ->options(function (Get $get) {
+                            //         return State::all()->pluck('definition', 'id');
+                            //     })
+                            //     ->afterStateUpdated(function (Set $set, $state) {
+                            //         $region_id = State::where('id', $state)->value('region_id');
+                            //         $region = Region::where('id', $region_id)->value('definition');
+                            //         $set('region', $region);
+                            //     })
+                            //     ->live()
+                            //     ->searchable()
+                            //     ->prefixIcon('heroicon-s-globe-europe-africa')
+                            //     ->validationMessages([
+                            //         'required'  => 'Campo Requerido',
+                            //     ])
+                            //     ->preload(),
+                            // TextInput::make('region')
+                            //     ->label('Región')
+                            //     ->prefixIcon('heroicon-m-map')
+                            //     ->disabled()
+                            //     ->dehydrated()
+                            //     ->maxLength(255),
                             Hidden::make('status')->default('PRE-APROBADA'),
                             Hidden::make('created_by')->default(Auth::user()->name),
                             Hidden::make('agent_id')->default(Auth::user()->agent_id),
@@ -245,9 +248,9 @@ class IndividualQuoteForm
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             Radio::make('plan')
+                                ->columns(3)
                                 ->label('Selecciona el/los planes que desea cotizar:')
                                 ->required()
-                                ->inLine()
                                 ->live()
                                 ->options(function () {
                                     $planesConBeneficios = Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
@@ -256,13 +259,19 @@ class IndividualQuoteForm
                                         ->get()
                                         ->pluck('description', 'plan_id');
                                     //agregar el plan livewire
-                                    $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE (Seleccione más de 2 planes)');
+                                    $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 
                                     return $planesConBeneficios;
-                                }),
+                                })
+                                ->descriptions([
+                                    1    => 'Edad: 0 a 111 años/ilimitado.',
+                                    2    => 'Edad: 0 a 85 años.',
+                                    3    => 'Edad: 0 a 85 años.',
+                                    'CM' => 'Seleccione más de dos (2) planes.'
+                                ])
                         ]),
                     Step::make('RANGO DE EDAD')
-                        ->description('Rango de edad y población:')
+                        ->description('Rango de edad y/o población:')
                         ->icon(Heroicon::AdjustmentsVertical)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
@@ -270,7 +279,7 @@ class IndividualQuoteForm
                              * REPETER PLAN INICIAl
                              */
                             Repeater::make('details_quote_plan_inicial')
-                                ->grid(2)
+                                ->grid(4)
                                 ->label('Indique edad y número de afiliados al plan:')
                                 ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 1)->count())
                                 ->addable(false)
@@ -281,8 +290,8 @@ class IndividualQuoteForm
                                     return true;
                                 })
                                 ->table([
-                                    TableColumn::make('Rango de Edad'),
-                                    TableColumn::make('Total de personas'),
+                                    TableColumn::make('Rango de Edad')->width('150px'),
+                                    TableColumn::make('Total de personas')
                                 ])
                                 ->schema([
                                     Hidden::make('plan_id')->default(1),
@@ -317,155 +326,156 @@ class IndividualQuoteForm
                                         ->placeholder('Cantidad de personas'),
                                 ])->columns(2),
 
-                            /**
-                             * REPETER PLAN IDEAL
-                             */
-                            Repeater::make('details_quote_plan_ideal')
-                                ->grid(2)
-                                ->label('Indique edad y número de afiliados al plan:')
-                                ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 2)->count())
-                                ->addable(false)
-                                ->hidden(function (Get $get) {
-                                    if ($get('plan') == 2) {
-                                        return false;
-                                    }
-                                    return true;
-                                })
-                                ->table([
-                                    TableColumn::make('Rango de Edad'),
-                                    TableColumn::make('Total de personas'),
-                                ])
-                                ->schema([
-                                    Hidden::make('plan_id')->default(2),
-                                    Radio::make('age_range_id')
-                                        ->label(false)
-                                        ->inLine()
-                                        ->live()
-                                        ->disableOptionWhen(function ($value, $state, Get $get) {
-                                            return collect($get('../*.age_range_id'))
-                                                ->reject(fn($id) => $id == $state)
-                                                ->filter()
-                                                ->contains($value);
-                                        })
-                                        ->options(function (Get $get) {
-                                            return AgeRange::where('plan_id', 2)->pluck('range', 'id');
-                                        })->columnSpan(4),
-                                    Select::make('total_persons')
-                                        ->label(false)
-                                        // ->native(false)
-                                        ->options([
-                                            1 => 1,
-                                            2 => 2,
-                                            3 => 3,
-                                            4 => 4,
-                                            5 => 5,
-                                            6 => 6,
-                                            7 => 7,
-                                            8 => 8,
-                                            9 => 9,
-                                            10 => 10,
-                                        ])
-                                        ->placeholder('Cantidad de personas'),
-                                ])->columns(2),
+                                /**
+                                 * REPETER PLAN IDEAL
+                                 */
+                                Repeater::make('details_quote_plan_ideal')
+                                    ->grid(2)
+                                    ->label('Indique edad y número de afiliados al plan:')
+                                    ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 2)->count())
+                                    ->addable(false)
+                                    ->hidden(function (Get $get) {
+                                        if ($get('plan') == 2) {
+                                            return false;
+                                        }
+                                        return true;
+                                    })
+                                    ->table([
+                                        TableColumn::make('Rango de Edad')->width('300px'),
+                                        TableColumn::make('Total de personas'),
+                                    ])
+                                    ->schema([
+                                        Hidden::make('plan_id')->default(2),
+                                        Radio::make('age_range_id')
+                                            ->label(false)
+                                            ->inLine()
+                                            ->live()
+                                            ->disableOptionWhen(function ($value, $state, Get $get) {
+                                                return collect($get('../*.age_range_id'))
+                                                    ->reject(fn($id) => $id == $state)
+                                                    ->filter()
+                                                    ->contains($value);
+                                            })
+                                            ->options(function (Get $get) {
+                                                return AgeRange::where('plan_id', 2)->pluck('range', 'id');
+                                            })->columnSpan(4),
+                                        Select::make('total_persons')
+                                            ->label(false)
+                                            // ->native(false)
+                                            ->options([
+                                                1 => 1,
+                                                2 => 2,
+                                                3 => 3,
+                                                4 => 4,
+                                                5 => 5,
+                                                6 => 6,
+                                                7 => 7,
+                                                8 => 8,
+                                                9 => 9,
+                                                10 => 10,
+                                            ])
+                                            ->placeholder('Cantidad de personas'),
+                                    ])->columns(4),
 
-                            /**
-                             * REPETER PLAN ESPECIAL
-                             */
-                            Repeater::make('details_quote_plan_especial')
-                                ->grid(2)
-                                ->label('Indique edad y número de afiliados al plan:')
-                                ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 3)->count())
-                                ->addable(false)
-                                ->hidden(function (Get $get) {
-                                    if ($get('plan') == 3) {
-                                        return false;
-                                    }
-                                    return true;
-                                })
-                                ->table([
-                                    TableColumn::make('Rango de Edad'),
-                                    TableColumn::make('Total de personas'),
-                                ])
-                                ->schema([
-                                    Hidden::make('plan_id')->default(3),
-                                    Radio::make('age_range_id')
-                                        ->label(false)
-                                        ->inLine()
-                                        ->live()
-                                        ->disableOptionWhen(function ($value, $state, Get $get) {
-                                            return collect($get('../*.age_range_id'))
-                                                ->reject(fn($id) => $id == $state)
-                                                ->filter()
-                                                ->contains($value);
-                                        })
-                                        ->options(function (Get $get) {
-                                            return AgeRange::where('plan_id', 3)->pluck('range', 'id');
-                                        })->columnSpan(4),
-                                    Select::make('total_persons')
-                                        ->options([
-                                            1 => 1,
-                                            2 => 2,
-                                            3 => 3,
-                                            4 => 4,
-                                            5 => 5,
-                                            6 => 6,
-                                            7 => 7,
-                                            8 => 8,
-                                            9 => 9,
-                                            10 => 10,
-                                        ])
-                                        ->placeholder('Cantidad de personas'),
-                                ])->columns(2),
+                                /**
+                                 * REPETER PLAN ESPECIAL
+                                 */
+                                Repeater::make('details_quote_plan_especial')
+                                    ->grid(2)
+                                    ->label('Indique edad y número de afiliados al plan:')
+                                    ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 3)->count())
+                                    ->addable(false)
+                                    ->hidden(function (Get $get) {
+                                        if ($get('plan') == 3) {
+                                            return false;
+                                        }
+                                        return true;
+                                    })
+                                    ->table([
+                                        TableColumn::make('Rango de Edad')->width('380px'),
+                                        TableColumn::make('Total de personas'),
+                                    ])
+                                    ->schema([
+                                        Hidden::make('plan_id')->default(3),
+                                        Radio::make('age_range_id')
+                                            ->label(false)
+                                            ->inLine()
+                                            ->live()
+                                            ->disableOptionWhen(function ($value, $state, Get $get) {
+                                                return collect($get('../*.age_range_id'))
+                                                    ->reject(fn($id) => $id == $state)
+                                                    ->filter()
+                                                    ->contains($value);
+                                            })
+                                            ->options(function (Get $get) {
+                                                return AgeRange::where('plan_id', 3)->pluck('range', 'id');
+                                            })->columnSpan(4),
+                                        Select::make('total_persons')
+                                            ->options([
+                                                1 => 1,
+                                                2 => 2,
+                                                3 => 3,
+                                                4 => 4,
+                                                5 => 5,
+                                                6 => 6,
+                                                7 => 7,
+                                                8 => 8,
+                                                9 => 9,
+                                                10 => 10,
+                                            ])
+                                            ->placeholder('Cantidad de personas'),
+                                    ])->columns(2),
 
-                            /**
-                             * REPETER PLAN MULTIPLE
-                             */
-                            Repeater::make('details_quote')
-                                ->label(false)
-                                ->hidden(function (Get $get) {
-                                    if ($get('plan') == 'CM') {
-                                        return false;
-                                    }
-                                    return true;
-                                })
-                                ->schema([
-                                    Radio::make('plan_id')
-                                        ->label(false)
+                                /**
+                                 * REPETER PLAN MULTIPLE
+                                 */
+                                Repeater::make('details_quote')
+                                    ->label('Indique los planes, la edad y número de personas:')
+                                    ->addActionLabel('Añadir plan')
+                                    ->hidden(function (Get $get) {
+                                        if ($get('plan') == 'CM') {
+                                            return false;
+                                        }
+                                        return true;
+                                    })
+                                    ->schema([
+                                        Radio::make('plan_id')
+                                            ->label('Seleccione una opción y añadir plan:')
 
-                                        ->inLine()
-                                        ->live()
-                                        ->options(function (Get $get) {
-                                            Log::info($get('plan'));
-                                            return Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
-                                                ->select('plans.id as plan_id', 'plans.description as description')
-                                                ->distinct() // Asegurarse de que no haya duplicados
-                                                ->get()
-                                                ->pluck('description', 'plan_id');
-                                        })->columnSpan(3),
-                                    Select::make('age_range_id')
-                                        ->label(false)
-                                        ->placeholder('Rango de edad')
-                                        ->options(function (Get $get) {
-                                            return AgeRange::where('plan_id', $get('plan_id'))->pluck('range', 'id');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->disableOptionWhen(function ($value, $state, Get $get) {
-                                            return collect($get('../*.age_range_id'))
-                                                ->reject(fn($id) => $id == $state)
-                                                ->filter()
-                                                ->contains($value);
-                                        })
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ])
-                                        ->preload(),
-                                    TextInput::make('total_persons')
-                                        ->label(false)
-                                        ->placeholder('Cantidad de personas')
-                                        ->numeric(),
-                                ])->columns(2),
+                                            ->inLine()
+                                            ->live()
+                                            ->options(function (Get $get) {
+                                                Log::info($get('plan'));
+                                                return Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
+                                                    ->select('plans.id as plan_id', 'plans.description as description')
+                                                    ->distinct() // Asegurarse de que no haya duplicados
+                                                    ->get()
+                                                    ->pluck('description', 'plan_id');
+                                            })->columnSpan(3),
+                                        Select::make('age_range_id')
+                                            ->label('Rango de edad')
+                                            ->placeholder('Rango de edad')
+                                            ->options(function (Get $get) {
+                                                return AgeRange::where('plan_id', $get('plan_id'))->pluck('range', 'id');
+                                            })
+                                            ->live()
+                                            ->searchable()
+                                            ->prefixIcon('heroicon-s-globe-europe-africa')
+                                            ->disableOptionWhen(function ($value, $state, Get $get) {
+                                                return collect($get('../*.age_range_id'))
+                                                    ->reject(fn($id) => $id == $state)
+                                                    ->filter()
+                                                    ->contains($value);
+                                            })
+                                            ->validationMessages([
+                                                'required'  => 'Campo Requerido',
+                                            ])
+                                            ->preload(),
+                                        TextInput::make('total_persons')
+                                            ->label('Cantidad de personas')
+                                            ->placeholder('Cantidad de personas')
+                                            ->numeric(),
+                                    ])->columns(2),
                         ])
                 ])
                 ->submitAction(new HtmlString(Blade::render(<<<BLADE

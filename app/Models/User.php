@@ -9,13 +9,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\Notifiable;
 
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel\Concerns\HasAvatars;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasAvatars;
 
     /**
      * The attributes that are mass assignable.
@@ -58,6 +59,12 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        $this->avatar = 'https://ui-avatars.com/api/?name=' . $this->name . '&color=FFFFFF&background=030712';
+        return $this->avatar; // Or any other logic to get the avatar URL
     }
 
     /**

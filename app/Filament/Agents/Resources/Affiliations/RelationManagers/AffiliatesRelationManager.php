@@ -83,6 +83,9 @@ class AffiliatesRelationManager extends RelationManager
                     ->label('Nro Identificacion'),
                 TextColumn::make('birth_date')
                     ->label('Fecha de Nacimiento'),
+                TextColumn::make('age')
+                    ->label('Edad')
+                    ->suffix(' años'),
                 TextColumn::make('sex')
                     ->label('Genero'),
                 TextColumn::make('relationship')

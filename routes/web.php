@@ -1,5 +1,6 @@
 <?php
 
+use Carbon\Carbon;
 use Livewire\Volt\Volt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -142,6 +143,11 @@ Route::get('/pp', function () {
 Route::get('/pdf', [PdfController::class, 'generatePdf_aviso_de_pago']);
 
 Route::get('/ppp', function () {
-    $p = \Illuminate\Support\Facades\DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id;
-    dd($p);
+    // $p = \Illuminate\Support\Facades\DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id;
+    // dd($p);
+    // Parsear la fecha con el formato específico d-m-Y
+    $fecha = '01-01-1990';
+    $edad = Carbon::parse($fecha)->age;
+    
+    dd($edad);
 });

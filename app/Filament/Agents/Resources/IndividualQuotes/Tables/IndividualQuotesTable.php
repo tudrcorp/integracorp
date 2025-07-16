@@ -37,27 +37,19 @@ class IndividualQuotesTable
             ->defaultSort('created_at', 'desc')
             ->heading('Lista de cotizaciones generadas por el agente')
             ->columns([
-                // Tables\Columns\TextColumn::make('id')
-                //     ->label('Código')
-                //     ->badge()
-                //     ->color('azulOscuro')
-                //     ->searchable(),
                 TextColumn::make('code')
                     ->label('Código')
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('full_name')
-                    ->label('Solicitada por:')
+                    ->label('Cliente')
+                    ->searchable(),
+                    TextColumn::make('phone')
+                    ->label('Teléfono')
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Email')
-                    ->searchable(),
-                TextColumn::make('phone')
-                    ->label('Nro. de Teléfono')
-                    ->searchable(),
-                TextColumn::make('birth_date')
-                    ->label('Fecha de Nacimiento')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Emitida el:')
@@ -77,11 +69,11 @@ class IndividualQuotesTable
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-APROBADA' => 'verdeOpaco',
-                            'APROBADA' => 'success',
-                            'ANULADA' => 'warning',
-                            'DECLINADA' => 'danger',
-                            default => 'azul',
+                            'PRE-APROBADA'  => 'verdeOpaco',
+                            'APROBADA'      => 'success',
+                            'ANULADA'       => 'warning',
+                            'DECLINADA'     => 'danger',
+                            default         => 'azul',
                         };
                     })
                     ->searchable(),
@@ -142,11 +134,12 @@ class IndividualQuotesTable
                             }
                             return false;
                         })
-                        ->label('Emitir')
+                        ->label('Aprobar cotización')
                         ->icon('heroicon-m-power')
                         ->color('success')
                         ->requiresConfirmation()
                         ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
+                        ->modalDescription('Felicitaciones! solo falta completar el formulario')
                         ->action(function (IndividualQuote $record) {
 
                             try {
