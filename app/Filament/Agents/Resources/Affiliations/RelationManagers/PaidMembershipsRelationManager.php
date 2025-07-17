@@ -46,6 +46,10 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->badge()
                     ->searchable()
                     ->label('Metodo de pago'),
+                TextColumn::make('payment_method')
+                    ->badge()
+                    ->searchable()
+                    ->label('Metodo de pago'),
                 TextColumn::make('payment_method_usd')
                     ->label('Pago multiple')
                     ->prefix('US$: ')
