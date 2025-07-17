@@ -8,6 +8,7 @@ use App\Models\State;
 use App\Models\Agency;
 use App\Models\Region;
 use App\Models\Country;
+use App\Models\Coverage;
 use App\Models\Affiliation;
 use Filament\Schemas\Schema;
 use App\Models\IndividualQuote;
@@ -30,6 +31,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -142,6 +144,11 @@ class AffiliationForm
 
                                         return $coverages;
                                     })
+                                    ->relationship(
+                                        name: 'coverage',
+                                        modifyQueryUsing: fn (Builder $query, Get $get) => $query->where('plan_id', $get('plan_id'))->orderBy('price', 'asc'),
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn (Coverage $record) => number_format($record->price, 0, '', '.'))
                                     ->searchable()
                                     ->required()
                                     ->validationMessages([
@@ -572,7 +579,7 @@ class AffiliationForm
                                         ]),
                                 ])
                                 ->defaultItems(function (Get $get, Set $set) {
-                                //Se reste 1 por el titular, ejempo: La catizacion es para 2 personas, el titular y 1 afiliado;
+                                //Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
                                 return session()->get('persons') - 1;
                                     
                                 })

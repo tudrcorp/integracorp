@@ -458,6 +458,13 @@ class AffiliationsTable
                                                     'required'  => 'Campo requerido',
                                                     'numeric'   => 'El campo es numerico',
                                                 ])
+                                                ->afterStateUpdated(function (?string $state, Get $get, Set $set) {
+                                                    if($get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
+                                                        $set('pay_amount_ves', $state * $get('total_amount'));
+                                                    }
+                                                    return $state;
+                                                    
+                                                })
                                                 ->hidden(function ($state, $set, Get $get) {
                                                     if($get('payment_method') == 'MULTIPLE' || $get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
                                                         return false;
@@ -595,7 +602,6 @@ class AffiliationsTable
                                         }),
 
 
-
                                     /* PAGO MOVIL Y TRANSFERENCIA */
                                     Fieldset::make('INFORMACIÓN DE PAGO EN MONEDA NACIONAL (VES)')
                                         ->schema([
@@ -647,7 +653,6 @@ class AffiliationsTable
                                             }
                                             return true;
                                         }),
-
 
 
                                     /** PAGO MULTIPLE */
