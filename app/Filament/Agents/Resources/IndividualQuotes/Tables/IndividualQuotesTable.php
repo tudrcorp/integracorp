@@ -386,11 +386,22 @@ class IndividualQuotesTable
                         ->modalWidth(Width::ExtraLarge)
                         ->modalIcon('heroicon-s-arrow-down-on-square-stack')
                         ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar.!')
-                        ->hidden(fn (IndividualQuote $record): bool => $path = !file_exists(public_path('storage/' . $record->code . '.pdf')))
                         ->action(function (IndividualQuote $record, array $data) {
 
                             try {
 
+                                if(!file_exists(public_path('storage/' . $record->code . '.pdf'))){
+                                    
+                                    Notification::make()
+                                        ->title('NOTIFICACIÓN')
+                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('warning')
+                                        ->warning()
+                                        ->send();
+                                        
+                                        return;
+                                }
                                 /**
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/

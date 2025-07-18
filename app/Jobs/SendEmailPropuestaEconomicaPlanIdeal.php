@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use Closure;
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -44,15 +45,16 @@ class SendEmailPropuestaEconomicaPlanIdeal implements ShouldQueue
     {
         $this->generatePDF($this->details, $this->group_collect);
 
-        Filament::notify('success', '¡Éxito!', 'Tu proceso ha terminado.', true);
-
-        // Notification::make()
-        //     ->title('¡Tarea completada!')
-        //     ->body('El proceso ha finalizado exitosamente.')
-        //     ->success()
-        //     ->persistent()
-        //     ->send();
-            // ->broadcast($this->user);
+        Notification::make()
+            ->title('¡TAERA COMPLETADA!')
+            ->body('📎 '.$this->details['code'].'.pdf ya se encuentra disponible para su descarga.')
+            ->success()
+            ->actions([
+                Action::make('download')
+                    ->label('Descargar archivo')
+                    ->url('/storage/' . $this->details['code'] . '.pdf')
+            ])
+            ->sendToDatabase($this->user);
     }
 
     private function generatePDF($details, $group_collect)

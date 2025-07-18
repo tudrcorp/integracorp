@@ -16,6 +16,7 @@ class Affiliate extends Model
         'sex',
         'age',
         'relationship',
+        'document',
     ];
 
     public function affiliation()

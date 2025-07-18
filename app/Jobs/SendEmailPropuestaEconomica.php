@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\User;
+use Filament\Actions\Action;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -22,14 +23,16 @@ class SendEmailPropuestaEconomica implements ShouldQueue
 
     protected $details = [];
     protected $collect = [];
+    protected $user;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($details, $collect)
+    public function __construct($details, $collect, $user)
     {
         $this->details = $details;
         $this->collect = $collect;
+        $this->user = $user;
     }
 
     /**
@@ -37,12 +40,25 @@ class SendEmailPropuestaEconomica implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->generatePDF($this->details, $this->collect);
+
+        Notification::make()
+            ->title('¡TAERA COMPLETADA!')
+            ->body('📎 ' . $this->details['code'] . '.pdf ya se encuentra disponible para su descarga.')
+            ->success()
+            ->actions([
+                Action::make('download')
+                    ->label('Descargar archivo')
+                    ->url('/storage/' . $this->details['code'] . '.pdf')
+            ])
+            ->sendToDatabase($this->user);
+
+    }
+
+    private function generatePDF($details, $collect)
+    {
         ini_set('memory_limit', '2048M');
-        
-        $details = $this->details;
-        $collect = $this->collect;
-        // dd($details, $collect);
-        
+
         $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'collect'));
         $name_pdf = $details['code'] . '.pdf';
         $pdf->save(public_path('storage/' . $name_pdf));
@@ -52,38 +68,6 @@ class SendEmailPropuestaEconomica implements ShouldQueue
          * ----------------------------------------------------------------------------------------------------
          */
         Mail::to($details['email'])->send(new SendMailPropuestaPlanInicial($details['name'], $name_pdf));
-
-        /**
-         * NOTIFICACION DE WHATSAPP
-         * 
-         * Enviaremos la propuesta economica por whatsapp
-         * ----------------------------------------------------------------------------------------------------
-         */
-
-        $link = env('APP_URL') . '/storage/' . $name_pdf;
-        
-        $body = <<<HTML
-
-            Hola, buenas tardes. 👋
-            Espero se encuentre bien. 
-            Le comento que el documento que recibió es la cotización correspondiente al Plan Inicial , con todas las coberturas y tarifas detalladas. 
-            Si tiene alguna duda o necesita más información, no dudes den comunicarse con nosotros. 😊   
-
-            Equipo Integracorp-TDC
-            📱 WhatsApp: (+58) 424 222 00 56
-            ✉️ Email: comercial@tudrencasa.com 
-
-        HTML;
-            
-        NotificationController::sendCotizaPlanInicial($details['phone'], $body, $link, $name_pdf);
-
-        $user = User::find(Auth::user()->id);
-        Notification::make()
-            ->title('Éxito')
-            ->body('La cotización ha sido generada correctamente.')
-            ->success()
-            ->sendToDatabase($user);
-
     }
 
 }

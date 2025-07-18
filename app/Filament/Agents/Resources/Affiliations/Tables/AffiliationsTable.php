@@ -86,37 +86,6 @@ class AffiliationsTable
                     ->color('info')
                     ->icon('fluentui-money-hand-20')
                     ->searchable(),
-                // TextColumn::make('nro_identificacion_con')
-                //     ->label('Nro. de Identificación')
-                //     ->searchable(),
-                // TextColumn::make('sex_con')
-                //     ->searchable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-                // TextColumn::make('birth_date_con')
-                //     ->searchable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-                // TextColumn::make('adress_con')
-                //     ->searchable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-                // TextColumn::make('city_id_con')
-                //     ->searchable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-                // TextColumn::make('state_id_con')
-                //     ->searchable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-                // TextColumn::make('country_id_con')
-                //     ->searchable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-                // TextColumn::make('region_con')
-                //     ->searchable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-                // TextColumn::make('phone_con')
-                //     ->label('Nro. de Teléfono')
-                //     ->searchable(),
-                // TextColumn::make('email_con')
-                //     ->label('Email')
-                //     ->searchable(),
-
                 IconColumn::make('cuestion_1')
                     ->label('Prgunta 1')
                     ->boolean()
@@ -173,17 +142,14 @@ class AffiliationsTable
                     ->label('Prgunta 14')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('created_at')
                     ->label('Fecha de registro')
                     ->badge()
                     ->dateTime('d/m/Y h:i:s a')
                     ->searchable(),
-
                 TextColumn::make('created_by')
                     ->label('Agente')
                     ->searchable(),
-
                 TextColumn::make('family_members')
                     ->label('Afiliados')
                     ->suffix(' Persona(s)')
@@ -191,10 +157,8 @@ class AffiliationsTable
                 TextColumn::make('activated_at')
                     ->label('Activado')
                     ->searchable(),
-
                 TextColumn::make('status')
                     ->label('Estatus')
-
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
@@ -1119,6 +1083,7 @@ class AffiliationsTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

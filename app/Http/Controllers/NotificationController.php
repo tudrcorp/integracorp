@@ -576,4 +576,65 @@ class NotificationController extends Controller
             LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::sendCotizaPlanInicial()', $th->getMessage());
         }
     }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    static function massNotificacionSend($record)
+    {
+        try {
+
+            $array = [
+                '+584127018390',
+                '+584127018390',
+            ];
+
+            $body = <<<HTML
+
+            {{$record->content}}
+
+            HTML;
+
+            for ($i = 0; $i < count($array); $i++) {
+                $params = array(
+                    'token' => '9znl3oaurqmxhhbr',
+                    'to' => $array[$i],
+                    'image' => 'https://tudrenviajes.com/images/logo_3.png',
+                    'caption' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+
+                
+                //Quiero crear un array con todos los errores y enviarlo por correo electronico como puedo hacerlo
+                
+            }
+            
+            curl_close($curl);
+
+            return true;
+            
+        } catch (\Throwable $th) {
+            dd($th);
+        }
+    }
 }

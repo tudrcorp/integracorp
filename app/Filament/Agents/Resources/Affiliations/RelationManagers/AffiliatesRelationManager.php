@@ -2,6 +2,7 @@
 
 namespace App\Filament\Agents\Resources\Affiliations\RelationManagers;
 
+use BackedEnum;
 use App\Models\Plan;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
@@ -12,10 +13,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Agents\Resources\Affiliations\AffiliationResource;
-use BackedEnum;
 
 class AffiliatesRelationManager extends RelationManager
 {
@@ -90,6 +91,10 @@ class AffiliatesRelationManager extends RelationManager
                     ->label('Genero'),
                 TextColumn::make('relationship')
                     ->label('Parentesco'),
+                ImageColumn::make('document')
+                    ->alignCenter()
+                    ->imageHeight(80)
+                    ->label('Documento de Identidad'),
             ])
             ->filters([
                 //

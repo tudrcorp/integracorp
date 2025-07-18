@@ -102,12 +102,11 @@ class IndividualQuote extends Model
     public function sendPropuestaEconomicaPlanInicial($details)
     {
         $collect = collect($details['data'][0]);
-        // dd($collect);
-        
+
         /**
          * JOB
          */
-        SendEmailPropuestaEconomica::dispatch($details, $collect);
+        SendEmailPropuestaEconomica::dispatch($details, $collect, Auth::user());
     }
 
     public function sendPropuestaEconomicaPlanIdeal($details)
@@ -130,7 +129,7 @@ class IndividualQuote extends Model
         /**
          * JOB
          */
-        SendEmailPropuestaEconomicaPlanEspecial::dispatch($details, $group_collect);
+        SendEmailPropuestaEconomicaPlanEspecial::dispatch($details, $group_collect, Auth::user());
         
     }
 
@@ -156,10 +155,10 @@ class IndividualQuote extends Model
                 break;
             }
 
-            SendEmailPropuestaEconomicaMultiple::dispatch($collect_final, $details_generals);
+            SendEmailPropuestaEconomicaMultiple::dispatch($collect_final, $details_generals, Auth::user());
             //code...
         } catch (\Throwable $th) {
-            Notification::error($th->getMessage());
+            dd($th);
         }
         
     }

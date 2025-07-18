@@ -19,14 +19,16 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
 
     protected $collect_final = [];
     protected $details_generals = [];
+    protected $user;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($collect_final, $details_generals) 
+    public function __construct($collect_final, $details_generals, $user) 
     {
         $this->collect_final = $collect_final;
         $this->details_generals = $details_generals;
+        $this->user = $user;
         //
     }
 
@@ -35,9 +37,24 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
      */
     public function handle(): void
     {
-        try {
+        $this->generatePDF();
+            
+        Notification::make()
+            ->title('¡TAERA COMPLETADA!')
+            ->body('📎 '.$this->details_generals['code'].'.pdf ya se encuentra disponible para su descarga.')
+            ->success()
+            ->actions([
+                Action::make('download')
+                    ->label('Descargar archivo')
+                    ->url('/storage/' . $this->details_generals['code'] . '.pdf')
+            ])
+            ->sendToDatabase($this->user);
+        
+    }
 
-            ini_set('memory_limit', '2048M');
+    private function generatePDF($details, $group_collect)
+    {
+        ini_set('memory_limit', '2048M');
 
             $details_generals = $this->details_generals;
         
@@ -64,16 +81,7 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
                 }
             }
 
-            /**
-             * Datos generales
-             */
-            // $data_inicial   =  (array) $group_collect_plan_inicial[0];
-            // $data_ideal     = $group_collect_plan_ideal;
-            // $data_especial  = $group_collect_plan_especial;
-            // $data_ideal     = $group_collect_plan_ideal;
-            // $data_especial  = $group_collect_plan_especial;
-
-            $data_inicial   =  $group_collect_plan_inicial;
+            $data_inicial   =  (array) $group_collect_plan_inicial[0];
             $data_ideal     = $group_collect_plan_ideal;
             $data_especial  = $group_collect_plan_especial;
 
@@ -85,11 +93,6 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
             $pdf = Pdf::loadView('documents.propuesta-economica-multiple', compact('data_inicial', 'data_ideal', 'data_especial', 'details_generals'));
             $name_pdf = $details_generals['code'] . '.pdf';
             $pdf->save(public_path('storage/' . $name_pdf));
-            //
 
-        } catch (\Throwable $th) {
-           Log::info($th);
-        }
-        
     }
 }

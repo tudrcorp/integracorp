@@ -39,12 +39,12 @@ class IndividualQuoteForm
                 Wizard::make([
                     Step::make('SOLICITANTE')
                         ->description('Datos del Cliente')
-                        ->icon(Heroicon::User)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::User)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('data_client')
                             ->heading('¡Bienvenido/a de nuevo! 👋 ')
-                            ->description('Estás a punto de comenzar el proceso de crear una nueva cotización. Como primer paso, por favor ingresa o selecciona la información del cliente. Este es un paso fundamental para personalizar la cotización según sus necesidades. ¡Estamos aquí para ayudarte en cada paso del camino!')
+                            ->description('Estás a punto de comenzar a crear una nueva cotización, por favor ingresa la información del cliente para personalizarla. ¡Puede ver el avance del proceso en la barra de estatus!')
                             ->schema([
                                 TextInput::make('code')
                                     ->label('Nro. de cotización')
@@ -229,12 +229,12 @@ class IndividualQuoteForm
                         ]),
                     Step::make('PLANES A COTIZAR')
                         ->description('Plan(es) que desea cotizar:')
-                        ->icon(Heroicon::Swatch)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::Swatch)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('plans')
-                            ->heading('¡Seccion de planes a cotizar! 🎯')
-                            ->description('¡Perfecto! Ahora que ya has completado los datos iniciales del Cliente, es momento de elegir el tipo de plan que deseas cotizar. En el siguiente paso encontrarás una lista de opciones disponibles. Selecciona la que mejor se ajuste a las necesidades del cliente y continúa con el proceso.')
+                            ->heading('¡Sección de planes a cotizar! 🎯')
+                            // ->description('¡Perfecto! selecciona la que mejor se ajuste a las necesidades del cliente y continúa con el proceso.')
                             ->schema([
                                 Radio::make('plan')
                                     ->columns(3)
@@ -262,19 +262,19 @@ class IndividualQuoteForm
                         ]),
                     Step::make('RANGO DE EDAD')
                         ->description('Rango de edad y/o población:')
-                        ->icon(Heroicon::AdjustmentsVertical)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::AdjustmentsVertical)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('age_range')
                             ->heading('¡Listo para el ultimo paso! 🏁')
-                            ->description(new HtmlString(Blade::render(<<<BLADE
-                                    <div class="fi-section-header-description">
-                                        Por favor, selecciona el rango de edades de los beneficiarios. Al hacerlo, habrás finalizado la configuración principal de la cotización y estarás a un clic de generar el resultado final.
-                                        <br>
-                                        ¡Gracias por tu gran trabajo!
-                                    </div>
-                                BLADE))
-                            )
+                            // ->description(new HtmlString(Blade::render(<<<BLADE
+                            //         <div class="fi-section-header-description">
+                            //             Por favor, selecciona el rango de edades de los beneficiarios. Al hacerlo, habrás finalizado la configuración principal de la cotización y estarás a un clic de generar el resultado final.
+                            //             <br>
+                            //             ¡Gracias por tu gran trabajo!
+                            //         </div>
+                            //     BLADE))
+                            // )
                             ->schema([
                                 
                                 /**

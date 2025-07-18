@@ -39,7 +39,6 @@ class CreateAffiliation extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // dd($data['feedback']);
 
         session()->put('affiliates', isset($data['affiliates']) ? $data['affiliates'] : []);
 
@@ -93,14 +92,15 @@ class CreateAffiliation extends CreateRecord
                      * ----------------------------------------------------------------------------------------------------
                      */
                     $affiliates = session()->get('affiliates');
-
+                    // dd($affiliates);
                     //Agregamos al titular al array de afiliados
                     $affiliates[] = [
                             "full_name"          => $record->full_name_ti,
                             "nro_identificacion" => $record->nro_identificacion_ti,
                             "sex"                => $record->sex_ti,
                             "birth_date"         => $record->birth_date_ti,
-                            "relationship"       => "TITULAR"
+                            "relationship"       => "TITULAR",
+                            "document"           => $record->document,
                         ];
 
                     //Ordenamos los afiliados por fecha de nacimiento
@@ -165,6 +165,7 @@ class CreateAffiliation extends CreateRecord
                             'birth_date'         => $affiliates[$i]['birth_date'],
                             'age'                => Carbon::parse($affiliates[$i]['birth_date'])->age,
                             'relationship'       => $affiliates[$i]['relationship'],
+                            'document'           => $affiliates[$i]['document'],
                         ]);
                     }
 

@@ -76,65 +76,65 @@ require __DIR__.'/auth.php';
  */
 Route::get('/pp', function () {
     //arraryb de numero telefonicos
-    $array = [
-        // '+584127018390',
-        // '+584129929796',
-        // '+584143027250',
-        // '+584245718777',
-        '+584241764348',
-    ];
+    // $array = [
+    //     // '+584127018390',
+    //     // '+584129929796',
+    //     // '+584143027250',
+    //     // '+584245718777',
+    //     '+584241764348',
+    // ];
 
-    $body = <<<HTML
+    // $body = <<<HTML
 
-            Queremos darle un sincero agradecimiento por visitar nuestro stand en el *3er Encuentro Internacional de Mujeres de la FUTAC*. 
-            Realmente apreciamos la oportunidad de conocerle.
+    //         Queremos darle un sincero agradecimiento por visitar nuestro stand en el *3er Encuentro Internacional de Mujeres de la FUTAC*. 
+    //         Realmente apreciamos la oportunidad de conocerle.
 
-            Estamos atentos a ofrecer *soluciones efectivas* a través de nuestros servicios de Salud paquetizados.
+    //         Estamos atentos a ofrecer *soluciones efectivas* a través de nuestros servicios de Salud paquetizados.
 
-            Si le surge alguna duda acerca de como Tu Dr. En Casa puede beneficiarte, no dudes en contactarnos 📲
-            *0424-2220056 / 0424-2271498*
+    //         Si le surge alguna duda acerca de como Tu Dr. En Casa puede beneficiarte, no dudes en contactarnos 📲
+    //         *0424-2220056 / 0424-2271498*
 
-            ¡Estamos a tu disposición!
+    //         ¡Estamos a tu disposición!
 
-            Saludos cordiales, 
+    //         Saludos cordiales, 
 
-            HTML;
+    //         HTML;
     
-    for ($i = 0; $i < count($array); $i++) {
-        $params = array(
-            'token' => '9znl3oaurqmxhhbr',
-            'to' => $array[$i],
-            'image' => 'https://tudrenviajes.com/images/image_masivo.jpg',
-            'caption' => $body
-        );
-        $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image", 
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => http_build_query($params),
-            CURLOPT_HTTPHEADER => array(
-                "content-type: application/x-www-form-urlencoded"
-            ),
-        ));
+    // for ($i = 0; $i < count($array); $i++) {
+    //     $params = array(
+    //         'token' => '9znl3oaurqmxhhbr',
+    //         'to' => $array[$i],
+    //         'image' => 'https://tudrenviajes.com/images/image_masivo.jpg',
+    //         'caption' => $body
+    //     );
+    //     $curl = curl_init();
+    //     curl_setopt_array($curl, array(
+    //         CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image", 
+    //         CURLOPT_RETURNTRANSFER => true,
+    //         CURLOPT_ENCODING => "",
+    //         CURLOPT_MAXREDIRS => 10,
+    //         CURLOPT_TIMEOUT => 30,
+    //         CURLOPT_SSL_VERIFYHOST => 0,
+    //         CURLOPT_SSL_VERIFYPEER => 0,
+    //         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    //         CURLOPT_CUSTOMREQUEST => "POST",
+    //         CURLOPT_POSTFIELDS => http_build_query($params),
+    //         CURLOPT_HTTPHEADER => array(
+    //             "content-type: application/x-www-form-urlencoded"
+    //         ),
+    //     ));
 
-        $response = curl_exec($curl);
-        $err = curl_error($curl);
+    //     $response = curl_exec($curl);
+    //     $err = curl_error($curl);
 
-        curl_close($curl);
+    //     curl_close($curl);
 
-        if ($err) {
-            echo "cURL Error #:" . $err;
-        } else {
-            echo $response;
-        }
-    }
+    //     if ($err) {
+    //         echo "cURL Error #:" . $err;
+    //     } else {
+    //         echo $response;
+    //     }
+    // }
 
     
     
@@ -142,12 +142,10 @@ Route::get('/pp', function () {
 
 Route::get('/pdf', [PdfController::class, 'generatePdf_aviso_de_pago']);
 
-Route::get('/ppp', function () {
-    // $p = \Illuminate\Support\Facades\DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id;
-    // dd($p);
-    // Parsear la fecha con el formato específico d-m-Y
-    $fecha = '01-01-1990';
-    $edad = Carbon::parse($fecha)->age;
+Route::get('/d', function () {
+
+    $path = public_path('storage/COT-IND-00040.pdf');
+    dd($path);
+    return response()->download($path);
     
-    dd($edad);
-});
+})->name('panel.notification.download.file');

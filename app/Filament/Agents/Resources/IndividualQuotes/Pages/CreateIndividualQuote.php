@@ -364,4 +364,19 @@ class CreateIndividualQuote extends CreateRecord
                 ->send();
         }
     }
+
+    //getCreatedNotification
+    protected function getCreatedNotification(): Notification
+    {
+        return Notification::make()
+            ->title('NOTIFICACIÓN')
+            ->body('Cotización individual exitosa. El sistema indicara cuando haya terminado de crear el archivo exitosamente!.')
+            ->icon('heroicon-m-tag')
+            ->iconColor('success')
+            ->success()
+            ->persistent()
+            ->send();
+    }
+
+
 }
