@@ -21,17 +21,15 @@ class Affiliation extends Model
         'owner_code',
         'owner_agent',
         'plan_id',
-        'full_name_con',
-        'nro_identificacion_con',
-        'sex_con',
-        'birth_date_con',
-        'adress_con',
-        'city_id_con',
-        'state_id_con',
-        'country_id_con',
-        'region_con',
-        'phone_con',
-        'email_con',
+        
+        /** Datos del pagador */
+        'full_name_payer',
+        'nro_identificacion_payer',
+        'phone_payer',
+        'email_payer',
+        'relationship_payer',
+        
+        /** Datos del titular */
         'full_name_ti',
         'nro_identificacion_ti',
         'sex_ti',
@@ -43,6 +41,8 @@ class Affiliation extends Model
         'region_ti',
         'phone_ti',
         'email_ti',
+
+        
         'cuestion_1',
         'cuestion_2',
         'cuestion_3',
@@ -86,6 +86,7 @@ class Affiliation extends Model
         'total_amount',
         'observations',
         'feedback',
+        'feedback_dos',
         // 'is_accepted',
         
     ];
@@ -137,6 +138,7 @@ class Affiliation extends Model
 
     public function sendCertificate($record, $titular, $afiliates)
     {
+        // dd($record, $titular, $afiliates);
         try {
 
             $data = $record->toArray();
@@ -187,6 +189,7 @@ class Affiliation extends Model
 
             SendNotificacionAfiliacionIndividual::dispatch($titular['full_name'], Auth::user()->email, $name_pdf, $data, $afiliates);
             //code...
+            
         } catch (\Throwable $th) {
             dd($th);
             //throw $th;
@@ -210,6 +213,7 @@ class Affiliation extends Model
 
     public function sendCertificateOnlyHolder($record, $afiliates)
     {
+        // dd($record->toArray(), $afiliates);
         try {
 
             $data = $record->toArray();

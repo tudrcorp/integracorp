@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class CorporateQuoteChart extends ChartWidget
 {
-    protected ?string $heading = 'Gráfico de cotizaciones corporativas';
+    protected ?string $heading = 'Gráfico de Cotizaciones Corporativas';
 
     public ?string $filter = 'week';
 

@@ -58,7 +58,7 @@ class CertificateEmail extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         return [
-            public_path('storage/'. $this->name_pdf),
+            public_path('storage/certificates/'. $this->name_pdf),
             // $this->attachFromStorage('public/ejemploCSV.csv', 'ejemploCSV.csv'),
         ];
     }

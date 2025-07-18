@@ -184,7 +184,7 @@
             <tbody class="tb_table_info_ti">
                 <tr class="tr_table_info_ti">
                     <td class="td_table_info_ti" style="font-weight: bold">Contratante:</td>
-                    <td class="td_table_info_ti">{{ $data['full_name_con'] }}</td>
+                    <td class="td_table_info_ti">{{ $data['full_name_ti'] }}</td>
 
                     <td class="td_table_info_ti" style="font-weight: bold">Agente:</td>
                     <td class="td_table_info_ti">{{ $data['name_agent'] }}</td>
@@ -281,7 +281,6 @@
     <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 5px">
         <p style="text-align: center; margin-bottom: 5px; color: {{ $data['colorTitle'] }}; font-weight: bold; font-size: 20px; text-transform: uppercase;">{{ $data['titleBeneficios'] }}</p>
         <img src="{{ public_path('storage/'.$data['imageBeneficios']) }}" style="width: 100%;" alt="">
-
     </div>
 
 

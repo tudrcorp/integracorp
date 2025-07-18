@@ -21,19 +21,19 @@ class SendNotificacionAfiliacionIndividual implements ShouldQueue
     public $full_name;
     public $email;
     public $name_pdf;
-    public $data_ti;
+    public $data;
     public $afiliates;
     
 
     /**
      * Create a new job instance.
      */
-    public function __construct($full_name, $email, $name_pdf, $data_ti, $afiliates)
+    public function __construct($full_name = null, $email = null, $name_pdf = null, $data = null, $afiliates = null)
     {
         $this->full_name = $full_name;
         $this->email = $email;
         $this->name_pdf = $name_pdf;
-        $this->data_ti = $data_ti;
+        $this->data = $data;
         $this->afiliates = $afiliates;
     }
 
@@ -47,17 +47,17 @@ class SendNotificacionAfiliacionIndividual implements ShouldQueue
         $full_name = $this->full_name;
         $email = $this->email;
         $name_pdf = $this->name_pdf;
-        $data_ti = $this->data_ti;
+        $data = $this->data;
         $afiliates = $this->afiliates;
 
         Log::info($full_name);
         Log::info($email);
         Log::info($name_pdf);
-        Log::info($data_ti);
+        Log::info($data);
         Log::info($afiliates);
         
-        $pdf = Pdf::loadView('documents.certificate', compact('data_ti', 'afiliates'));
-        $pdf->save(public_path('storage/' . $name_pdf));
+        $pdf = Pdf::loadView('documents.certificate', compact('data', 'afiliates'));
+        $pdf->save(public_path('storage/certificates/' . $name_pdf));
 
         /**
          * Despues de guardar el certificado lo enviamos por email

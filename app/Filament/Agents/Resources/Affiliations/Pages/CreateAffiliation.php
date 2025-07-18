@@ -45,13 +45,20 @@ class CreateAffiliation extends CreateRecord
 
         $data['feedback'] = $data['feedback'] == true ? true : false;
 
+        if($data['feedback_dos']) {
+            $data['full_name_payer'] = $data['full_name_ti'];
+            $data['nro_identificacion_payer'] = $data['nro_identificacion_ti'];
+            $data['email_payer'] = $data['email_ti'];
+            $data['phone_payer'] = $data['phone_ti'];
+        }
+
         return $data;
     }
 
     protected function beforeCreate(): void
     {
         //Si el titular en menor de edad no puede afiliarse
-        if(Carbon::parse($this->data['birth_date_con'])->age < 18)  
+        if(Carbon::parse($this->data['birth_date_ti'])->age < 18)  
         {
             Notification::make()
                 ->title('El titular debe ser mayor de 18 años')
@@ -89,10 +96,10 @@ class CreateAffiliation extends CreateRecord
 
                     //Agregamos al titular al array de afiliados
                     $affiliates[] = [
-                            "full_name"          => $record->full_name_con,
-                            "nro_identificacion" => $record->nro_identificacion_con,
-                            "sex"                => $record->sex_con,
-                            "birth_date"         => $record->birth_date_con,
+                            "full_name"          => $record->full_name_ti,
+                            "nro_identificacion" => $record->nro_identificacion_ti,
+                            "sex"                => $record->sex_ti,
+                            "birth_date"         => $record->birth_date_ti,
                             "relationship"       => "TITULAR"
                         ];
 
@@ -241,15 +248,16 @@ class CreateAffiliation extends CreateRecord
                 /**----------------------------------------------------------------------------------------------------------------------------- */
 
                 // El titular ese el unico afiliado
-                if($record->feedback == false){
+                if($record->feedback == false)
+                {
 
                     /** 1- Registro los datos de contratante como los datos del afiliado ya que la cotizacion es para el mismo*/
                     $record->affiliates()->create([
-                        'full_name'             => $record->full_name_con,
-                        'nro_identificacion'    => $record->nro_identificacion_con,
-                        'sex'                   => $record->sex_con,
-                        'birth_date'            => $record->birth_date_con,
-                        'age'                   => Carbon::parse($record->birth_date_con)->age,
+                        'full_name'             => $record->full_name_ti,
+                        'nro_identificacion'    => $record->nro_identificacion_ti,
+                        'sex'                   => $record->sex_ti,
+                        'birth_date'            => $record->birth_date_ti,
+                        'age'                   => Carbon::parse($record->birth_date_ti)->age,
                         'relationship'          => 'TITULAR',
                     ]);
 
@@ -311,7 +319,6 @@ class CreateAffiliation extends CreateRecord
     }
 
     
-
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');

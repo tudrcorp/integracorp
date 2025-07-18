@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Mail\Mailables\Address;
 
 class SendMailPropuestaPlanEspecial extends Mailable implements ShouldQueue
 {
@@ -24,6 +25,17 @@ class SendMailPropuestaPlanEspecial extends Mailable implements ShouldQueue
         $this->titular = $titular;
         $this->name_pdf = $name_pdf;
         //
+    }
+
+    /**
+     * Get the message envelope.
+     */
+    public function envelope(): Envelope
+    {
+        return new Envelope(
+            from: new Address('cotizaciones@tudrencasa.com', 'TuDrEnCasa Cotización. (INTEGRACORP)'),
+            subject: 'Propuesta Sr(a). ' .$this->titular. ' Cotización múltiple', //TODO: debo agregar los planes cotizados
+        );
     }
 
     /**

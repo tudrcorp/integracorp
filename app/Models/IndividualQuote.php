@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
 use App\Jobs\SendEmailPropuestaEconomica;
@@ -117,7 +118,7 @@ class IndividualQuote extends Model
         /**
          * JOB
          */
-        SendEmailPropuestaEconomicaPlanIdeal::dispatch($details, $group_collect);
+        SendEmailPropuestaEconomicaPlanIdeal::dispatch($details, $group_collect, Auth::user());
         
     }
 

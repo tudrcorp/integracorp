@@ -26,6 +26,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
 use App\Jobs\ResendEmailPropuestaEconomica;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 
 class IndividualQuotesTable
@@ -116,7 +117,7 @@ class IndividualQuotesTable
                     
                     /**EDIT */
                     EditAction::make()
-                        ->label('Editar')
+                        ->label('Editar Cotización')
                         ->color('warning')
                         ->icon('heroicon-s-pencil')
                         ->hidden(function (IndividualQuote $record) {
@@ -134,12 +135,22 @@ class IndividualQuotesTable
                             }
                             return false;
                         })
-                        ->label('Aprobar cotización')
-                        ->icon('heroicon-m-power')
+                        ->label('Aprobar')
+                        ->icon('heroicon-m-shield-check')
                         ->color('success')
                         ->requiresConfirmation()
                         ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
-                        ->modalDescription('Felicitaciones! solo falta completar el formulario')
+                        ->modalDescription('Felicitaciones!')
+                        ->modalIcon('heroicon-m-shield-check')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Section::make()
+                                ->schema([
+                                    TextEntry::make('title')
+                                        ->alignCenter()
+                                        ->label('Solo falta completar el formulario de pre-afiliación')
+                                ])
+                        ])
                         ->action(function (IndividualQuote $record) {
 
                             try {
@@ -183,6 +194,7 @@ class IndividualQuotesTable
                                 }
 
                                 return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
+                                
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.emit', $th->getMessage());
                                 Notification::make()
@@ -203,16 +215,18 @@ class IndividualQuotesTable
 
                     /**FORWARD */
                     Action::make('forward')
-                        ->label('Reenviar Cotizacion')
-                        ->icon('heroicon-o-arrow-uturn-right')
+                        ->label('Reenviar')
+                        ->icon('fluentui-document-arrow-right-20')
                         ->color('primary')
                         ->requiresConfirmation()
-                        ->modalHeading('Reenvío de Cotizacion')
-                        ->modalWidth(Width::FiveExtraLarge)
+                        ->modalIcon('fluentui-document-arrow-right-20')
+                        ->modalHeading('Reenvío de Cotización')
+                        ->modalDescription('La propuesta será enviado por email y/o teléfono!')
+                        ->modalWidth(Width::ExtraLarge)
                         ->form([
                             Section::make()
-                                ->heading('Informacion')
-                                ->description('El link puede sera enviado por email y/o telefono!')
+                                // ->heading('Informacion')
+                                // ->description('El link puede sera enviado por email y/o telefono!')
                                 ->schema([
                                     TextInput::make('email')
                                         ->label('Email')
@@ -364,12 +378,15 @@ class IndividualQuotesTable
 
                     /* DESCARGAR DOCUMENTO */
                     Action::make('download')
-                        ->label('Descargar cotización')
+                        ->label('Descargar')
                         ->icon('heroicon-s-arrow-down-on-square-stack')
                         ->color('verde')
                         ->requiresConfirmation()
                         ->modalHeading('DESCARGAR COTIZACION')
-                        ->modalWidth(Width::FiveExtraLarge)
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar.!')
+                        ->hidden(fn (IndividualQuote $record): bool => $path = !file_exists(public_path('storage/' . $record->code . '.pdf')))
                         ->action(function (IndividualQuote $record, array $data) {
 
                             try {
@@ -381,11 +398,11 @@ class IndividualQuotesTable
                                 $path = public_path('storage/' . $record->code . '.pdf');
                                 return response()->download($path);
 
-
                                 /**
                                  * LOG
                                  */
                                 LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                                
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
@@ -406,10 +423,15 @@ class IndividualQuotesTable
                         ->requiresConfirmation()
                         ->modalHeading('OBSERVACIONES DEL AGENTE')
                         ->modalIcon('heroicon-s-hand-raised')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalDescription('Envíanos su inquietud o comentarios!')
                         ->form([
-                            Textarea::make('description')
-                                ->label('Observaciones')
-                                ->rows(5)
+                            Section::make()
+                            ->schema([
+                                Textarea::make('description')
+                                    ->label('Observaciones')
+                                    ->rows(4)
+                            ])
                         ])
                         ->action(function (IndividualQuote $record, array $data) {
 

@@ -26,15 +26,15 @@ class StatsOverview extends StatsOverviewWidget
             Stat::make('Afiliaciones Corporativas', '+' .AffiliationCorporate::where('agent_id', Auth::user()->agent_id)->where('status', 'ACTIVA')->count())
                 ->description('32k increase')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('warning'),
+                ->color('success'),
             Stat::make('Total Ventas', 'US$ '. Sale::where('agent_id', Auth::user()->agent_id)->sum('total_amount'))
                 ->description('32k increase')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('primary'),
+                ->color('success'),
             Stat::make('Acumulado de Comisiones', 'US$ ' . Commission::where('agent_id', Auth::user()->agent_id)->sum('total_payment_commission'))
                 ->description('32k increase')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('gray'),
+                ->color('success'),
         ];
     }
 }

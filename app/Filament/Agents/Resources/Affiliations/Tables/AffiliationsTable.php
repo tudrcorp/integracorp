@@ -70,42 +70,52 @@ class AffiliationsTable
                     ->searchable(),
                 TextColumn::make('payment_frequency')
                     ->label('Frecuencia de pago')
+                    ->alignCenter()
                     ->badge()
                     ->color('primary')
                     ->searchable(),
-                TextColumn::make('full_name_con')
-                    ->label('Nombre y Apellido')
+                TextColumn::make('full_name_ti')
+                    ->label('Titular')
+                    ->badge()
+                    ->color('info')
+                    ->icon('fluentui-person-available-16')
                     ->searchable(),
-                TextColumn::make('nro_identificacion_con')
-                    ->label('Nro. de Identificación')
+                TextColumn::make('full_name_payer')
+                    ->label('Pagador')
+                    ->badge()
+                    ->color('info')
+                    ->icon('fluentui-money-hand-20')
                     ->searchable(),
-                TextColumn::make('sex_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('birth_date_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('adress_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('city_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('state_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('country_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('region_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('phone_con')
-                    ->label('Nro. de Teléfono')
-                    ->searchable(),
-                TextColumn::make('email_con')
-                    ->label('Email')
-                    ->searchable(),
+                // TextColumn::make('nro_identificacion_con')
+                //     ->label('Nro. de Identificación')
+                //     ->searchable(),
+                // TextColumn::make('sex_con')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('birth_date_con')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('adress_con')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('city_id_con')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('state_id_con')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('country_id_con')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('region_con')
+                //     ->searchable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // TextColumn::make('phone_con')
+                //     ->label('Nro. de Teléfono')
+                //     ->searchable(),
+                // TextColumn::make('email_con')
+                //     ->label('Email')
+                //     ->searchable(),
 
                 IconColumn::make('cuestion_1')
                     ->label('Prgunta 1')
@@ -1080,14 +1090,13 @@ class AffiliationsTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/CER-' . $record->code . '.pdf');
+                                $path = public_path('storage/certificates/CER-' . $record->code . '.pdf');
                                 return response()->download($path);
-
-
                                 /**
                                  * LOG
                                  */
                                 LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                                
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()

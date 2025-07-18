@@ -63,7 +63,7 @@
             padding: 15px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             font-family: Arial, sans-serif;
-            color: #000000;
+            color: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -85,7 +85,7 @@
         <div style="position: absolute; top: 250px; left: 85px;">
             <h1>Propuesta económica</h1>
             <div class="caja">
-                <p style="position: absolute; top: 0; left: 5; font-size: 16px; font-weight: bold; font-color: #ffffff; margin-top: 7px;">Sr(a): {{ $name }}</p>
+                <p style="position: absolute; top: 0; left: 5; font-size: 16px; font-weight: bold; color: #ffffff; margin-top: 7px;">Sr(a): {{ $name }}</p>
             </div>
         </div>
 

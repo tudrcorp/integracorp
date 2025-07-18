@@ -22,7 +22,7 @@ class AffiliationInfolist
                 ->columnSpanFull()
                 ->icon(Heroicon::Bars3BottomLeft)
                 ->schema([
-                    Fieldset::make('Información')
+                    Fieldset::make('PREAFILIACION')
                         ->schema([
                             TextEntry::make('code')
                                 ->label('Nro. de solicitud:')
@@ -45,22 +45,37 @@ class AffiliationInfolist
                                 ->dateTime(),
                         ])->columnSpanFull()->columns(5),
 
-                    Fieldset::make('Información del Titular')
+                    Fieldset::make('TITULAR DE LA PÓLIZA')
                         ->schema([
-                            TextEntry::make('full_name_con')
-                                ->label('Nombre completo:'),
-                            TextEntry::make('birth_date_con')
+                            TextEntry::make('full_name_ti')
                                 ->badge()
-                                ->icon(Heroicon::CalendarDays)
-                                ->dateTime('d-m-Y')
-                                ->label('Fecha de nacimiento:'),
-                            TextEntry::make('email_con')
+                                ->color('info')
+                                ->icon('fluentui-person-available-16')
+                                ->label('Nombre y Apellido:'),
+                            TextEntry::make('nro_identificacion_ti')
+                                ->label('Nro. de Identificación:'),
+                            TextEntry::make('email_ti')
                                 ->label('Correo electrónico:'),
-                            TextEntry::make('phone_con')
+                            TextEntry::make('phone_ti')
                                 ->label('Teléfono:'),
                         ])->columnSpanFull()->columns(4),
 
-                    Fieldset::make('Plan y Frecuencia de pago')
+                    Fieldset::make('RESPONABLE DE PAGO (PAGADOR)')
+                        ->schema([
+                            TextEntry::make('full_name_payer')
+                                ->badge()
+                                ->color('info')
+                                ->icon('fluentui-money-hand-20')
+                                ->label('Nombre y Apellido:'),
+                            TextEntry::make('nro_identificacion_payer')
+                                ->label('Nro. de Identificación:'),
+                            TextEntry::make('email_payer')
+                                ->label('Correo electrónico:'),
+                            TextEntry::make('phone_payer')
+                                ->label('Teléfono:'),
+                        ])->columnSpanFull()->columns(4),
+
+                    Fieldset::make('PLAN Y FRECUENCIA DE PAGO')
                         ->schema([
                             TextEntry::make('plan.description')
                                 ->label('Plan')
