@@ -18,7 +18,7 @@ class CreateAffiliation extends CreateRecord
 {
     protected static string $resource = AffiliationResource::class;
 
-    protected static ?string $title = 'Pre-afiliación';
+    protected static ?string $title = 'Formulario de preafiliación';
 
     protected function getFormActions(): array
     {

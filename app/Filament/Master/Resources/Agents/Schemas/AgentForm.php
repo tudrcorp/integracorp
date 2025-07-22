@@ -36,7 +36,7 @@ class AgentForm
                  * ------------------------------------------------------
                  */
                 Wizard::make([
-                    Step::make('INFORMACION PRINCIPAL')
+                    Step::make('Informacion Principal')
                         ->schema([
                             Fieldset::make()->schema([
                                 Select::make('agent_type_id')
@@ -313,7 +313,62 @@ class AgentForm
                                 ->prefixIcon('heroicon-s-user')
                                 ->maxLength(255),
                         ]),
-                    Step::make('MONEDA NACIONAL (VES)')
+                    Step::make('Comisiones')
+                        ->schema([
+                            Grid::make(2)
+                                ->schema([
+                                    Toggle::make('tdec')
+                                        ->label('TDEC'),
+                                    Toggle::make('tdev')
+                                        ->label('TDEV'),
+
+                                ])->columnSpanFull(),
+                            Grid::make(2)
+                                ->schema([
+                                    TextInput::make('commission_tdec')
+                                        ->label('Comisión TDEC US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->required()
+                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido.',
+                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
+                                        ]),
+                                    TextInput::make('commission_tdec_renewal')
+                                        ->label('Comisión Renovacion TDEC US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido.',
+                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
+                                        ]),
+
+                                ])->columnSpanFull(),
+                            Grid::make(2)
+                                ->schema([
+                                    TextInput::make('commission_tdev')
+                                        ->label('Comisión TDEV US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido.',
+                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
+                                        ]),
+                                    TextInput::make('commission_tdev_renewal')
+                                        ->label('Comisión Renovacion TDEV US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido.',
+                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
+                                        ]),
+                                ])->columnSpanFull()
+                        ]),
+                    Step::make('Datos Bancarios(VES)')
                         ->schema([
                             TextInput::make('local_beneficiary_name')
                                 ->label('Nombre/Razon Social del Beneficiario')
@@ -385,7 +440,7 @@ class AgentForm
                                     }
                                 }),
                         ]),
-                    Step::make('MONEDA EXTRANJERA')
+                    Step::make('Datos Bancarios(US$)')
                         ->schema([
                             TextInput::make('extra_beneficiary_name')
                                 ->label('Nombre/Razon Social')

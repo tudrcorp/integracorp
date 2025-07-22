@@ -11,11 +11,13 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\HtmlString;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Forms\Components\Textarea;
@@ -140,17 +142,24 @@ class IndividualQuotesTable
                         ->color('success')
                         ->requiresConfirmation()
                         ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
-                        ->modalDescription('Felicitaciones!')
                         ->modalIcon('heroicon-m-shield-check')
                         ->modalWidth(Width::ExtraLarge)
-                        ->form([
-                            Section::make()
-                                ->schema([
-                                    TextEntry::make('title')
-                                        ->alignCenter()
-                                        ->label('Solo falta completar el formulario de pre-afiliación')
-                                ])
-                        ])
+                        ->modalDescription(new HtmlString(Blade::render(<<<BLADE
+                                    <div class="fi-section-header-description mt-5 mb-5">
+                                        Felicitaciones!.
+                                        <br>
+                                    Solo falta completar el formulario de pre-afiliación
+                                    </div>
+                            BLADE)))
+                        // ->modalDescription('Felicitaciones!')
+                        // ->form([
+                        //     Section::make()
+                        //         ->schema([
+                        //             TextEntry::make('title')
+                        //                 ->alignCenter()
+                        //                 ->label('Solo falta completar el formulario de pre-afiliación')
+                        //         ])
+                        // ])
                         ->action(function (IndividualQuote $record) {
 
                             try {
@@ -166,9 +175,10 @@ class IndividualQuotesTable
 
                                 Notification::make()
                                     ->title('COTIZACION INDIVIDUAL APROBADA')
-                                    ->body('Se realizo la aprobacion directa de la cotizacion Nro.' . $record->code . ' para realizar la pre-afiliacion')
+                                    ->body('Nro.' . $record->code . ', puede proceder a realizar la pre-afiliación')
                                     ->icon('heroicon-s-user-group')
                                     ->iconColor('success')
+                                    ->persistent()
                                     ->success()
                                     ->send();
 
@@ -378,7 +388,7 @@ class IndividualQuotesTable
 
                     /* DESCARGAR DOCUMENTO */
                     Action::make('download')
-                        ->label('Descargar')
+                        ->label('Descargar Cotización')
                         ->icon('heroicon-s-arrow-down-on-square-stack')
                         ->color('verde')
                         ->requiresConfirmation()

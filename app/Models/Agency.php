@@ -67,18 +67,18 @@ class Agency extends Model
 
         'agency_type_id',
         'date_register',
-        'is_accepted',
+        'is_accepted_conditions',
         'status',
         'created_by',
-        'file_coord_bancarias',
-        'fir_dig_agent',
-        'fir_dig_agency',
-        'file_ci_rif',
-        'file_w8_w9',
-        'file_account_usd',
-        'file_account_bsd',
-        'file_account_zelle',
-        'comments'
+        'comments',
+
+        /*Docuemntos*/
+        'doc_digital_signature',
+        'doc_document_identity',
+        'doc_w8_w9',
+        'doc_bank_data_ves',
+        'doc_bank_data_usd',
+        
         
     ];
 

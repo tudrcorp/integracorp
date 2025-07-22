@@ -60,7 +60,7 @@ class AffiliationInfolist
                                 ->label('Teléfono:'),
                         ])->columnSpanFull()->columns(4),
 
-                    Fieldset::make('RESPONABLE DE PAGO (PAGADOR)')
+                    Fieldset::make('RESPONSABLE DE PAGO (PAGADOR)')
                         ->schema([
                             TextEntry::make('full_name_payer')
                                 ->badge()

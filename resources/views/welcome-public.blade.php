@@ -28,12 +28,12 @@
 
         <!-- Texto de bienvenida -->
         <h1 class="text-sm text-gray-400 dark:text-gray-400">
-            ¡Bienvenido a TuDrEnCasa<br>Nos comprometemos a cuidarte hoy y asegurar tu futuro.!
+            ¡Bienvenido a TuDrEnCasa<br>Nos comprometemos a cuidarte hoy y asegurar un mañana en bienestar.!
         </h1>
 
         <div class="flex items-center justify-center gap-1">
             <nav class="flex items-center justify-end gap-2">
-                <a href="{{ route('agency.create') }}" class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] bg-[#0064a1] border-[#19140035] hover:bg-[#529471] border text-white dark:border-[#3E3E3A] dark:hover:border-[#62605b] rounded-xl text-sm leading-normal">
+                <a href="{{ route('volt.agency.create') }}" class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] bg-[#0064a1] border-[#19140035] hover:bg-[#529471] border text-white dark:border-[#3E3E3A] dark:hover:border-[#62605b] rounded-xl text-sm leading-normal">
                     REGISTRAR AGENCIA
                 </a>
                 <a href="{{ route('volt.agent.create') }}" class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] bg-[#0064a1] border-[#19140035] hover:bg-[#529471] border text-white dark:border-[#3E3E3A] dark:hover:border-[#62605b] rounded-xl text-sm leading-normal">

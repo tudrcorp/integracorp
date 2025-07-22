@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\Blade;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
@@ -31,7 +32,7 @@ class AgentForm
         return $schema
             ->components([
                 Wizard::make([
-                    Step::make('INFORMACION PRINCIPAL')
+                    Step::make('Informacion Personal')
                         ->description('Información principal del solicitante')
                         ->icon(Heroicon::User)
                         ->completedIcon(Heroicon::Check)
@@ -57,10 +58,11 @@ class AgentForm
                                 ]),
                             TextInput::make('ci')
                                 ->label('Cedula de Identidad')
-                                ->prefix('V/E/C')
+                                ->prefixIcon('heroicon-s-identification')
                                 ->numeric()
                                 ->required()
                                 ->validationMessages([
+                                    'required' => 'Campo requerido',
                                     'numeric'   => 'El campo es numerico',
                                 ]),
 
@@ -198,8 +200,7 @@ class AgentForm
                                 ->live(onBlur: true)
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
-                                ])
-                                ->hiddenOn('edit'),
+                                ]),
                             TextInput::make('phone')
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
@@ -268,10 +269,10 @@ class AgentForm
                                 ->prefixIcon('heroicon-s-user')
                                 ->maxLength(255),
                         ])->columns(4),
-                    Step::make('MONEDA NACIONAL')
+                    Step::make('Informacion Bancaria Local(VES)')
                         ->description('Datos bancarios para recibir pagos en moneda nacional')
                         ->icon(Heroicon::CreditCard) //heroicon-s-credit-card
-                    ->completedIcon(Heroicon::Check)
+                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('local_beneficiary_name')
                                 ->label('Nombre/Razon Social del Beneficiario')
@@ -344,11 +345,11 @@ class AgentForm
                                     }
                                 }),
                         ])->columnSpanFull()->columns(3),
-                    Step::make('MONEDA EXTRANJERA')
+                    Step::make('Informacion Bancaria Extra(US$)')
                         ->description('Datos bancarios para recibir pagos en moneda extranjera')
                         ->icon(Heroicon::CurrencyDollar)
                         ->completedIcon(Heroicon::Check) //heroicon-s-currency-dollar
-                    ->schema([
+                        ->schema([
                             TextInput::make('extra_beneficiary_name')
                                 ->label('Nombre/Razon Social')
                                 ->afterStateUpdated(function (Set $set, $state) {
@@ -465,7 +466,34 @@ class AgentForm
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
-                        ])->columnSpanFull()->columns(3),
+                            ])->columnSpanFull()->columns(3),
+                    Step::make('Acuerdo y condiciones')
+                        ->description('Leer y aceptar las condiciones')
+                        ->icon(Heroicon::ShieldCheck)
+                        ->completedIcon(Heroicon::Check)
+                        ->schema([
+                            Section::make('Lea detenidamente las siguientes condiciones!')
+                                ->description(function (Get $get) {
+                                    return 'Este acuerdo establece la relación entre la Agencia o Agente y Tu Dr. Group ( quien en adelante se denominará la Compañía ) los cuales 
+                                            se sujetarán a los siguientes términos: La Compañía le ha asignado a la Agencia o Agente un número de identificación ( arriba mencionado ), 
+                                            bajo el cual se registrará el negocio proveniente de dicha Agencia o Agente. 
+                                            Este Acuerdo será efectivo a partir de la fecha de suscripción en la Compañía. Cualquiera de las partes puede terminar este Acuerdo con un 
+                                            preaviso mínimo de sesenta (60) días, siempre y cuando notifique su intención por escrito. 
+                                            La Compañía se reserva el derecho a terminar este Acuerdo por motivo de actos fraudulentos o el incumplimiento de cualquiera de las normas 
+                                            contenidas en el mismo. 
+                                            La Agencia tiene la potestad de definir la comisión por venta que reciben los agentes bajo su estructura. 
+                                            Forma parte integrante e indivisible de este acuerdo: el Addendum contentivo de las normas particulares que rigen la relación, los documentos 
+                                            complementarios de identificación de la Agencia o el Agente, los datos oficiales de identificación de las cuentas bancarias dispuestas para el 
+                                            pago de comisiones y cualquier otro documento que se adjunte en el trascurso de la relación comercial.';
+                                })
+                                ->icon('heroicon-m-folder-plus')
+                                ->schema([
+                                    Checkbox::make('is_accepted_conditions')
+                                        ->live()
+                                        ->label('ACEPTO')
+                                        ->required(),
+                                ])->columnSpanFull(),
+                        ])
                 ])
                 ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button

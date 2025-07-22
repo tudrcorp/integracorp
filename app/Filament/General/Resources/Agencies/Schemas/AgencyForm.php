@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Master\Resources\Agencies\Schemas;
+namespace App\Filament\General\Resources\Agencies\Schemas;
 
 use App\Models\City;
 use App\Models\State;
@@ -9,9 +9,6 @@ use App\Models\Region;
 use App\Models\Country;
 use App\Models\AgencyType;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -59,14 +56,15 @@ class AgencyForm
                                 ->options(AgencyType::where('id', 3)->get()->pluck('definition', 'id'))
                                 ->searchable()
                                 ->preload()
-                                ->hiddenOn('edit'),
+                                ->disabled()
+                                ->dehydrated(),
 
                             /**JERARQUÍA */
                             /*---------------------------------------------------------- */
                             // Hidden::make('owner_code')->default(function (Get $get) {
                             //     return Auth::user()->code_agency;
                             // }),
-                            
+
                             TextInput::make('name_corporative')
                                 ->label('Nombre de la Agencia')
                                 ->afterStateUpdated(function (Set $set, $state) {
@@ -111,7 +109,7 @@ class AgencyForm
                                     'required'  => 'Campo Requerido',
                                 ])
                                 ->maxLength(255),
-                            
+
                             TextInput::make('ci_responsable')
                                 ->label('Cédula del Representante')
                                 ->prefix('J-')
@@ -324,7 +322,7 @@ class AgencyForm
                                     'required'  => 'Campo Requerido',
                                 ])
                                 ->maxLength(255),
-                            
+
                             Select::make('country_code_2')
                                 ->label('Código de país')
                                 ->options([
@@ -441,51 +439,51 @@ class AgencyForm
                                         ->label('TDEC'),
                                     Toggle::make('tdev')
                                         ->label('TDEV'),
-                                    
+
                                 ])->columnSpanFull(),
-                                Grid::make(2)
-                                    ->schema([
-                                        TextInput::make('commission_tdec')
-                                            ->label('Comisión TDEC US$')
-                                            ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                            ->prefix('%')
-                                            ->numeric()
-                                            ->validationMessages([
-                                                'numeric'   => 'Campo tipo numerico.',
-                                            ])
-                                            ->readOnly(),
-                                        TextInput::make('commission_tdec_renewal')
-                                            ->label('Comisión Renovacion TDEC US$')
-                                            ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                            ->prefix('%')
-                                            ->numeric()
-                                            ->validationMessages([
-                                                'numeric'   => 'Campo tipo numerico.',
-                                            ])
-                                            ->readOnly(),
-                                        
-                                        ])->columnSpanFull(),
-                                Grid::make(2)
-                                    ->schema([
-                                        TextInput::make('commission_tdev')
-                                            ->label('Comisión TDEV US$')
-                                            ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                            ->prefix('%')
-                                            ->numeric()
-                                            ->validationMessages([
-                                                'numeric'   => 'Campo tipo numerico.',
-                                            ])
-                                            ->readOnly(),
-                                        TextInput::make('commission_tdev_renewal')
-                                            ->label('Comisión Renovacion TDEV US$')
-                                            ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                            ->prefix('%')
-                                            ->numeric()
-                                            ->validationMessages([
-                                                'numeric'   => 'Campo tipo numerico.',
-                                            ])
-                                            ->readOnly(),
-                                    ])->columnSpanFull()
+                            Grid::make(2)
+                                ->schema([
+                                    TextInput::make('commission_tdec')
+                                        ->label('Comisión TDEC US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->numeric()
+                                        ->validationMessages([
+                                            'numeric'   => 'Campo tipo numerico.',
+                                        ])
+                                        ->readOnly(),
+                                    TextInput::make('commission_tdec_renewal')
+                                        ->label('Comisión Renovacion TDEC US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->numeric()
+                                        ->validationMessages([
+                                            'numeric'   => 'Campo tipo numerico.',
+                                        ])
+                                        ->readOnly(),
+
+                                ])->columnSpanFull(),
+                            Grid::make(2)
+                                ->schema([
+                                    TextInput::make('commission_tdev')
+                                        ->label('Comisión TDEV US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->numeric()
+                                        ->validationMessages([
+                                            'numeric'   => 'Campo tipo numerico.',
+                                        ])
+                                        ->readOnly(),
+                                    TextInput::make('commission_tdev_renewal')
+                                        ->label('Comisión Renovacion TDEV US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->numeric()
+                                        ->validationMessages([
+                                            'numeric'   => 'Campo tipo numerico.',
+                                        ])
+                                        ->readOnly(),
+                                ])->columnSpanFull()
                         ]),
                     Step::make('Datos Bancarios(VES)')
                         ->schema([
@@ -827,7 +825,7 @@ class AgencyForm
                                                 ->label('Soporte datos bancanarios(US$)')
                                                 ->uploadingMessage('Cargando documento, por favor espere...'),
                                         ])->columnSpanFull()->columns(2),
-                                ])->columnSpanFull(),         
+                                ])->columnSpanFull(),
                         ]),
                 ])->columnSpanFull()->columns(4),
             ]);

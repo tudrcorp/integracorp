@@ -38,9 +38,6 @@ class IndividualQuoteForm
             ->components([
                 Wizard::make([
                     Step::make('SOLICITANTE')
-                        ->description('Datos del Cliente')
-                        // ->icon(Heroicon::User)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('data_client')
                             ->heading('¡Bienvenido/a de nuevo! 👋 ')
@@ -229,8 +226,6 @@ class IndividualQuoteForm
                         ]),
                     Step::make('PLANES A COTIZAR')
                         ->description('Plan(es) que desea cotizar:')
-                        // ->icon(Heroicon::Swatch)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('plans')
                             ->heading('¡Sección de planes a cotizar! 🎯')
@@ -262,11 +257,9 @@ class IndividualQuoteForm
                         ]),
                     Step::make('RANGO DE EDAD')
                         ->description('Rango de edad y/o población:')
-                        // ->icon(Heroicon::AdjustmentsVertical)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('age_range')
-                            ->heading('¡Listo para el ultimo paso! 🏁')
+                            ->heading('¡Listo para el último paso! 🏁')
                             // ->description(new HtmlString(Blade::render(<<<BLADE
                             //         <div class="fi-section-header-description">
                             //             Por favor, selecciona el rango de edades de los beneficiarios. Al hacerlo, habrás finalizado la configuración principal de la cotización y estarás a un clic de generar el resultado final.

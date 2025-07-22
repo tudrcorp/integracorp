@@ -72,7 +72,7 @@ class Agent extends Model
         'status',
         'created_by',
         'date_register',
-        'is_accepted',
+        'is_accepted_conditions',
         'status',
         'created_by',
         'file_coord_bancarias',

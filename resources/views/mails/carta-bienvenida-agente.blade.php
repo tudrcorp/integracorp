@@ -63,7 +63,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="https://app.piedy.com/images/BANER-GUSTAVO-1.png" alt="Logo Bancamiga" style="max-width: 100%;">
+        <img src="https://tudrenviajes.com/images/bannerBienvenidaAgente.png" alt="Logo Bancamiga" style="max-width: 100%;">
     </div>
 
     <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">
@@ -74,9 +74,7 @@
         <p>Nos complace darte la más cálida bienvenida a Gustavo Camacho , nuestro nuevo agente quien desde hoy inicia sus labores en nuestra empresa. Estamos seguros de que su experiencia y entusiasmo serán un gran aporte para el equipo.</p>
         <p>En este correo encontrarás adjunta tu carta de bienvenida , donde te damos la recepción oficial y te presentamos como parte del equipo.</p>
         <br>
-        <br>
         <p>Atentamente,</p>
-        <p>TuDrEnCasa</p>
     </div>
 
     <div class="footer">

@@ -17,7 +17,7 @@ class CreateIndividualQuote extends CreateRecord
 {
     protected static string $resource = IndividualQuoteResource::class;
 
-    protected static ?string $title = 'Crear Cotización';
+    protected static ?string $title = 'Formulario de cotización';
 
     protected function getHeaderActions(): array
     {
@@ -370,9 +370,9 @@ class CreateIndividualQuote extends CreateRecord
     {
         return Notification::make()
             ->title('NOTIFICACIÓN')
-            ->body('Cotización individual exitosa. El sistema indicara cuando haya terminado de crear el archivo exitosamente!.')
-            ->icon('heroicon-m-tag')
-            ->iconColor('success')
+            ->body('Cotización Individual exitosa!. En breves segundos su cotización estará disponible en la opción de descargar cotización. ⬇️')
+            ->icon('entypo-pin')
+            ->iconColor('danger')
             ->success()
             ->persistent()
             ->send();

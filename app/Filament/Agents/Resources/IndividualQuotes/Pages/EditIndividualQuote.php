@@ -21,7 +21,7 @@ class EditIndividualQuote extends EditRecord
                 ->label('Regresar')
                 ->button()
                 ->icon('heroicon-s-arrow-left')
-                ->color('warning')
+                ->color('gray')
                 ->url(IndividualQuoteResource::getUrl('index')),
         ];
     }

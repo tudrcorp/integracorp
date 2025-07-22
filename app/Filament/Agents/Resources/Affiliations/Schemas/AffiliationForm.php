@@ -48,8 +48,8 @@ class AffiliationForm
                 Wizard::make([
                     Step::make('Información principal')
                         ->description('Datos para la afiliación')
-                        ->icon(Heroicon::ClipboardDocumentList)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::ClipboardDocumentList)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make()->schema([
                                 TextInput::make('code')
@@ -132,6 +132,7 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ]),
                                 Select::make('coverage_id')
+                                ->helperText('Punto(.) para separar miles.')
                                     ->label('Cobertura')
                                     ->live()
                                     ->options(function (Get $get) {
@@ -284,8 +285,8 @@ class AffiliationForm
                         ]),
                     Step::make('Titular')
                         ->description('Información del titular')
-                        ->icon(Heroicon::User)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::User)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(3)->schema([
                                 TextInput::make('full_name_ti')
@@ -532,8 +533,8 @@ class AffiliationForm
                     Step::make('Afiliados')
                         ->hidden(fn(Get $get) => !$get('feedback'))
                         ->description('Data de afiliados')
-                        ->icon(Heroicon::UserGroup)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::UserGroup)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Repeater::make('affiliates')
                                 ->label('Información de afiliados')
@@ -601,6 +602,7 @@ class AffiliationForm
                                                             'CONYUGE'   => 'CONYUGE',
                                                             'HIJO'      => 'HIJO',
                                                             'HIJA'      => 'HIJA',
+                                                            'OTRO'      => 'OTRO',
                                                         ])
                                                         ->required()
                                                         ->validationMessages([
@@ -630,8 +632,8 @@ class AffiliationForm
                         ]),
                     Step::make('Información Adicional')
                         ->description('Datos del Pagador')
-                        ->icon(Heroicon::ClipboardDocumentList)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::ClipboardDocumentList)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(1)
                                 ->schema([
@@ -799,8 +801,8 @@ class AffiliationForm
                         ]),
                     Step::make('Acuerdo y condiciones')
                         ->description('Leer y aceptar las condiciones')
-                        ->icon(Heroicon::ShieldCheck)
-                        ->completedIcon(Heroicon::Check)
+                        // ->icon(Heroicon::ShieldCheck)
+                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {
