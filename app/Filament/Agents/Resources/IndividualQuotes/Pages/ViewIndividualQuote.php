@@ -2,9 +2,10 @@
 
 namespace App\Filament\Agents\Resources\IndividualQuotes\Pages;
 
-use App\Filament\Agents\Resources\IndividualQuotes\IndividualQuoteResource;
+use App\Models\IndividualQuote;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Agents\Resources\IndividualQuotes\IndividualQuoteResource;
 
 class ViewIndividualQuote extends ViewRecord
 {
@@ -15,7 +16,16 @@ class ViewIndividualQuote extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
+            EditAction::make()
+                ->label('Editar')
+                ->icon('heroicon-s-pencil')
+                ->hidden(function (IndividualQuote $record) {
+                    if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
+                        return true;
+                    }
+                    return false;
+                }),
+            // ->url(IndividualQuoteResource::getUrl('edit', ['record' => $this->record->getKey()])),
         ];
     }
 

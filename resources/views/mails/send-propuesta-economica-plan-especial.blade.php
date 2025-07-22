@@ -68,13 +68,9 @@
 
     <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">
         <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrEnCasa! 🌟</span> </p>
-
         <p>Estimado(a): <span style="font-weight: bold">{{ $titular }}</span> ,</p>
-
         <p>Agradecemos su interés en nuestro Plan Especial . A continuación, encontrará adjunto al presente correo el documento con la cotización detallada de las coberturas y tarifas correspondientes. No dude en contactarnos si tiene alguna duda o requiere información adicional.</p>
-
     </div>
-
 
     <div class="footer">
         <img src="https://app.piedy.com/images/BANER-GUSTAVO-2.png" alt="Logo Tubanca" style="max-width: 100%;">

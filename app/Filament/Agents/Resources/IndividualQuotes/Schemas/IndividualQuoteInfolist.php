@@ -43,7 +43,7 @@ class IndividualQuoteInfolist
                                     ->dateTime(),
                             ])->columnSpanFull()->columns(5),
 
-                        Fieldset::make()
+                        Fieldset::make('Información del Solicitante')
                             ->schema([
                                 TextEntry::make('full_name')
                                     ->label('Nombre completo'),

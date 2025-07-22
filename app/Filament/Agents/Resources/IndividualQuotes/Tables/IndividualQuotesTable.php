@@ -118,16 +118,16 @@ class IndividualQuotesTable
                 ActionGroup::make([
                     
                     /**EDIT */
-                    Action::make('edit')
-                        ->label('Editar Cotización')
-                        ->color('warning')
-                        ->icon('heroicon-s-pencil')
-                        ->hidden(function (IndividualQuote $record) {
-                            if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
-                                return true;
-                            }
-                            return false;
-                        }),
+                    // Action::make('edit')
+                    //     ->label('Editar Cotización')
+                    //     ->color('warning')
+                    //     ->icon('heroicon-s-pencil')
+                    //     ->hidden(function (IndividualQuote $record) {
+                    //         if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
+                    //             return true;
+                    //         }
+                    //         return false;
+                    //     }),
 
                     /**EMIT */
                     Action::make('emit')
