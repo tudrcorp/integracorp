@@ -19,19 +19,19 @@
             /* background-color: #00539C; */
             /* Azul oscuro */
             color: white;
-            padding: 20px;
+            padding: 10px;
             text-align: center;
         }
 
         .content {
-            margin-top: 20px;
+            margin-top: 10px;
             text-align: justify;
             /* Justifica el texto */
         }
 
 
         .footer {
-            margin-top: 40px;
+            margin-top: 10px;
             text-align: center;
             font-size: 0.9em;
             color: #555;
@@ -63,7 +63,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="https://tudrenviajes.com/images/bannerBienvenidaAgente.png" alt="Logo Bancamiga" style="max-width: 100%;">
+        <img src="https://tudrenviajes.com/images/bannerCartaBienvenidaTop.png" alt="Banner de Bienvenida a Integracorp" style="max-width: 100%;">
     </div>
 
     <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">

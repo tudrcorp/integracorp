@@ -55,8 +55,6 @@ class AffiliationResource extends Resource
             AffiliatesRelationManager::class,
             DocumentsRelationManager::class,
             PaidMembershipsRelationManager::class
-            
-            
         ];
     }
 

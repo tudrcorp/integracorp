@@ -49,7 +49,7 @@ class SendEmailPropuestaEconomicaPlanEspecial implements ShouldQueue
             ->actions([
                 Action::make('download')
                     ->label('Descargar archivo')
-                    ->url('/storage/' . $this->details['code'] . '.pdf')
+                    ->url('/storage/individual-quotes/' . $this->details['code'] . '.pdf')
             ])
             ->sendToDatabase($this->user);
         
@@ -65,7 +65,7 @@ class SendEmailPropuestaEconomicaPlanEspecial implements ShouldQueue
          */
         $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect'));
         $name_pdf = $details['code'] . '.pdf';
-        $pdf->save(public_path('storage/' . $name_pdf));
+        $pdf->save(public_path('storage/individual-quotes/' . $name_pdf));
 
         /**
          * Despues de guardar el pdf lo enviamos por email

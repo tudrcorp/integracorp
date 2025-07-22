@@ -8,6 +8,8 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Mail\Mailables\Address;
+
 
 class SendMailPropuestaPlanInicial extends Mailable implements ShouldQueue
 {
@@ -32,7 +34,8 @@ class SendMailPropuestaPlanInicial extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '¡Bienvenido a TuDrEnCasa! 🎉',
+            from: new Address('cotizaciones@tudrencasa.com', 'TuDrEnCasa Cotización. (INTEGRACORP)'),
+            subject: 'Propuesta Sr(a). ' . $this->titular . ' Cotización Plan Inicial'
         );
     }
 
@@ -54,7 +57,7 @@ class SendMailPropuestaPlanInicial extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         return [
-            public_path('storage/' . $this->name_pdf),
+            public_path('storage/individual-quotes/' . $this->name_pdf),
             // $this->attachFromStorage('public/ejemploCSV.csv', 'ejemploCSV.csv'),
         ];
     }

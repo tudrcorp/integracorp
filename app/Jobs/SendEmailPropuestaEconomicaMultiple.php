@@ -2,10 +2,12 @@
 
 namespace App\Jobs;
 
+use Filament\Actions\Action;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Queue\SerializesModels;
+use Filament\Notifications\Notification;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Mail\SendMailPropuestaPlanEspecial;
@@ -46,13 +48,13 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
             ->actions([
                 Action::make('download')
                     ->label('Descargar archivo')
-                    ->url('/storage/' . $this->details_generals['code'] . '.pdf')
+                    ->url('/storage/individual-quotes/' . $this->details_generals['code'] . '.pdf')
             ])
             ->sendToDatabase($this->user);
         
     }
 
-    private function generatePDF($details, $group_collect)
+    private function generatePDF()
     {
         ini_set('memory_limit', '2048M');
 
@@ -92,7 +94,7 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
              */
             $pdf = Pdf::loadView('documents.propuesta-economica-multiple', compact('data_inicial', 'data_ideal', 'data_especial', 'details_generals'));
             $name_pdf = $details_generals['code'] . '.pdf';
-            $pdf->save(public_path('storage/' . $name_pdf));
+            $pdf->save(public_path('storage/individual-quotes/' . $name_pdf));
 
     }
 }

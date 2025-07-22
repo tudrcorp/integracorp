@@ -118,7 +118,7 @@ class IndividualQuotesTable
                 ActionGroup::make([
                     
                     /**EDIT */
-                    EditAction::make()
+                    Action::make('edit')
                         ->label('Editar Cotización')
                         ->color('warning')
                         ->icon('heroicon-s-pencil')
@@ -400,7 +400,7 @@ class IndividualQuotesTable
 
                             try {
 
-                                if(!file_exists(public_path('storage/' . $record->code . '.pdf'))){
+                                if(!file_exists(public_path('storage/individual-quotes/' . $record->code . '.pdf'))){
                                     
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
@@ -416,7 +416,7 @@ class IndividualQuotesTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/' . $record->code . '.pdf');
+                                $path = public_path('storage/individual-quotes/' . $record->code . '.pdf');
                                 return response()->download($path);
 
                                 /**

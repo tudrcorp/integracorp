@@ -98,6 +98,7 @@ class IndividualQuote extends Model
      * @author TuDrEnCasa
      * 
      * @param array $details
+     * -----------------------------------------------------------------
      */
     public function sendPropuestaEconomicaPlanInicial($details)
     {
@@ -162,6 +163,7 @@ class IndividualQuote extends Model
         }
         
     }
+    /*------------------------------------------------------------------- */
 
     //hasMany 
     public function bitacoras()

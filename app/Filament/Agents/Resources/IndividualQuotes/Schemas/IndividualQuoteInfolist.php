@@ -47,17 +47,10 @@ class IndividualQuoteInfolist
                             ->schema([
                                 TextEntry::make('full_name')
                                     ->label('Nombre completo'),
-                                TextEntry::make('birth_date')
-                                    ->label('Fecha de nacimiento'),
                                 TextEntry::make('email')
                                     ->label('Correo electrónico'),
                                 TextEntry::make('phone')
                                     ->label('Teléfono'),
-                                TextEntry::make('state.definition')
-                                    ->numeric()
-                                    ->label('Estado'),
-                                TextEntry::make('region')
-                                    ->label('Región'),
                                 TextEntry::make('status')
                                     ->label('Estatus')
                                     ->badge()
@@ -66,7 +59,7 @@ class IndividualQuoteInfolist
                                     ->label('Registrado por:')
                                     ->badge()
                                     ->color('primary'),
-                            ])->columnSpanFull()->columns(4),
+                            ])->columnSpanFull()->columns(5),
                         
                     ])->columnSpanFull(),
             ]);
