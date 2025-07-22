@@ -31,7 +31,7 @@
 
 
         .footer {
-            margin-top: 40px;
+            margin-top: 20px;
             text-align: center;
             font-size: 0.9em;
             color: #555;
@@ -63,7 +63,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="https://app.piedy.com/images/BANER-GUSTAVO-1.png" alt="Logo Bancamiga" style="max-width: 100%;">
+        <img src="https://tudrenviajes.com/images/bannerCartaBienvenidaTop.png" alt="Logo Bancamiga" style="max-width: 100%;">
     </div>
 
     <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">

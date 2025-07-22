@@ -34,7 +34,7 @@ class SendMailPropuestaPlanEspecial extends Mailable implements ShouldQueue
     {
         return new Envelope(
             from: new Address('cotizaciones@tudrencasa.com', 'TuDrEnCasa Cotización. (INTEGRACORP)'),
-            subject: 'Propuesta Sr(a). ' .$this->titular. ' Cotización múltiple', //TODO: debo agregar los planes cotizados
+            subject: 'Propuesta Sr(a). ' .$this->titular. ' Cotización Plan Especial' //TODO: debo agregar los planes cotizados
         );
     }
 
