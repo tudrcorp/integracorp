@@ -357,7 +357,7 @@
         </div>
 
         <footer>
-            <img src="{{ public_path('storage/firma-sra-dos.png') }}" style="width: 35%; margin-bottom: 20px" alt="">
+            <img src="{{ public_path('storage/firma_sol_dos.png') }}" style="width: 35%; margin-bottom: 20px" alt="">
             <img src="{{ public_path('storage/footer-carta-bienvenida.png') }}" style="width: 100%; margin-top: 5px" alt="">
         </footer>
 
