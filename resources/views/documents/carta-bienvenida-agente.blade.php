@@ -343,12 +343,6 @@
             </div>
         </div>
 
-        {{-- <div style="position: absolute; top: 100px; left: 180px; margin-top: 15px; padding: 5px; margin-left: 20px; margin-bottom: 20px; color: #014886">
-
-            <p style="text-align: center; margin-bottom: 5px; font-weight: bold; font-size: 2rem; text-transform: uppercase;">CARTA DE BIENVENIDA</p>
-        </div> --}}
-
-
 
         <div style="position: absolute; top: 120px; left: 50px; margin-top: 40px; padding: 20px; width: 650px;">
             <p style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
@@ -360,12 +354,10 @@
             <p style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
                 Puede contar con nuestro apoyo para cualquier inquietud que le pueda surgir
             </p>
-
         </div>
 
-
         <footer>
-            <img src="{{ public_path('storage/firma-sra-sol.png') }}" style="width: 35%; margin-bottom: 20px" alt="">
+            <img src="{{ public_path('storage/firma-sra-dos.png') }}" style="width: 35%; margin-bottom: 20px" alt="">
             <img src="{{ public_path('storage/footer-carta-bienvenida.png') }}" style="width: 100%; margin-top: 5px" alt="">
         </footer>
 
