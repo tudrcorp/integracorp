@@ -23,7 +23,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
     #[Validate('required', message: 'Debes ingresar un correo electrónico!')]
     #[Validate('email', message: 'El correo ingresado no es valido!')]
-    #[Validate('unique:' . Agent::class, message: 'El correo ingresado ya se encuentra registrado!')]
+    #[Validate('unique:' . User::class, message: 'El correo ingresado ya se encuentra registrado!')]
     public string $email;
 
     #[Validate('confirmed', message: 'Las contraseñas no coinciden, por favor verifique e inténtelo de nuevo!')]
@@ -44,7 +44,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
             $validated = $this->validate([
                 'name' => 'required',
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:' . Agent::class],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
                 'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
             ]);
 
