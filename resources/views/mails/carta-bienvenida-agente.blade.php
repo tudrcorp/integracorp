@@ -67,11 +67,9 @@
     </div>
 
     <div style="margin: auto; width: 550px; padding: 10px; text-align: center;">
-
         <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrGroup! 🌟</span> </p>
-
         <p>Estimado(a), {{ $name }}</p>
-        <p>Como nuevo agente, te unes a una labor vital: la de ser el pilar que nuestros clientes necesitan para proteger lo más valioso: su salud y la de su grupo familiar.</p>
+        <p>Como nuevo agente, te unes a una labor vital, la de ser el pilar que nuestros clientes necesitan para proteger lo más valioso, su salud y la de su grupo familiar.</p>
         <p>Tu compromiso será fundamental para guiar a las personas hacia la mejor protección y darles la tranquilidad que necesitan.</p>
         <p>Te extendemos todo nuestro apoyo, recursos y la experiencia de nuestro equipo para que no solo alcances tus metas, sino que las superes. ¡Juntos, transformamos el mundo!</p>
         <p>En este correo encontrarás adjunta tu carta de bienvenida , donde te damos la recepción oficial y te presentamos como parte del equipo.</p>

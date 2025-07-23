@@ -349,7 +349,7 @@
                 En nombre de todo el equipo que integra Tu Doctor Group queremos agradecerles por permitirnos formar parte de su portafolio de productos, y a través de ustedes poder brindar cuidados especializados a nuestros clientes en común.
             </p>
             <p style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-                Le informamos que ha sido registrador satisfactoriamente y puede identificarse con el codigo <span style="font-size: bold; color: #014886">AGT-000{{ $id }}</span>.
+                Le informamos que ha sido registrador satisfactoriamente y puede identificarse con el código <span style="font-size: bold; color: #014886">AGT-000{{ $id }}</span>.
             </p>
             <p style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
                 Puede contar con nuestro apoyo para cualquier inquietud que le pueda surgir
