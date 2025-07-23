@@ -32,7 +32,7 @@ class DownloadZonesTable
             ])
             ->contentGrid([
                 'md' => 2,
-                'xl' => 3,
+                'xl' => 5,
             ])
             ->recordActions([
                 Action::make('download')
