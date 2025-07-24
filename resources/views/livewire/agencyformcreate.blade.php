@@ -152,8 +152,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
         <!-- Name -->
         <flux:input input icon="user" wire:model="name_corporative" :label="__('Nombre/Razón Social')" type="text"
-            required autofocus autocomplete="name_corporative" placeholder="Nombre Apellido"
-            oninput="this.value = this.value.replace(/[^a-zA-Z\sáéíóúÁÉÍÓÚÑñ]/g, '')" />
+            required autofocus autocomplete="name_corporative" placeholder="Nombre Apellido" />
         <flux:error name="name_corporative" />
 
         <!-- Email Address -->
