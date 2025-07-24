@@ -61,18 +61,10 @@ class SendNotificacionWhatsApp implements ShouldQueue
             ));
 
             $response = curl_exec($curl);
-            $res = json_decode($response, true);
             $err = curl_error($curl);
 
-            if (isset($res) && $res['sent'] == true) {
-                Log::info('Se envio el mensaje');
-                LogController::log($this->user_id, 'NOTIFICACION: Mensaje enviado', 'NotififcacionController::send_link_preAffiliation()', $res);
-                return true;
-            } else {
-                Log::info('No se envio el mensaje');
-                LogController::log($this->user_id, 'NOTIFICACION: Mensaje no enviado', 'NotififcacionController::send_link_preAffiliation()', $err);
-                return false;
-            }
+            curl_close($curl);
+
         } catch (\Throwable $th) {
             Log::error($th);
         }
