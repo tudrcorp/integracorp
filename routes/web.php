@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\NotificationController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -77,61 +78,7 @@ require __DIR__.'/auth.php';
  */
 Route::get('/pp', function () {
     try {
-
-        $path = env('APP_URL') . '/login';
-        $body = <<<HTML
-
-        🌟¡Bienvenido/a a Tu Dr. Group! 
-
-        Estamos encantados de que tu experiencia y cartera de clientes se sumen a nuestra compañía. Tu profesionalismo es un gran valor y nos impulsa a seguir ofreciendo la mejor protección. 
-
-        Usuario: prueba@example.com
-        Clave: 12345678
-        Enlace: {$path} 
-
-        Contáctanos para mayor información. 
-
-        📱 WhatsApp: (+58) 424 227 1498
-        ✉️ Email: comercial@tudrencasa.com comercial@tudrenviajes.com
-
-        Tu visión y nuestro respaldo harán una combinación poderosa para ofrecer soluciones excepcionales. ¡ Esperamos una relación exitosa y duradera! 🫱🏼‍🫲🏼 
-
-        HTML;
-
-        $params = array(
-            'token' => config('parameters.TOKEN'),
-            'to' => '+584127018390',
-            'body' => $body
-        );
-        $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => http_build_query($params),
-            CURLOPT_HTTPHEADER => array(
-                "content-type: application/x-www-form-urlencoded"
-            ),
-        ));
-
-        $response = curl_exec($curl);
-        $err = curl_error($curl);
-
-        curl_close($curl);
-
-        if ($err) {
-            Log::error($err);
-            return 'error';
-        } else {
-            Log::info($response);
-            return 'ok';
-        }
+        NotificationController::agency_activated('+581270183904', 'l9dYg@example.com', '/login');
     } catch (\Throwable $th) {
         Log::error($th->getMessage());
     }

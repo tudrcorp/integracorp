@@ -99,7 +99,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
          */
         $phone = $create_agency->phone;
         $email = $create_agency->email;
-        $nofitication = NotificationController::agency_activated($create_agency->phone, $create_agency->email, $create_agency->agency_type_id == 1 ? config('parameters.PATH_MASTER') : config('parameters.PATH_GENERAL'));
+        $nofitication = NotificationController::agency_activated($phone, $email, $create_agency->agency_type_id == 1 ? config('parameters.PATH_MASTER') : config('parameters.PATH_GENERAL'));
 
         /**
          * Notificacion por correo electronico
@@ -111,7 +111,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
         Notification::make()
             ->title('AGENCIA REGISTRADA')
-            ->body('El registro fue enviado con exito')
+            ->body('El registro fue enviado con éxito')
             ->icon('heroicon-m-user-plus')
             ->iconColor('success')
             ->success()
