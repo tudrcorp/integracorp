@@ -20,22 +20,20 @@ class NotificationController extends Controller
             $path = env('APP_URL') . $path_panel;
             $body = <<<HTML
 
-            ¡Hola! 👋   
+            🌟¡Bienvenido/a a Tu Dr. Group! 
 
-            ✨ Bienvenido/a a Integracorp-TDC  ✨   
+            Estamos encantados de que tu experiencia y cartera de clientes se sumen a nuestra compañía. Tu profesionalismo es un gran valor y nos impulsa a seguir ofreciendo la mejor protección. 
 
-            Estamos encantados de que tu agencia pertenezca a nuestro equipo de trabajo. Puede empezar tu auto gestion a travez de nuestro aplicativo:   
-            Tus credenciales son:
+            Usuario: {$email}
+            Clave: 12345678
+            Enlace: {$path} 
 
-            👉 *Usuario:* {$email}
-            👉 *Clave:* 12345678
-            👉 *Panel Administrativo:* {$path}  
-            
-            Equipo Integracorp-TDC 
+            Contáctanos para mayor información. 
+
             📱 WhatsApp: (+58) 424 227 1498
-            ✉️ Email: comercial@tudrencasa.com    
+            ✉️ Email: comercial@tudrencasa.com comercial@tudrenviajes.com
 
-            ¡Esperamos que sea el inicio de una gran experiencia! 💼💡 
+            Tu visión y nuestro respaldo harán una combinación poderosa para ofrecer soluciones excepcionales. ¡ Esperamos una relación exitosa y duradera! 🫱🏼‍🫲🏼 
 
             HTML;
 

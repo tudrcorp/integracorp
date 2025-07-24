@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use App\Jobs\SendEmailPropuestaEconomica;
 use App\Jobs\SendEmailPropuestaEconomicaMultiple;
@@ -139,7 +140,7 @@ class CorporateQuote extends Model
                 break;
             }
 
-            SendEmailPropuestaEconomicaMultiple::dispatch($collect_final, $details_generals);
+            SendEmailPropuestaEconomicaMultiple::dispatch($collect_final, $details_generals, Auth::user());
             //code...
         } catch (\Throwable $th) {
             dd($th);

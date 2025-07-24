@@ -107,8 +107,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
          * ----------------------------------------------------------------------------------------------------------
          * @param Agency $create_agency
          */
-        $create_agency->sendCartaBienvenida($create_agency->code, $create_agency->name, $create_agency->email);
-
+        $create_agency->sendCartaBienvenida($create_agency->code, $create_agency->name_corporative, $create_agency->email);
 
         Notification::make()
             ->title('AGENCIA REGISTRADA')
