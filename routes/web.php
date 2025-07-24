@@ -78,7 +78,7 @@ require __DIR__.'/auth.php';
  */
 Route::get('/pp', function () {
     try {
-        NotificationController::agency_activated('+581270183904', 'l9dYg@example.com', '/login');
+        NotificationController::agency_activated('+584127018390', 'l9dYg@example.com', '/login');
     } catch (\Throwable $th) {
         Log::error($th->getMessage());
     }

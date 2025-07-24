@@ -31,7 +31,7 @@ class NotificationController extends Controller
             Contáctanos para mayor información. 
 
             📱 WhatsApp: (+58) 424 227 1498
-            ✉️ Email: comercial@tudrencasa.com comercial@tudrenviajes.com
+            ✉️ Email: comercial@tudrencasa.com
 
             Tu visión y nuestro respaldo harán una combinación poderosa para ofrecer soluciones excepcionales. ¡ Esperamos una relación exitosa y duradera! 🫱🏼‍🫲🏼 
 
@@ -66,8 +66,10 @@ class NotificationController extends Controller
 
             if ($err) {
                 Log::error($err);
+                return 'error';
             } else {
                 Log::info($response);
+                return 'success';
             }
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
@@ -605,7 +607,7 @@ class NotificationController extends Controller
 
             for ($i = 0; $i < count($array); $i++) {
                 $params = array(
-                    'token' => '9znl3oaurqmxhhbr',
+                    'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i],
                     'image' => 'https://tudrenviajes.com/images/logo_3.png',
                     'caption' => $body
