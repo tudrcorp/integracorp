@@ -13,7 +13,7 @@ use App\Jobs\SendNotificacionWhatsApp;
 
 class NotificationController extends Controller
 {
-    static function agency_activated($code, $phone, $email, $path_panel, $pass)
+    static function agency_activated($phone, $email, $path_panel)
     {
         try {
 
@@ -37,32 +37,40 @@ class NotificationController extends Controller
 
             HTML;
 
-            /**
-             * Jobs para el envido de notificaciones
-             * Canal: whatsapp
-             * 
-             * @var [body]
-             * @var [phone]
-             * @var [document]
-             * 
-             */
-            $jobWhatsApp = SendNotificacionWhatsApp::dispatch($code, $body, $phone);
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => $phone,
+                'body' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
 
-            if (isset($jobWhatsApp)) {
-                return $response = [
-                    'success' => true,
-                    'message' => 'La Notificacion de activacion fue enviada con exito',
-                    'color' => 'success'
-                ];
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($err) {
+                LogController::log(Auth::user()->id, 'ERROR', 'NotififcacionController::agency_activated()', $err);
             } else {
-                return $response = [
-                    'success' => false,
-                    'message' => 'La Notificacion de activacion no fue enviada, por favor comunicarse con el administrador del sistema',
-                    'color' => 'danger'
-                ];
+                LogController::log(Auth::user()->id, 'SUCCESS', 'NotififcacionController::agency_activated()', $response);
             }
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_link_preAffiliation()', $th->getMessage());
+            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::agency_activated()', $th->getMessage());
         }
     }
 

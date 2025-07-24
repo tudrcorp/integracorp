@@ -99,7 +99,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
          */
         $phone = $create_agency->phone;
         $email = $create_agency->email;
-        $nofitication = NotificationController::agency_activated($create_agency->code, $phone, $email, $create_agency->agency_type_id == 1 ? config('parameters.PATH_MASTER') : config('parameters.PATH_GENERAL'), $this->password);
+        $nofitication = NotificationController::agency_activated($create_agency->phone, $create_agency->email, $create_agency->agency_type_id == 1 ? config('parameters.PATH_MASTER') : config('parameters.PATH_GENERAL'));
 
         /**
          * Notificacion por correo electronico
