@@ -2,6 +2,7 @@
 
 use Carbon\Carbon;
 use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
@@ -75,69 +76,65 @@ require __DIR__.'/auth.php';
  * RUTA PARA PRUEBAS
  */
 Route::get('/pp', function () {
-    //arraryb de numero telefonicos
-    // $array = [
-    //     // '+584127018390',
-    //     // '+584129929796',
-    //     // '+584143027250',
-    //     // '+584245718777',
-    //     '+584241764348',
-    // ];
+    try {
 
-    // $body = <<<HTML
+        $path = env('APP_URL') . '/login';
+        $body = <<<HTML
 
-    //         Queremos darle un sincero agradecimiento por visitar nuestro stand en el *3er Encuentro Internacional de Mujeres de la FUTAC*. 
-    //         Realmente apreciamos la oportunidad de conocerle.
+        🌟¡Bienvenido/a a Tu Dr. Group! 
 
-    //         Estamos atentos a ofrecer *soluciones efectivas* a través de nuestros servicios de Salud paquetizados.
+        Estamos encantados de que tu experiencia y cartera de clientes se sumen a nuestra compañía. Tu profesionalismo es un gran valor y nos impulsa a seguir ofreciendo la mejor protección. 
 
-    //         Si le surge alguna duda acerca de como Tu Dr. En Casa puede beneficiarte, no dudes en contactarnos 📲
-    //         *0424-2220056 / 0424-2271498*
+        Usuario: prueba@example.com
+        Clave: 12345678
+        Enlace: {$path} 
 
-    //         ¡Estamos a tu disposición!
+        Contáctanos para mayor información. 
 
-    //         Saludos cordiales, 
+        📱 WhatsApp: (+58) 424 227 1498
+        ✉️ Email: comercial@tudrencasa.com comercial@tudrenviajes.com
 
-    //         HTML;
-    
-    // for ($i = 0; $i < count($array); $i++) {
-    //     $params = array(
-    //         'token' => '9znl3oaurqmxhhbr',
-    //         'to' => $array[$i],
-    //         'image' => 'https://tudrenviajes.com/images/image_masivo.jpg',
-    //         'caption' => $body
-    //     );
-    //     $curl = curl_init();
-    //     curl_setopt_array($curl, array(
-    //         CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image", 
-    //         CURLOPT_RETURNTRANSFER => true,
-    //         CURLOPT_ENCODING => "",
-    //         CURLOPT_MAXREDIRS => 10,
-    //         CURLOPT_TIMEOUT => 30,
-    //         CURLOPT_SSL_VERIFYHOST => 0,
-    //         CURLOPT_SSL_VERIFYPEER => 0,
-    //         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-    //         CURLOPT_CUSTOMREQUEST => "POST",
-    //         CURLOPT_POSTFIELDS => http_build_query($params),
-    //         CURLOPT_HTTPHEADER => array(
-    //             "content-type: application/x-www-form-urlencoded"
-    //         ),
-    //     ));
+        Tu visión y nuestro respaldo harán una combinación poderosa para ofrecer soluciones excepcionales. ¡ Esperamos una relación exitosa y duradera! 🫱🏼‍🫲🏼 
 
-    //     $response = curl_exec($curl);
-    //     $err = curl_error($curl);
+        HTML;
 
-    //     curl_close($curl);
+        $params = array(
+            'token' => config('parameters.TOKEN'),
+            'to' => '+584127018390',
+            'body' => $body
+        );
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => http_build_query($params),
+            CURLOPT_HTTPHEADER => array(
+                "content-type: application/x-www-form-urlencoded"
+            ),
+        ));
 
-    //     if ($err) {
-    //         echo "cURL Error #:" . $err;
-    //     } else {
-    //         echo $response;
-    //     }
-    // }
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
 
-    
-    
+        curl_close($curl);
+
+        if ($err) {
+            Log::error($err);
+            return 'error';
+        } else {
+            Log::info($response);
+            return 'ok';
+        }
+    } catch (\Throwable $th) {
+        Log::error($th->getMessage());
+    }
 });
 
 Route::get('/pdf', [PdfController::class, 'generatePdf_aviso_de_pago']);

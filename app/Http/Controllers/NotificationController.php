@@ -65,12 +65,12 @@ class NotificationController extends Controller
             curl_close($curl);
 
             if ($err) {
-                LogController::log(Auth::user()->id, 'ERROR', 'NotififcacionController::agency_activated()', $err);
+                Log::error($err);
             } else {
-                LogController::log(Auth::user()->id, 'SUCCESS', 'NotififcacionController::agency_activated()', $response);
+                Log::info($response);
             }
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::agency_activated()', $th->getMessage());
+            Log::error($th->getMessage());
         }
     }
 
