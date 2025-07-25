@@ -395,7 +395,7 @@ class IndividualQuotesTable
                         ->modalHeading('DESCARGAR COTIZACION')
                         ->modalWidth(Width::ExtraLarge)
                         ->modalIcon('heroicon-s-arrow-down-on-square-stack')
-                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar.!')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
                         ->action(function (IndividualQuote $record, array $data) {
 
                             try {

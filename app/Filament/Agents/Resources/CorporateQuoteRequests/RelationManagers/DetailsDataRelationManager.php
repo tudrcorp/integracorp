@@ -23,6 +23,7 @@ class DetailsDataRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+        ->description('Detalle de los afiliados')
             ->columns([
                 TextColumn::make('first_name')
                     ->label('Nombre')
@@ -50,7 +51,7 @@ class DetailsDataRelationManager extends RelationManager
                     ->label('Dirección')
                     ->searchable(),
                 TextColumn::make('condition_medical')
-                    ->label('Condición Medica')
+                    ->label('Condición Médica')
                     ->searchable(),
                 TextColumn::make('initial_date')
                     ->label('Fecha de Ingreso')

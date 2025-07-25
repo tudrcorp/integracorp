@@ -17,7 +17,7 @@ class CorporateQuoteRequestInfolist
         ->components([
                 Section::make()
                     ->heading('Información de la solicitud')
-                    ->description(fn(CorporateQuoteRequest $record) => 'Solicitud de cotizacion corpotariva generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                    ->description(fn(CorporateQuoteRequest $record) => 'Solicitud de cotización corporativa generada el: ' . $record->created_at->format('d/m/Y H:ma'))
                     ->icon(Heroicon::OutlinedPencil)
                     ->schema([
                         TextEntry::make('code')
@@ -35,7 +35,7 @@ class CorporateQuoteRequestInfolist
                                     ->label('Agente:')
                                     ->badge(),
                                 TextEntry::make('code_agency')
-                                    ->label('Codigo de agencia:')
+                                    ->label('Código de agencia:')
                                     ->badge(),
                             ])->columnSpanFull()->columns(4),
                         Grid::make()
@@ -47,7 +47,7 @@ class CorporateQuoteRequestInfolist
                                 TextEntry::make('email')
                                     ->label('Email:'),
                                 TextEntry::make('phone')
-                                    ->label('Telefono:'),
+                                    ->label('Teléfono:'),
                                 TextEntry::make('state.definition')
                                     ->label('Estado')
                                     ->numeric(),
@@ -60,7 +60,7 @@ class CorporateQuoteRequestInfolist
                                 TextEntry::make('created_by')
                                     ->label('Registrado por:'),
                                 TextEntry::make('created_at')
-                                    ->label('Fecha de regitro en sistema:')
+                                    ->label('Fecha de registro en sistema:')
                                     ->dateTime(),
                                 TextEntry::make('observations')->label('Observaciones del agente:'),
                             ])->columnSpanFull()->columns(4),

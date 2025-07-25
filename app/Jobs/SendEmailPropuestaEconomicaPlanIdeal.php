@@ -46,7 +46,7 @@ class SendEmailPropuestaEconomicaPlanIdeal implements ShouldQueue
         $this->generatePDF($this->details, $this->group_collect);
 
         Notification::make()
-            ->title('¡TAERA COMPLETADA!')
+            ->title('¡TAREA COMPLETADA!')
             ->body('📎 '.$this->details['code'].'.pdf ya se encuentra disponible para su descarga.')
             ->success()
             ->actions([

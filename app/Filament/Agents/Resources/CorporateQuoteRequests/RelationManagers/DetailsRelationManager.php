@@ -71,8 +71,8 @@ class DetailsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        ->heading('DETALLES DE LA SOLICITUD')
-            ->description('Los planes asociados a la solicitud de cotización. Si desea agregar otro plan haz click en el botón "Agregar Plan"')
+            ->heading('DETALLES DE LA SOLICITUD')
+            ->description('Planes asociados a la solicitud de cotización.')
             ->recordTitleAttribute('corporate_quote_request_id')
             ->columns([
                 TextColumn::make('plan.description'),

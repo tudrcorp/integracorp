@@ -29,23 +29,23 @@ class CorporateQuoteRequestsTable
     {
         return $table
             ->query(CorporateQuoteRequest::query()->where('agent_id', Auth::user()->agent_id))
-            ->heading('Lista de solicitudes de cotización corporativa generadas por el agente')
+            ->heading('Lista de solicitudes generadas por el agente')
             ->defaultSort('id', 'desc')
             ->columns([
-                TextColumn::make('owner_code')
-                    ->prefix(function ($record) {
-                        $agency_type = Agency::select('agency_type_id')
-                            ->where('code', $record->owner_code)
-                            ->with('typeAgency')
-                            ->first();
+                // TextColumn::make('owner_code')
+                //     ->prefix(function ($record) {
+                //         $agency_type = Agency::select('agency_type_id')
+                //             ->where('code', $record->owner_code)
+                //             ->with('typeAgency')
+                //             ->first();
 
-                        return isset($agency_type) ? $agency_type->typeAgency->definition . ' - ' : 'MASTER - ';
-                    })
-                    ->alignCenter()
-                    ->badge()
-                    ->color('success')
-                    ->icon('heroicon-s-building-library')
-                    ->searchable(),
+                //         return isset($agency_type) ? $agency_type->typeAgency->definition . ' - ' : 'MASTER - ';
+                //     })
+                //     ->alignCenter()
+                //     ->badge()
+                //     ->color('success')
+                //     ->icon('heroicon-s-building-library')
+                //     ->searchable(),
                 TextColumn::make('code')
                     ->label('Codigo')
                     ->badge()

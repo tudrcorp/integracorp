@@ -106,6 +106,7 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-c-tv'),
             ])
             ->breadcrumbs(false)
+            ->maxContentWidth(Width::Full)
             ->userMenuItems([
                 'profile' => fn(Action $action) => $action->label('Profile'),
                 // ...

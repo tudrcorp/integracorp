@@ -72,7 +72,7 @@ class CorporateQuoteForm
                                 } else {
                                     $parte_entera = CorporateQuote::max('id');
                                 }
-                                return 'TDEC-CC-000' . $parte_entera + 1;
+                                return 'TDEC-COR-000' . $parte_entera + 1;
                             })
                             ->required()
                             ->disabled()

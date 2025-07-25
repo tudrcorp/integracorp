@@ -12,7 +12,7 @@ class EditCorporateQuoteRequest extends EditRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'Detalle: Solicitud de cotización corporativa';
+    protected static ?string $title = 'Solicitud de Cotización Corporativa';
 
     protected function getHeaderActions(): array
     {

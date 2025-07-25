@@ -36,7 +36,6 @@ class CorporateQuoteRequestForm
                 Wizard::make([
                 Step::make('ASOCIACION')
                     ->description('Asociar a una agencia y/o agente')
-                    ->icon(Heroicon::Share)
                     ->completedIcon(Heroicon::Check)
                     ->schema([
                         Select::make('code_agency')
@@ -68,7 +67,6 @@ class CorporateQuoteRequestForm
                     ])->columns(4),
                     Step::make('SOLICITANTE')
                         ->description('Información principal del solicitante')
-                        ->icon(Heroicon::User)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('code')
@@ -238,7 +236,6 @@ class CorporateQuoteRequestForm
                         ])->columns(3),
                     Step::make('PLANES A COTIZAR')
                         ->description('Por favor selecciona el tipo de plan e indica la cantidad de personas que desea cotizar!')
-                        ->icon(Heroicon::DocumentText)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             Repeater::make('details_corporate_quote_requests')
@@ -279,7 +276,6 @@ class CorporateQuoteRequestForm
                                 ->columns(3)
                         ]),
                     Step::make('OBSERVACIONES')
-                        ->icon(Heroicon::InformationCircle)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(2)
@@ -291,7 +287,7 @@ class CorporateQuoteRequestForm
                                         ->placeholder('Observaciones')
                                 ])->columnSpanFull(),
                         ]),
-                ])
+                    ])
                     ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button
                         type="submit"

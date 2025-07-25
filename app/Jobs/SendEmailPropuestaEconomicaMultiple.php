@@ -42,7 +42,7 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
         $this->generatePDF();
             
         Notification::make()
-            ->title('¡TAERA COMPLETADA!')
+            ->title('¡TAREA COMPLETADA!')
             ->body('📎 '.$this->details_generals['code'].'.pdf ya se encuentra disponible para su descarga.')
             ->success()
             ->actions([
