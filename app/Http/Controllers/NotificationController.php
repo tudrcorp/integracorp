@@ -357,8 +357,6 @@ class NotificationController extends Controller
             Enlace: 
             {$link}     
 
-            Si tienes dudas o necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀   
-
             Contáctanos para mayor información. 
 
             📱 WhatsApp: (+58) 424 227 1498
