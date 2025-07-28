@@ -354,17 +354,17 @@ class NotificationController extends Controller
 
             El proceso es rápido, sencillo y te abrirá las puertas a un sinfín de posibilidades para hacer crecer tu portafolio.
 
-            Haz clic aquí para registrarte: 
-   
-
-            👉 {$link}     
+            Enlace: 
+            {$link}     
 
             Si tienes dudas o necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀   
 
             Contáctanos para mayor información. 
 
             📱 WhatsApp: (+58) 424 227 1498
-            ✉️ Email: comercial@tudrencasa.com  / comercial@tudrenviajes.com
+            ✉️ Email: 
+            comercial@tudrencasa.com
+            comercial@tudrenviajes.com
 
             ¡Esperamos verte pronto en nuestra plataforma!
 
