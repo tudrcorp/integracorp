@@ -227,6 +227,198 @@ class CreateCorporateQuote extends CreateRecord
             //elimino la variable de sesion para evitar sobrecargar
             session()->forget('details_quote');
 
+
+            /**
+             * LOgica para el envio de correo con los detalles de la cotizacion
+             * @param $this->data [Data del formulario]
+             * @param $record [Data de la cotizacion guardada en la base de dastos]
+             * ----------------------------------------------------------------------------------------------------
+             */
+
+            if ($record->plan == 1) {
+                $detalle = DB::table('detail_corporate_quotes')
+                    ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                    ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                    ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range')
+                    ->where('corporate_quote_id', $record->id)
+                    ->get()
+                    ->toArray();
+
+                /**
+                 * Se envia el certificado del afiliado
+                 * ----------------------------------------------------------------------------------------------------
+                 */
+                $details = [
+                    'plan' => 1,
+                    'code' => $record->code,
+                    'name' => $record->full_name,
+                    'email' => $record->email,
+                    'phone' => $record->phone,
+                    'date' => $record->created_at->format('d-m-Y'),
+                    'data' => $detalle
+                ];
+
+                $this->getRecord()->sendPropuestaEconomicaPlanInicial($details);
+            }
+
+            if ($record->plan == 2) {
+                $detalle = DB::table('detail_corporate_quotes')
+                    ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                    ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                    ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
+                    ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
+                    ->where('corporate_quote_id', $record->id)
+                    ->get()
+                    ->toArray();
+
+                /**
+                 * Se envia el certificado del afiliado
+                 * ----------------------------------------------------------------------------------------------------
+                 */
+                // dd($details_quote[0]['plan_id']);
+                $details = [
+                    'plan' => 2,
+                    'code' => $record->code,
+                    'name' => $record->full_name,
+                    'email' => $record->email,
+                    'phone' => $record->phone,
+                    'date' => $record->created_at->format('d-m-Y'),
+                    'data' => $detalle
+                ];
+
+                $this->getRecord()->sendPropuestaEconomicaPlanIdeal($details);
+            }
+
+            if ($record->plan == 3) {
+                $detalle = DB::table('detail_corporate_quotes')
+                    ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                    ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                    ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
+                    ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
+                    ->where('corporate_quote_id', $record->id)
+                    ->get()
+                    ->toArray();
+
+                /**
+                 * Se envia el certificado del afiliado
+                 * ----------------------------------------------------------------------------------------------------
+                 */
+                $details = [
+                    'plan' => 3,
+                    'code' => $record->code,
+                    'name' => $record->full_name,
+                    'email' => $record->email,
+                    'phone' => $record->phone,
+                    'date' => $record->created_at->format('d-m-Y'),
+                    'data' => $detalle
+                ];
+
+                $this->getRecord()->sendPropuestaEconomicaPlanEspecial($details);
+            }
+
+            /**
+             * COTIZACION MULTIPLE
+             * ----------------------------------------------------------------------------------------------------
+             */
+            if ($record->plan == 'CM') {
+
+                // $detalle_array_plan_incial      = [];
+                // $detalle_array_plan_ideal       = [];
+                // $detalle_array_plan_especial    = [];
+
+                $group_details = [];
+
+                for ($i = 0; $i < count($array_details); $i++) {
+                    if ($details_quote[$i]['plan_id'] == 1) {
+                        $detalle_1 = DB::table('detail_corporate_quotes')
+                            ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                            ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                            ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range')
+                            ->where('corporate_quote_id', $record->id)
+                            ->where('detail_corporate_quotes.plan_id', 1)
+                            ->get()
+                            ->toArray();
+
+                        $details_inicial = [
+                            'plan' => 1,
+                            'code' => $record->code,
+                            'name' => $record->full_name,
+                            'email' => $record->email,
+                            'phone' => $record->phone,
+                            'date' => $record->created_at->format('d-m-Y'),
+                            'data' => $detalle_1
+                        ];
+
+                        array_push($group_details, $details_inicial);
+                    }
+                    if ($details_quote[$i]['plan_id'] == 2) {
+                        $detalle_2 = DB::table('detail_corporate_quotes')
+                            ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                            ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                            ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
+                            ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
+                            ->where('corporate_quote_id', $record->id)
+                            ->where('detail_corporate_quotes.plan_id', 2)
+                            ->get()
+                            ->toArray();
+
+                        $details_ideal = [
+                            'plan' => 2,
+                            'code' => $record->code,
+                            'name' => $record->full_name,
+                            'email' => $record->email,
+                            'phone' => $record->phone,
+                            'date' => $record->created_at->format('d-m-Y'),
+                            'data' => $detalle_2
+                        ];
+
+                        array_push($group_details, $details_ideal);
+                    }
+                    if ($details_quote[$i]['plan_id'] == 3) {
+                        $detalle_3 = DB::table('detail_corporate_quotes')
+                            ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                            ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                            ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
+                            ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
+                            ->where('corporate_quote_id', $record->id)
+                            ->where('detail_corporate_quotes.plan_id', 3)
+                            ->get()
+                            ->toArray();
+
+                        $details_especial = [
+                            'plan' => 3,
+                            'code' => $record->code,
+                            'name' => $record->full_name,
+                            'email' => $record->email,
+                            'phone' => $record->phone,
+                            'date' => $record->created_at->format('d-m-Y'),
+                            'data' => $detalle_3
+                        ];
+
+                        array_push($group_details, $details_especial);
+                    }
+                }
+
+                usort($group_details, function ($a, $b) {
+                    return $a['plan'] <=> $b['plan'];
+                });
+
+                $collect_final = [];
+                for ($i = 0; $i < count($group_details); $i++) {
+                    if ($group_details[$i]['plan'] == 1) {
+                        array_push($collect_final, $group_details[$i]);
+                    }
+                    if ($group_details[$i]['plan'] == 2) {
+                        array_push($collect_final, $group_details[$i]);
+                    }
+                    if ($group_details[$i]['plan'] == 3) {
+                        array_push($collect_final, $group_details[$i]);
+                    }
+                }
+
+                $this->getRecord()->sendPropuestaEconomicaMultiple($collect_final);
+            }
+
             /**
              * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
              * ----------------------------------------------------------------------------------------------------
@@ -249,6 +441,34 @@ class CreateCorporateQuote extends CreateRecord
                     ])
                     ->sendToDatabase($recipient_for_user);
             }
+
+            //--------------------------------------------------------------------------------------------------------------------------------
+            //LOGICA ANTERIOR
+            //--------------------------------------------------------------------------------------------------------------------------------
+
+            /**
+             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+             * ----------------------------------------------------------------------------------------------------
+             * $record [Data de la cotizacion guardada en la base de dastos]
+             */
+
+            // $recipient = User::where('is_admin', 1)->get();
+            // foreach ($recipient as $user) {
+            //     $recipient_for_user = User::find($user->id);
+            //     Notification::make()
+            //         ->title('NUEVA COTIZACION INDIVUDUAL')
+            //         ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
+            //         ->icon('heroicon-m-tag')
+            //         ->iconColor('success')
+            //         ->success()
+            //         ->actions([
+            //             Action::make('view')
+            //                 ->label('Ver cotizacion individual')
+            //                 ->button()
+            //                 ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+            //         ])
+            //         ->sendToDatabase($recipient_for_user);
+
         } catch (\Throwable $th) {
             dd($th);
             Notification::make()

@@ -134,7 +134,7 @@ class DetailsRelationManager extends RelationManager
                                     } else {
                                         $parte_entera = CorporateQuote::max('id');
                                     }
-                                    return 'TDEC-CC-000' . $parte_entera + 1;
+                                    return 'COT-CORP-000' . $parte_entera + 1;
                                 })
                                 ->required()
                                 ->disabled()

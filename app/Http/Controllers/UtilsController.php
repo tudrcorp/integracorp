@@ -17,6 +17,14 @@ use App\Models\DetailsCorporateQuoteRequest;
 
 class UtilsController extends Controller
 {
+    /**
+     * Crea una nueva cotización corporativa con población
+     * 
+     * @author TuDrEnCasa
+     * @version 1.0
+     * 
+     * @return void
+     */
     public static function createCorporateQuote($livewire, $data)
     {
         try {
@@ -363,9 +371,17 @@ class UtilsController extends Controller
         }
     }
 
+    /**
+     * Crear cotizacion corporativa sin población
+     * 
+     * @author TuDrEnCasa
+     * @version 1.0
+     * 
+     * @return void
+     */
     public static function createCorporateQuoteWithoutPersons($livewire, $data)
     {
-        // dd($data);
+        // dd($data, $livewire);
         try {
             
             /**
@@ -397,7 +413,7 @@ class UtilsController extends Controller
             $corporate_quote->save();
 
             $details = DetailsCorporateQuoteRequest::where('corporate_quote_request_id', $livewire->id)->get()->toArray();
-           dd($details);
+            // dd($details);
 
             //Rango de edades
             $array = [];
@@ -418,7 +434,7 @@ class UtilsController extends Controller
             }
 
             $resultado = $array;
-
+            // dd($resultado);
             /**
              * Verificamos si tenemos mas de un plan
              * ----------------------------------------------------------------------------------------------------
@@ -432,6 +448,7 @@ class UtilsController extends Controller
                 $corporate_quote->save();
             }
             if ($total_plans == 1) {
+                // dd('aqui solo un plan');
                 $corporate_quote->plan = $details[0]['plan_id'];
                 $corporate_quote->save();
             }
@@ -448,7 +465,7 @@ class UtilsController extends Controller
                     ->with('fees')
                     ->get()
                     ->toArray();
-
+                // dd($plan_ageRange);
                 for ($j = 0; $j < count($plan_ageRange[0]['fees']); $j++) {
 
                     $fee = Fee::where('id', $plan_ageRange[0]['fees'][$j]['id'])->first();
@@ -467,11 +484,11 @@ class UtilsController extends Controller
                     $detail_corporate_quote->subtotal_monthly      = ($resultado[$i]['total_persons'] * $fee->price) / 12;
                     $detail_corporate_quote->status                = 'PRE-APROBADA';
                     $detail_corporate_quote->created_by            = Auth::user()->name;
-                    $detail_corporate_quote->save();
+                    // $detail_corporate_quote->save();
                 }
             }
 
-
+            // dd($corporate_quote);
             /**
              * LOgica para el envio de correo con los detalles de la cotizacion
              * @param $this->data [Data del formulario]
@@ -536,6 +553,7 @@ class UtilsController extends Controller
             }
 
             if ($corporate_quote->plan == 3) {
+                // dd('aqui plan 3');
                 $detalle = DB::table('detail_corporate_quotes')
                     ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
                     ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
@@ -544,7 +562,7 @@ class UtilsController extends Controller
                     ->where('corporate_quote_id', $corporate_quote->id)
                     ->get()
                     ->toArray();
-
+                // dd($detalle, $corporate_quote->id);
                 /**
                  * Se envia el certificado del afiliado
                  * ----------------------------------------------------------------------------------------------------
@@ -559,7 +577,7 @@ class UtilsController extends Controller
                     'data' => $detalle
                 ];
 
-
+                // dd($details);
                 $corporate_quote->sendPropuestaEconomicaPlanEspecial($details);
             }
 

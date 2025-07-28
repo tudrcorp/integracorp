@@ -32,6 +32,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use App\Filament\Imports\AffiliateCorporateImporter;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Imports\CorporateQuoteRequestDataImporter;
+use App\Filament\Agents\Resources\CorporateQuotes\CorporateQuoteResource;
 
 class CorporateQuotesTable
 {
@@ -115,6 +116,13 @@ class CorporateQuotesTable
             ])
             ->recordActions([
                 ActionGroup::make([
+
+                    ViewAction::make('view')
+                        ->label('Viste Previa')
+                        ->icon('heroicon-o-eye')
+                        ->color('warning'),
+                        // ->url(fn($record): string => route('filament.agents.corporate-quotes.show', $record)),
+                        // ->url(fn($record): string => CorporateQuoteResource::getUrl('show', ['record' => $record]),),
 
                     /**REEN\VIO DE COTIZACION CORPORATIVA */
                     Action::make('forward')
