@@ -64,7 +64,7 @@ class IndividualQuoteForm
                                 Grid::make(4)
                                     ->schema([
                                         TextInput::make('full_name')
-                                            ->label('Nombre Completo')
+                                            ->label('Nombre y Apellido')
                                             ->prefixIcon('heroicon-m-user')
                                             ->required()
                                             ->validationMessages([

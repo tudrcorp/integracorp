@@ -20,7 +20,7 @@ class CorporateQuoteInfolist
                 ->columnSpanFull()
                 ->icon(Heroicon::Bars3BottomLeft)
                 ->schema([
-                    Fieldset::make('Solicitud de cotización individual')
+                    Fieldset::make('Solicitud de Cotización Corporativa')
                         ->schema([
                             TextEntry::make('code')
                                 ->label('Número de Cotización')

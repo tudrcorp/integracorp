@@ -17,7 +17,7 @@ class CreateIndividualQuote extends CreateRecord
 {
     protected static string $resource = IndividualQuoteResource::class;
 
-    protected static ?string $title = 'Formulario de cotización';
+    protected static ?string $title = 'Formulario de Cotización Individual';
 
     protected function getHeaderActions(): array
     {

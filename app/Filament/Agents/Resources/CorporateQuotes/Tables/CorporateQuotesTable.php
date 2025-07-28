@@ -50,9 +50,6 @@ class CorporateQuotesTable
                 TextColumn::make('full_name')
                     ->label('Solicitada por:')
                     ->searchable(),
-                TextColumn::make('rif')
-                    ->label('Rif:')
-                    ->searchable(),
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable(),
@@ -311,13 +308,15 @@ class CorporateQuotesTable
 
                     /**OBSERVACIONES */
                     Action::make('observations')
-                        ->label('Registrar observaciones')
-                        ->icon('heroicon-s-hand-raised')
-                        ->color('info')
-                        ->requiresConfirmation()
-                        ->modalHeading('OBSERVACIONES DEL AGENTE')
-                        ->modalIcon('heroicon-s-hand-raised')
-                        ->form([
+                    ->label('Agregar Observaciones')
+                    ->icon('heroicon-s-hand-raised')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('OBSERVACIONES DEL AGENTE')
+                    ->modalIcon('heroicon-s-hand-raised')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->modalDescription('Envíanos su inquietud o comentarios!')
+                    ->form([
                             Textarea::make('description')
                                 ->label('Observaciones')
                                 ->rows(5)

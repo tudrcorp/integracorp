@@ -365,6 +365,7 @@ class UtilsController extends Controller
 
     public static function createCorporateQuoteWithoutPersons($livewire, $data)
     {
+        // dd($data);
         try {
             
             /**
@@ -396,7 +397,7 @@ class UtilsController extends Controller
             $corporate_quote->save();
 
             $details = DetailsCorporateQuoteRequest::where('corporate_quote_request_id', $livewire->id)->get()->toArray();
-            // dd($details);
+           dd($details);
 
             //Rango de edades
             $array = [];

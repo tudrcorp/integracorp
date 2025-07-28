@@ -23,10 +23,9 @@ class CorporateQuoteResource extends Resource
 {
     protected static ?string $model = CorporateQuote::class;
 
-
     protected static string | UnitEnum | null $navigationGroup = 'CORPORATIVAS';
 
-    protected static ?string $navigationLabel = 'Consultar Cotización';
+    protected static ?string $navigationLabel = 'Cotizar';
 
     protected static ?int $navigationSort = 2;
 
@@ -48,7 +47,7 @@ class CorporateQuoteResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // DetailCoporateQuotesRelationManager::class,
+            DetailCoporateQuotesRelationManager::class,
         ];
     }
 
