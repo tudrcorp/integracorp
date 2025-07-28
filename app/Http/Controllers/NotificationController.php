@@ -333,27 +333,43 @@ class NotificationController extends Controller
         }
     }
 
+    /**
+     * Notificacion de link de registro de agente
+     * Canal: Whatsapp   
+     * 
+     * @author TuDrEnCasa
+     * @version 1.0
+     * 
+     * @return boolean
+     */
     static function send_link_agent_register_wp($link, $phone)
     {
         try {
 
             $body = <<<HTML
 
-                ¡Hola! 👋   
+            ¿Listo para Transformar tu Práctica como asesor?
 
-                ✨ Bienvenido/a a Integracorp-TDC  ✨   
+            Te invitamos a registrarte en nuestra plataforma web, diseñada específicamente para profesionales como tú. Hemos creado una plataforma online pensada exclusiva, donde la eficiencia, la conexión y el crecimiento se encuentran.
 
-                Estamos encantados de tenerte aquí. Para comenzar a disfrutar de todos nuestros beneficios y servicios, te invitamos a completar tu registro haciendo clic en el siguiente enlace:   
+            El proceso es rápido, sencillo y te abrirá las puertas a un sinfín de posibilidades para hacer crecer tu portafolio.
 
-                👉 {$link}     
+            Haz clic aquí para registrarte: 
+   
 
-                Si tienes dudas o necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀   
+            👉 {$link}     
 
-                Equipo Integracorp-TDC 
-                📱 WhatsApp: (+58) 424 227 1498
-                ✉️ Email: comercial@tudrencasa.com    
+            Si tienes dudas o necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀   
 
-                ¡Esperamos que sea el inicio de una gran experiencia! 💼💡 
+            Contáctanos para mayor información. 
+
+            📱 WhatsApp: (+58) 424 227 1498
+            ✉️ Email: comercial@tudrencasa.com  / comercial@tudrenviajes.com
+
+            ¡Esperamos verte pronto en nuestra plataforma!
+
+            Atentamente,
+            Gerencia Comercial Tu Dr. Group 🫱🏼‍🫲🏼 
 
             HTML;
 
@@ -406,6 +422,7 @@ class NotificationController extends Controller
             if (isset($err)) {
                 LogController::log(Auth::user()->id, 'EXCEPCION-CURL', 'NotififcacionController::send_link_preAffiliation()', $err);
             }
+            
         } catch (\Throwable $th) {
             LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_link_preAffiliation()', $th->getMessage());
         }
@@ -413,6 +430,15 @@ class NotificationController extends Controller
 
 
 
+    /**
+     * Notificacion de link de registro de agente
+     * Canal: Email
+     * 
+     * @author TuDrEnCasa
+     * @version 1.0
+     * 
+     * @return boolean
+     */
     static function send_email_example_file_csv($email)
     {
         try {
@@ -444,7 +470,7 @@ class NotificationController extends Controller
      * 
      * @param $phone
      * @param $message
-     * @return void
+     * @return bool
      */
 
     static function sendCotizaPlanInicial($phone, $message, $link, $name_pdf)
