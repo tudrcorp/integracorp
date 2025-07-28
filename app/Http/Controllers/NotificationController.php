@@ -338,7 +338,7 @@ class NotificationController extends Controller
      * Canal: Whatsapp   
      * 
      * @author TuDrEnCasa
-     * @version 1.0
+     * @version 4.0
      * 
      * @return boolean
      */
@@ -348,11 +348,12 @@ class NotificationController extends Controller
 
             $body = <<<HTML
 
-            ¿Listo para Transformar tu Práctica como asesor?
+            ¿Listo para transformar tus herramientas como asesor?
 
-            Te invitamos a registrarte en nuestra plataforma web, diseñada específicamente para profesionales como tú. Hemos creado una plataforma online pensada exclusiva, donde la eficiencia, la conexión y el crecimiento se encuentran.
+            Te invitamos a registrarte en nuestra plataforma web, diseñada específicamente para profesionales como tú. Hemos creado una plataforma online donde la eficiencia, la conexión y el crecimiento se encuentran.
 
             El proceso es rápido, sencillo y te abrirá las puertas a un sinfín de posibilidades para hacer crecer tu portafolio.
+
 
             Enlace: 
             {$link}     
