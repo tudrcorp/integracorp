@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use Throwable;
 use App\Models\User;
 use Filament\Actions\Action;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,6 +25,20 @@ class SendEmailPropuestaEconomica implements ShouldQueue
     protected $details = [];
     protected $collect = [];
     protected $user;
+
+    /**
+     * Número máximo de intentos.
+     *
+     * @var int
+     */
+    public $tries = 5;
+
+    /**
+     * Tiempo en segundos para esperar antes de reintentar (opcional).
+     *
+     * @var int
+     */
+    public $backoff = 3; // Espera 3 segundos entre intentos
 
     /**
      * Create a new job instance.
@@ -68,6 +83,25 @@ class SendEmailPropuestaEconomica implements ShouldQueue
          * ----------------------------------------------------------------------------------------------------
          */
         Mail::to($details['email'])->send(new SendMailPropuestaPlanInicial($details['name'], $name_pdf));
+    }
+
+    /**
+     * Handle a job failure.
+     * Trabajo Fallido
+     */
+    public function failed(?Throwable $exception): void
+    {
+        Log::info("SendEmailPropuestaEconomicaMultiple: FAILED");
+        Log::error($exception->getMessage());
+
+        Notification::make()
+            ->title('¡TAREA NO COMPLETADA!')
+            ->body('Hubo un error en la creación de la propuesta economica. Por favor, contacte con el administrador del Sistema.')
+            ->danger()
+            ->sendToDatabase($this->user);
+
+        // Send user notification of failure, etc...
+
     }
 
 }
