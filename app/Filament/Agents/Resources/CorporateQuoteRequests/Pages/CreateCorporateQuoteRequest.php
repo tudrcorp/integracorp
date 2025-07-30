@@ -13,7 +13,7 @@ class CreateCorporateQuoteRequest extends CreateRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'Crear Solicitud de Cotizacion Corporativa';
+    protected static ?string $title = 'Crear Solicitud de Cotización Corporativa';
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {

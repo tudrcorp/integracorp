@@ -24,9 +24,9 @@ class IndividualQuoteInfolist
                         Fieldset::make('Solicitud de cotización individual')
                             ->schema([
                                 TextEntry::make('code')
-                                ->label('Número de solicitud')
-                                ->badge()
-                                ->color('success'),
+                                    ->label('Número de solicitud')
+                                    ->badge()
+                                    ->color('success'),
                                 // ...
                                 TextEntry::make('code_agency')
                                     ->label('Código de agencia')
@@ -36,7 +36,7 @@ class IndividualQuoteInfolist
                                     ->label('Registrado por:')
                                     ->badge()
                                     ->color('primary')
-                                    ->default(fn (IndividualQuote $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
+                                    ->default(fn(IndividualQuote $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
                                 TextEntry::make('created_at')
                                     ->label('Fecha de solicitud')
                                     ->badge()
@@ -50,7 +50,7 @@ class IndividualQuoteInfolist
                                 TextEntry::make('email')
                                     ->label('Correo electrónico'),
                                 TextEntry::make('phone')
-                                    ->label('Teléfono'),
+                                    ->label('Número de teléfono'),
                                 TextEntry::make('status')
                                     ->label('Estatus')
                                     ->badge()
@@ -60,7 +60,7 @@ class IndividualQuoteInfolist
                                     ->badge()
                                     ->color('primary'),
                             ])->columnSpanFull()->columns(5),
-                        
+
                     ])->columnSpanFull(),
             ]);
     }

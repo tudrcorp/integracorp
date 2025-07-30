@@ -81,7 +81,7 @@ class SaleInfolist
                                 TextEntry::make('affiliate_contact')
                                     ->label('Contacto:'),
                                 TextEntry::make('affiliate_phone')
-                                    ->label('Teléfono:'),
+                                    ->label('Número de teléfono:'),
                                 TextEntry::make('affiliate_email')
                                     ->label('Correo electrónico:'),
                                 TextEntry::make('created_by')
@@ -101,7 +101,7 @@ class SaleInfolist
                                     ->badge()
                                     ->color('primary')
                                     ->numeric(),
-                                
+
                                 TextEntry::make('payment_method')
                                     ->label('Forma de pago:')
                                     ->badge()
@@ -130,7 +130,7 @@ class SaleInfolist
                                     ->label('Fecha de pago:')
                                     ->badge()
                                     ->dateTime(),
-                                
+
                             ])->columnSpanFull()->columns(4),
                     ])->columnSpanFull(),
             ]);

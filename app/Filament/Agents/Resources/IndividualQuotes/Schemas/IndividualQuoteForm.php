@@ -253,7 +253,7 @@ class IndividualQuoteForm
                                         return $planesConBeneficios;
                                     })
                                     ->descriptions([
-                                        1    => 'Edad: 0 a 111 años/ilimitado.',
+                                        1    => 'Edad: 0 a +99 años/ilimitado.',
                                         2    => 'Edad: 0 a 85 años.',
                                         3    => 'Edad: 0 a 85 años.',
                                         'CM' => 'Seleccione más de dos (2) planes.'

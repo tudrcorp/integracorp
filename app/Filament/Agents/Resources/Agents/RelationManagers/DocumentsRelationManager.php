@@ -33,10 +33,18 @@ class DocumentsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Fieldset::make('Documentos')
+                Fieldset::make('Expediente')
                     ->schema([
                         Grid::make()
                             ->schema([
+                                FileUpload::make('doc_document_identity')
+                                    ->label('Documento de Identidad')
+                                    ->uploadingMessage('Cargando documento, por favor espere...')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required'  => 'Documento Requerido',
+                                    ])
+                                    ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'DOCUMENTO DE IDENTIDAD')->where('document', '!=', null)->exists()),
                                 FileUpload::make('doc_digital_signature')
                                     ->label('Firma Digital')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
@@ -45,31 +53,24 @@ class DocumentsRelationManager extends RelationManager
                                         'required'  => 'Documento Requerido',
                                     ])
                                     ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'FIRMA DIGITAL')->where('document', '!=', null)->exists()),
-                                FileUpload::make('doc_document_identity')
-                                    ->label('Docuemnto de Identidad')
-                                    ->uploadingMessage('Cargando documento, por favor espere...')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Documento Requerido',
-                                    ])
-                                    ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'DOCUMENTO DE IDENTIDAD')->where('document', '!=', null)->exists()),
+                                
                                 FileUpload::make('doc_w8_w9')
                                     ->label('W8/W9')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Docuemnto Requerido',
+                                        'required'  => 'Documento Requerido',
                                     ])
                                     ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'W8/W9')->where('document', '!=', null)->exists()),
                             ])->columnSpanFull()->columns(3),
                         Grid::make()
                             ->schema([
                                 FileUpload::make('doc_bank_data_ves')
-                                    ->label('Soporte datos bancanarios(VES)')
+                                    ->label('Soporte datos bancarios(VES)')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA VES')->where('document', '!=', null)->exists()),
                                 FileUpload::make('doc_bank_data_usd')
-                                    ->label('Soporte datos bancanarios(US$)')
+                                    ->label('Soporte datos bancarios(US$)')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA US$')->where('document', '!=', null)->exists()),
                             ])->columnSpanFull()->columns(2),
@@ -80,7 +81,7 @@ class DocumentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->heading('Documentos consignados de la agente')
+            ->heading('Documentos consignados del agente')
             ->columns([
                 Stack::make([
                     ImageColumn::make('image')
@@ -104,8 +105,9 @@ class DocumentsRelationManager extends RelationManager
                     ->label('Agregar Documento')
                     ->icon('heroicon-o-plus')
                     ->color('verde')
-                    ->modalHeading('Agregar Documento')
+                    ->modalHeading('Agregar Documentos')
                     ->modalButton('Agregar')
+                    
                     ->action(function (array $data) {
                         $array_title = [
                             'doc_digital_signature' => 'FIRMA DIGITAL AGENTE',
@@ -126,6 +128,7 @@ class DocumentsRelationManager extends RelationManager
                             }
                         }
                     })
+                    ->createAnother(false)
 
             ])
             ->recordActions([

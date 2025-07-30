@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
+use Filament\Actions\ExportAction;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +31,8 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Actions\Exports\Enums\ExportFormat;
+use App\Filament\Exports\IndividualQuoteExporter;
 
 class IndividualQuotesTable
 {
@@ -231,7 +234,7 @@ class IndividualQuotesTable
                         ->requiresConfirmation()
                         ->modalIcon('fluentui-document-arrow-right-20')
                         ->modalHeading('Reenvío de Cotización')
-                        ->modalDescription('La propuesta será enviado por email y/o teléfono!')
+                        ->modalDescription('La propuesta será enviada por email y/o teléfono!')
                         ->modalWidth(Width::ExtraLarge)
                         ->form([
                             Section::make()
@@ -487,6 +490,18 @@ class IndividualQuotesTable
                     return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
                 })
             ])
+            // ->headerActions([
+            //     ExportAction::make()
+            //         ->exporter(IndividualQuoteExporter::class)
+            //         ->icon('fontisto-export')
+            //         ->color('verde')
+            //         ->label('Exportar Excel')
+            //         ->formats([
+            //             ExportFormat::Xlsx,
+            //             ExportFormat::Csv,
+            //         ])
+                    
+            // ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     // DeleteBulkAction::make(),

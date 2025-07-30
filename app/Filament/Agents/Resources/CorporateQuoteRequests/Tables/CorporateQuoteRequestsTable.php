@@ -57,11 +57,11 @@ class CorporateQuoteRequestsTable
                 TextColumn::make('rif')
                     ->label('Rif')
                     ->searchable(),
-                TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable(),
                 TextColumn::make('phone')
                     ->label('Telefono')
+                    ->searchable(),
+                TextColumn::make('email')
+                    ->label('Email')
                     ->searchable(),
                 TextColumn::make('state.definition')
                     ->label('Estado')

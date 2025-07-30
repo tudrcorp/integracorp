@@ -22,9 +22,10 @@ class SalesTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->query(Sale::query()->where('agent_id', Auth::user()->agent_id))
-        ->defaultSort('created_at', 'desc')
-        ->columns([
+            ->description('En esta sección se muestran todas las ventas realizadas de tipo Individual y Corporativa')
+            ->query(Sale::query()->where('agent_id', Auth::user()->agent_id))
+            ->defaultSort('created_at', 'desc')
+            ->columns([
                 TextColumn::make('date')
                     ->label('Fecha')
                     ->badge()
@@ -53,7 +54,7 @@ class SalesTable
                     ->label('CI / RIF')
                     ->searchable(),
                 TextColumn::make('affiliate_phone')
-                    ->label('Teléfono')
+                    ->label('Número de teléfono')
                     ->searchable(),
                 TextColumn::make('affiliate_email')
                     ->label('Email')
@@ -71,7 +72,7 @@ class SalesTable
                     ->suffix('US$')
                     ->sortable(),
                 TextColumn::make('persons')
-                    ->label('Poblacion')
+                    ->label('Población')
                     ->suffix(' persona(s)')
                     ->searchable(),
                 TextColumn::make('created_at')
@@ -88,7 +89,7 @@ class SalesTable
                     ->icon('heroicon-s-user')
                     ->searchable(),
                 TextColumn::make('status_payment_commission')
-                    ->label('Comision de venta')
+                    ->label('Comisión de venta')
                     ->badge()
                     ->color(function (Sale $record) {
                         return $record->status_payment_commission == 'COMISION PAGADA' ? 'success' : 'warning';

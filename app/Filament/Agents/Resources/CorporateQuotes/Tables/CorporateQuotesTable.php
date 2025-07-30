@@ -51,11 +51,11 @@ class CorporateQuotesTable
                 TextColumn::make('full_name')
                     ->label('Solicitada por:')
                     ->searchable(),
-                TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable(),
                 TextColumn::make('phone')
                     ->label('Nro. de Teléfono')
+                    ->searchable(),
+                TextColumn::make('email')
+                    ->label('Email')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Generada el:')
@@ -117,26 +117,27 @@ class CorporateQuotesTable
             ->recordActions([
                 ActionGroup::make([
 
-                    ViewAction::make('view')
-                        ->label('Viste Previa')
-                        ->icon('heroicon-o-eye')
-                        ->color('warning'),
+                    // ViewAction::make('view')
+                    //     ->label('Viste Previa')
+                    //     ->icon('heroicon-o-eye')
+                    //     ->color('warning'),
                         // ->url(fn($record): string => route('filament.agents.corporate-quotes.show', $record)),
                         // ->url(fn($record): string => CorporateQuoteResource::getUrl('show', ['record' => $record]),),
 
                     /**REEN\VIO DE COTIZACION CORPORATIVA */
                     Action::make('forward')
-                        ->label('Reenviar Cotizacion')
-                        ->icon('heroicon-o-arrow-uturn-right')
-                        ->color('primary')
-                        ->requiresConfirmation()
-                        ->modalHeading('REENVIÓ DE COTIZACIÓN CORPORATIVA')
-                        ->modalWidth(Width::FiveExtraLarge)
-                        ->modalIcon('heroicon-o-arrow-uturn-right')
-                        ->form([
+                    ->label('Reenviar')
+                    ->icon('fluentui-document-arrow-right-20')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalIcon('fluentui-document-arrow-right-20')
+                    ->modalHeading('Reenvío de Cotización')
+                    ->modalDescription('La propuesta será enviada por email y/o teléfono!')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->form([
                             Section::make()
-                                ->heading('Informacion')
-                                ->description('El link puede sera enviado por email y/o telefono!')
+                                // ->heading('Informacion')
+                                // ->description('El link puede sera enviado por email y/o telefono!')
                                 ->schema([
                                     TextInput::make('email')
                                         ->label('Email')
@@ -280,14 +281,15 @@ class CorporateQuotesTable
 
                     /**DESCARGA DE COTIZACION */
                     Action::make('download')
-                        ->label('Descargar cotización')
-                        ->icon('heroicon-s-arrow-down-on-square-stack')
-                        ->color('verde')
-                        ->requiresConfirmation()
-                        ->modalHeading('DESCARGAR COTIZACIÓN CORPORATIVA')
-                        ->modalWidth(Width::FiveExtraLarge)
-                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
-                        ->action(function (CorporateQuote $record, array $data) {
+                    ->label('Descargar Cotización')
+                    ->icon('heroicon-s-arrow-down-on-square-stack')
+                    ->color('verde')
+                    ->requiresConfirmation()
+                    ->modalHeading('DESCARGAR COTIZACION')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                    ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                    ->action(function (CorporateQuote $record, array $data) {
 
                             try {
 
@@ -312,13 +314,13 @@ class CorporateQuotesTable
                                     ->danger()
                                     ->send();
                             }
-                        }),
+                    }),
 
                     /**OBSERVACIONES */
                     Action::make('observations')
                     ->label('Agregar Observaciones')
                     ->icon('heroicon-s-hand-raised')
-                    ->color('primary')
+                    ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('OBSERVACIONES DEL AGENTE')
                     ->modalIcon('heroicon-s-hand-raised')

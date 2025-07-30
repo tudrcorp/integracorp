@@ -19,7 +19,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
     {
         return $table
             ->heading('DETALLE DE COTIZACION')
-            ->description('Lista de detalles de planes y coberturas con sus tarifas, agrupadas por rango de edades')
+            ->description('Lista de detalles de planes y coberturas con tarifas agrupadas por rango de edades')
             ->recordTitleAttribute('individual_quote_id')
             ->columns([
                 TextColumn::make('plan.description')

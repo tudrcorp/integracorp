@@ -281,7 +281,7 @@ class CorporateQuoteRequestForm
                                     Repeater::make('details_corporate_quote_requests')
                                         ->addActionLabel('Agregar fila')
                                         // ->defaultItems(3)
-                                        ->label('Por favor selecciona el tipo de plan e indica la cantidad de personas que desea cotizar!')
+                                        ->label('Por favor selecciona el tipo de plan(es) e indica la cantidad de personas que desea cotizar!')
                                         ->table([
                                             TableColumn::make('Plan'),
                                             TableColumn::make('Nro. de personas'),
@@ -289,14 +289,17 @@ class CorporateQuoteRequestForm
                                         ->schema([
                                             Select::make('plan_id')
                                                 ->options(function () {
-                                                    $planesConBeneficios = Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
-                                                        ->select('plans.id as plan_id', 'plans.description as description')
-                                                        ->distinct() // Asegurarse de que no haya duplicados
-                                                        ->get()
-                                                        ->pluck('description', 'plan_id');
-
-                                                    return $planesConBeneficios;
+                                                    return Plan::all()->pluck('description', 'id');
                                                 })
+                                                // ->options(function () {
+                                                //     $planesConBeneficios = Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
+                                                //         ->select('plans.id as plan_id', 'plans.description as description')
+                                                //         ->distinct() // Asegurarse de que no haya duplicados
+                                                //         ->get()
+                                                //         ->pluck('description', 'plan_id');
+
+                                                //     return $planesConBeneficios;
+                                                // })
                                                 ->disableOptionWhen(function ($value, $state, Get $get) {
                                                     return collect($get('../*.plan_id'))
                                                         ->reject(fn($id) => $id == $state)
@@ -306,7 +309,7 @@ class CorporateQuoteRequestForm
                                                 ->label('Plan')
                                                 ->live()
                                                 ->required()
-                                                ->placeholder('Seleccione un plan'),
+                                                ->placeholder('Seleccione plan(es)'),
                                             TextInput::make('total_persons')
                                                 ->label('Nro. de personas')
                                                 ->required()
@@ -327,7 +330,7 @@ class CorporateQuoteRequestForm
                                         ->rows(4)
                                         // ->autosize()
                                         ->label('Observaciones del agente')
-                                        ->placeholder('Observaciones')
+                                        ->placeholder('Explique su requerimiento...')
                                 ])->columnSpanFull(),
                         ]),
                 ])

@@ -32,13 +32,12 @@ class AgentForm
         return $schema
             ->components([
                 Wizard::make([
-                    Step::make('Informacion Personal')
+                    Step::make('Información Personal')
                         ->description('Información principal del solicitante')
-                        ->icon(Heroicon::User)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('name')
-                                ->label('Nombre/Razon Social')
+                                ->label('Nombre/Razón Social')
                                 ->afterStateUpdated(function (Set $set, $state) {
                                     $set('name', strtoupper($state));
                                 })
@@ -49,23 +48,34 @@ class AgentForm
                                     'required' => 'Campo requerido',
                                 ])
                                 ->maxLength(255),
-                            TextInput::make('rif')
-                                ->label('RIF: (si posee!)')
-                                ->prefix('J-')
-                                ->numeric()
-                                ->validationMessages([
-                                    'numeric'   => 'El campo es numerico',
-                                ]),
+
                             TextInput::make('ci')
-                                ->label('Cedula de Identidad')
+                                ->label('Cédula de Identidad')
                                 ->prefixIcon('heroicon-s-identification')
                                 ->numeric()
                                 ->required()
                                 ->validationMessages([
                                     'required' => 'Campo requerido',
-                                    'numeric'   => 'El campo es numerico',
+                                    'numeric'   => 'El campo es numérico',
+                                ]),
+                                
+                            TextInput::make('rif')
+                                ->label('RIF: (si posee!)')
+                                ->prefix('J-')
+                                ->numeric()
+                                ->validationMessages([
+                                    'numeric'   => 'El campo es numérico',
                                 ]),
 
+                            DatePicker::make('birth_date')
+                                ->label('Fecha de Nacimiento')
+                                ->prefixIcon('heroicon-m-calendar-days')
+                                ->displayFormat('d/m/Y')
+                                ->required()
+                                ->validationMessages([
+                                    'required'  => 'Campo Requerido',
+                                ]),
+                                
                             Select::make('sex')
                                 ->label('Sexo')
                                 ->live()
@@ -81,42 +91,13 @@ class AgentForm
                                 ])
                                 ->preload(),
 
-                            DatePicker::make('birth_date')
-                                ->label('Fecha de Nacimiento')
-                                ->prefixIcon('heroicon-m-calendar-days')
-                                ->displayFormat('d/m/Y')
-                                ->required()
-                                ->validationMessages([
-                                    'required'  => 'Campo Requerido',
-                                ]),
-
                             DatePicker::make('company_init_date')
-                                ->label('Fecha de Ingreso')
+                                ->label('Fecha de registro del agente')
                                 ->prefixIcon('heroicon-m-calendar-days')
+                                ->disabled()
+                                ->dehydrated()
                                 ->displayFormat('d/m/Y'),
 
-                            TextInput::make('email')
-                                ->label('Email Corporativo')
-                                ->prefixIcon('heroicon-s-at-symbol')
-                                ->email()
-                                ->required()
-                                ->validationMessages([
-                                    'required'  => 'Campo requerido',
-                                    'email'     => 'El campo es un email',
-                                ])
-                                ->maxLength(255),
-                            TextInput::make('address')
-                                ->label('Dirección')
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $set('address', strtoupper($state));
-                                })
-                                ->live(onBlur: true)
-                                ->prefixIcon('heroicon-s-identification')
-                                ->required()
-                                ->validationMessages([
-                                    'required'  => 'Campo Requerido',
-                                ])
-                                ->maxLength(255),
                             Select::make('country_code')
                                 ->label('Código de país')
                                 ->options([
@@ -196,16 +177,18 @@ class AgentForm
                                 ])
                                 ->searchable()
                                 ->default('+58')
-                                ->required()
                                 ->live(onBlur: true)
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
-                                ]),
+                                ])->hiddenOn('edit'),
+                                
                             TextInput::make('phone')
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
                                 ->label('Número de teléfono')
                                 ->required()
+                                ->disabled()
+                                ->dehydrated()
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
                                 ])
@@ -217,6 +200,31 @@ class AgentForm
                                         $set('phone', $countryCode . $cleanNumber);
                                     }
                                 }),
+
+                            TextInput::make('email')
+                                ->label('Correo electrónico')
+                                ->prefixIcon('heroicon-s-at-symbol')
+                                ->email()
+                                ->required()
+                                ->validationMessages([
+                                    'required'  => 'Campo requerido',
+                                    'email'     => 'El campo es un email',
+                                ])
+                                ->maxLength(255),
+                            TextInput::make('address')
+                                ->label('Dirección')
+                                ->afterStateUpdated(function (Set $set, $state) {
+                                    $set('address', strtoupper($state));
+                                })
+                                ->live(onBlur: true)
+                                ->prefixIcon('heroicon-s-identification')
+                                ->required()
+                                ->validationMessages([
+                                    'required'  => 'Campo Requerido',
+                                ])
+                                ->maxLength(255),
+                            
+
                             Select::make('country_id')
                                 ->label('País')
                                 ->live()
@@ -246,12 +254,6 @@ class AgentForm
                                     'required'  => 'Campo Requerido',
                                 ])
                                 ->preload(),
-                            TextInput::make('region')
-                                ->label('Región')
-                                ->prefixIcon('heroicon-m-map')
-                                ->disabled()
-                                ->dehydrated()
-                                ->maxLength(255),
                             Select::make('city_id')
                                 ->label('Ciudad')
                                 ->options(function (Get $get) {
@@ -264,18 +266,23 @@ class AgentForm
                                     'required'  => 'Campo Requerido',
                                 ])
                                 ->preload(),
+                            TextInput::make('region')
+                                ->label('Región')
+                                ->prefixIcon('heroicon-m-map')
+                                ->disabled()
+                                ->dehydrated()
+                                ->maxLength(255),
                             TextInput::make('user_instagram')
                                 ->label('Usuario de Instagram')
                                 ->prefixIcon('heroicon-s-user')
                                 ->maxLength(255),
                         ])->columns(4),
-                    Step::make('Informacion Bancaria Local(VES)')
+                    Step::make('Información Bancaria Local(VES)')
                         ->description('Datos bancarios para recibir pagos en moneda nacional')
-                        ->icon(Heroicon::CreditCard) //heroicon-s-credit-card
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('local_beneficiary_name')
-                                ->label('Nombre/Razon Social del Beneficiario')
+                                ->label('Nombre/Razón Social del Beneficiario')
                                 ->afterStateUpdated(function (Set $set, $state) {
                                     $set('local_beneficiary_name', strtoupper($state));
                                 })
@@ -345,9 +352,8 @@ class AgentForm
                                     }
                                 }),
                         ])->columnSpanFull()->columns(3),
-                    Step::make('Informacion Bancaria Extra(US$)')
+                    Step::make('Información Bancaria Extra(US$)')
                         ->description('Datos bancarios para recibir pagos en moneda extranjera')
-                        ->icon(Heroicon::CurrencyDollar)
                         ->completedIcon(Heroicon::Check) //heroicon-s-currency-dollar
                         ->schema([
                             TextInput::make('extra_beneficiary_name')
@@ -466,10 +472,10 @@ class AgentForm
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
-                            ])->columnSpanFull()->columns(3),
+                        ])->columnSpanFull()->columns(3),
                     Step::make('Acuerdo y condiciones')
                         ->description('Leer y aceptar las condiciones')
-                        ->icon(Heroicon::ShieldCheck)
+                        // ->icon(Heroicon::ShieldCheck)
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
@@ -495,7 +501,7 @@ class AgentForm
                                 ])->columnSpanFull(),
                         ])
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -503,7 +509,7 @@ class AgentForm
                         Actualizar información
                     </x-filament::button>
                 BLADE)))
-                ->columnSpanFull(),
+                    ->columnSpanFull(),
             ]);
     }
 }

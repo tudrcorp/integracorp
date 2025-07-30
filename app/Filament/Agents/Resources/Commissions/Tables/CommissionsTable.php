@@ -21,15 +21,18 @@ class CommissionsTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->query(Commission::query()->where('agent_id', Auth::user()->agent_id))
+            ->description('El detalle puede ser ordenado de forma ascendente o descendente. Por defecto se ordena por la fecha de creación.')
+            ->query(Commission::query()->where('agent_id', Auth::user()->agent_id))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('date_payment_affiliate')
-                    ->label('Pago del afiliado')
+                    ->label('Fecha del comprobante')
                     ->badge()
                     ->icon('heroicon-s-calendar-days')
                     ->datetime('d/m/Y')
                     ->searchable(),
+                
+                
                 TextColumn::make('affiliate_full_name')
                     ->label('Afiliado')
                     ->searchable(),
@@ -48,37 +51,30 @@ class CommissionsTable
                     ->suffix('US$')
                     ->numeric()
                     ->searchable(),
-
-                TextColumn::make('invoice_number')
-                    ->badge()
-                    ->icon('heroicon-s-document-text')
-                    ->label('Nro. Factura')
-                    ->searchable(),
-
-                TextColumn::make('amount')
-                    ->label('Importe')
-                    ->money('USD')
-                    ->sortable(),
-                TextColumn::make('payment_method')
-                    ->label('Metodo de pago')
-                    ->searchable(),
                 TextColumn::make('veto')
-                    ->label('Veto')
+                    ->label('Período')
                     ->searchable(),
                 TextColumn::make('payment_frequency')
                     ->label('Frecuencia de pago')
                     ->searchable(),
-                TextColumn::make('date_payment_commission')
-                    ->label('Pagado el:')
-                    ->badge()
-                    ->icon('heroicon-s-calendar-days')
-                    ->searchable(),
+
 
                 /**
                  * PORCENTAJES TDEC
                  * --------------------------------------------------------------
                  */
-
+                TextColumn::make('invoice_number')
+                    ->badge()
+                    ->icon('heroicon-s-document-text')
+                    ->label('Nro. de recibo o factura')
+                    ->searchable(),
+                TextColumn::make('amount')
+                    ->label('Monto pagado')
+                    ->money('USD')
+                    ->sortable(),
+                TextColumn::make('payment_method')
+                    ->label('Método de pago')
+                    ->searchable(),
                 TextColumn::make('commission_agent_tdec')
                     ->label('% Agente TDEC')
                     ->badge()
@@ -96,6 +92,11 @@ class CommissionsTable
                         ->label(('Subtotal Agentes'))
                         ->suffix(' US$')
                         ->numeric()),
+                TextColumn::make('date_payment_commission')
+                    ->label('Fecha de pago')
+                    ->badge()
+                    ->icon('heroicon-s-calendar-days')
+                    ->searchable(),
                 /**-------------------------------------------------------------- */
 
                 TextColumn::make('created_by')

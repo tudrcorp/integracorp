@@ -132,7 +132,7 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ]),
                                 Select::make('coverage_id')
-                                ->helperText('Punto(.) para separar miles.')
+                                    ->helperText('Punto(.) para separar miles.')
                                     ->label('Cobertura')
                                     ->live()
                                     ->options(function (Get $get) {
@@ -149,9 +149,9 @@ class AffiliationForm
                                     })
                                     ->relationship(
                                         name: 'coverage',
-                                        modifyQueryUsing: fn (Builder $query, Get $get) => $query->where('plan_id', $get('plan_id'))->orderBy('price', 'asc'),
+                                        modifyQueryUsing: fn(Builder $query, Get $get) => $query->where('plan_id', $get('plan_id'))->orderBy('price', 'asc'),
                                     )
-                                    ->getOptionLabelFromRecordUsing(fn (Coverage $record) => number_format($record->price, 0, '', '.'))
+                                    ->getOptionLabelFromRecordUsing(fn(Coverage $record) => number_format($record->price, 0, '', '.'))
                                     ->searchable()
                                     ->required()
                                     ->validationMessages([
@@ -353,7 +353,7 @@ class AffiliationForm
                                         column: 'email_ti',
                                     )
                                     ->validationMessages([
-                                        'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                         'required'  => 'Campo requerido',
                                         'email'     => 'El campo es un email',
                                     ])
@@ -517,7 +517,7 @@ class AffiliationForm
                                 FileUpload::make('document')
                                     ->label('Documento del titular')
                                     ->uploadingMessage('Cargando documento...'),
-                                    
+
                                 Grid::make(1)
                                     ->schema([
                                         Radio::make('feedback')
@@ -618,15 +618,14 @@ class AffiliationForm
                                                         ->validationMessages([
                                                             'required'  => 'Campo Requerido',
                                                         ])
-                                                        
-                                                ])->columnSpanFull(1), 
+
+                                                ])->columnSpanFull(1),
                                         ])->columnSpanFull()->columns(2),
                                 ])
                                 ->columnSpanFull()
                                 ->defaultItems(function (Get $get, Set $set) {
-                                //Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
+                                    //Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
                                     return session()->get('persons') - 1;
-                                    
                                 })
                                 ->addActionLabel('Agregar afiliado')
                         ]),
@@ -782,7 +781,7 @@ class AffiliationForm
                                             column: 'email_payer',
                                         )
                                         ->validationMessages([
-                                            'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                            'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                             'required'  => 'Campo requerido',
                                             'email'     => 'El campo es un email',
                                         ])
@@ -828,7 +827,7 @@ class AffiliationForm
                                 ->hiddenOn('edit')
                         ]),
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -836,7 +835,7 @@ class AffiliationForm
                         Crear Pre-Afiliación
                     </x-filament::button>
                 BLADE)))
-                ->columnSpanFull(),
+                    ->columnSpanFull(),
 
             ]);
     }
