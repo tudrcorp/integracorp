@@ -33,7 +33,11 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     #[Validate('required', message: 'Campo requerido!')]
     public string $phone;
 
+    #[Validate('required', message: 'Campo requerido!')]
+    #[Validate('min:8', message: 'La contraseña debe tener al menos 8 caracteres!')]
+    #[Validate('confirmed', message: 'Las contraseñas no coinciden, por favor verifica y intenta nuevamente!')]
     public string $password;
+    
     public string $password_confirmation;
 
     public function mount($code = null)
@@ -164,12 +168,16 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             autocomplete="email" placeholder="04127018390" mask="(9999) 999-9999" />
 
         <!-- Password -->
-        <flux:input input icon="key" wire:model="password" :label="__('Contraseña')" type="password" required
-            autocomplete="new-password" :placeholder="__('Contraseña')" viewable />
 
+        <flux:input input icon="key" wire:model="password" :label="__('Contraseña')" type="password"
+            autocomplete="new-password" :placeholder="__('Contraseña')" viewable />
+        <flux:description>
+            La Contraseña debe contener al menos 8 caracteres entre mayúsculas, minúsculas y números, sin espacios en
+            blanco.
+        </flux:description>
         <!-- Confirm Password -->
         <flux:input input icon="key" wire:model="password_confirmation" :label="__('Confirmar Contraseña')"
-            type="password" required autocomplete="new-password" :placeholder="__('Confirmar Contraseña')" viewable />
+            type="password" autocomplete="new-password" :placeholder="__('Confirmar Contraseña')" viewable />
 
         <div class="flex items-center justify-end">
             <flux:button type="submit" variant="primary" class="w-full">

@@ -18,11 +18,24 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
 
     public string $owner_code;
+    #[Validate('required', message: 'Campo requerido')]
     public string $name;
+
+    #[Validate('required', message: 'Debes ingresar un correo electrónico!')]
+    #[Validate('email', message: 'El correo ingresado no es valido!')]
+    #[Validate('unique:' . Agency::class, message: 'El correo ingresado ya se encuentra registrado!')]
     public string $email;
+    #[Validate('required', message: 'Campo requerido')]
     public string $type;
+
+    #[Validate('required', message: 'Campo requerido')]
     public string $phone;
+
+    #[Validate('required', message: 'Campo requerido!')]
+    #[Validate('min:8', message: 'La contraseña debe tener al menos 8 caracteres!')]
+    #[Validate('confirmed', message: 'Las contraseñas no coinciden, por favor verifica y intenta nuevamente!')]
     public string $password;
+
     public string $password_confirmation;
 
     public function mount($code = null)
@@ -110,7 +123,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
                 $this->redirect(route('filament.general.auth.login'));
             }
-            
+
             /**
              * Registro de agente
              * ------------------------------------------------------------------------------------------------
@@ -160,7 +173,6 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
                     ->send();
 
                 $this->redirect(route('filament.agents.auth.login'));
-                
             }
 
             /**
@@ -230,8 +242,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
     <form wire:submit="register" class="flex flex-col gap-6">
 
-        <flux:radio.group wire:model="type" variant="segmented" label="Tipo" :indicator="false" required
-            class="max-sm:flex-col">
+        <flux:radio.group wire:model="type" variant="segmented" label="Tipo" :indicator="false" class="max-sm:flex-col">
             <flux:radio value="3g" icon="cube" label="Agencia General"
                 description="Agencias con estructura comercial" />
             <flux:radio value="2a" icon="user" label="Agente" />
@@ -240,25 +251,28 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
 
         <!-- Name -->
-        <flux:input input icon="user" wire:model="name" :label="__('Nombre/Razón Social')" type="text" required
-            autofocus autocomplete="name" placeholder="Nombre Apellido"
+        <flux:input input icon="user" wire:model="name" :label="__('Nombre/Razón Social')" type="text" autofocus
+            autocomplete="name" placeholder="Nombre Apellido"
             oninput="this.value = this.value.replace(/[^a-zA-Z\sáéíóúÁÉÍÓÚÑñ]/g, '')" />
 
         <!-- Email Address -->
-        <flux:input input icon="at-symbol" wire:model=" email" :label="__('Correo Electrónico')" type="email" required
+        <flux:input input icon="at-symbol" wire:model=" email" :label="__('Correo Electrónico')" type="email"
             autocomplete="email" placeholder="email@example.com" />
 
         <!-- Email Address -->
-        <flux:input input icon="phone" wire:model=" phone" :label="__('Nro. de Telefono')" type="tel" required
+        <flux:input input icon="phone" wire:model=" phone" :label="__('Nro. de Telefono')" type="tel"
             autocomplete="email" placeholder="04127018390" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
 
         <!-- Password -->
-        <flux:input input icon="key" wire:model="password" :label="__('Password')" type="password" required
+        <flux:input input icon="key" wire:model="password" :label="__('Password')" type="password"
             autocomplete="new-password" :placeholder="__('Contraseña')" viewable />
-
+        <flux:description>
+            La Contraseña debe contener al menos 8 caracteres entre mayúsculas, minúsculas y números, sin espacios en
+            blanco.
+        </flux:description>
         <!-- Confirm Password -->
         <flux:input input icon="key" wire:model="password_confirmation" :label="__('Confirm password')" type="password"
-            required autocomplete="new-password" :placeholder="__('Confirmar Contraseña')" viewable />
+            autocomplete="new-password" :placeholder="__('Confirmar Contraseña')" viewable />
 
         <div class="flex items-center justify-end">
             <flux:button type="submit" variant="primary" class="w-full">
