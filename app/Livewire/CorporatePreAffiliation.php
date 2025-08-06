@@ -133,7 +133,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                                 column: 'email_con',
                             )
                             ->validationMessages([
-                                'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                 'required'  => 'Campo requerido',
                                 'email'     => 'El campo es un email',
                             ])
@@ -447,9 +447,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                     ->description('Campo Requerido(*)')
                     ->collapsed()
                     ->icon('heroicon-s-building-office-2')
-                    ->schema([
-                        
-                    ]),
+                    ->schema([]),
             ])->statePath('data');
     }
 

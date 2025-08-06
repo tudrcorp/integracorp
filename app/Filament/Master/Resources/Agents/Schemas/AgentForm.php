@@ -133,7 +133,7 @@ class AgentForm
                                 ->displayFormat('d/m/Y'),
 
                             TextInput::make('email')
-                                ->label('Email Corporativo')
+                                ->label('Correo electrónico')
                                 ->prefixIcon('heroicon-s-at-symbol')
                                 ->email()
                                 ->required()
@@ -143,7 +143,7 @@ class AgentForm
                                     column: 'email',
                                 )
                                 ->validationMessages([
-                                    'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                    'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                     'required'  => 'Campo requerido',
                                     'email'     => 'El campo es un email',
                                 ])

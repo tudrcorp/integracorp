@@ -59,7 +59,7 @@ class AffiliationCorporateInfolist
                                 ->label('Rif:')
                                 ->prefix('J-'),
                             TextEntry::make('email_con')
-                                ->label('Email:'),
+                                ->label('Correo Electrónico:'),
                             TextEntry::make('phone_con')
                                 ->label('Telefono:'),
                             TextEntry::make('country.name')

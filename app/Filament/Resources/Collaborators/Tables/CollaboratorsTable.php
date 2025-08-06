@@ -20,7 +20,7 @@ class CollaboratorsTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->defaultSort('created_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->heading('COLLABORADORES')
             ->description('Lista de colaboradores registrados en el sistema')
             ->columns([
@@ -69,11 +69,11 @@ class CollaboratorsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('phone')
-                    ->label('Teléfono')
+                    ->label('Número de teléfono')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('coorporate_email')
-                    ->label('Email Corporativo')
+                    ->label('Correo electrónico')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('alternative_email')

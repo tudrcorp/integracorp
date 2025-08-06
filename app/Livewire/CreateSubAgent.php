@@ -150,7 +150,7 @@ class CreateSubAgent extends Component implements HasForms
                                 column: 'email',
                             )
                             ->validationMessages([
-                                'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                 'required'  => 'Campo requerido',
                                 'email'     => 'El campo es un email',
                             ])

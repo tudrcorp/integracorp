@@ -82,7 +82,7 @@ class AgentsTable
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('email')
-                    ->label('Email Corporativo')
+                    ->label('Correo electrónico')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('phone')

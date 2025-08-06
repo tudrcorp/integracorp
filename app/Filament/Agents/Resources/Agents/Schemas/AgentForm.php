@@ -91,7 +91,7 @@ class AgentForm
                                 ])
                                 ->preload(),
 
-                            DatePicker::make('company_init_date')
+                            DatePicker::make('created_at')
                                 ->label('Fecha de registro del agente')
                                 ->prefixIcon('heroicon-m-calendar-days')
                                 ->disabled()
@@ -202,7 +202,7 @@ class AgentForm
                                 }),
 
                             TextInput::make('email')
-                                ->label('Correo electrónico')
+                                ->label('Correo Electrónico')
                                 ->prefixIcon('heroicon-s-at-symbol')
                                 ->email()
                                 ->required()
@@ -277,6 +277,43 @@ class AgentForm
                                 ->prefixIcon('heroicon-s-user')
                                 ->maxLength(255),
                         ])->columns(4),
+                Step::make('Comisiones')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('commission_tdec')
+                                    ->label('Comisión TDEC US$')
+                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                    ->prefix('%')
+                                    ->disabled()
+                                    ->dehydrated(),
+                                    
+                                TextInput::make('commission_tdec_renewal')
+                                    ->label('Comisión Renovacion TDEC US$')
+                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                    ->prefix('%')
+                                    ->disabled()
+                                    ->dehydrated(),
+
+                            ])->columnSpanFull(),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('commission_tdev')
+                                    ->label('Comisión TDEV US$')
+                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                    ->prefix('%')
+                                    ->disabled()
+                                    ->dehydrated(),
+                                    
+                                TextInput::make('commission_tdev_renewal')
+                                    ->label('Comisión Renovacion TDEV US$')
+                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                    ->prefix('%')
+                                    ->disabled()
+                                    ->dehydrated(),
+                                    
+                            ])->columnSpanFull()
+                    ]),
                     Step::make('Información Bancaria Local(VES)')
                         ->description('Datos bancarios para recibir pagos en moneda nacional')
                         ->completedIcon(Heroicon::Check)

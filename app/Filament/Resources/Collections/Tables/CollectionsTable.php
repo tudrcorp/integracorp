@@ -75,7 +75,7 @@ class CollectionsTable
                     ->label('C.I./R.I.F.')
                     ->searchable(),
                 TextColumn::make('affiliate_phone')
-                    ->label('Teléfono')
+                    ->label('Número de teléfono')
                     ->searchable(),
                 TextColumn::make('affiliate_email')
                     ->label('Correo')
@@ -241,7 +241,7 @@ class CollectionsTable
                 ActionGroup::make([
 
                     /**ENVIO MANUAL DEL AVISO DE COBRO */
-                   Action::make('send_email')
+                    Action::make('send_email')
                         ->label('Enviar Aviso de Cobro')
                         ->icon('heroicon-c-arrow-uturn-right')
                         ->modalHeading('Envío manual de aviso de cobro')

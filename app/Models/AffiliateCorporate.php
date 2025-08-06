@@ -10,7 +10,8 @@ class AffiliateCorporate extends Model
 
     protected $fillable = [
         'affiliation_corporate_id',
-        'full_name',
+        'first_name',
+        'last_name',
         'nro_identificacion',
         'birth_date',
         'age',
@@ -23,10 +24,29 @@ class AffiliateCorporate extends Model
         'address',
         'full_name_emergency',
         'phone_emergency',
+        'plan_id',
+        'coverage_id',
+        'fee',
+        'subtotal_anual',
+        'payment_frequency',
+        'subtotal_payment_frequency',
+        'subtotal_daily',
+        'status',
     ];
 
     public function affiliationCorporate()
     {
         return $this->belongsTo(AffiliationCorporate::class);
     }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function coverage()
+    {
+        return $this->belongsTo(Coverage::class);
+    }
+
 }

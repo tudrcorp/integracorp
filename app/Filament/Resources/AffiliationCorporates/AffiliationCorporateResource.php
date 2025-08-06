@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AffiliationCorporates;
 
+use UnitEnum;
 use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
@@ -17,8 +18,8 @@ use App\Filament\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTab
 use App\Filament\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
 use App\Filament\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
 use App\Filament\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
+use App\Filament\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
 use App\Filament\Resources\AffiliationCorporates\RelationManagers\StatusLogCorporateAffiliationsRelationManager;
-use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
@@ -48,6 +49,7 @@ class AffiliationCorporateResource extends Resource
     public static function getRelations(): array
     {
         return [
+            AffiliationCorporatePlansRelationManager::class,
             CorporateAffiliatesRelationManager::class,
             PaidMembershipCorporatesRelationManager::class,
             StatusLogCorporateAffiliationsRelationManager::class

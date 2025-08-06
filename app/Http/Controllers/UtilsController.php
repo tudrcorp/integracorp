@@ -6,6 +6,7 @@ use App\Models\Fee;
 use App\Models\AgeRange;
 use Illuminate\Http\Request;
 use App\Models\CorporateQuote;
+use App\Models\CorporateQuoteData;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\DetailCorporateQuote;
@@ -25,7 +26,7 @@ class UtilsController extends Controller
      * 
      * @return void
      */
-    public static function createCorporateQuote($livewire, $data)
+    public static function createCorporateQuote($livewire)
     {
         try {
 
@@ -58,11 +59,12 @@ class UtilsController extends Controller
             // $corporate_quote = new CorporateQuote($data);
             // $corporate_quote->save();
 
-            $corporate_quote = CorporateQuote::where('corporate_quote_request_id', $livewire->ownerRecord->id)->first();
+            $corporate_quote = CorporateQuote::find($livewire->ownerRecord->id);
+            // dd($corporate_quote);
             // dd($corporate_quote->plan);
 
             //Cambiamos el estatus de la solicitud a aprobada
-            // $corporate_quote_request = CorporateQuoteRequest::find($livewire->id);
+            // $corporate_quote_request = CorporateQuote::find($livewire->id);
             // $corporate_quote_request->status = 'APROBADA';
             // $corporate_quote_request->save();
 
@@ -74,25 +76,28 @@ class UtilsController extends Controller
              * 
              * En este paso tambien actualizamos la solicitud de cotizacion
              */
-            $details = CorporateQuoteRequest::find($livewire->ownerRecord->id);
-            $details_plan = $details->details->toArray();
+            $details_plans_corporate_quote = DetailCorporateQuote::select('plan_id')->where('corporate_quote_id', $livewire->ownerRecord->id)->groupBy('plan_id')->get()->toArray();
+            // dd($details_plans_corporate_quote);
 
             //Poblacion
-            $poblacion = CorporateQuoteRequestData::where('corporate_quote_request_id', $livewire->ownerRecord->id)->get()->toArray();
+            $poblacion = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->get()->toArray();
 
             $array = [];
 
-            for ($i = 0; $i < count($details_plan); $i++) {
+            for ($i = 0; $i < count($details_plans_corporate_quote); $i++) {
+
                 //Rabgo de edades segun el plan
-                $rangos = DB::table('age_ranges')->select('id', 'range', 'plan_id', 'age_init', 'age_end')->where('plan_id', $details_plan[$i]['plan_id'])->orderBy('range')->get();
+                $rangos = DB::table('age_ranges')->select('id', 'range', 'plan_id', 'age_init', 'age_end')->where('plan_id', $details_plans_corporate_quote[$i]['plan_id'])->orderBy('range')->get();
+                // dd($rangos, $poblacion);
                 foreach ($poblacion as $persona) {
+                    // dd($persona['age']);
                     $edad = (int) $persona['age'];
                     foreach ($rangos as $rango) {
                         if ($edad >= $rango->age_init && $edad <= $rango->age_end) {
                             array_push($array, [
                                 'id' => $persona['id'],
                                 'age' => $persona['age'],
-                                'plan_id' => $details_plan[$i]['plan_id'],
+                                'plan_id' => $details_plans_corporate_quote[$i]['plan_id'],
                                 'age_range_id' => $rango->id,
                                 'range' => $rango->range,
                             ]);
@@ -101,7 +106,7 @@ class UtilsController extends Controller
                     }
                 }
             }
-
+            // dd($array);
             $resultado = collect($array)
                 ->groupBy('plan_id')
                 ->flatMap(function ($grupoPorPlan, $planId) {
@@ -113,7 +118,7 @@ class UtilsController extends Controller
                 })
                 ->values()
                 ->toArray();
-
+            // dd($resultado);
             /**
              * Verificamos si tenemos mas de un plan
              * ----------------------------------------------------------------------------------------------------
@@ -131,7 +136,7 @@ class UtilsController extends Controller
                 $corporate_quote->save();
             }
 
-            DetailCorporateQuote::where('corporate_quote_request_id', $livewire->ownerRecord->id)->delete();
+            DetailCorporateQuote::where('corporate_quote_id', $livewire->ownerRecord->id)->delete();
                 
             /**
              * For para realizar el guardado en la tabla de detalle de cotizacion

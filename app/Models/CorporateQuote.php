@@ -55,6 +55,16 @@ class CorporateQuote extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
+    public function corporateQuoteData(): HasMany
+    {
+        return $this->hasMany(CorporateQuoteData::class, 'corporate_quote_id', 'id');
+    }
+
+    /**
+     * Get all of the comments for the IndividualQuote
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function statusLogs(): HasMany
     {
         return $this->hasMany(StatusLogCorpQuote::class, 'corporate_quote_id', 'id');
@@ -119,6 +129,11 @@ class CorporateQuote extends Model
          * JOB
          */
         SendEmailPropuestaEconomicaPlanEspecial::dispatch($details, $group_collect, Auth::user());
+    }
+
+    public function isAffiliated($id): bool
+    {
+        return $this->where('id', $id)->exists();
     }
 
     public function sendPropuestaEconomicaMultiple($collect_final)

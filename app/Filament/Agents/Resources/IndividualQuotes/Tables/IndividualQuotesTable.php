@@ -51,11 +51,11 @@ class IndividualQuotesTable
                 TextColumn::make('full_name')
                     ->label('Cliente')
                     ->searchable(),
-                    TextColumn::make('phone')
+                TextColumn::make('phone')
                     ->label('Teléfono')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email')
+                    ->label('Correo Electrónico')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Emitida el:')
@@ -119,7 +119,7 @@ class IndividualQuotesTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    
+
                     /**EDIT */
                     // Action::make('edit')
                     //     ->label('Editar Cotización')
@@ -172,7 +172,7 @@ class IndividualQuotesTable
                                  */
                                 $record->status = 'APROBADA';
                                 $record->save();
-                                
+
                                 /**Creamos una variable de session con la cantidad dde personas en la cotizacion */
                                 session()->put('persons', $record->detailsQuote()->first()->total_persons);
 
@@ -207,7 +207,6 @@ class IndividualQuotesTable
                                 }
 
                                 return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
-                                
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.emit', $th->getMessage());
                                 Notification::make()
@@ -403,8 +402,8 @@ class IndividualQuotesTable
 
                             try {
 
-                                if(!file_exists(public_path('storage/individual-quotes/' . $record->code . '.pdf'))){
-                                    
+                                if (!file_exists(public_path('storage/individual-quotes/' . $record->code . '.pdf'))) {
+
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
                                         ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
@@ -412,8 +411,8 @@ class IndividualQuotesTable
                                         ->iconColor('warning')
                                         ->warning()
                                         ->send();
-                                        
-                                        return;
+
+                                    return;
                                 }
                                 /**
                                  * Descargar el documento asociado a la cotizacion
@@ -426,7 +425,6 @@ class IndividualQuotesTable
                                  * LOG
                                  */
                                 LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
-                                
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
@@ -451,11 +449,11 @@ class IndividualQuotesTable
                         ->modalDescription('Envíanos su inquietud o comentarios!')
                         ->form([
                             Section::make()
-                            ->schema([
-                                Textarea::make('description')
-                                    ->label('Observaciones')
-                                    ->rows(4)
-                            ])
+                                ->schema([
+                                    Textarea::make('description')
+                                        ->label('Observaciones')
+                                        ->rows(4)
+                                ])
                         ])
                         ->action(function (IndividualQuote $record, array $data) {
 
@@ -471,7 +469,6 @@ class IndividualQuotesTable
                                     ->body('Las observaciones fueron registradas exitosamente.')
                                     ->success()
                                     ->send();
-                                    
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
@@ -484,11 +481,11 @@ class IndividualQuotesTable
                             }
                         }),
                 ])
-                ->icon('heroicon-c-ellipsis-vertical')
-                ->color('azulOscuro')
-                ->hidden(function (IndividualQuote $record) {
-                    return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                })
+                    ->icon('heroicon-c-ellipsis-vertical')
+                    ->color('azulOscuro')
+                    ->hidden(function (IndividualQuote $record) {
+                        return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
+                    })
             ])
             // ->headerActions([
             //     ExportAction::make()
@@ -500,7 +497,7 @@ class IndividualQuotesTable
             //             ExportFormat::Xlsx,
             //             ExportFormat::Csv,
             //         ])
-                    
+
             // ])
             ->toolbarActions([
                 BulkActionGroup::make([

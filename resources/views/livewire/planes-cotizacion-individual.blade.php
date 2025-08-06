@@ -131,7 +131,6 @@
                 </span>
                 <span style="">
                     Sr(a): {{ $name }}
-
                 </span>
             </p>
             <p class="sin-margen" style="font-size: 16px;">
@@ -200,13 +199,7 @@
             </div>
         </div>
         <!-- Primera página: Imagen de fondo -->
-
-
     </div>
-
-
-
-
 
 </body>
 </html>

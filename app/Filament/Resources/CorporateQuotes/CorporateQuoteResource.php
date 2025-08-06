@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CorporateQuotes;
 
+use UnitEnum;
 use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
@@ -16,8 +17,8 @@ use App\Filament\Resources\CorporateQuotes\Schemas\CorporateQuoteForm;
 use App\Filament\Resources\CorporateQuotes\Tables\CorporateQuotesTable;
 use App\Filament\Resources\CorporateQuotes\Schemas\CorporateQuoteInfolist;
 use App\Filament\Resources\CorporateQuotes\RelationManagers\StatusLogsRelationManager;
+use App\Filament\Resources\CorporateQuotes\RelationManagers\CorporateQuoteDataRelationManager;
 use App\Filament\Resources\CorporateQuotes\RelationManagers\DetailCoporateQuotesRelationManager;
-use UnitEnum;
 
 class CorporateQuoteResource extends Resource
 {
@@ -48,6 +49,7 @@ class CorporateQuoteResource extends Resource
     {
         return [
             DetailCoporateQuotesRelationManager::class,
+            CorporateQuoteDataRelationManager::class,
             StatusLogsRelationManager::class
             
         ];

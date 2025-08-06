@@ -38,7 +38,7 @@ class CreateAgency extends Component implements HasForms
     use InteractsWithForms;
 
     public ?array $data = [];
-    
+
 
     public function mount($code = null): void
     {
@@ -108,7 +108,7 @@ class CreateAgency extends Component implements HasForms
                                 column: 'email',
                             )
                             ->validationMessages([
-                                'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                 'required'  => 'Campo requerido',
                                 'email'     => 'El campo es un email',
                             ])
@@ -317,7 +317,7 @@ class CreateAgency extends Component implements HasForms
                             })
                             ->live(onBlur: true)
                             ->prefixIcon('heroicon-s-identification')
-                            
+
                             ->maxLength(255),
                         TextInput::make('local_beneficiary_rif')
                             ->label('CI/RIF del Beneficiario')
@@ -648,9 +648,8 @@ class CreateAgency extends Component implements HasForms
     public function create(): void
     {
         $data = $this->form->getState();
-        
-        if($data['local_beneficiary_account_number'] == null && $data['extra_beneficiary_account_number'] == null)
-        {
+
+        if ($data['local_beneficiary_account_number'] == null && $data['extra_beneficiary_account_number'] == null) {
             Notification::make()
                 ->title('NOTIFICACION')
                 ->body('El registro no puede ser completado. Debe completar al menos uno de los donde se solicita la informacion bancaria NACIONAL O EXTRANGERA.')
@@ -727,9 +726,8 @@ class CreateAgency extends Component implements HasForms
 
         //redirect
         $this->redirect('/ay/c');
-        
     }
-    
+
     public function render()
     {
         return view('livewire.create-agency');

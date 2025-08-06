@@ -80,8 +80,20 @@ class AffiliationsTable
                     ->color('info')
                     ->icon('fluentui-person-available-16')
                     ->searchable(),
+                TextColumn::make('nro_identificacion_ti')
+                    ->label('Cédula titular')
+                    ->badge()
+                    ->color('info')
+                    ->icon('fluentui-person-available-16')
+                    ->searchable(),
                 TextColumn::make('full_name_payer')
                     ->label('Pagador')
+                    ->badge()
+                    ->color('info')
+                    ->icon('fluentui-money-hand-20')
+                    ->searchable(),
+                TextColumn::make('nro_identificacion_payer')
+                    ->label('Cedula pagador')
                     ->badge()
                     ->color('info')
                     ->icon('fluentui-money-hand-20')

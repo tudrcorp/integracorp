@@ -5,10 +5,11 @@ namespace App\Models;
 use App\Mail\CertificateEmail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Jobs\SendTarjetaAfiliado;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Model;
 use App\Jobs\SendNotificacionAfiliacionIndividual;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Affiliation extends Model
 {
@@ -58,6 +59,7 @@ class Affiliation extends Model
         'cuestion_13',
         'cuestion_14',
         'cuestion_15',
+        
         'full_name_applicant',
         'signature_applicant',
         'nro_identificacion_applicant',
@@ -268,5 +270,10 @@ class Affiliation extends Model
             dd($th);
             //throw $th;
         }
+    }
+
+    public function affiliationIndividualPlans(): HasMany
+    {
+        return $this->hasMany(AfilliationIndividualPlan::class);
     }
 }

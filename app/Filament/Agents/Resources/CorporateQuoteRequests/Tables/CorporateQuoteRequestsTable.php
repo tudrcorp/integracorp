@@ -61,7 +61,7 @@ class CorporateQuoteRequestsTable
                     ->label('Telefono')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email')
+                    ->label('Correo Electrónico')
                     ->searchable(),
                 TextColumn::make('state.definition')
                     ->label('Estado')

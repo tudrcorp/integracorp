@@ -21,7 +21,8 @@ class AfilliationCorporatePlan extends Model
         'subtotal_monthly',
         'status',
         'created_by',
-        'total_persons'
+        'total_persons',
+        'payment_frequency'
     ];
 
     public function AffiliationCorporate()

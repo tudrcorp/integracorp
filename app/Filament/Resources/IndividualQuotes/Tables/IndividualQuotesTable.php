@@ -13,6 +13,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
+use Filament\Actions\ExportAction;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\Radio;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,8 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Actions\Exports\Enums\ExportFormat;
+use App\Filament\Exports\IndividualQuoteExporter;
 
 class IndividualQuotesTable
 {
@@ -515,6 +518,18 @@ class IndividualQuotesTable
                         
                     }),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+            ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(IndividualQuoteExporter::class)
+                    ->icon('fontisto-export')
+                    ->color('verde')
+                    ->label('Exportar Excel')
+                    ->formats([
+                        ExportFormat::Xlsx,
+                        ExportFormat::Csv,
+                    ])
+
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

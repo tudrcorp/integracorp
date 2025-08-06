@@ -82,7 +82,7 @@ class AgencyForm
                                 ->prefix('J-')
                                 ->numeric(),
                             TextInput::make('email')
-                                ->label('Email corporativo')
+                                ->label('Correo Electrónico')
                                 ->prefixIcon('heroicon-s-at-symbol')
                                 ->email()
                                 ->required()
@@ -92,7 +92,7 @@ class AgencyForm
                                     column: 'email',
                                 )
                                 ->validationMessages([
-                                    'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                    'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
                                     'required'  => 'Campo requerido',
                                     'email'     => 'El campo es un email',
                                 ])

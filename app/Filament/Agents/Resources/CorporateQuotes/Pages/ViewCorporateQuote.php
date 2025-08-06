@@ -21,11 +21,23 @@ class ViewCorporateQuote extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('pre_affiliation_multiple')
+                ->label('Pre-Afiliación Multi Plan(es)')
+                ->icon('fluentui-multiselect-rtl-24')
+                ->requiresConfirmation()
+                ->modalHeading('Pre-Afiliación Multiple')
+                ->modalIcon('fluentui-multiselect-rtl-24')
+                ->modalDescription('El sistema te redirigirá a la pantalla donde se encuentra la tabla de cotización multiple. Debes seleccionar dos o mas planes para realizar el proceso de pre-afiliación multi plan(es).')
+                ->action(function (CorporateQuote $record) {
+                    return redirect()->route('filament.agents.resources.corporate-quotes.edit', ['record' => $record->id]);
+                })
+                ->hidden(function (CorporateQuote $record) {
+                    return $record->status == 'EJECUTADA' || $record->status == 'APROBADA' || $record->plan != 'CM';
+                }),
             Action::make('add_observations')
                 ->label('Agregar Observaciones')
                 ->icon('heroicon-s-hand-raised')
                 ->color('warning')
-                ->requiresConfirmation()
                 ->requiresConfirmation()
                 ->modalHeading('OBSERVACIONES DEL AGENTE')
                 ->modalIcon('heroicon-s-hand-raised')

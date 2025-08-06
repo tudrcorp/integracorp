@@ -177,7 +177,7 @@ class CorporateQuoteForm
                                                     }
                                                 }),
                                             TextInput::make('email')
-                                                ->label('Email')
+                                                ->label('Correo electrónico')
                                                 ->prefixIcon('heroicon-m-user')
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
@@ -448,6 +448,7 @@ class CorporateQuoteForm
                         Crear cotización
                     </x-filament::button>
                 BLADE)))
+                ->hiddenOn('edit')
                 ->columnSpanFull(),
             ]);
     }

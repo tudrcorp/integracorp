@@ -305,7 +305,7 @@ class AffiliationForm
                                         column: 'email_con',
                                     )
                                     ->validationMessages([
-                                        'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                        'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
                                         'required'  => 'Campo requerido',
                                         'email'     => 'El campo es un email',
                                     ])
@@ -535,7 +535,7 @@ class AffiliationForm
                                             column: 'email_ti',
                                         )
                                         ->validationMessages([
-                                            'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                            'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
                                             'email'     => 'El campo es un email',
                                         ])
                                         ->maxLength(255),
@@ -758,7 +758,7 @@ class AffiliationForm
                                 ->hiddenOn('edit')
                         ]),
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -766,8 +766,8 @@ class AffiliationForm
                         Crear
                     </x-filament::button>
                 BLADE)))
-                ->columnSpanFull(),
+                    ->columnSpanFull(),
 
-            ]);    
+            ]);
     }
 }

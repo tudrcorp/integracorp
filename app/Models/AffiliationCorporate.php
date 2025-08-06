@@ -14,58 +14,36 @@ class AffiliationCorporate extends Model
         'code',
         'corporate_quote_id',
         'code_agency',
-        'plan_id',
         'agent_id',
         'owner_code',
 
-        'full_name_con',
+        'name_corporate',
         'rif',
-        'adress_con',
-        'city_id_con',
-        'state_id_con',
-        'country_id_con',
-        'region_con',
-        'phone_con',
-        'email_con',
+        'address',
+        'city_id',
+        'state_id',
+        'country_id',
+        'region_id',
+        'phone',
+        'email',
 
-        'cuestion_1',
-        'cuestion_2',
-        'cuestion_3',
-        'cuestion_4',
-        'cuestion_5',
-        'cuestion_6',
-        'cuestion_7',
-        'cuestion_8',
-        'cuestion_9',
-        'cuestion_10',
-        'cuestion_11',
-        'cuestion_12',
-        'cuestion_13',
-        'cuestion_14',
-        'cuestion_15',
+        'full_name_contact',
+        'nro_identificacion_contact',
+        'country_code_contact',
+        'phone_contact',
+        'email_contact',
 
-        'full_name_applicant',
-        'signature_applicant',
-        'nro_identificacion_applicant',
-
-        'full_name_agent',
-        'signature_agent',
-        'code_agent',
-
-        'date_today',
+        'date_affiliation',
 
         'created_by',
         'status',
-        'individual_quote_id',
         'document',
-        'observations_payment',
+        'observations',
 
-        //despues de afiliar el poago
         'payment_frequency',
-        'coverage_id',
-        'activated_at',
-        'corporate_members',
-        'code_corporate_quote',
+        'fee_anual',
+        'total_amount',
+        
         'vaucher_ils',
         'date_payment_initial_ils',
         'date_payment_final_ils',
@@ -117,12 +95,17 @@ class AffiliationCorporate extends Model
 
     public function state()
     {
-        return $this->belongsTo(State::class, 'state_id_con', 'id');
+        return $this->belongsTo(State::class, 'state_id', 'id');
     }
 
     public function country()
     {
-        return $this->belongsTo(Country::class, 'country_id_con', 'id');
+        return $this->belongsTo(Country::class, 'country_id', 'id');
+    }
+
+    public function city()
+    {
+        return $this->belongsTo(City::class, 'city_id', 'id');
     }
 
     

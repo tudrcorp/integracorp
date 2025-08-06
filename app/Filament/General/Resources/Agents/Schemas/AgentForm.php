@@ -54,15 +54,15 @@ class AgentForm
                             ->preload()
                             ->helperText('Esta lista despliega solo los agentes activos'),
                         Hidden::make('created_by')->default(Auth::user()->name),
-                        
+
                         /**
                          * Campos referenciales para jerarquía
                          * -----------------------------------------------------------------
                          */
-                            Hidden::make('code_agency')->default(Auth::user()->code_agency),
-                            Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
+                        Hidden::make('code_agency')->default(Auth::user()->code_agency),
+                        Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
                         /**-------------------------------------------------------------------------------------------------------------------------------------------------- */
-                        
+
                     ])->columnSpanFull()->columns(4),
                 Section::make('INFORMACION PRINCIPAL DE LA AGENCIA')
                     ->description('Fomulario. Campo Requerido(*)')
@@ -139,7 +139,7 @@ class AgentForm
                             ->displayFormat('d/m/Y'),
 
                         TextInput::make('email')
-                            ->label('Email Corporativo')
+                            ->label('Correo Electrónico')
                             ->prefixIcon('heroicon-s-at-symbol')
                             ->email()
                             ->required()
@@ -149,7 +149,7 @@ class AgentForm
                                 column: 'email',
                             )
                             ->validationMessages([
-                                'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
                                 'required'  => 'Campo requerido',
                                 'email'     => 'El campo es un email',
                             ])

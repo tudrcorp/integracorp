@@ -129,7 +129,7 @@ class AgentForm
                             ->displayFormat('d/m/Y'),
 
                         TextInput::make('email')
-                            ->label('Email Corporativo')
+                            ->label('Correo electrónico')
                             ->prefixIcon('heroicon-s-at-symbol')
                             ->email()
                             ->required()

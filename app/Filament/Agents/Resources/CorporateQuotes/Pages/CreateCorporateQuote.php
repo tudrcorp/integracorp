@@ -442,33 +442,6 @@ class CreateCorporateQuote extends CreateRecord
                     ->sendToDatabase($recipient_for_user);
             }
 
-            //--------------------------------------------------------------------------------------------------------------------------------
-            //LOGICA ANTERIOR
-            //--------------------------------------------------------------------------------------------------------------------------------
-
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-
-            // $recipient = User::where('is_admin', 1)->get();
-            // foreach ($recipient as $user) {
-            //     $recipient_for_user = User::find($user->id);
-            //     Notification::make()
-            //         ->title('NUEVA COTIZACION INDIVUDUAL')
-            //         ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
-            //         ->icon('heroicon-m-tag')
-            //         ->iconColor('success')
-            //         ->success()
-            //         ->actions([
-            //             Action::make('view')
-            //                 ->label('Ver cotizacion individual')
-            //                 ->button()
-            //                 ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-            //         ])
-            //         ->sendToDatabase($recipient_for_user);
-
         } catch (\Throwable $th) {
             dd($th);
             Notification::make()

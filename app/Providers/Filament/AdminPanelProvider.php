@@ -104,6 +104,9 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('SISTEMA')
                     ->icon('heroicon-c-tv'),
+                NavigationGroup::make()
+                    ->label('HISTORICOS')
+                    ->icon('fontisto-history'),
             ])
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)

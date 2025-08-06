@@ -21,14 +21,14 @@ class CorporateAffiliatesRelationManager extends RelationManager
 {
     protected static string $relationship = 'corporateAffiliates';
 
-    protected static ?string $title = 'Poblacion';
+    protected static ?string $title = 'Afiliado(s)';
 
     protected static string|BackedEnum|null $icon = 'heroicon-s-user-group';
 
     public function table(Table $table): Table
     {
         return $table
-            ->heading('EMPLEADOS ASOCIADOS')
+            ->heading('AFILIADOS')
             ->description('Lista de empleados afiliados')
             ->recordTitleAttribute('affiliation_corporate_id')
             ->columns([
@@ -62,22 +62,43 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->label('Contacto de Emergencia'),
                 TextColumn::make('phone_emergency')
                     ->label('Telefono de Emergencia'),
-            ])
-            ->headerActions([
-                /**Importar data de poblacion */
-                ImportAction::make()
-                    ->importer(AffiliateCorporateImporter::class)
-                    ->label('Importar CSV(Población)')
-                    ->color('warning')
-                    ->icon('heroicon-s-cloud-arrow-up')
-                    ->options(function (RelationManager $livewire) {
-                        return [
-                            'affiliation_corporate_id' => $livewire->ownerRecord->id,
-                        ];
+                TextColumn::make('phone_emergency')
+                    ->label('Telefono de Emergencia'),
+                TextColumn::make('plan.description')
+                    ->label('Plan'),
+                TextColumn::make('coverage.price')
+                    ->label('Cobertura')
+                    ->numeric()
+                    ->suffix(' US$'),
+                TextColumn::make('payment_frequency')
+                    ->alignCenter()
+                    ->label('Frecuencia de Pago'),
+                TextColumn::make('fee')
+                    ->label('Tarifa')
+                    ->numeric()
+                    ->suffix(' US$'),
+                TextColumn::make('subtotal_anual')
+                    ->label('Pago Anual')
+                    ->numeric()
+                    ->alignCenter()
+                    ->suffix(' US$'),
+                TextColumn::make('subtotal_payment_frequency')
+                    ->label('Monto por Frecuencia de Pago')
+                    ->numeric()
+                    ->alignCenter()
+                    ->suffix(' US$'),
+                TextColumn::make('status')
+                    ->label('Estatus')
+                    ->badge()
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'PRE-AFILIADO'  => 'warning',
+                            'ACTIVO'        => 'success',
+                            'INACTIVO'      => 'danger',
+                            default         => 'azul',
+                        };
                     })
-                    ->fileRules([
-                        File::types(['csv', 'txt'])->max(1024),
-                    ]),
+            
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

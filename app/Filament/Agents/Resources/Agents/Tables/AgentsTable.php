@@ -62,7 +62,7 @@ class AgentsTable
                     ->label('Número de teléfono')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Correo electrónico')
+                    ->label('Correo Electrónico')
                     ->searchable(),
                 
                 TextColumn::make('country.name')
@@ -82,7 +82,7 @@ class AgentsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email_contact_2')
-                    ->label('Correo electrónico')
+                    ->label('Correo Electrónico')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('phone_contact_2')

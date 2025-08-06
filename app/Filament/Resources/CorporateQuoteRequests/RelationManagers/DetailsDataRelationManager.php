@@ -135,7 +135,7 @@ class DetailsDataRelationManager extends RelationManager
                     ->action(function (RelationManager $livewire) {
 
                         try {
-
+                            dd($livewire->ownerRecord->id);
                             //Poblacion de la solicitud
                             $data = CorporateQuoteRequestData::where('corporate_quote_request_id', $livewire->ownerRecord->id)->get()->toArray();
 
@@ -151,12 +151,13 @@ class DetailsDataRelationManager extends RelationManager
                                 ->title('Edades calculadas con éxito')
                                 ->send();
                         } catch (\Throwable $th) {
-                            Log::error('Error al calcular edades: ' . $th->getMessage());
-                            Notification::make()
-                                ->danger()
-                                ->title('Excepción: ')
-                                ->body('Error al calcular edades, por favor verificar el archivo de Logs')
-                                ->send();
+                            dd($th);
+                            // Log::error('Error al calcular edades: ' . $th->getMessage());
+                            // Notification::make()
+                            //     ->danger()
+                            //     ->title('Excepción: ')
+                            //     ->body('Error al calcular edades, por favor verificar el archivo de Logs')
+                            //     ->send();
                         }
                     }),
 

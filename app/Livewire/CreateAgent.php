@@ -123,7 +123,7 @@ class CreateAgent extends Component implements HasSchemas
                                         column: 'email',
                                     )
                                     ->validationMessages([
-                                        'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                         'required'  => 'Campo requerido',
                                         'email'     => 'El campo es un email',
                                     ])
@@ -657,7 +657,7 @@ class CreateAgent extends Component implements HasSchemas
                                         ->uploadingMessage('Cargando documento...'),
                                 ])
                             ])->columns(3),
-                        
+
                     ])
                     ->hidden(fn(Get $get) => $get('agent_type_id') != 1),
                 Section::make('REGISTRO DE AGENTE')
@@ -698,7 +698,7 @@ class CreateAgent extends Component implements HasSchemas
                                         'numeric'   => 'El campo es numerico',
                                     ])
                                     ->required(),
-        
+
                                 Select::make('sex')
                                     ->label('Sexo')
                                     ->live()
@@ -713,7 +713,7 @@ class CreateAgent extends Component implements HasSchemas
                                         'required'  => 'Campo Requerido',
                                     ])
                                     ->preload(),
-        
+
                                 DatePicker::make('birth_date')
                                     ->label('Fecha de Nacimiento')
                                     ->prefixIcon('heroicon-m-calendar-days')
@@ -733,7 +733,7 @@ class CreateAgent extends Component implements HasSchemas
                                         column: 'email',
                                     )
                                     ->validationMessages([
-                                        'unique'    => 'El Email Corporativo ya se encuentra registrado.',
+                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                         'required'  => 'Campo requerido',
                                         'email'     => 'El campo es un email',
                                     ])
@@ -966,15 +966,15 @@ class CreateAgent extends Component implements HasSchemas
                                         ->tel()
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                            $countryCode ='+58';
-        
+                                            $countryCode = '+58';
+
                                             if ($countryCode) {
                                                 $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
                                                 $set('local_beneficiary_phone_pm', $countryCode . $cleanNumber);
                                             }
                                         }),
                                 ]),
-        
+
                             ])->columns(3),
                         Section::make('DATOS BANCARIOS MONEDA EXTRANJERA')
                             ->description('Fomulario. Campo Requerido(*)')
@@ -1142,23 +1142,23 @@ class CreateAgent extends Component implements HasSchemas
                                             '4:3',
                                             '1:1',
                                         ]),
-                                FileUpload::make('file_w8_w9')
-                                    ->label('W8/W9')
-                                    ->live()
-                                    ->hidden(fn(Get $get) => $get('extra_beneficiary_account_number') == null)
-                                    ->uploadingMessage('Cargando documento...'),
+                                    FileUpload::make('file_w8_w9')
+                                        ->label('W8/W9')
+                                        ->live()
+                                        ->hidden(fn(Get $get) => $get('extra_beneficiary_account_number') == null)
+                                        ->uploadingMessage('Cargando documento...'),
                                 ])
                             ])->columns(3),
-                        
+
                     ])
                     ->hidden(fn(Get $get) => $get('agent_type_id') == 1 || $get('agent_type_id') == null),
-                    
+
             ])->statePath('data');
     }
 
     public function create(): void
     {
-        
+
         $data = $this->form->getState();
         // dd($data);
         $code_decrypted = isset($this->code) ? Crypt::decryptString($this->code) : 'TDG-100';
@@ -1179,9 +1179,8 @@ class CreateAgent extends Component implements HasSchemas
          * En este paso creo una agencia si el usuario registra una agencia general
          * -----------------------------------------------------------------------------------------
          */
-        if($data['agent_type_id'] == 1) 
-        {
-            
+        if ($data['agent_type_id'] == 1) {
+
             $agency = Agency::create([
                 "agency_type_id"                    => 3,
                 'owner_code'                        => $data['code_agency'],
@@ -1246,8 +1245,7 @@ class CreateAgent extends Component implements HasSchemas
          * En este paso creo una agente si el usuario registra una agente
          * -----------------------------------------------------------------------------------------
          */
-        if($data['agent_type_id'] != 1)
-        {
+        if ($data['agent_type_id'] != 1) {
             $agent = Agent::create([
                 "owner_code"                        => $data['code_agency'],
                 "name"                              => $data['name'],
@@ -1296,18 +1294,15 @@ class CreateAgent extends Component implements HasSchemas
                 'DOCUMENTO DE IDENTIDAD CI/RIF' => $data['file_ci_rif'],
                 'W8/W9' => isset($data['file_w8_w9']) ? $data['file_w8_w9'] : null,
             ];
-            
-            foreach($array_doc as $key => $value)
-            {
+
+            foreach ($array_doc as $key => $value) {
                 $document = AgentDocument::create([
                     "agent_id"   => $agent->id,
                     "document"   => $value,
                     'title'      => $key,
                     "image"      => 'folder2.png',
                 ]);
-                
             }
-            
         }
 
 
@@ -1338,7 +1333,7 @@ class CreateAgent extends Component implements HasSchemas
         //redirect
         $this->redirect('/at/c');
     }
-    
+
     public function render()
     {
         return view('livewire.create-agent');

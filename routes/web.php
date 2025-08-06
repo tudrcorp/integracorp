@@ -93,3 +93,28 @@ Route::get('/d', function () {
     return response()->download($path);
     
 })->name('panel.notification.download.file');
+
+Route::get('/flux/{name}', function ($name) {
+    return view('prueba-flux', [
+        'name' => $name
+    ]);
+})->name('flux');
+
+Route::prefix('{individual_quote_id}')
+    // ->where(['team' => '[a-zA-Z0-9_-]+'])
+     // validación del parámetro
+    // ->middleware('shared.team') 
+    // opcional: middleware para procesarlo
+    ->group(function () {
+        Route::get('/wel', function (string $individual_quote_id) {
+            return view('interative-ind-quote.welcome-quote', compact('individual_quote_id'));
+        })->name('welcome.quote');
+
+        Route::get('/doc', function (string $individual_quote_id) {
+            return view('interative-ind-quote.documents-quote', compact('individual_quote_id'));
+        })->name('documents.quote');
+
+        Route::get('/quote', function (string $individual_quote_id) {
+            return view('interative-ind-quote.quote', compact('individual_quote_id'));
+        })->name('individual.quote');
+    });

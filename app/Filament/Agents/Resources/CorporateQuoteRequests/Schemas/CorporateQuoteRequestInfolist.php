@@ -45,7 +45,7 @@ class CorporateQuoteRequestInfolist
                                 TextEntry::make('rif')
                                     ->label('Rif:'),
                                 TextEntry::make('email')
-                                    ->label('Email:'),
+                                    ->label('Correo Electrónico:'),
                                 TextEntry::make('phone')
                                     ->label('Teléfono:'),
                                 TextEntry::make('state.definition')

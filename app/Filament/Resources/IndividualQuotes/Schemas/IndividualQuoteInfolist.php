@@ -51,7 +51,7 @@ class IndividualQuoteInfolist
                                 TextEntry::make('email')
                                     ->label('Correo electrónico'),
                                 TextEntry::make('phone')
-                                    ->label('Teléfono'),
+                                    ->label('Número de teléfono'),
                                 TextEntry::make('state.definition')
                                     ->numeric()
                                     ->label('Estado'),

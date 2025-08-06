@@ -3,6 +3,7 @@
 namespace App\Filament\Agents\Resources\CorporateQuotes\Tables;
 
 use Carbon\Carbon;
+use App\Models\User;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use App\Models\CorporateQuote;
@@ -11,11 +12,13 @@ use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use Filament\Actions\ImportAction;
+use Illuminate\Support\HtmlString;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Validation\Rules\File;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
@@ -26,6 +29,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Schemas\Components\Fieldset;
 use Illuminate\Database\Eloquent\Builder;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use Filament\Schemas\Components\Utilities\Get;
@@ -55,7 +59,7 @@ class CorporateQuotesTable
                     ->label('Nro. de Teléfono')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email')
+                    ->label('Correo electrónico')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Generada el:')
@@ -72,9 +76,10 @@ class CorporateQuotesTable
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-APROBADA' => 'verdeOpaco',
+                            'PRE-APROBADA' => 'warning',
                             'APROBADA' => 'success',
-                            'ANULADA' => 'warning',
+                            'APROBADA-DATA-ENVIADA' => 'success',
+                            'ANULADA' => 'danger',
                             'DECLINADA' => 'danger',
                             default => 'azul',
                         };
@@ -117,30 +122,88 @@ class CorporateQuotesTable
             ->recordActions([
                 ActionGroup::make([
 
-                    // ViewAction::make('view')
-                    //     ->label('Viste Previa')
-                    //     ->icon('heroicon-o-eye')
-                    //     ->color('warning'),
-                        // ->url(fn($record): string => route('filament.agents.corporate-quotes.show', $record)),
-                        // ->url(fn($record): string => CorporateQuoteResource::getUrl('show', ['record' => $record]),),
+                    Action::make('aproved')
+                        ->label('Aprobar')
+                        ->icon('heroicon-m-shield-check')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
+                        ->modalDescription(
+                            new HtmlString(
+                                Blade::render(
+                                    <<<BLADE
+                                        <div class="fi-section-header-description mt-10">
+                                            Por favor cargue la data de la población y a continuación haga click en Confirmar. 
+                                            <br>
+                                            <br>
+                                            💡 Si desea agilizar la gestión puede descargar un archivo de ejemplo haciendo click en los
+                                            <strong class="text-gray-900">tres puntos verticales (⋮) de Estatus</strong> 
+                                            y seleccionando la opción <strong class="text-gray-900">Formato Data de Población.</strong>
+                                            <br>
+                                        </div>
+                                    BLADE
+                                ))
+                        )
+                        ->modalIcon('heroicon-m-shield-check')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Fieldset::make()
+                                ->columnSpanFull()
+                                ->schema([
+                                    FileUpload::make('data_doc')
+                                        ->label('Población')
+                                        ->required()
+                                        ->visibility('public')
+                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png')
+                                ])->columns(1)
+                            ])
+                        ->action(function (array $data, $record): void {
+                            $record->update([
+                                'status' => 'APROBADA-DATA-ENVIADA',
+                                'data_doc' => $data['data_doc'],
+                            ]);
+                            Notification::make()
+                                ->title('lLa data fue cargada de forma exitosa.')
+                                ->success()
+                                ->send();
+
+                            $recipient = User::where('is_admin', 1)->get();
+                            foreach ($recipient as $user) {
+                                $recipient_for_user = User::find($user->id);
+                                Notification::make()
+                                    ->title('COTIZACION CORPORATIVA')
+                                    ->body('El agente '.Auth::user()->name.' cargo el modelo de data para la cotización Nro. ' . $record->code)
+                                    ->icon('heroicon-m-tag')
+                                    ->iconColor('success')
+                                    ->success()
+                                    ->actions([
+                                        Action::make('view')
+                                            ->label('Ver Cotización Corporativa')
+                                            ->button()
+                                            ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+                                    ])
+                                    ->sendToDatabase($recipient_for_user);
+                            }
+                        })
+                        ->hidden(fn ($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA'),
 
                     /**REEN\VIO DE COTIZACION CORPORATIVA */
                     Action::make('forward')
-                    ->label('Reenviar')
-                    ->icon('fluentui-document-arrow-right-20')
-                    ->color('primary')
-                    ->requiresConfirmation()
-                    ->modalIcon('fluentui-document-arrow-right-20')
-                    ->modalHeading('Reenvío de Cotización')
-                    ->modalDescription('La propuesta será enviada por email y/o teléfono!')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->form([
+                        ->label('Reenviar')
+                        ->icon('fluentui-document-arrow-right-20')
+                        ->color('primary')
+                        ->requiresConfirmation()
+                        ->modalIcon('fluentui-document-arrow-right-20')
+                        ->modalHeading('Reenvío de Cotización')
+                        ->modalDescription('La propuesta será enviada por correo electrónico y/o teléfono!')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
                             Section::make()
                                 // ->heading('Informacion')
                                 // ->description('El link puede sera enviado por email y/o telefono!')
                                 ->schema([
                                     TextInput::make('email')
-                                        ->label('Email')
+                                        ->label('Correo electrónico')
                                         ->email(),
                                     Grid::make(2)->schema([
                                         Select::make('country_code')
@@ -281,52 +344,52 @@ class CorporateQuotesTable
 
                     /**DESCARGA DE COTIZACION */
                     Action::make('download')
-                    ->label('Descargar Cotización')
-                    ->icon('heroicon-s-arrow-down-on-square-stack')
-                    ->color('verde')
-                    ->requiresConfirmation()
-                    ->modalHeading('DESCARGAR COTIZACION')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->modalIcon('heroicon-s-arrow-down-on-square-stack')
-                    ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
-                    ->action(function (CorporateQuote $record, array $data) {
+                        ->label('Descargar Cotización')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('verde')
+                        ->requiresConfirmation()
+                        ->modalHeading('DESCARGAR COTIZACION')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                        ->action(function (CorporateQuote $record, array $data) {
 
-                            try {
+                                try {
 
-                                /**
-                                 * Descargar el documento asociado a la cotizacion
-                                 * ruta: storage/
-                                 */
-                                $path = public_path('storage/' . $record->code . '.pdf');
-                                return response()->download($path);
+                                    /**
+                                     * Descargar el documento asociado a la cotizacion
+                                     * ruta: storage/
+                                     */
+                                    $path = public_path('storage/' . $record->code . '.pdf');
+                                    return response()->download($path);
 
-                                /**
-                                 * LOG
-                                 */
-                                LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
-                            } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
-                                Notification::make()
-                                    ->title('ERROR')
-                                    ->body($th->getMessage())
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                            }
-                    }),
+                                    /**
+                                     * LOG
+                                     */
+                                    LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                                } catch (\Throwable $th) {
+                                    LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                    Notification::make()
+                                        ->title('ERROR')
+                                        ->body($th->getMessage())
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('danger')
+                                        ->danger()
+                                        ->send();
+                                }
+                        }),
 
                     /**OBSERVACIONES */
                     Action::make('observations')
-                    ->label('Agregar Observaciones')
-                    ->icon('heroicon-s-hand-raised')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading('OBSERVACIONES DEL AGENTE')
-                    ->modalIcon('heroicon-s-hand-raised')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->modalDescription('Envíanos su inquietud o comentarios!')
-                    ->form([
+                        ->label('Agregar Observaciones')
+                        ->icon('heroicon-s-hand-raised')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('OBSERVACIONES DEL AGENTE')
+                        ->modalIcon('heroicon-s-hand-raised')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalDescription('Envíanos su inquietud o comentarios!')
+                        ->form([
                             Textarea::make('description')
                                 ->label('Observaciones')
                                 ->rows(5)
@@ -353,6 +416,15 @@ class CorporateQuotesTable
                                     ->send();
                             }
                         }),
+
+                    Action::make('download_file')
+                        ->label('Formato Data de Población')
+                        ->icon('fluentui-document-arrow-down-20')
+                        ->color('info')
+                        ->action(function (CorporateQuote $record, array $data) {
+                            $path = public_path('storage/files/poblacion_ejemplo.xlsx');
+                            return response()->download($path);
+                        })
                 ])
                 ->icon('heroicon-c-ellipsis-vertical')
                 ->color('azulOscuro')

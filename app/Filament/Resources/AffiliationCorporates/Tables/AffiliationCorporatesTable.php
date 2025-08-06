@@ -54,22 +54,11 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('agent_id')
-                ->prefix('AGT-000')
+                TextColumn::make('agent.name')
+                    // ->prefix('AGT-000')
                     ->label('Agente')
                     ->badge()
                     ->color('azulOscuro')
-                    ->searchable(),
-                TextColumn::make('full_name_agent')
-                    ->label('Agente')
-                    ->searchable(),
-                TextColumn::make('plan.description')
-                    ->label('Plan')
-                    ->badge()
-                    ->color('azulOscuro')
-                    ->searchable(),
-                TextColumn::make('full_name_con')
-                    ->label('Nombre contratante')
                     ->searchable(),
                 TextColumn::make('rif')
                     ->label('Rif')
@@ -77,24 +66,20 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('verde')
                     ->searchable(),
-                TextColumn::make('email_con')
+                TextColumn::make('email')
                     ->label('Email contratante')
                     ->searchable(),
-                TextColumn::make('phone_con')
+                TextColumn::make('phone')
                     ->label('Telefono contratante')
                     ->searchable(),
-                TextColumn::make('adress_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('city_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('state_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('country_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('address')
+                    ->searchable(),
+                TextColumn::make('city.definition')
+                    ->searchable(),
+                TextColumn::make('state.definition')
+                    ->searchable(),
+                TextColumn::make('country.name')
+                    ->searchable(),
                 TextColumn::make('region_con')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),

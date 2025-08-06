@@ -93,7 +93,7 @@ class CorporateQuotesTable
                     ->label('Email')
                     ->searchable(),
                 TextColumn::make('phone')
-                    ->label('Teléfono')
+                    ->label('Número de teléfono')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Generada el:')
@@ -416,11 +416,11 @@ class CorporateQuotesTable
                             }
                         }),
                 ])
-                ->icon('heroicon-c-ellipsis-vertical')
-                ->color('azulOscuro')
-                ->hidden(function (CorporateQuote $record) {
-                    return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                })
+                    ->icon('heroicon-c-ellipsis-vertical')
+                    ->color('azulOscuro')
+                    ->hidden(function (CorporateQuote $record) {
+                        return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
+                    })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
