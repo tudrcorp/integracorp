@@ -102,9 +102,6 @@ class CorporateQuoteDataRelationManager extends RelationManager
                                     ->body('Error al calcular edades, por favor verificar el archivo de Logs')
                                     ->send();
                             }
-                        })
-                        ->hidden(function (RelationManager $livewire) {
-                            return $livewire->ownerRecord->isAffiliated($livewire->ownerRecord->id);
                         }),
                     ImportAction::make()
                         ->label('Importar Población')
@@ -118,10 +115,7 @@ class CorporateQuoteDataRelationManager extends RelationManager
                         })
                         ->fileRules([
                             File::types(['csv', 'txt'])->max(1024),
-                        ])
-                        ->hidden(function (RelationManager $livewire) {
-                            return $livewire->ownerRecord->isAffiliated($livewire->ownerRecord->id);
-                        }),
+                        ]),
                     Action::make('download_file')
                         ->label('Descargar archivo')
                         ->icon('fluentui-attach-arrow-right-24-o')
@@ -139,10 +133,10 @@ class CorporateQuoteDataRelationManager extends RelationManager
                             }
                             $path = public_path('storage/' . $doc);
                             return response()->download($path);
-                        })
-                        ->hidden(function (RelationManager $livewire) {
-                            return $livewire->ownerRecord->isAffiliated($livewire->ownerRecord->id);
                         }),
+                        // ->hidden(function (RelationManager $livewire) {
+                        //     return $livewire->ownerRecord->isAffiliated($livewire->ownerRecord->id);
+                        // }),
             ]);
     }
 }
