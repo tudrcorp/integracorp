@@ -378,7 +378,7 @@ class AffiliationsTable
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
                                             ->helperText(function ($state, $set, Get $get, Affiliation $record) {
-                                                return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . $record->coverage->price . ' - Frecuencia: ' . $record->payment_frequency;
+                                                return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . isset($record->coverage->price) ? 'N/A' : $record->coverage->price . ' - Frecuencia: ' . $record->payment_frequency;
                                             })
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, Affiliation $record) {

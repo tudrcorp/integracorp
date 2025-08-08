@@ -67,7 +67,6 @@ class AffiliationForm
                                         return 'TDEC-IND-000' . $parte_entera + 1;
                                     })
                                     ->required(),
-
                             ])->columns(3),
                             Grid::make(3)->schema([
                                 Select::make('individual_quote_id')
