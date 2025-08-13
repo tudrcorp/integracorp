@@ -137,7 +137,7 @@
                     Nombre del Agente:
                 </span>
                 <span style="margin-left: 38px">
-                    Pablo Contreras
+                    TuDrEnCasa
                 </span>
             </p>
             <p class="sin-margen" style="font-size: 16px; margin-top: 2px">
@@ -169,7 +169,7 @@
                     <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 20K</th>
                     <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 30K</th>
                     <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 40K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 40K</th>
+                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 50K</th>
 
                 </tr>
                 @foreach ($data as $key => $value)
