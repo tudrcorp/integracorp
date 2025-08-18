@@ -34,6 +34,7 @@ class Affiliation extends Model
         'full_name_ti',
         'nro_identificacion_ti',
         'sex_ti',
+        'age',
         'birth_date_ti',
         'adress_ti',
         'city_id_ti',
@@ -96,6 +97,26 @@ class Affiliation extends Model
     protected $casts = [
         'upload_documents' => 'array',
     ];
+
+    public function city()
+    {
+        return $this->belongsTo(City::class, 'city_id_ti', 'id');
+    }
+
+    public function state()
+    {
+        return $this->belongsTo(State::class, 'state_id_ti', 'id');
+    }
+
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country_id_ti', 'id');
+    }
+
+    public function region()
+    {
+        return $this->belongsTo(Region::class);
+    }
 
 
     public function agent()

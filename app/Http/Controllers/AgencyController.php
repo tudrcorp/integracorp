@@ -12,7 +12,7 @@ class AgencyController extends Controller
         if (Agency::max('id') == null) {
             $parte_entera = 101;
         } else {
-            $parte_entera = 100 + Agency::max('id');
+            $parte_entera = 101 + Agency::max('id');
         }
         return 'TDG-' . $parte_entera;
     }

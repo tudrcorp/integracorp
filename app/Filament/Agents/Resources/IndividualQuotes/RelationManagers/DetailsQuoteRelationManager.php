@@ -4,6 +4,7 @@ namespace App\Filament\Agents\Resources\IndividualQuotes\RelationManagers;
 
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
 use Illuminate\Support\Collection;
@@ -94,9 +95,8 @@ class DetailsQuoteRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records, RelationManager $livewire) {
+                        // dd($records);
                         try {
-
-                            // dd($records->count(), $records);
 
                             //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
 
@@ -104,30 +104,30 @@ class DetailsQuoteRelationManager extends RelationManager
 
                             session()->put('data_records', $records->toArray());
 
-                            // $data_records = session()->get('data_records');
+                            $data_records = session()->get('data_records');
 
                             /**
                              * Actualizo el status a APROBADA
                              */
-
-                            $livewire->ownerRecord->status = 'APROBADA';
-                            $livewire->ownerRecord->save();
-
                             $record = $records->first();
+                            
+                            $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
+                            $individual_quote->status = 'APROBADA';
+                            $individual_quote->save();
 
-                            if ($records->count() == 1) {
-                                return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->individual_quote_id, 'plan_id' => $record->plan_id]);
+                        if ($records->count() == 1) {
+                                return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => $record->plan_id, 'individual_quote_id' => $livewire->ownerRecord->id]);
                             }
 
                             if ($records->count() > 1) {
-                                return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->plan_id, 'plan_id' => null]);
+                                return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => null, 'individual_quote_id' => $livewire->ownerRecord->id]);
                             }
                         } catch (\Throwable $th) {
                             dd($th);
-                            // $part
+                            // $parte_entera = 0;
                         }
                     }),
-                    
+
                 DeleteBulkAction::make(),
                 ]),
             ]);

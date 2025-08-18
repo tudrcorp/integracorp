@@ -16,6 +16,7 @@ class Plan extends Model
         'description',
         'status',
         'created_by',
+        'type',
     ];
 
     /**

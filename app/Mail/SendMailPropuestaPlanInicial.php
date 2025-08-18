@@ -57,7 +57,7 @@ class SendMailPropuestaPlanInicial extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         return [
-            public_path('storage/individual-quotes/' . $this->name_pdf),
+            public_path('storage/quotes/' . $this->name_pdf),
             // $this->attachFromStorage('public/ejemploCSV.csv', 'ejemploCSV.csv'),
         ];
     }

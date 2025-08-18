@@ -57,7 +57,7 @@ class PlanForm
                         //-------------------------------------------------
                         Select::make('business_unit_id')
                             ->label('Unidad de Negocio')
-                            ->relationship('businessUnit', 'definition')
+                            ->options(BusinessUnit::all()->pluck('definition', 'id'))
                             ->prefixIcon('heroicon-m-pencil')
                             ->preload()
                             ->required()
@@ -108,6 +108,17 @@ class PlanForm
                                             ->maxLength(255),
                                     ])->columnSpanFull()->columns(3),
                             ]),
+                        Select::make('type')
+                            ->label('Tipo de Plan')
+                            ->options([
+                                'BASICO' => 'BÁSICO',
+                                'DRESS-TAILOR' => 'DRESS-TAILOR',
+                            ])
+                            ->default('BASICO')
+                            ->helperText('DRESS-TAILOR, son los planes que se utilizaran para las cotizaciones hechas a la medida del cliente.')
+                            ->prefixIcon('heroicon-m-pencil')
+                            ->preload()
+                            ->required(),
                         TextInput::make('status')
                             ->label('Estatus')
                             ->prefixIcon('heroicon-m-shield-check')

@@ -10,8 +10,10 @@ use App\Models\CorporateQuote;
 use Illuminate\Support\Facades\DB;
 use App\Models\DetailCorporateQuote;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use App\Http\Controllers\NotificationController;
 use App\Filament\Agents\Resources\CorporateQuotes\CorporateQuoteResource;
 
 class CreateCorporateQuote extends CreateRecord
@@ -46,24 +48,31 @@ class CreateCorporateQuote extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
 
-        if ($data['plan'] == 1) {
-            //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_quote', $data['details_quote_plan_inicial']);
-        }
-        if ($data['plan'] == 2) {
-            //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_quote', $data['details_quote_plan_ideal']);
-        }
-        if ($data['plan'] == 3) {
-            //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_quote', $data['details_quote_plan_especial']);
-        }
-        if ($data['plan'] == 'CM') {
-            //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_quote', $data['details_quote']);
+        if(!isset($data['observation_dress_tailor'])){
+            if ($data['plan'] == 1) {
+                //guardar en la variable de sesion los detalles de la cotizacion
+                session()->put('details_quote', $data['details_quote_plan_inicial']);
+            }
+            if ($data['plan'] == 2) {
+                //guardar en la variable de sesion los detalles de la cotizacion
+                session()->put('details_quote', $data['details_quote_plan_ideal']);
+            }
+            if ($data['plan'] == 3) {
+                //guardar en la variable de sesion los detalles de la cotizacion
+                session()->put('details_quote', $data['details_quote_plan_especial']);
+            }
+            if ($data['plan'] == 'CM') {
+                //guardar en la variable de sesion los detalles de la cotizacion
+                session()->put('details_quote', $data['details_quote']);
+            }
+
+            return $data;
+            
+        }else{
+            
+            return $data;
         }
 
-        return $data;
     }
 
     //Calculo de la cotizacion corporativa para el agente, forma de christopher
@@ -157,28 +166,19 @@ class CreateCorporateQuote extends CreateRecord
     {
         try {
 
+            //Validacion para cotizacion Dress-Tailor
+            if (isset($this->data['observation_dress_tailor'])) {
+                return;
+            }
+
             //recupero la varaiable de sesion con los detalles de la cotizacion
             $details_quote = session()->get('details_quote');
-            // dd($details_quote);
-
-            // dd($details_quote);
 
             if ($details_quote[0]['plan_id'] == null) {
                 return;
             }
 
             $record = $this->getRecord();
-            // dd($record);
-
-            /**
-             * Actualizo el dato owner_agent con el id del agente que creo la cotizacion
-             * ----------------------------------------------------------------------------------------------------
-             */
-            // $user = Auth::user()->id;
-            // $record->owner_agent = $user;
-            // $record->save();
-
-
 
             $array_form = $record->toArray();
 
@@ -424,23 +424,32 @@ class CreateCorporateQuote extends CreateRecord
              * ----------------------------------------------------------------------------------------------------
              * $record [Data de la cotizacion guardada en la base de dastos]
              */
-            $recipient = User::where('is_admin', 1)->get();
+            $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
             foreach ($recipient as $user) {
                 $recipient_for_user = User::find($user->id);
                 Notification::make()
-                    ->title('NUEVA COTIZACION INDIVUDUAL')
-                    ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
+                    ->title('NUEVA COTIZACIÓN CORPORATOVA')
+                    ->body('Se ha registrado una nueva cotización corporativa de forma exitosa. Código: ' . $record->code)
                     ->icon('heroicon-m-tag')
                     ->iconColor('success')
                     ->success()
                     ->actions([
                         Action::make('view')
-                            ->label('Ver cotizacion individual')
+                            ->label('Ver Cotización Corporativa')
                             ->button()
+                            ->color('primary')
                             ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+                        Action::make('link')
+                            ->label('Link Interactivo')
+                            ->button()
+                            ->color('success')
+                            ->url(route('volt.cor.home', ['quote' => Crypt::encryptString($record->id)]), shouldOpenInNewTab: true),
                     ])
                     ->sendToDatabase($recipient_for_user);
             }
+
+            //Notificacion por whatsapp al telefono de cotizaciones
+            $sendNotificationWp = NotificationController::createdCorporateQuote($record->code, Auth::user()->name);
 
         } catch (\Throwable $th) {
             dd($th);

@@ -83,7 +83,7 @@
 <body>
     @livewire('portada-cotizacion-individual', ['name' => $details['name']])
 
-    @livewire('propuesta-economica.propuesta-economica-page-2')
+    {{-- @livewire('propuesta-economica.propuesta-economica-page-2') --}}
 
     @if($details['plan'] == 1)
         @livewire('planes-cotizacion-individual', ['data' => $collect, 'name' => $details['name']])
@@ -109,7 +109,7 @@
     @endif
 
 
-    @livewire('propuesta-economica.propuesta-economica-page-4')
+    {{-- @livewire('propuesta-economica.propuesta-economica-page-4') --}}
 </body>
 </html>
 

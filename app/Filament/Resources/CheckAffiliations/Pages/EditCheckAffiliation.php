@@ -18,4 +18,13 @@ class EditCheckAffiliation extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    //after
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // dd($data);
+        $data['status_migration'] = 'PENDIENTE POR MIGRAR';
+
+        return $data;
+    }
 }

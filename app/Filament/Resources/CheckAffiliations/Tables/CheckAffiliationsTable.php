@@ -2,12 +2,21 @@
 
 namespace App\Filament\Resources\CheckAffiliations\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Tables\Table;
+use Filament\Actions\Action;
+use App\Models\CorporateQuote;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Radio;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Collection;
+use Filament\Schemas\Components\Utilities\Get;
+use App\Http\Controllers\MigrationHistoricalController;
 
 class CheckAffiliationsTable
 {
@@ -17,7 +26,36 @@ class CheckAffiliationsTable
             ->columns([
                 TextColumn::make('nro_afiliado')
                     ->numeric()
-                    ->sortable(),
+                    ->searchable()
+                    ->extraCellAttributes(function ($record) {
+                        if($record->status_migration == 'PROCESADO') {
+                            return [
+                                'class' => 'bg-red-500 font-bold text-white text-center'
+                            ];
+                        }
+                        if ($record->status_migration == 'PENDIENTE POR MIGRAR') {
+                            return [
+                                'class' => 'bg-green-500 font-bold text-white text-center'
+                            ];
+                        }
+                        return [];
+                    }),
+                TextColumn::make('status_migration')
+                    ->label('Estatus Migración')
+                    ->extraCellAttributes(function ($record) {
+                        if($record->status_migration == 'PROCESADO') {
+                            return [
+                                'class' => 'bg-red-500 font-bold text-white text-center'
+                            ];
+                        }
+                        if ($record->status_migration == 'PENDIENTE POR MIGRAR') {
+                            return [
+                                'class' => 'bg-green-500 font-bold text-white text-center'
+                            ];
+                        }
+                        return [];
+                    })
+                    ->searchable(),
                 TextColumn::make('fecha_emision')
                     ->searchable(),
                 TextColumn::make('codigo_tdec')
@@ -146,6 +184,43 @@ class CheckAffiliationsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+                    BulkAction::make('migrate_history')
+                    ->label('Migrar Individuales')
+                    ->icon('fontisto-reply')
+                    ->requiresConfirmation()
+                    ->color('info')
+                    ->action(function (Collection $records) {
+                        $migration = MigrationHistoricalController::migrate_history_affiliations($records);
+
+                        if($migration) {
+                            Notification::make()
+                                ->title('Migración exitosa')
+                                ->success()
+                                ->send();
+                        }
+                    }),
+                BulkAction::make('migrate_history_corporate')
+                    ->label('Migrar Corporativos')
+                    ->icon('fontisto-reply')
+                    ->requiresConfirmation()
+                    ->color('success')
+                    ->form([
+                        Radio::make('type')
+                            ->label('Seleccione el tipo de cotización')
+                            ->live()
+                            ->options([
+                                'BASICO' => 'BÁSICO',
+                                'DRESS-TAILOR' => 'DRESS-TAILOR',
+                            ]),
+                        Select::make('corporate_quote_id')
+                            ->label('Seleccione la Cotización Corporativa')
+                            ->options(function (Get $get) {
+                                return CorporateQuote::where('type', $get('type'))->pluck('code', 'id');
+                            })
+                    ])
+                    ->action(function (Collection $records, array $data) {
+                        MigrationHistoricalController::migrate_history_affiliations_corporate($records, $data, count($records));
+                    })
                 ]),
             ]);
     }

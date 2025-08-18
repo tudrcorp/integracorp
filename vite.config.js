@@ -12,6 +12,7 @@ export default defineConfig({
                 "resources/js/app.js",
                 "resources/css/filament/admin/theme.css",
                 "resources/css/filament/agents/theme.css",
+                "resources/css/filament/telemedicina/theme.css",
             ],
             refresh: true,
         }),

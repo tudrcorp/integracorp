@@ -1,0 +1,14 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/Telemedicina/**/*';
+@source '../../../../resources/views/filament/telemedicina/**/*';
+
+
+.fi-simple-main {
+    background-color: color-mix(in oklab,#ffffff5e 80%,transparent);
+  }
+
+/* .fi-section-header {
+    background-color: color-mix(in oklab,#00deee73 80%,transparent);
+    border-radius: 10px 10px 0 0;
+  } */

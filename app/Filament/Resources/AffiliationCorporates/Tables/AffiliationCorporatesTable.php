@@ -25,6 +25,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Utilities\Get;
@@ -49,7 +50,7 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('code_agency')
+                TextColumn::make('agency.name_corporative')
                     ->label('Agencia')
                     ->badge()
                     ->color('azulOscuro')
@@ -60,6 +61,43 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
+
+                //...  
+                ColumnGroup::make('Plan Afiliado', [
+                    TextColumn::make('payment_frequency')
+                        ->label('Frecuencia de pago')
+                        ->alignCenter()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('poblation')
+                        ->label('Población')
+                        ->alignCenter()
+                        ->suffix(' persona(s)')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('fee_anual')
+                        ->label('Tarifa Anual')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('total_amount')
+                        ->label('Total a Pagar')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                ]),
+
+
+
+
+
+                    
                 TextColumn::make('rif')
                     ->label('Rif')
                     ->prefix('J-')
@@ -83,106 +121,35 @@ class AffiliationCorporatesTable
                 TextColumn::make('region_con')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                IconColumn::make('cuestion_1')
-                    ->label('Prgunta 1')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_2')
-                    ->label('Prgunta 2')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_3')
-                    ->label('Prgunta 3')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_4')
-                    ->label('Prgunta 4')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_5')
-                    ->label('Prgunta 5')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_6')
-                    ->label('Prgunta 6')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_7')
-                    ->label('Prgunta 7')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_8')
-                    ->label('Prgunta 8')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_9')
-                    ->label('Prgunta 9')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_10')
-                    ->label('Prgunta 10')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_11')
-                    ->label('Prgunta 11')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_12')
-                    ->label('Prgunta 12')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_13')
-                    ->label('Prgunta 13')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_14')
-                    ->label('Prgunta 14')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                /**
-                 * INFORMACION ILS
-                 * ------------------------------------------------------------
-                 */
-                TextColumn::make('vaucher_ils')
-                    ->label('Voucher ILS')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('date_payment_initial_ils')
-                    ->label('ILS-Desde')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('date_payment_final_ils')
-                    ->label('ILS-Hasta')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('document_ils')
-                    ->alignment(Alignment::Center)
-                    ->label('Documento ILS')
-                    ->icon(function ($record) {
-                        // Muestra un ícono si la imagen existe
-                        return $record->document_ils
-                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
-                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
-                    })
-                    // ->iconPosition(IconPosition::After), // Posición del ícono
-                    ->color(function ($record) {
-                        // Color del ícono basado en la existencia de la imagen
-                        return $record->document_ils
-                            ? 'success' // Verde si la imagen existe
-                            : 'danger'; // Rojo si no existe
-                    })
-                    ->url(function ($record) {
-                        return asset('storage/' . $record->document_ils);
-                    })
-                    ->openUrlInNewTab()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                //------------------------------------------------------------------
-
+                //...
+                ColumnGroup::make('Información ILS', [
+                    TextColumn::make('vaucher_ils')
+                        ->label('Voucher ILS')
+                        ->badge()
+                        ->alignCenter()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('date_payment_initial_ils')
+                        ->label('ago ILS Desde')
+                        ->badge()
+                        ->alignCenter()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('date_payment_final_ils')
+                        ->label('Pago ILS Hasta')
+                        ->badge()
+                        ->alignCenter()
+                        ->color('success')
+                        ->searchable(),
+                ]),
                 TextColumn::make('created_by')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->label('Creado por')
+                    ->searchable(),
+
+                TextColumn::make('activated_at')
+                    ->label('Activado el:')
+                    ->searchable(),
+
                 TextColumn::make('status')
                     ->label('Estatus')
 
@@ -195,6 +162,7 @@ class AffiliationCorporatesTable
                             'EXCLUIDO'              => 'danger',
                         };
                     })
+                    ->searchable()
                     ->icon(function (mixed $state): ?string {
                         return match ($state) {
                             'PRE-APROBADA'          => 'heroicon-c-information-circle',
@@ -202,16 +170,7 @@ class AffiliationCorporatesTable
                             'PENDIENTE'             => 'heroicon-s-exclamation-circle',
                             'EXCLUIDO'              => 'heroicon-c-x-circle',
                         };
-                    })
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    }),
             ])
             ->filters([
                 //

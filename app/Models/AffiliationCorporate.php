@@ -26,29 +26,24 @@ class AffiliationCorporate extends Model
         'region_id',
         'phone',
         'email',
-
         'full_name_contact',
         'nro_identificacion_contact',
-        'country_code_contact',
         'phone_contact',
         'email_contact',
-
-        'date_affiliation',
-
         'created_by',
         'status',
         'document',
         'observations',
-
         'payment_frequency',
         'fee_anual',
         'total_amount',
-        
         'vaucher_ils',
         'date_payment_initial_ils',
         'date_payment_final_ils',
         'document_ils',
-        'type'
+        'type',
+        'poblation',
+        'activated_at',
 
 
     ];
@@ -107,6 +102,17 @@ class AffiliationCorporate extends Model
     {
         return $this->belongsTo(City::class, 'city_id', 'id');
     }
+
+    public function region()
+    {
+        return $this->belongsTo(Region::class, 'region_id', 'id');
+    }
+
+    public function agency()
+    {
+        return $this->belongsTo(Agency::class, 'code_agency', 'code');
+    }
+    
 
     
 }

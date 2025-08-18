@@ -1,9 +1,13 @@
 <?php
 
 use Carbon\Carbon;
+use App\Models\Benefit;
 use Livewire\Volt\Volt;
+use App\Models\AgentDocument;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
@@ -62,6 +66,7 @@ Route::view('dashboard', 'dashboard')
 Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');
 Volt::route('/m/o/c/{code?}', 'agencymasterform')->name('master.organization.create');
+Volt::route('/d/c', 'doctorFormCreate')->name('volt.doctor.create');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
@@ -71,22 +76,81 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
 });
 
+/**
+ * RUTAS DE VOLT
+ * Cotizaciones individuales
+ */
+Route::prefix('in/{quote?}')
+    // ->where(['team' => '[a-zA-Z0-9_-]+'])
+    // validación del parámetro
+    // ->middleware('shared.team') 
+    // opcional: middleware para procesarlo
+    ->group(function () {
+        Volt::route('/w', 'volt.in.home')->name('volt.home');
+        Volt::route('/c', 'volt.in.individual_quote')->name('volt.in.individual_quote');
+    });
+
+/**
+ * RUTAS DE VOLT
+ * Cotizaciones individuales
+ */
+Route::prefix('cor/{quote?}')
+    // ->where(['team' => '[a-zA-Z0-9_-]+'])
+    // validación del parámetro
+    // ->middleware('shared.team') 
+    // opcional: middleware para procesarlo
+    ->group(function () {
+        Volt::route('/w', 'volt.cor.home')->name('volt.cor.home');
+        Volt::route('/c', 'volt.cor.corporate_quote')->name('volt.cor.corporate_quote');
+    });
+
 require __DIR__.'/auth.php';
 
 /**
  * RUTA PARA PRUEBAS
  */
 Route::get('/pp', function () {
-    try {
-        NotificationController::agency_activated('+584127018390', 'l9dYg@example.com', '/login');
-    } catch (\Throwable $th) {
-        Log::error($th->getMessage());
+
+    $array_doc = [
+        'DOCUMENTO DE IDENTIDAD',
+        'FIRMA DIGITAL AGENTE',
+        'W8/W9',
+        'CUENTA USD',
+        'CUENTA VES'
+    ];
+
+
+    $agents = DB::table('agents')
+        ->select('id', 'email', 'phone', 'status', 'name')
+        ->where('status', 'ACTIVO')
+        ->get()
+        ->toArray();
+
+    for ($i = 0; $i < count($agents); $i++) {
+        $array_doc_agent = [];
+        $doc = AgentDocument::where('agent_id', $agents[$i]->id)->get();
+        foreach ($doc as $key => $value) {
+            $array_doc_agent[$key] = $value->title;
+        }
+        $result = array_diff($array_doc, $array_doc_agent);
+        $string = implode(', ', $result);
+
+        dd($agents[$i]);
+        
+        //Send Notificacion via Whatsapp
+        NotificationController::documentUploadReminder($agents[$i]->phone, $agents[$i]->name, $string);
     }
+
+
 });
 
 Route::get('/pdf', [PdfController::class, 'generatePdf_aviso_de_pago']);
 
 Route::get('/d', function () {
+
+    dd(Benefit::where('plan_id', 1)->get());
+
+    dd(Crypt::encryptString(41));
 
     $path = public_path('storage/COT-IND-00040.pdf');
     dd($path);
@@ -99,22 +163,3 @@ Route::get('/flux/{name}', function ($name) {
         'name' => $name
     ]);
 })->name('flux');
-
-Route::prefix('{individual_quote_id}')
-    // ->where(['team' => '[a-zA-Z0-9_-]+'])
-     // validación del parámetro
-    // ->middleware('shared.team') 
-    // opcional: middleware para procesarlo
-    ->group(function () {
-        Route::get('/wel', function (string $individual_quote_id) {
-            return view('interative-ind-quote.welcome-quote', compact('individual_quote_id'));
-        })->name('welcome.quote');
-
-        Route::get('/doc', function (string $individual_quote_id) {
-            return view('interative-ind-quote.documents-quote', compact('individual_quote_id'));
-        })->name('documents.quote');
-
-        Route::get('/quote', function (string $individual_quote_id) {
-            return view('interative-ind-quote.quote', compact('individual_quote_id'));
-        })->name('individual.quote');
-    });

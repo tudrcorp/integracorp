@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CorporateQuotes\RelationManagers;
 use Carbon\Carbon;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use Filament\Support\Enums\Width;
 use App\Models\CorporateQuoteData;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ImportAction;
@@ -76,6 +77,10 @@ class CorporateQuoteDataRelationManager extends RelationManager
                         ->color('azul')
                         ->icon('heroicon-s-check-circle')
                         ->requiresConfirmation()
+                        ->modalIcon('fluentui-document-arrow-right-20')
+                        ->modalHeading('Calcular Edades')
+                        ->modalDescription('Permite recalcular el rango etario, para verificar posibles errores en la data recibida por parte del agente.')
+                        ->modalWidth(Width::ExtraLarge)
                         ->action(function (RelationManager $livewire) {
 
                             try {
@@ -108,6 +113,8 @@ class CorporateQuoteDataRelationManager extends RelationManager
                         ->importer(CorporateQuoteDataImporter::class)
                         ->icon('fluentui-database-arrow-up-20')
                         ->color('success')
+                        ->modalHeading('Importar Población')
+                        // ->modalDescription('Permite recalcular el rango etario, para verificar posibles errores en la data recibida por parte del agente.')
                         ->options(function (RelationManager $livewire) {
                             return [
                                 'corporate_quote_id' => $livewire->ownerRecord->id,

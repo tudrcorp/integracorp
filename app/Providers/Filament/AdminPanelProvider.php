@@ -43,7 +43,6 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->registration()
             ->passwordReset()
             ->profile()
             ->spa()
@@ -98,6 +97,9 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('ADMINISTRACIÓN')
                     ->icon('heroicon-s-calculator'),
+                NavigationGroup::make()
+                    ->label('TELEMEDICINA')
+                    ->icon('healthicons-f-telemedicine'),
                 NavigationGroup::make()
                     ->label('CONFIGURACION')
                     ->icon('heroicon-m-cog-8-tooth'),

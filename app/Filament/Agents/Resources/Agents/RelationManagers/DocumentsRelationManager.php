@@ -52,7 +52,7 @@ class DocumentsRelationManager extends RelationManager
                                     ->validationMessages([
                                         'required'  => 'Documento Requerido',
                                     ])
-                                    ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'FIRMA DIGITAL')->where('document', '!=', null)->exists()),
+                                    ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'FIRMA DIGITAL AGENTE')->where('document', '!=', null)->exists()),
                                 
                                 FileUpload::make('doc_w8_w9')
                                     ->label('W8/W9')
@@ -72,7 +72,7 @@ class DocumentsRelationManager extends RelationManager
                                 FileUpload::make('doc_bank_data_usd')
                                     ->label('Soporte datos bancarios(US$)')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
-                                    ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA US$')->where('document', '!=', null)->exists()),
+                                    ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA USD')->where('document', '!=', null)->exists()),
                             ])->columnSpanFull()->columns(2),
                     ])->columnSpanFull(),
             ]);

@@ -9,7 +9,7 @@ class AfilliationIndividualPlan extends Model
     protected $table = 'afilliation_individual_plans';
 
     protected $fillable = [
-        'affiliation_id',
+        'affiliation_individual_id',
         'code_affiliation',
         'plan_id',
         'coverage_id',
@@ -21,12 +21,13 @@ class AfilliationIndividualPlan extends Model
         'subtotal_monthly',
         'status',
         'created_by',
-        'total_persons'
+        'total_persons',
+        'payment_frequency'
     ];
 
-    public function Affiliation()
+    public function AffiliationCorporate()
     {
-        return $this->belongsTo(Affiliation::class);
+        return $this->belongsTo(AffiliationCorporate::class);
     }
 
     public function plan()
@@ -43,4 +44,5 @@ class AfilliationIndividualPlan extends Model
     {
         return $this->belongsTo(Coverage::class);
     }
+        
 }

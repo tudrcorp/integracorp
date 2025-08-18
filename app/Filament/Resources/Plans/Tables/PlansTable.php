@@ -34,6 +34,11 @@ class PlansTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
+                TextColumn::make('type')
+                    ->label('Tipo de Plan')
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->searchable(),
                 TextColumn::make('businessUnit.definition')
                     ->label('Unidad de negocios')
                     ->badge()

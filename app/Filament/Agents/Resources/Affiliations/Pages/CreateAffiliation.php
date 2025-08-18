@@ -166,6 +166,13 @@ class CreateAffiliation extends CreateRecord
                             'age'                => Carbon::parse($affiliates[$i]['birth_date'])->age,
                             'relationship'       => $affiliates[$i]['relationship'],
                             'document'           => $affiliates[$i]['document'],
+                            'address'               => $record->adress_ti,
+                            'phone'                 => $record->phone_ti,
+                            'country_id'            => $record->country_id_ti,
+                            'state_id'              => $record->state_id_ti,
+                            'city_id'               => $record->city_id_ti,
+                            'region'                => $record->region_ti,
+                            'status'                => 'PRE-APROBADA',
                         ]);
                     }
 
@@ -251,7 +258,6 @@ class CreateAffiliation extends CreateRecord
                 // El titular ese el unico afiliado
                 if($record->feedback == false)
                 {
-
                     /** 1- Registro los datos de contratante como los datos del afiliado ya que la cotizacion es para el mismo*/
                     $record->affiliates()->create([
                         'full_name'             => $record->full_name_ti,
@@ -259,6 +265,14 @@ class CreateAffiliation extends CreateRecord
                         'sex'                   => $record->sex_ti,
                         'birth_date'            => $record->birth_date_ti,
                         'age'                   => Carbon::parse($record->birth_date_ti)->age,
+                        'address'               => $record->adress_ti,
+                        'document'              => $record->document,
+                        'phone'                 => $record->phone_ti,
+                        'country_id'            => $record->country_id_ti,
+                        'state_id'              => $record->state_id_ti,
+                        'city_id'               => $record->city_id_ti,
+                        'region'                => $record->region_ti,
+                        'status'                => 'PRE-APROBADA',
                         'relationship'          => 'TITULAR',
                     ]);
 

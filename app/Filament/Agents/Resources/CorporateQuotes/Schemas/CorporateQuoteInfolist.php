@@ -69,6 +69,13 @@ class CorporateQuoteInfolist
                                     ->color('primary'),
                             ])->columnSpanFull()->columns(4),
 
+                        Fieldset::make('Cotización DRESS-TAILOR')
+                            ->schema([
+                                TextEntry::make('observation_dress_tailor')
+                                    ->label('Características de la cotización')
+                                    ->hidden(fn(CorporateQuote $record) => $record->observation_dress_tailor == null),
+                            ])->columnSpanFull()->columns(5),
+
                     ])->columnSpanFull(),
             ]);
     }

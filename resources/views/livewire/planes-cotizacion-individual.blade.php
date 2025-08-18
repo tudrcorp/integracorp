@@ -109,6 +109,41 @@
             border: 1px solid #ddd;
         }
 
+        table.blueTable {
+            border: 1px solid #1C6EA4;
+            background-color: #EEEEEE;
+            width: 500px;
+            text-align: left;
+            border-collapse: collapse;
+        }
+        table.blueTable td, table.blueTable th {
+            border: 1px solid #AAAAAA;
+            padding: 3px 2px;
+        }
+        table.blueTable tbody td {
+            font-size: 13px;
+        }
+        table.blueTable tr:nth-child(even) {
+            background: #D0E4F5;
+        }
+        table.blueTable thead {
+            background: #1C6EA4;
+            background: -moz-linear-gradient(top, #5592bb 0%, #327cad 66%, #1C6EA4 100%);
+            background: -webkit-linear-gradient(top, #5592bb 0%, #327cad 66%, #1C6EA4 100%);
+            background: linear-gradient(to bottom, #5592bb 0%, #327cad 66%, #1C6EA4 100%);
+            border-bottom: 2px solid #444444;
+        }
+        table.blueTable thead th {
+            font-size: 15px;
+            font-weight: bold;
+            color: #FFFFFF;
+            border-left: 2px solid #D0E4F5;
+        }
+        table.blueTable thead th:first-child {
+            border-left: none;
+        }
+
+
 
     </style>
 </head>
@@ -157,6 +192,34 @@
         <div style="position: absolute; top: 130px; right: 10px; margin-top: 15px; padding: 20px; margin-right: 20px">
             <img src="{{ public_path('storage/beneficios-plan-inicial.png') }}" style="width: 700px; height: auto;" alt="">
         </div>
+
+        <!--prueba-->
+        {{-- @php
+            use App\Models\BenefitPlan;
+            $benefits = BenefitPlan::where('plan_id', 1)->get();
+        @endphp
+        <div style="position: absolute; top: 130px; right: 10px; margin-top: 30px; padding: 20px; margin-right: 20px; width: 700px;">
+            <table style="width: 100%; font-type: Helvetica, sans-serif; border-radius: 30px;">
+                <thead style="background-color: #305B93; ">
+                    <tr>
+                        <th style="padding: 10px; color: white">Beneficios Domiciliarios o In Situ</th>
+                        <th style="padding: 10px; color: white">Plan Inicial</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($benefits as $value)
+                        <tr>
+                            <td style="padding: 10px; font-size: 10px;">{{ $value->description }}</td>
+                            <td style="text-align: center; item-align: center; vertical-align: middle;">
+                                <img src="{{ public_path('storage/checkPng.png') }}" style="width: 20px; height: auto;" alt="">
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div> --}}
+
+       
 
         <div style="position: absolute; top: 475px; right: 10px; margin-top: 30px; padding: 20px; margin-right: 20px; width: 700px;">
             <table style="width: 100%; font-type: Helvetica, sans-serif;">

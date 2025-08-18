@@ -9,8 +9,10 @@ use Filament\Actions\Action;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
+use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use App\Http\Controllers\NotificationController;
 use App\Filament\Agents\Resources\IndividualQuotes\IndividualQuoteResource;
 
 class CreateIndividualQuote extends CreateRecord
@@ -80,7 +82,6 @@ class CreateIndividualQuote extends CreateRecord
             }
 
             $record = $this->getRecord();
-            // dd($record);
 
             /**
              * Actualizo el dato owner_agent con el id del agente que creo la cotizacion
@@ -336,23 +337,32 @@ class CreateIndividualQuote extends CreateRecord
              * ----------------------------------------------------------------------------------------------------
              * $record [Data de la cotizacion guardada en la base de dastos]
              */
-            $recipient = User::where('is_admin', 1)->get();
+            $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
             foreach ($recipient as $user) {
                 $recipient_for_user = User::find($user->id);
                 Notification::make()
-                    ->title('NUEVA COTIZACION INDIVUDUAL')
-                    ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
+                    ->title('NUEVA COTIZACIÓN INDIVIDUAL')
+                    ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
                     ->icon('heroicon-m-tag')
                     ->iconColor('success')
                     ->success()
                     ->actions([
                         Action::make('view')
-                            ->label('Ver cotizacion individual')
+                            ->label('Ver cotización individual')
                             ->button()
+                            ->color('primary')
                             ->url(IndividualQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+                        Action::make('link')
+                            ->label('Link Interactivo')
+                            ->button()
+                            ->color('success')
+                            ->url(route('volt.home', ['quote' => Crypt::encryptString($record->id)]), shouldOpenInNewTab: true),
                     ])
                     ->sendToDatabase($recipient_for_user);
             }
+
+            //Notificacion por whatsapp al telefono de cotizaciones
+            $sendNotificationWp = NotificationController::createdIndividualQuote($record->code, Auth::user()->name);
                 
         } catch (\Throwable $th) {
             Notification::make()

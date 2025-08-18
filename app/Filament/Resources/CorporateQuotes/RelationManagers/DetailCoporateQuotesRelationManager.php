@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Models\Fee;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
 use Filament\Support\Enums\Width;
 use App\Models\CorporateQuoteData;
@@ -118,6 +119,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                     ->icon('fluentui-document-sync-16')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->modalDescription('')
                     ->action(function (RelationManager $livewire){
                         // dd($livewire->ownerRecord->id);
                         $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
@@ -159,8 +161,6 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                 // dd($records);
                                 try {
 
-                                    // dd($records->count(), $records);
-
                                     //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
 
                                     session()->get('data_records', []);
@@ -172,9 +172,6 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                     /**
                                      * Actualizo el status a APROBADA
                                      */
-                                    // $livewire->ownerRecord->status = 'APROBADA';
-                                    // $livewire->ownerRecord->save();
-                                    // dd($data_records);
                                     $record = $records->first();
 
                                     if ($records->count() == 1) {
@@ -184,55 +181,6 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                     if ($records->count() > 1) {
                                         return redirect()->route('filament.admin.resources.affiliation-corporates.create', ['plan_id' => null, 'corporate_quote_id' => $livewire->ownerRecord->id]);
                                     }
-
-
-                                    // $data_records = session()->get('data_records', []);
-                                    // session()->put('data_records', $data_records);
-
-                                    // dd($data_records, $data_records[0]['corporate_quote_id']);
-
-                                    /** 2. Guardar los datos de la pre afiliacion */
-                                    // $preAfiliation = new AffiliationCorporate();
-
-                                    // $preAfiliation->code                = $this->getCode();
-                                    // $preAfiliation->corporate_quote_id  = $data_records[0]['corporate_quote_id'];
-                                    // $preAfiliation->type                = count($data_records) > 1 ? 'MULTIPLE' : null;
-                                    // $preAfiliation->plan_id             = count($data_records) > 1 ? null : $data_records[0]['plan_id'];
-                                    // $preAfiliation->coverage_id         = count($data_records) > 1 ? null : $data_records[0]['coverage_id'];
-                                    // $preAfiliation->full_name_con       = $data['full_name_con'];
-                                    // $preAfiliation->rif                 = $data['rif'];
-                                    // $preAfiliation->email_con           = $data['email_con'];
-                                    // $preAfiliation->phone_con           = $data['phone_con'];
-                                    // // $preAfiliation->total_persons = array_sum(array_column($data, 'total_persons'));
-                                    // $preAfiliation->agent_id            = Auth::user()->agent_id;
-                                    // $preAfiliation->code_agency         = $this->getCodeAgency();
-                                    // $preAfiliation->owner_code          = $this->getOwnerCode();
-                                    // $preAfiliation->created_by          = Auth::user()->name;
-                                    // $preAfiliation->status              = 'PRE-APROBADA';
-                                    // //------------------------------------------------------------------------------------------------------------------------
-                                    // $preAfiliation->save();
-
-                                    // /** 1.- Cargo la data de la pre afiliacion en la tabla de afiliados */
-                                    // for ($i = 0; $i < count($data_records); $i++) {
-
-                                    //     /** Guardar los datos en la tabla de afiliados */
-                                    //     $detailsAfiliationPlans = AfilliationCorporatePlan::create([
-                                    //         'affiliation_corporate_id'  => $preAfiliation->id,
-                                    //         'code_affiliation'          => $preAfiliation->code,
-                                    //         'plan_id'                   => $data_records[$i]['plan_id'],
-                                    //         'coverage_id'               => $data_records[$i]['coverage_id'],
-                                    //         'age_range_id'              => $data_records[$i]['age_range_id'],
-                                    //         'total_persons'             => $data_records[$i]['total_persons'],
-                                    //         'fee'                       => $data_records[$i]['fee'],
-                                    //         'subtotal_anual'            => $data_records[$i]['subtotal_anual'],
-                                    //         'subtotal_quarterly'        => $data_records[$i]['subtotal_quarterly'],
-                                    //         'subtotal_biannual'         => $data_records[$i]['subtotal_biannual'],
-                                    //         'subtotal_monthly'          => $data_records[$i]['subtotal_monthly'],
-                                    //         'status'                    => 'PRE-APROBADA',
-                                    //         'created_by'                => Auth::user()->name,
-                                    //     ]);
-
-                                    // }
 
                                 } catch (\Throwable $th) {
                                     dd($th);

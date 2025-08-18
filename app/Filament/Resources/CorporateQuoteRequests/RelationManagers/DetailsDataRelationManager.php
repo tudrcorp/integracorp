@@ -132,6 +132,8 @@ class DetailsDataRelationManager extends RelationManager
                     ->color('azul')
                     ->icon('heroicon-s-check-circle')
                     ->requiresConfirmation()
+                    ->modalHeading('CALCULAR EDAD')
+                    ->modalDescription('Estas seguro que deseas calcular las edades de la población?')
                     ->action(function (RelationManager $livewire) {
 
                         try {

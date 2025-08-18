@@ -79,11 +79,11 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             $create_user->status = 'ACTIVO';
             $create_user->save();
 
-            /**
-             * Notificacion por correo electronico
-             * CARTA DE BIENVENIDA
-             * @param Agent $record
-             */
+        /**
+         * Notificacion por correo electronico
+         * CARTA DE BIENVENIDA
+         * @param Agent $record
+         */
             $create_agent->sendCartaBienvenida($create_agent->id, $create_agent->name, $create_agent->email);
 
             Notification::make()

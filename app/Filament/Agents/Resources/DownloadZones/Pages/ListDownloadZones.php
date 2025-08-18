@@ -21,21 +21,21 @@ class ListDownloadZones extends ListRecords
 
         return [
             'METODOS DE PAGO' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 1))
-                ->badge(DownloadZone::query()->where('zone_id', 1)->count())
-                ->badgeColor('success'),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 1)),
+                // ->badge(DownloadZone::query()->where('zone_id', 1)->count())
+                // ->badgeColor('success'),
             'RECURSOS DEL AGENTE' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 2))
-                ->badge(DownloadZone::query()->where('zone_id', 2)->count())
-                ->badgeColor('success'),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 2)),
+                // ->badge(DownloadZone::query()->where('zone_id', 2)->count())
+                // ->badgeColor('success'),
             'TU DR. EN CASA' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 3))
-                ->badge(DownloadZone::query()->where('zone_id', 3)->count())
-                ->badgeColor('success'),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 3)),
+                // ->badge(DownloadZone::query()->where('zone_id', 3)->count())
+                // ->badgeColor('success'),
             'TU DR. EN VIAJES' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 4))
-                ->badge(DownloadZone::query()->where('zone_id', 4)->count())
-                ->badgeColor('success'),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 4)),
+                // ->badge(DownloadZone::query()->where('zone_id', 4)->count())
+                // ->badgeColor('success'),
             'TODOS' => Tab::make(),
         ];
     }

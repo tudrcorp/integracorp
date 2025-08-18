@@ -185,4 +185,11 @@ class PdfController extends Controller
             //throw $th;
         }
     }
+
+    public static function prueba()
+    {
+        $pdf = Pdf::loadView('livewire.volt.individual_quote');
+        $pdf->setPaper('A4', 'portrait');
+        return $pdf->stream();
+    }
 }

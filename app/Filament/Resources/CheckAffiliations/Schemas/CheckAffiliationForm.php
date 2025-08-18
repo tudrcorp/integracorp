@@ -10,6 +10,7 @@ use App\Models\AgeRange;
 use App\Models\Coverage;
 use Filament\Schemas\Schema;
 use App\Models\DetailIndividualQuote;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -83,7 +84,7 @@ class CheckAffiliationForm
                         Select::make('agency_id')
                             ->label('Agencia')
                             ->options(function (get $get) {
-                                return Agency::all()->pluck('name_corporative', 'id');
+                                return Agency::all()->pluck('name_corporative', 'code');
                             })
                             ->live()
                             ->searchable()
@@ -91,12 +92,23 @@ class CheckAffiliationForm
                             ->validationMessages([
                                 'required'  => 'Campo Obligatorio',
                             ])
-                            ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->preload(),
+                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                if ($state == null) {
+                                    $set('owner_code', null);
+                                    return;
+                                }
+                                $owner_code = Agency::where('code', $state)->first()->owner_code;
+                                $set('owner_code', $owner_code);
+                            })
+                            ->prefixIcon('heroicon-s-globe-europe-africa'),
+                        TextInput::make('owner_code')
+                        ->label('Código del propietario')
+                        ->disabled()
+                        ->dehydrated(),
                         Select::make('agent_id')
                             ->label('Agente')
                             ->options(function (get $get) {
-                                return Agent::all()->pluck('name', 'id');
+                                return Agent::where('owner_code', $get('agency_id'))->get()->pluck('name', 'id');
                             })
                             ->live()
                             ->searchable()
@@ -126,10 +138,6 @@ class CheckAffiliationForm
                             })
                             ->live()
                             ->searchable()
-                            ->required()
-                            ->validationMessages([
-                                'required'  => 'Campo Obligatorio',
-                            ])
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->preload(),
                         Select::make('age_range_id')
@@ -148,7 +156,7 @@ class CheckAffiliationForm
                         Select::make('fee')
                             ->label('Tarifa Anual')
                             ->options(function (get $get) {
-                                return Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'id');
+                                return Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'price');
                             })
                             ->live()
                             ->searchable()
@@ -173,7 +181,15 @@ class CheckAffiliationForm
                             ->validationMessages([
                                 'required'  => 'Campo Obligatorio',
                             ])
-                            ->preload()
+                            ->preload(),
+                        TextInput::make('total_persons')
+                        ->numeric()
+                        ->required()
+                        ->validationMessages([
+                            'required'  => 'Campo Obligatorio',
+                        ]),
+                        Hidden::make('status_migration')
+                            ->default('SIN PROCESAR')
                     ])
             ]);
     }

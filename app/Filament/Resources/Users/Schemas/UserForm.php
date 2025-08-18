@@ -2,11 +2,15 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Grid;
+use Filament\Forms\Components\Textarea;
+use Filament\Schemas\Components\Wizard;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Forms\Components\DateTimePicker;
 
 class UserForm
 {
@@ -14,35 +18,62 @@ class UserForm
     {
         return $schema
             ->components([
-                TextInput::make('agent_id')
-                    ->numeric(),
-                TextInput::make('name')
-                    ->required(),
-                TextInput::make('email')
-                    ->email()
-                    ->required(),
-                DateTimePicker::make('email_verified_at'),
-                TextInput::make('password')
-                    ->password()
-                    ->required(),
-                TextInput::make('code_agency'),
-                TextInput::make('agency_type'),
-                Toggle::make('is_admin')
-                    ->required(),
-                Toggle::make('is_agent')
-                    ->required(),
-                Toggle::make('is_subagent'),
-                Toggle::make('is_agency')
-                    ->required(),
-                Textarea::make('link_agency')
-                    ->columnSpanFull(),
-                TextInput::make('code_agent'),
-                Textarea::make('link_agent')
-                    ->columnSpanFull(),
-                TextInput::make('status')
-                    ->default('ACTIVO'),
-                TextInput::make('phone')
-                    ->tel(),
+                Wizard::make([
+                    Step::make('Información Principal')
+                        ->schema([
+                            TextInput::make('name')
+                                ->Label('Nombre y Apellido')
+                                ->required(),
+                            TextInput::make('phone')
+                                ->label('Número de Teléfono')
+                                ->tel(),
+                            TextInput::make('email')
+                                ->label('Correo Electrónico')
+                                ->email()
+                                ->unique('users', 'email')
+                                ->live()
+                                ->required()
+                                ->validationMessages([
+                                    'required'  => 'Campo Requerido',
+                                    'unique'    => 'El correo electrónico ya existe',
+                                    'email'     => 'Formato incorrecto',
+                                ]),
+                            TextInput::make('status')
+                                ->default('ACTIVO'),
+                        ])->columns(4),
+                    Step::make('Contraseña')
+                        ->schema([
+                            TextInput::make('password')
+                                ->label('Contraseña')
+                                ->helperText('La contraseña debe contener al menos 8 caracteres, una letra mayúscula, una letra minúscula y un número.')
+                                ->password()
+                                ->required(),
+                        ])->columns(3),
+                    Step::make('Rol de Usuario')
+                        ->schema([
+                            Toggle::make('is_admin')
+                                ->label('Administrador'),
+                            Toggle::make('is_agency')
+                                ->label('Agencia'),
+                            Toggle::make('is_agent')
+                                ->label('Agente'),
+                            Toggle::make('is_subagent')
+                                ->label('Subagente'),
+                            Toggle::make('is_subagent')
+                                ->label('Subagente'),
+                            Toggle::make('is_doctor')
+                                ->label('Doctor'),
+                            Select::make('departament')
+                                ->label('Departamento')
+                                ->options([
+                                    'COMERCIAL'     => 'COMERCIAL',
+                                    'COTIZACIONES'  => 'COTIZACIONES',
+                                    'AFILIACIONES'  => 'AFILIACIONES',
+                                    'OPERACIONES'   => 'OPERACIONES',
+                                    'OPERACIONES'   => 'OPERACIONES',
+                                ]),
+                        ])->columns(3),
+                ])->columnSpanFull()  
             ]);
     }
 }

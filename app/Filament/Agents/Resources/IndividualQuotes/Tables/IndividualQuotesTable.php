@@ -15,10 +15,13 @@ use Filament\Actions\ExportAction;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\MailLinkIndividualQuote;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Crypt;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Forms\Components\Textarea;
@@ -26,11 +29,13 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
+use App\Http\Controllers\NotificationController;
 use Filament\Actions\Exports\Enums\ExportFormat;
 use App\Filament\Exports\IndividualQuoteExporter;
 
@@ -246,81 +251,7 @@ class IndividualQuotesTable
                                     Grid::make(2)->schema([
                                         Select::make('country_code')
                                             ->label('Código de país')
-                                            ->options([
-                                                '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                                '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                                '+49'  => '🇩🇪 +49 (Alemania)',
-                                                '+33'  => '🇫🇷 +33 (Francia)',
-                                                '+34'  => '🇪🇸 +34 (España)',
-                                                '+39'  => '🇮🇹 +39 (Italia)',
-                                                '+7'   => '🇷🇺 +7 (Rusia)',
-                                                '+55'  => '🇧🇷 +55 (Brasil)',
-                                                '+91'  => '🇮🇳 +91 (India)',
-                                                '+86'  => '🇨🇳 +86 (China)',
-                                                '+81'  => '🇯🇵 +81 (Japón)',
-                                                '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                                '+52'  => '🇲🇽 +52 (México)',
-                                                '+58'  => '🇻🇪 +58 (Venezuela)',
-                                                '+57'  => '🇨🇴 +57 (Colombia)',
-                                                '+54'  => '🇦🇷 +54 (Argentina)',
-                                                '+56'  => '🇨🇱 +56 (Chile)',
-                                                '+51'  => '🇵🇪 +51 (Perú)',
-                                                '+502' => '🇬🇹 +502 (Guatemala)',
-                                                '+503' => '🇸🇻 +503 (El Salvador)',
-                                                '+504' => '🇭🇳 +504 (Honduras)',
-                                                '+505' => '🇳🇮 +505 (Nicaragua)',
-                                                '+506' => '🇨🇷 +506 (Costa Rica)',
-                                                '+507' => '🇵🇦 +507 (Panamá)',
-                                                '+593' => '🇪🇨 +593 (Ecuador)',
-                                                '+592' => '🇬🇾 +592 (Guyana)',
-                                                '+591' => '🇧🇴 +591 (Bolivia)',
-                                                '+598' => '🇺🇾 +598 (Uruguay)',
-                                                '+20'  => '🇪🇬 +20 (Egipto)',
-                                                '+27'  => '🇿🇦 +27 (Sudáfrica)',
-                                                '+234' => '🇳🇬 +234 (Nigeria)',
-                                                '+212' => '🇲🇦 +212 (Marruecos)',
-                                                '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                                '+92'  => '🇵🇰 +92 (Pakistán)',
-                                                '+880' => '🇧🇩 +880 (Bangladesh)',
-                                                '+62'  => '🇮🇩 +62 (Indonesia)',
-                                                '+63'  => '🇵🇭 +63 (Filipinas)',
-                                                '+66'  => '🇹🇭 +66 (Tailandia)',
-                                                '+60'  => '🇲🇾 +60 (Malasia)',
-                                                '+65'  => '🇸🇬 +65 (Singapur)',
-                                                '+61'  => '🇦🇺 +61 (Australia)',
-                                                '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                                '+90'  => '🇹🇷 +90 (Turquía)',
-                                                '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                                '+372' => '🇪🇪 +372 (Estonia)',
-                                                '+371' => '🇱🇻 +371 (Letonia)',
-                                                '+370' => '🇱🇹 +370 (Lituania)',
-                                                '+48'  => '🇵🇱 +48 (Polonia)',
-                                                '+40'  => '🇷🇴 +40 (Rumania)',
-                                                '+46'  => '🇸🇪 +46 (Suecia)',
-                                                '+47'  => '🇳🇴 +47 (Noruega)',
-                                                '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                                '+41'  => '🇨🇭 +41 (Suiza)',
-                                                '+43'  => '🇦🇹 +43 (Austria)',
-                                                '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                                '+32'  => '🇧🇪 +32 (Bélgica)',
-                                                '+353' => '🇮🇪 +353 (Irlanda)',
-                                                '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                                '+380' => '🇺🇦 +380 (Ucrania)',
-                                                '+994' => '🇦🇿 +994 (Azerbaiyán)',
-                                                '+995' => '🇬🇪 +995 (Georgia)',
-                                                '+976' => '🇲🇳 +976 (Mongolia)',
-                                                '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                                '+84'  => '🇻🇳 +84 (Vietnam)',
-                                                '+856' => '🇱🇦 +856 (Laos)',
-                                                '+374' => '🇦🇲 +374 (Armenia)',
-                                                '+965' => '🇰🇼 +965 (Kuwait)',
-                                                '+966' => '🇸🇦 +966 (Arabia Saudita)',
-                                                '+972' => '🇮🇱 +972 (Israel)',
-                                                '+963' => '🇸🇾 +963 (Siria)',
-                                                '+961' => '🇱🇧 +961 (Líbano)',
-                                                '+960' => '🇲🇻 +960 (Maldivas)',
-                                                '+992' => '🇹🇯 +992 (Tayikistán)',
-                                            ])
+                                            ->options(fn () => UtilsController::getCountries())
                                             ->searchable()
                                             ->default('+58')
                                             ->required()
@@ -388,44 +319,107 @@ class IndividualQuotesTable
                             }
                         }),
 
-                    /* DESCARGAR DOCUMENTO */
-                    Action::make('download')
-                        ->label('Descargar Cotización')
-                        ->icon('heroicon-s-arrow-down-on-square-stack')
-                        ->color('verde')
+                    /**FORWARD */
+                    Action::make('link')
+                        ->label('Link Interactivo')
+                        ->icon('fluentui-document-arrow-right-20')
+                        ->color('primary')
                         ->requiresConfirmation()
-                        ->modalHeading('DESCARGAR COTIZACION')
+                        ->modalIcon('fluentui-document-arrow-right-20')
+                        ->modalHeading('Link Interactivo de Cotización')
+                        ->modalDescription('El link será enviado por email y/o teléfono!')
                         ->modalWidth(Width::ExtraLarge)
-                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
-                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                        ->form([
+                            Section::make()
+                                // ->heading('Informacion')
+                                // ->description('El link puede sera enviado por email y/o telefono!')
+                                ->schema([
+                                    TextInput::make('email')
+                                        ->label('Email')
+                                        ->email(),
+                                    Grid::make(2)->schema([
+                                        Select::make('country_code')
+                                            ->label('Código de país')
+                                            ->options(fn() => UtilsController::getCountries())
+                                            ->searchable()
+                                            ->default('+58')
+                                            ->required()
+                                            ->live(onBlur: true)
+                                            ->validationMessages([
+                                                'required'  => 'Campo Requerido',
+                                            ]),
+                                        TextInput::make('phone')
+                                            ->prefixIcon('heroicon-s-phone')
+                                            ->tel()
+                                            ->label('Número de teléfono')
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Campo Requerido',
+                                            ])
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                $countryCode = $get('country_code');
+                                                if ($countryCode) {
+                                                    $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
+                                                    $set('phone', $countryCode . $cleanNumber);
+                                                }
+                                            }),
+                                    ])
+                                ])
+                        ])
                         ->action(function (IndividualQuote $record, array $data) {
 
                             try {
 
-                                if (!file_exists(public_path('storage/individual-quotes/' . $record->code . '.pdf'))) {
+                                $email = null;
+                                $phone = null;
+                                $link = env('APP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
 
-                                    Notification::make()
-                                        ->title('NOTIFICACIÓN')
-                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
-                                        ->icon('heroicon-s-x-circle')
-                                        ->iconColor('warning')
-                                        ->warning()
-                                        ->send();
-
-                                    return;
+                                if (isset($data['email'])) {
+                                    
+                                    $email = $data['email'];
+                                    
+                                    $email = Mail::to($email)->send(new MailLinkIndividualQuote($link));
+                                    
+                                    if ($email) {
+                                        Notification::make()
+                                            ->title('ENVIADO EXITOSO')
+                                            ->body('El link fue enviado por email exitosamente.')
+                                            ->icon('heroicon-s-check-circle')
+                                            ->iconColor('verde')
+                                            ->success()
+                                            ->send();
+                                    }
                                 }
-                                /**
-                                 * Descargar el documento asociado a la cotizacion
-                                 * ruta: storage/
-                                 */
-                                $path = public_path('storage/individual-quotes/' . $record->code . '.pdf');
-                                return response()->download($path);
 
-                                /**
-                                 * LOG
-                                 */
-                                LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                                if (isset($data['phone'])) {
+                                    $phone = $data['phone'];
+                                    $wp = NotificationController::sendLinkIndividualQuote($phone, $link);
+                                    if ($wp) {
+
+                                        Notification::make()
+                                            ->title('ENVIADO EXITOSO')
+                                            ->body('El link fue enviado por whatsapp exitosamente.')
+                                            ->icon('heroicon-s-check-circle')
+                                            ->iconColor('verde')
+                                            ->success()
+                                            ->send();
+                                    } else {
+
+                                        Notification::make()
+                                            ->title('ERROR')    
+                                            ->body('El link no pudo ser enviado por whatsapp. Por favor, contacte con el administrador del Sistema.')
+                                            ->icon('heroicon-s-x-circle')
+                                            ->iconColor('danger')
+                                            ->danger()
+                                            ->send();
+                                    }
+                                    
+                                }
+                                
+
                             } catch (\Throwable $th) {
+                                dd($th);
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -436,6 +430,55 @@ class IndividualQuotesTable
                                     ->send();
                             }
                         }),
+
+                    /* DESCARGAR DOCUMENTO */
+                    Action::make('download')
+                            ->label('Descargar Cotización')
+                            ->icon('heroicon-s-arrow-down-on-square-stack')
+                            ->color('verde')
+                            ->requiresConfirmation()
+                            ->modalHeading('DESCARGAR COTIZACION')
+                            ->modalWidth(Width::ExtraLarge)
+                            ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                            ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                            ->action(function (IndividualQuote $record, array $data) {
+
+                                try {
+
+                                    if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
+
+                                        Notification::make()
+                                            ->title('NOTIFICACIÓN')
+                                            ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                            ->icon('heroicon-s-x-circle')
+                                            ->iconColor('warning')
+                                            ->warning()
+                                            ->send();
+
+                                        return;
+                                    }
+                                    /**
+                                     * Descargar el documento asociado a la cotizacion
+                                     * ruta: storage/
+                                     */
+                                    $path = public_path('storage/quotes/' . $record->code . '.pdf');
+                                    return response()->download($path);
+
+                                    /**
+                                     * LOG
+                                     */
+                                    LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                                } catch (\Throwable $th) {
+                                    LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                    Notification::make()
+                                        ->title('ERROR')
+                                        ->body($th->getMessage())
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('danger')
+                                        ->danger()
+                                        ->send();
+                                }
+                            }),
 
                     Action::make('add_observations')
                         ->label('Agregar Observaciones')
@@ -469,6 +512,9 @@ class IndividualQuotesTable
                                     ->body('Las observaciones fueron registradas exitosamente.')
                                     ->success()
                                     ->send();
+
+                                $notoficationWp = NotificationController::saddObervationToIndividualQuote($record->code, Auth::user()->name, $data['description']);
+                                    
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()

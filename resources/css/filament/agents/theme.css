@@ -16,8 +16,34 @@
     @apply bg-[#7fe6de];
 }
 
+
+/* .fi-no-notification {
+    background-color : rgba(var(--primary-600),var(--tw-bg-opacity));
+} */
+
+/* @layer components {
+    @media (hover: hover) {
+        .fi-icon-btn:not(.fi-disabled):not([disabled]):hover {
+        color: rgb(255, 167, 0);
+        }
+    }
+}
+
+@layer components {
+    .fi-icon-btn {
+        color: rgb(255, 0, 0);
+    }
+} */
+
+
+
 /* .fi-sc-wizard-footer .fi-btn {
     @apply bg-[#008000];
     background: url(http://notrealdomain2.com/newbanner.png)
 } */
+
+.fi-topbar-database-notifications-btn > svg {
+    /* fill: rgb(255, 0, 0); */
+    color: rgb(255, 0, 0);
+}
 

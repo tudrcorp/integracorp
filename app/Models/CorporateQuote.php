@@ -36,7 +36,9 @@ class CorporateQuote extends Model
         'owner_code',
         'plan',
         'observations',
-        'data_doc'
+        'data_doc',
+        'observation_dress_tailor',
+        'type',
 
     ];
 
@@ -103,7 +105,7 @@ class CorporateQuote extends Model
         /**
          * JOB
          */
-        SendEmailPropuestaEconomica::dispatch($details, $collect);
+        SendEmailPropuestaEconomica::dispatch($details, $collect, Auth::user());
     }
 
     public function sendPropuestaEconomicaPlanIdeal($details)
@@ -114,7 +116,7 @@ class CorporateQuote extends Model
         /**
          * JOB
          */
-        SendEmailPropuestaEconomicaPlanIdeal::dispatch($details, $group_collect);
+        SendEmailPropuestaEconomicaPlanIdeal::dispatch($details, $group_collect, Auth::user());
     }
 
     public function sendPropuestaEconomicaPlanEspecial($details)

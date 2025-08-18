@@ -26,6 +26,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use App\Http\Controllers\UtilsController;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
@@ -45,6 +46,20 @@ class CorporateQuoteForm
                                 ->heading('¡Bienvenido/a de nuevo! 👋 ')
                                 ->description('Estás a punto de comenzar a crear una nueva cotización, por favor ingresa la información del cliente para personalizarla. ¡Puede ver el avance del proceso en la barra de estatus!')
                                 ->schema([
+                                    Grid::make(4)
+                                        ->schema([
+                                            Radio::make('type')
+                                                ->label('Seleccione el tipo de cotización')
+                                                ->live()
+                                                ->inline()
+                                                ->options([
+                                                    'BASICO' => 'BÁSICA',
+                                                    'DRESS-TAILOR' => 'DRESS-TAYLOR / PLANES A LA MEDIDA',
+                                                ])
+                                                ->required()
+                                                ->default('BASICO')
+                                        
+                                    ])->columnSpanFull(),
                                     Grid::make(4)
                                         ->schema([
                                             TextInput::make('code')
@@ -79,81 +94,7 @@ class CorporateQuoteForm
 
                                             Select::make('country_code')
                                                 ->label('Código de país')
-                                                ->options([
-                                                    '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                                    '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                                    '+49'  => '🇩🇪 +49 (Alemania)',
-                                                    '+33'  => '🇫🇷 +33 (Francia)',
-                                                    '+34'  => '🇪🇸 +34 (España)',
-                                                    '+39'  => '🇮🇹 +39 (Italia)',
-                                                    '+7'   => '🇷🇺 +7 (Rusia)',
-                                                    '+55'  => '🇧🇷 +55 (Brasil)',
-                                                    '+91'  => '🇮🇳 +91 (India)',
-                                                    '+86'  => '🇨🇳 +86 (China)',
-                                                    '+81'  => '🇯🇵 +81 (Japón)',
-                                                    '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                                    '+52'  => '🇲🇽 +52 (México)',
-                                                    '+58'  => '🇻🇪 +58 (Venezuela)',
-                                                    '+57'  => '🇨🇴 +57 (Colombia)',
-                                                    '+54'  => '🇦🇷 +54 (Argentina)',
-                                                    '+56'  => '🇨🇱 +56 (Chile)',
-                                                    '+51'  => '🇵🇪 +51 (Perú)',
-                                                    '+502' => '🇬🇹 +502 (Guatemala)',
-                                                    '+503' => '🇸🇻 +503 (El Salvador)',
-                                                    '+504' => '🇭🇳 +504 (Honduras)',
-                                                    '+505' => '🇳🇮 +505 (Nicaragua)',
-                                                    '+506' => '🇨🇷 +506 (Costa Rica)',
-                                                    '+507' => '🇵🇦 +507 (Panamá)',
-                                                    '+593' => '🇪🇨 +593 (Ecuador)',
-                                                    '+592' => '🇬🇾 +592 (Guyana)',
-                                                    '+591' => '🇧🇴 +591 (Bolivia)',
-                                                    '+598' => '🇺🇾 +598 (Uruguay)',
-                                                    '+20'  => '🇪🇬 +20 (Egipto)',
-                                                    '+27'  => '🇿🇦 +27 (Sudáfrica)',
-                                                    '+234' => '🇳🇬 +234 (Nigeria)',
-                                                    '+212' => '🇲🇦 +212 (Marruecos)',
-                                                    '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                                    '+92'  => '🇵🇰 +92 (Pakistán)',
-                                                    '+880' => '🇧🇩 +880 (Bangladesh)',
-                                                    '+62'  => '🇮🇩 +62 (Indonesia)',
-                                                    '+63'  => '🇵🇭 +63 (Filipinas)',
-                                                    '+66'  => '🇹🇭 +66 (Tailandia)',
-                                                    '+60'  => '🇲🇾 +60 (Malasia)',
-                                                    '+65'  => '🇸🇬 +65 (Singapur)',
-                                                    '+61'  => '🇦🇺 +61 (Australia)',
-                                                    '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                                    '+90'  => '🇹🇷 +90 (Turquía)',
-                                                    '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                                    '+372' => '🇪🇪 +372 (Estonia)',
-                                                    '+371' => '🇱🇻 +371 (Letonia)',
-                                                    '+370' => '🇱🇹 +370 (Lituania)',
-                                                    '+48'  => '🇵🇱 +48 (Polonia)',
-                                                    '+40'  => '🇷🇴 +40 (Rumania)',
-                                                    '+46'  => '🇸🇪 +46 (Suecia)',
-                                                    '+47'  => '🇳🇴 +47 (Noruega)',
-                                                    '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                                    '+41'  => '🇨🇭 +41 (Suiza)',
-                                                    '+43'  => '🇦🇹 +43 (Austria)',
-                                                    '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                                    '+32'  => '🇧🇪 +32 (Bélgica)',
-                                                    '+353' => '🇮🇪 +353 (Irlanda)',
-                                                    '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                                    '+380' => '🇺🇦 +380 (Ucrania)',
-                                                    '+994' => '🇦🇿 +994 (Azerbaiyán)',
-                                                    '+995' => '🇬🇪 +995 (Georgia)',
-                                                    '+976' => '🇲🇳 +976 (Mongolia)',
-                                                    '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                                    '+84'  => '🇻🇳 +84 (Vietnam)',
-                                                    '+856' => '🇱🇦 +856 (Laos)',
-                                                    '+374' => '🇦🇲 +374 (Armenia)',
-                                                    '+965' => '🇰🇼 +965 (Kuwait)',
-                                                    '+966' => '🇸🇦 +966 (Arabia Saudita)',
-                                                    '+972' => '🇮🇱 +972 (Israel)',
-                                                    '+963' => '🇸🇾 +963 (Siria)',
-                                                    '+961' => '🇱🇧 +961 (Líbano)',
-                                                    '+960' => '🇲🇻 +960 (Maldivas)',
-                                                    '+992' => '🇹🇯 +992 (Tayikistán)',
-                                                ])
+                                                ->options(UtilsController::getCountries())
                                                 ->searchable()
                                                 ->default('+58')
                                                 ->live(onBlur: true)
@@ -183,6 +124,16 @@ class CorporateQuoteForm
                                                     'required' => 'Campo requerido',
                                                 ])
                                                 ->maxLength(255),
+                                        ])->columnSpanFull(),
+                                    Grid::make(1)
+                                        ->schema([
+                                            Textarea::make('observation_dress_tailor')
+                                                ->label('Especificaciones de la cotización')
+                                                ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
+                                                ->required()
+                                                ->autosize()
+                                                ->hidden(fn(Get $get) => $get('type') == 'BASICO')
+
                                         ])->columnSpanFull(),
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
@@ -230,6 +181,7 @@ class CorporateQuoteForm
                                 ->columnSpanFull()
                         ]),
                     Step::make('PLANES A COTIZAR')
+                        ->hidden(fn(Get $get) => $get('type') == 'DRESS-TAILOR')
                         ->description('Plan(es) que desea cotizar:')
                         ->schema([
                             Section::make('plans')
@@ -242,11 +194,8 @@ class CorporateQuoteForm
                                         ->required()
                                         ->live()
                                         ->options(function () {
-                                            $planesConBeneficios = Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
-                                                ->select('plans.id as plan_id', 'plans.description as description')
-                                                ->distinct() // Asegurarse de que no haya duplicados
-                                                ->get()
-                                                ->pluck('description', 'plan_id');
+                                            $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
+                                            
                                             //agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 
@@ -261,6 +210,7 @@ class CorporateQuoteForm
                                 ])
                         ]),
                     Step::make('RANGO DE EDAD')
+                        ->hidden(fn(Get $get) => $get('type') == 'DRESS-TAILOR')
                         ->description('Rango de edad y/o población:')
                         ->schema([
                             Section::make('age_range')
@@ -407,11 +357,7 @@ class CorporateQuoteForm
                                                 ->live()
                                                 ->options(function (Get $get) {
                                                     Log::info($get('plan'));
-                                                    return Plan::join('benefit_plans', 'plans.id', '=', 'benefit_plans.plan_id')
-                                                        ->select('plans.id as plan_id', 'plans.description as description')
-                                                        ->distinct() // Asegurarse de que no haya duplicados
-                                                        ->get()
-                                                        ->pluck('description', 'plan_id');
+                                                    return Plan::where('type', 'BASICO')->pluck('description', 'id');
                                                 })->columnSpan(3),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')

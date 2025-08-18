@@ -63,7 +63,7 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
             ->actions([
                 Action::make('download')
                     ->label('Descargar archivo')
-                    ->url('/storage/individual-quotes/' . $this->details_generals['code'] . '.pdf')
+                    ->url('/storage/quotes/' . $this->details_generals['code'] . '.pdf')
             ])
             ->sendToDatabase($this->user);
         
@@ -98,9 +98,17 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
                 }
             }
 
-            $data_inicial   =  (array) $group_collect_plan_inicial[0];
-            $data_ideal     = $group_collect_plan_ideal;
-            $data_especial  = $group_collect_plan_especial;
+            if(!empty($group_collect_plan_inicial)){
+                $data_inicial   =  (array) $group_collect_plan_inicial[0];
+                $data_ideal     = $group_collect_plan_ideal;
+                $data_especial  = $group_collect_plan_especial;
+            }else{
+                $data_ideal     = $group_collect_plan_ideal;
+                $data_especial  = $group_collect_plan_especial;
+            }
+            // $data_inicial   =  (array) $group_collect_plan_inicial[0];
+            // $data_ideal     = $group_collect_plan_ideal;
+            // $data_especial  = $group_collect_plan_especial;
 
 
             /**
@@ -109,7 +117,7 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
              */
             $pdf = Pdf::loadView('documents.propuesta-economica-multiple', compact('data_inicial', 'data_ideal', 'data_especial', 'details_generals'));
             $name_pdf = $details_generals['code'] . '.pdf';
-            $pdf->save(public_path('storage/individual-quotes/' . $name_pdf));
+            $pdf->save(public_path('storage/quotes/' . $name_pdf));
 
     }
 

@@ -13,18 +13,21 @@ return new class extends Migration
     {
         Schema::create('afilliation_individual_plans', function (Blueprint $table) {
             $table->id();
-            $table->integer('afilliation_id');
+            $table->integer('affiliation_individual_id');
             $table->string('code_affiliation');
             $table->integer('plan_id');
             $table->integer('coverage_id');
             $table->integer('age_range_id');
             $table->integer('fee');
-            $table->decimal('subtotal_anual');
-            $table->decimal('subtotal_quarterly');
-            $table->decimal('subtotal_biannual');
-            $table->decimal('subtotal_monthly');
+            $table->decimal('subtotal_anual',8,2);
+            $table->decimal('subtotal_quarterly',8,2);
+            $table->decimal('subtotal_biannual',8,2);
+            $table->decimal('subtotal_monthly',8,2);
             $table->string('status');
             $table->string('created_by');
+            $table->integer('total_persons');
+            $table->string('payment_frequency');
+            
             $table->timestamps();
         });
     }
