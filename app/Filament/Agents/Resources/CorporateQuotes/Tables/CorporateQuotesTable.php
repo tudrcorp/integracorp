@@ -529,7 +529,7 @@ class CorporateQuotesTable
 
                             $email = null;
                             $phone = null;
-                            $link = env('APP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
+                            $link = config('parameters.INTEGRACORP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
 
                             if (isset($data['email'])) {
 

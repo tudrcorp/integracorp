@@ -373,7 +373,7 @@ class IndividualQuotesTable
 
                                 $email = null;
                                 $phone = null;
-                                $link = env('APP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
+                                $link = config('parameters.INTEGRACORP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
 
                                 if (isset($data['email'])) {
                                     
@@ -533,18 +533,6 @@ class IndividualQuotesTable
                         return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
                     })
             ])
-            // ->headerActions([
-            //     ExportAction::make()
-            //         ->exporter(IndividualQuoteExporter::class)
-            //         ->icon('fontisto-export')
-            //         ->color('verde')
-            //         ->label('Exportar Excel')
-            //         ->formats([
-            //             ExportFormat::Xlsx,
-            //             ExportFormat::Csv,
-            //         ])
-
-            // ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     // DeleteBulkAction::make(),
