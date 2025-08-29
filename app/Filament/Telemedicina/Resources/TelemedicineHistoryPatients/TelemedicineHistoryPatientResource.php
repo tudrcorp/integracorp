@@ -22,9 +22,11 @@ class TelemedicineHistoryPatientResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-health-worker-form';
 
-    protected static ?string $recordTitleAttribute = 'Historias';
-
     protected static ?string $navigationLabel = 'Historias Medicas';
+
+    protected static ?int $navigationSort = 3;
+
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Schema $schema): Schema
     {

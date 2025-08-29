@@ -23,7 +23,7 @@ class MassNotificationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'fluentui-channel-alert-24';
 
-    protected static string | UnitEnum | null $navigationGroup = 'SISTEMA';
+    protected static string | UnitEnum | null $navigationGroup = 'MARKETING';
 
     protected static ?string $navigationLabel = 'Notificaciones Masivas';
     

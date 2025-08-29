@@ -17,7 +17,6 @@ class PaidMembershipsRelationManager extends RelationManager
 
     protected static ?string $title = 'Pagos registrados';
 
-
     public function table(Table $table): Table
     {
         return $table

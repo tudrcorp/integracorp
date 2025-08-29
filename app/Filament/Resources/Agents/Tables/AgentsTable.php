@@ -8,8 +8,7 @@ use App\Models\Agent;
 use App\Models\Agency;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Actions\BulkAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Filters\Filter;
@@ -22,9 +21,11 @@ use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
+use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use App\Http\Controllers\NotificationController;
 
 class AgentsTable
@@ -423,6 +424,18 @@ class AgentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('format_phone')
+                    ->label('Formatear Teléfonos')
+                    ->action(function (Collection $records) {
+                        foreach ($records as $record) {
+                            $record->phone = UtilsController::normalizeVenezuelanPhone($record->phone);
+                            $record->save();
+                        }
+                    })
+                    ->requiresConfirmation()
+                    ->color('azulOscuro'),
+                    
+
                     DeleteBulkAction::make(),
                 ]),
             ]);

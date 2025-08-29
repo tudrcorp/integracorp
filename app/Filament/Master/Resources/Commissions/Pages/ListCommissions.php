@@ -10,7 +10,7 @@ class ListCommissions extends ListRecords
 {
     protected static string $resource = CommissionResource::class;
 
-    protected static ?string $title = 'Comisiones';
+    protected static ?string $title = 'Comisiones Generadas';
 
     protected function getHeaderActions(): array
     {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Schemas;
 
+use App\Models\AllergyList;
 use Filament\Schemas\Schema;
 use App\Models\TelemedicinePatient;
 use Illuminate\Support\Facades\Log;
@@ -56,24 +57,14 @@ class TelemedicineHistoryPatientForm
                                         ->label('Paciente')
                                         ->options(TelemedicinePatient::all()->pluck('full_name', 'id'))
                                         ->default(function () {
-                                            if (request('record')) {
-                                                return request('record');
+                                            if (session()->get('patient')) {
+                                                $patient = session()->get('patient')->id;
+                                                
+                                                return $patient;
                                             }
+                                                Log::warning(session()->get('patient_id'));
                                             return null;
                                         })
-                                        // ->disabled(function () {
-                                        //     if (request('record')) {
-                                        //         return true;
-                                        //     }
-                                        //     return false;
-                                            
-                                        // })
-                                        // ->dehydrated(function () {
-                                        //     if (request('record')) {
-                                        //         return true;
-                                        //     }
-                                        //     return false;
-                                        // })
                                         ->required(),
                                     // ...
                                     DatePicker::make('history_date')
@@ -81,7 +72,6 @@ class TelemedicineHistoryPatientForm
                                         ->default(now()),
                                     // ...
                                     Hidden::make('telemedicine_doctor_id')->default(Auth::user()->doctor_id),
-                                    Hidden::make('code_patient')->default(fn (Get $get) => TelemedicinePatient::find($get('telemedicine_patient_id'))->code),
                                     Hidden::make('created_by')->default(Auth::user()->name),
                                 ])->columnSpanFull()->columns(3),   
                         ])->columns(3),
@@ -130,7 +120,7 @@ class TelemedicineHistoryPatientForm
                                         ->required(),
                                     TextInput::make('height')
                                         ->label('Altura')
-                                        ->helperText('Altura (cm)')
+                                        ->helperText('Altura (mts)')
                                         ->numeric()
                                         ->prefixIcon('healthicons-f-i-utensils')
                                         ->required(),
@@ -227,30 +217,45 @@ class TelemedicineHistoryPatientForm
                                 ->numeric(),
                             TextInput::make('cesareas')
                                 ->numeric(),
-                            TextInput::make('observations_ginecologica'),
-                        ])->columns(3),
+                                Grid::make(1)
+                                    ->schema([
+                                        Textarea::make('observations_ginecologica')
+                                        ->autoSize()
+                                        ->label('Observaciones Ginecológicas'),
+                                    ])->columnSpanFull()->columns(1),
+                        ])->columns(4),
                     Step::make('Alergias')
                         ->schema([
                             // ...
                             Select::make('allergies')
-                                ->options(TelemedicineAllergyList::all()->pluck('description', 'description')->toArray())
+                                ->options(AllergyList::all()->pluck('description', 'description')->toArray())
                                 ->multiple()
                                 ->searchable(),
-                            TextInput::make('observations_allergies'),
+                            Grid::make(1)
+                                ->schema([
+                                    Textarea::make('observations_allergies')
+                                        ->autoSize()
+                                        ->label('Observaciones Adicionales'),
+                                ])->columnSpanFull()->columns(1),
                         ]),
                     Step::make('Antecedentes Quirúrgicos')
                         ->schema([
                             // ...
                             Textarea::make('history_surgical')
+                                ->label('Antecedentes Quirúrgicos')
+                                ->autoSize()
                                 ->columnSpanFull(),
                         ]),
                     Step::make('Medicamentos(Crónicos) y Suplementos Usados')
                         ->schema([
                             // ...
                             Textarea::make('medications_supplements')
-                                ->columnSpanFull(),
-                            TextInput::make('observations_medication'),
-                        ]),
+                                ->label('Medicamentos(Crónicos) y Suplementos Usados')
+                                ->autoSize(),
+                            Textarea::make('observations_medication')
+                                ->label('Observaciones Medicamentos')
+                                ->autoSize(),
+                        ])->columnSpanFull()->columns(2),
                 ])->columnSpanFull(),   
             ]);
     }

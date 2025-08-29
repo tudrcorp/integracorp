@@ -10,11 +10,12 @@ class TelemedicinePatient extends Model
     
     protected $fillable = [
         'plan_id',
+        'coverage_id',
         'afilliation_id',
         'afilliation_corporate_id',
         'full_name',
         'nro_identificacion',
-        'date_birth',
+        'birth_date',
         'sex',
         'phone',
         'email',
@@ -28,6 +29,11 @@ class TelemedicinePatient extends Model
         'code',
         'created_by',
         'age',
+        'status_affiliation',
+        'type_affiliation',
+        'date_affiliation',
+        'code',
+        'code_affiliation',
     ];
 
     public function city()
@@ -53,6 +59,11 @@ class TelemedicinePatient extends Model
     public function plan()
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function coverage()
+    {
+        return $this->belongsTo(Coverage::class);
     }
 
     public function afilliation()
@@ -82,14 +93,14 @@ class TelemedicinePatient extends Model
         return $this->hasMany(TelemedicinePatientStudy::class);
     }
 
-    public function telemedicinePatientMedicines()
+    public function telemedicinePatientMedications()
     {
-        return $this->hasMany(TelemedicinePatientMedicine::class);
+        return $this->hasMany(TelemedicinePatientMedications::class);
     }
 
-    public function telemedicinePatientLabs()
+    public function telemedicinePatientHistory()
     {
-        return $this->hasMany(TelemedicinePatientLaboratoryTest::class);
+        return $this->hasOne(TelemedicineHistoryPatient::class);
     }
     
 }

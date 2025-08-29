@@ -21,7 +21,6 @@ class SaleResource extends Resource
 {
     protected static ?string $model = Sale::class;
 
-
     protected static ?string $navigationLabel = 'Ventas Realizadas';
 
     protected static string | UnitEnum | null $navigationGroup = 'VENTAS';

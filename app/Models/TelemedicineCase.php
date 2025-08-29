@@ -21,7 +21,8 @@ class TelemedicineCase extends Model
         'patient_city',
         'assigned_by',
         'status',
-        'reason'
+        'reason',
+        'code',
     ];
 
     public function patient()
@@ -32,6 +33,11 @@ class TelemedicineCase extends Model
     public function doctor()
     {
         return $this->belongsTo(TelemedicineDoctor::class, 'telemedicine_doctor_id');
+    }
+
+    public function consultations()
+    {
+        return $this->hasMany(TelemedicineConsultationPatient::class);
     }
     
 }

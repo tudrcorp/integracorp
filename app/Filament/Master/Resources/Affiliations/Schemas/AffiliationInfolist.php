@@ -2,9 +2,13 @@
 
 namespace App\Filament\Master\Resources\Affiliations\Schemas;
 
+use App\Models\Affiliation;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Schema;
 
 class AffiliationInfolist
 {
@@ -12,96 +16,99 @@ class AffiliationInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('owner_code'),
-                TextEntry::make('code'),
-                TextEntry::make('code_agency'),
-                TextEntry::make('agent_id')
-                    ->numeric(),
-                TextEntry::make('individual_quote_id')
-                    ->numeric(),
-                TextEntry::make('plan_id')
-                    ->numeric(),
-                TextEntry::make('coverage_id')
-                    ->numeric(),
-                TextEntry::make('payment_frequency'),
-                TextEntry::make('code_individual_quote'),
-                TextEntry::make('full_name_con'),
-                TextEntry::make('nro_identificacion_con'),
-                TextEntry::make('sex_con'),
-                TextEntry::make('birth_date_con'),
-                TextEntry::make('adress_con'),
-                TextEntry::make('city_id_con')
-                    ->numeric(),
-                TextEntry::make('state_id_con')
-                    ->numeric(),
-                TextEntry::make('country_id_con')
-                    ->numeric(),
-                TextEntry::make('region_con'),
-                TextEntry::make('phone_con'),
-                TextEntry::make('email_con'),
-                TextEntry::make('full_name_ti'),
-                TextEntry::make('nro_identificacion_ti'),
-                TextEntry::make('sex_ti'),
-                TextEntry::make('birth_date_ti'),
-                TextEntry::make('adress_ti'),
-                TextEntry::make('city_id_ti'),
-                TextEntry::make('state_id_ti'),
-                TextEntry::make('country_id_ti'),
-                TextEntry::make('region_ti'),
-                TextEntry::make('phone_ti'),
-                TextEntry::make('email_ti'),
-                IconEntry::make('cuestion_1')
-                    ->boolean(),
-                IconEntry::make('cuestion_2')
-                    ->boolean(),
-                IconEntry::make('cuestion_3')
-                    ->boolean(),
-                IconEntry::make('cuestion_4')
-                    ->boolean(),
-                IconEntry::make('cuestion_5')
-                    ->boolean(),
-                IconEntry::make('cuestion_6')
-                    ->boolean(),
-                IconEntry::make('cuestion_7')
-                    ->boolean(),
-                IconEntry::make('cuestion_8')
-                    ->boolean(),
-                IconEntry::make('cuestion_9')
-                    ->boolean(),
-                IconEntry::make('cuestion_10')
-                    ->boolean(),
-                IconEntry::make('cuestion_11')
-                    ->boolean(),
-                IconEntry::make('cuestion_12')
-                    ->boolean(),
-                IconEntry::make('cuestion_13')
-                    ->boolean(),
-                IconEntry::make('cuestion_14')
-                    ->boolean(),
-                TextEntry::make('full_name_agent'),
-                TextEntry::make('code_agent'),
-                TextEntry::make('date_today'),
-                TextEntry::make('created_by'),
-                TextEntry::make('status'),
-                TextEntry::make('document'),
-                TextEntry::make('activated_at'),
-                TextEntry::make('family_members'),
-                TextEntry::make('vaucher_ils'),
-                TextEntry::make('date_payment_initial_ils'),
-                TextEntry::make('date_payment_final_ils'),
-                TextEntry::make('document_ils'),
-                TextEntry::make('created_at')
-                    ->dateTime(),
-                TextEntry::make('updated_at')
-                    ->dateTime(),
-                TextEntry::make('fee_anual')
-                    ->numeric(),
-                TextEntry::make('total_amount')
-                    ->numeric(),
-                TextEntry::make('signature_agent'),
-                TextEntry::make('signature_ti'),
-                TextEntry::make('owner_agent'),
-                TextEntry::make('activation_date'),
+                Section::make()
+                    ->description(fn(Affiliation $record) => 'Pre-afiliación generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                    ->columnSpanFull()
+                    ->icon(Heroicon::Bars3BottomLeft)
+                    ->schema([
+                        Fieldset::make('PREAFILIACION')
+                            ->schema([
+                                TextEntry::make('code')
+                                    ->label('Nro. de solicitud:')
+                                    ->badge()
+                                    ->color('success'),
+                                TextEntry::make('individual_quote.code')
+                                    ->label('Nro. de cotización:')
+                                    ->badge()
+                                    ->color('success'),
+                                // ...
+                                TextEntry::make('created_by')
+                                    ->label('Registrado por:')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->default(fn(Affiliation $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
+                                TextEntry::make('created_at')
+                                    ->label('Fecha:')
+                                    ->badge()
+                                    ->icon(Heroicon::CalendarDays)
+                                    ->dateTime(),
+                            ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make('TITULAR DE LA PÓLIZA')
+                            ->schema([
+                                TextEntry::make('full_name_ti')
+                                    ->badge()
+                                    ->color('info')
+                                    ->icon('fluentui-person-available-16')
+                                    ->label('Nombre y Apellido:'),
+                                TextEntry::make('nro_identificacion_ti')
+                                    ->label('Nro. de Identificación:'),
+                                TextEntry::make('email_ti')
+                                    ->label('Correo electrónico:'),
+                                TextEntry::make('phone_ti')
+                                    ->label('Número de teléfono:'),
+                            ])->columnSpanFull()->columns(4),
+
+                        Fieldset::make('RESPONSABLE DE PAGO (PAGADOR)')
+                            ->schema([
+                                TextEntry::make('full_name_payer')
+                                    ->badge()
+                                    ->color('info')
+                                    ->icon('fluentui-money-hand-20')
+                                    ->label('Nombre y Apellido:'),
+                                TextEntry::make('nro_identificacion_payer')
+                                    ->label('Nro. de Identificación:'),
+                                TextEntry::make('email_payer')
+                                    ->label('Correo electrónico:'),
+                                TextEntry::make('phone_payer')
+                                    ->label('Número de teléfono:'),
+                            ])->columnSpanFull()->columns(4),
+
+                        Fieldset::make('PLAN Y FRECUENCIA DE PAGO')
+                            ->schema([
+                                TextEntry::make('plan.description')
+                                    ->label('Plan')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->numeric(),
+                                TextEntry::make('coverage.price')
+                                    ->label('Precio')
+                                    ->badge()
+                                    ->color('primary'),
+                                TextEntry::make('fee_anual')
+                                    ->label('Tarifa anual')
+                                    ->prefix('US$ ')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->numeric(),
+                                TextEntry::make('payment_frequency')
+                                    ->label('Frecuencia de pago')
+                                    ->badge()
+                                    ->color('primary'),
+                                TextEntry::make('total_amount')
+                                    ->label('Monto total')
+                                    ->prefix('US$ ')
+                                    ->badge()
+                                    ->color('success')
+                                    ->numeric(),
+                                TextEntry::make('family_members')
+                                    ->label('Miembros de la familia')
+                                    ->suffix(' Persona(s)')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->numeric(),
+                            ])->columnSpanFull()->columns(4),
+                    ])->columnSpanFull(),
             ]);
     }
 }

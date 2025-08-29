@@ -2,18 +2,19 @@
 
 namespace App\Filament\Master\Resources\IndividualQuotes\RelationManagers;
 
-use App\Filament\Master\Resources\IndividualQuotes\IndividualQuoteResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
-
 use Filament\Actions\Action;
+use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
+
+use Filament\Actions\CreateAction;
 use Illuminate\Support\Collection;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Master\Resources\IndividualQuotes\IndividualQuoteResource;
 
 class DetailsQuoteRelationManager extends RelationManager
 {
@@ -22,7 +23,7 @@ class DetailsQuoteRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        ->heading('DETALLES DE LA COTIZACIÓN')
+            ->heading('DETALLES DE LA COTIZACIÓN')
             ->description('COBERTURAS, TARIFAS AGRUPADAS POR EL RANGO DE EDAD')
             ->recordTitleAttribute('individual_quote_id')
             ->columns([
@@ -81,25 +82,51 @@ class DetailsQuoteRelationManager extends RelationManager
                     ->relationship('coverage', 'price')
                     ->attribute('sucursal_id'),
             ])
-            ->filtersTriggerAction(
-                fn(Action $action) => $action
-                    ->button()
-                    ->label('Filtro'),
-            )
             ->headerActions([
                 // CreateAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('quote_multiple')
-                        ->label('Pre-Afiliacion')
+                        ->label('Preparar afiliación')
                         ->color('success')
                         ->icon('heroicon-c-receipt-percent')
                         ->requiresConfirmation()
                         ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records) {
-                            dd($records->toArray());
+                        ->action(function (Collection $records, RelationManager $livewire) {
+                            // dd($records);
+                            try {
+
+                                //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+
+                                session()->get('data_records', []);
+
+                                session()->put('data_records', $records->toArray());
+
+                                $data_records = session()->get('data_records');
+
+                                /**
+                                 * Actualizo el status a APROBADA
+                                 */
+                                $record = $records->first();
+
+                                $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
+                                $individual_quote->status = 'APROBADA';
+                                $individual_quote->save();
+
+                                if ($records->count() == 1) {
+                                    return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => $record->plan_id, 'individual_quote_id' => $livewire->ownerRecord->id]);
+                                }
+
+                                if ($records->count() > 1) {
+                                    return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => null, 'individual_quote_id' => $livewire->ownerRecord->id]);
+                                }
+                            } catch (\Throwable $th) {
+                                dd($th);
+                                // $parte_entera = 0;
+                            }
                         }),
+
                     DeleteBulkAction::make(),
                 ]),
             ]);

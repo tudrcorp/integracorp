@@ -5,107 +5,83 @@ namespace App\Filament\Agents\Resources\CorporateQuoteRequests\Pages;
 use App\Models\User;
 use Filament\Actions\Action;
 use Illuminate\Support\Facades\Auth;
+use App\Models\CorporateQuoteRequest;
+use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use App\Http\Controllers\NotificationController;
 use App\Filament\Agents\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
 
 class CreateCorporateQuoteRequest extends CreateRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'Crear Solicitud de Cotización Corporativa';
-
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        session()->put('details_corporate_quote_requests', $data['details_corporate_quote_requests']);
-        return $data;
-    }
-
-    protected function afterCreate(): void
-    {
-        // dd($this->record);
-        try {
-
-            /**
-             * Recupero la variable de sesion con los detalles de la cotizacion
-             */
-            $details_quote_requests = session()->get('details_corporate_quote_requests');
-
-            $record = $this->getRecord();
-
-            $array_form = $record->toArray();
-
-            $array_details = $details_quote_requests;
-
-            /**
-             * For para realizar el guardado en la tabla de detalle de cotizacion
-             * ----------------------------------------------------------------------------------------------------
-             */
-            for ($i = 0; $i < count($array_details); $i++) {
-                //Guardamos el detalle de la cotizacion en la tabla de detalle de cotizacion como segundo paso
-                if ($array_details[$i]['plan_id'] != null && $array_details[$i]['total_persons'] != null) {
-                    $record->details()->create(
-                        [
-                            'plan_id'       => $array_details[$i]['plan_id'],
-                            'total_persons' => $array_details[$i]['total_persons'],
-                            'status'        => 'PRE-APROBADA',
-                            'created_by'    => Auth::user()->name,
-
-                        ]
-                    );
-                }
-            }
-
-            /**
-             *  Elimino la variable de sesion para evitar sobrecargar
-             * ----------------------------------------------------------------------------------------------------
-             */
-            session()->forget('details_corporate_quote');
-
-
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            $recipient = User::where('is_admin', 1)->get();
-            foreach ($recipient as $user) {
-                $recipient_for_user = User::find($user->id);
-                Notification::make()
-                    ->title('COTIZACION CORPORATIVA CREADA')
-                    ->body('Se ha registrado una nueva cotizacion corporativa de forma exitosa. Codigo: ' . $record->code)
-                    ->icon('heroicon-s-user-group')
-                    ->iconColor('success')
-                    ->success()
-                    ->actions([
-                        Action::make('view')
-                            ->label('Ver detalle de solicitud')
-                            ->button()
-                            ->url(CorporateQuoteRequestResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                    ])
-                    ->sendToDatabase($recipient_for_user);
-            }
-
-            $this->getRecord()->sendNotification($record);
-        } catch (\Throwable $th) {
-            dd($th);
-        }
-    }
+    protected static ?string $title = 'Cotización Corporativa DRESS-TAYLOR';
 
     protected function getFormActions(): array
     {
         return [];
     }
 
-    protected function getActions(): array
+    protected function getRedirectUrl(): string
     {
-        return [
-            Action::make('regresar')
-                ->label('Regresar')
-                ->button()
-                ->icon('heroicon-s-arrow-left')
-                ->color('gray')
-                ->url(CorporateQuoteRequestResource::getUrl('index')),
-        ];
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function afterCreate(): void
+    {
+        try {
+
+            $record = $this->getRecord();
+
+            /**
+             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+             * ----------------------------------------------------------------------------------------------------
+             * $record [Data de la cotizacion guardada en la base de dastos]
+             */
+            $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
+            foreach ($recipient as $user) {
+                $recipient_for_user = User::find($user->id);
+                Notification::make()
+                    ->title('NUEVA SOLICITUD')
+                    ->body('Se ha registrado una nueva solicitud de forma exitosa. Código: ' . $record->code)
+                    ->icon('heroicon-m-tag')
+                    ->iconColor('success')
+                    ->success()
+                    ->actions([
+                        Action::make('view')
+                            ->label('Ver solicitud')
+                            ->button()
+                            ->color('primary')
+                            ->url(CorporateQuoteRequestResource::getUrl('view', ['record' => $record->id], panel: 'admin')),
+                    ])
+                    ->sendToDatabase($recipient_for_user);
+            }
+
+            //Notificacion por whatsapp al telefono de cotizaciones
+            $sendNotificationWp = NotificationController::createdRequestDressTaylor($record->code, Auth::user()->name, $record->observations);
+            
+        } catch (\Throwable $th) {
+            Notification::make()
+                ->title('ERROR')
+                ->body($th->getMessage())
+                ->icon('heroicon-m-tag')
+                ->iconColor('danger')
+                ->danger()
+                ->send();
+        }
+    }
+
+    //getCreatedNotification
+    protected function getCreatedNotification(): Notification
+    {
+        return Notification::make()
+            ->title('NOTIFICACIÓN')
+            ->body('Solicitud de cotización corporativa creada de forma exitosa!.✅')
+            ->icon('entypo-pin')
+            ->iconColor('danger')
+            ->success()
+            ->persistent()
+            ->send();
     }
 }

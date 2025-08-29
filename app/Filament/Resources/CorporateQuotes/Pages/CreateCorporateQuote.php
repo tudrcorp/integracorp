@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\DetailCorporateQuote;
 use Illuminate\Support\Facades\Auth;
 use App\Models\CorporateQuoteRequest;
+use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Resources\CorporateQuotes\CorporateQuoteResource;
@@ -18,56 +19,79 @@ class CreateCorporateQuote extends CreateRecord
 
     protected static ?string $title = 'CREAR';
 
+    // //mutateFormDataBeforeSave()
+    // protected function mutateFormDataBeforeCreate(array $data): array
+    // {
+    //     // dd($data);
+    //     /**
+    //      * Caso Unico
+    //      * La los select de agencia y agente bien vasios
+    //      * ya que el usuario no selecciono ningun agente ni agencia
+    //      * ----------------------------------------------------------------------------------------------------
+    //      */
+    //     if (isset($data['corporate_quote_request_id'])) {
+
+    //         /**Si la cotizacion fue generada por una solicitud */
+    //         $data_agent_or_agency = CorporateQuoteRequest::select('agent_id', 'code_agency', 'owner_code', 'id')
+    //             ->where('id', $data['corporate_quote_request_id'])
+    //             ->first();
+
+    //         $data['owner_code']     = $data_agent_or_agency->owner_code;
+    //         $data['agent_id']       = $data_agent_or_agency->owner_code != null ? $data_agent_or_agency->agent_id : null;
+    //         $data['code_agency']    =  $data_agent_or_agency->code_agency;
+    //     } elseif ($data['code_agency'] == null) {
+    //         $data['owner_code']     = 'TDG-100';
+    //         $data['code_agency']    = 'TDG-100';
+    //         $data['agent_id']       = null;
+    //     } else {
+    //         $data['owner_code']     = $data['code_agency'];
+    //         $data['code_agency']    = $data['code_agency'];
+    //         $data['agent_id']       = $data['agent_id'];
+    //     }
+
+    //     /**
+    //      * Logica para conformar la cotizacion que sera enviada
+    //      * por correo electronico
+    //      * ----------------------------------------------------------------------------------------------------
+    //      */
+    //     if ($data['plan'] == 1) {
+    //         //guardar en la variable de sesion los detalles de la cotizacion
+    //         session()->put('details_corporate_quote', $data['details_corporate_quote_plan_inicial']);
+    //     }
+    //     if ($data['plan'] == 2) {
+    //         //guardar en la variable de sesion los detalles de la cotizacion
+    //         session()->put('details_corporate_quote', $data['details_corporate_quote_plan_ideal']);
+    //     }
+    //     if ($data['plan'] == 3) {
+    //         //guardar en la variable de sesion los detalles de la cotizacion
+    //         session()->put('details_corporate_quote', $data['details_corporate_quote_plan_especial']);
+    //     }
+    //     if ($data['plan'] == 'CM') {
+    //         //guardar en la variable de sesion los detalles de la cotizacion
+    //         session()->put('details_corporate_quote', $data['details_corporate_quote']);
+    //     }
+
+    //     return $data;
+    // }
+
     //mutateFormDataBeforeSave()
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-
-        /**
-         * Caso Unico
-         * La los select de agencia y agente bien vasios
-         * ya que el usuario no selecciono ningun agente ni agencia
-         * ----------------------------------------------------------------------------------------------------
-         */
-        if (isset($data['corporate_quote_request_id'])) {
-
-            /**Si la cotizacion fue generada por una solicitud */
-            $data_agent_or_agency = CorporateQuoteRequest::select('agent_id', 'code_agency', 'owner_code', 'id')
-                ->where('id', $data['corporate_quote_request_id'])
-                ->first();
-
-            $data['owner_code']     = $data_agent_or_agency->owner_code;
-            $data['agent_id']       = $data_agent_or_agency->owner_code != null ? $data_agent_or_agency->agent_id : null;
-            $data['code_agency']    =  $data_agent_or_agency->code_agency;
-        } elseif ($data['code_agency'] == null) {
-            $data['owner_code']     = 'TDG-100';
-            $data['code_agency']    = 'TDG-100';
-            $data['agent_id']       = null;
-        } else {
-            $data['owner_code']     = $data['code_agency'];
-            $data['code_agency']    = $data['code_agency'];
-            $data['agent_id']       = $data['agent_id'];
-        }
-
-        /**
-         * Logica para conformar la cotizacion que sera enviada
-         * por correo electronico
-         * ----------------------------------------------------------------------------------------------------
-         */
         if ($data['plan'] == 1) {
             //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_corporate_quote', $data['details_corporate_quote_plan_inicial']);
+            session()->put('details_quote', $data['details_quote_plan_inicial']);
         }
         if ($data['plan'] == 2) {
             //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_corporate_quote', $data['details_corporate_quote_plan_ideal']);
+            session()->put('details_quote', $data['details_quote_plan_ideal']);
         }
         if ($data['plan'] == 3) {
             //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_corporate_quote', $data['details_corporate_quote_plan_especial']);
+            session()->put('details_quote', $data['details_quote_plan_especial']);
         }
         if ($data['plan'] == 'CM') {
             //guardar en la variable de sesion los detalles de la cotizacion
-            session()->put('details_corporate_quote', $data['details_corporate_quote']);
+            session()->put('details_quote', $data['details_quote']);
         }
 
         return $data;
@@ -75,11 +99,10 @@ class CreateCorporateQuote extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // dd($this->record);
         try {
 
             //recupero la varaiable de sesion con los detalles de la cotizacion
-            $details_quote = session()->get('details_corporate_quote');
+            $details_quote = session()->get('details_quote');
 
             if ($details_quote[0]['plan_id'] == null) {
                 return;
@@ -90,12 +113,20 @@ class CreateCorporateQuote extends CreateRecord
             $array_form = $record->toArray();
 
             $array_details = $details_quote;
+            
+            /**
+             * Ordeno el array de detalles de cotizacion por id de plan de menor a mayor
+             */
+            usort($array_details, function ($a, $b) {
+                return intval($a['plan_id']) <=> intval($b['plan_id']);
+            });
 
             /**
              * For para realizar el guardado en la tabla de detalle de cotizacion
              * ----------------------------------------------------------------------------------------------------
              */
             for ($i = 0; $i < count($array_details); $i++) {
+                // dd($array_details);
                 //Guardamos el detalle de la cotizacion en la tabla de detalle de cotizacion como segundo paso
                 if ($array_details[$i]['age_range_id'] != null && $array_details[$i]['total_persons'] != null) {
                     $plan_ageRange = AgeRange::where('plan_id', $array_details[$i]['plan_id'])
@@ -103,11 +134,11 @@ class CreateCorporateQuote extends CreateRecord
                         ->with('fees')
                         ->get()
                         ->toArray();
+                        // dd($plan_ageRange);
 
                     for ($j = 0; $j < count($plan_ageRange[0]['fees']); $j++) {
 
                         $fee = Fee::where('id', $plan_ageRange[0]['fees'][$j]['id'])->first();
-
                         $detail_individual_quote = new DetailCorporateQuote();
                         $detail_individual_quote->corporate_quote_id   = $array_form['id'];
                         $detail_individual_quote->plan_id               = $array_details[$i]['plan_id'];
@@ -119,7 +150,7 @@ class CreateCorporateQuote extends CreateRecord
                         $detail_individual_quote->subtotal_quarterly    = ($array_details[$i]['total_persons'] * $fee->price) / 4;
                         $detail_individual_quote->subtotal_biannual     = ($array_details[$i]['total_persons'] * $fee->price) / 2;
                         $detail_individual_quote->subtotal_monthly      = ($array_details[$i]['total_persons'] * $fee->price) / 12;
-                        $detail_individual_quote->status                = 'ACTIVA-PENDIENTE';
+                        $detail_individual_quote->status                = 'PRE-APROBADA';
                         $detail_individual_quote->created_by            = Auth::user()->name;
                         $detail_individual_quote->save();
                     }
@@ -127,24 +158,8 @@ class CreateCorporateQuote extends CreateRecord
             }
 
             //elimino la variable de sesion para evitar sobrecargar
-            session()->forget('details_corporate_quote');
+            session()->forget('details_quote');
 
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            // $recipient = User::where('is_admin', 1)->get();
-            // foreach ($recipient as $user) {
-            //     $recipient_for_user = User::find($user->id);
-            //     Notification::make()
-            //         ->title('NUEVA COTIZACION INDIVUDUAL')
-            //         ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
-            //         ->icon('heroicon-m-tag')
-            //         ->iconColor('success')
-            //         ->success()
-            //         ->sendToDatabase($recipient_for_user);
-            // }
 
             /**
              * LOgica para el envio de correo con los detalles de la cotizacion
@@ -176,7 +191,6 @@ class CreateCorporateQuote extends CreateRecord
                     'data' => $detalle
                 ];
 
-
                 $this->getRecord()->sendPropuestaEconomicaPlanInicial($details);
             }
 
@@ -205,7 +219,6 @@ class CreateCorporateQuote extends CreateRecord
                     'data' => $detalle
                 ];
 
-
                 $this->getRecord()->sendPropuestaEconomicaPlanIdeal($details);
             }
 
@@ -233,7 +246,6 @@ class CreateCorporateQuote extends CreateRecord
                     'data' => $detalle
                 ];
 
-
                 $this->getRecord()->sendPropuestaEconomicaPlanEspecial($details);
             }
 
@@ -250,6 +262,7 @@ class CreateCorporateQuote extends CreateRecord
                 $group_details = [];
 
                 for ($i = 0; $i < count($array_details); $i++) {
+
                     if ($details_quote[$i]['plan_id'] == 1) {
                         $detalle_1 = DB::table('detail_corporate_quotes')
                             ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
@@ -318,6 +331,30 @@ class CreateCorporateQuote extends CreateRecord
 
                         array_push($group_details, $details_especial);
                     }
+
+                    if ($details_quote[$i]['plan_id'] != 3 && $details_quote[$i]['plan_id'] != 2 && $details_quote[$i]['plan_id'] != 1) {
+                        $detalle_dt = DB::table('detail_corporate_quotes')
+                            ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                            ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                            ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
+                            ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
+                            ->where('corporate_quote_id', $record->id)
+                            ->where('detail_corporate_quotes.plan_id', $details_quote[$i]['plan_id'])
+                            ->get()
+                            ->toArray();
+
+                        $details_dress_taylor = [
+                            'plan' => 3,
+                            'code' => $record->code,
+                            'name' => $record->full_name,
+                            'email' => $record->email,
+                            'phone' => $record->phone,
+                            'date' => $record->created_at->format('d-m-Y'),
+                            'data' => $detalle_dt
+                        ];
+
+                        array_push($group_details, $details_dress_taylor);
+                    }
                 }
 
                 usort($group_details, function ($a, $b) {
@@ -335,10 +372,45 @@ class CreateCorporateQuote extends CreateRecord
                     if ($group_details[$i]['plan'] == 3) {
                         array_push($collect_final, $group_details[$i]);
                     }
+                    if ($group_details[$i]['plan'] != 3 && $group_details[$i]['plan'] != 2 && $group_details[$i]['plan'] != 1) {
+                        array_push($collect_final, $group_details[$i]);
+                    }
                 }
 
                 $this->getRecord()->sendPropuestaEconomicaMultiple($collect_final);
             }
+
+            /**
+             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+             * ----------------------------------------------------------------------------------------------------
+             * $record [Data de la cotizacion guardada en la base de dastos]
+             */
+            // $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
+            // foreach ($recipient as $user) {
+            //     $recipient_for_user = User::find($user->id);
+            //     Notification::make()
+            //         ->title('NUEVA COTIZACIÓN CORPORATOVA')
+            //         ->body('Se ha registrado una nueva cotización corporativa de forma exitosa. Código: ' . $record->code)
+            //         ->icon('heroicon-m-tag')
+            //         ->iconColor('success')
+            //         ->success()
+            //         ->actions([
+            //             Action::make('view')
+            //                 ->label('Ver Cotización Corporativa')
+            //                 ->button()
+            //                 ->color('primary')
+            //                 ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+            //             Action::make('link')
+            //                 ->label('Link Interactivo')
+            //                 ->button()
+            //                 ->color('success')
+            //                 ->url(route('volt.cor.home', ['quote' => Crypt::encryptString($record->id)]), shouldOpenInNewTab: true),
+            //         ])
+            //         ->sendToDatabase($recipient_for_user);
+            // }
+
+            // //Notificacion por whatsapp al telefono de cotizaciones
+            // $sendNotificationWp = NotificationController::createdCorporateQuote($record->code, Auth::user()->name);
         } catch (\Throwable $th) {
             dd($th);
             Notification::make()
@@ -349,5 +421,18 @@ class CreateCorporateQuote extends CreateRecord
                 ->danger()
                 ->send();
         }
+    }
+
+    //getCreatedNotification
+    protected function getCreatedNotification(): Notification
+    {
+        return Notification::make()
+            ->title('NOTIFICACIÓN')
+            ->body('Cotización Corporativa exitosa.!')
+            ->icon('entypo-pin')
+            ->iconColor('danger')
+            ->success()
+            ->persistent()
+            ->send();
     }
 }

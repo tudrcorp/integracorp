@@ -37,6 +37,12 @@ class BenefitsTable
                     ->color('verde')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('limit.description')
+                    ->label('Definición')
+                    ->badge()
+                    ->color('verde')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('price')
                     ->label('Precio')
                     ->badge()

@@ -116,28 +116,11 @@ class TelemedicineHistoryPatientsTable
                     ->searchable(),
                 TextColumn::make('medications_supplements')
                     ->searchable(),
-                TextColumn::make('observations_ginecologica')
-                    ->searchable(),
-                TextColumn::make('observations_allergies')
-                    ->searchable(),
-                TextColumn::make('observations_medication')
-                    ->searchable(),
-                TextColumn::make('observations_personal')
-                    ->searchable(),
-                TextColumn::make('observations_not_pathological')
-                    ->searchable(),
-                TextColumn::make('observations_pathological')
-                    ->searchable(),
                 TextColumn::make('created_by')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 //

@@ -2,27 +2,33 @@
 
 namespace App\Filament\Master\Resources\CorporateQuotes\RelationManagers;
 
-use App\Filament\Master\Resources\CorporateQuotes\CorporateQuoteResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\RelationManagers\RelationManager;
+use App\Models\Agent;
+use App\Models\Agency;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use Filament\Actions\CreateAction;
 use Illuminate\Support\Collection;
+use App\Models\AffiliationCorporate;
+use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Master\Resources\CorporateQuotes\CorporateQuoteResource;
 
 class DetailCoporateQuotesRelationManager extends RelationManager
 {
     protected static string $relationship = 'detailCoporateQuotes';
 
+    protected static ?string $title = 'CALCULO DE COTIZACIÓN';
+
     public function table(Table $table): Table
     {
         return $table
-            ->heading('DETALLES DE LA COTIZACIÓN')
-            ->description('COBERTURAS, TARIFAS AGRUPADAS POR EL RANGO DE EDAD')
+            ->heading('TABLA DE SELECCIÓN MULTIPLE')
+            ->description('En esta tabla se muestran los planes y coberturas cotizados. Para realizar una pre afiliación multiple debes seleccionar dos o mas planes y por cada plan debe seleccionar solo una cobertura, de lo contrario no se realizara la pre afiliación.')
             ->recordTitleAttribute('individual_quote_id')
             ->columns([
                 TextColumn::make('plan.description')
@@ -68,6 +74,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                             'PRE-APROBADA' => 'verde',
                             'APROBADA' => 'success',
                             'EJECUTADA' => 'azul',
+                            'ACTIVA-PENDIENTE' => 'azul',
                         };
                     })
                     ->sortable(),
@@ -80,35 +87,26 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                     ->multiple()
                     ->preload()
                     ->relationship('plan', 'description')
-                    ->attribute('sucursal_id'),
+                    ->attribute('plan_id'),
                 SelectFilter::make('coverage_id')
                     ->label('Lista de coberturas')
                     ->multiple()
                     ->preload()
                     ->relationship('coverage', 'price')
-                    ->attribute('sucursal_id'),
-            ])
-            ->filtersTriggerAction(
-                fn(Action $action) => $action
-                    ->button()
-                    ->label('Filtro'),
-            )
-            ->headerActions([
-                // CreateAction::make()
+                    ->attribute('coverage_id'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    BulkAction::make('quote_multiple')
-                        ->label('Pre-Afiliacion')
+                    BulkAction::make('pre_affiliation_multiple')
+                        ->label('Preafiliacion Multiple')
+                        ->icon('heroicon-s-check-circle')
                         ->color('success')
-                        ->icon('heroicon-c-receipt-percent')
-                        // ->requiresConfirmation()
+                        ->requiresConfirmation()
                         ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records, RelationManager $livewire) {
-
                             try {
 
-                                // dd($records->count(), $records);
+                                // dd($records, $records->count(), $records->toArray(), $livewire->ownerRecord);
 
                                 //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
 
@@ -116,7 +114,9 @@ class DetailCoporateQuotesRelationManager extends RelationManager
 
                                 session()->put('data_records', $records->toArray());
 
-                                // $data_records = session()->get('data_records');
+                                $data_records = session()->get('data_records');
+
+                                dd($data_records);
 
                                 /**
                                  * Actualizo el status a APROBADA
@@ -138,9 +138,70 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                 dd($th);
                                 // $parte_entera = 0;
                             }
-                        }),
-                    DeleteBulkAction::make(),
+                        })
                 ]),
             ]);
+    }
+
+    public function getOwnerCode()
+    {
+        try {
+
+            /**
+             * Logica para asignar el owner_code
+             * ---------------------------------------------------------------------------------------------------------
+             */
+            $owner      = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
+            $jerarquia  = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
+
+            /**
+             * Cuando el agente pertenece a una AGENCIA GENERAL
+             * -----------------------------------------------------
+             */
+            if ($owner != $jerarquia && $jerarquia != 'TDG-100') {
+                return $jerarquia;
+            }
+
+            /**
+             * Cuando el agente pertenece a una AGENCIA MASTER
+             * -----------------------------------------------------
+             */
+            if ($owner != $jerarquia && $jerarquia == 'TDG-100') {
+                return $owner;
+            }
+        } catch (\Throwable $th) {
+            dd($th);
+            // return null;
+        }
+    }
+
+    public function getCodeAgency()
+    {
+        try {
+
+            return Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
+        } catch (\Throwable $th) {
+            dd($th);
+            // return null;
+        }
+    }
+
+    public function getCode()
+    {
+        try {
+
+            if (AffiliationCorporate::max('id') == null) {
+                $parte_entera = 0;
+            } else {
+                $parte_entera = AffiliationCorporate::max('id');
+            }
+
+            $code = 'TDEC-AFC-000' . $parte_entera + 1;
+
+            return $code;
+        } catch (\Throwable $th) {
+            dd($th);
+            // $parte_entera = 0;
+        }
     }
 }

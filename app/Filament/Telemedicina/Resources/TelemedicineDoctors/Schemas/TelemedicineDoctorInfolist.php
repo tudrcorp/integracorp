@@ -2,9 +2,13 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineDoctors\Schemas;
 
-use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ImageEntry;
 
 class TelemedicineDoctorInfolist
 {
@@ -12,22 +16,49 @@ class TelemedicineDoctorInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('first_name'),
-                TextEntry::make('last_name'),
-                TextEntry::make('nro_identificacion'),
-                TextEntry::make('email')
-                    ->label('Email address'),
-                TextEntry::make('code_cm'),
-                TextEntry::make('code_mpps'),
-                TextEntry::make('phone'),
-                TextEntry::make('specialty'),
-                TextEntry::make('address'),
-                ImageEntry::make('image'),
-                TextEntry::make('signature'),
-                TextEntry::make('created_at')
-                    ->dateTime(),
-                TextEntry::make('updated_at')
-                    ->dateTime(),
+
+                Section::make()
+                    ->description('PERFIL DEL DOCTOR(A)')
+                    ->columnSpanFull()
+                    ->icon(Heroicon::Bars3BottomLeft)
+                    ->schema([
+                        Fieldset::make('INFORMACIÓN PRINCIPAL')
+                            ->schema([
+                                ImageEntry::make('image')
+                                    ->label('Foto de Perfil:')
+                                    ->imageHeight(200)
+                                    ->circular(),
+                                    Fieldset::make()
+                                        ->schema([
+                                            TextEntry::make('full_name')
+                                                ->label('Nombre Completo:'),
+                                            TextEntry::make('nro_identificacion')
+                                                ->label('Número de Identificación:'),
+                                            TextEntry::make('email')
+                                                ->label('Correo Electrónico:'),
+                                            TextEntry::make('phone')
+                                                ->label('Teléfono:'),
+                                        ])->columnSpanFull()->columns(4),
+                                    Fieldset::make()
+                                        ->schema([
+                                            TextEntry::make('specialty')
+                                                ->badge()
+                                                ->color('primary')
+                                                ->label('Especialidad:'),
+                                            TextEntry::make('code_mpps')
+                                                ->badge()
+                                                ->color('primary')
+                                                ->label('Código MPPS:'),
+                                            TextEntry::make('code_cm')
+                                                ->badge()
+                                                ->color('primary')
+                                                ->label('Código CM:'),
+                                            ImageEntry::make('signature')
+                                                ->label('Firma:')
+                                        ])->columnSpanFull()->columns(4),
+                            ])->columnSpanFull()->columns(1),
+                    ])->columnSpanFull(),
+
             ]);
     }
 }

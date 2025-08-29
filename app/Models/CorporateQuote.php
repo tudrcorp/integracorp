@@ -140,7 +140,7 @@ class CorporateQuote extends Model
 
     public function sendPropuestaEconomicaMultiple($collect_final)
     {
-
+        // dd($collect_final);
         try {
 
             /**

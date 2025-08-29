@@ -101,6 +101,9 @@ class AdminPanelProvider extends PanelProvider
                     ->label('TELEMEDICINA')
                     ->icon('healthicons-f-telemedicine'),
                 NavigationGroup::make()
+                    ->label('MARKETING')
+                    ->icon('healthicons-f-telemedicine'),
+                NavigationGroup::make()
                     ->label('CONFIGURACION')
                     ->icon('heroicon-m-cog-8-tooth'),
                 NavigationGroup::make()

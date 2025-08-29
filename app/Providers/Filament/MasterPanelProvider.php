@@ -78,17 +78,23 @@ class MasterPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 NavigationGroup::make()
+                    ->label('INDIVIDUALES')
+                    ->icon('heroicon-s-swatch'),
+                NavigationGroup::make()
+                    ->label('CORPORATIVAS')
+                    ->icon('heroicon-m-hand-raised'),
+                NavigationGroup::make()
                     ->label('AFILIACIONES')
                     ->icon('heroicon-s-user-group'),
                 NavigationGroup::make()
-                    ->label('COTIZACIONES')
-                    ->icon('heroicon-s-swatch'),
+                    ->label('VENTAS')
+                    ->icon('fontisto-wallet'),
                 NavigationGroup::make()
                     ->label('ORGANIZACIÓN')
                     ->icon('heroicon-m-share'),
                 NavigationGroup::make()
-                    ->label('VENTAS')
-                    ->icon('heroicon-s-calculator'),
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-c-arrow-down-tray'),
             ])
             ->breadcrumbs(false)
             ->registerErrorNotification(
@@ -273,6 +279,7 @@ class MasterPanelProvider extends PanelProvider
                 Action::make('send_link_agents')
                     ->label('Link Agentes')
                     ->icon('heroicon-o-user-plus')
+                    ->modal()
                     ->modalHeading('Envio de link para registro externo')
                     ->modalIcon('heroicon-m-link')
                     ->modalWidth(Width::ExtraLarge)

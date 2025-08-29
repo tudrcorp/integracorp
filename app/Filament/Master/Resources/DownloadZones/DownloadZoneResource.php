@@ -21,11 +21,9 @@ class DownloadZoneResource extends Resource
 {
     protected static ?string $model = DownloadZone::class;
 
-    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-c-arrow-down-on-square-stack';
+    protected static ?string $navigationLabel = 'Documentos';
 
-    protected static ?string $navigationLabel = 'Zona de descarga';
-
-    protected static string | UnitEnum | null $navigationGroup = 'ORGANIZACIÓN';
+    protected static string | UnitEnum | null $navigationGroup = 'ZONA DE DESCARGA';
 
     protected static ?int $navigationSort = 5;
 

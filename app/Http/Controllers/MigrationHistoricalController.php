@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
+use Throwable;
 use Carbon\Carbon;
+use App\Models\User;
+use App\Models\Agent;
+use App\Models\Agency;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use Illuminate\Http\Request;
@@ -14,12 +19,22 @@ use Illuminate\Support\Facades\Log;
 use App\Models\AffiliationCorporate;
 use App\Models\DetailCorporateQuote;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use App\Models\DetailIndividualQuote;
+use Illuminate\Support\Facades\Crypt;
 use App\Models\AfilliationCorporatePlan;
 use Filament\Notifications\Notification;
 
 class MigrationHistoricalController extends Controller
 {
+    /**
+     * Migrar la información de la tabla check_affiliation
+     * 
+     * @return void
+     * 
+     * @author TuDr.En Casa
+     * @since 1.0
+     */
     static function migrate_history_affiliations($records)
     {
         try {
@@ -147,6 +162,18 @@ class MigrationHistoricalController extends Controller
         }
     }
 
+    /**
+     * Migracion de afiliaciones corporativas
+     * 
+     * @param [array] $records
+     * @param [array] $data
+     * @return void
+     * @throws \Throwable
+     * 
+     * @author TuDr.En Casa
+     * @version 1.0
+     * 
+     */
     static function migrate_history_affiliations_corporate($records, $data, $poblation)
     {
         try {
@@ -278,6 +305,16 @@ class MigrationHistoricalController extends Controller
         }
     }
 
+    /**
+     * Funcion para generar el codigo de la cotizacion
+     * Individual
+     * 
+     * @return string
+     * 
+     * @author TuDr.En Casa
+     * @version 1.0
+     * 
+     */
     public static function ind_quote_code_generate()
     {
         if (IndividualQuote::max('id') == null) {
@@ -291,6 +328,16 @@ class MigrationHistoricalController extends Controller
         return 'COT-IND-000' . $parte_entera + 1;
     }
 
+    /**
+     * Funcion para generar el codigo de la cotizacion
+     * Corporativa
+     * 
+     * @return string
+     * 
+     * @author TuDr.En Casa
+     * @version 1.0
+     * 
+     */
     public static function cor_quote_code_generate()
     {
         if (CorporateQuote::max('id') == null) {
@@ -304,6 +351,16 @@ class MigrationHistoricalController extends Controller
         return 'COT-COR-000' . $parte_entera + 1;
     }
 
+    /**
+     * Funcion para generar el codigo de la afiliacion
+     * INdividual
+     * 
+     * @return string
+     * 
+     * @author TuDr.En Casa
+     * @version 1.0
+     * 
+     */
     public static function affiliation_individual_code_generate()
     {
         if (Affiliation::max('id') == null) {
@@ -315,6 +372,16 @@ class MigrationHistoricalController extends Controller
         return 'TDEC-IND-000' . $parte_entera + 1;
     }
 
+    /**
+     * Funcion para generar el codigo de la afiliacion
+     * Corporativa
+     * 
+     * @return string
+     * 
+     * @author TuDr.En Casa
+     * @version 1.0
+     * 
+     */
     public static function affiliation_corporate_code_generate()
     {
         if (AffiliationCorporate::max('id') == null) {
@@ -324,5 +391,130 @@ class MigrationHistoricalController extends Controller
         }
 
         return 'TDEC-COR-000' . $parte_entera + 1;
+    }
+
+    /**
+     * Funcion para migrar la informacion de la tabla agencias
+     * 
+     * @return string
+     * 
+     * @author TuDr.En Casa
+     * @version 1.0
+     * 
+     */
+    public static function migrate_agency($records)
+    {
+        try {
+            
+            for ($i = 0; $i < count($records); $i++) {
+
+                // if(isset($records[$i]['email'])) {
+                //     $records[$i]['email'] = strtolower(str_replace(' ', '', $records[$i]['nombre_agencia_agente']) . '@tdec.com');
+                // }
+                
+                $agency = new Agency();
+                $agency->owner_code         = 'TDG-100';
+                $agency->code               = 'TDG-' . $records[$i]['codigo_agente'];
+                $agency->name_corporative   = $records[$i]['nombre_agencia_agente'];
+                $agency->rif                = $records[$i]['nro_identificacion'];
+                $agency->ci_responsable     = $records[$i]['nro_identificacion'];
+                $agency->email              = $records[$i]['email'];
+                $agency->phone              = $records[$i]['telefono'];
+                $agency->status             = 'ACTIVO';
+                $agency->agency_type_id     = $records[$i]['tipo_agente'] == 'AGENCIA MASTER' ? 1 : 3;
+                $agency->commission_tdec    = (float) str_replace('%', '', $records[$i]['tdec']);
+                $agency->commission_tdev    = (float) str_replace('%', '', $records[$i]['tdev']);
+                $agency->save();
+ 
+                //creamos el usuario de la agencia
+                $user = new User();
+                $user->name                 = $agency->name_corporative;
+                $user->email                = $agency->email;
+                $user->password             = Hash::make('12345678');
+                $user->is_agency            = true;
+                $user->code_agency          = $agency->code;
+                $user->agency_type          = $records[$i]['tipo_agente'] == 'AGENCIA MASTER' ? 'MASTER' : 'GENERAL';
+                $user->link_agency          = $agency->agency_type_id == 1 ? config('parameters.INTEGRACORP_URL') . '/m/o/c/' . Crypt::encryptString($agency->code) : config('parameters.INTEGRACORP_URL') . '/agent/c/' . Crypt::encryptString($agency->code);
+                $user->save();
+
+                //Actualizo el estatus de migracion a la agencia o del agentes
+                $records[$i]['status_migration'] = 'MIGRADO';
+                $records[$i]->save();
+                
+            }
+
+            Notification::make()
+                ->title('Agencias migradas')
+                ->success()
+                ->send();
+                
+        } catch (\Throwable $th) {
+            Log::error($th);
+            Notification::make()
+                ->title('Error al migrar')
+                ->body($th->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    /**
+     * Funcion para migrar la informacion de la tabla agente
+     * 
+     * @return string
+     * 
+     * @author TuDr.En Casa
+     * @version 1.0
+     * 
+     */
+    public static function migrate_agent($records, $agency_id)
+    {
+        try {
+
+            for ($i = 0; $i < count($records); $i++) {
+
+                $owner = Agency::where('id', $agency_id)->first();
+
+                // if (isset($records[$i]['email'])) {
+                //     $records[$i]['email'] = strtolower(str_replace(' ', '', $records[$i]['nombre_agencia_agente']) . '@tdec.com');
+                // }
+
+                $agent = new Agent();
+                $agent->owner_code            = $owner->code;
+                $agent->name                  = $records[$i]['nombre_agencia_agente'];
+                $agent->ci                    = $records[$i]['nro_identificacion'];
+                $agent->email                 = $records[$i]['email'];
+                $agent->phone                 = $records[$i]['telefono'];
+                $agent->status                = 'ACTIVO';
+                $agent->agent_type_id         = 2;
+                $agent->commission_tdec       = (float) str_replace('%', '', $records[$i]['tdec']);
+                $agent->commission_tdev       = (float) str_replace('%', '', $records[$i]['tdev']);
+                $agent->save();
+
+                //creamos el usuario de la agencia
+                $user = new User();
+                $user->code_agency    = $owner->code;
+                $user->name           = $agent->name;
+                $user->email          = $agent->email;
+                $user->password       = Hash::make('12345678');
+                $user->is_agent       = true;
+                $user->agent_id       = $agent->id;
+                $user->code_agent     = 'AGT-000'.$agent->id;
+                $user->link_agent     = config('parameters.INTEGRACORP_URL') . '/agent/c/' . Crypt::encryptString($agent->id);
+                $user->save();
+
+                //Actualizo el estatus de migracion a la agencia o del agentes
+                $records[$i]['status_migration'] = 'MIGRADO';
+                $records[$i]->save();
+            }
+                
+        } catch (\Throwable $th) {
+            Log::error($th);
+            Notification::make()
+                ->title('Error al migrar')
+                ->body($th->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 }

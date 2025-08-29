@@ -2,30 +2,33 @@
 
 namespace App\Filament\Master\Resources\Affiliations;
 
-use App\Filament\Master\Resources\Affiliations\Pages\CreateAffiliation;
-use App\Filament\Master\Resources\Affiliations\Pages\EditAffiliation;
-use App\Filament\Master\Resources\Affiliations\Pages\ListAffiliations;
-use App\Filament\Master\Resources\Affiliations\Pages\ViewAffiliation;
-use App\Filament\Master\Resources\Affiliations\Schemas\AffiliationForm;
-use App\Filament\Master\Resources\Affiliations\Schemas\AffiliationInfolist;
-use App\Filament\Master\Resources\Affiliations\Tables\AffiliationsTable;
-use App\Models\Affiliation;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use Filament\Tables\Table;
+use App\Models\Affiliation;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Master\Resources\Affiliations\Pages\EditAffiliation;
+use App\Filament\Master\Resources\Affiliations\Pages\ViewAffiliation;
+use App\Filament\Master\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Master\Resources\Affiliations\Pages\CreateAffiliation;
+use App\Filament\Master\Resources\Affiliations\Schemas\AffiliationForm;
+use App\Filament\Master\Resources\Affiliations\Tables\AffiliationsTable;
+use App\Filament\Master\Resources\Affiliations\Schemas\AffiliationInfolist;
+use App\Filament\Master\Resources\Affiliations\RelationManagers\DocumentsRelationManager;
+use App\Filament\Master\Resources\Affiliations\RelationManagers\AffiliatesRelationManager;
+use App\Filament\Master\Resources\Affiliations\RelationManagers\PaidMembershipsRelationManager;
 
 class AffiliationResource extends Resource
 {
     protected static ?string $model = Affiliation::class;
 
-    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user';
+    protected static ?string $navigationLabel = 'Consultar Afiliaciones';
 
-    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+    protected static string | UnitEnum | null $navigationGroup = 'INDIVIDUALES';
 
-    protected static ?string $navigationLabel = 'Individuales';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {
@@ -45,7 +48,9 @@ class AffiliationResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            AffiliatesRelationManager::class,
+            DocumentsRelationManager::class,
+            PaidMembershipsRelationManager::class
         ];
     }
 

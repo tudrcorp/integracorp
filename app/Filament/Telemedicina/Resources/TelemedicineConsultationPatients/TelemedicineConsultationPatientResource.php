@@ -2,19 +2,21 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients;
 
-use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\CreateTelemedicineConsultationPatient;
-use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\EditTelemedicineConsultationPatient;
-use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\ListTelemedicineConsultationPatients;
-use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\ViewTelemedicineConsultationPatient;
-use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientForm;
-use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientInfolist;
-use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Tables\TelemedicineConsultationPatientsTable;
-use App\Models\TelemedicineConsultationPatient;
 use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Models\TelemedicineConsultationPatient;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\EditTelemedicineConsultationPatient;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\ViewTelemedicineConsultationPatient;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\ListTelemedicineConsultationPatients;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages\CreateTelemedicineConsultationPatient;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientForm;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Tables\TelemedicineConsultationPatientsTable;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientInfolist;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicineFollowUpsRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientMedicationsRelationManager;
 
 class TelemedicineConsultationPatientResource extends Resource
 {
@@ -22,7 +24,9 @@ class TelemedicineConsultationPatientResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-call-centre';
 
-    protected static ?string $navigationLabel = 'Consultas';
+    protected static ?string $pluralLabel = 'Gestión de Servicio';
+
+    protected static ?int $navigationSort = 4;
 
     public static function form(Schema $schema): Schema
     {
@@ -42,7 +46,8 @@ class TelemedicineConsultationPatientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            TelemedicinePatientMedicationsRelationManager::class,
+            TelemedicineFollowUpsRelationManager::class
         ];
     }
 

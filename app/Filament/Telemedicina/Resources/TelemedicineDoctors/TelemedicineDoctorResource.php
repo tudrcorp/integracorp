@@ -22,9 +22,9 @@ class TelemedicineDoctorResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-doctor-male';
 
-    protected static ?string $recordTitleAttribute = 'Doctor';
-
     protected static ?string $navigationLabel = 'Mi Perfil';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

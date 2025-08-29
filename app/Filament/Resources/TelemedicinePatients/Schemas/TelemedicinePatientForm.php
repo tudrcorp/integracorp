@@ -33,7 +33,7 @@ class TelemedicinePatientForm
                         ->schema([
                             Section::make()
                                 ->schema([
-                                    Grid::make(4)
+                                    Grid::make(5)
                                         ->schema([
                                             TextInput::make('code')
                                                 ->label('Nro. de Paciente')
@@ -59,7 +59,7 @@ class TelemedicinePatientForm
                                         ->prefixIcon('heroicon-m-identification')
                                         ->helperText('Requerido si el paciente es mayor de 18 años')
                                         ->mask('999999999'),
-                                    DatePicker::make('date_birth')
+                                    DatePicker::make('birth_date')
                                         ->label('Fecha de Nacimiento')
                                         ->prefixIcon('heroicon-m-calendar-days')
                                         ->displayFormat('d/m/Y')
@@ -254,7 +254,7 @@ class TelemedicinePatientForm
                                         ])
                                         ->preload(),
                                     Hidden::make('created_by')->default(Auth::user()->id),
-                                ])->columns(3),
+                                ])->columns(5),
                         ]),
                     Step::make('Representante o Contacto')
                         ->hiddenOn('edit')
@@ -287,8 +287,6 @@ class TelemedicinePatientForm
                                             'TUTOR LEGAL' => 'TUTOR LEGAL',
                                             'MADRE'       => 'MADRE',
                                             'PADRE'       => 'PADRE',
-                                            'ABUELO'      => 'ABUELO',
-                                            'ABUELA'      => 'ABUELA',
                                             'OTRO'        => 'OTRO',
                                         ])
                                         ->required()

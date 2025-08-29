@@ -8,6 +8,7 @@ use App\Models\Option;
 use Livewire\Component;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
+use Sabberworm\CSS\Settings;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\Radio;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\TextInput;
 use Filament\Navigation\NavigationGroup;
 use Filament\Notifications\Notification;
 use Filament\Widgets\FilamentInfoWidget;
@@ -46,6 +48,7 @@ class AgentsPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
+            ->sidebarCollapsibleOnDesktop()
             ->topNavigation(function () {
                 return Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu;
             })
@@ -111,44 +114,11 @@ class AgentsPanelProvider extends PanelProvider
                 'profile' => fn(Action $action) => $action->label('Perfil del Agente')
                     ->icon('heroicon-s-user-circle')
                     ->color('primary')
-                    ->url(AgentResource::getUrl('edit', ['record' => Auth::user()->agent_id], panel: 'agents')),
+                    ->url(function (Component $livewire) {
+                        return AgentResource::getUrl('edit', ['record' => Auth::user()->agent_id], panel: 'agents');
+                    })
                 // // ...
-                Action::make('send_message')
-                    ->label('Enviar Notificación')
-                    ->icon('heroicon-s-bell'),
                 // // ...
-                Action::make('options')
-                    ->label('Preferencias')
-                    ->icon('heroicon-s-cog')
-                    ->modalHeading('Preferencias')
-                    ->modalIcon('heroicon-s-cog')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->form([
-                        Fieldset::make('Ubicación de Menu')
-                            ->schema([
-                                Toggle::make('value')
-                                    ->label('Posicion de Menu? Top(Default)')
-                                    ->helperText('Al desactivar la opción del menu se posicionara en la parte izquierda de la pantalla.')
-                                    ->inline()
-                                    ->onIcon('heroicon-m-arrow-small-up')
-                                    ->offIcon('heroicon-m-arrow-small-left')
-                                    ->onColor('success')
-                                    ->offColor('danger')
-                                    ->default(fn () => Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu == true ? true : false),
-                                
-                            ])->columns(1),
-                    ])
-                    ->action(function (array $data, Component $livewire) {
-                        
-                        $user = Agent::where('id', Auth::user()->agent_id)->first();
-                        
-                        if(isset($user)) {
-                            $user->conf_position_menu = $data['value'];
-                            $user->save();
-
-                            return redirect('/agents');
-                        }
-                    }),
             ])
             ->breadcrumbs(false)
             // ->sidebarCollapsibleOnDesktop()

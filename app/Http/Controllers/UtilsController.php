@@ -866,20 +866,27 @@ class UtilsController extends Controller
         $objeto   = $data['objeto'];
         $mensaje  = $data['message'];
         $fecha    = $data['created_at'];
+        $icon = $data['icon'];
+
+        if($icon == 'success') {
+            $icon = '✅';
+        }
+
+        if ($icon == 'error') {
+            $icon = '❌';
+        }
         
         try {
 
             $body = <<<HTML
 
-            ERROR!👋
+            NOTIFICACION!{$icon}
 
             *Accion*: {$accion}
-            
             *Objeto*: {$objeto}
+            *Fecha*: {$fecha}
             
             *Mensaje*: {$mensaje}
-            
-            *Fecha*: {$fecha}
  
             HTML;
 
@@ -931,10 +938,69 @@ class UtilsController extends Controller
         return IndividualQuote::where('id', $id)->first()->full_name;
     }
 
+    /**
+     * Obtiene el cliente
+     * Para la cotizacion CORPORATIVA interactiva    
+     * 
+     * @author TuDrEnCasa
+     * @version 1.0
+     * 
+     * @return void
+     */
     public static function getClientCor($id): string
     {
         $id = Crypt::decryptString($id);
         return CorporateQuote::where('id', $id)->first()->full_name;
+    }
+
+    public static function converterPhone($phone)
+    {
+        // Eliminar todo lo que no sea número
+        $cleanNumber = preg_replace('/\D/', '', $phone);
+
+        // Verificar que comience con 04 (ej. 0412)
+        if (str_starts_with($cleanNumber, '04')) {
+            return '+58' . substr($cleanNumber, 1); // Cambia 0412... → +58412...
+        }
+
+        // Si ya tiene 11 dígitos y empieza con 4, asumimos que es 412...
+        if (str_starts_with($cleanNumber, '4') && strlen($cleanNumber) == 11) {
+            return '+58' . $cleanNumber;
+        }
+
+        // Si ya tiene formato +58
+        if (str_starts_with($cleanNumber, '584') && strlen($cleanNumber) == 12) {
+            return '+' . $cleanNumber;
+        }
+
+        // Por defecto, intenta arreglarlo
+        return '+58' . ltrim($cleanNumber, '0');
+    }
+
+    public static function normalizeVenezuelanPhone($phone): ?string
+    {
+        // Si está vacío o no es un string, devolvemos null
+        if (empty($phone) || !is_string($phone)) {
+            return null;
+        }
+
+        // Eliminar todos los caracteres no numéricos
+        $clean = preg_replace('/\D/', '', $phone);
+
+        // Quitar ceros iniciales si el número es muy largo
+        $clean = ltrim($clean, '0');
+
+        // Validar que empiece por un código de área válido de Venezuela
+        // Áreas comunes: 412, 414, 416, 424, 426
+        if (!preg_match('/^(412|414|416|424|426)(\d{7})$/', $clean, $matches)) {
+            return null; // No es un número venezolano válido
+        }
+
+        $areaCode = $matches[1];
+        $number = $matches[2];
+
+        // Formato E.164: +58 + código de área (sin cero) + número
+        return '+58' . $areaCode . $number;
     }
 
       

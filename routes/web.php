@@ -1,6 +1,7 @@
 <?php
 
 use Carbon\Carbon;
+use App\Models\Guest;
 use App\Models\Benefit;
 use Livewire\Volt\Volt;
 use App\Models\AgentDocument;
@@ -163,3 +164,69 @@ Route::get('/flux/{name}', function ($name) {
         'name' => $name
     ]);
 })->name('flux');
+
+Route::get('/notify', function () {
+
+    $array = Guest::all()->toArray();
+
+
+    for ($i = 0; $i < count($array); $i++) {
+
+        $body = <<<HTML
+
+            Hola!👋
+
+            Apreciado/a: *{$array[0]['firstName']} {$array[0]['lastName']}*
+
+            Usted ha sido seleccionado para esta misión con Tu Dr. Group.
+            Donde la innovación será parte de nuestras lineas de negocios de salud y viajes.
+
+            ¿ACEPTAS LA MISIÓN?🕵🏼 Ingresa nuestro sitio web https://tudrgroup.com
+            Y llena el formulario
+
+            Más información sobre este encuentro aquí 👇🏼
+            https://wa.me/+584142510805
+ 
+            HTML;
+
+        $params = array(
+            'token' => 'yuvh9eq5kn8bt666',
+            'to' => $array[0]['phone'],
+            'video' => 'https://tudrgroup.com/images/videoEvento1.mp4',
+            'caption' => $body
+        );
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => http_build_query($params),
+            CURLOPT_HTTPHEADER => array(
+                "content-type: application/x-www-form-urlencoded"
+            ),
+        ));
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+
+        Log::info($response);
+        Log::error($err);
+        
+    }
+
+    curl_close($curl);
+
+    dd($response);
+    
+});
+
+Route::get('/notification', function () {
+
+    NotificationController::noti();
+});

@@ -19,36 +19,37 @@ class TelemedicineDoctorsTable
         return $table
             ->query(TelemedicineDoctor::query()->where('id', Auth::user()->doctor_id))
             ->columns([
-                TextColumn::make('first_name')
-                    ->searchable(),
-                TextColumn::make('last_name')
-                    ->searchable(),
-                TextColumn::make('nro_identificacion')
+                ImageColumn::make('image')
+                    ->label('Foto de Perfil')
+                    ->circular()
+                    ->imageHeight(70),
+                TextColumn::make('full_name')
+                    ->label('Nomnbre Completo')
+                    ->description(fn ($record): string => 'V-' . $record->nro_identificacion)
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
-                    ->searchable(),
-                TextColumn::make('code_cm')
+                    ->label('Correo Electrónico')
+                    ->description(fn ($record): string => $record->phone)
                     ->searchable(),
                 TextColumn::make('code_mpps')
+                    ->label('Códigos')
+                    ->prefix('MPPS: ')
+                    ->description(fn ($record): string => 'CM: '.$record->code_cm)
                     ->searchable(),
-                TextColumn::make('phone')
-                    ->searchable(),
+                
                 TextColumn::make('specialty')
+                    ->label('Especialidad')
                     ->searchable(),
-                TextColumn::make('address')
-                    ->searchable(),
-                ImageColumn::make('image'),
-                TextColumn::make('signature')
+
+                ImageColumn::make('signature')
+                    ->alignCenter()
+                    ->label('Firma Digital')
+                    ->imageHeight(100)
                     ->searchable(),
                 TextColumn::make('created_at')
+                    ->label('Fecha de Registro')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 //

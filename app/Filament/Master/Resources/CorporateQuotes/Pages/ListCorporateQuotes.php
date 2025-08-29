@@ -15,7 +15,9 @@ class ListCorporateQuotes extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            // CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear cotización corporativa')
+                ->icon('heroicon-s-plus')
         ];
     }
 }

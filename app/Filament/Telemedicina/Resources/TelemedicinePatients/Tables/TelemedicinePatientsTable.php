@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
@@ -32,36 +33,75 @@ class TelemedicinePatientsTable
                 )
             ->columns([
                 TextColumn::make('full_name')
+                    ->label('Paciente')
                     ->searchable(),
                 TextColumn::make('nro_identificacion')
+                    ->label('Número de Identificación')
+                    ->badge()
+                    ->color('success')
                     ->searchable(),
-                TextColumn::make('date_birth')
+                TextColumn::make('birth_date')
+                    ->label('Fecha de Nacimiento')
                     ->searchable(),
                 TextColumn::make('sex')
+                    ->label('Sexo')
                     ->searchable(),
                 TextColumn::make('phone')
+                    ->label('Número de Teléfono')
+                    ->badge()
+                    ->color('success')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
+                    ->label('Correo Electrónico')
                     ->searchable(),
-                TextColumn::make('address')
-                    ->searchable(),
-                TextColumn::make('city_id')
-                    ->searchable(),
-                TextColumn::make('country_id')
-                    ->searchable(),
-                TextColumn::make('region')
-                    ->searchable(),
-                TextColumn::make('state_id')
-                    ->searchable(),
+                ColumnGroup::make('Domicilio y Ubicación')->columns([
+                    TextColumn::make('address')
+                        ->label('Dirección')
+                        ->searchable(),
+                    TextColumn::make('country.name')
+                        ->label('País')
+                        ->searchable(),
+                    TextColumn::make('city.definition')
+                        ->label('Ciudad')
+                        ->searchable(),
+                    TextColumn::make('region')
+                        ->label('Región')
+                        ->searchable(),
+                    TextColumn::make('state.definition')
+                        ->label('Estado'),
+
+                ]),
+                ColumnGroup::make('Informacion de la Afiliación')->columns([
+                    TextColumn::make('plan.description')
+                        ->label('Plan')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('coverage.price')
+                        ->label('Cobertura')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('code_affiliation')
+                        ->label('Codigo')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('type_affiliation')
+                        ->label('Tipo')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('status_affiliation')
+                        ->label('Estatus')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                ]),
                 TextColumn::make('created_at')
+                    ->label('Creado')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 Filter::make('created_at')

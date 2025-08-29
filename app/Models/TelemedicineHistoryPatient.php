@@ -12,7 +12,6 @@ class TelemedicineHistoryPatient extends Model
             'telemedicine_doctor_id',
             'telemedicine_patient_id',
             'code',
-            'code_patient',
             'history_date',
             'weight',
             'height',

@@ -74,7 +74,7 @@ class AffiliatesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        ->heading('CARGA FAMILIAR')
+            ->heading('CARGA FAMILIAR')
             ->description('Lista de familiares afiliados')
             ->recordTitleAttribute('affiliation_id')
             ->columns([

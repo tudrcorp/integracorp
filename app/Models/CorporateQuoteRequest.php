@@ -15,22 +15,19 @@ class CorporateQuoteRequest extends Model
 
      protected $fillable = [
         'code',
-        'code_agent',
         'owner_code',
+        'code_agency',
         'agent_id',
-        'agency_id',
         'full_name',
         'rif',
         'email',
         'phone',
         'state_id',
         'region',
-        'code_agency',
         'status',
         'created_by',
-        'document',
         'observations',
-        'assignment_status'
+        'poblation'
      ];
 
     public function details()

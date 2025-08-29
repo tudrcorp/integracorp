@@ -7,7 +7,9 @@ use Filament\Actions\Action;
 use Filament\Support\Enums\Width;
 use App\Models\AffiliateCorporate;
 use Filament\Actions\CreateAction;
+use App\Models\TelemedicinePatient;
 use Filament\Forms\Components\Radio;
+use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Textarea;
@@ -53,7 +55,7 @@ class ListTelemedicinePatients extends ListRecords
                             ->schema([
                                 Select::make('affiliate_id')
                                     ->label('Lista de Afiliados Individuales')
-                                    ->options(Affiliate::all()->pluck('full_name', 'id'))
+                                    ->options(Affiliate::all()->where('status', 'ACTIVO')->pluck('full_name', 'id'))
                                     ->searchable()
                                     ->getSearchResultsUsing(fn(string $search): array => Affiliate::query()
                                         ->where('full_name', 'like', "%{$search}%")
@@ -62,19 +64,18 @@ class ListTelemedicinePatients extends ListRecords
                                         ->pluck('full_name', 'id')
                                         ->all()
                                     )
-                                ->native(false)
+                                    ->native(false)
                                     ->live()
                                     ->hidden(fn(Get $get) => $get('type_affiliate') == 'cor' || $get('type_affiliate') == null),
                                 Select::make('affiliate_corporate_id')
                                     ->label('Lista de Afiliados Corporativos')
-                                    ->options(AffiliateCorporate::all()->pluck('first_name', 'id'))
+                                    ->options(AffiliateCorporate::all()->where('status', 'ACTIVO')->pluck('first_name', 'id'))
                                     ->searchable()
                                     ->getSearchResultsUsing(
                                         fn(string $search): array => AffiliateCorporate::query()
                                             ->where('first_name', 'like', "%{$search}%")
                                             ->orwhere('last_name', 'like', "%{$search}%")
                                             ->orwhere('nro_identificacion', 'like', "%{$search}%")
-                                            ->limit(50)
                                             ->pluck('first_name', 'id')
                                             ->all()
                                     )
@@ -89,17 +90,73 @@ class ListTelemedicinePatients extends ListRecords
                     
                     if($data['type_affiliate'] == 'inv') {
                         $affiliation = Affiliate::where('id', $data['affiliate_id'])->with('affiliation')->get()->toArray();
+                        // dd($affiliation, $affiliation[0]['affiliation']['plan_id']);
+                        //Creamos el registro en la tabla de pacientes
+                        $patient = TelemedicinePatient::create([
+                            
+                            //Informacion de la Afiliacion
+                            'plan_id'                   => $affiliation[0]['affiliation']['plan_id'],
+                            'coverage_id'               => $affiliation[0]['affiliation']['coverage_id'],
+                            'afilliation_id'            => $affiliation[0]['affiliation']['id'],
+                            'code_affiliation'          => $affiliation[0]['affiliation']['code'],
+                            'status_affiliation'        => 'ACTIVO',
+                            'type_affiliation'          => 'INDIVIDUAL',
+                            
+                            //Informacion del Afiliado -> Paciente
+                            'full_name'                 => $affiliation[0]['full_name'],
+                            'nro_identificacion'        => $affiliation[0]['nro_identificacion'],
+                            'birth_date'                => $affiliation[0]['birth_date'],
+                            'sex'                       => $affiliation[0]['sex'],
+                            'age'                       => $affiliation[0]['age'],
+                            'phone'                     => $affiliation[0]['phone'],
+                            'address'                   => $affiliation[0]['address'],
+                            'city_id'                   => $affiliation[0]['city_id'],
+                            'country_id'                => $affiliation[0]['country_id'],
+                            'region'                    => $affiliation[0]['region'],
+                            'state_id'                  => $affiliation[0]['state_id'],
+                            
+                            //Informacion del titular
+                            'email'                     => $affiliation[0]['affiliation']['email_ti'],
+                            'phone_contact'             => $affiliation[0]['affiliation']['email_ti'],
+                            'email_contact'             => $affiliation[0]['affiliation']['phone_ti'],
+                            'created_by'                => Auth::user()->name
+                        ]);
                         
-                        //Amaceno la informacion en una variable de sesion
-                        session()->put('affiliate_to_patient', $affiliation);
-                        
-                        dd(session()->get('affiliate_to_patient'));
                         
                     }
                     
                     if ($data['type_affiliate'] == 'cor') {
-                        $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->first();
-                        dd($affiliation);
+                        $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->get()->toArray();
+                        // dd($affiliation);
+                            $patient = TelemedicinePatient::create([
+
+                                //Informacion de la Afiliacion
+                                'plan_id'                   => $affiliation[0]['plan_id'],
+                                'coverage_id'               => $affiliation[0]['coverage_id'],
+                                'afilliation_corporate_id'  => $affiliation[0]['affiliation_corporate']['id'],
+                                'code_affiliation'          => $affiliation[0]['affiliation_corporate']['code'],
+                                'status_affiliation'        => 'ACTIVO',
+                                'type_affiliation'          => 'CORPORATIVO',
+
+                                //Informacion del Afiliado -> Paciente
+                                'full_name'                 => $affiliation[0]['first_name'],
+                                'nro_identificacion'        => $affiliation[0]['nro_identificacion'],
+                                'birth_date'                => $affiliation[0]['birth_date'],
+                                'sex'                       => $affiliation[0]['sex'],
+                                'age'                       => $affiliation[0]['age'],
+                                'phone'                     => $affiliation[0]['phone'],
+                                'address'                   => $affiliation[0]['address'],
+                                'city_id'                   => $affiliation[0]['affiliation_corporate']['city_id'],
+                                'country_id'                => $affiliation[0]['affiliation_corporate']['country_id'],
+                                'region'                    => $affiliation[0]['affiliation_corporate']['region_id'],
+                                'state_id'                  => $affiliation[0]['affiliation_corporate']['state_id'],
+
+                                //Informacion del titular
+                                'email'                     => $affiliation[0]['email'],
+                                'phone_contact'             => $affiliation[0]['affiliation_corporate']['phone'],
+                                'email_contact'             => $affiliation[0]['affiliation_corporate']['email'],
+                                'created_by'                => Auth::user()->name
+                            ]);
                         
                     }
                     // $this->redirect(route('filament.admin.resources.telemedicine-patients.create', [

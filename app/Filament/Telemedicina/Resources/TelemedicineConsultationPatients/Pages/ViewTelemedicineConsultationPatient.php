@@ -10,6 +10,8 @@ class ViewTelemedicineConsultationPatient extends ViewRecord
 {
     protected static string $resource = TelemedicineConsultationPatientResource::class;
 
+    protected static ?string $title = 'Detalle de Gestión';
+
     protected function getHeaderActions(): array
     {
         return [

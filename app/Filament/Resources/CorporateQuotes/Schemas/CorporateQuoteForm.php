@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\CorporateQuotes\Schemas;
 
-use App\Models\Log;
 use App\Models\Plan;
 use App\Models\Agent;
 use App\Models\State;
@@ -12,6 +11,7 @@ use App\Models\AgeRange;
 use Filament\Schemas\Schema;
 use App\Models\CorporateQuote;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Radio;
 use Illuminate\Support\Facades\Auth;
 use App\Models\CorporateQuoteRequest;
@@ -33,151 +33,152 @@ use Filament\Forms\Components\Repeater\TableColumn;
 
 class CorporateQuoteForm
 {
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
-        ->components([
-            Wizard::make([
-                Step::make('SOLICITANTE')
-                    ->schema([
-                        Section::make('data_client')
-                            ->heading('¡Bienvenido/a de nuevo! 👋 ')
-                            ->description('Estás a punto de comenzar a crear una nueva cotización, por favor ingresa la información del cliente para personalizarla. ¡Puede ver el avance del proceso en la barra de estatus!')
-                            ->schema([
-                                Grid::make(4)
-                                    ->schema([
-                                        Radio::make('type')
-                                            ->label('Seleccione el tipo de cotización')
-                                            ->live()
-                                            ->inline()
-                                            ->options([
-                                                'BASICO' => 'BÁSICO',
-                                                'DRESS-TAILOR' => 'DRESS-TAILOR',
-                                            ])
-                                            ->required()
-                                            ->default('BASICO')
-                                    
-                                ])->columnSpanFull(),
-                                Grid::make(4)
-                                    ->schema([
-                                        TextInput::make('code')
-                                            ->label('Nro. de cotización')
-                                            ->prefixIcon('heroicon-m-clipboard-document-check')
-                                            ->default(function () {
-                                                if (CorporateQuote::max('id') == null) {
-                                                    $parte_entera = 0;
-                                                } else {
-                                                    $parte_entera = CorporateQuote::max('id');
-                                                }
-                                                return 'COT-CORP-000' . $parte_entera + 1;
-                                            })
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->maxLength(255),
+            ->components([
+                Wizard::make([
+                    Step::make('SOLICITANTE')
+                        ->schema([
+                            Section::make('data_client')
+                                ->heading('¡Bienvenido/a de nuevo! 👋 ')
+                                ->description('Estás a punto de comenzar a crear una nueva cotización, por favor ingresa la información del cliente para personalizarla. ¡Puede ver el avance del proceso en la barra de estatus!')
+                                ->schema([
+                                    Grid::make(4)
+                                        ->schema([
+                                            Radio::make('type')
+                                                ->label('Seleccione el tipo de cotización')
+                                                ->live()
+                                                ->inline()
+                                                ->options([
+                                                    'BASICO' => 'BASICO',
+                                                    'DRESS-TAYLOR' => 'DRESS-TAYLOR',
+                                                ])
+                                                ->required()
+                                                ->default(function () {
+                                                    if(request('record') != null){
+                                                        return 'DRESS-TAYLOR';
+                                                    }
+                                                    return 'BASICO';
+                                                })
 
-                                    ])->columnSpanFull(),
-                                Grid::make(4)
-                                    ->schema([
-                                        TextInput::make('full_name')
-                                            ->label('Nombre de la Empresa')
-                                            ->prefixIcon('heroicon-m-user')
-                                            ->required()
-                                            ->validationMessages([
-                                                'required' => 'Campo requerido',
-                                            ])
-                                            ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
-                                                $set('full_name', strtoupper($state));
-                                            })
-                                            ->live(onBlur: true),
+                                        ])->columnSpanFull(),
+                                    Grid::make(4)
+                                        ->schema([
+                                            TextInput::make('code')
+                                                ->label('Nro. de cotización')
+                                                ->prefixIcon('heroicon-m-clipboard-document-check')
+                                                ->default(function () {
+                                                    if (CorporateQuote::max('id') == null) {
+                                                        $parte_entera = 0;
+                                                    } else {
+                                                        $parte_entera = CorporateQuote::max('id');
+                                                    }
+                                                    return 'COT-CORP-000' . $parte_entera + 1;
+                                                })
+                                                ->disabled()
+                                                ->dehydrated()
+                                                ->maxLength(255),
+                                        ])->columnSpanFull(),
+                                    Grid::make(4)
+                                        ->schema([
+                                            TextInput::make('full_name')
+                                                ->label('Nombre de la Empresa')
+                                                ->prefixIcon('heroicon-m-user')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required' => 'Campo requerido',
+                                                ])
+                                                ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
+                                                    $set('full_name', strtoupper($state));
+                                                })
+                                                ->live(onBlur: true)
+                                                ->default(function () {
+                                                    if (request('record') != null) {
+                                                        return CorporateQuoteRequest::find(request('record'))->full_name;
+                                                    }
+                                                    return '';
+                                                }),
 
-                                        Select::make('country_code')
-                                            ->label('Código de país')
-                                            ->options(UtilsController::getCountries())
-                                            ->searchable()
-                                            ->default('+58')
-                                            ->live(onBlur: true)
-                                            ->validationMessages([
-                                                'required'  => 'Campo Requerido',
-                                            ])
-                                            ->hiddenOn('edit'),
-                                        TextInput::make('phone')
-                                            ->prefixIcon('heroicon-s-phone')
-                                            ->tel()
-                                            ->label('Número de teléfono')
-                                            ->validationMessages([
-                                                'required'  => 'Campo Requerido',
-                                            ])
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                $countryCode = $get('country_code');
-                                                if ($countryCode) {
-                                                    $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
-                                                }
-                                            }),
-                                        TextInput::make('email')
-                                            ->label('Correo electrónico')
-                                            ->prefixIcon('heroicon-m-user')
-                                            ->validationMessages([
-                                                'required' => 'Campo requerido',
-                                            ])
-                                            ->maxLength(255),
-                                    ])->columnSpanFull(),
-                                Grid::make(1)
-                                    ->schema([
-                                        Textarea::make('observation_dress_tailor')
-                                            ->label('Especificaciones de la cotización')
-                                            ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
-                                            ->required()
-                                            ->autosize()
-                                            ->hidden(fn(Get $get) => $get('type') == 'BASICO')
+                                            Select::make('country_code')
+                                                ->label('Código de país')
+                                                ->options(UtilsController::getCountries())
+                                                ->searchable()
+                                                ->default('+58')
+                                                ->live(onBlur: true)
+                                                ->validationMessages([
+                                                    'required'  => 'Campo Requerido',
+                                                ])
+                                                ->hiddenOn('edit'),
+                                            TextInput::make('phone')
+                                                ->prefixIcon('heroicon-s-phone')
+                                                ->tel()
+                                                ->label('Número de teléfono')
+                                                ->validationMessages([
+                                                    'required'  => 'Campo Requerido',
+                                                ])
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                    $countryCode = $get('country_code');
+                                                    if ($countryCode) {
+                                                        $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
+                                                        $set('phone', $countryCode . $cleanNumber);
+                                                    }
+                                                }),
+                                            TextInput::make('email')
+                                                ->label('Correo electrónico')
+                                                ->prefixIcon('heroicon-m-user')
+                                                ->validationMessages([
+                                                    'required' => 'Campo requerido',
+                                                ])
+                                                ->maxLength(255),
+                                        ])->columnSpanFull(),
+                                    Grid::make(1)
+                                        ->schema([
+                                            Textarea::make('observation_dress_tailor')
+                                                ->label('Especificaciones de la cotización')
+                                                ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
+                                                ->required()
+                                                ->autosize()
+                                                ->default(function () {
+                                                    if (session('quote_type') != null) {
+                                                        if (session('quote_type') == 'dress-taylor') {
+                                                            return session('quote')->observations;
+                                                        }
+                                                    }
+                                                    return '';
+                                                })
+                                                ->hidden(fn(Get $get) => $get('type') == 'BASICO')
 
-                                    ])->columnSpanFull(),
-                                Hidden::make('status')->default('PRE-APROBADA'),
-                                Hidden::make('created_by')->default(Auth::user()->name),
-                                Hidden::make('agent_id')->default(Auth::user()->agent_id),
-                                Hidden::make('code_agency')->default(function () {
-                                    $code_agency = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
-                                    return $code_agency;
-                                }),
-                                Hidden::make('owner_code')->default(function () {
-                                    $owner      = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
-
-                                    if ($owner == 'TDG-100') {
-                                        /**
-                                         * Cuando el agente pertenece a TDG-100
-                                         * ------------------------------------------
-                                         */
-                                        return $owner;
-                                    } else {
-                                        /**
-                                         * Cuando el agente pertenece a una agencia Master
-                                         * ---------------------------------------------------------------------------------------------
-                                         */
-                                        $jerarquia  = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
-                                        return $jerarquia;
+                                        ])->columnSpanFull(),
+                                    Hidden::make('status')->default('PRE-APROBADA'),
+                                    Hidden::make('created_by')->default(Auth::user()->name),
+                            Select::make('code_agency')
+                                ->label('Lista de Agencias')
+                                ->options(function (Get $get) {
+                                    return Agency::all()->pluck('name_corporative', 'code');
+                                })
+                                ->live()
+                                ->searchable()
+                                ->prefixIcon('heroicon-c-building-library')
+                                ->preload(),
+                            Select::make('agent_id')
+                                ->label('Agentes')
+                                ->options(function (Get $get) {
+                                    if ($get('code_agency') == null) {
+                                        return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
                                     }
-
-                                    /**
-                                     * Cuando el agente pertenece a una AGENCIA GENERAL
-                                     * ------------------------------------------------------
-                                     */
-                                    if ($owner != $jerarquia && $jerarquia != 'TDG-100') {
-                                        return $jerarquia;
-                                    }
-
-                                    /**
-                                     * Cuando el agente pertenece a una AGENCIA MASTER
-                                     * ------------------------------------------------------
-                                     */
-                                    if ($owner != $jerarquia && $jerarquia == 'TDG-100') {
-                                        return $owner;
-                                    }
-                                }),
-                            ])
-                            ->columns(3)
-                            ->columnSpanFull()
-                    ]),
+                                    return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                })
+                                ->live()
+                                ->searchable()
+                                ->prefixIcon('fontisto-person')
+                                ->preload(),
+                                    ])
+                                    ->columns(3)
+                                    ->columnSpanFull()
+                        ]),
                 Step::make('PLANES A COTIZAR')
                     ->description('Plan(es) que desea cotizar:')
                     ->schema([
@@ -190,22 +191,14 @@ class CorporateQuoteForm
                                     ->label('Selecciona el/los planes que desea cotizar:')
                                     ->required()
                                     ->live()
-                                    ->options(function (Get $get) {
-                                        if($get('type') == 'BASICO'){
-                                            
-                                            $planesConBeneficios = Plan::where('type', $get('type'))->get()->pluck('description', 'id');
-                                            
-                                            //agregar el plan livewire
-                                            $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
-                                            return $planesConBeneficios;
-                                            
-                                        }
-                                        if ($get('type') == 'DRESS-TAILOR') {
-                                            
-                                            $planesConBeneficios = Plan::where('type', $get('type'))->get()->pluck('description', 'id');
-                                            return $planesConBeneficios;
-                                            
-                                        }
+                                    ->options(function () {
+
+                                        $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
+
+                                        //agregar el plan livewire
+                                        $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
+
+                                        return $planesConBeneficios;
                                     })
                                     ->descriptions([
                                         1    => 'Edad: 0 a +99 años/ilimitado.',
@@ -220,14 +213,6 @@ class CorporateQuoteForm
                     ->schema([
                         Section::make('age_range')
                             ->heading('¡Listo para el último paso! 🏁')
-                            // ->description(new HtmlString(Blade::render(<<<BLADE
-                            //         <div class="fi-section-header-description">
-                            //             Por favor, selecciona el rango de edades de los beneficiarios. Al hacerlo, habrás finalizado la configuración principal de la cotización y estarás a un clic de generar el resultado final.
-                            //             <br>
-                            //             ¡Gracias por tu gran trabajo!
-                            //         </div>
-                            //     BLADE))
-                            // )
                             ->schema([
 
                                 /**
@@ -264,7 +249,20 @@ class CorporateQuoteForm
                                             ->options(function (Get $get) {
                                                 return AgeRange::where('plan_id', 1)->pluck('range', 'id');
                                             })->columnSpan(4),
-                                        TextInput::make('total_persons')
+                                        Select::make('total_persons')
+                                            // ->label(false)
+                                            ->options([
+                                                1 => 1,
+                                                2 => 2,
+                                                3 => 3,
+                                                4 => 4,
+                                                5 => 5,
+                                                6 => 6,
+                                                7 => 7,
+                                                8 => 8,
+                                                9 => 9,
+                                                10 => 10,
+                                            ])
                                             ->placeholder('Cantidad de personas'),
                                     ])->columns(2),
 
@@ -301,7 +299,21 @@ class CorporateQuoteForm
                                             ->options(function (Get $get) {
                                                 return AgeRange::where('plan_id', 2)->pluck('range', 'id');
                                             })->columnSpan(4),
-                                        TextInput::make('total_persons')
+                                        Select::make('total_persons')
+                                            ->label(false)
+                                            // ->native(false)
+                                            ->options([
+                                                1 => 1,
+                                                2 => 2,
+                                                3 => 3,
+                                                4 => 4,
+                                                5 => 5,
+                                                6 => 6,
+                                                7 => 7,
+                                                8 => 8,
+                                                9 => 9,
+                                                10 => 10,
+                                            ])
                                             ->placeholder('Cantidad de personas'),
                                     ])->columns(4),
 
@@ -338,7 +350,19 @@ class CorporateQuoteForm
                                             ->options(function (Get $get) {
                                                 return AgeRange::where('plan_id', 3)->pluck('range', 'id');
                                             })->columnSpan(4),
-                                        TextInput::make('total_persons')
+                                        Select::make('total_persons')
+                                            ->options([
+                                                1 => 1,
+                                                2 => 2,
+                                                3 => 3,
+                                                4 => 4,
+                                                5 => 5,
+                                                6 => 6,
+                                                7 => 7,
+                                                8 => 8,
+                                                9 => 9,
+                                                10 => 10,
+                                            ])
                                             ->placeholder('Cantidad de personas'),
                                     ])->columns(2),
 
@@ -362,7 +386,7 @@ class CorporateQuoteForm
                                             ->live()
                                             ->options(function (Get $get) {
                                                 Log::info($get('plan'));
-                                                return Plan::where('type', 'BASICO')->pluck('description', 'id');
+                                                return Plan::all()->pluck('description', 'id');
                                             })->columnSpan(3),
                                         Select::make('age_range_id')
                                             ->label('Rango de edad')
@@ -390,16 +414,27 @@ class CorporateQuoteForm
                                     ])->columns(2),
                             ])
                     ])
-            ])
-            ->submitAction(new HtmlString(Blade::render(<<<BLADE
-                <x-filament::button
-                    type="submit"
-                    size="sm"
-                >
-                    Crear cotización
-                </x-filament::button>
-            BLADE)))
-            ->columnSpanFull(),
-        ]);
+                    
+                    
+                ])
+                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                        <x-filament::button
+                            type="submit"
+                            size="sm"
+                        >
+                            Crear cotización
+                        </x-filament::button>
+                    BLADE)))
+                ->columnSpanFull()
+            ]);
+    }
+
+    public function prueba(Get $get, Set $set, $state)
+    {
+        $this->quote_plan_id = $get('plan_id');
+        Log::info($this->quote_plan_id);
+        Log::info($get('plan_id'));
+        Log::info($get('age_range_id'));
+        Log::info($get('total_persons'));
     }
 }

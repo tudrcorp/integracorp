@@ -2,18 +2,21 @@
 
 namespace App\Filament\Telemedicina\Widgets;
 
+use App\Models\User;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use Filament\Support\Enums\Width;
 use Filament\Widgets\TableWidget;
 use App\Models\TelemedicinePatient;
-use Filament\Support\Enums\TextSize;
+use Illuminate\Support\Facades\Log;
+use App\Models\TelemedicineFollowUp;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
-use Illuminate\Support\Facades\Crypt;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\Layout\Stack;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\TelemedicineHistoryPatient;
+use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineCase as TelemedicineCase;
 
 class TelemedicineCaseTableDash extends TableWidget
@@ -24,6 +27,7 @@ class TelemedicineCaseTableDash extends TableWidget
     public function table(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->heading('Pacientes Asignados')
             ->description('Lista de pacientes asignados para la consulta')
             ->query(fn (): Builder => TelemedicineCase::query()->where('telemedicine_doctor_id', Auth::user()->doctor_id))
@@ -34,24 +38,6 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->badge()
                     ->icon('healthicons-f-health-literacy')
                     ->color('success')
-                    ->searchable(),
-                TextColumn::make('reason')
-                    ->label('Motivo de Consulta')
-                    ->color('success')
-                    ->icon('healthicons-f-contact-support')
-                    ->size(TextSize::Small)
-                    ->wrap()
-                    ->limit(100, end: '...')
-                    ->tooltip(function (TextColumn $column): ?string {
-                        $state = $column->getState();
-
-                        if (strlen($state) <= $column->getCharacterLimit()) {
-                            return null;
-                        }
-
-                        // Only render the tooltip if the column contents exceeds the length limit.
-                        return $state;
-                    })
                     ->searchable(),
                 TextColumn::make('patient_name')
                     ->label('Paciente')
@@ -70,25 +56,6 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->label('Número de Teléfono')
                     ->iconColor('primary')
                     ->icon('heroicon-s-phone')
-                    ->searchable(),
-                TextColumn::make('patient_address')
-                    ->label('Dirección')
-                    ->iconColor('primary')
-                    ->icon('heroicon-s-map-pin')
-                    ->color('success')
-                    ->size(TextSize::Small)
-                    ->wrap()
-                    ->limit(100, end: '...')
-                    ->tooltip(function (TextColumn $column): ?string {
-                        $state = $column->getState();
-
-                        if (strlen($state) <= $column->getCharacterLimit()) {
-                            return null;
-                        }
-
-                        // Only render the tooltip if the column contents exceeds the length limit.
-                        return $state;
-                    })
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Fecha de Asignación')
@@ -113,39 +80,59 @@ class TelemedicineCaseTableDash extends TableWidget
                 //
             ])
             ->recordActions([
-                Action::make('view_history')
-                    ->label('Historia Clínica')
-                    ->icon('healthicons-f-health-worker-form')
-                    ->color('info')
-                    ->button()
-                    ->action(function (TelemedicineCase $record) {
-                        
-                        $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->first(); // dd($record->telemedicine_patient_id);
-                        
-                        if(isset($exit_record)) {
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-history-patients.view', ['record' => $exit_record->id]);
-                        
-                        }else {
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-history-patients.create', ['record' => $record->telemedicine_patient_id]);
-                        }
-                        
-                    }),
                 Action::make('consultation')
                     ->label('Consulta')
                     ->icon('healthicons-f-call-centre')
-                    ->color('success')
                     ->button()
+                    ->color(function (TelemedicineCase $record) {
+                        return $record->status == 'ASIGNADO' ? 'primary' : 'gray';
+                    })
+                    ->disabled(function (TelemedicineCase $record) {
+                        $case = TelemedicineConsultationPatient::where('telemedicine_case_code', $record->code)->exists();
+                        // dd($record->status);
+                        if($case && $record->status == 'ATENDIDO') {
+                            return true;
+                        }
+                        return false;
+                    })
                     ->action(function (TelemedicineCase $record) {
 
-                        $case = TelemedicineCase::where('code', $record->code)->first();
-                        $patient = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
+                        $case        = TelemedicineCase::where('code', $record->code)->first();
+                        $patient     = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
+                        $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->exists();
+                        // dd($exit_record);
+                        //Creo la variable de sesion con la informacion del caso y si existe la variable la actualizo
+                        session()->forget('case');
+                        session()->forget('patient');
+                        session()->forget('exit_record');
 
                         //Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
                         session(['case' => $case]);
                         session(['patient' => $patient]);
+                        session(['exit_record' => $exit_record]);
 
-                        return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create');
+                        Log::info(session()->get('case'));
+                        Log::info(session()->get('patient'));
+                        Log::info(session()->get('exit_record'));
+
+                        return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
                         
+                    }),
+                Action::make('follow_up')
+                    ->label('Seguimiento')
+                    ->icon('healthicons-f-health-literacy')
+                    ->color('success')
+                    ->button()
+                    ->action(function (TelemedicineCase $record) {
+
+                        $follow_up_count = TelemedicineFollowUp::where('code', $record->code)->get();
+
+                        if($follow_up_count->count() == 1) {
+                            $id = $follow_up_count->where('code', $record->code)->first()->id;
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-follow-ups.edit', ['record' => $id]);
+                        }
+                        
+                        return redirect()->route('filament.telemedicina.resources.telemedicine-follow-ups.create', ['record' => $record->id]);
                     }),
                 
             ])

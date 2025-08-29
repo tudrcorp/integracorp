@@ -21,13 +21,15 @@ class TelemedicinePatientResource extends Resource
 {
     protected static ?string $model = TelemedicinePatient::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-virus-patient';
 
     protected static ?string $recordTitleAttribute = 'Pacientes';
 
     protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $navigationLabel = 'Pacientes';
+
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {

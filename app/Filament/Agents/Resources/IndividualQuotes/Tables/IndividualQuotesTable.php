@@ -125,18 +125,6 @@ class IndividualQuotesTable
             ->recordActions([
                 ActionGroup::make([
 
-                    /**EDIT */
-                    // Action::make('edit')
-                    //     ->label('Editar Cotización')
-                    //     ->color('warning')
-                    //     ->icon('heroicon-s-pencil')
-                    //     ->hidden(function (IndividualQuote $record) {
-                    //         if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
-                    //             return true;
-                    //         }
-                    //         return false;
-                    //     }),
-
                     /**EMIT */
                     Action::make('emit')
                         ->hidden(function (IndividualQuote $record) {
@@ -159,15 +147,6 @@ class IndividualQuotesTable
                                     Solo falta completar el formulario de pre-afiliación
                                     </div>
                             BLADE)))
-                        // ->modalDescription('Felicitaciones!')
-                        // ->form([
-                        //     Section::make()
-                        //         ->schema([
-                        //             TextEntry::make('title')
-                        //                 ->alignCenter()
-                        //                 ->label('Solo falta completar el formulario de pre-afiliación')
-                        //         ])
-                        // ])
                         ->action(function (IndividualQuote $record) {
 
                             try {
@@ -527,11 +506,11 @@ class IndividualQuotesTable
                             }
                         }),
                 ])
-                    ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
-                    ->hidden(function (IndividualQuote $record) {
-                        return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                    })
+                ->icon('heroicon-c-ellipsis-vertical')
+                ->color('azulOscuro')
+                ->hidden(function (IndividualQuote $record) {
+                    return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
+                })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

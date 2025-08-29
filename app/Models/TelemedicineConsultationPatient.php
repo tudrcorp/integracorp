@@ -27,20 +27,61 @@ class TelemedicineConsultationPatient extends Model
         'vs_weight',
         'background',
         'diagnostic_impression',
-        'medicines',
-        'indications',
         'labs',
         'studies',
-        'created_by'
+        'other_labs',
+        'other_studies',
+        'consult_specialist',
+        'other_specialist',
+        'created_by',
+
+        'hombre_izq',
+        'hombro_der',
+        'hombro_comp',
+        
+        'codo_izq',
+        'codo_der',
+        'codo_comp',
+        
+        'muneca_izq',
+        'muneca_der',
+        'muneca_comp',
+        
+        'mano_izq',
+        'mano_der',
+        'mano_comp',
+        
+        'humero_izq',
+        'humero_der',
+        'humero_comp',
+        
+        'ante_izq',
+        'ante_der',
+        'ante_comp',
+        
+        'cdl_ap',
+        
+        'pocep',
+        
+        'cc_ap',
+        'cc_oblicuas',
+        'cc_la_flexion',
+        'cc_la_extension',
+        
+        'cls_ap',
+        'cls_oblicuas',
+        'cls_la_flexion',
+        'cls_la_extension',
+        
     ];
 
     protected $casts = [
-        'labs'          => 'array',
-        'studies'       => 'array',
+        'labs'                  => 'array',
+        'studies'               => 'array',
+        'consult_specialist'    => 'array',
     ];
 
     
-
     public function telemedicinePatient()
     {
         return $this->belongsTo(TelemedicinePatient::class);
@@ -60,4 +101,20 @@ class TelemedicineConsultationPatient extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function telemedicinePatientMedications()
+    {
+        return $this->hasMany(TelemedicinePatientMedications::class);
+    }
+
+    public function telemedicineFollowUps()
+    {
+        return $this->hasMany(TelemedicineFollowUp::class);
+    }
+
+    public function telemedicineConsultationPatient()
+    {
+        return $this->hasMany(TelemedicineConsultationPatient::class, 'telemedicine_case_code', 'code');
+    }
+    
 }

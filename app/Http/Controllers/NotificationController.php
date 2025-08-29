@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Guest;
 use App\Mail\MyTestEmail;
 use App\Mail\ExampleCsvEmail;
 use App\Mail\AgentRegisterEmail;
@@ -19,7 +20,7 @@ class NotificationController extends Controller
     {
         try {
 
-            $path = env('APP_URL') . $path_panel;
+            $path = config('parameters.INTEGRACORP_URL') . $path_panel;
             $body = <<<HTML
 
             🌟¡Bienvenido/a a Tu Dr. Group! 
@@ -93,7 +94,7 @@ class NotificationController extends Controller
     {
         try {
 
-            $path = env('APP_URL') . $path_panel;
+            $path = config('parameters.INTEGRACORP_URL') . $path_panel;
             $body = <<<HTML
 
             ¡Hola! 👋   
@@ -628,7 +629,7 @@ class NotificationController extends Controller
 
             $array = [
                 '+584127018390',
-                '+584143027250',
+                '+584120208119',
             ];
 
             $body = <<<HTML
@@ -641,7 +642,8 @@ class NotificationController extends Controller
                 $params = array(
                     'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i],
-                    'image' => 'https://tudrenviajes.com/images/logo_3.png',
+                    // 'image' => 'https://tudrenviajes.com/images/logo_3.png',14986
+                    'image' => 'https://tudrgroup.com/images/logoTDG.png',
                     'caption' => $body
                 );
                 $curl = curl_init();
@@ -664,8 +666,9 @@ class NotificationController extends Controller
                 $response = curl_exec($curl);
                 $err = curl_error($curl);
 
+                Log::info($response);
+                Log::error($err);
                 
-                //Quiero crear un array con todos los errores y enviarlo por correo electronico como puedo hacerlo
                 
             }
             
@@ -825,25 +828,32 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
-            if ($err) {
-                Log::error($err);
-                return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link interactivo de Cotizacion Individual',
-                        'objeto' => 'NotificationController::sendLinkIndividualQuote',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            if ($response) {
 
+                Log::info($response);
+                $data = [
+                    'action' => 'sendLinkIndividualQuote',
+                    'objeto' => 'NotificationController::sendLinkIndividualQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
                 return true;
+            }
 
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'assignedCase',
+                    'objeto' => 'NotificationController::assignedCase',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
             }
             
         } catch (\Throwable $th) {
@@ -896,25 +906,34 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
-            if ($err) {
-                Log::error($err);
-                return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link interactivo de Cotizacion Individual',
-                        'objeto' => 'NotificationController::sendLinkIndividualQuote',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            if ($response) {
 
+                Log::info($response);
+                $data = [
+                    'action' => 'createdIndividualQuote',
+                    'objeto' => 'NotificationController::createdIndividualQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
                 return true;
             }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'assignedCase',
+                    'objeto' => 'NotificationController::assignedCase',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
+            }
+            
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
@@ -965,24 +984,115 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
-            if ($err) {
-                Log::error($err);
-                return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link interactivo de Cotizacion Individual',
-                        'objeto' => 'NotificationController::sendLinkIndividualQuote',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            if ($response) {
 
+                Log::info($response);
+                $data = [
+                    'action' => 'createdCorporateQuote',
+                    'objeto' => 'NotificationController::createdCorporateQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
                 return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'assignedCase',
+                    'objeto' => 'NotificationController::assignedCase',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
+            }
+            
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
+    static function createdRequestDressTaylor($code, $agent, $observations)
+    {
+        try {
+
+            $body = <<<HTML
+
+            Hola!👋
+
+            El Agente: *{$agent}* ha generado una Solicitud Dress-Taylor con el siguiente codigo: 
+            
+            *{$code}*
+
+            *Caracteristicas:*
+            {$observations}
+            
+            Por favor, comuniquese con el agente para continuar con el proceso.
+         
+            Muchas gracias. 🙌
+ 
+            HTML;
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                // 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
+                'to' => '+584241869168',
+
+                'body' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($response) {
+
+                Log::info($response);
+                $data = [
+                    'action' => 'createdIndividualQuote',
+                    'objeto' => 'NotificationController::createdIndividualQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'assignedCase',
+                    'objeto' => 'NotificationController::assignedCase',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
             }
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
@@ -1037,24 +1147,32 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
-            if ($err) {
-                Log::error($err);
-                return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link interactivo de Cotizacion Individual',
-                        'objeto' => 'NotificationController::sendLinkIndividualQuote',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            if ($response) {
 
+                Log::info($response);
+                $data = [
+                    'action' => 'saddObervationToIndividualQuote',
+                    'objeto' => 'NotificationController::saddObervationToIndividualQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
                 return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'saddObervationToIndividualQuote',
+                    'objeto' => 'NotificationController::saddObervationToIndividualQuote',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
             }
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
@@ -1109,24 +1227,32 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
-            if ($err) {
-                Log::error($err);
-                return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link interactivo de Cotizacion Individual',
-                        'objeto' => 'NotificationController::sendLinkIndividualQuote',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            if ($response) {
 
+                Log::info($response);
+                $data = [
+                    'action' => 'saddObervationToCorporateQuote',
+                    'objeto' => 'NotificationController::saddObervationToCorporateQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
                 return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'saddObervationToCorporateQuote',
+                    'objeto' => 'NotificationController::saddObervationToCorporateQuote',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
             }
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
@@ -1182,7 +1308,181 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
+            if ($response) {
+
+                Log::info($response);
+                $data = [
+                    'action' => 'saddObervationToCorporateQuote',
+                    'objeto' => 'NotificationController::saddObervationToCorporateQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'saddObervationToCorporateQuote',
+                    'objeto' => 'NotificationController::saddObervationToCorporateQuote',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
+            }
             
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
+    static function assignedCase($phone, $doctor, $code, $reason, $name_patient)
+    {
+        // dd($phone, $doctor, $code, $reason);
+        try {
+            
+
+            $body = <<<HTML
+
+            ¡Hola Dr. *{$doctor}*! 👋   
+
+            Te informamos que el caso *#{$code}* acaba de ser asignado a tu equipo.   
+
+            El paciente *{$name_patient}* está estable y listo para evaluación. Puedes revisar todos los detalles en tu panel de control.
+            
+            *Motivo de la Consulta:* 
+            *{$reason}*
+
+            ¡Gracias por tu colaboración! 🙌
+                
+            HTML;
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => $phone,
+                'body' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($response) {
+
+                Log::info($response);
+                $data = [
+                    'action' => 'assignedCase',
+                    'objeto' => 'NotificationController::assignedCase',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return true;
+            }
+
+            if ($err) {
+                
+                Log::error($err);
+                $data = [
+                    'action' => 'assignedCase',
+                    'objeto' => 'NotificationController::assignedCase',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
+            } 
+
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
+    static function noti()
+    {
+
+        try {
+
+            $array = Guest::all()->toArray();
+
+
+            for ($i = 24; $i < count($array); $i++) {
+
+                $body = <<<HTML
+
+            Hola!👋
+
+            Apreciado/a: *{$array[$i]['firstName']} {$array[$i]['lastName']}*
+
+            Usted ha sido seleccionado para esta misión con Tu Dr. Group.
+            Donde la innovación será parte de nuestras lineas de negocios de salud y viajes.
+
+            ¿ACEPTAS LA MISIÓN?🕵🏼 Ingresa nuestro sitio web https://tudrgroup.com
+            Y llena el formulario
+
+            Más información sobre este encuentro aquí 👇🏼
+            https://wa.me/+584142510805
+ 
+            HTML;
+
+                $params = array(
+                    'token' => 'yuvh9eq5kn8bt666',
+                    'to' => $array[$i]['phone'],
+                    'video' => 'https://tudrgroup.com/images/videoEvento1.mp4',
+                    'caption' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+
+                Log::info($response);
+                Log::info($array[$i]['phone']);
+                Log::error($err);
+            }
+
+            curl_close($curl);
+
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }

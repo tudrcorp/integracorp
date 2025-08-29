@@ -19,20 +19,23 @@ class StatsOverview extends StatsOverviewWidget
     {
         return [
             Stat::make('Afiliaciones Individuales', '+'.Affiliation::where('agent_id', Auth::user()->agent_id)->where('status', 'ACTIVA')->count())
-                ->icon('heroicon-o-document-text')
-                ->description('32k increase')
+                ->icon('fontisto-person')
+                ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
             Stat::make('Afiliaciones Corporativas', '+' .AffiliationCorporate::where('agent_id', Auth::user()->agent_id)->where('status', 'ACTIVA')->count())
-                ->description('32k increase')
+                ->icon('fontisto-persons')    
+                ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
             Stat::make('Total Ventas', 'US$ '. Sale::where('agent_id', Auth::user()->agent_id)->sum('total_amount'))
-                ->description('32k increase')
+                ->icon('fontisto-wallet')
+                ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
             Stat::make('Acumulado de Comisiones', 'US$ ' . Commission::where('agent_id', Auth::user()->agent_id)->sum('total_payment_commission'))
-                ->description('32k increase')
+                ->icon('fontisto-shopping-pos-machine')
+                ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
         ];

@@ -22,32 +22,18 @@ class CommissionsTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->defaultSort('created_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->query(Commission::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->description('El detalle puede ser ordenado de forma ascendente o descendente. Por defecto se ordena por la fecha de creación.')
             ->columns([
                 TextColumn::make('date_payment_affiliate')
-                    ->label('Pago del afiliado')
+                    ->label('Fecha del comprobante')
                     ->badge()
                     ->icon('heroicon-s-calendar-days')
                     ->datetime('d/m/Y')
                     ->searchable(),
-                TextColumn::make('code_agency')
-                    ->label('Agencia')
-                    ->badge()
-                    ->icon('heroicon-s-user-group')
 
-                    ->searchable(),
-                TextColumn::make('owner_code')
-                    ->label('Master')
-                    ->badge()
-                    ->icon('heroicon-s-building-library')
-                    ->searchable(),
-                TextColumn::make('agent.name')
-                    ->label('Agente')
-                    ->badge()
-                    ->icon('heroicon-s-user')
-                    ->numeric()
-                    ->sortable(),
+
                 TextColumn::make('affiliate_full_name')
                     ->label('Afiliado')
                     ->searchable(),
@@ -66,70 +52,30 @@ class CommissionsTable
                     ->suffix('US$')
                     ->numeric()
                     ->searchable(),
-
-                TextColumn::make('invoice_number')
-                    ->badge()
-                    ->icon('heroicon-s-document-text')
-                    ->label('Nro. Factura')
-                    ->searchable(),
-
-                TextColumn::make('amount')
-                    ->label('Importe')
-                    ->money('USD')
-                    ->sortable(),
-                TextColumn::make('payment_method')
-                    ->label('Metodo de pago')
-                    ->searchable(),
                 TextColumn::make('veto')
-                    ->label('Veto')
+                    ->label('Período')
                     ->searchable(),
                 TextColumn::make('payment_frequency')
                     ->label('Frecuencia de pago')
                     ->searchable(),
-                TextColumn::make('date_payment_commission')
-                    ->label('Pagado el:')
-                    ->badge()
-                    ->icon('heroicon-s-calendar-days')
-                    ->searchable(),
+
 
                 /**
                  * PORCENTAJES TDEC
                  * --------------------------------------------------------------
                  */
-                TextColumn::make('commission_agency_master_tdec')
-                    ->label('% Master TDEC')
+                TextColumn::make('invoice_number')
                     ->badge()
-                    ->suffix('%')
-                    ->color('warning')
-                    ->numeric()
+                    ->icon('heroicon-s-document-text')
+                    ->label('Nro. de recibo o factura')
+                    ->searchable(),
+                TextColumn::make('amount')
+                    ->label('Monto pagado')
+                    ->money('USD')
                     ->sortable(),
-                TextColumn::make('commission_agency_master')
-                    ->label('Pago Agencia Master')
-                    ->badge()
-                    ->suffix(' US$')
-                    ->numeric()
-                    ->sortable()
-                    ->summarize(Sum::make()
-                        ->label(('Subtotal Agencia Master'))
-                        ->suffix(' US$')
-                        ->numeric()),
-                TextColumn::make('commission_agency_general_tdec')
-                    ->label('% General TDEC')
-                    ->badge()
-                    ->suffix('%')
-                    ->color('warning')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('commission_agency_general')
-                    ->label('Pago Agencia General')
-                    ->badge()
-                    ->suffix(' US$')
-                    ->numeric()
-                    ->sortable()
-                    ->summarize(Sum::make()
-                        ->label(('Subtotal Agencia General'))
-                        ->suffix(' US$')
-                        ->numeric()),
+                TextColumn::make('payment_method')
+                    ->label('Método de pago')
+                    ->searchable(),
                 TextColumn::make('commission_agent_tdec')
                     ->label('% Agente TDEC')
                     ->badge()
@@ -138,7 +84,7 @@ class CommissionsTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('commission_agent')
-                    ->label('Pago Agente')
+                    ->label('Comisión')
                     ->badge()
                     ->suffix(' US$')
                     ->numeric()
@@ -147,17 +93,11 @@ class CommissionsTable
                         ->label(('Subtotal Agentes'))
                         ->suffix(' US$')
                         ->numeric()),
-                TextColumn::make('total_payment_commission')
-                    ->label('Total Pagos')
+                TextColumn::make('date_payment_commission')
+                    ->label('Fecha de pago')
                     ->badge()
-                    ->color('success')
-                    ->suffix(' US$')
-                    ->numeric()
-                    ->sortable()
-                    ->summarize(Sum::make()
-                        ->label(('Total Comisiones'))
-                        ->suffix(' US$')
-                        ->numeric()),
+                    ->icon('heroicon-s-calendar-days')
+                    ->searchable(),
                 /**-------------------------------------------------------------- */
 
                 TextColumn::make('created_by')
@@ -201,14 +141,14 @@ class CommissionsTable
 
                         return $indicators;
                     }),
-
             ])
             ->recordActions([
-
+                // ViewAction::make(),
+                // EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // DeleteBulkAction::make(),
                 ]),
             ]);
     }

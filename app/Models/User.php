@@ -34,6 +34,7 @@ class User extends Authenticatable implements FilamentUser
         'is_doctor',
         'is_subagent',
         'is_patient',
+        'is_designer',
         'code_agency',
         'link_agency',
         'link_agent',
@@ -108,6 +109,10 @@ class User extends Authenticatable implements FilamentUser
 
         if ($panel->getId() === 'telemedicina') {
             return $this->is_doctor;
+        }
+
+        if ($panel->getId() === 'marketing') {
+            return $this->is_designer;
         }
 
         return true;

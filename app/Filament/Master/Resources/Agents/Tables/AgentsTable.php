@@ -41,7 +41,7 @@ class AgentsTable
         array_push($agency_list, Auth::user()->code_agency);
         
         return $table
-        ->query(Agent::query()->whereIn('owner_code', $agency_list))
+            ->query(Agent::query()->whereIn('owner_code', $agency_list))
             ->defaultSort('id', 'desc')
             ->heading('AGENTES')
             ->description('Lista de Agentes registrados en el sistema.')
@@ -354,25 +354,25 @@ class AgentsTable
 
                             $phone = $record->phone;
                             $email = $record->email;
-                            $nofitication = NotificationController::agent_activated($phone, $email);
+                            // $nofitication = NotificationController::agent_activated($phone, $email);
 
-                            if ($nofitication['success'] == true) {
-                                Notification::make()
-                                    ->title('AGENTE ACTIVADO')
-                                    ->body('Notificacion de activacion enviada con exito.')
-                                    ->icon('heroicon-s-check-circle')
-                                    ->iconColor('success')
-                                    ->color('success')
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('AGENTE ACTIVADO')
-                                    ->body('La notificacion de activacion no pudo ser enviada.')
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('warning')
-                                    ->color('warning')
-                                    ->send();
-                            }
+                            // if ($nofitication['success'] == true) {
+                            //     Notification::make()
+                            //         ->title('AGENTE ACTIVADO')
+                            //         ->body('Notificacion de activacion enviada con exito.')
+                            //         ->icon('heroicon-s-check-circle')
+                            //         ->iconColor('success')
+                            //         ->color('success')
+                            //         ->send();
+                            // } else {
+                            //     Notification::make()
+                            //         ->title('AGENTE ACTIVADO')
+                            //         ->body('La notificacion de activacion no pudo ser enviada.')
+                            //         ->icon('heroicon-s-x-circle')
+                            //         ->iconColor('warning')
+                            //         ->color('warning')
+                            //         ->send();
+                            // }
                         } catch (\Throwable $th) {
                             Notification::make()
                                 ->title('EXCEPCION')

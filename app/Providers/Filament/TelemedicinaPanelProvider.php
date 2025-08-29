@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use Filament\Panel;
+use App\Models\User;
 use App\Models\Agent;
 use Livewire\Component;
 use Filament\PanelProvider;
@@ -15,6 +16,8 @@ use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
+use Filament\Navigation\NavigationItem;
+use Filament\Navigation\NavigationGroup;
 use Filament\Widgets\FilamentInfoWidget;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Http\Middleware\Authenticate;
@@ -27,6 +30,7 @@ use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use App\Filament\Telemedicina\Pages\EjecutarAccionUsuario;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -89,43 +93,7 @@ class TelemedicinaPanelProvider extends PanelProvider
                     ->icon('healthicons-f-doctor-male')
                     ->color('primary')
                     ->url(TelemedicineDoctorResource::getUrl('edit', ['record' => Auth::user()->doctor_id], panel: 'telemedicina')),
-                // // ...
-                Action::make('send_message')
-                    ->label('Notificación al Paciente')
-                    ->icon('heroicon-s-bell'),
-                // // ...
-                Action::make('options')
-                    ->label('Preferencias')
-                    ->icon('heroicon-s-cog')
-                    ->modalHeading('Preferencias')
-                    ->modalIcon('heroicon-s-cog')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->form([
-                        Fieldset::make('Ubicación de Menu')
-                            ->schema([
-                                Toggle::make('value')
-                                    ->label('Posicion de Menu? Top(Default)')
-                                    ->helperText('Al desactivar la opción del menu se posicionara en la parte izquierda de la pantalla.')
-                                    ->inline()
-                                    ->onIcon('heroicon-m-arrow-small-up')
-                                    ->offIcon('heroicon-m-arrow-small-left')
-                                    ->onColor('success')
-                                    ->offColor('danger')
-                                    ->default(fn() => Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu == true ? true : false),
-
-                            ])->columns(1),
-                    ])
-                    ->action(function (array $data, Component $livewire) {
-
-                        $user = Agent::where('id', Auth::user()->agent_id)->first();
-
-                        if (isset($user)) {
-                            $user->conf_position_menu = $data['value'];
-                            $user->save();
-
-                            return redirect('/agents');
-                        }
-                    }),
+                 
             ])
             ->plugins([
                 FilamentBackgroundsPlugin::make()
