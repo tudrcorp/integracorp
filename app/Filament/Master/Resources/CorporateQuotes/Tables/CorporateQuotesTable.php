@@ -46,7 +46,8 @@ class CorporateQuotesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(CorporateQuote::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            // ->query(CorporateQuote::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->query(CorporateQuote::query()->where('owner_code', Auth::user()->code_agency))
             ->defaultSort('created_at', 'desc')
             ->heading('Lista de cotizaciones corporativas generadas por el agente')
             ->columns([

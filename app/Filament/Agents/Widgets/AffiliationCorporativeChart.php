@@ -3,6 +3,7 @@
 namespace App\Filament\Agents\Widgets;
 
 use Carbon\Carbon;
+use App\Models\Agent;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Filament\Widgets\ChartWidget;
@@ -60,7 +61,7 @@ class AffiliationCorporativeChart extends ChartWidget
                     // 'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
                     'data' => [0, 10, 5, 2, 21, 32, 45, 74, 65, 45, 77, 89],
                     'backgroundColor' => [
-                        '#FFE6E6', // Rosado muy claro
+                        '#B8E6FF', // Rosado muy claro
                         '#E6FFF0', // Verde menta claro
                         '#E6F5FF', // Azul hielo
                         '#FFF5E6', // Amarillo suave
@@ -86,7 +87,7 @@ class AffiliationCorporativeChart extends ChartWidget
                         '#FFF0F0', // Rosado nieve
                     ],
                     'borderColor' => [
-                        '#FFE6E6', // Rosado muy claro
+                        '#B8E6FF', // Rosado muy claro
                         '#E6FFF0', // Verde menta claro
                         '#E6F5FF', // Azul hielo
                         '#FFF5E6', // Amarillo suave
@@ -136,6 +137,6 @@ class AffiliationCorporativeChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'bar';
+        return Agent::where('id', Auth::user()->agent_id)->first()->type_chart;
     }
 }

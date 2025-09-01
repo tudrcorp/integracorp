@@ -44,6 +44,9 @@ class MasterPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
+            ->topNavigation(function () {
+                return Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu;
+            })
             ->colors([
                 'primary' => '#038C4C',
             ])
@@ -97,6 +100,7 @@ class MasterPanelProvider extends PanelProvider
                     ->icon('heroicon-c-arrow-down-tray'),
             ])
             ->breadcrumbs(false)
+            ->maxContentWidth(Width::Full)
             ->registerErrorNotification(
                 title: 'Registro No Encontrado',
                 body: 'El registro que intenta consultar no existe.',

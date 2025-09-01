@@ -10,12 +10,14 @@ class ListCorporateQuotes extends ListRecords
 {
     protected static string $resource = CorporateQuoteResource::class;
 
-    protected static ?string $title = 'Cotizaciones corporativas';
+    protected static ?string $title = 'Cotizaciones Corporativas';
 
     protected function getHeaderActions(): array
     {
         return [
-            // CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear cotización corporativa')
+                ->icon('heroicon-s-plus')
         ];
     }
 }

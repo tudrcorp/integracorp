@@ -129,6 +129,8 @@ class DocumentsRelationManager extends RelationManager
                             dd($th);
                         }
                     })
-            ]);
+            ])
+            ->striped()
+            ->defaultSort('created_at', 'desc');
     }
 }

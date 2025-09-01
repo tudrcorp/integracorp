@@ -139,6 +139,8 @@ class PaidMembershipsRelationManager extends RelationManager
             ])
             ->headerActions([
                 // CreateAction::make(),
-            ]);
+            ])
+            ->striped()
+            ->defaultSort('created_at', 'desc');
     }
 }

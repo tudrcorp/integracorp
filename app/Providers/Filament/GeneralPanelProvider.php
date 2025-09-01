@@ -43,7 +43,6 @@ class GeneralPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
-            ->topNavigation()
             ->colors([
                 'primary' => '#063467',
                 'info' => '#58C0DB',
@@ -75,23 +74,31 @@ class GeneralPanelProvider extends PanelProvider
             ])
             ->databaseNotifications()
             ->databaseTransactions()
+            ->maxContentWidth(Width::Full)
             ->authMiddleware([
                 Authenticate::class,
             ])
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label('Afiliaciones')
-                    ->icon('heroicon-s-user-group'),
-                NavigationGroup::make()
-                    ->label('Cotizaciones')
+                    ->label('INDIVIDUALES')
                     ->icon('heroicon-s-swatch'),
                 NavigationGroup::make()
-                    ->label('Organización')
+                    ->label('CORPORATIVAS')
+                    ->icon('heroicon-m-hand-raised'),
+                NavigationGroup::make()
+                    ->label('AFILIACIONES')
+                    ->icon('heroicon-s-user-group'),
+                NavigationGroup::make()
+                    ->label('VENTAS')
+                    ->icon('fontisto-wallet'),
+                NavigationGroup::make()
+                    ->label('ORGANIZACIÓN')
                     ->icon('heroicon-m-share'),
                 NavigationGroup::make()
-                    ->label('Ventas')
-                    ->icon('heroicon-s-calculator'),
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-c-arrow-down-tray'),
             ])
+            ->breadcrumbs(false)
             ->registerErrorNotification(
                 title: 'Registro No Encontrado',
                 body: 'El registro que intenta consultar no existe.',

@@ -21,9 +21,11 @@ class AgentResource extends Resource
 {
     protected static ?string $model = Agent::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Organización';
-
     protected static ?string $navigationLabel = 'Agentes';
+
+    protected static string | UnitEnum | null $navigationGroup = 'ORGANIZACIÓN';
+
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {

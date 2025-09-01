@@ -45,7 +45,8 @@ class AffiliationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(Affiliation::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            // ->query(Affiliation::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->query(Affiliation::query()->where('owner_code', Auth::user()->code_agency))
             ->defaultSort('created_at', 'desc')
             ->heading('Lista de afiliaciones generadas por el agente')
             ->description('Al seleccionar varias afiliaciones, encuentras un acceso rápido para realizar un pago masivo. Haciendo click en el botón "Abrir acciones" se desplegará "Pagar Afiliaciones".')

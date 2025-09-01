@@ -23,7 +23,8 @@ class CommissionsTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->query(Commission::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            // ->query(Commission::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->query(Commission::query()->where('owner_code', Auth::user()->code_agency))
             ->description('El detalle puede ser ordenado de forma ascendente o descendente. Por defecto se ordena por la fecha de creación.')
             ->columns([
                 TextColumn::make('date_payment_affiliate')
@@ -150,6 +151,6 @@ class CommissionsTable
                 BulkActionGroup::make([
                     // DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])->striped();
     }
 }

@@ -244,7 +244,7 @@ class AffiliationForm
                                  * -----------------------------------------------------------------
                                  */
                                 Hidden::make('code_agency')->default(Auth::user()->code_agency),
-                                Hidden::make('owner_code')->default('TDG-100'),
+                                Hidden::make('owner_code')->default(Auth::user()->code_agency),
                                 /**---------------------------------------------------------------- */
 
 

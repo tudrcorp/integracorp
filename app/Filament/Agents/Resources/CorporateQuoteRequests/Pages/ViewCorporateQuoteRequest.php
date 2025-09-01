@@ -10,10 +10,12 @@ class ViewCorporateQuoteRequest extends ViewRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
+    protected static ?string $title = 'Detalle de Cotización Dress Taylor';
+
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
+            // EditAction::make(),
         ];
     }
 }

@@ -11,11 +11,11 @@ class EditCorporateQuoteRequest extends EditRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+    // protected function getHeaderActions(): array
+    // {
+    //     return [
+    //         ViewAction::make(),
+    //         DeleteAction::make(),
+    //     ];
+    // }
 }

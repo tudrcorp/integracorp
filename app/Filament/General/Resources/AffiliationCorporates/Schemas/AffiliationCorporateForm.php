@@ -58,7 +58,7 @@ class AffiliationCorporateForm
                             ->label('Código de cotización')
                             ->live()
                             ->prefixIcon('heroicon-m-clipboard-document-check')
-                            ->options(CorporateQuote::select('id', 'code_agency', 'status', 'full_name')->where('code_agency', Auth::user()->code_agency)->where('status', 'APROBADA')->pluck('full_name', 'id'))
+                            ->options(CorporateQuote::select('id', 'code_agency', 'status', 'full_name')->where('owner_code', Auth::user()->code_agency)->where('status', 'APROBADA')->pluck('full_name', 'id'))
                             ->default(fn() => request()->query('corporate_quote_id'))
                             // ->options(CorporateQuote::select('id', 'agent_id', 'status', 'full_name')->where('agent_id', Auth::user()->agent_id)->where('status', 'APROBADA')->pluck('full_name', 'id'))
                             ->searchable()
@@ -109,15 +109,17 @@ class AffiliationCorporateForm
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->preload(),
-                        Hidden::make('status')->default('PRE-APROBADA'),
-                        Hidden::make('created_by')->default(Auth::user()->name),
                         /**
                          * Campos referenciales para jerarquia
                          * -----------------------------------------------------------------
                          */
+                        Hidden::make('status')->default('PRE-APROBADA'),
+                        Hidden::make('created_by')->default(Auth::user()->name),
                         Hidden::make('code_agency')->default(Auth::user()->code_agency),
                         Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
-                    ])->columns(3),
+                        /**-------------------------------------------------------------------------------------------------------------------------------------------- */
+
+            ])->columns(3),
                 Section::make('INFORMACION CORPORATIVA DEL CONTRATANTE')
                     ->description('Campo Requerido(*)')
                     ->collapsed('edit')

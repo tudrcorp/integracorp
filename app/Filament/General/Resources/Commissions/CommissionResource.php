@@ -21,9 +21,11 @@ class CommissionResource extends Resource
 {
     protected static ?string $model = Commission::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Ventas';
+    protected static ?string $navigationLabel = 'Comisiones Generadas';
 
-    protected static ?string $navigationLabel = 'Comisiones de venta';
+    protected static ?int $navigationSort = 2;
+
+    protected static string | UnitEnum | null $navigationGroup = 'VENTAS';
 
     public static function form(Schema $schema): Schema
     {

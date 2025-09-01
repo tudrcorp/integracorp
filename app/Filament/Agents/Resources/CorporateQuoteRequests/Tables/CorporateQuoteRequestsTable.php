@@ -29,6 +29,8 @@ class CorporateQuoteRequestsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->query(CorporateQuoteRequest::query()->where('agent_id', Auth::user()->agent_id))
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('code')
                     ->label('Codigo')
@@ -66,7 +68,6 @@ class CorporateQuoteRequestsTable
             ->recordActions([
                 ActionGroup::make([
 
-
                     Action::make('view')
                         ->label('Ver Detalles')
                         ->color('success')
@@ -86,93 +87,93 @@ class CorporateQuoteRequestsTable
 
                     /**FORWARD */
                     Action::make('forward')
-                            ->label('Reenviar')
-                            ->icon('fluentui-document-arrow-right-20')
-                            ->color('primary')
-                            ->requiresConfirmation()
-                            ->modalIcon('fluentui-document-arrow-right-20')
-                            ->modalHeading('Reenvío de Cotización')
-                            ->modalDescription('La propuesta será enviada por email y/o teléfono!')
-                            ->modalWidth(Width::ExtraLarge)
-                            ->form([
-                                Section::make()
-                                    // ->heading('Informacion')
-                                    // ->description('El link puede sera enviado por email y/o telefono!')
-                                    ->schema([
-                                        TextInput::make('email')
-                                            ->label('Email')
-                                            ->email(),
-                                        Grid::make(2)->schema([
-                                            Select::make('country_code')
-                                                ->label('Código de país')
-                                                ->options(fn() => UtilsController::getCountries())
-                                                ->searchable()
-                                                ->default('+58')
-                                                ->required()
-                                                ->live(onBlur: true)
-                                                ->validationMessages([
-                                                    'required'  => 'Campo Requerido',
-                                                ]),
-                                            TextInput::make('phone')
-                                                ->prefixIcon('heroicon-s-phone')
-                                                ->tel()
-                                                ->label('Número de teléfono')
-                                                ->required()
-                                                ->validationMessages([
-                                                    'required'  => 'Campo Requerido',
-                                                ])
-                                                ->live(onBlur: true)
-                                                ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                    $countryCode = $get('country_code');
-                                                    if ($countryCode) {
-                                                        $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                        $set('phone', $countryCode . $cleanNumber);
-                                                    }
-                                                }),
-                                        ])
+                        ->label('Reenviar')
+                        ->icon('fluentui-document-arrow-right-20')
+                        ->color('primary')
+                        ->requiresConfirmation()
+                        ->modalIcon('fluentui-document-arrow-right-20')
+                        ->modalHeading('Reenvío de Cotización')
+                        ->modalDescription('La propuesta será enviada por email y/o teléfono!')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Section::make()
+                                // ->heading('Informacion')
+                                // ->description('El link puede sera enviado por email y/o telefono!')
+                                ->schema([
+                                    TextInput::make('email')
+                                        ->label('Email')
+                                        ->email(),
+                                    Grid::make(2)->schema([
+                                        Select::make('country_code')
+                                            ->label('Código de país')
+                                            ->options(fn() => UtilsController::getCountries())
+                                            ->searchable()
+                                            ->default('+58')
+                                            ->required()
+                                            ->live(onBlur: true)
+                                            ->validationMessages([
+                                                'required'  => 'Campo Requerido',
+                                            ]),
+                                        TextInput::make('phone')
+                                            ->prefixIcon('heroicon-s-phone')
+                                            ->tel()
+                                            ->label('Número de teléfono')
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Campo Requerido',
+                                            ])
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                $countryCode = $get('country_code');
+                                                if ($countryCode) {
+                                                    $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
+                                                    $set('phone', $countryCode . $cleanNumber);
+                                                }
+                                            }),
                                     ])
-                            ])
-                            ->action(function (CorporateQuoteRequest $record, array $data) {
+                                ])
+                        ])
+                        ->action(function (CorporateQuoteRequest $record, array $data) {
 
-                                try {
+                            try {
 
-                                    $email = null;
-                                    $phone = null;
+                                $email = null;
+                                $phone = null;
 
-                                    if (isset($data['email'])) {
-                                        $email = $data['email'];
-                                    }
+                                if (isset($data['email'])) {
+                                    $email = $data['email'];
+                                }
 
-                                    if (isset($data['phone'])) {
-                                        $phone = $data['phone'];
-                                    }
+                                if (isset($data['phone'])) {
+                                    $phone = $data['phone'];
+                                }
 
-                                    /**
-                                     * JOB
-                                     */
-                                    $job = ResendEmailPropuestaEconomica::dispatch($record, $email, $phone);
+                                /**
+                                 * JOB
+                                 */
+                                $job = ResendEmailPropuestaEconomica::dispatch($record, $email, $phone);
 
-                                    if ($job) {
-                                        Notification::make()
-                                            ->title('RE-ENVIADO EXITOSO')
-                                            ->body('La informacion fue re-enviada exitosamente.')
-                                            ->icon('heroicon-s-check-circle')
-                                            ->iconColor('verde')
-                                            ->success()
-                                            ->send();
-                                    }
-                                    
-                                } catch (\Throwable $th) {
-                                    
+                                if ($job) {
                                     Notification::make()
-                                        ->title('ERROR')
-                                        ->body($th->getMessage())
-                                        ->icon('heroicon-s-x-circle')
-                                        ->iconColor('danger')
-                                        ->danger()
+                                        ->title('RE-ENVIADO EXITOSO')
+                                        ->body('La informacion fue re-enviada exitosamente.')
+                                        ->icon('heroicon-s-check-circle')
+                                        ->iconColor('verde')
+                                        ->success()
                                         ->send();
                                 }
-                            }),
+                                
+                            } catch (\Throwable $th) {
+                                
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
 
                     /* DESCARGAR DOCUMENTO */
                     Action::make('download')
@@ -269,16 +270,17 @@ class CorporateQuoteRequestsTable
                             // }
                         }),
                 ])
-                    ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
-                    ->hidden(function (CorporateQuoteRequest $record) {
-                        return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                    })
+                ->icon('heroicon-c-ellipsis-vertical')
+                ->color('azulOscuro')
+                ->hidden(function (CorporateQuoteRequest $record) {
+                    return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
+                })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

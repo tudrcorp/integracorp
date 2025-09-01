@@ -11,11 +11,15 @@ class EditCorporateQuote extends EditRecord
 {
     protected static string $resource = CorporateQuoteResource::class;
 
+    protected static ?string $title = 'Pre-Afiliación Multi Plan(es)';
+
     protected function getHeaderActions(): array
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
+        return [];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
     }
 }

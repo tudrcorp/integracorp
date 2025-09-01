@@ -2,28 +2,31 @@
 
 namespace App\Filament\General\Resources\IndividualQuotes;
 
-use App\Filament\General\Resources\IndividualQuotes\Pages\CreateIndividualQuote;
-use App\Filament\General\Resources\IndividualQuotes\Pages\EditIndividualQuote;
-use App\Filament\General\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
-use App\Filament\General\Resources\IndividualQuotes\Pages\ViewIndividualQuote;
-use App\Filament\General\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
-use App\Filament\General\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
-use App\Filament\General\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
-use App\Models\IndividualQuote;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use App\Models\IndividualQuote;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\General\Resources\IndividualQuotes\Pages\EditIndividualQuote;
+use App\Filament\General\Resources\IndividualQuotes\Pages\ViewIndividualQuote;
+use App\Filament\General\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
+use App\Filament\General\Resources\IndividualQuotes\Pages\CreateIndividualQuote;
+use App\Filament\General\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
+use App\Filament\General\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
+use App\Filament\General\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
+use App\Filament\General\Resources\IndividualQuotes\RelationManagers\DetailsQuoteRelationManager;
 
 class IndividualQuoteResource extends Resource
 {
     protected static ?string $model = IndividualQuote::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+    protected static string | UnitEnum | null $navigationGroup = 'INDIVIDUALES';
 
-    protected static ?string $navigationLabel = 'Individuales';
+    protected static ?string $navigationLabel = 'Cotizar';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {
@@ -43,7 +46,7 @@ class IndividualQuoteResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DetailsQuoteRelationManager::class
         ];
     }
 

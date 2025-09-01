@@ -34,7 +34,8 @@ class AffiliationCorporatesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(AffiliationCorporate::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            // ->query(AffiliationCorporate::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->query(AffiliationCorporate::query()->where('owner_code', Auth::user()->code_agency))
             ->defaultSort('created_at', 'desc')
             ->heading('AFILIACIONES CORPORATIVAS')
             ->description('Lista de afiliaciones corporativas registradas en el sistema')

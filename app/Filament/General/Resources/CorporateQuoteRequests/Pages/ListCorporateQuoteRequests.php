@@ -2,22 +2,23 @@
 
 namespace App\Filament\General\Resources\CorporateQuoteRequests\Pages;
 
-use App\Filament\General\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
 use Filament\Actions\CreateAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Resources\Pages\ListRecords;
+use App\Filament\General\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
 
 class ListCorporateQuoteRequests extends ListRecords
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'SOLICITUDES DE COTIZACIÓN CORPORATIVA';
+    protected static ?string $title = 'Solicitudes Dress Taylor';
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('NUEVA SOLICITUD')
-                ->icon('heroicon-s-plus'),
+                ->label('Crear solicitud')
+                ->icon(Heroicon::Plus),
         ];
     }
 }

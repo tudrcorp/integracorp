@@ -27,7 +27,8 @@ class SalesTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->query(Sale::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            // ->query(Sale::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            ->query(Sale::query()->where('owner_code', Auth::user()->code_agency))
             ->description('En esta sección se muestran todas las ventas realizadas de tipo Individual y Corporativa')
             ->columns([
                 TextColumn::make('date')

@@ -21,10 +21,11 @@ class CorporateQuoteResource extends Resource
 {
     protected static ?string $model = CorporateQuote::class;
 
+    protected static string | UnitEnum | null $navigationGroup = 'CORPORATIVAS';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Cotizaciones';
+    protected static ?string $navigationLabel = 'Cotizar';
 
-    protected static ?string $navigationLabel = 'Corporativas';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

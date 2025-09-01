@@ -132,7 +132,6 @@ class AgentsPanelProvider extends PanelProvider
             ])
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->viteTheme('resources/css/filament/agents/theme.css');
-            // ->maxContentWidth(Width::Screen);
 
 
     }

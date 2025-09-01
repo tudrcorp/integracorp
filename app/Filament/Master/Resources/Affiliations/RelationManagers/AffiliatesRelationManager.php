@@ -124,6 +124,8 @@ class AffiliatesRelationManager extends RelationManager
                         }
                     })
 
-            ]);
+            ])
+            ->striped()
+            ->defaultSort('created_at', 'desc');
     }
 }

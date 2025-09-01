@@ -9,15 +9,34 @@ use Filament\Actions\Action;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
+use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use App\Http\Controllers\NotificationController;
 use App\Filament\General\Resources\IndividualQuotes\IndividualQuoteResource;
 
 class CreateIndividualQuote extends CreateRecord
 {
     protected static string $resource = IndividualQuoteResource::class;
 
-    protected static ?string $title = 'Crear cotización individual';
+    protected static ?string $title = 'Formulario de Cotización Individual';
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('regresar')
+                ->label('Regresar')
+                ->button()
+                ->icon('heroicon-s-arrow-left')
+                ->color('gray')
+                ->url(IndividualQuoteResource::getUrl('index')),
+        ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
+    }
 
     protected function getRedirectUrl(): string
     {
@@ -54,16 +73,12 @@ class CreateIndividualQuote extends CreateRecord
 
             //recupero la varaiable de sesion con los detalles de la cotizacion
             $details_quote = session()->get('details_quote');
-            // dd($details_quote);
-
-            // dd($details_quote);
 
             if ($details_quote[0]['plan_id'] == null) {
                 return;
             }
 
             $record = $this->getRecord();
-            // dd($record);
 
             /**
              * Actualizo el dato owner_agent con el id del agente que creo la cotizacion
@@ -122,22 +137,6 @@ class CreateIndividualQuote extends CreateRecord
             //elimino la variable de sesion para evitar sobrecargar
             session()->forget('details_quote');
 
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            $recipient = User::where('is_admin', 1)->get();
-            foreach ($recipient as $user) {
-                $recipient_for_user = User::find($user->id);
-                Notification::make()
-                    ->title('NUEVA COTIZACION INDIVUDUAL')
-                    ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('success')
-                    ->success()
-                    ->sendToDatabase($recipient_for_user);
-            }
 
             /**
              * LOgica para el envio de correo con los detalles de la cotizacion
@@ -330,27 +329,38 @@ class CreateIndividualQuote extends CreateRecord
                 $this->getRecord()->sendPropuestaEconomicaMultiple($collect_final);
             }
 
+            /**
+             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+             * ----------------------------------------------------------------------------------------------------
+             * $record [Data de la cotizacion guardada en la base de dastos]
+             */
+            $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
+            foreach ($recipient as $user) {
+                $recipient_for_user = User::find($user->id);
+                Notification::make()
+                    ->title('NUEVA COTIZACIÓN INDIVIDUAL')
+                    ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
+                    ->icon('heroicon-m-tag')
+                    ->iconColor('success')
+                    ->success()
+                    ->actions([
+                        Action::make('view')
+                            ->label('Ver cotización individual')
+                            ->button()
+                            ->color('primary')
+                            ->url(IndividualQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+                        Action::make('link')
+                            ->label('Link Interactivo')
+                            ->button()
+                            ->color('success')
+                            ->url(route('volt.home', ['quote' => Crypt::encryptString($record->id)]), shouldOpenInNewTab: true),
+                    ])
+                    ->sendToDatabase($recipient_for_user);
+            }
 
-            // $email = $this->data['email'];
-
-            // $send_email = NotificationController::sendEmail_propuesta_economica($email, $record, $detalle);
-            // Log::info($send_email);
-
-            Notification::make()
-                ->title('NOTIFICACION')
-                ->body('El documento fue generado de forma exitosa.')
-                ->icon('heroicon-m-tag')
-                ->iconColor('success')
-                ->success()
-                ->actions([
-                    Action::make('view')
-                        ->label('Ver cotizacion individual')
-                        ->button()
-                        ->url(IndividualQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                ])
-                ->sendToDatabase($recipient_for_user);
+            //Notificacion por whatsapp al telefono de cotizaciones
+            $sendNotificationWp = NotificationController::createdIndividualQuote($record->code, Auth::user()->name);
         } catch (\Throwable $th) {
-            dd($th);
             Notification::make()
                 ->title('ERROR')
                 ->body($th->getMessage())
@@ -359,5 +369,18 @@ class CreateIndividualQuote extends CreateRecord
                 ->danger()
                 ->send();
         }
+    }
+
+    //getCreatedNotification
+    protected function getCreatedNotification(): Notification
+    {
+        return Notification::make()
+            ->title('NOTIFICACIÓN')
+            ->body('Cotización Individual exitosa!. En breves segundos su cotización estará disponible en la opción de descargar cotización. ⬇️')
+            ->icon('entypo-pin')
+            ->iconColor('danger')
+            ->success()
+            ->persistent()
+            ->send();
     }
 }

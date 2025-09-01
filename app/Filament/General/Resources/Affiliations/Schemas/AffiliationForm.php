@@ -8,6 +8,7 @@ use App\Models\State;
 use App\Models\Agency;
 use App\Models\Region;
 use App\Models\Country;
+use App\Models\Coverage;
 use App\Models\Affiliation;
 use Filament\Schemas\Schema;
 use App\Models\IndividualQuote;
@@ -27,11 +28,15 @@ use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Illuminate\Database\Eloquent\Builder;
 
 class AffiliationForm
 {
@@ -41,13 +46,11 @@ class AffiliationForm
             ->components([
                 Wizard::make([
                     Step::make('Información principal')
-                        ->description('Datos de la cotización')
-                        ->icon(Heroicon::ClipboardDocumentList)
-                        ->completedIcon(Heroicon::Check)
+                        ->description('Datos para la afiliación')
                         ->schema([
                             Grid::make()->schema([
                                 TextInput::make('code')
-                                    ->label('Codigo de afiliacion')
+                                    ->label('Código de afiliación')
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
                                     ->disabled()
                                     ->dehydrated()
@@ -58,10 +61,9 @@ class AffiliationForm
                                         } else {
                                             $parte_entera = Affiliation::max('id');
                                         }
-                                        return 'TDEC-AFI-000' . $parte_entera + 1;
+                                        return 'TDEC-IND-000' . $parte_entera + 1;
                                     })
                                     ->required(),
-
                             ])->columns(3),
                             Grid::make(3)->schema([
                                 Select::make('individual_quote_id')
@@ -70,7 +72,7 @@ class AffiliationForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
-                                    ->options(IndividualQuote::select('id', 'agent_id', 'status', 'full_name')->where('code_agency', Auth::user()->code_agency)->where('status', 'APROBADA')->pluck('full_name', 'id'))
+                                    ->options(IndividualQuote::select('id', 'agent_id', 'status', 'full_name')->where('agent_id', Auth::user()->agent_id)->where('status', 'APROBADA')->pluck('full_name', 'id'))
                                     ->default(function () {
                                         $id = request()->query('id');
                                         if (isset($id)) {
@@ -126,7 +128,8 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ]),
                                 Select::make('coverage_id')
-                                    ->label('Cobertura(s) cotizadas')
+                                    ->helperText('Punto(.) para separar miles.')
+                                    ->label('Cobertura')
                                     ->live()
                                     ->options(function (Get $get) {
                                         $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
@@ -140,6 +143,11 @@ class AffiliationForm
 
                                         return $coverages;
                                     })
+                                    ->relationship(
+                                        name: 'coverage',
+                                        modifyQueryUsing: fn(Builder $query, Get $get) => $query->where('plan_id', $get('plan_id'))->orderBy('price', 'asc'),
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn(Coverage $record) => number_format($record->price, 0, '', '.'))
                                     ->searchable()
                                     ->required()
                                     ->validationMessages([
@@ -153,8 +161,8 @@ class AffiliationForm
                                     ->live()
                                     ->options([
                                         'ANUAL'      => 'ANUAL',
+                                        'SEMESTRAL'  => 'SEMESTRAL',
                                         'TRIMESTRAL' => 'TRIMESTRAL',
-                                        'SEMESTRAL'  => 'SEMESTRAL'
                                     ])
                                     ->searchable()
                                     ->live()
@@ -227,6 +235,7 @@ class AffiliationForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->live(),
+
                                 /**
                                  * Campos referenciales para jerarquia
                                  * -----------------------------------------------------------------
@@ -236,18 +245,18 @@ class AffiliationForm
                                 Hidden::make('code_agency')->default(Auth::user()->code_agency),
                                 Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
                                 /**-------------------------------------------------------------------------------------------------------------------------------------------- */
-                            ])
+
+
+                    ])
                         ]),
-                    Step::make('Contratante')
-                        ->description('Información del contratante')
-                        ->icon(Heroicon::HandRaised)
-                        ->completedIcon(Heroicon::Check)
+                    Step::make('Titular')
+                        ->description('Información del titular')
                         ->schema([
                             Grid::make(3)->schema([
-                                TextInput::make('full_name_con')
+                                TextInput::make('full_name_ti')
                                     ->label('Nombre y Apellido')
                                     ->afterStateUpdated(function (Set $set, $state) {
-                                        $set('name', strtoupper($state));
+                                        $set('full_name_ti', strtoupper($state));
                                     })
                                     ->live(onBlur: true)
                                     ->prefixIcon('heroicon-s-identification')
@@ -256,22 +265,24 @@ class AffiliationForm
                                         'required' => 'Campo requerido',
                                     ])
                                     ->maxLength(255),
-                                TextInput::make('nro_identificacion_con')
-                                    ->label('Nro. de identidad')
-                                    ->prefix('V/E/C')
-                                    ->numeric()
+                                TextInput::make('nro_identificacion_ti')
+                                    ->label('Nro. de Identificación')
+                                    ->prefixIcon('heroicon-s-identification')
                                     ->unique(
                                         ignoreRecord: true,
                                         table: 'affiliations',
-                                        column: 'nro_identificacion_con',
+                                        column: 'nro_identificacion_ti',
                                     )
+                                    ->mask('999999999')
+                                    ->rules([
+                                        'regex:/^[0-9]+$/' // Acepta de 1 a 6 dígitos
+                                    ])
                                     ->validationMessages([
-                                        'unique'    => 'El RIF ya se encuentra registrado.',
-                                        'numeric'   => 'El campo es numerico',
+                                        'numeric'   => 'El campo es numérico',
                                     ])
                                     ->required(),
 
-                                Select::make('sex_con')
+                                Select::make('sex_ti')
                                     ->label('Sexo')
                                     ->live()
                                     ->options([
@@ -286,15 +297,16 @@ class AffiliationForm
                                     ])
                                     ->preload(),
 
-                                DatePicker::make('birth_date_con')
+                                DatePicker::make('birth_date_ti')
                                     ->label('Fecha de Nacimiento')
                                     ->prefixIcon('heroicon-m-calendar-days')
                                     ->displayFormat('d/m/Y')
+                                    ->format('d-m-Y')
                                     ->required()
                                     ->validationMessages([
                                         'required'  => 'Campo Requerido',
                                     ]),
-                                TextInput::make('email_con')
+                                TextInput::make('email_ti')
                                     ->label('Email')
                                     ->prefixIcon('heroicon-s-at-symbol')
                                     ->email()
@@ -302,18 +314,18 @@ class AffiliationForm
                                     ->unique(
                                         ignoreRecord: true,
                                         table: 'affiliations',
-                                        column: 'email_con',
+                                        column: 'email_ti',
                                     )
                                     ->validationMessages([
-                                        'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
+                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                         'required'  => 'Campo requerido',
                                         'email'     => 'El campo es un email',
                                     ])
                                     ->maxLength(255),
-                                TextInput::make('adress_con')
+                                TextInput::make('adress_ti')
                                     ->label('Dirección')
                                     ->afterStateUpdated(function (Set $set, $state) {
-                                        $set('address', strtoupper($state));
+                                        $set('adress_ti', strtoupper($state));
                                     })
                                     ->live(onBlur: true)
                                     ->prefixIcon('heroicon-s-identification')
@@ -322,87 +334,13 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ])
                                     ->maxLength(255),
-                                Select::make('country_code_con')
+                                Select::make('country_code_ti')
                                     ->label('Código de país')
-                                    ->options([
-                                        '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                        '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                        '+49'  => '🇩🇪 +49 (Alemania)',
-                                        '+33'  => '🇫🇷 +33 (Francia)',
-                                        '+34'  => '🇪🇸 +34 (España)',
-                                        '+39'  => '🇮🇹 +39 (Italia)',
-                                        '+7'   => '🇷🇺 +7 (Rusia)',
-                                        '+55'  => '🇧🇷 +55 (Brasil)',
-                                        '+91'  => '🇮🇳 +91 (India)',
-                                        '+86'  => '🇨🇳 +86 (China)',
-                                        '+81'  => '🇯🇵 +81 (Japón)',
-                                        '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                        '+52'  => '🇲🇽 +52 (México)',
-                                        '+58'  => '🇻🇪 +58 (Venezuela)',
-                                        '+57'  => '🇨🇴 +57 (Colombia)',
-                                        '+54'  => '🇦🇷 +54 (Argentina)',
-                                        '+56'  => '🇨🇱 +56 (Chile)',
-                                        '+51'  => '🇵🇪 +51 (Perú)',
-                                        '+502' => '🇬🇹 +502 (Guatemala)',
-                                        '+503' => '🇸🇻 +503 (El Salvador)',
-                                        '+504' => '🇭🇳 +504 (Honduras)',
-                                        '+505' => '🇳🇮 +505 (Nicaragua)',
-                                        '+506' => '🇨🇷 +506 (Costa Rica)',
-                                        '+507' => '🇵🇦 +507 (Panamá)',
-                                        '+593' => '🇪🇨 +593 (Ecuador)',
-                                        '+592' => '🇬🇾 +592 (Guyana)',
-                                        '+591' => '🇧🇴 +591 (Bolivia)',
-                                        '+598' => '🇺🇾 +598 (Uruguay)',
-                                        '+20'  => '🇪🇬 +20 (Egipto)',
-                                        '+27'  => '🇿🇦 +27 (Sudáfrica)',
-                                        '+234' => '🇳🇬 +234 (Nigeria)',
-                                        '+212' => '🇲🇦 +212 (Marruecos)',
-                                        '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                        '+92'  => '🇵🇰 +92 (Pakistán)',
-                                        '+880' => '🇧🇩 +880 (Bangladesh)',
-                                        '+62'  => '🇮🇩 +62 (Indonesia)',
-                                        '+63'  => '🇵🇭 +63 (Filipinas)',
-                                        '+66'  => '🇹🇭 +66 (Tailandia)',
-                                        '+60'  => '🇲🇾 +60 (Malasia)',
-                                        '+65'  => '🇸🇬 +65 (Singapur)',
-                                        '+61'  => '🇦🇺 +61 (Australia)',
-                                        '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                        '+90'  => '🇹🇷 +90 (Turquía)',
-                                        '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                        '+372' => '🇪🇪 +372 (Estonia)',
-                                        '+371' => '🇱🇻 +371 (Letonia)',
-                                        '+370' => '🇱🇹 +370 (Lituania)',
-                                        '+48'  => '🇵🇱 +48 (Polonia)',
-                                        '+40'  => '🇷🇴 +40 (Rumania)',
-                                        '+46'  => '🇸🇪 +46 (Suecia)',
-                                        '+47'  => '🇳🇴 +47 (Noruega)',
-                                        '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                        '+41'  => '🇨🇭 +41 (Suiza)',
-                                        '+43'  => '🇦🇹 +43 (Austria)',
-                                        '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                        '+32'  => '🇧🇪 +32 (Bélgica)',
-                                        '+353' => '🇮🇪 +353 (Irlanda)',
-                                        '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                        '+380' => '🇺🇦 +380 (Ucrania)',
-                                        '+994' => '🇦🇿 +994 (Azerbaiyán)',
-                                        '+995' => '🇬🇪 +995 (Georgia)',
-                                        '+976' => '🇲🇳 +976 (Mongolia)',
-                                        '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                        '+84'  => '🇻🇳 +84 (Vietnam)',
-                                        '+856' => '🇱🇦 +856 (Laos)',
-                                        '+374' => '🇦🇲 +374 (Armenia)',
-                                        '+965' => '🇰🇼 +965 (Kuwait)',
-                                        '+966' => '🇸🇦 +966 (Arabia Saudita)',
-                                        '+972' => '🇮🇱 +972 (Israel)',
-                                        '+963' => '🇸🇾 +963 (Siria)',
-                                        '+961' => '🇱🇧 +961 (Líbano)',
-                                        '+960' => '🇲🇻 +960 (Maldivas)',
-                                        '+992' => '🇹🇯 +992 (Tayikistán)',
-                                    ])
+                                    ->options(fn() => UtilsController::getCountries())
                                     ->hiddenOn('edit')
                                     ->default('+58')
                                     ->live(onBlur: true),
-                                TextInput::make('phone_con')
+                                TextInput::make('phone_ti')
                                     ->prefixIcon('heroicon-s-phone')
                                     ->tel()
                                     ->label('Número de teléfono')
@@ -412,13 +350,13 @@ class AffiliationForm
                                     ])
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                        $countryCode = $get('country_code_con');
+                                        $countryCode = $get('country_code_ti');
                                         if ($countryCode) {
                                             $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                            $set('phone_con', $countryCode . $cleanNumber);
+                                            $set('phone_ti', $countryCode . $cleanNumber);
                                         }
                                     }),
-                                Select::make('country_id_con')
+                                Select::make('country_id_ti')
                                     ->label('País')
                                     ->live()
                                     ->options(Country::all()->pluck('name', 'id'))
@@ -428,16 +366,17 @@ class AffiliationForm
                                     ->validationMessages([
                                         'required'  => 'Campo Requerido',
                                     ])
+                                    ->default(189)
                                     ->preload(),
-                                Select::make('state_id_con')
+                                Select::make('state_id_ti')
                                     ->label('Estado')
                                     ->options(function (Get $get) {
-                                        return State::where('country_id', $get('country_id_con'))->pluck('definition', 'id');
+                                        return State::where('country_id', $get('country_id_ti'))->pluck('definition', 'id');
                                     })
                                     ->afterStateUpdated(function (Set $set, $state) {
                                         $region_id = State::where('id', $state)->value('region_id');
                                         $region = Region::where('id', $region_id)->value('definition');
-                                        $set('region_con', $region);
+                                        $set('region_ti', $region);
                                     })
                                     ->live()
                                     ->searchable()
@@ -447,16 +386,16 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ])
                                     ->preload(),
-                                TextInput::make('region_con')
+                                TextInput::make('region_ti')
                                     ->label('Región')
                                     ->prefixIcon('heroicon-m-map')
                                     ->disabled()
                                     ->dehydrated()
                                     ->maxLength(255),
-                                Select::make('city_id_con')
+                                Select::make('city_id_ti')
                                     ->label('Ciudad')
                                     ->options(function (Get $get) {
-                                        return City::where('country_id', $get('country_id_con'))->where('state_id', $get('state_id_con'))->pluck('definition', 'id');
+                                        return City::where('country_id', $get('country_id_ti'))->where('state_id', $get('state_id_ti'))->pluck('definition', 'id');
                                     })
                                     ->searchable()
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
@@ -465,288 +404,220 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ])
                                     ->preload(),
+                                FileUpload::make('document')
+                                    ->label('Documento del titular')
+                                    ->uploadingMessage('Cargando documento...'),
+
+                                Grid::make(1)
+                                    ->schema([
+                                        Radio::make('feedback')
+                                            ->label('¿Desea incluir beneficiarios adicionales?')
+                                            ->default(true)
+                                            ->live()
+                                            ->boolean()
+                                            ->inline()
+                                            ->inlineLabel(false)
+                                    ])->columnSpanFull()->hiddenOn('edit'),
                             ])
                         ]),
-                    Step::make('Titular')
-                        ->description('Información del titular')
-                        ->icon(Heroicon::User)
-                        ->completedIcon(Heroicon::Check)
+                    Step::make('Afiliados')
+                        ->hidden(fn(Get $get) => !$get('feedback'))
+                        ->description('Data de afiliados')
                         ->schema([
-                            Grid::make(2)
+                            Repeater::make('affiliates')
+                                ->label('Información de afiliados')
                                 ->schema([
-                                    Radio::make('feedback')
-                                        ->label('Si el CONTRATANTE es el mismo TITULAR Indicar:')
+                                    Grid::make(2)
+                                        ->schema([
+                                            Fieldset::make('Información personal del afiliado')
+                                                ->schema([
+                                                    TextInput::make('full_name')
+                                                        ->afterStateUpdated(function (Set $set, $state) {
+                                                            $set('full_name', strtoupper($state));
+                                                        })
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Campo Requerido',
+                                                        ])
+                                                        ->live(onBlur: true)
+                                                        ->maxLength(255),
+                                                    TextInput::make('nro_identificacion')
+                                                        ->numeric()
+                                                        ->unique(
+                                                            ignoreRecord: true,
+                                                            table: 'affiliates',
+                                                            column: 'nro_identificacion',
+                                                        )
+                                                        ->mask('999999999')
+                                                        ->rules([
+                                                            'regex:/^[0-9]+$/' // Acepta de 1 a 6 dígitos
+                                                        ])
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'numeric'   => 'El campo es numerico',
+                                                            'required'  => 'Campo Requerido',
+                                                        ]),
+                                                    Select::make('sex')
+                                                        ->options([
+                                                            'MASCULINO' => 'MASCULINO',
+                                                            'FEMENINO' => 'FEMENINO',
+                                                        ])
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Campo Requerido',
+                                                        ]),
+                                                    DatePicker::make('birth_date')
+                                                        ->displayFormat('d-m-Y')
+                                                        ->format('d-m-Y')
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Campo Requerido',
+                                                        ]),
+                                                    Select::make('relationship')
+                                                        ->label('Parentesco')
+                                                        ->options([
+                                                            'AMIGO'     => 'AMIGO',
+                                                            'MADRE'     => 'MADRE',
+                                                            'PADRE'     => 'PADRE',
+                                                            'CONYUGE'   => 'CONYUGE',
+                                                            'HIJO'      => 'HIJO',
+                                                            'HIJA'      => 'HIJA',
+                                                            'OTRO'      => 'OTRO',
+                                                        ])
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Campo Requerido',
+                                                        ]),
+                                                ])->columnSpanFull(1)->columns(5),
+                                            Fieldset::make('Documento de identidad')
+                                                ->schema([
+                                                    FileUpload::make('document')
+                                                        ->label('Documento')
+                                                        ->uploadingMessage('Cargando documento...')
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Campo Requerido',
+                                                        ])
+
+                                                ])->columnSpanFull(1),
+                                        ])->columnSpanFull()->columns(2),
+                                ])
+                                ->columnSpanFull()
+                                ->defaultItems(function (Get $get, Set $set) {
+                                    //Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
+                                    return session()->get('persons') - 1;
+                                })
+                                ->addActionLabel('Agregar afiliado')
+                        ]),
+                    Step::make('Información Adicional')
+                        ->description('Datos del Pagador')
+                        ->schema([
+                            Grid::make(1)
+                                ->schema([
+                                    Radio::make('feedback_dos')
+                                        ->label('¿El titular de la póliza es el responsable de pago?')
                                         ->default(true)
                                         ->live()
                                         ->boolean()
                                         ->inline()
                                         ->inlineLabel(false)
                                 ])->hiddenOn('edit'),
-                            Grid::make(4)
+                            Fieldset::make('Datos principales del pagador')
                                 ->schema([
-                                    TextInput::make('full_name_ti')
+                                    TextInput::make('full_name_payer')
                                         ->label('Nombre y Apellido')
                                         ->afterStateUpdated(function (Set $set, $state) {
-                                            $set('name', strtoupper($state));
+                                            $set('full_name_payer', strtoupper($state));
                                         })
                                         ->live(onBlur: true)
                                         ->prefixIcon('heroicon-s-identification')
-
+                                        ->required()
                                         ->validationMessages([
                                             'required' => 'Campo requerido',
                                         ])
                                         ->maxLength(255),
-                                    TextInput::make('nro_identificacion_ti')
-                                        ->label('Nro. de identidad')
-                                        ->prefix('V/E/C')
-                                        ->numeric()
+                                    TextInput::make('nro_identificacion_payer')
+                                        ->label('Nro. de Identificación')
+                                        ->prefixIcon('heroicon-s-identification')
                                         ->unique(
                                             ignoreRecord: true,
                                             table: 'affiliations',
-                                            column: 'nro_identificacion_ti',
+                                            column: 'nro_identificacion_payer',
                                         )
+                                        ->mask('999999999')
+                                        ->rules([
+                                            'regex:/^[0-9]+$/' // Acepta de 1 a 6 dígitos
+                                        ])
                                         ->validationMessages([
                                             'numeric'   => 'El campo es numerico',
                                         ])
                                         ->required(),
-
-                                    Select::make('sex_ti')
-                                        ->label('Sexo')
-                                        ->live()
-                                        ->options([
-                                            'MASCULINO' => 'MASCULINO',
-                                            'FEMENINO' => 'FEMENINO',
-                                        ])
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->preload(),
-
-                                    DatePicker::make('birth_date_ti')
-                                        ->label('Fecha de Nacimiento')
-                                        ->prefixIcon('heroicon-m-calendar-days')
-                                        ->displayFormat('d/m/Y'),
-                                    TextInput::make('email_ti')
-                                        ->label('Email')
-                                        ->prefixIcon('heroicon-s-at-symbol')
-                                        ->email()
-                                        ->unique(
-                                            ignoreRecord: true,
-                                            table: 'affiliations',
-                                            column: 'email_ti',
-                                        )
-                                        ->validationMessages([
-                                            'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
-                                            'email'     => 'El campo es un email',
-                                        ])
-                                        ->maxLength(255),
-                                    TextInput::make('adress_ti')
-                                        ->label('Dirección')
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            $set('address', strtoupper($state));
-                                        })
-                                        ->live(onBlur: true)
-                                        ->prefixIcon('heroicon-s-identification')
-                                        ->maxLength(255),
-                                    Select::make('country_code_ti')
+                                    Select::make('country_code_payer')
                                         ->label('Código de país')
-                                        ->options([
-                                            '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                            '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                            '+49'  => '🇩🇪 +49 (Alemania)',
-                                            '+33'  => '🇫🇷 +33 (Francia)',
-                                            '+34'  => '🇪🇸 +34 (España)',
-                                            '+39'  => '🇮🇹 +39 (Italia)',
-                                            '+7'   => '🇷🇺 +7 (Rusia)',
-                                            '+55'  => '🇧🇷 +55 (Brasil)',
-                                            '+91'  => '🇮🇳 +91 (India)',
-                                            '+86'  => '🇨🇳 +86 (China)',
-                                            '+81'  => '🇯🇵 +81 (Japón)',
-                                            '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                            '+52'  => '🇲🇽 +52 (México)',
-                                            '+58'  => '🇻🇪 +58 (Venezuela)',
-                                            '+57'  => '🇨🇴 +57 (Colombia)',
-                                            '+54'  => '🇦🇷 +54 (Argentina)',
-                                            '+56'  => '🇨🇱 +56 (Chile)',
-                                            '+51'  => '🇵🇪 +51 (Perú)',
-                                            '+502' => '🇬🇹 +502 (Guatemala)',
-                                            '+503' => '🇸🇻 +503 (El Salvador)',
-                                            '+504' => '🇭🇳 +504 (Honduras)',
-                                            '+505' => '🇳🇮 +505 (Nicaragua)',
-                                            '+506' => '🇨🇷 +506 (Costa Rica)',
-                                            '+507' => '🇵🇦 +507 (Panamá)',
-                                            '+593' => '🇪🇨 +593 (Ecuador)',
-                                            '+592' => '🇬🇾 +592 (Guyana)',
-                                            '+591' => '🇧🇴 +591 (Bolivia)',
-                                            '+598' => '🇺🇾 +598 (Uruguay)',
-                                            '+20'  => '🇪🇬 +20 (Egipto)',
-                                            '+27'  => '🇿🇦 +27 (Sudáfrica)',
-                                            '+234' => '🇳🇬 +234 (Nigeria)',
-                                            '+212' => '🇲🇦 +212 (Marruecos)',
-                                            '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                            '+92'  => '🇵🇰 +92 (Pakistán)',
-                                            '+880' => '🇧🇩 +880 (Bangladesh)',
-                                            '+62'  => '🇮🇩 +62 (Indonesia)',
-                                            '+63'  => '🇵🇭 +63 (Filipinas)',
-                                            '+66'  => '🇹🇭 +66 (Tailandia)',
-                                            '+60'  => '🇲🇾 +60 (Malasia)',
-                                            '+65'  => '🇸🇬 +65 (Singapur)',
-                                            '+61'  => '🇦🇺 +61 (Australia)',
-                                            '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                            '+90'  => '🇹🇷 +90 (Turquía)',
-                                            '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                            '+372' => '🇪🇪 +372 (Estonia)',
-                                            '+371' => '🇱🇻 +371 (Letonia)',
-                                            '+370' => '🇱🇹 +370 (Lituania)',
-                                            '+48'  => '🇵🇱 +48 (Polonia)',
-                                            '+40'  => '🇷🇴 +40 (Rumania)',
-                                            '+46'  => '🇸🇪 +46 (Suecia)',
-                                            '+47'  => '🇳🇴 +47 (Noruega)',
-                                            '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                            '+41'  => '🇨🇭 +41 (Suiza)',
-                                            '+43'  => '🇦🇹 +43 (Austria)',
-                                            '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                            '+32'  => '🇧🇪 +32 (Bélgica)',
-                                            '+353' => '🇮🇪 +353 (Irlanda)',
-                                            '+375' => '🇧🇾 +375 (Bielorrusia)',
-                                            '+380' => '🇺🇦 +380 (Ucrania)',
-                                            '+994' => '🇦🇿 +994 (Azerbaiyán)',
-                                            '+995' => '🇬🇪 +995 (Georgia)',
-                                            '+976' => '🇲🇳 +976 (Mongolia)',
-                                            '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                            '+84'  => '🇻🇳 +84 (Vietnam)',
-                                            '+856' => '🇱🇦 +856 (Laos)',
-                                            '+374' => '🇦🇲 +374 (Armenia)',
-                                            '+965' => '🇰🇼 +965 (Kuwait)',
-                                            '+966' => '🇸🇦 +966 (Arabia Saudita)',
-                                            '+972' => '🇮🇱 +972 (Israel)',
-                                            '+963' => '🇸🇾 +963 (Siria)',
-                                            '+961' => '🇱🇧 +961 (Líbano)',
-                                            '+960' => '🇲🇻 +960 (Maldivas)',
-                                            '+992' => '🇹🇯 +992 (Tayikistán)',
-                                        ])
-                                        ->searchable()
-                                        ->default('+58')
+                                        ->options(fn() => UtilsController::getCountries())
                                         ->hiddenOn('edit')
+                                        ->default('+58')
                                         ->live(onBlur: true),
-                                    TextInput::make('phone_ti')
+                                    TextInput::make('phone_payer')
                                         ->prefixIcon('heroicon-s-phone')
                                         ->tel()
                                         ->label('Número de teléfono')
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido',
+                                        ])
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                            $countryCode = $get('country_code_ti');
+                                            $countryCode = $get('country_code_payer');
                                             if ($countryCode) {
                                                 $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                $set('phone_ti', $countryCode . $cleanNumber);
+                                                $set('phone_payer', $countryCode . $cleanNumber);
                                             }
                                         }),
-                                    Select::make('country_id_ti')
-                                        ->label('País')
-                                        ->live()
-                                        ->options(Country::all()->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->preload(),
-                                    Select::make('state_id_ti')
-                                        ->label('Estado')
-                                        ->options(function (Get $get) {
-                                            return State::where('country_id', $get('country_id_ti'))->pluck('definition', 'id');
-                                        })
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            $region_id = State::where('id', $state)->value('region_id');
-                                            $region = Region::where('id', $region_id)->value('definition');
-                                            $set('region_ti', $region);
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->preload(),
-                                    TextInput::make('region_ti')
-                                        ->label('Región')
-                                        ->prefixIcon('heroicon-m-map')
-                                        ->disabled()
-                                        ->dehydrated()
-                                        ->maxLength(255),
-                                    Select::make('city_id_ti')
-                                        ->label('Ciudad')
-                                        ->options(function (Get $get) {
-                                            return City::where('country_id', $get('country_id_ti'))->where('state_id', $get('state_id_ti'))->pluck('definition', 'id');
-                                        })
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->preload(),
-                                ])->hidden(fn(Get $get) => $get('feedback')),
-                        ]),
-                    Step::make('Afiliados')
-                        ->description('Data de afiliados')
-                        ->icon(Heroicon::UserGroup)
-                        ->completedIcon(Heroicon::Check)
-                        ->schema([
-                            Repeater::make('affiliates')
-                                ->label('Información de afiliados')
-                                ->table([
-                                    TableColumn::make('Nombre completo'),
-                                    TableColumn::make('Cédula de identidad'),
-                                    TableColumn::make('Sexo'),
-                                    TableColumn::make('Fecha de nacimiento'),
-                                    TableColumn::make('Parentesco'),
-                                ])
-                                ->schema([
-                                    TextInput::make('full_name')
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            $set('full_name', strtoupper($state));
-                                        })
-                                        ->live(onBlur: true)
-                                        ->maxLength(255),
-                                    TextInput::make('nro_identificacion')
-                                        ->numeric()
+                                    TextInput::make('email_payer')
+                                        ->label('Email')
+                                        ->prefixIcon('heroicon-s-at-symbol')
+                                        ->email()
+                                        ->required()
                                         ->unique(
                                             ignoreRecord: true,
-                                            table: 'affiliates',
-                                            column: 'nro_identificacion',
+                                            table: 'affiliations',
+                                            column: 'email_payer',
                                         )
                                         ->validationMessages([
-                                            'numeric'   => 'El campo es numerico',
-                                        ]),
-                                    Select::make('sex')
+                                            'unique'    => 'El Correo electrónico ya se encuentra registrado.',
+                                            'required'  => 'Campo requerido',
+                                            'email'     => 'El campo es un email',
+                                        ])
+                                        ->maxLength(255),
+                                    Select::make('relationship_payer')
+                                        ->label('Parentesco')
                                         ->options([
-                                            'MASCULINO' => 'MASCULINO',
-                                            'FEMENINO' => 'FEMENINO',
-                                        ]),
-                                    DatePicker::make('birth_date')
-                                        ->format('d-m-Y'),
-                                    Select::make('relationship')
-                                        ->options([
+                                            'AMIGO'     => 'AMIGO',
                                             'MADRE'     => 'MADRE',
                                             'PADRE'     => 'PADRE',
-                                            'ESPOSA'    => 'ESPOSA',
-                                            'ESPOSO'    => 'ESPOSO',
+                                            'CONYUGE'   => 'CONYUGE',
                                             'HIJO'      => 'HIJO',
                                             'HIJA'      => 'HIJA',
                                         ]),
-                                ])
-                                // ->defaultItems(6)
-                                ->addActionLabel('Agregar afiliado')
+                                ])->columns(3)->hidden(fn(Get $get) => $get('feedback_dos')),
                         ]),
                     Step::make('Acuerdo y condiciones')
                         ->description('Leer y aceptar las condiciones')
-                        ->icon(Heroicon::ShieldCheck)
-                        ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {
                                     if ($get('plan_id') == 1 || $get('plan_id') == 2) {
-                                        return 'Estoy de acuerdo en aceptar la cobertura domiciliaria para patologías agudas del plan seleccionado, bajo los términos y condiciones con que sea
-                                   emitido. De no ser así, notificare mi desacuerdo por escrito, durante los quince (15) días siguientes.';
+                                        return 'Estoy de acuerdo en aceptar la cobertura domiciliaria para patologías agudas del plan seleccionado, bajo los términos y condiciones de la emisión. De no ser así, notificare mi desacuerdo por escrito, durante los quince (15) días siguientes.';
                                     }
                                     if ($get('plan_id') == 3) {
                                         return 'Certifico que he leído todas las respuestas y declaraciones en esta solicitud y que a mi mejor entendimiento, están completas y son verdaderas.
-                                Entiendo que cualquier omisión o declaración incompleta o incorrecta puede causar que las reclamaciones sean negadas y que el plan sea modificado, rescindido
-                                o cancelado.
-                                Estoy de acuerdo en aceptar la cobertura bajo los términos y condiciones con que sea emitida.
-                                De no ser así , notificaré mi desacuerdo por escrito a la compañía durante los quince (15) días siguientes al recibir el certificado de cobertura.
-                                Como Agente, acepto completa responsabilidad por el envío de esta solicitud, todas las primas cobradas y por la entrega de la póliza cuando sea emitida.
-                                Desconozco la existencia de cualquier condición que no haya sido revelada en esta solicitud que pudiera afectar la asegurabilidad de los propuestos asegurados.';
+                                            Entiendo que cualquier omisión o declaración incompleta o incorrecta puede causar que las reclamaciones sean negadas y que el plan sea modificado, rescindido
+                                            o cancelado.
+                                            Estoy de acuerdo en aceptar la cobertura bajo los términos y condiciones con que sea emitida.
+                                            De no ser así , notificaré mi desacuerdo por escrito a la compañía durante los quince (15) días siguientes al recibir el certificado de cobertura.
+                                            Como Agente, acepto completa responsabilidad por el envío de esta solicitud, todas las tarifas cobradas y por la entrega del certificado de afiliación cuando sea emitida.
+                                            Desconozco la existencia de cualquier condición que no haya sido revelada en esta solicitud que pudiera afectar la protección de los afiliados.';
                                     }
                                 })
                                 ->icon('heroicon-m-folder-plus')
@@ -759,13 +630,13 @@ class AffiliationForm
                         ]),
                 ])
                     ->submitAction(new HtmlString(Blade::render(<<<BLADE
-                <x-filament::button
-                    type="submit"
-                    size="sm"
-                >
-                    Crear cotización
-                </x-filament::button>
-            BLADE)))
+                    <x-filament::button
+                        type="submit"
+                        size="sm"
+                    >
+                        Crear Pre-Afiliación
+                    </x-filament::button>
+                BLADE)))
                     ->columnSpanFull(),
 
             ]);

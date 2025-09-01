@@ -25,6 +25,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -108,16 +109,51 @@ class IndividualQuoteForm
                                                 ])
                                                 ->maxLength(255),
                                         ])->columnSpanFull(),
-                                            //...
-                                    Hidden::make('status')->default('PRE-APROBADA'),
-                                    Hidden::make('created_by')->default(Auth::user()->name),
+                                    Fieldset::make('Asignación de Cotización')
+                                        ->schema([
+                                            Select::make('code_agency_jerarchy')
+                                                ->label('Agencia General')
+                                                ->helperText('Si desea asignar la cotización a una agencia que pertenezca a su estructura, seleccione la agencia.')
+                                                ->searchable()
+                                                ->live()
+                                                ->options(function () {
+                                                    return Agency::where('owner_code', Auth::user()->code_agency)->get()->pluck('code', 'id');
+                                                }),
+                                            Select::make('agent_id')
+                                                ->label('Agente')
+                                                ->helperText('Si desea asignar la cotización a un agente que pertenezca a su estructura, seleccione la agente. Si el agente pertenece a una agencia general debe seleccionar la agencia y el agente')
+                                                ->searchable()
+                                                ->live()
+                                                ->options(function () {
+                                                    return Agent::where('owner_code', Auth::user()->code_agency)->pluck('name', 'id');
+                                                }),
+                                        ])->columnSpanFull()->columns(2),
 
-                                    /**
-                                     * Campos referenciales para jerarquia
+                                    /**                                    * Campos referenciales para jerarquía
                                      * -----------------------------------------------------------------
                                      */
-                                    Hidden::make('code_agency')->default(Auth::user()->code_agency),
-                                    Hidden::make('owner_code')->default('TDG-100'),
+                                    Hidden::make('status')->default('PRE-APROBADA'),
+                                    Hidden::make('created_by')->default(Auth::user()->name),
+                                    // Hidden::make('code_agency')->default(Auth::user()->code_agency),
+                                    // Hidden::make('owner_code')->default(Auth::user()->code_agency),
+                                    // Hidden::make('owner_code')->default('TDG-100'),
+                                    Hidden::make('code_agency')->default(function (Get $get) {
+                                        if ($get('code_agency_jerarchy') == null) {
+                                            return Auth::user()->code_agency;
+                                        }
+                                        if ($get('code_agency_jerarchy') != null) {
+                                            return $get('code_agency');
+                                        }
+                                    }),
+                                    Hidden::make('owner_code')->default(function (Get $get) {
+                                        if ($get('code_agency_jerarchy') != null) {
+                                            return Agency::where('owner_code', Auth::user()->code_agency)->first()->owner_code;
+                                        }
+                                        if ($get('code_agency_jerarchy') == null) {
+                                            return Auth::user()->code_agency;
+                                        }
+                                    }),
+
                                     /**---------------------------------------------------------------- */
 
                                 ])
