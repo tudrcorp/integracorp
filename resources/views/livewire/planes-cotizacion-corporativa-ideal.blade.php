@@ -137,7 +137,7 @@
                     Nombre del Agente:
                 </span>
                 <span style="margin-left: 38px">
-                    Pablo Contreras
+                    TuDrEnCasa
                 </span>
             </p>
             <p class="sin-margen" style="font-size: 16px; margin-top: 2px">
@@ -173,7 +173,8 @@
                 @foreach ($data as $key => $value)
                 <tr>
                     <td style="font-weight: bold; font-size: 10px;">{{ $key }} años</td>
-                    <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons }} Persona(s)</td>
+                    <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons > 1 ? $value[0]->total_persons . ' Persona(s)' : '' }}</td>
+
                     @foreach ($value as $value2)
                     <td style="font-weight: bold; font-size: 10px;">{{ round($value2->subtotal_anual) }} US$
                     </td>
@@ -187,12 +188,22 @@
 
             // Recorrer los datos para sumar por columna
             foreach ($data as $key => $value) {
+            if($value[0]->total_persons == 1){
+            foreach ($value[0] as $index => $item) {
+            if (isset($totalColumns[$index])) {
+            $totalColumns[$index] = round($item[0]->subtotal_anual);
+            }
+            }
+            }
+            if($value[0]->total_persons > 1){
             foreach ($value as $index => $item) {
             if (isset($totalColumns[$index])) {
             $totalColumns[$index] += round($item->subtotal_anual);
             }
             }
             }
+            }
+
             @endphp
             <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">
                 <tbody>
@@ -237,8 +248,14 @@
             </div>
         </div>
         <!-- Primera página: Imagen de fondo -->
+
+
     </div>
+
+
+
+
+
 </body>
 </html>
-
 

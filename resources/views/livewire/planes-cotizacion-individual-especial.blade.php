@@ -175,7 +175,8 @@
                 @foreach ($data as $key => $value)
                     <tr>
                         <td style="font-weight: bold; font-size: 10px;">{{ $key }} años</td>
-                        <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons }} Persona(s)</td>
+                        <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons . ' Persona(s)' }}</td>
+
                         @foreach ($value as $value2)
                             <td style="font-weight: bold; font-size: 10px;">{{ round($value2->subtotal_anual) }} US$
                             </td>
@@ -184,6 +185,7 @@
                 @endforeach
             </table>
             @php
+            use Illuminate\Support\Facades\Log;
             // Inicializar array para almacenar los totales por columna
             $totalColumns = [0, 0, 0, 0, 0, 0]; // Para US$5K a US$40K (6 columnas)
 
@@ -195,6 +197,7 @@
                     }
                 }
             }
+
             @endphp
             <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">
 

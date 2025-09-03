@@ -71,10 +71,9 @@ class IndividualQuoteForm
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
                                                 ])
-                                                ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
-                                                    $set('full_name', strtoupper($state));
-                                                })
-                                                ->live(onBlur: true),
+                                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('full_name', $state.toUpperCase());
+                                                JS),
 
                                             Select::make('country_code')
                                                 ->label('Código de país')

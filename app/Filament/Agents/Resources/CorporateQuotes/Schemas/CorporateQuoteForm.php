@@ -87,10 +87,10 @@ class CorporateQuoteForm
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
                                                 ])
-                                                ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
-                                                    $set('full_name', strtoupper($state));
-                                                })
-                                                ->live(onBlur: true),
+                                                ->maxLength(255)
+                                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('full_name', $state.toUpperCase());
+                                                JS),
 
                                             Select::make('country_code')
                                                 ->label('Código de país')

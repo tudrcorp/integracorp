@@ -137,7 +137,7 @@
                     Nombre del Agente:
                 </span>
                 <span style="margin-left: 38px">
-                    Pablo Contreras
+                    TuDrEnCasa
                 </span>
             </p>
             <p class="sin-margen" style="font-size: 16px; margin-top: 2px">
@@ -169,13 +169,14 @@
                     <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 20K</th>
                     <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 30K</th>
                     <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 40K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 40K</th>
+                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 50K</th>
 
                 </tr>
                 @foreach ($data as $key => $value)
                 <tr>
                     <td style="font-weight: bold; font-size: 10px;">{{ $key }} años</td>
-                    <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons }} Persona(s)</td>
+                    <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons > 1 ? $value[0]->total_persons . ' Persona(s)' : '' }}</td>
+
                     @foreach ($value as $value2)
                     <td style="font-weight: bold; font-size: 10px;">{{ round($value2->subtotal_anual) }} US$
                     </td>
@@ -184,17 +185,36 @@
                 @endforeach
             </table>
             @php
+
+            use Illuminate\Support\Facades\Log;
+            
             // Inicializar array para almacenar los totales por columna
             $totalColumns = [0, 0, 0, 0, 0, 0]; // Para US$5K a US$40K (6 columnas)
 
             // Recorrer los datos para sumar por columna
             foreach ($data as $key => $value) {
+                if($value[0]->total_persons == 1){
+                    foreach ($value[0] as $index => $item) {
+                        if (isset($totalColumns[$index])) {
+                            $totalColumns[$index] = round($item[0]->subtotal_anual);
+                        }
+                }
+
+            }
+            if($value[0]->total_persons > 1){
                 foreach ($value as $index => $item) {
                     if (isset($totalColumns[$index])) {
                         $totalColumns[$index] += round($item->subtotal_anual);
                     }
                 }
             }
+            // foreach ($value as $index => $item) {
+            // if (isset($totalColumns[$index])) {
+            // $totalColumns[$index] += round($item->subtotal_anual);
+            // }
+            // }
+            }
+
             @endphp
             <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">
 
@@ -238,5 +258,4 @@
 
 </body>
 </html>
-
 

@@ -6,10 +6,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use App\Jobs\SendEmailPropuestaEconomica;
+use App\Jobs\SendEmailPropuestaEconomicaIdealCor;
 use App\Jobs\SendEmailPropuestaEconomicaMultiple;
 use App\Jobs\SendEmailPropuestaEconomicaPlanIdeal;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Jobs\SendEmailPropuestaEconomicaInicialCor;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Jobs\SendEmailPropuestaEconomicaEspecialCor;
 use App\Jobs\SendEmailPropuestaEconomicaPlanEspecial;
 
 class CorporateQuote extends Model
@@ -105,9 +108,18 @@ class CorporateQuote extends Model
         /**
          * JOB
          */
-        SendEmailPropuestaEconomica::dispatch($details, $collect, Auth::user());
+        SendEmailPropuestaEconomicaInicialCor::dispatch($details, $collect, Auth::user());
     }
 
+    /**
+     * Funciones para la ejecucion de jobs
+     * para el envio de los correos de propuesta economica
+     * 
+     * @return void
+     * @author TuDrEnCasa
+     * 
+     * @param array $details
+     */
     public function sendPropuestaEconomicaPlanIdeal($details)
     {
         $collect = collect($details['data']);
@@ -116,9 +128,18 @@ class CorporateQuote extends Model
         /**
          * JOB
          */
-        SendEmailPropuestaEconomicaPlanIdeal::dispatch($details, $group_collect, Auth::user());
+        SendEmailPropuestaEconomicaIdealCor::dispatch($details, $group_collect, Auth::user());
     }
 
+    /**
+     * Funciones para la ejecucion de jobs
+     * para el envio de los correos de propuesta economica
+     * 
+     * @return void
+     * @author TuDrEnCasa
+     * 
+     * @param array $details
+     */
     public function sendPropuestaEconomicaPlanEspecial($details)
     {
         
@@ -130,7 +151,7 @@ class CorporateQuote extends Model
         /**
          * JOB
          */
-        SendEmailPropuestaEconomicaPlanEspecial::dispatch($details, $group_collect, Auth::user());
+        SendEmailPropuestaEconomicaEspecialCor::dispatch($details, $group_collect, Auth::user());
     }
 
     public function isAffiliated($id): bool

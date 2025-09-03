@@ -1422,42 +1422,41 @@ class NotificationController extends Controller
         }
     }
 
-    static function noti()
+    static function notificationVideo()
     {
 
         try {
 
             $array = Guest::all()->toArray();
 
-
-            for ($i = 24; $i < count($array); $i++) {
+            for ($i = 0; $i < count($array); $i++) {
 
                 $body = <<<HTML
 
-            Hola!👋
+                Hola!👋
 
-            Apreciado/a: *{$array[$i]['firstName']} {$array[$i]['lastName']}*
+                Apreciado/a: *{$array[$i]['firstName']} {$array[$i]['lastName']}*
 
-            Usted ha sido seleccionado para esta misión con Tu Dr. Group.
-            Donde la innovación será parte de nuestras lineas de negocios de salud y viajes.
+                Usted ha sido seleccionado para esta misión con Tu Dr. Group.
+                Donde la innovación será parte de nuestras lineas de negocios de salud y viajes.
 
-            ¿ACEPTAS LA MISIÓN?🕵🏼 Ingresa nuestro sitio web https://tudrgroup.com
-            Y llena el formulario
+                ¿ACEPTAS LA MISIÓN?🕵🏼 Ingresa nuestro sitio web https://tudrgroup.com
+                Y llena el formulario
 
-            Más información sobre este encuentro aquí 👇🏼
-            https://wa.me/+584142510805
- 
-            HTML;
+                Más información sobre este encuentro aquí 👇🏼
+                https://wa.me/+584142510805
+    
+                HTML;
 
                 $params = array(
                     'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i]['phone'],
-                    'video' => 'https://tudrgroup.com/images/videoEvento1.mp4',
+                    'image' => 'https://tudrgroup.com/images/imageNotificacionDos.jpg',
                     'caption' => $body
                 );
                 $curl = curl_init();
                 curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => "",
                     CURLOPT_MAXREDIRS => 10,
@@ -1483,6 +1482,71 @@ class NotificationController extends Controller
             curl_close($curl);
 
 
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
+    static function notificationImage()
+    {
+
+        try {
+
+            $array = Guest::all()->toArray();
+
+
+            for ($i = 0; $i < count($array); $i++) {
+
+                $body = <<<HTML
+
+                Hola! *{$array[$i]['firstName']} {$array[$i]['lastName']}*
+                Nos preguntamos ¿por qué no te has registrado para nuestro encuentro?
+
+                Si deseas asistir y necesitas una guía para la inscripción escribe la palabra DOCTOR
+                Y te ayudamos a llenar el formulario.👌🏻
+
+                Llega al siguiente NIVEL con Tu Doctor Group
+                Y sé parte de nuestra NUEVA ERA de Negocios. 🔥
+    
+                HTML;
+
+
+                $params = array(
+                    'token' => 'yuvh9eq5kn8bt666',
+                    'to' => $array[$i]['phone'],
+                    'image' => 'https://tudrgroup.com/images/imageNotificacionDos.jpg',
+                    'caption' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+
+                curl_close($curl);
+
+                Log::info($response);
+                Log::info($array[$i]['phone']);
+                Log::error($err);
+            
+            }
+
+            curl_close($curl);
+            
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }

@@ -8,3 +8,7 @@
     background-color: color-mix(in oklab,#ffffff5e 80%,transparent);
   }
 
+.fi-logo {
+  @apply h-[32px];
+}
+

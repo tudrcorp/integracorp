@@ -172,8 +172,8 @@
                 </tr>
                 @foreach ($data as $key => $value)
                     <tr>
-                            <td style="font-weight: bold; font-size: 10px;">{{ $key }} años</td>
-                            <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons }} Persona(s)</td>
+                        <td style="font-weight: bold; font-size: 10px;">{{ $key }} años</td>
+                        <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons . ' Persona(s)' }}</td>
                         @foreach ($value as $value2)
                             <td style="font-weight: bold; font-size: 10px;">{{ round($value2->subtotal_anual) }} US$
                             </td>
@@ -193,6 +193,7 @@
                     }
                 }
             }
+
             @endphp
             <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">
                 <tbody>
