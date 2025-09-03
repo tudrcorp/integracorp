@@ -6,6 +6,7 @@ use App\Models\Fee;
 use App\Models\City;
 use App\Models\Plan;
 use App\Models\State;
+use App\Models\Agency;
 use App\Models\Region;
 use App\Models\AgeRange;
 use Illuminate\Http\Request;
@@ -269,30 +270,14 @@ class UtilsController extends Controller
         return CorporateQuote::where('id', $id)->first()->full_name;
     }
 
-    public static function converterPhone($phone)
-    {
-        // Eliminar todo lo que no sea número
-        $cleanNumber = preg_replace('/\D/', '', $phone);
-
-        // Verificar que comience con 04 (ej. 0412)
-        if (str_starts_with($cleanNumber, '04')) {
-            return '+58' . substr($cleanNumber, 1); // Cambia 0412... → +58412...
-        }
-
-        // Si ya tiene 11 dígitos y empieza con 4, asumimos que es 412...
-        if (str_starts_with($cleanNumber, '4') && strlen($cleanNumber) == 11) {
-            return '+58' . $cleanNumber;
-        }
-
-        // Si ya tiene formato +58
-        if (str_starts_with($cleanNumber, '584') && strlen($cleanNumber) == 12) {
-            return '+' . $cleanNumber;
-        }
-
-        // Por defecto, intenta arreglarlo
-        return '+58' . ltrim($cleanNumber, '0');
-    }
-
+    /**
+     * Normaliza el teléfono venezolano
+     * 
+     * @author TuDrEnCasa
+     * @version 1.0
+     * 
+     * @return void
+     */
     public static function normalizeVenezuelanPhone($phone): ?string
     {
         // Si está vacío o no es un string, devolvemos null
@@ -332,33 +317,6 @@ class UtilsController extends Controller
     {
         try {
 
-            /**
-             * Caso Unico
-             * los select de agencia y agente esta vasios
-             * ya que el usuario no selecciono ningun agente ni agencia
-             * ----------------------------------------------------------------------------------------------------
-             */
-            // if (isset($data['corporate_quote_request_id'])) {
-
-            //     /**Si la cotizacion fue generada por una solicitud */
-            //     $data_agent_or_agency = CorporateQuoteRequest::select('agent_id', 'code_agency', 'owner_code', 'id')
-            //         ->where('id', $data['corporate_quote_request_id'])
-            //         ->first();
-            //     $data['owner_code']     = $data_agent_or_agency->owner_code;
-            //     $data['agent_id']       = $data_agent_or_agency->owner_code != null ? $data_agent_or_agency->agent_id : null;
-            //     $data['code_agency']    =  $data_agent_or_agency->code_agency;
-            // } elseif ($data['code_agency'] == null) {
-            //     $data['owner_code']     = 'TDG-100';
-            //     $data['code_agency']    = 'TDG-100';
-            //     $data['agent_id']       = null;
-            // } else {
-            //     $data['owner_code']     = $data['code_agency'];
-            //     $data['code_agency']    = $data['code_agency'];
-            //     $data['agent_id']       = $data['agent_id'];
-            // }
-
-            // $corporate_quote = new CorporateQuote($data);
-            // $corporate_quote->save();
             $corporate_quote = CorporateQuote::find($id);
             // dd($corporate_quote);
 
@@ -900,6 +858,16 @@ class UtilsController extends Controller
             Log::error('Error al calcular edades: ' . $th->getMessage());
             return false;
         }
+    }
+
+    public static function generateCodeAgency()
+    {
+        if (Agency::max('id') == null) {
+            $parte_entera = 101;
+        } else {
+            $parte_entera = 101 + Agency::max('id');
+        }
+        return 'TDG-' . $parte_entera;
     }
 
       

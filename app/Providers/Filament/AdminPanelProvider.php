@@ -50,8 +50,8 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => '#052F60',
             ])
             ->sidebarCollapsibleOnDesktop()
-            ->brandLogo(asset('image/logoNewIntegracorp.png'))
-            ->brandLogoHeight('10rem')
+            ->brandLogo(asset('image/logoNewTDG.png'))
+            ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

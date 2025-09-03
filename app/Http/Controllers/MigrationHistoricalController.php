@@ -414,7 +414,7 @@ class MigrationHistoricalController extends Controller
                 
                 $agency = new Agency();
                 $agency->owner_code         = 'TDG-100';
-                $agency->code               = 'TDG-' . $records[$i]['codigo_agente'];
+                $agency->code               = UtilsController::generateCodeAgency();
                 $agency->name_corporative   = $records[$i]['nombre_agencia_agente'];
                 $agency->rif                = $records[$i]['nro_identificacion'];
                 $agency->ci_responsable     = $records[$i]['nro_identificacion'];
