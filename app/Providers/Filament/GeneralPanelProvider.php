@@ -48,8 +48,8 @@ class GeneralPanelProvider extends PanelProvider
                 'info' => '#58C0DB',
                 // 'gray' => '#ffffff',
             ])
-            ->brandLogo(asset('image/logo_new.png'))
-            ->brandLogoHeight('2.8rem')
+            ->brandLogo(asset('image/logoNewTDG.png'))
+            ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/General/Resources'), for: 'App\Filament\General\Resources')
             ->discoverPages(in: app_path('Filament/General/Pages'), for: 'App\Filament\General\Pages')

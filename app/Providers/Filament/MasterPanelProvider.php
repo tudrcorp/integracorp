@@ -50,8 +50,8 @@ class MasterPanelProvider extends PanelProvider
             ->colors([
                 'primary' => '#038C4C',
             ])
-            ->brandLogo(asset('image/logo_new.png'))
-            ->brandLogoHeight('2.8rem')
+            ->brandLogo(asset('image/logoNewTDG.png'))
+            ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/Master/Resources'), for: 'App\Filament\Master\Resources')
             ->discoverPages(in: app_path('Filament/Master/Pages'), for: 'App\Filament\Master\Pages')
