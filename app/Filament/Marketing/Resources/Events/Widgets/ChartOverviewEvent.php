@@ -13,7 +13,7 @@ class ChartOverviewEvent extends ChartWidget
 {
     protected ?string $heading = 'Gráfico de Receptividad';
 
-    protected ?string $maxHeight = '300px';
+    // protected ?string $maxHeight = '350px';
 
     public ?Model $record = null;
 
@@ -21,8 +21,8 @@ class ChartOverviewEvent extends ChartWidget
     {
         $data = Trend::query(Guest::where('event_id', $this->record->id))
             ->between(
-                start: now()->startOfDay(),
-                end: now()->endOfDay()
+                start: now()->startOfMonth(),
+                end: now()->endOfMonth()
             )
             ->perDay()
             ->count();

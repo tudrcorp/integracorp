@@ -10,7 +10,7 @@ class ChartOverviewEventTwo extends ChartWidget
 {
     protected ?string $heading = 'Gráfico comparativo de inscritos y no inscritos';
 
-    protected ?string $maxHeight = '300px';
+    protected ?string $maxHeight = '280px';
 
     public ?Model $record = null;
 
