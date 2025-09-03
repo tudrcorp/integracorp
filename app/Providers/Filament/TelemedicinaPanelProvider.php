@@ -48,8 +48,9 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
-            ->brandLogo(asset('image/logo_new.png'))
-            ->brandLogoHeight('2.8rem')
+            ->brandLogo(asset('image/logoNewTDG.png'))
+            ->darkModeBrandLogo(asset('image/logoTDG.png'))
+            ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->sidebarCollapsibleOnDesktop()
             ->colors([

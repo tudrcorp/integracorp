@@ -49,6 +49,7 @@ class GeneralPanelProvider extends PanelProvider
                 // 'gray' => '#ffffff',
             ])
             ->brandLogo(asset('image/logoNewTDG.png'))
+            ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/General/Resources'), for: 'App\Filament\General\Resources')

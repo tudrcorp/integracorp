@@ -38,6 +38,7 @@ class MarketingPanelProvider extends PanelProvider
                 'primary' => '#17335e',
             ])
             ->brandLogo(asset('image/logoNewTDG.png'))
+            ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/Marketing/Resources'), for: 'App\Filament\Marketing\Resources')

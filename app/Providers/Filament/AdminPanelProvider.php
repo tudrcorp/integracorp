@@ -13,6 +13,7 @@ use Filament\Widgets\AccountWidget;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use App\Http\Controllers\LogController;
 use Filament\Forms\Components\TextInput;
 use Filament\Navigation\NavigationGroup;
@@ -28,11 +29,11 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use Filament\Http\Middleware\DisableBladeIconComponents;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -51,6 +52,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->sidebarCollapsibleOnDesktop()
             ->brandLogo(asset('image/logoNewTDG.png'))
+            ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
@@ -474,6 +476,10 @@ class AdminPanelProvider extends PanelProvider
                             ->directory('backgroundAdminPanelLogin')
                     ),
             ])
-            ->viteTheme('resources/css/filament/admin/theme.css');
+            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->renderHook(
+                PanelsRenderHook::FOOTER,
+                fn() => view('footer-panel-admin')
+            );
     }
 }

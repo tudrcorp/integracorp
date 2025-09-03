@@ -56,6 +56,7 @@ class AgentsPanelProvider extends PanelProvider
                 'primary' => '#00DCCD',
             ])
             ->brandLogo(asset('image/logoNewTDG.png'))
+            ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
             ->favicon(asset('image/favicon.png'))
             ->discoverResources(in: app_path('Filament/Agents/Resources'), for: 'App\Filament\Agents\Resources')
