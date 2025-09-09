@@ -31,8 +31,9 @@ class SalesTable
             ->query(Sale::query()->where('owner_code', Auth::user()->code_agency))
             ->description('En esta sección se muestran todas las ventas realizadas de tipo Individual y Corporativa')
             ->columns([
-                TextColumn::make('date')
+                TextColumn::make('created_at')
                     ->label('Fecha')
+                    ->dateTime('d/m/Y')
                     ->badge()
                     ->icon('heroicon-s-calendar-days')
                     ->sortable()
@@ -80,14 +81,6 @@ class SalesTable
                     ->label('Población')
                     ->suffix(' persona(s)')
                     ->searchable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo Afiliación')
                     ->badge()

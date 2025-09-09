@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Guest;
+use App\Models\Capemiac;
 use App\Mail\MyTestEmail;
 use App\Mail\ExampleCsvEmail;
 use App\Mail\AgentRegisterEmail;
+use App\Models\DataNotification;
 use App\Mail\AgencyRegisterEmail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -480,21 +482,19 @@ class NotificationController extends Controller
      * @return bool
      */
 
-    static function sendCotizaPlanInicial($phone, $message, $link, $name_pdf)
+    static function sendQuote($phone, $message)
     {
+
         try {
 
-
             $params = array(
-                'token'     => config('parameters.TOKEN'),
-                'to'        => $phone,
-                'filename'  => $name_pdf,
-                'document'  => $link,
-                'caption'   => $message
+                'token' => config('parameters.TOKEN'),
+                'to' => $phone,
+                'body' => $message,
             );
             $curl = curl_init();
             curl_setopt_array($curl, array(
-                CURLOPT_URL => env('CURLOPT_URL_SEND_DOCUMENT'),
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => "",
                 CURLOPT_MAXREDIRS => 10,
@@ -514,102 +514,14 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
-            if ($err) {
-                echo "cURL Error #:" . $err;
-            } else {
-                echo $response;
-            }
-
-            //code...
-        } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::sendCotizaPlanInicial()', $th->getMessage());
-        }
-    }
-
-    static function sendCotizaPlanIdeal($phone, $message, $link, $name_pdf)
-    {
-        try {
-
-
-            $params = array(
-                'token'     => config('parameters.TOKEN'),
-                'to'        => $phone,
-                'filename'  => $name_pdf,
-                'document'  => $link,
-                'caption'   => $message
-            );
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => env('CURLOPT_URL_SEND_DOCUMENT'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
             curl_close($curl);
 
             if ($err) {
-                echo "cURL Error #:" . $err;
+                Log::error($err);
+                return false;
             } else {
-                echo $response;
-            }
-
-            //code...
-        } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::sendCotizaPlanInicial()', $th->getMessage());
-        }
-    }
-
-    static function sendCotizaPlanEspecial($phone, $message, $link, $name_pdf)
-    {
-        try {
-
-
-            $params = array(
-                'token'     => config('parameters.TOKEN'),
-                'to'        => $phone,
-                'filename'  => $name_pdf,
-                'document'  => $link,
-                'caption'   => $message
-            );
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => env('CURLOPT_URL_SEND_DOCUMENT'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($err) {
-                echo "cURL Error #:" . $err;
-            } else {
-                echo $response;
+                Log::info($response);
+                return true;
             }
 
             //code...
@@ -625,59 +537,106 @@ class NotificationController extends Controller
      */
     static function massNotificacionSend($record)
     {
+
         try {
 
-            $array = [
-                '+584127018390',
-                '+584120208119',
-            ];
-
-            $body = <<<HTML
-
-            {{$record->content}}
-
-            HTML;
+            $infoArray = $record->toArray();
+            
+            $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
 
             for ($i = 0; $i < count($array); $i++) {
-                $params = array(
-                    'token' => 'yuvh9eq5kn8bt666',
-                    'to' => $array[$i],
-                    // 'image' => 'https://tudrenviajes.com/images/logo_3.png',14986
-                    'image' => 'https://tudrgroup.com/images/logoTDG.png',
-                    'caption' => $body
-                );
-                $curl = curl_init();
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 30,
-                    CURLOPT_SSL_VERIFYHOST => 0,
-                    CURLOPT_SSL_VERIFYPEER => 0,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
-                    CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
 
-                $response = curl_exec($curl);
-                $err = curl_error($curl);
+                if ($infoArray['header_title'] != null) {
 
-                Log::info($response);
-                Log::error($err);
-                
+                    $record->heading = $infoArray['header_title'] . ' ' . $array[$i]['fullName'];
+                    $body = <<<HTML
+    
+                    *{$record->heading}* 
+    
+                    {$record->content}
+    
+                    HTML;
+
+                    dd(config('parameters.INTEGRACORP_URL') . '/storage/' . $infoArray['image']);
+
+                    $params = array(
+                        'token' => 'yuvh9eq5kn8bt666',
+                        'to' => $array[$i],
+                        'image' => config('parameters.INTEGRACORP_URL') . '/storage/'.$infoArray['image'],
+                        'caption' => $body
+                    );
+                    $curl = curl_init();
+                    curl_setopt_array($curl, array(
+                        CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_ENCODING => "",
+                        CURLOPT_MAXREDIRS => 10,
+                        CURLOPT_TIMEOUT => 30,
+                        CURLOPT_SSL_VERIFYHOST => 0,
+                        CURLOPT_SSL_VERIFYPEER => 0,
+                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_CUSTOMREQUEST => "POST",
+                        CURLOPT_POSTFIELDS => http_build_query($params),
+                        CURLOPT_HTTPHEADER => array(
+                            "content-type: application/x-www-form-urlencoded"
+                        ),
+                    ));
+
+                    $response = curl_exec($curl);
+                    $err = curl_error($curl);
+
+                    Log::info($response);
+                    Log::error($err);
+
+                    curl_close($curl);
+
+                } else {
+
+                    $body = <<<HTML
+    
+                    {$record->content}
+    
+                    HTML;
+
+                    $params = array(
+                        'token' => 'yuvh9eq5kn8bt666',
+                        'to' => $array[$i],
+                        // 'image' => 'https://tudrenviajes.com/images/logo_3.png',14986
+                        'image' => 'https://tudrgroup.com/images/logoTDG.png',
+                        'caption' => $body
+                    );
+                    $curl = curl_init();
+                    curl_setopt_array($curl, array(
+                        CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_ENCODING => "",
+                        CURLOPT_MAXREDIRS => 10,
+                        CURLOPT_TIMEOUT => 30,
+                        CURLOPT_SSL_VERIFYHOST => 0,
+                        CURLOPT_SSL_VERIFYPEER => 0,
+                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_CUSTOMREQUEST => "POST",
+                        CURLOPT_POSTFIELDS => http_build_query($params),
+                        CURLOPT_HTTPHEADER => array(
+                            "content-type: application/x-www-form-urlencoded"
+                        ),
+                    ));
+
+                    $response = curl_exec($curl);
+                    $err = curl_error($curl);
+
+                    Log::info($response);
+                    Log::error($err);
+
+                    curl_close($curl);
+                }
                 
             }
-            
-            curl_close($curl);
 
             return true;
             
         } catch (\Throwable $th) {
-            dd($th);
+            Log::error($th->getMessage());
         }
     }
 
@@ -1428,6 +1387,7 @@ class NotificationController extends Controller
         try {
 
             $array = Guest::all()->toArray();
+            dd($array);
 
             for ($i = 0; $i < count($array); $i++) {
 
@@ -1435,7 +1395,7 @@ class NotificationController extends Controller
 
                 Hola!👋
 
-                Apreciado/a: *{$array[$i]['firstName']} {$array[$i]['lastName']}*
+                Apreciado/a: *{$array[$i]['firstName']}*
 
                 Usted ha sido seleccionado para esta misión con Tu Dr. Group.
                 Donde la innovación será parte de nuestras lineas de negocios de salud y viajes.
@@ -1490,31 +1450,36 @@ class NotificationController extends Controller
     static function notificationImage()
     {
 
+        set_time_limit(0);
+
         try {
 
             $array = Guest::all()->toArray();
 
-
             for ($i = 0; $i < count($array); $i++) {
-
+                
                 $body = <<<HTML
 
-                Hola! *{$array[$i]['firstName']} {$array[$i]['lastName']}*
-                Nos preguntamos ¿por qué no te has registrado para nuestro encuentro?
+                Apreciado/a: *{$array[$i]['firstName']}*
 
-                Si deseas asistir y necesitas una guía para la inscripción escribe la palabra DOCTOR
-                Y te ayudamos a llenar el formulario.👌🏻
+                Desde Tu Doctor Group estamos muy emocionados de que seas parte de esta nueva era de negocios.
 
-                Llega al siguiente NIVEL con Tu Doctor Group
-                Y sé parte de nuestra NUEVA ERA de Negocios. 🔥
+                Estas cordialmente invitado a nuestro encuentro especial:
+
+                🗓️Viernes 12 de Septiembre.
+                ⏰ A las 6 pm.
+                📍 Centro Lido, Av. Francisco de Miranda Torre A, Piso 15, El Rosal, Caracas.
+                (En piso 13 hay una escala para tomar otro ascensor, allí estará una ejecutiva para guiarte).
+                🎩 Casual business será nuestro estilo.
+
+                ¡Nos vemos este viernes!💙🔥
     
                 HTML;
-
 
                 $params = array(
                     'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i]['phone'],
-                    'image' => 'https://tudrgroup.com/images/imageNotificacionDos.jpg',
+                    'image' => 'https://tudrgroup.com/images/nuevaInvitacion.jpg',
                     'caption' => $body
                 );
                 $curl = curl_init();

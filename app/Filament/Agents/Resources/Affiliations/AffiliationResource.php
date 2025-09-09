@@ -49,7 +49,7 @@ class AffiliationResource extends Resource
     {
         return [
             AffiliatesRelationManager::class,
-            DocumentsRelationManager::class,
+            // DocumentsRelationManager::class,
             PaidMembershipsRelationManager::class
         ];
     }

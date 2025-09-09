@@ -16,8 +16,9 @@ use App\Filament\Agents\Resources\AffiliationResource;
 class AffiliationController extends Controller
 {
 
-    public static function uploadPayment($record, $data, $type_roll) {
-        
+    public static function uploadPayment($record, $data, $type_roll)
+    {
+
         try {
             // dd($data, $record);
             // $validate = self::getValidation($record, $data);
@@ -30,15 +31,15 @@ class AffiliationController extends Controller
             if ($record['payment_frequency'] == 'ANUAL') {
 
                 /** PAGO USD */
-                if($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE' || $data['payment_method'] == 'TRANSFERENCIA US$') {
-                    
+                if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE' || $data['payment_method'] == 'TRANSFERENCIA US$') {
+
                     $record->paid_memberships()->create([
                         'affiliation_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
                         'plan_id'                   => $record->plan_id,
                         'coverage_id'               => $record->coverage_id,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         'total_amount'              => $data['total_amount'],
                         'pay_amount_usd'            => $data['total_amount'],
                         'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -58,7 +59,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
-                        
+
                     ]);
                 }
 
@@ -115,7 +116,7 @@ class AffiliationController extends Controller
                         'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                        'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
+                        'reference_payment_zelle'   => array_key_exists('reference_payment_zelle', $data) ? $data['reference_payment_zelle'] : 'N/A',
                         'reference_payment_ves'     => $data['reference_payment_ves'],
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                         'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],
@@ -123,10 +124,9 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                     ]);
                 }
-
             }
 
             if ($record['payment_frequency'] == 'TRIMESTRAL') {
@@ -157,7 +157,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                     ]);
                 }
 
@@ -212,7 +212,7 @@ class AffiliationController extends Controller
                         'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                        'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
+                        'reference_payment_zelle'   => array_key_exists('reference_payment_zelle', $data) ? $data['reference_payment_zelle'] : 'N/A',
                         'reference_payment_ves'     => $data['reference_payment_ves'],
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                         'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],
@@ -220,7 +220,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                     ]);
                 }
             }
@@ -236,7 +236,7 @@ class AffiliationController extends Controller
                         'code_agency'               => $record->code_agency,
                         'plan_id'                   => $record->plan_id,
                         'coverage_id'               => $record->coverage_id,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         'total_amount'              => $data['total_amount'],
                         'pay_amount_usd'            => $data['total_amount'],
                         'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -266,7 +266,7 @@ class AffiliationController extends Controller
                         'code_agency'               => $record->code_agency,
                         'plan_id'                   => $record->plan_id,
                         'coverage_id'               => $record->coverage_id,
-                        'name_ti_usd'               => isset($data['name_ti_usd']) ? $data['name_ti_usd'] : 'N/A',
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
@@ -297,7 +297,7 @@ class AffiliationController extends Controller
                         'code_agency'               => $record->code_agency,
                         'plan_id'                   => $record->plan_id,
                         'coverage_id'               => $record->coverage_id,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -310,7 +310,7 @@ class AffiliationController extends Controller
                         'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                        'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
+                        'reference_payment_zelle'   => array_key_exists('reference_payment_zelle', $data) ? $data['reference_payment_zelle'] : 'N/A',
                         'reference_payment_ves'     => $data['reference_payment_ves'],
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                         'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],
@@ -333,7 +333,7 @@ class AffiliationController extends Controller
                         'code_agency'               => $record->code_agency,
                         'plan_id'                   => $record->plan_id,
                         'coverage_id'               => $record->coverage_id,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         'total_amount'              => $data['total_amount'],
                         'pay_amount_usd'            => $data['total_amount'],
                         'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -363,7 +363,7 @@ class AffiliationController extends Controller
                         'code_agency'               => $record->code_agency,
                         'plan_id'                   => $record->plan_id,
                         'coverage_id'               => $record->coverage_id,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
@@ -394,7 +394,7 @@ class AffiliationController extends Controller
                         'code_agency'               => $record->code_agency,
                         'plan_id'                   => $record->plan_id,
                         'coverage_id'               => $record->coverage_id,
-                        'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                        'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -407,7 +407,7 @@ class AffiliationController extends Controller
                         'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                        'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
+                        'reference_payment_zelle'   => array_key_exists('reference_payment_zelle', $data) ? $data['reference_payment_zelle'] : 'N/A',
                         'reference_payment_ves'     => $data['reference_payment_ves'],
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                         'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],
@@ -420,7 +420,7 @@ class AffiliationController extends Controller
             }
 
             return true;
-            
+
             //code...
         } catch (\Throwable $th) {
             dd($th);
@@ -432,7 +432,6 @@ class AffiliationController extends Controller
                 ->send();
             //throw $th;
         }
-        
     }
 
     public static function uploadPaymentMultipleAffiliations($records, $data, $type_roll)
@@ -456,7 +455,7 @@ class AffiliationController extends Controller
                             'code_agency'               => $record->code_agency,
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $data['total_amount'],
                             'pay_amount_usd'            => $data['total_amount'],
                             'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -533,7 +532,7 @@ class AffiliationController extends Controller
                             'payment_frequency'         => $record['payment_frequency'],
                             'payment_date'              => now()->format('d-m-Y'),
                             'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                            'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
+                            'reference_payment_zelle'   => array_key_exists('reference_payment_zelle', $data) ? $data['reference_payment_zelle'] : 'N/A',
                             'reference_payment_ves'     => $data['reference_payment_ves'],
                             'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                             'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],
@@ -541,7 +540,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         ]);
                     }
                 }
@@ -574,7 +573,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         ]);
                     }
 
@@ -629,7 +628,7 @@ class AffiliationController extends Controller
                             'payment_frequency'         => $record['payment_frequency'],
                             'payment_date'              => now()->format('d-m-Y'),
                             'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                            'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
+                            'reference_payment_zelle'   => array_key_exists('reference_payment_zelle', $data) ? $data['reference_payment_zelle'] : 'N/A',
                             'reference_payment_ves'     => $data['reference_payment_ves'],
                             'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                             'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],
@@ -637,7 +636,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                         ]);
                     }
                 }
@@ -653,7 +652,7 @@ class AffiliationController extends Controller
                             'code_agency'               => $record->code_agency,
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $record->total_amount,
                             'pay_amount_usd'            => $data['total_amount'],
                             'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -714,7 +713,7 @@ class AffiliationController extends Controller
                             'code_agency'               => $record->code_agency,
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $record->total_amount,
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -750,7 +749,7 @@ class AffiliationController extends Controller
                             'code_agency'               => $record->code_agency,
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $record->total_amount,
                             'pay_amount_usd'            => $data['total_amount'],
                             'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -780,7 +779,7 @@ class AffiliationController extends Controller
                             'code_agency'               => $record->code_agency,
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $record->total_amount,
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
@@ -811,7 +810,7 @@ class AffiliationController extends Controller
                             'code_agency'               => $record->code_agency,
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
-                            'name_ti_usd'               => $data['name_ti_usd'] == null ? 'N/A' : $data['name_ti_usd'],
+                            'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $record->total_amount,
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -824,7 +823,7 @@ class AffiliationController extends Controller
                             'payment_frequency'         => $record['payment_frequency'],
                             'payment_date'              => now()->format('d-m-Y'),
                             'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                            'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
+                            'reference_payment_zelle'   => array_key_exists('reference_payment_zelle', $data) ? $data['reference_payment_zelle'] : 'N/A',
                             'reference_payment_ves'     => $data['reference_payment_ves'],
                             'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                             'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],

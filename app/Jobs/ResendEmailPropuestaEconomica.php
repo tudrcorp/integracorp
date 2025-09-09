@@ -21,6 +21,20 @@ class ResendEmailPropuestaEconomica implements ShouldQueue
     protected $phone;
 
     /**
+     * Número máximo de intentos.
+     *
+     * @var int
+     */
+    public $tries = 5;
+
+    /**
+     * Tiempo en segundos para esperar antes de reintentar (opcional).
+     *
+     * @var int
+     */
+    public $backoff = 3; // Espera 3 segundos entre intentos
+
+    /**
      * Create a new job instance.
      */
     public function __construct($record, $email, $phone)
@@ -54,7 +68,7 @@ class ResendEmailPropuestaEconomica implements ShouldQueue
              * Enviaremos la propuesta economica por whatsapp
              * ----------------------------------------------------------------------------------------------------
              */
-            $link = env('APP_URL') . '/storage/' . $name_pdf;
+            $link = env('APP_URL') . '/storage/quotes/' . $name_pdf;
 
             $body = <<<HTML
 
@@ -69,7 +83,7 @@ class ResendEmailPropuestaEconomica implements ShouldQueue
 
             HTML;
 
-            NotificationController::sendCotizaPlanInicial($this->phone, $body, $link, $name_pdf);
+            NotificationController::sendQuote($this->phone, $body, $link, $name_pdf);
         }
 
         // if(!file_exists(public_path('storage/' . $name_pdf))){

@@ -32,7 +32,8 @@ class MassNotificationsTable
                 Stack::make([
                     ImageColumn::make('image')
                         ->imageWidth(250)
-                        ->imageHeight(250),
+                        ->imageHeight(250)
+                        ->visibility('public'),
                     Stack::make([
                         TextColumn::make('status')
                             ->weight(FontWeight::Bold),

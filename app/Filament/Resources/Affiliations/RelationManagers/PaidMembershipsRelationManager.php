@@ -150,83 +150,83 @@ class PaidMembershipsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-            Action::make('approve')
-                ->hidden(function (PaidMembership $record) {
-                    return $record->status == 'APROBADO';
-                })
-                ->label('Aprobar')
-                ->color('success')
-                ->icon('heroicon-s-check-circle')
-                ->form([
-                    TextInput::make('affiliation_code')
-                        ->label('Codigo de afiliacion')
-                        ->default(function (PaidMembership $record) {
-                            return Affiliation::find($record->affiliation_id)->code;
-                        })
-                        ->dehydrated()
-                        ->disabled()
-                        ->live(),
-                    Select::make('collections')
-                        ->label('Avisos de cobro')
-                        ->searchable()
-                        ->preload()
-                        ->multiple()
-                        ->options(function (Get $get) {
-                            // Log::info($get('affiliation_code'));
-                            return Collection::select('id', 'collection_invoice_number', 'status', 'next_payment_date')
-                                ->where('affiliation_code', $get('affiliation_code'))
-                                ->where('status', 'POR PAGAR')
-                                ->get()
-                                ->pluck('next_payment_date', 'id');
-                        })
-                        ->required()
-                        ->live()
-                        ->hidden(function (Get $get) {
-                            $count = Collection::select('id', 'collection_invoice_number', 'status')
-                                ->where('affiliation_code', $get('affiliation_code'))
-                                ->where('status', 'POR PAGAR')
-                                ->get()
-                                ->count();
-                            if ($count == 0) {
-                                return true;
-                            }
-                            return false;
-                        })
+                Action::make('approve')
+                    ->hidden(function (PaidMembership $record) {
+                        return $record->status == 'APROBADO';
+                    })
+                    ->label('Aprobar')
+                    ->color('success')
+                    ->icon('heroicon-s-check-circle')
+                    ->form([
+                        TextInput::make('affiliation_code')
+                            ->label('Codigo de afiliacion')
+                            ->default(function (PaidMembership $record) {
+                                return Affiliation::find($record->affiliation_id)->code;
+                            })
+                            ->dehydrated()
+                            ->disabled()
+                            ->live(),
+                        Select::make('collections')
+                            ->label('Avisos de cobro')
+                            ->searchable()
+                            ->preload()
+                            ->multiple()
+                            ->options(function (Get $get) {
+                                // Log::info($get('affiliation_code'));
+                                return Collection::select('id', 'collection_invoice_number', 'status', 'next_payment_date')
+                                    ->where('affiliation_code', $get('affiliation_code'))
+                                    ->where('status', 'POR PAGAR')
+                                    ->get()
+                                    ->pluck('next_payment_date', 'id');
+                            })
+                            ->required()
+                            ->live()
+                            ->hidden(function (Get $get) {
+                                $count = Collection::select('id', 'collection_invoice_number', 'status')
+                                    ->where('affiliation_code', $get('affiliation_code'))
+                                    ->where('status', 'POR PAGAR')
+                                    ->get()
+                                    ->count();
+                                if ($count == 0) {
+                                    return true;
+                                }
+                                return false;
+                            })
 
-                ])
-                ->action(function (PaidMembership $record, array $data) {
+                    ])
+                    ->action(function (PaidMembership $record, array $data) {
 
-                    $approvePayment = PaidMembershipController::approvePayment($record, $data);
+                        $approvePayment = PaidMembershipController::approvePayment($record, $data);
 
-                    if (isset($approvePayment['firstRegister']) && $approvePayment['firstRegister'] == true) {
-                        Notification::make()
-                            ->title('Operacion exitosa')
-                            ->success()
-                            ->send();
-
-                        //Notificacion para Admin
-                        $recipient = User::where('is_admin', 1)->get();
-                        foreach ($recipient as $user) {
-                            $recipient_for_user = User::find($user->id);
+                        if (isset($approvePayment['firstRegister']) && $approvePayment['firstRegister'] == true) {
                             Notification::make()
-                                ->title('COMPROBANTE APROBADO')
-                                ->body('El pago ha sido aprobado. Codigo de afiliacion: ' . $record->affiliation->code)
-                                ->icon('heroicon-m-user-plus')
-                                ->iconColor('success')
+                                ->title('Operacion exitosa')
                                 ->success()
-                                ->sendToDatabase($recipient_for_user);
+                                ->send();
+
+                            //Notificacion para Admin
+                            $recipient = User::where('is_admin', 1)->get();
+                            foreach ($recipient as $user) {
+                                $recipient_for_user = User::find($user->id);
+                                Notification::make()
+                                    ->title('COMPROBANTE APROBADO')
+                                    ->body('El pago ha sido aprobado. Codigo de afiliacion: ' . $record->affiliation->code)
+                                    ->icon('heroicon-m-user-plus')
+                                    ->iconColor('success')
+                                    ->success()
+                                    ->sendToDatabase($recipient_for_user);
+                            }
                         }
-                    }
 
-                    if (isset($approvePayment['nextRegister']) && $approvePayment['nextRegister'] == true) {
-                        Notification::make()
-                            ->title('Registro de pago exitoso')
-                            ->success()
-                            ->send();
-                    }
+                        if (isset($approvePayment['nextRegister']) && $approvePayment['nextRegister'] == true) {
+                            Notification::make()
+                                ->title('Registro de pago exitoso')
+                                ->success()
+                                ->send();
+                        }
 
-                    redirect()->route('filament.admin.resources.affiliations.index');
-                }),
+                        redirect()->route('filament.admin.resources.affiliations.index');
+                    }),
             ])
             ->headerActions([
                 CreateAction::make(),

@@ -234,7 +234,11 @@ class AffiliationsTable
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
                                             ->helperText(function ($state, $set, Get $get, Affiliation $record) {
-                                                return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . isset($record->coverage->price) ? $record->coverage->price : 'N/A' . ' - Frecuencia: ' . $record->payment_frequency;
+                                                // dd($record->coverage_id);
+                                                if (isset($record->coverage_id)) {
+                                                    return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . $record->coverage->price . ' - Frecuencia: ' . $record->payment_frequency;
+                                                }
+                                                return 'Plan: ' . $record->plan->description . ' - Frecuencia: ' . $record->payment_frequency;
                                             })
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, Affiliation $record) {
@@ -326,9 +330,13 @@ class AffiliationsTable
                                                 ->required()
                                                 ->validationMessages([
                                                     'required'  => 'Seleccione un tipo de pago',
-                                                ]),
+                                                ])
+                                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('name_ti_usd', $state.toUpperCase());
+                                                JS),
                                             TextInput::make('reference_payment_zelle')
                                                 ->label('Nro. de Referencia')
+                                                ->inputMode('numeric') // activa teclado numérico en móvil
                                                 ->helperText('Debe colocar el número de referencia completo')
                                                 ->prefix('#')
                                                 ->regex('/^[A-Za-z0-9\-]+$/')
@@ -362,6 +370,9 @@ class AffiliationsTable
                                                     ->helperText('Debe colocar Nombre y Apellido')
                                                     ->prefixIcon('heroicon-s-pencil')
                                                     ->required()
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('name_ti_usd', $state.toUpperCase());
+                                                    JS)
                                                     ->validationMessages([
                                                         'required'  => 'Campo requerido',
                                                     ]),
@@ -529,9 +540,6 @@ class AffiliationsTable
                                                             ->numeric()
                                                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                                                 $res = $get('total_amount') - $state;
-                                                                Log::info($get('total_amount'));
-                                                                Log::info($res);
-                                                                Log::info($res / $get('tasa_bcv'));
                                                                 $set('pay_amount_ves', $res * $get('tasa_bcv'));
                                                             }),
 
@@ -540,6 +548,9 @@ class AffiliationsTable
                                                             ->helperText('Debe colocar Nombre y Apellido')
                                                             ->prefixIcon('heroicon-s-pencil')
                                                             ->required()
+                                                            ->afterStateUpdatedJs(<<<'JS'
+                                                                $set('name_ti_usd', $state.toUpperCase());
+                                                            JS)
                                                             ->validationMessages([
                                                                 'required'  => 'Seleccione un tipo de pago',
                                                             ])
@@ -567,6 +578,7 @@ class AffiliationsTable
 
 
                                                         TextInput::make('reference_payment_zelle')
+                                                            ->inputMode('numeric') // activa teclado numérico en móvil
                                                             ->label('Nro. de Referencia')
                                                             ->helperText('Debe colocar el número de referencia completo')
                                                             ->prefix('#')
@@ -673,6 +685,9 @@ class AffiliationsTable
                             Grid::make(1)->schema([
                                 Textarea::make('observations_payment')
                                     ->label('Observaciones')
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('observations_payment', $state.toUpperCase());
+                                    JS)
                                     ->rows(2)
                                     ->autosize()
                                     ->dehydrated()
@@ -711,23 +726,23 @@ class AffiliationsTable
                                         ->sendToDatabase($recipient_for_user);
                                 }
                             }
-                        })
-                        ->hidden(function (Affiliation $record) {
-
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
-                                return true;
-                            }
-
-                            return false;
                         }),
+                        // ->hidden(function (Affiliation $record) {
+
+                        //     if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
+                        //         return true;
+                        //     }
+
+                        //     if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
+                        //         return true;
+                        //     }
+
+                        //     if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
+                        //         return true;
+                        //     }
+
+                        //     return false;
+                        // }),
 
                     /**DESCARGAR */
                     Action::make('download')

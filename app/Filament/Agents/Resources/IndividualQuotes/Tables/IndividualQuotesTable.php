@@ -26,13 +26,18 @@ use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
+use App\Mail\SendMailPropuestaMultiPlan;
+use App\Mail\SendMailPropuestaPlanIdeal;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
+use App\Mail\SendMailPropuestaPlanInicial;
+use App\Http\Controllers\MessageController;
 use App\Jobs\ResendEmailPropuestaEconomica;
+use App\Mail\SendMailPropuestaPlanEspecial;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 use App\Http\Controllers\NotificationController;
@@ -221,8 +226,6 @@ class IndividualQuotesTable
                         ->modalWidth(Width::ExtraLarge)
                         ->form([
                             Section::make()
-                                // ->heading('Informacion')
-                                // ->description('El link puede sera enviado por email y/o telefono!')
                                 ->schema([
                                     TextInput::make('email')
                                         ->label('Email')
@@ -233,19 +236,11 @@ class IndividualQuotesTable
                                             ->options(fn () => UtilsController::getCountries())
                                             ->searchable()
                                             ->default('+58')
-                                            ->required()
-                                            ->live(onBlur: true)
-                                            ->validationMessages([
-                                                'required'  => 'Campo Requerido',
-                                            ]),
+                                            ->live(onBlur: true),
                                         TextInput::make('phone')
                                             ->prefixIcon('heroicon-s-phone')
                                             ->tel()
                                             ->label('Número de teléfono')
-                                            ->required()
-                                            ->validationMessages([
-                                                'required'  => 'Campo Requerido',
-                                            ])
                                             ->live(onBlur: true)
                                             ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                                 $countryCode = $get('country_code');
@@ -261,31 +256,63 @@ class IndividualQuotesTable
 
                             try {
 
+                                // dd($record);
+
                                 $email = null;
                                 $phone = null;
 
                                 if (isset($data['email'])) {
+                                    
                                     $email = $data['email'];
+                                    $doc = $record->code . '.pdf';
+                                    
+                                    if($record->plan == 1){
+                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
+                                    }
+                                    
+                                    if($record->plan == 2){
+                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
+                                    }
+                                    
+                                    if ($record->plan == 3) {
+                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 'CM') {
+                                        Mail::to($data['email'])->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
+                                    }
+
                                 }
 
                                 if (isset($data['phone'])) {
+                                    
                                     $phone = $data['phone'];
+                                    $doc = $record->code . '.pdf';
+                                    $link = config('parameters.INTEGRACORP_URL') . '/w/' . Crypt::encryptString($record->id);
+
+                                    $message = MessageController::messageIndividualQuote($link);
+                                    
+                                    $res = NotificationController::sendQuote($phone, $message);
+
+                                    if (!$res) {
+                                        Notification::make()
+                                            ->title('ERROR')    
+                                            ->body('La cotización no pudo ser enviada por whatsapp. Por favor, contacte con el administrador del Sistema.')
+                                            ->icon('heroicon-s-x-circle')
+                                            ->iconColor('danger')
+                                            ->danger()
+                                            ->send();
+                                    }
                                 }
 
-                                /**
-                                 * JOB
-                                 */
-                                $job = ResendEmailPropuestaEconomica::dispatch($record, $email, $phone);
-
-                                if ($job) {
-                                    Notification::make()
-                                        ->title('RE-ENVIADO EXITOSO')
-                                        ->body('La informacion fue re-enviada exitosamente.')
-                                        ->icon('heroicon-s-check-circle')
-                                        ->iconColor('verde')
-                                        ->success()
-                                        ->send();
-                                }
+                                Notification::make()
+                                    ->title('ENVIADO EXITOSO')
+                                    ->body('La cotización fue reenviada exitosamente.')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->iconColor('verde')
+                                    ->success()
+                                    ->send();
+                                
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()

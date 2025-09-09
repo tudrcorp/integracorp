@@ -21,8 +21,6 @@ class CorporateQuoteRequestResource extends Resource
 {
     protected static ?string $model = CorporateQuoteRequest::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
-
     protected static string | UnitEnum | null $navigationGroup = 'CORPORATIVAS';
 
     protected static ?string $navigationLabel = 'Dress Taylor';

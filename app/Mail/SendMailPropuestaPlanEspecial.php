@@ -44,7 +44,7 @@ class SendMailPropuestaPlanEspecial extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'mails.send-propuesta-economica-plan-especial',
+            view: 'mails.send-propuesta-economica-planes-individuales',
         );
     }
 

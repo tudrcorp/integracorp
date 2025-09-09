@@ -18,6 +18,8 @@ class CorporateQuoteChart extends ChartWidget
 
     protected static ?int $sort = 3;
 
+    protected ?string $maxHeight = '280px';
+
     protected function getFilters(): ?array
     {
         return [

@@ -26,8 +26,9 @@ class SalesTable
             ->query(Sale::query()->where('agent_id', Auth::user()->agent_id))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('date')
+                TextColumn::make('created_at')
                     ->label('Fecha')
+                    ->dateTime('d/m/Y')
                     ->badge()
                     ->icon('heroicon-s-calendar-days')
                     ->sortable()

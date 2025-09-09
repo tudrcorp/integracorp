@@ -2,19 +2,21 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications;
 
-use App\Filament\Marketing\Resources\MassNotifications\Pages\CreateMassNotification;
-use App\Filament\Marketing\Resources\MassNotifications\Pages\EditMassNotification;
-use App\Filament\Marketing\Resources\MassNotifications\Pages\ListMassNotifications;
-use App\Filament\Marketing\Resources\MassNotifications\Pages\ViewMassNotification;
-use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationForm;
-use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationInfolist;
-use App\Filament\Marketing\Resources\MassNotifications\Tables\MassNotificationsTable;
-use App\Models\MassNotification;
+use UnitEnum;
 use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use App\Models\MassNotification;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Marketing\Resources\MassNotifications\Pages\EditMassNotification;
+use App\Filament\Marketing\Resources\MassNotifications\Pages\ViewMassNotification;
+use App\Filament\Marketing\Resources\MassNotifications\Pages\ListMassNotifications;
+use App\Filament\Marketing\Resources\MassNotifications\Pages\CreateMassNotification;
+use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationForm;
+use App\Filament\Marketing\Resources\MassNotifications\Tables\MassNotificationsTable;
+use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationInfolist;
+use App\Filament\Marketing\Resources\MassNotifications\RelationManagers\DataNotificationsRelationManager;
 
 class MassNotificationResource extends Resource
 {
@@ -23,6 +25,8 @@ class MassNotificationResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'fontisto-navigate';
 
     protected static ?string $navigationLabel = 'Notificaciones Masivas';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Marketing';
 
     public static function form(Schema $schema): Schema
     {
@@ -42,7 +46,7 @@ class MassNotificationResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DataNotificationsRelationManager::class,
         ];
     }
 

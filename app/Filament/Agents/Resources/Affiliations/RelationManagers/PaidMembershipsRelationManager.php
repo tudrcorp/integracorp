@@ -3,8 +3,11 @@
 namespace App\Filament\Agents\Resources\Affiliations\RelationManagers;
 
 use Filament\Tables\Table;
+use Filament\Actions\Action;
+use Filament\Support\Enums\Width;
 use Filament\Actions\CreateAction;
 use Filament\Support\Enums\Alignment;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Storage;
@@ -137,6 +140,28 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->color(function ($record) {
                         return $record->status == 'APROBADO' ? 'success' : 'warning';
                     }),
+            ])
+            ->filters([
+                //
+            ])
+            ->recordActions([
+            Action::make('details')
+                ->label('Ver Observaciones')
+                ->icon('fontisto-info')
+                ->color('primary')
+                ->modalHeading('Observaciones del pago')
+                ->modalIcon('fontisto-info')
+                ->modalWidth(Width::ExtraLarge)
+                ->modalSubmitAction(false)
+                ->button()
+                ->form([
+                    Textarea::make('observations_payment')
+                        ->label('Observaciones')
+                        ->disabled()
+                        ->autoSize()
+                        ->default(fn($record) => $record->observations_payment)
+                        ->required(),
+                ]),
             ])
             ->headerActions([
                 // CreateAction::make(),

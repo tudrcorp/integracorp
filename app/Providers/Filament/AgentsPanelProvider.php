@@ -12,11 +12,13 @@ use Sabberworm\CSS\Settings;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Forms\Components\Radio;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
+use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\TextInput;
 use Filament\Navigation\NavigationGroup;
 use Filament\Notifications\Notification;
@@ -136,4 +138,4 @@ class AgentsPanelProvider extends PanelProvider
 
 
     }
-}
+}   

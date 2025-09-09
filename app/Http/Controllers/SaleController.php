@@ -29,7 +29,7 @@ class SaleController extends Controller
                     $commission = new Commission();
                     /**Datos principales de la tabla commission */
                     $commission->code                   = $code;
-                    $commission->date_payment_affiliate = $data[$i]['date'];
+                    $commission->date_payment_affiliate = $data[$i]['date_activation'];
                     $commission->sale_id                = $data[$i]['id'];
                     $commission->plan_id                = $data[$i]['plan_id'];
                     $commission->coverage_id            = $data[$i]['coverage_id'] ?? null;

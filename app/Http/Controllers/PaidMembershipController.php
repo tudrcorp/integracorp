@@ -26,6 +26,8 @@ class PaidMembershipController extends Controller
 
                 /**
                  *  Notificacion
+                 * 
+                 * 
                  *  ----------------------------------------------------------------------------------------------------
                  */
 
@@ -46,7 +48,7 @@ class PaidMembershipController extends Controller
                  */
 
                 $sales = new Sale();
-                $sales->date                    = $record->affiliation->activated_at;
+                $sales->date_activation         = $record->affiliation->activated_at;
                 $sales->owner_code              = $record->affiliation->owner_code;
                 $sales->code_agency             = $record->affiliation->code_agency;
                 $sales->plan_id                 = $record->affiliation->plan_id;
@@ -325,7 +327,7 @@ class PaidMembershipController extends Controller
                 /**Ejecutamos el Job para enviar el reporte de pago */
                 $array_data = [
                     'invoice_number'    => $sales->invoice_number,
-                    'emission_date'     => $sales->date,
+                    'emission_date'     => now()->format('d/m/Y'),
                     'payment_method'    => $sales->payment_method,
                     'reference'         => $record->reference_payment,
                     'full_name_ti'      => $sales->affiliate_full_name,
@@ -360,7 +362,7 @@ class PaidMembershipController extends Controller
                  */
 
                 $sales = new Sale();
-                $sales->date                    = $record->affiliation->activated_at;
+                $sales->date_activation         = $record->affiliation->activated_at;
                 $sales->owner_code              = $record->affiliation->owner_code;
                 $sales->code_agency             = $record->affiliation->code_agency;
                 $sales->plan_id                 = $record->affiliation->plan_id;
@@ -404,7 +406,7 @@ class PaidMembershipController extends Controller
                 /**Ejecutamos el Job para enviar el reporte de pago */
                 $array_data = [
                     'invoice_number'    => $sales->invoice_number,
-                    'emission_date'     => $sales->date,
+                    'emission_date'     => now()->format('d/m/Y'),
                     'payment_method'    => $sales->payment_method,
                     'reference'         => $record->reference_payment,
                     'full_name_ti'      => $sales->affiliate_full_name,

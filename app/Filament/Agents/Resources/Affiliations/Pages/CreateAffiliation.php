@@ -159,13 +159,13 @@ class CreateAffiliation extends CreateRecord
                      */
                     for ($i = 0; $i < count($affiliates); $i++) {
                         $record->affiliates()->create([
-                            'full_name' => $affiliates[$i]['full_name'],
-                            'nro_identificacion' => $affiliates[$i]['nro_identificacion'],
-                            'sex'                => $affiliates[$i]['sex'],
-                            'birth_date'         => $affiliates[$i]['birth_date'],
-                            'age'                => Carbon::parse($affiliates[$i]['birth_date'])->age,
-                            'relationship'       => $affiliates[$i]['relationship'],
-                            'document'           => $affiliates[$i]['document'],
+                            'full_name'             => $affiliates[$i]['full_name'],
+                            'nro_identificacion'    => $affiliates[$i]['nro_identificacion'],
+                            'sex'                   => $affiliates[$i]['sex'],
+                            'birth_date'            => $affiliates[$i]['birth_date'],
+                            'age'                   => Carbon::parse($affiliates[$i]['birth_date'])->age,
+                            'relationship'          => $affiliates[$i]['relationship'],
+                            'document'              => $affiliates[$i]['document'],
                             'address'               => $record->adress_ti,
                             'phone'                 => $record->phone_ti,
                             'country_id'            => $record->country_id_ti,
@@ -233,7 +233,7 @@ class CreateAffiliation extends CreateRecord
                      * ----------------------------------------------------------------------------------------------------
                      * $record [Data de la cotizacion guardada en la base de dastos]
                      */
-                    $recipient = User::where('is_admin', 1)->get();
+                    $recipient = User::where('is_admin', 1)->where('departament', 'AFILIACIONES')->get();
                     foreach ($recipient as $user) {
                         $recipient_for_user = User::find($user->id);
                         Notification::make()
@@ -244,7 +244,7 @@ class CreateAffiliation extends CreateRecord
                             ->success()
                             ->actions([
                                 Action::make('view')
-                                    ->label('Ver detalle de pre-afiliacion')
+                                    ->label('Ver detalle de pre-afiliación')
                                     ->button()
                                     ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
                             ])
@@ -325,6 +325,29 @@ class CreateAffiliation extends CreateRecord
                      */
                     $record->family_members = 1;
                     $record->save();
+
+                    /**
+                     * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+                     * ----------------------------------------------------------------------------------------------------
+                     * $record [Data de la cotizacion guardada en la base de dastos]
+                     */
+                    $recipient = User::where('is_admin', 1)->where('departament', 'AFILIACIONES')->get();
+                    foreach ($recipient as $user) {
+                        $recipient_for_user = User::find($user->id);
+                        Notification::make()
+                            ->title('PRE-AFILIACION INDIVIDUAL CREADA')
+                            ->body('Se ha registrado una nueva pre-afiliacion individual de forma exitosa. Codigo: ' . $record->code)
+                            ->icon('heroicon-s-user-group')
+                            ->iconColor('success')
+                            ->success()
+                            ->actions([
+                                Action::make('view')
+                                    ->label('Ver detalle de pre-afiliación')
+                                    ->button()
+                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
+                            ])
+                            ->sendToDatabase($recipient_for_user);
+                    }
                     
                 }
                 

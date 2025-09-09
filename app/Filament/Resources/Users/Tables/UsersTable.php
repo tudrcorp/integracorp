@@ -16,19 +16,20 @@ class UsersTable
     {
         return $table
             ->columns([
-                TextColumn::make('agent_id')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('name')
+                    ->label('Nombre y Apellido')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('code_agent')
                     ->searchable(),
                 TextColumn::make('email')
+                    ->label('Correo Electrónico')
                     ->searchable(),
-                TextColumn::make('email_verified_at')
-                    ->dateTime()
-                    ->sortable(),
                 TextColumn::make('code_agency')
+                    ->label('Código Agencia')
                     ->searchable(),
                 TextColumn::make('agency_type')
+                    ->label('Tipo Agencia')
                     ->searchable(),
                 IconColumn::make('is_admin')
                     ->boolean(),
@@ -38,8 +39,6 @@ class UsersTable
                     ->boolean(),
                 IconColumn::make('is_agency')
                     ->boolean(),
-                TextColumn::make('code_agent')
-                    ->searchable(),
                 TextColumn::make('status')
                     ->searchable(),
                 TextColumn::make('created_at')

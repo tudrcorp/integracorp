@@ -72,7 +72,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
         $code_country = '+58';
 
         $create_agency = new Agency();
-        $create_agency->owner_code       = $this->owner_code;
+        $create_agency->owner_code       = $this->owner_code == 'TDG-100' ? $code : $this->owner_code;
         $create_agency->code             = $code;
         $create_agency->agency_type_id   = $this->agency_type_id;
         $create_agency->name_corporative = $this->name_corporative;

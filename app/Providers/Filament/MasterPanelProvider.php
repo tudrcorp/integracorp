@@ -27,7 +27,9 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use Filament\Http\Middleware\DisableBladeIconComponents;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use App\Filament\Master\Resources\Agencies\AgencyResource;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -44,6 +46,7 @@ class MasterPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
+            ->sidebarCollapsibleOnDesktop()
             ->topNavigation(function () {
                 return Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu;
             })
@@ -62,7 +65,7 @@ class MasterPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Master/Widgets'), for: 'App\Filament\Master\Widgets')
             ->widgets([
                 AccountWidget::class,
-                FilamentInfoWidget::class,
+                // FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -450,6 +453,13 @@ class MasterPanelProvider extends PanelProvider
                                 ->send();
                         }
                     })
+            ])
+            ->plugins([
+                FilamentBackgroundsPlugin::make()
+                    ->imageProvider(
+                        MyImages::make()
+                            ->directory('backgroundMasterPanelLogin')
+                    ),
             ]);
             // ->navigation(false);
     }

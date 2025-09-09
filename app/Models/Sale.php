@@ -12,7 +12,7 @@ class Sale extends Model
         'plan_id',
         'coverage_id',
         'agent_id',
-        'date',
+        'date_activation',
         'code_agency',
         'owner_code',
         'invoice_number',

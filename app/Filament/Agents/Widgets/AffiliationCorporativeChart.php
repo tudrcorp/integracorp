@@ -18,6 +18,8 @@ class AffiliationCorporativeChart extends ChartWidget
 
     protected static ?int $sort = 5;
 
+    protected ?string $maxHeight = '280px';
+
     protected function getFilters(): ?array
     {
         return [

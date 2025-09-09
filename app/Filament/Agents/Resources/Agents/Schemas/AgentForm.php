@@ -38,9 +38,9 @@ class AgentForm
                         ->schema([
                             TextInput::make('name')
                                 ->label('Nombre/Razón Social')
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $set('name', strtoupper($state));
-                                })
+                                ->afterStateUpdatedJs(<<<'JS'
+                                    $set('name', $state.toUpperCase());
+                                JS)
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
                                 ->required()
@@ -213,9 +213,9 @@ class AgentForm
                                 ->maxLength(255),
                             TextInput::make('address')
                                 ->label('Dirección')
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $set('address', strtoupper($state));
-                                })
+                                ->afterStateUpdatedJs(<<<'JS'
+                                    $set('address', $state.toUpperCase());
+                                JS)
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
                                 ->required()
@@ -320,9 +320,9 @@ class AgentForm
                         ->schema([
                             TextInput::make('local_beneficiary_name')
                                 ->label('Nombre/Razón Social del Beneficiario')
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $set('local_beneficiary_name', strtoupper($state));
-                                })
+                                ->afterStateUpdatedJs(<<<'JS'
+                                    $set('local_beneficiary_name', $state.toUpperCase());
+                                JS)
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
@@ -395,9 +395,9 @@ class AgentForm
                         ->schema([
                             TextInput::make('extra_beneficiary_name')
                                 ->label('Nombre/Razon Social')
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $set('extra_beneficiary_name', strtoupper($state));
-                                })
+                                ->afterStateUpdatedJs(<<<'JS'
+                                    $set('extra_beneficiary_name', $state.toUpperCase());
+                                JS)
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),

@@ -54,7 +54,7 @@ class CorporateQuoteForm
                                                 ->inline()
                                                 ->options([
                                                     'BASICO' => 'BÁSICA',
-                                                    'DRESS-TAILOR' => 'DRESS-TAYLOR / PLANES A LA MEDIDA',
+                                                    // 'DRESS-TAILOR' => 'DRESS-TAYLOR / PLANES A LA MEDIDA',
                                                 ])
                                                 ->required()
                                                 ->default('BASICO')

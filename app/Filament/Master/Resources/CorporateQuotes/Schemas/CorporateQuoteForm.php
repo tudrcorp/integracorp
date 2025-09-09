@@ -158,8 +158,6 @@ class CorporateQuoteForm
                                          */
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
-                                    // Hidden::make('code_agency')->default(Auth::user()->code_agency),
-                                    // Hidden::make('owner_code')->default(Auth::user()->code_agency),
                                     Hidden::make('code_agency')->default(function (Get $get) {
                                         if ($get('code_agency_jerarchy') == null) {
                                             return Auth::user()->code_agency;

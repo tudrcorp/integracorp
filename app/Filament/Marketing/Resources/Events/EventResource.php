@@ -16,6 +16,7 @@ use App\Filament\Marketing\Resources\Events\Schemas\EventForm;
 use App\Filament\Marketing\Resources\Events\Tables\EventsTable;
 use App\Filament\Marketing\Resources\Events\Schemas\EventInfolist;
 use App\Filament\Resources\Events\RelationManagers\GuestsRelationManager;
+use UnitEnum;
 
 class EventResource extends Resource
 {
@@ -24,6 +25,8 @@ class EventResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'fontisto-ticket-alt';
 
     protected static ?string $navigationLabel = 'Eventos';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Marketing';
 
     public static function form(Schema $schema): Schema
     {

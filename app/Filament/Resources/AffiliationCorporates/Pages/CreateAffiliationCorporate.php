@@ -3,11 +3,12 @@
 namespace App\Filament\Resources\AffiliationCorporates\Pages;
 
 use App\Models\CorporateQuote;
+use App\Models\CorporateQuoteData;
 use App\Models\AfilliationCorporatePlan;
 use Filament\Notifications\Notification;
+use App\Http\Controllers\UtilsController;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Resources\AffiliationCorporates\AffiliationCorporateResource;
-use App\Models\CorporateQuoteData;
 
 class CreateAffiliationCorporate extends CreateRecord
 {
@@ -119,6 +120,8 @@ class CreateAffiliationCorporate extends CreateRecord
 
         $record->corporateAffiliates()->createMany($afiliadosConPlan);
 
+        // dd($record->corporateAffiliates);
+
         //Eliminamos la poblacion asociada a la cotizacion porque ya esta afiliada
         CorporateQuoteData::where('corporate_quote_id', $record->corporate_quote_id)->delete();
 
@@ -126,7 +129,13 @@ class CreateAffiliationCorporate extends CreateRecord
         $update_status = CorporateQuote::find($record->corporate_quote_id);
         $update_status->status = 'APROBADA';
         $update_status->save();
-        
+
+        /**
+         * Generate Certificado de Afiliación
+         */
+        UtilsController::createCertificateCorporate($record, $record->corporateAffiliates);
+        // $this->getRecord()->sendCertificate($record, $titular, $affiliates);
+
         Notification::make()
             ->title('Pre-afiliación generada con exito.')
             ->icon('heroicon-s-check-circle')

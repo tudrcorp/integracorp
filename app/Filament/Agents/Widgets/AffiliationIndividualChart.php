@@ -18,6 +18,8 @@ class AffiliationIndividualChart extends ChartWidget
 
     protected static ?int $sort = 4;
 
+    protected ?string $maxHeight = '280px';
+
     protected function getFilters(): ?array
     {
         return [

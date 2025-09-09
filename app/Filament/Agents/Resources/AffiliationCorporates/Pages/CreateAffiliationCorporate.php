@@ -14,7 +14,7 @@ class CreateAffiliationCorporate extends CreateRecord
 {
     protected static string $resource = AffiliationCorporateResource::class;
 
-    protected static ?string $title = 'PRE-AFILIACION CORPORATIVA';
+    protected static ?string $title = 'PRE-AFILIACIÓN CORPORATIVA';
 
     protected function afterCreate(): void
     {

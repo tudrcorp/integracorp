@@ -291,9 +291,9 @@ class AffiliationForm
                             Grid::make(3)->schema([
                                 TextInput::make('full_name_ti')
                                     ->label('Nombre y Apellido')
-                                    ->afterStateUpdated(function (Set $set, $state) {
-                                        $set('full_name_ti', strtoupper($state));
-                                    })
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('full_name_ti', $state.toUpperCase());
+                                    JS)
                                     ->live(onBlur: true)
                                     ->prefixIcon('heroicon-s-identification')
                                     ->required()
@@ -360,9 +360,9 @@ class AffiliationForm
                                     ->maxLength(255),
                                 TextInput::make('adress_ti')
                                     ->label('Dirección')
-                                    ->afterStateUpdated(function (Set $set, $state) {
-                                        $set('adress_ti', strtoupper($state));
-                                    })
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('adress_ti', $state.toUpperCase());
+                                    JS)
                                     ->live(onBlur: true)
                                     ->prefixIcon('heroicon-s-identification')
                                     ->required()
@@ -464,23 +464,15 @@ class AffiliationForm
                         ->schema([
                             Repeater::make('affiliates')
                                 ->label('Información de afiliados')
-                                // ->table([
-                                //     TableColumn::make('Nombre completo'),
-                                //     TableColumn::make('Cédula de identidad'),
-                                //     TableColumn::make('Sexo'),
-                                //     TableColumn::make('Fecha de nacimiento'),
-                                //     TableColumn::make('Parentesco'),
-                                //     TableColumn::make('Documento'),
-                                // ])
                                 ->schema([
                                     Grid::make(2)
                                         ->schema([
                                             Fieldset::make('Información personal del afiliado')
                                                 ->schema([
                                                     TextInput::make('full_name')
-                                                        ->afterStateUpdated(function (Set $set, $state) {
-                                                            $set('full_name', strtoupper($state));
-                                                        })
+                                                        ->afterStateUpdatedJs(<<<'JS'
+                                                            $set('adress_ti', $state.toUpperCase());
+                                                        JS)
                                                         ->required()
                                                         ->validationMessages([
                                                             'required'  => 'Campo Requerido',
@@ -574,9 +566,9 @@ class AffiliationForm
                                 ->schema([
                                     TextInput::make('full_name_payer')
                                         ->label('Nombre y Apellido')
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            $set('full_name_payer', strtoupper($state));
-                                        })
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                            $set('full_name_payer', $state.toUpperCase());
+                                        JS)
                                         ->live(onBlur: true)
                                         ->prefixIcon('heroicon-s-identification')
                                         ->required()

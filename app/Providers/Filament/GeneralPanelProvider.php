@@ -9,6 +9,7 @@ use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\DB;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
@@ -26,7 +27,9 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use Filament\Http\Middleware\DisableBladeIconComponents;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use App\Filament\General\Resources\Agencies\AgencyResource;
@@ -277,6 +280,17 @@ class GeneralPanelProvider extends PanelProvider
                                 ->send();
                         }
                     })
+            ])
+            ->renderHook(
+                PanelsRenderHook::FOOTER,
+                fn() => view('footer-panel-admin')
+            )
+            ->plugins([
+                FilamentBackgroundsPlugin::make()
+                    ->imageProvider(
+                        MyImages::make()
+                            ->directory('backgroundGeneralPanelLogin')
+                    ),
             ]);
     }
 }

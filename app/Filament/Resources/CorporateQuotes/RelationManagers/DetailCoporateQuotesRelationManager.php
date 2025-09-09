@@ -114,36 +114,36 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                     ->attribute('sucursal_id'),
             ])
             ->headerActions([
-                Action::make('update_quote')
-                    ->label('Actualizar cotización')
-                    ->icon('fluentui-document-sync-16')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalDescription('')
-                    ->action(function (RelationManager $livewire){
-                        // dd($livewire->ownerRecord->id);
-                        $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
-                        if ($exit_request <= 0) {
-                            Notification::make()
-                                ->title('No exite cotización asociada a la solicitud')
-                                ->danger()
-                                ->send();
-                            return;
-                        }
-                        $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
+                // Action::make('update_quote')
+                //     ->label('Actualizar cotización')
+                //     ->icon('fluentui-document-sync-16')
+                //     ->color('success')
+                //     ->requiresConfirmation()
+                //     ->modalDescription('')
+                //     ->action(function (RelationManager $livewire){
+                //         // dd($livewire->ownerRecord->id);
+                //         $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
+                //         if ($exit_request <= 0) {
+                //             Notification::make()
+                //                 ->title('No exite cotización asociada a la solicitud')
+                //                 ->danger()
+                //                 ->send();
+                //             return;
+                //         }
+                //         $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
 
-                        if ($createCorporateQuote) {
-                            Notification::make()
-                                ->title('Cotización creada con éxito')
-                                ->success()
-                                ->send();
-                        } else {
-                            Notification::make()
-                                ->title('Error al crear la cotización')
-                                ->danger()
-                                ->send();
-                        }
-                    })
+                //         if ($createCorporateQuote) {
+                //             Notification::make()
+                //                 ->title('Cotización creada con éxito')
+                //                 ->success()
+                //                 ->send();
+                //         } else {
+                //             Notification::make()
+                //                 ->title('Error al crear la cotización')
+                //                 ->danger()
+                //                 ->send();
+                //         }
+                //     })
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -168,7 +168,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                     session()->put('data_records', $records->toArray());
 
                                     $data_records = session()->get('data_records');
-                                    // dd($data_records);
+                                    
                                     /**
                                      * Actualizo el status a APROBADA
                                      */

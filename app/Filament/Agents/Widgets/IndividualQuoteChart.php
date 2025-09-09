@@ -19,6 +19,8 @@ class IndividualQuoteChart extends ChartWidget
 
     protected static ?int $sort = 2;
 
+    protected ?string $maxHeight = '280px';
+
     protected function getFilters(): ?array
     {
         return [

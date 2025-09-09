@@ -19,11 +19,18 @@ class MassNotification extends Model
         'is_sent',
         'is_approved',
         'approved_by',
-        'reason'
+        'reason',
+        'date_programed',
+        'header_title'
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function dataNotifications()
+    {
+        return $this->hasMany(DataNotification::class);
     }
 }

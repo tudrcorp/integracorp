@@ -14,6 +14,7 @@ use App\Models\AffiliationCorporate;
 use Illuminate\Validation\Rules\File;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
+use App\Http\Controllers\UtilsController;
 use App\Filament\Imports\AffiliateCorporateImporter;
 use App\Filament\Imports\CorporateQuoteDataImporter;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -98,8 +99,30 @@ class CorporateQuoteDataRelationManager extends RelationManager
                                     ->success()
                                     ->title('Edades calculadas con éxito')
                                     ->send();
+
+                                $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
+                                if ($exit_request <= 0) {
+                                    Notification::make()
+                                        ->title('No exite cotización asociada a la solicitud')
+                                        ->danger()
+                                        ->send();
+                                    return;
+                                }
+                                $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
+
+                                if ($createCorporateQuote) {
+                                    Notification::make()
+                                        ->title('La Cotización fue actualizada con éxito, según la data recibida y el rango etario calculado.')
+                                        ->success()
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->title('Error al actualizar la cotización, por favor intente nuevamente.')
+                                        ->danger()
+                                        ->send();
+                                }
+
                             } catch (\Throwable $th) {
-                                dd($th);   
                                 Log::error('Error al calcular edades: ' . $th->getMessage());
                                 Notification::make()
                                     ->danger()
@@ -144,6 +167,9 @@ class CorporateQuoteDataRelationManager extends RelationManager
                         // ->hidden(function (RelationManager $livewire) {
                         //     return $livewire->ownerRecord->isAffiliated($livewire->ownerRecord->id);
                         // }),
-            ]);
+            ])
+            ->striped()
+            ->defaultSort('id', 'asc')
+            ->poll('5s');
     }
 }

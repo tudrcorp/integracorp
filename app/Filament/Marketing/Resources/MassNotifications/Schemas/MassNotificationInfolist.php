@@ -47,31 +47,6 @@ class MassNotificationInfolist
                                 ->badge(),
                         ])->columnSpanFull()->columns(5),
                 ])->columnSpanFull(),
-
-
-
-
-
-
-
-
-
-            TextEntry::make('title'),
-                ImageEntry::make('image')
-                    ->visibility('public'),
-                TextEntry::make('name'),
-                TextEntry::make('email')
-                    ->label('Email address'),
-                TextEntry::make('phone'),
-                TextEntry::make('link'),
-                IconEntry::make('is_sent')
-                    ->boolean(),
-                TextEntry::make('approved_by'),
-                TextEntry::make('created_at')
-                    ->dateTime(),
-                TextEntry::make('updated_at')
-                    ->dateTime(),
-                TextEntry::make('status'),
             ]);
     }
 }

@@ -63,7 +63,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="https://tudrenviajes.com/images/bannerCartaBienvenidaTop.png" alt="Logo Bancamiga" style="max-width: 100%;">
+        <img src="https://tudrenviajes.com/images/bannerCartaBienvenidaTop.png" alt="Logo Tudrgroup" style="max-width: 100%;">
     </div>
 
     <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">
@@ -71,12 +71,12 @@
 
         <p>Estimado(a): <span style="font-weight: bold">{{ $titular }}</span> ,</p>
 
-        <p>Agradecemos su interés en nuestro Plan Inicial . A continuación, encontrará adjunto al presente correo el documento con la cotización detallada de las coberturas y tarifas correspondientes. No dude en contactarnos si tiene alguna duda o requiere información adicional.</p>
+        <p>Agradecemos su interés en nuestros Planes Individuales. A continuación, encontrará adjunto al presente correo el documento con la cotización detallada de las coberturas y tarifas correspondientes. No dude en contactarnos si tiene alguna duda o requiere información adicional.</p>
 
     </div>
 
     <div class="footer">
-        <img src="https://app.piedy.com/images/BANER-GUSTAVO-2.png" alt="Logo Tubanca" style="max-width: 100%;">
+        <img src="https://app.piedy.com/images/BANER-GUSTAVO-2.png" alt="Logo Tudrgroup" style="max-width: 100%;">
         <p style="font-size: 0.8em; font-style: italic;">Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa</p>
     </div>
 </body>

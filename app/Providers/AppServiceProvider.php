@@ -2,9 +2,10 @@
 
 namespace App\Providers;
 
+use Filament\Support\Colors\Color;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Filament\Support\Facades\FilamentColor;
-use Filament\Support\Colors\Color;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,4 +31,5 @@ class AppServiceProvider extends ServiceProvider
             'gris'          => Color::hex('#E8EBEA'),
         ]);
     }
+
 }

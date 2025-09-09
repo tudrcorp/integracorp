@@ -176,452 +176,452 @@ class AffiliationCorporatesTable
                 //
             ])
             ->recordActions([
-            ActionGroup::make([
-                Action::make('upload_info_ils')
-                    ->label('Vaucher ILS')
-                    ->color('warning')
-                    ->icon('heroicon-o-paper-clip')
-                    ->requiresConfirmation()
-                    ->modalWidth(Width::ExtraLarge)
-                    ->modalHeading('Activar afiliacion')
-                    ->form([
-                        Section::make('ACTIVAR AFILIACIÓN')
-                            ->description('Formulario de activación de afiliación. Campo Requerido(*)')
-                            ->icon('heroicon-s-check-circle')
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    TextInput::make('vaucher_ils')
-                                        ->label('Vaucher ILS')
-                                        ->required(),
-                                ]),
-                                Grid::make(2)->schema([
-                                    DatePicker::make('date_payment_initial_ils')
-                                        ->label('Desde')
-                                        ->format('d-m-Y')
-                                        ->required(),
-                                    DatePicker::make('date_payment_final_ils')
-                                        ->label('Hasta')
-                                        ->format('d-m-Y')
-                                        ->required(),
+                ActionGroup::make([
+                    Action::make('upload_info_ils')
+                        ->label('Vaucher ILS')
+                        ->color('warning')
+                        ->icon('heroicon-o-paper-clip')
+                        ->requiresConfirmation()
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalHeading('Activar afiliacion')
+                        ->form([
+                            Section::make('ACTIVAR AFILIACIÓN')
+                                ->description('Formulario de activación de afiliación. Campo Requerido(*)')
+                                ->icon('heroicon-s-check-circle')
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        TextInput::make('vaucher_ils')
+                                            ->label('Vaucher ILS')
+                                            ->required(),
+                                    ]),
+                                    Grid::make(2)->schema([
+                                        DatePicker::make('date_payment_initial_ils')
+                                            ->label('Desde')
+                                            ->format('d-m-Y')
+                                            ->required(),
+                                        DatePicker::make('date_payment_final_ils')
+                                            ->label('Hasta')
+                                            ->format('d-m-Y')
+                                            ->required(),
 
-                                ]),
-                                Grid::make(1)->schema([
-                                    FileUpload::make('document_ils')
-                                        ->label('Documento/Comprobante ILS')
-                                        ->required(),
+                                    ]),
+                                    Grid::make(1)->schema([
+                                        FileUpload::make('document_ils')
+                                            ->label('Documento/Comprobante ILS')
+                                            ->required(),
+                                    ])
                                 ])
-                            ])
-                    ])
-                    ->action(function (AffiliationCorporate $record, array $data): void {
-                        $record->update([
-                            'vaucher_ils'               => $data['vaucher_ils'],
-                            'date_payment_initial_ils'  => $data['date_payment_initial_ils'],
-                            'date_payment_final_ils'    => $data['date_payment_final_ils'],
-                            'document_ils'              => $data['document_ils'],
-                        ]);
-
-                        $record->status_log_corporate_affiliations()->create([
-                            'affiliation_corporate_id'  => $record->id,
-                            'action'                    => 'ACTIVACIÓN',
-                            'observation'               => 'AFILIACIÓN ACTIVADA. FECHA: ' . now()->format('d-m-Y'),
-                            'updated_by'                => Auth::user()->name
-                        ]);
-
-                        Notification::make()
-                            ->success()
-                            ->title('AFILIACIÓN ACTIVADA')
-                            ->send();
-                    })
-                    ->hidden(function (AffiliationCorporate $record): bool {
-                        if ($record->vaucher_ils != null) {
-                            return true;
-                        }
-                        return false;
-                    }),
-                Action::make('upload')
-                    ->label('Cargar pago')
-                    ->color('verde')
-                    ->icon('heroicon-s-cloud-arrow-up')
-                    ->form([
-                        Section::make('CARGA DE COMPROBANTE')
-                            ->icon('heroicon-s-cloud-arrow-up')
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    Select::make('payment_frequency')
-                                        ->label('Frecuencia de pago')
-                                        ->live()
-                                        ->options([
-                                            'ANUAL'      => 'ANUAL',
-                                            'TRIMESTRAL' => 'TRIMESTRAL',
-                                            'SEMESTRAL'  => 'SEMESTRAL',
-                                            'MENSUAL'    => 'MENSUAL'
-                                        ])
-                                        ->searchable()
-                                        ->live()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ])
-                                        ->preload()
-                                        ->afterStateUpdated(function ($state, $set, Get $get, AffiliationCorporate $record) {
-                                            if ($get('payment_frequency') == 'ANUAL') {
-                                                //busco el valor de la cotizacion de acuerdo al plan y a la covertura
-                                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
-                                                    ->where('corporate_quote_id', $record->corporate_quote_id)
-                                                    ->where('plan_id', $record->plan_id)
-                                                    ->where('coverage_id', $record->coverage_id)
-                                                    ->get();
-
-                                                $set('total_amount', $data_quote->sum('subtotal_anual'));
-                                            }
-                                            if ($get('payment_frequency') == 'TRIMESTRAL') {
-
-                                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_quarterly')
-                                                    ->where('corporate_quote_id', $record->corporate_quote_id)
-                                                    ->where('plan_id', $record->plan_id)
-                                                    ->where('coverage_id', $record->coverage_id)
-                                                    ->get();
-
-                                                $set('total_amount', $data_quote->sum('subtotal_quarterly'));
-                                            }
-                                            if ($get('payment_frequency') == 'SEMESTRAL') {
-
-                                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_biannual')
-                                                    ->where('corporate_quote_id', $record->corporate_quote_id)
-                                                    ->where('plan_id', $record->plan_id)
-                                                    ->where('coverage_id', $record->coverage_id)
-                                                    ->get();
-
-                                                $set('total_amount', $data_quote->sum('subtotal_biannual'));
-                                            }
-                                            if ($get('payment_frequency') == 'MENSUAL') {
-
-                                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_monthly')
-                                                    ->where('corporate_quote_id', $record->corporate_quote_id)
-                                                    ->where('plan_id', $record->plan_id)
-                                                    ->where('coverage_id', $record->coverage_id)
-                                                    ->get();
-
-                                                $set('total_amount', $data_quote->sum('subtotal_monthly'));
-                                            }
-                                        }),
-
-
-
-                                ]),
-                                Grid::make(2)->schema([
-
-                                    TextInput::make('total_amount')
-                                        ->label('Total a pagar')
-                                        ->helperText('Punto(.) para separar decimales')
-                                        ->prefix('US$')
-                                        ->numeric()
-                                        ->live(),
-
-                                    TextInput::make('pay_amount')
-                                        ->label('Monto pagado')
-                                        ->helperText('Punto(.) para separar decimales')
-                                        ->prefix('US$/VES')
-                                        ->numeric()
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo requerido',
-                                            'numeric'   => 'El campo es numerico',
-                                        ])
-                                        ->required(),
-
-                                    Select::make('currency')
-                                        ->label('Tipo de pago')
-                                        ->live()
-                                        ->options([
-                                            'usd'   => 'DOLARES US$',
-                                            'zelle' => 'ZELLE',
-                                            'ves'   => 'BOLIVARES VES',
-                                            'pm'    => 'PAGO MOVIL',
-                                            't'     => 'TRANSFERENCIA'
-                                        ])
-                                        ->searchable()
-                                        ->live()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ])
-                                        ->preload(),
-
-                                    TextInput::make('reference_payment')
-                                        ->label('Nro. de referencia')
-                                        ->prefix('REF:')
-                                        ->numeric()
-                                        ->validationMessages([
-                                            'numeric'   => 'El campo es numerico',
-                                        ]),
-
-                                ]),
-                                Grid::make(1)->schema([
-                                    FileUpload::make('document')
-                                        ->label('Comprobante de pago')
-                                        ->uploadingMessage('Cargando...')
-                                        ->image()
-                                        ->imageEditor()
-                                        ->required()
-                                        ->imageEditorAspectRatios([
-                                            '16:9',
-                                            '4:3',
-                                            '1:1',
-                                        ]),
-                                ]),
-                                Grid::make(1)->schema([
-                                    Textarea::make('observations_payment')
-                                        ->label('Observaciones')
-                                        ->rows(2)
-                                        ->autosize()
-                                ]),
-
-                            ])
-                    ])
-                    ->action(function (AffiliationCorporate $record, array $data): void {
-
-                        //1. Actualizamos la tabla de afiliaciones
-                        $record->update([
-                            'payment_frequency'     => $data['payment_frequency'],
-                            'plan_id'               => $record->plan_id,
-                            'coverage_id'           => $record->coverage_id,
-                            'activated_at'          => now()->format('d-m-Y'),
-                            'family_members'        => AffiliateCorporate::select('affiliation_id')->where('affiliation_id', $record->id)->count(),
-                            'document'              => $data['document'],
-                            'status'                => 'ACTIVA',
-                        ]);
-
-                        if ($data['payment_frequency'] == 'ANUAL') {
-                            //busco el valor de la cotizacion de acuerdo al plan y a la covertura
-                            $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
-                                ->where('corporate_quote_id', $record->corporate_quote_id)
-                                ->where('plan_id', $record->plan_id)
-                                ->where('coverage_id', $record->coverage_id)
-                                ->get();
-
-                            $record->paid_memberships()->create([
-                                'affiliation_id'        => $record->id,
-                                'payment_frequency'     => $data['payment_frequency'],
-                                'agent_id'              => $record->agent_id,
-                                'code_agency'           => $record->code_agency,
-                                'plan_id'               => $record->plan_id,
-                                'coverage_id'           => $record->coverage_id,
-                                'pay_amount'            => $data['pay_amount'],
-                                'total_amount'          => $data['total_amount'],
-                                'currency'              => $data['currency'],
-                                'payment_date'          => now()->format('d-m-Y'),
-                                'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                                'reference_payment'     => $data['reference_payment'],
-                                'observations_payment'  => $data['observations_payment'],
-                                'document'              => $data['document'],
-                                'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                                'status'                => 'PAGADO',
-                            ]);
-                        }
-
-                        if ($data['payment_frequency'] == 'TRIMESTRAL') {
-                            $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_quarterly')
-                                ->where('corporate_quote_id', $record->corporate_quote_id)
-                                ->where('plan_id', $record->plan_id)
-                                ->where('coverage_id', $record->coverage_id)
-                                ->get();
-
-                            $record->paid_memberships()->create([
-                                'affiliation_id'        => $record->id,
-                                'payment_frequency'     => $data['payment_frequency'],
-                                'agent_id'              => $record->agent_id,
-                                'code_agency'           => $record->code_agency,
-                                'plan_id'               => $record->plan_id,
-                                'coverage_id'           => $record->coverage_id,
-                                'pay_amount'            => $data['pay_amount'],
-                                'total_amount'          => $data['total_amount'],
-                                'currency'              => $data['currency'],
-                                'payment_date'          => now()->format('d-m-Y'),
-                                'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addMonths(3)->format('d-m-Y'),
-                                'reference_payment'     => $data['reference_payment'],
-                                'observations_payment'  => $data['observations_payment'],
-                                'document'              => $data['document'],
-                                'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                                'status'                => 'PAGADO',
-                            ]);
-                        }
-
-                        if ($data['payment_frequency'] == 'SEMESTRAL') {
-                            $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_biannual')
-                                ->where('corporate_quote_id', $record->corporate_quote_id)
-                                ->where('plan_id', $record->plan_id)
-                                ->where('coverage_id', $record->coverage_id)
-                                ->get();
-
-                            $record->paid_memberships()->create([
-                                'affiliation_id'        => $record->id,
-                                'payment_frequency'     => $data['payment_frequency'],
-                                'agent_id'              => $record->agent_id,
-                                'code_agency'           => $record->code_agency,
-                                'plan_id'               => $record->plan_id,
-                                'coverage_id'           => $record->coverage_id,
-                                'pay_amount'            => $data['pay_amount'],
-                                'total_amount'          => $data['total_amount'],
-                                'currency'              => $data['currency'],
-                                'payment_date'          => now()->format('d-m-Y'),
-                                'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addMonths(6)->format('d-m-Y'),
-                                'reference_payment'     => $data['reference_payment'],
-                                'observations_payment'  => $data['observations_payment'],
-                                'document'              => $data['document'],
-                                'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                                'status'                => 'PAGADO',
-                            ]);
-                        }
-
-                        if ($data['payment_frequency'] == 'MENSUAL') {
-                            $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_monthly')
-                                ->where('corporate_quote_id', $record->corporate_quote_id)
-                                ->where('plan_id', $record->plan_id)
-                                ->where('coverage_id', $record->coverage_id)
-                                ->get();
-
-                            $record->paid_memberships()->create([
-                                'affiliation_id'        => $record->id,
-                                'payment_frequency'     => $data['payment_frequency'],
-                                'agent_id'              => $record->agent_id,
-                                'code_agency'           => $record->code_agency,
-                                'plan_id'               => $record->plan_id,
-                                'coverage_id'           => $record->coverage_id,
-                                'pay_amount'            => $data['pay_amount'],
-                                'total_amount'          => $data['total_amount'],
-                                'currency'              => $data['currency'],
-                                'payment_date'          => now()->format('d-m-Y'),
-                                'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addMonths()->format('d-m-Y'),
-                                'reference_payment'     => $data['reference_payment'],
-                                'observations_payment'  => $data['observations_payment'],
-                                'document'              => $data['document'],
-                                'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                                'status'                => 'PAGADO',
-                            ]);
-                        }
-                    }),
-                Action::make('change_status')
-                    ->label('Actualizar estatus')
-                    ->color('azulOscuro')
-                    ->icon('heroicon-s-check-circle')
-                    ->requiresConfirmation()
-                    ->modalWidth(Width::ExtraLarge)
-                    ->modalHeading('ACCIONES')
-                    ->form([
-                        Section::make()
-                            ->heading('ACCIONES')
-                            ->description('Seleccione la accion que desea realizar')
-                            ->icon('heroicon-s-check-circle')
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    Radio::make('action')
-                                        ->label('Que accion deseas realizar?')
-                                        ->options([
-                                            'observation' => 'Anadir observaciones',
-                                            'status'      => 'Actualizar estatus',
-                                            'exclude'     => 'Excluir Afiliación',
-                                        ])
-                                        ->live()
-                                        ->required()
-                                    // ->inline()
-                                ]),
-
-                                Grid::make(1)->schema([
-                                    Textarea::make('description')
-                                        ->label('Observaciones')
-                                        ->autosize()
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            $set('description', strtoupper($state));
-                                        })
-                                ])->hidden(fn(Get $get) => $get('action') != 'observation'),
-
-                                Grid::make(1)->schema([
-                                    Select::make('status')
-                                        ->label('Estatus')
-                                        ->options([
-                                            'PENDIENTE' => 'PENDIENTE',
-                                        ])
-                                        ->searchable()
-                                        ->preload(),
-                                    Textarea::make('description')
-                                        ->autosize()
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            $set('description', strtoupper($state));
-                                        })
-                                ])->hidden(fn(Get $get) => $get('action') != 'status'),
-
-                                Grid::make(1)->schema([
-                                    DatePicker::make('date_egress')
-                                        ->label('Fecha de egreso')
-                                        ->format('d-m-Y'),
-                                    Textarea::make('description')
-                                        ->label('Observaciones')
-                                        ->autosize()
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            $set('description', strtoupper($state));
-                                        })
-                                ])->hidden(fn(Get $get) => $get('action') != 'exclude'),
-                            ])
-                    ])
-                    ->action(function (AffiliationCorporate $record, array $data): void {
-                        if ($data['action'] == 'observation') {
-                            $record->status_log_corporate_affiliations()->create([
-                                'affiliation_corporate_id' => $record->id,
-                                'action'         => 'AGREGO OBSERVACION',
-                                'observation'    => $data['description'],
-                                'updated_by'     => Auth::user()->name
-                            ]);
-                            Notification::make()
-                                ->title('AFILIACION ACTUALIZADA')
-                                ->success()
-                                ->send();
-                            return;
-                        }
-
-                        if ($data['action'] == 'status') {
+                        ])
+                        ->action(function (AffiliationCorporate $record, array $data): void {
                             $record->update([
-                                'status' => $data['status'],
+                                'vaucher_ils'               => $data['vaucher_ils'],
+                                'date_payment_initial_ils'  => $data['date_payment_initial_ils'],
+                                'date_payment_final_ils'    => $data['date_payment_final_ils'],
+                                'document_ils'              => $data['document_ils'],
                             ]);
-                            $record->status_log_corporate_affiliations()->create([
-                                'affiliation_corporate_id' => $record->id,
-                                'action'         => 'CAMBIO ESTATUS A: ' . $data['status'],
-                                'observation'    => $data['description'],
-                                'updated_by'     => Auth::user()->name
-                            ]);
-                            Notification::make()
-                                ->title('AFILIACION ACTUALIZADA')
-                                ->success()
-                                ->send();
-                            return;
-                        }
 
-                        if ($data['action'] == 'exclude') {
+                            $record->status_log_corporate_affiliations()->create([
+                                'affiliation_corporate_id'  => $record->id,
+                                'action'                    => 'ACTIVACIÓN',
+                                'observation'               => 'AFILIACIÓN ACTIVADA. FECHA: ' . now()->format('d-m-Y'),
+                                'updated_by'                => Auth::user()->name
+                            ]);
+
+                            Notification::make()
+                                ->success()
+                                ->title('AFILIACIÓN ACTIVADA')
+                                ->send();
+                        })
+                        ->hidden(function (AffiliationCorporate $record): bool {
+                            if ($record->vaucher_ils != null) {
+                                return true;
+                            }
+                            return false;
+                        }),
+                    Action::make('upload')
+                        ->label('Cargar pago')
+                        ->color('verde')
+                        ->icon('heroicon-s-cloud-arrow-up')
+                        ->form([
+                            Section::make('CARGA DE COMPROBANTE')
+                                ->icon('heroicon-s-cloud-arrow-up')
+                                ->schema([
+                                    Grid::make(3)->schema([
+                                        Select::make('payment_frequency')
+                                            ->label('Frecuencia de pago')
+                                            ->live()
+                                            ->options([
+                                                'ANUAL'      => 'ANUAL',
+                                                'TRIMESTRAL' => 'TRIMESTRAL',
+                                                'SEMESTRAL'  => 'SEMESTRAL',
+                                                'MENSUAL'    => 'MENSUAL'
+                                            ])
+                                            ->searchable()
+                                            ->live()
+                                            ->prefixIcon('heroicon-s-globe-europe-africa')
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Campo Requerido',
+                                            ])
+                                            ->preload()
+                                            ->afterStateUpdated(function ($state, $set, Get $get, AffiliationCorporate $record) {
+                                                if ($get('payment_frequency') == 'ANUAL') {
+                                                    //busco el valor de la cotizacion de acuerdo al plan y a la covertura
+                                                    $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
+                                                        ->where('corporate_quote_id', $record->corporate_quote_id)
+                                                        ->where('plan_id', $record->plan_id)
+                                                        ->where('coverage_id', $record->coverage_id)
+                                                        ->get();
+
+                                                    $set('total_amount', $data_quote->sum('subtotal_anual'));
+                                                }
+                                                if ($get('payment_frequency') == 'TRIMESTRAL') {
+
+                                                    $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_quarterly')
+                                                        ->where('corporate_quote_id', $record->corporate_quote_id)
+                                                        ->where('plan_id', $record->plan_id)
+                                                        ->where('coverage_id', $record->coverage_id)
+                                                        ->get();
+
+                                                    $set('total_amount', $data_quote->sum('subtotal_quarterly'));
+                                                }
+                                                if ($get('payment_frequency') == 'SEMESTRAL') {
+
+                                                    $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_biannual')
+                                                        ->where('corporate_quote_id', $record->corporate_quote_id)
+                                                        ->where('plan_id', $record->plan_id)
+                                                        ->where('coverage_id', $record->coverage_id)
+                                                        ->get();
+
+                                                    $set('total_amount', $data_quote->sum('subtotal_biannual'));
+                                                }
+                                                if ($get('payment_frequency') == 'MENSUAL') {
+
+                                                    $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_monthly')
+                                                        ->where('corporate_quote_id', $record->corporate_quote_id)
+                                                        ->where('plan_id', $record->plan_id)
+                                                        ->where('coverage_id', $record->coverage_id)
+                                                        ->get();
+
+                                                    $set('total_amount', $data_quote->sum('subtotal_monthly'));
+                                                }
+                                            }),
+
+
+
+                                    ]),
+                                    Grid::make(2)->schema([
+
+                                        TextInput::make('total_amount')
+                                            ->label('Total a pagar')
+                                            ->helperText('Punto(.) para separar decimales')
+                                            ->prefix('US$')
+                                            ->numeric()
+                                            ->live(),
+
+                                        TextInput::make('pay_amount')
+                                            ->label('Monto pagado')
+                                            ->helperText('Punto(.) para separar decimales')
+                                            ->prefix('US$/VES')
+                                            ->numeric()
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Campo requerido',
+                                                'numeric'   => 'El campo es numerico',
+                                            ])
+                                            ->required(),
+
+                                        Select::make('currency')
+                                            ->label('Tipo de pago')
+                                            ->live()
+                                            ->options([
+                                                'usd'   => 'DOLARES US$',
+                                                'zelle' => 'ZELLE',
+                                                'ves'   => 'BOLIVARES VES',
+                                                'pm'    => 'PAGO MOVIL',
+                                                't'     => 'TRANSFERENCIA'
+                                            ])
+                                            ->searchable()
+                                            ->live()
+                                            ->prefixIcon('heroicon-s-globe-europe-africa')
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Campo Requerido',
+                                            ])
+                                            ->preload(),
+
+                                        TextInput::make('reference_payment')
+                                            ->label('Nro. de referencia')
+                                            ->prefix('REF:')
+                                            ->numeric()
+                                            ->validationMessages([
+                                                'numeric'   => 'El campo es numerico',
+                                            ]),
+
+                                    ]),
+                                    Grid::make(1)->schema([
+                                        FileUpload::make('document')
+                                            ->label('Comprobante de pago')
+                                            ->uploadingMessage('Cargando...')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->required()
+                                            ->imageEditorAspectRatios([
+                                                '16:9',
+                                                '4:3',
+                                                '1:1',
+                                            ]),
+                                    ]),
+                                    Grid::make(1)->schema([
+                                        Textarea::make('observations_payment')
+                                            ->label('Observaciones')
+                                            ->rows(2)
+                                            ->autosize()
+                                    ]),
+
+                                ])
+                        ])
+                        ->action(function (AffiliationCorporate $record, array $data): void {
+
+                            //1. Actualizamos la tabla de afiliaciones
                             $record->update([
-                                'status' => 'EXCLUIDO',
+                                'payment_frequency'     => $data['payment_frequency'],
+                                'plan_id'               => $record->plan_id,
+                                'coverage_id'           => $record->coverage_id,
+                                'activated_at'          => now()->format('d-m-Y'),
+                                'family_members'        => AffiliateCorporate::select('affiliation_id')->where('affiliation_id', $record->id)->count(),
+                                'document'              => $data['document'],
+                                'status'                => 'ACTIVA',
                             ]);
-                            $record->status_log_corporate_affiliations()->create([
-                                'affiliation_corporate_id'    => $record->id,
-                                'action'            => 'EXCLUYO AFILIACION, FECHA DE EGRESO: ' . $data['date_egress'],
-                                'observation'       => $data['description'],
-                                'updated_by'        => Auth::user()->name
-                            ]);
+
+                            if ($data['payment_frequency'] == 'ANUAL') {
+                                //busco el valor de la cotizacion de acuerdo al plan y a la covertura
+                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
+                                    ->where('corporate_quote_id', $record->corporate_quote_id)
+                                    ->where('plan_id', $record->plan_id)
+                                    ->where('coverage_id', $record->coverage_id)
+                                    ->get();
+
+                                $record->paid_memberships()->create([
+                                    'affiliation_id'        => $record->id,
+                                    'payment_frequency'     => $data['payment_frequency'],
+                                    'agent_id'              => $record->agent_id,
+                                    'code_agency'           => $record->code_agency,
+                                    'plan_id'               => $record->plan_id,
+                                    'coverage_id'           => $record->coverage_id,
+                                    'pay_amount'            => $data['pay_amount'],
+                                    'total_amount'          => $data['total_amount'],
+                                    'currency'              => $data['currency'],
+                                    'payment_date'          => now()->format('d-m-Y'),
+                                    'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
+                                    'reference_payment'     => $data['reference_payment'],
+                                    'observations_payment'  => $data['observations_payment'],
+                                    'document'              => $data['document'],
+                                    'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
+                                    'status'                => 'PAGADO',
+                                ]);
+                            }
+
+                            if ($data['payment_frequency'] == 'TRIMESTRAL') {
+                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_quarterly')
+                                    ->where('corporate_quote_id', $record->corporate_quote_id)
+                                    ->where('plan_id', $record->plan_id)
+                                    ->where('coverage_id', $record->coverage_id)
+                                    ->get();
+
+                                $record->paid_memberships()->create([
+                                    'affiliation_id'        => $record->id,
+                                    'payment_frequency'     => $data['payment_frequency'],
+                                    'agent_id'              => $record->agent_id,
+                                    'code_agency'           => $record->code_agency,
+                                    'plan_id'               => $record->plan_id,
+                                    'coverage_id'           => $record->coverage_id,
+                                    'pay_amount'            => $data['pay_amount'],
+                                    'total_amount'          => $data['total_amount'],
+                                    'currency'              => $data['currency'],
+                                    'payment_date'          => now()->format('d-m-Y'),
+                                    'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addMonths(3)->format('d-m-Y'),
+                                    'reference_payment'     => $data['reference_payment'],
+                                    'observations_payment'  => $data['observations_payment'],
+                                    'document'              => $data['document'],
+                                    'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
+                                    'status'                => 'PAGADO',
+                                ]);
+                            }
+
+                            if ($data['payment_frequency'] == 'SEMESTRAL') {
+                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_biannual')
+                                    ->where('corporate_quote_id', $record->corporate_quote_id)
+                                    ->where('plan_id', $record->plan_id)
+                                    ->where('coverage_id', $record->coverage_id)
+                                    ->get();
+
+                                $record->paid_memberships()->create([
+                                    'affiliation_id'        => $record->id,
+                                    'payment_frequency'     => $data['payment_frequency'],
+                                    'agent_id'              => $record->agent_id,
+                                    'code_agency'           => $record->code_agency,
+                                    'plan_id'               => $record->plan_id,
+                                    'coverage_id'           => $record->coverage_id,
+                                    'pay_amount'            => $data['pay_amount'],
+                                    'total_amount'          => $data['total_amount'],
+                                    'currency'              => $data['currency'],
+                                    'payment_date'          => now()->format('d-m-Y'),
+                                    'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addMonths(6)->format('d-m-Y'),
+                                    'reference_payment'     => $data['reference_payment'],
+                                    'observations_payment'  => $data['observations_payment'],
+                                    'document'              => $data['document'],
+                                    'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
+                                    'status'                => 'PAGADO',
+                                ]);
+                            }
+
+                            if ($data['payment_frequency'] == 'MENSUAL') {
+                                $data_quote = DetailCorporateQuote::select('corporate_quote_id', 'plan_id', 'coverage_id', 'subtotal_monthly')
+                                    ->where('corporate_quote_id', $record->corporate_quote_id)
+                                    ->where('plan_id', $record->plan_id)
+                                    ->where('coverage_id', $record->coverage_id)
+                                    ->get();
+
+                                $record->paid_memberships()->create([
+                                    'affiliation_id'        => $record->id,
+                                    'payment_frequency'     => $data['payment_frequency'],
+                                    'agent_id'              => $record->agent_id,
+                                    'code_agency'           => $record->code_agency,
+                                    'plan_id'               => $record->plan_id,
+                                    'coverage_id'           => $record->coverage_id,
+                                    'pay_amount'            => $data['pay_amount'],
+                                    'total_amount'          => $data['total_amount'],
+                                    'currency'              => $data['currency'],
+                                    'payment_date'          => now()->format('d-m-Y'),
+                                    'prox_payment_date'     => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addMonths()->format('d-m-Y'),
+                                    'reference_payment'     => $data['reference_payment'],
+                                    'observations_payment'  => $data['observations_payment'],
+                                    'document'              => $data['document'],
+                                    'renewal_date'          => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
+                                    'status'                => 'PAGADO',
+                                ]);
+                            }
+                        }),
+                    Action::make('change_status')
+                        ->label('Actualizar estatus')
+                        ->color('azulOscuro')
+                        ->icon('heroicon-s-check-circle')
+                        ->requiresConfirmation()
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalHeading('ACCIONES')
+                        ->form([
+                            Section::make()
+                                ->heading('ACCIONES')
+                                ->description('Seleccione la accion que desea realizar')
+                                ->icon('heroicon-s-check-circle')
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        Radio::make('action')
+                                            ->label('Que accion deseas realizar?')
+                                            ->options([
+                                                'observation' => 'Anadir observaciones',
+                                                'status'      => 'Actualizar estatus',
+                                                'exclude'     => 'Excluir Afiliación',
+                                            ])
+                                            ->live()
+                                            ->required()
+                                        // ->inline()
+                                    ]),
+
+                                    Grid::make(1)->schema([
+                                        Textarea::make('description')
+                                            ->label('Observaciones')
+                                            ->autosize()
+                                            ->afterStateUpdated(function (Set $set, $state) {
+                                                $set('description', strtoupper($state));
+                                            })
+                                    ])->hidden(fn(Get $get) => $get('action') != 'observation'),
+
+                                    Grid::make(1)->schema([
+                                        Select::make('status')
+                                            ->label('Estatus')
+                                            ->options([
+                                                'PENDIENTE' => 'PENDIENTE',
+                                            ])
+                                            ->searchable()
+                                            ->preload(),
+                                        Textarea::make('description')
+                                            ->autosize()
+                                            ->afterStateUpdated(function (Set $set, $state) {
+                                                $set('description', strtoupper($state));
+                                            })
+                                    ])->hidden(fn(Get $get) => $get('action') != 'status'),
+
+                                    Grid::make(1)->schema([
+                                        DatePicker::make('date_egress')
+                                            ->label('Fecha de egreso')
+                                            ->format('d-m-Y'),
+                                        Textarea::make('description')
+                                            ->label('Observaciones')
+                                            ->autosize()
+                                            ->afterStateUpdated(function (Set $set, $state) {
+                                                $set('description', strtoupper($state));
+                                            })
+                                    ])->hidden(fn(Get $get) => $get('action') != 'exclude'),
+                                ])
+                        ])
+                        ->action(function (AffiliationCorporate $record, array $data): void {
+                            if ($data['action'] == 'observation') {
+                                $record->status_log_corporate_affiliations()->create([
+                                    'affiliation_corporate_id' => $record->id,
+                                    'action'         => 'AGREGO OBSERVACION',
+                                    'observation'    => $data['description'],
+                                    'updated_by'     => Auth::user()->name
+                                ]);
+                                Notification::make()
+                                    ->title('AFILIACION ACTUALIZADA')
+                                    ->success()
+                                    ->send();
+                                return;
+                            }
+
+                            if ($data['action'] == 'status') {
+                                $record->update([
+                                    'status' => $data['status'],
+                                ]);
+                                $record->status_log_corporate_affiliations()->create([
+                                    'affiliation_corporate_id' => $record->id,
+                                    'action'         => 'CAMBIO ESTATUS A: ' . $data['status'],
+                                    'observation'    => $data['description'],
+                                    'updated_by'     => Auth::user()->name
+                                ]);
+                                Notification::make()
+                                    ->title('AFILIACION ACTUALIZADA')
+                                    ->success()
+                                    ->send();
+                                return;
+                            }
+
+                            if ($data['action'] == 'exclude') {
+                                $record->update([
+                                    'status' => 'EXCLUIDO',
+                                ]);
+                                $record->status_log_corporate_affiliations()->create([
+                                    'affiliation_corporate_id'    => $record->id,
+                                    'action'            => 'EXCLUYO AFILIACION, FECHA DE EGRESO: ' . $data['date_egress'],
+                                    'observation'       => $data['description'],
+                                    'updated_by'        => Auth::user()->name
+                                ]);
+                                Notification::make()
+                                    ->title('AFILIACION ACTUALIZADA')
+                                    ->success()
+                                    ->send();
+                                return;
+                            }
+
+
                             Notification::make()
                                 ->title('AFILIACION ACTUALIZADA')
                                 ->success()
                                 ->send();
-                            return;
-                        }
-
-
-                        Notification::make()
-                            ->title('AFILIACION ACTUALIZADA')
-                            ->success()
-                            ->send();
-                    }),
-            ])
+                        }),
+                ])
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
