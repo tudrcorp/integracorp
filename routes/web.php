@@ -228,7 +228,8 @@ Route::get('/notify', function () {
 
 Route::get('/notification', function () {
 
-    NotificationController::notificationImage();
+    // NotificationController::notificationImage();
+    NotificationController::notificationVideo();
     dd('listo');
 
 });

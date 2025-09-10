@@ -82,7 +82,8 @@ class MassNotificationsTable
                                 ->success()
                                 ->send();
                         }),
-                    Action::make('send_notification_one_person')
+                        
+                    Action::make('send_notification')
                         ->label('Enviar Notificación')
                         ->icon('fontisto-rss')
                         ->color('success')
@@ -93,7 +94,6 @@ class MassNotificationsTable
                         })
                         ->action(function ($record) {
                             try {
-                                // dd($record);
                                 $send = NotificationController::massNotificacionSend($record);
                                 if ($send) {
                                     Notification::make()

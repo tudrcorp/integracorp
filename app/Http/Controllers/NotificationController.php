@@ -557,8 +557,6 @@ class NotificationController extends Controller
     
                     HTML;
 
-                    dd(config('parameters.INTEGRACORP_URL') . '/storage/' . $infoArray['image']);
-
                     $params = array(
                         'token' => 'yuvh9eq5kn8bt666',
                         'to' => $array[$i],
@@ -1383,40 +1381,41 @@ class NotificationController extends Controller
 
     static function notificationVideo()
     {
+        set_time_limit(0);
 
         try {
 
             $array = Guest::all()->toArray();
-            dd($array);
-
+            
             for ($i = 0; $i < count($array); $i++) {
 
                 $body = <<<HTML
 
-                Hola!👋
+                Apreciado/a: *{$array[$i]['firstName']}* *{$array[$i]['lastName']}*
 
-                Apreciado/a: *{$array[$i]['firstName']}*
+                Quedan solo 3 días para nuestro encuentro 🔥👀
 
-                Usted ha sido seleccionado para esta misión con Tu Dr. Group.
-                Donde la innovación será parte de nuestras lineas de negocios de salud y viajes.
+                🚀Una nueva era de negocios
+                🧨Más innovación
+                🫂Con el servicio lleno de empatía que nos caracteriza
 
-                ¿ACEPTAS LA MISIÓN?🕵🏼 Ingresa nuestro sitio web https://tudrgroup.com
-                Y llena el formulario
+                La cita es este viernes 12 de septiembre 
+                A las 06:00 pm 
+                Centro Lido, El Rosal, Caracas.
 
-                Más información sobre este encuentro aquí 👇🏼
-                https://wa.me/+584142510805
+                Instagram y Tiktok @tudrgroup 🤳🏻
     
                 HTML;
 
                 $params = array(
                     'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i]['phone'],
-                    'image' => 'https://tudrgroup.com/images/imageNotificacionDos.jpg',
+                    'video' => 'https://tudrgroup.com/images/videoDia3.mp4',
                     'caption' => $body
                 );
                 $curl = curl_init();
                 curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => "",
                     CURLOPT_MAXREDIRS => 10,
@@ -1454,7 +1453,11 @@ class NotificationController extends Controller
 
         try {
 
-            $array = Guest::all()->toArray();
+            // $array = Guest::all()->toArray();
+            $array = [
+                '+584127018390',
+                '+584120208119'
+            ];
 
             for ($i = 0; $i < count($array); $i++) {
                 
