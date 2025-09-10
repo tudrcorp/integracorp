@@ -13,6 +13,6 @@ return [
     'EMAIL_COTIZACIONES'                => "cotizaciones@tudrencasa.com",
     'EMAIL_AFILIACIONES'                => "afiliaciones@tudrencasa.com",
     'PHONE_COTIZACIONES_AFILIACIONES'   => "+584242220056",
-    'INTEGRACORP_URL'                   => "https://integracorp.qa.tudrgroup.com",
+    'INTEGRACORP_URL'                   => "https://integracorp.dev.tudrgroup.com",
 
 ];
