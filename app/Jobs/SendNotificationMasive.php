@@ -40,13 +40,6 @@ class SendNotificationMasive implements ShouldQueue
     public $backoff = 3; // Espera 3 segundos entre intentos
 
     /**
-     * Cola para el trabajo.
-     *
-     * @var string
-     */
-    // public $queue = 'system';
-
-    /**
      * Create a new job instance.
      */
     public function __construct($record, $user) 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\Tables;
 
+use App\Models\User;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use App\Models\DataNotification;
@@ -113,7 +114,8 @@ class MassNotificationsTable
                         })
                         ->action(function ($record) {
                             try {
-                                SendNotificationMasive::dispatch($record, Auth::user()->where('departament', 'MARKETING')->get())->onQueue('system');
+                                $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
+                                SendNotificationMasive::dispatch($record, $users)->onQueue('system');
                                 
                             } catch (\Throwable $th) {
                                 dd($th);
