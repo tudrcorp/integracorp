@@ -113,7 +113,7 @@ class MassNotificationsTable
                         })
                         ->action(function ($record) {
                             try {
-                                SendNotificationMasive::dispatch($record, Auth::user()->where('departament', 'MARKETING')->get());
+                                SendNotificationMasive::dispatch($record, Auth::user()->where('departament', 'MARKETING')->get())->onQueue('system');
                                 
                             } catch (\Throwable $th) {
                                 dd($th);
