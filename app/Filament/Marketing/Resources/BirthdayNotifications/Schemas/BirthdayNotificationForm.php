@@ -1,22 +1,21 @@
 <?php
 
-namespace App\Filament\Marketing\Resources\MassNotifications\Schemas;
+namespace App\Filament\Marketing\Resources\BirthdayNotifications\Schemas;
 
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
 use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 
-class MassNotificationForm
+class BirthdayNotificationForm
 {
     public static function configure(Schema $schema): Schema
     {
@@ -34,9 +33,18 @@ class MassNotificationForm
                                         ->validationMessages([
                                             'required' => 'El titulo de la notificación es obligatorio.',
                                         ]),
-                                    DatePicker::make('date_programmed')
-                                        ->label('Fecha programada')
-                                        ->helperText('Selecciona la fecha y hora en la que deseas que se envíe la notificación.'),
+                                    Select::make('data_type')
+                                        ->options([
+                                            'users'         => 'Usuarios',
+                                            'affiliations'  => 'Afilliados Individuales',
+                                            'capemiacs'     => 'CAPEMIAC',
+                                            'agents'        => 'Agentes',
+                                        ])
+                                        ->required()
+                                        ->multiple()
+                                        ->searchable()
+                                        ->label('Destinatarios')
+                                        ->helperText('Selecciona los destinatarios de la notificación.'),
                                     Textarea::make('content')
                                         ->label('Contenido de la notificación(copy)')
                                         ->columnSpanFull()
@@ -48,30 +56,8 @@ class MassNotificationForm
                                             'required' => 'El contenido de la notificación es obligatorio.',
                                             'max' => 'El contenido de la notificación no puede exceder los 1024 caracteres.',
                                             'min' => 'El contenido de la notificación debe tener al menos 2 caracteres.',
-                                        ]),
-                                ])->columnSpanFull()->columns(4),
-                        ]),
-                    Step::make('Definicion del Encabezado')
-                        ->schema([
-                            Section::make('Status')
-                                ->heading('Informacion Previa')
-                                ->schema([
-                                    Radio::make('is_personalized')
-                                        ->options([
-                                            'si' => 'Si',
-                                            'no' => 'No',
                                         ])
-                                        ->inline()
-                                        ->live()
-                                        ->label('¿La notificación tendrá un encabezado personalizado?')
-                                        ->required()
-                                        ->columnSpanFull(),
-                                    TextInput::make('header_title')
-                                        ->label('Titulo de la notificación')
-                                        ->helperText('En este campo va el titulo del encabezado, si la notificación no es personalizada dejar en blanco. Ejemplo: "Hola, {nombre}", donde {nombre} será reemplazado por el nombre del usuario.')
-                                        ->required()
-                                        ->hidden(fn (Get $get) => $get('is_personalized') != 'si'),
-                                ])->columnSpanFull()->columns(3),
+                                ])->columnSpanFull()->columns(4),
                         ]),
                     Step::make('Carga de Image o Video')
                         ->schema([
@@ -79,7 +65,7 @@ class MassNotificationForm
                                 ->heading('Imagen')
                                 ->schema([
                                     Radio::make('is_personalized')
-                                    ->label('¿Que tipo de archivo desea cargar?')
+                                        ->label('¿Que tipo de archivo desea cargar?')
                                         ->options([
                                             'image' => 'Imagen (jpg, jpeg, gif, png, webp, bmp)',
                                             'video' => 'Video (MP4)',
@@ -93,7 +79,7 @@ class MassNotificationForm
                                     FileUpload::make('image')
                                         ->image()
                                         ->visibility('public')
-                                        ->hidden(fn (Get $get) => $get('is_personalized') != 'image')
+                                        ->hidden(fn(Get $get) => $get('is_personalized') != 'image')
                                         ->helperText('El tamaño máximo de la imagen debe ser 16MB. Si la imagen es mayor a 16MB no sera cargado correctamente.'),
                                     FileUpload::make('video')
                                         ->previewable(false)

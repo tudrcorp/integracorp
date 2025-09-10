@@ -4,10 +4,12 @@ namespace App\Filament\Marketing\Resources\MassNotifications\Tables;
 
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use App\Models\DataNotification;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
+use App\Jobs\SendNotificationMasive;
 use Filament\Support\Enums\TextSize;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
@@ -36,10 +38,27 @@ class MassNotificationsTable
                         ->visibility('public'),
                     Stack::make([
                         TextColumn::make('status')
+                            ->badge()
+                            ->color(fn($record) => match ($record->status) {
+                                'APROBADA' => 'success',
+                                'POR-APROBAR' => 'warning',
+                                default => 'danger',
+                            })
+                            ->weight(FontWeight::Bold),
+                    ]),
+                    Stack::make([
+                        TextColumn::make('data')
+                            ->badge()
+                            ->color(fn($record) => match ($record->status) {
+                                'APROBADA' => 'success',
+                                'POR-APROBAR' => 'warning',
+                                default => 'danger',
+                            })
+                            ->default(fn($record) => 'Total: ' . self::getDataCount($record) . ' destinatarios')
                             ->weight(FontWeight::Bold),
                     ]),
                 ])->space(3),
-            ])
+        ])
             ->contentGrid([
                 'md' => 2,
                 'xl' => 3,
@@ -94,13 +113,8 @@ class MassNotificationsTable
                         })
                         ->action(function ($record) {
                             try {
-                                $send = NotificationController::massNotificacionSend($record);
-                                if ($send) {
-                                    Notification::make()
-                                        ->body('Las notificaciones fueron enviadas exitosamente.')
-                                        ->success()
-                                        ->send();
-                                }
+                                SendNotificationMasive::dispatch($record, Auth::user()->where('departament', 'MARKETING')->get());
+                                
                             } catch (\Throwable $th) {
                                 dd($th);
                             }
@@ -116,5 +130,11 @@ class MassNotificationsTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getDataCount($record)
+    {
+        $count = DataNotification::where('mass_notification_id', $record->id)->count();
+        return $count;
     }
 }

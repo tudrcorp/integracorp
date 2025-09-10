@@ -2,6 +2,7 @@
 
 use App\Jobs\DocumentUploadReminder;
 use Illuminate\Foundation\Inspiring;
+use App\Jobs\SendNotificationBirthday;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
@@ -10,4 +11,5 @@ use Illuminate\Support\Facades\Schedule;
 // })->purpose('Display an inspiring quote');
 
 Schedule::job(new DocumentUploadReminder)->everyFiveMinutes();
+Schedule::job(new SendNotificationBirthday)->everyFiveMinutes();
 // Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();

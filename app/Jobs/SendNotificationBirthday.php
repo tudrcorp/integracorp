@@ -14,7 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use App\Http\Controllers\NotificationController;
 
-class DocumentUploadReminder implements ShouldQueue
+class SendNotificationBirthday implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -33,6 +33,13 @@ class DocumentUploadReminder implements ShouldQueue
     public $backoff = 3; // Espera 3 segundos entre intentos
 
     /**
+     * Cola para el trabajo.
+     *
+     * @var string
+     */
+    public $queue = 'system';
+
+    /**
      * Create a new job instance.
      */
     public function __construct()
@@ -45,13 +52,13 @@ class DocumentUploadReminder implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->reminder();
+        $this->notification();
     }
 
-    private function reminder()
+    private function notification()
     {
         $masiveNotification = new NotificationMasiveService();
-        $masiveNotification->reminderUploadDoc();
+        $masiveNotification->notificationBerthday();
     }
 
     /**
@@ -60,7 +67,7 @@ class DocumentUploadReminder implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info("DocumentUploadReminder: FAILED");
+        Log::info("NotificationBerthday: FAILED");
         Log::error($exception->getMessage());
     }
 }

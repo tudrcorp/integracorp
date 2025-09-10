@@ -12,6 +12,7 @@ class MassNotification extends Model
         'title',
         'content',
         'image',
+        'video',
         'name',
         'email',
         'phone',
