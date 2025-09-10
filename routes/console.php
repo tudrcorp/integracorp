@@ -11,5 +11,5 @@ use Illuminate\Support\Facades\Schedule;
 // })->purpose('Display an inspiring quote');
 
 Schedule::job(new DocumentUploadReminder, 'system')->everyFiveMinutes();
-Schedule::job(new SendNotificationBirthday, 'system')->everyFiveMinutes()->onQueue('system');
+Schedule::job(new SendNotificationBirthday, 'system')->everyFiveMinutes();
 // Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
