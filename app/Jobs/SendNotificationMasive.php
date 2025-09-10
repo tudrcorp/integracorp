@@ -44,7 +44,7 @@ class SendNotificationMasive implements ShouldQueue
      *
      * @var string
      */
-    public $queue = 'system';
+    // public $queue = 'system';
 
     /**
      * Create a new job instance.
