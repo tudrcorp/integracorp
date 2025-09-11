@@ -26,24 +26,25 @@ class BirthdayNotificationsTable
                     ->label('Destinatarios')
                     ->badge()
                     ->searchable(),
-                TextColumn::make('status')
-                    ->label('Estado')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'INACTIVA' => 'danger',
-                        'ACTIVA' => 'success',
-                    })
-                    ->searchable(),
+                
                 TextColumn::make('created_at')
                     ->label('Fecha de Creación')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'INACTIVA' => 'danger',
+                        'ACTIVA' => 'success',
+                    })
+                    ->searchable(),
             ])
             ->filters([
                 //
             ])
             ->recordActions([
-                Action::make('change_status')
+                Action::make('active_status')
                     ->label('Activar')
                     ->color('success')
                     ->requiresConfirmation()
@@ -55,7 +56,22 @@ class BirthdayNotificationsTable
                     ->action(function ($record) {
                         $record->status = 'ACTIVA';
                         $record->save();
-                    }),
+                    })
+                    ->hidden(fn ($record) => $record->status == 'ACTIVA'),
+                Action::make('inactive_status')
+                    ->label('Inactivar')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Inactivar Notificación')
+                    ->modalDescription('Esta seguro de inactivar la notificación?')
+                    ->modalSubmitActionLabel('Si, inactivar notificación')
+                    ->icon('heroicon-m-pencil-square')
+                    ->button()
+                    ->action(function ($record) {
+                        $record->status = 'INACTIVA';
+                        $record->save();
+                    })
+                    ->hidden(fn ($record) => $record->status == 'INACTIVA'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -41,7 +41,6 @@ class BirthdayNotificationForm
                                             'agents'        => 'Agentes',
                                         ])
                                         ->required()
-                                        ->multiple()
                                         ->searchable()
                                         ->label('Destinatarios')
                                         ->helperText('Selecciona los destinatarios de la notificación.'),

@@ -40,6 +40,7 @@ class User extends Authenticatable implements FilamentUser
         'link_agent',
         'agency_type',
         'departament',
+        'birthday_date',
         
     ];
 

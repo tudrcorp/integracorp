@@ -1,17 +1,25 @@
 <?php
 
 use Carbon\Carbon;
+use App\Models\Fee;
+use App\Models\Agent;
 use App\Models\Guest;
+use App\Models\Agency;
 use App\Models\Benefit;
 use Livewire\Volt\Volt;
+use App\Models\AgeRange;
+use App\Models\Coverage;
 use App\Models\AgentDocument;
+use App\Models\CheckAffiliation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\BirthdayNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\UtilsController;
 use App\Http\Controllers\NotificationController;
 
 Route::get('/', function () {
@@ -82,10 +90,6 @@ Route::middleware(['auth'])->group(function () {
  * Cotizaciones individuales
  */
 Route::prefix('in/{quote?}')
-    // ->where(['team' => '[a-zA-Z0-9_-]+'])
-    // validación del parámetro
-    // ->middleware('shared.team') 
-    // opcional: middleware para procesarlo
     ->group(function () {
         Volt::route('/w', 'volt.in.home')->name('volt.home');
         Volt::route('/c', 'volt.in.individual_quote')->name('volt.in.individual_quote');
@@ -96,10 +100,6 @@ Route::prefix('in/{quote?}')
  * Cotizaciones individuales
  */
 Route::prefix('cor/{quote?}')
-    // ->where(['team' => '[a-zA-Z0-9_-]+'])
-    // validación del parámetro
-    // ->middleware('shared.team') 
-    // opcional: middleware para procesarlo
     ->group(function () {
         Volt::route('/w', 'volt.cor.home')->name('volt.cor.home');
         Volt::route('/c', 'volt.cor.corporate_quote')->name('volt.cor.corporate_quote');
@@ -241,5 +241,83 @@ Route::get('/truncate', function () {
 
     // Reiniciar el auto-increment
     DB::statement('ALTER TABLE users AUTO_INCREMENT = 3;');
+    
+});
+
+Route::get('/convertir', function () {
+
+    // $fechaNac = CheckAffiliation::all();
+    // foreach ($fechaNac as $value) {
+    //     $fechaNacStr = Carbon::createFromFormat('d/m/Y', $value->fecha_nacimiento);
+    //     $hoy = Carbon::now();
+    //     $diferencia = $hoy->diff($fechaNacStr);
+    //     $value->edad = $diferencia->y;
+    //     $value->save();
+    // }
+    // dd('listo');
+
+    // $c = Coverage::where('plan_id', 3)->get()->pluck('price', 'id');
+    // $e = AgeRange::where('plan_id', 3)->where('id', 5)->with('fees')->get()->toArray();
+    // $f = Fee::where('age_range_id', 5)->where('coverage_id', 12)->get()->pluck('price', 'price');
+    // $r = AgeRange::where('plan_id', 3)
+    //     ->where('id', 5)
+    //     ->with('fees')
+    //     ->get()
+    //     ->toArray();
+    // dd($c, $e, $f, $r);
+
+    //---------------------------------------------------------------------------------------------------------
+
+    // $tables = BirthdayNotification::where('status', 'INACTIVA')->get()->toArray();
+    // if (count($tables) == 0) {
+    //     dd('No hay notificaciones');
+    //     return;
+    // }
+    // $now = now()->format('d/m/Y');
+    
+    // // dd($tables);
+    // for ($i = 0; $i < count($tables); $i++) {
+    //     /**
+    //      * Preparamos la data para el envio de la notificacion
+    //      * 
+    //      * @param $tables
+    //      * @param $now
+    //      * 
+    //      */
+    //     $data = DB::table($tables[$i]['data_type'])
+    //             ->select('name', 'email', 'phone', 'birthday_date')
+    //             ->where('birthday_date', $now)
+    //             ->get()
+    //             ->toArray();
+    //             // dd($data[0]->name);
+    //     /**
+    //      * Envio de notificacion de cumpleaños
+    //      * 
+    //      * @param $data
+    //      * 
+    //      */
+    //     for ($j = 0; $j < count($data); $j++) {
+    //         NotificationController::notificationBirthday($data[$j], $tables[$i]);
+    //     }
+    //     dd('listo');
+    // }
+
+    //---------------------------------------------------------------------------------------------------------
+
+    $phones = Agent::all();
+    $phones_agency = Agency::all();
+
+    // foreach ($phones as $value) {
+    //     $phone = UtilsController::normalizeVenezuelanPhone($value->phone);
+    //     $value->phone = $phone;
+    //     $value->save();
+    // }
+
+    foreach ($phones_agency as $value) {
+        $phone = UtilsController::normalizeVenezuelanPhone($value->phone);
+        $value->phone = $phone;
+        $value->save();
+    }
+    dd('listo');
     
 });

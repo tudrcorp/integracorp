@@ -6,6 +6,7 @@ use App\Models\AgentDocument;
 use App\Models\DataNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\BirthdayNotification;
 use App\Http\Controllers\NotificationController;
 
 class NotificationMasiveService
@@ -284,7 +285,40 @@ class NotificationMasiveService
     {
         try {
 
+            $tables = BirthdayNotification::where('status', 'ACTIVA')->get()->toArray();
+            if (count($tables) == 0) {
+                return;
+            }
+            $now = now()->format('d/m/Y');
+
+            // dd($tables);
+            for ($i = 0; $i < count($tables); $i++) {
+                /**
+                 * Preparamos la data para el envio de la notificacion
+                 * 
+                 * @param $tables
+                 * @param $now
+                 * 
+                 */
+                $data = DB::table($tables[$i]['data_type'])
+                    ->select('name', 'email', 'phone', 'birthday_date')
+                    ->where('birthday_date', $now)
+                    ->get()
+                    ->toArray();
+                // dd($data[0]->name);
+                /**
+                 * Envio de notificacion de cumpleaños
+                 * 
+                 * @param $data
+                 * 
+                 */
+                for ($j = 0; $j < count($data); $j++) {
+                    NotificationController::notificationBirthday($data[$j], $tables[$i]);
+                }
+            }
+
             return true;
+            
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }

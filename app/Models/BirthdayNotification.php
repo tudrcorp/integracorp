@@ -17,9 +17,9 @@ class BirthdayNotification extends Model
         'status',
     ];
 
-    protected $casts = [
-        'data_type' => 'array',
-    ];
+    // protected $casts = [
+    //     'data_type' => 'array',
+    // ];
 
     // public function scopeActive($query)
     // {

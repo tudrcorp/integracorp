@@ -517,4 +517,21 @@ class MigrationHistoricalController extends Controller
                 ->send();
         }
     }
+
+    public static function add_atributes($records, $data)
+    {
+        foreach ($records as $record) {
+            $record->plan_id = $data['plan_id'];
+            $record->fee = $data['fee'];
+            $record->coverage_id = $data['coverage_id'];
+            $record->age_range_id = $data['age_range_id'];
+            $record->owner_code = $data['owner_code'];
+            $record->agent_id = $data['agent_id'];
+            $record->agency_id = $data['agency_id'];
+            $record->total_persons = $data['total_persons'];
+            $record->status_migration = $data['status_migration'];
+            $record->save();
+            
+        }
+    }
 }

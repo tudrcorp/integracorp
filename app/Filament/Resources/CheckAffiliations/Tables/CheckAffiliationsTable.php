@@ -2,18 +2,28 @@
 
 namespace App\Filament\Resources\CheckAffiliations\Tables;
 
+use App\Models\Fee;
+use App\Models\Plan;
+use App\Models\Agent;
+use App\Models\Agency;
+use App\Models\AgeRange;
+use App\Models\Coverage;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use App\Models\CorporateQuote;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Radio;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Fieldset;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Schemas\Components\Utilities\Get;
 use App\Http\Controllers\MigrationHistoricalController;
@@ -24,58 +34,47 @@ class CheckAffiliationsTable
     {
         return $table
             ->columns([
-                TextColumn::make('nro_afiliado')
-                    ->numeric()
-                    ->searchable()
-                    ->extraCellAttributes(function ($record) {
-                        if($record->status_migration == 'PROCESADO') {
-                            return [
-                                'class' => 'bg-red-500 font-bold text-white text-center'
-                            ];
-                        }
-                        if ($record->status_migration == 'PENDIENTE POR MIGRAR') {
-                            return [
-                                'class' => 'bg-green-500 font-bold text-white text-center'
-                            ];
-                        }
-                        return [];
-                    }),
-                TextColumn::make('status_migration')
-                    ->label('Estatus Migración')
-                    ->extraCellAttributes(function ($record) {
-                        if($record->status_migration == 'PROCESADO') {
-                            return [
-                                'class' => 'bg-red-500 font-bold text-white text-center'
-                            ];
-                        }
-                        if ($record->status_migration == 'PENDIENTE POR MIGRAR') {
-                            return [
-                                'class' => 'bg-green-500 font-bold text-white text-center'
-                            ];
-                        }
-                        return [];
-                    })
-                    ->searchable(),
+            TextColumn::make('cobertura')
+                ->searchable(isIndividual: true),
+            TextColumn::make('tomador')
+                ->searchable(isIndividual: true),
+            TextColumn::make('tipo_plan')
+                ->searchable(isIndividual: true)
+                ->badge()
+                ->colors([
+                    'success' => 'Especial',
+                    'warning' => 'Ideal',
+                    'gray' => '',
+                ]),
+            TextColumn::make('edad')
+                ->sortable()
+                ->searchable(),
+            TextColumn::make('status_migration')
+                ->label('Estatus Migración')
+                ->extraCellAttributes(function ($record) {
+                    if($record->status_migration == 'PROCESADO') {
+                        return [
+                            'class' => 'bg-red-500 font-bold text-white text-center'
+                        ];
+                    }
+                    if ($record->status_migration == 'PENDIENTE POR MIGRAR') {
+                        return [
+                            'class' => 'bg-green-500 font-bold text-white text-center'
+                        ];
+                    }
+                    return [];
+                })
+                ->searchable(),
                 TextColumn::make('fecha_emision')
                     ->searchable(),
                 TextColumn::make('codigo_tdec')
                     ->searchable(),
-                TextColumn::make('tipo_plan')
-                    ->searchable()
-                    ->badge()
-                    ->colors([
-                        'success' => 'Especial',
-                        'warning' => 'Ideal',
-                        'gray' => '',
-                    ]),
+                
                 TextColumn::make('proveedor')
                     ->searchable(),
                 TextColumn::make('nro_vaucher')
                     ->searchable(),
-                TextColumn::make('cobertura')
-                    ->searchable(),
-                TextColumn::make('tomador')
-                    ->searchable(),
+                
                 TextColumn::make('tipo_doc')
                     ->searchable(),
                 TextColumn::make('nro_doc')
@@ -90,8 +89,7 @@ class CheckAffiliationsTable
                     ->searchable(),
                 TextColumn::make('fecha_nacimiento')
                     ->searchable(),
-                TextColumn::make('edad')
-                    ->searchable(),
+                
                 TextColumn::make('parentesco')
                     ->searchable(),
                 TextColumn::make('telefono')
@@ -184,6 +182,142 @@ class CheckAffiliationsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+                    BulkAction::make('add_attributes')
+                        ->label('Agregar Atributos')
+                        ->icon('fontisto-reply')
+                        ->modalWidth('3xl')
+                        ->requiresConfirmation()
+                        ->color('info')
+                        ->form([
+                            Fieldset::make('Información adicional requerida para INTEGRACORP')
+                                ->columnSpanFull()
+                                ->schema([
+                                    Select::make('agency_id')
+                                        ->label('Agencia')
+                                        ->options(function (get $get) {
+                                            return Agency::all()->pluck('name_corporative', 'code');
+                                        })
+                                        ->live()
+                                        ->searchable()
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Obligatorio',
+                                        ])
+                                        ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                            if ($state == null) {
+                                                $set('owner_code', null);
+                                                return;
+                                            }
+                                            $owner_code = Agency::where('code', $state)->first()->owner_code;
+                                            $set('owner_code', $owner_code);
+                                        })
+                                        ->prefixIcon('heroicon-s-globe-europe-africa'),
+                                    TextInput::make('owner_code')
+                                        ->label('Código del propietario')
+                                        ->disabled()
+                                        ->dehydrated(),
+                                    Select::make('agent_id')
+                                        ->label('Agente')
+                                        ->options(function (get $get) {
+                                            return Agent::where('owner_code', $get('agency_id'))->get()->pluck('name', 'id');
+                                        })
+                                        ->live()
+                                        ->searchable()
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Obligatorio',
+                                        ])
+                                        ->prefixIcon('heroicon-s-globe-europe-africa')
+                                        ->preload(),
+                                    Select::make('plan_id')
+                                        ->options(function () {
+                                            return Plan::all()->pluck('description', 'id');
+                                        })
+                                        ->label('Planes')
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Obligatorio',
+                                        ])
+                                        ->preload()
+                                        ->placeholder('Seleccione plan(es)'),
+
+                                    Select::make('age_range_id')
+                                        ->label('Rango de edad')
+                                        ->options(function (get $get, $state) {
+                                            Log::info($state);
+                                            return AgeRange::where('plan_id', $get('plan_id'))->get()->pluck('range', 'id');
+                                        })
+                                        ->searchable()
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Obligatorio',
+                                        ])
+                                        ->prefixIcon('heroicon-s-globe-europe-africa')
+                                        ->preload(),
+
+                                    Select::make('coverage_id')
+                                        ->label('Cobertura')
+                                        ->options(function (get $get) {
+                                            if ($get('age_range_id') == null) {
+                                                return [];
+                                            }
+                                            $arrayFee = AgeRange::where('plan_id', $get('plan_id'))->where('id', $get('age_range_id'))->with('fees')->get()->toArray();
+                                            return collect($arrayFee[0]['fees'])->pluck('coverage', 'coverage_id');
+                                        })
+                                        ->searchable()
+                                        ->prefixIcon('heroicon-s-globe-europe-africa')
+                                        ->preload(),
+                                    
+                                    Select::make('fee')
+                                        ->label('Tarifa Anual')
+                                        ->options(function (get $get) {
+                                            Log::info(Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'price'));
+                                            return Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'price');
+                                        })
+                                        ->live()
+                                        ->searchable()
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Obligatorio',
+                                        ])
+                                        ->prefixIcon('heroicon-s-globe-europe-africa')
+                                        ->preload(),
+                                    Select::make('payment_frequency')
+                                        ->label('Frecuencia de pago')
+                                        ->live()
+                                        ->options([
+                                            'ANUAL'      => 'ANUAL',
+                                            'SEMESTRAL'  => 'SEMESTRAL',
+                                            'TRIMESTRAL' => 'TRIMESTRAL',
+                                        ])
+                                        ->searchable()
+                                        ->live()
+                                        ->prefixIcon('heroicon-s-globe-europe-africa')
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Obligatorio',
+                                        ])
+                                        ->preload(),
+                                    TextInput::make('total_persons')
+                                        ->numeric()
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Obligatorio',
+                                        ]),
+                                    Hidden::make('status_migration')
+                                        ->default('SIN PROCESAR')
+                                ])
+                        ])
+                        ->action(function (Collection $records, $data) {
+                            $migration = MigrationHistoricalController::add_atributes($records, $data);
+
+                            if ($migration) {
+                                Notification::make()
+                                    ->title('Migración exitosa')
+                                    ->success()
+                                    ->send();
+                            }
+                        }),
                     BulkAction::make('migrate_history')
                     ->label('Migrar Individuales')
                     ->icon('fontisto-reply')
