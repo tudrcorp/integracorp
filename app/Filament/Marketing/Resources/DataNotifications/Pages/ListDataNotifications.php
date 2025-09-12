@@ -10,10 +10,5 @@ class ListDataNotifications extends ListRecords
 {
     protected static string $resource = DataNotificationResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
-    }
+    protected static ?string $title = 'Gestión Centralizada de Data';
 }

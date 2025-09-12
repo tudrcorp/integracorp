@@ -15,7 +15,7 @@ class DataNotificationsTable
     {
         return $table
             ->columns([
-                TextColumn::make('event_id')
+                TextColumn::make('mass_notification_id')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('fullName')

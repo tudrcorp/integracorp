@@ -274,7 +274,7 @@ Route::get('/convertir', function () {
     //     return;
     // }
     // $now = now()->format('d/m/Y');
-    
+
     // // dd($tables);
     // for ($i = 0; $i < count($tables); $i++) {
     //     /**
@@ -304,8 +304,8 @@ Route::get('/convertir', function () {
 
     //---------------------------------------------------------------------------------------------------------
 
-    $phones = Agent::all();
-    $phones_agency = Agency::all();
+    // $phones = Agent::all();
+    // $phones_agency = Agency::all();
 
     // foreach ($phones as $value) {
     //     $phone = UtilsController::normalizeVenezuelanPhone($value->phone);
@@ -313,11 +313,12 @@ Route::get('/convertir', function () {
     //     $value->save();
     // }
 
-    foreach ($phones_agency as $value) {
-        $phone = UtilsController::normalizeVenezuelanPhone($value->phone);
-        $value->phone = $phone;
-        $value->save();
-    }
-    dd('listo');
+    // foreach ($phones_agency as $value) {
+    //     $phone = UtilsController::normalizeVenezuelanPhone($value->phone);
+    //     $value->phone = $phone;
+    //     $value->save();
+    // }
+    // dd('listo');
+    phpinfo();
     
 });

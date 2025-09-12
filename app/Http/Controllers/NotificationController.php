@@ -1385,32 +1385,94 @@ class NotificationController extends Controller
 
         try {
 
-            $array = Guest::all()->toArray();
+            // $array = Guest::all()->toArray();
+            $array = [
+                '+584169360577',
+                '+584126046909',
+                '+584143883394',
+                '+584129267000',
+                '+584125724688',
+                '+584149307108',
+                '+584141637326',
+                '+584142271149',
+                '+584242260359',
+                '+584243598557',
+                '+584246130667',
+                '+584129958743',
+                '+584145777077',
+                '+584242535384',
+                '+584141212926',
+                '+584143372914',
+                '+584121017257',
+                '+584241525246',
+                '+584242202002',
+                '+584144918232',
+                '+584143605005',
+                '+584146362967',
+                '+584143365875',
+                '+584140524966',
+                '+584244603915',
+                '+584143666633',
+                '+584144933324',
+                '+584242470744',
+                '+584147238752',
+                '+584147520075',
+                '+584140750078',
+                '+584243575737',
+                '+584149436575',
+                '+584141065191',
+                '+584148335089',
+                '+584123490416',
+                '+584149961222',
+                '+584243503372',
+                '+584122349641',
+                '+584149197827',
+                '+584125063591',
+                '+584143027250',
+                '+584245718777',
+                '+34640055899',
+                '+584122613276',
+                '+584122613275',
+                '+584149245606',
+                '+584127172675',
+                '+584120208119',
+                '+584142073145',
+                '+584127194249',
+                '+584141362847',
+                '+584141362847',
+                '+584129929796',
+                '+584142724129',
+                '+584144707073',
+                '+584242639983',
+                '+584243656290',
+                '+584166387021',
+                '+584143580649',
+                '+584146962721',
+            ];
             
             for ($i = 0; $i < count($array); $i++) {
 
                 $body = <<<HTML
 
-                Apreciado/a: *{$array[$i]['firstName']}* *{$array[$i]['lastName']}*
+                Nuestro encuentro es mañana🔥
 
-                Quedan solo 3 días para nuestro encuentro 🔥👀
+                🗓️ Viernes 12 de Septiembre a las 06:00 pm
+                📍Centro LIDO, Av. Francisco de Miranda, Torre A, Piso 15.
 
-                🚀Una nueva era de negocios
-                🧨Más innovación
-                🫂Con el servicio lleno de empatía que nos caracteriza
+                ¿Cómo llegar?
+                Te dejo la ubicación en Google Maps https://maps.app.goo.gl/iFPMe84URDqH73hS7
 
-                La cita es este viernes 12 de septiembre 
-                A las 06:00 pm 
-                Centro Lido, El Rosal, Caracas.
+                ¿Qué ascensor debo tomar?
+                Ubica el ascensor de la Torre A y llega hasta el Piso 13. Allí una de nuestras ejecutivas te estará esperando. 
 
-                Instagram y Tiktok @tudrgroup 🤳🏻
+                Nuestra nueva era comienza mañana ¿estás listo?
     
                 HTML;
 
                 $params = array(
                     'token' => 'yuvh9eq5kn8bt666',
-                    'to' => $array[$i]['phone'],
-                    'video' => 'https://tudrgroup.com/images/videoDia3.mp4',
+                    'to' => $array[$i],
+                    'video' => 'https://tudrgroup.com/images/videoDiaFinal.mp4',
                     'caption' => $body
                 );
                 $curl = curl_init();
@@ -1434,7 +1496,7 @@ class NotificationController extends Controller
                 $err = curl_error($curl);
 
                 Log::info($response);
-                Log::info($array[$i]['phone']);
+                Log::info($array[$i]);
                 Log::error($err);
             }
 
@@ -1463,19 +1525,18 @@ class NotificationController extends Controller
                 
                 $body = <<<HTML
 
-                Apreciado/a: *{$array[$i]['firstName']}*
+                Nuestro encuentro es mañana🔥
 
-                Desde Tu Doctor Group estamos muy emocionados de que seas parte de esta nueva era de negocios.
+                🗓️ Viernes 12 de Septiembre a las 06:00 pm
+                📍Centro LIDO, Av. Francisco de Miranda, Torre A, Piso 15.
 
-                Estas cordialmente invitado a nuestro encuentro especial:
+                ¿Cómo llegar?
+                Te dejo la ubicación en Google Maps https://maps.app.goo.gl/iFPMe84URDqH73hS7
 
-                🗓️Viernes 12 de Septiembre.
-                ⏰ A las 6 pm.
-                📍 Centro Lido, Av. Francisco de Miranda Torre A, Piso 15, El Rosal, Caracas.
-                (En piso 13 hay una escala para tomar otro ascensor, allí estará una ejecutiva para guiarte).
-                🎩 Casual business será nuestro estilo.
+                ¿Qué ascensor debo tomar?
+                Ubica el ascensor de la Torre A y llega hasta el Piso 13. Allí una de nuestras ejecutivas te estará esperando. 
 
-                ¡Nos vemos este viernes!💙🔥
+                Nuestra nueva era comienza mañana ¿estás listo?
     
                 HTML;
 
