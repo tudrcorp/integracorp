@@ -20,9 +20,9 @@ class InfoFreeResource extends Resource
 {
     protected static ?string $model = InfoFree::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'fontisto-question';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-c-circle-stack';
 
-    protected static ?string $navigationLabel = 'Data Externa';
+    protected static ?string $navigationLabel = 'Data Externa(FREE)';
 
     public static function form(Schema $schema): Schema
     {

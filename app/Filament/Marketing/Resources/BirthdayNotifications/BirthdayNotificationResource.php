@@ -21,7 +21,7 @@ class BirthdayNotificationResource extends Resource
 {
     protected static ?string $model = BirthdayNotification::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'bi-cake2-fill';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-cake';
 
     protected static ?string $navigationLabel = 'Notificaciones Cumpleaños';
 

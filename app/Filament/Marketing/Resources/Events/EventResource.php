@@ -22,7 +22,7 @@ class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'fontisto-ticket-alt';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-ticket';
 
     protected static ?string $navigationLabel = 'Eventos';
 

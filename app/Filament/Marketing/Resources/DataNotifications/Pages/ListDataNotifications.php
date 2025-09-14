@@ -10,5 +10,5 @@ class ListDataNotifications extends ListRecords
 {
     protected static string $resource = DataNotificationResource::class;
 
-    protected static ?string $title = 'Gestión Centralizada de Data';
+    protected static ?string $title = 'Gestión de Destinatarios';
 }

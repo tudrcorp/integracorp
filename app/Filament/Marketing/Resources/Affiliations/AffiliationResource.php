@@ -21,7 +21,7 @@ class AffiliationResource extends Resource
 {
     protected static ?string $model = Affiliation::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'fontisto-person';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user-plus';
 
     protected static string | UnitEnum | null $navigationGroup = 'Afiliaciones';
 

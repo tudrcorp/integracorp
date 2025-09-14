@@ -11,18 +11,21 @@ class MassNotification extends Model
     protected $fillable = [
         'title',
         'content',
-        'image',
-        'video',
+        'file',
         'name',
         'email',
         'phone',
-        'link',
         'is_sent',
         'is_approved',
         'approved_by',
         'reason',
         'date_programed',
-        'header_title'
+        'header_title',
+        'channels',
+    ];
+
+    protected $casts = [
+        'channels' => 'array',
     ];
 
     public function user()

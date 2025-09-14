@@ -22,7 +22,7 @@ class MassNotificationInfolist
                     ->schema([
                         Fieldset::make('Imagen de la Notificación')
                             ->schema([
-                                ImageEntry::make('image')
+                                ImageEntry::make('file')
                                     ->label('Publicidad:')
                                     ->imageHeight(150)
                                     ->square()

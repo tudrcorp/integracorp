@@ -1449,14 +1449,18 @@ class NotificationController extends Controller
                 '+584143580649',
                 '+584146962721',
             ];
+
+            // $array = [
+            //     '+584120208119'
+            // ];
             
             for ($i = 0; $i < count($array); $i++) {
 
                 $body = <<<HTML
 
-                Nuestro encuentro es mañana🔥
+                Estamos a solo horas de nuestro encuentro 🔥
 
-                🗓️ Viernes 12 de Septiembre a las 06:00 pm
+                🗓️ Nos vemos HOY a las 06:00 pm
                 📍Centro LIDO, Av. Francisco de Miranda, Torre A, Piso 15.
 
                 ¿Cómo llegar?
@@ -1465,14 +1469,14 @@ class NotificationController extends Controller
                 ¿Qué ascensor debo tomar?
                 Ubica el ascensor de la Torre A y llega hasta el Piso 13. Allí una de nuestras ejecutivas te estará esperando. 
 
-                Nuestra nueva era comienza mañana ¿estás listo?
+                Nuestra nueva era comienza hoy 🚀
     
                 HTML;
 
                 $params = array(
                     'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i],
-                    'video' => 'https://tudrgroup.com/images/videoDiaFinal.mp4',
+                    'video' => 'https://tudrgroup.com/images/ultimo.mp4',
                     'caption' => $body
                 );
                 $curl = curl_init();

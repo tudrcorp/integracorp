@@ -21,9 +21,9 @@ class DataNotificationResource extends Resource
 {
     protected static ?string $model = DataNotification::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'fontisto-share';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-squares-plus';
 
-    protected static ?string $navigationLabel = 'Data';
+    protected static ?string $navigationLabel = 'Destinatarios';
     
     protected static string | UnitEnum | null $navigationGroup = 'Marketing';
 

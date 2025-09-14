@@ -10,6 +10,8 @@ class ListInfoFrees extends ListRecords
 {
     protected static string $resource = InfoFreeResource::class;
 
+    protected static ?string $title = 'Formulario de preafiliación';
+
     protected function getHeaderActions(): array
     {
         return [

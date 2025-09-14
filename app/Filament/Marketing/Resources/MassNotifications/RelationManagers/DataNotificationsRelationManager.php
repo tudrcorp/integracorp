@@ -3,7 +3,9 @@
 namespace App\Filament\Marketing\Resources\MassNotifications\RelationManagers;
 
 use Filament\Tables\Table;
+use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Marketing\Resources\MassNotifications\MassNotificationResource;
@@ -21,8 +23,10 @@ class DataNotificationsRelationManager extends RelationManager
                 TextColumn::make('email')->label('Email'),
                 TextColumn::make('phone')->label('Phone'),
             ])
-            ->headerActions([
-                CreateAction::make(),
+            ->toolbarActions([
+                BulkAction::make('delete')
+                    ->label('Eliminar Destinatario')
+                    ->requiresConfirmation()
             ]);
     }
 }

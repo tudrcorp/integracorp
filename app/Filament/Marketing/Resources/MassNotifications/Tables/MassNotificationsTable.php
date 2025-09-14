@@ -33,7 +33,7 @@ class MassNotificationsTable
         ->description('Aquí puedes ver y gestionar las notificaciones que se han enviado a los agentes y clientes')
         ->columns([
                 Stack::make([
-                    ImageColumn::make('image')
+                    ImageColumn::make('file')
                         ->imageWidth(250)
                         ->imageHeight(250)
                         ->visibility('public'),
@@ -60,78 +60,79 @@ class MassNotificationsTable
                     ]),
                 ])->space(3),
         ])
-            ->contentGrid([
-                'md' => 2,
-                'xl' => 3,
+        ->contentGrid([
+            'md' => 2,
+            'xl' => 3,
+        ])
+        ->recordActions([
+            ActionGroup::make([
+
+                Action::make('details')
+                    ->label('Ver Copy')
+                    ->icon('fontisto-info')
+                    ->color('primary')
+                    ->modalHeading('Copy de la notificación')
+                    ->modalIcon('fontisto-info')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->form([
+                        Textarea::make('content')
+                            ->label('Copy')
+                            ->disabled()
+                            ->autoSize()
+                            ->default(fn($record) => $record->content)
+                            ->required(),
+                    ]),
+
+                Action::make('change_status')
+                    ->label('Aprobar Notificación')
+                    ->icon('fontisto-question')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('APROBAR NOTIFICACIÓN')
+                    ->hidden(function ($record) {
+                        return $record->status == 'APROBADA';
+                    })
+                    ->action(function ($record) {
+                        $record->status = 'APROBADA';
+                        $record->approved_by = Auth::user()->id;
+                        $record->save();
+                        Notification::make()
+                            ->body('El estado de la notificación fue cambiado exitosamente.')
+                            ->success()
+                            ->send();
+                    }),
+                    
+                Action::make('send_notification')
+                    ->label('Enviar Notificación')
+                    ->icon('fontisto-rss')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('ENVIAR NOTIFICACIÓN')
+                    ->hidden(function ($record) {
+                        return $record->status == 'POR-APROBAR';
+                    })
+                    ->action(function ($record) {
+                        try {
+                            dd($record);
+                            $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
+                            SendNotificationMasive::dispatch($record, $users)->onQueue('system');
+                            
+                        } catch (\Throwable $th) {
+                            dd($th);
+                        }
+                    }),
+
             ])
-            ->recordActions([
-                ActionGroup::make([
-
-                    Action::make('details')
-                        ->label('Ver Copy')
-                        ->icon('fontisto-info')
-                        ->color('primary')
-                        ->modalHeading('Copy de la notificación')
-                        ->modalIcon('fontisto-info')
-                        ->modalWidth(Width::ExtraLarge)
-                        ->modalSubmitAction(false)
-                        ->form([
-                            Textarea::make('content')
-                                ->label('Copy')
-                                ->disabled()
-                                ->autoSize()
-                                ->default(fn($record) => $record->content)
-                                ->required(),
-                        ]),
-
-                    Action::make('change_status')
-                        ->label('Aprobar Notificación')
-                        ->icon('fontisto-question')
-                        ->color('warning')
-                        ->requiresConfirmation()
-                        ->modalHeading('APROBAR NOTIFICACIÓN')
-                        ->hidden(function ($record) {
-                            return $record->status == 'APROBADA';
-                        })
-                        ->action(function ($record) {
-                            $record->status = 'APROBADA';
-                            $record->approved_by = Auth::user()->id;
-                            $record->save();
-                            Notification::make()
-                                ->body('El estado de la notificación fue cambiado exitosamente.')
-                                ->success()
-                                ->send();
-                        }),
-                        
-                    Action::make('send_notification')
-                        ->label('Enviar Notificación')
-                        ->icon('fontisto-rss')
-                        ->color('success')
-                        ->requiresConfirmation()
-                        ->modalHeading('ENVIAR NOTIFICACIÓN')
-                        ->hidden(function ($record) {
-                            return $record->status == 'POR-APROBAR';
-                        })
-                        ->action(function ($record) {
-                            try {
-                                $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
-                                SendNotificationMasive::dispatch($record, $users)->onQueue('system');
-                                
-                            } catch (\Throwable $th) {
-                                dd($th);
-                            }
-                        }),
-
-                ])
-                ->icon('heroicon-c-ellipsis-vertical')
-                ->color('azulOscuro')
-                ->button()
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->icon('heroicon-c-ellipsis-vertical')
+            ->color('azulOscuro')
+            ->button()
+        ])
+        ->toolbarActions([
+            BulkActionGroup::make([
+                DeleteBulkAction::make(),
+            ]),
+        ]);
     }
 
     public static function getDataCount($record)
