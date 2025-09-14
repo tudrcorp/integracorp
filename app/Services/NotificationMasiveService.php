@@ -43,7 +43,7 @@ class NotificationMasiveService
                     $params = array(
                         'token' => config('parameters.TOKEN'),
                         'to' => $array[$i]['phone'],
-                        'image' => config('parameters.PUBLIC_URL') . '/' . $infoArray['file'],
+                        'image' => 'https://integracorp.dev.tudrgroup.com/storage/'. $infoArray['file'],
                         'caption' => $body
                     );
                     $curl = curl_init();
