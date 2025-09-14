@@ -117,8 +117,7 @@ class MassNotificationsTable
                         try {
                             
                             $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
-                            // SendNotificationMasive::dispatch($record, $users)->onQueue('system');
-                            UtilsController::send($record);
+                            SendNotificationMasive::dispatch($record, $users)->onQueue('system');
                             
                         } catch (\Throwable $th) {
                             dd($th);

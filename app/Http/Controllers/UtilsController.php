@@ -1521,8 +1521,6 @@ class UtilsController extends Controller
             set_time_limit(0);
 
             $infoArray = $record->toArray();
-            Log::info($infoArray);
-            Log::info(config('parameters.PUBLIC_URL') . '/' . $infoArray['file']);
 
             $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
             Log::info($array);
@@ -1581,7 +1579,6 @@ class UtilsController extends Controller
                     $params = array(
                         'token' => 'yuvh9eq5kn8bt666',
                         'to' => $array[$i],
-                        // 'image' => 'https://tudrenviajes.com/images/logo_3.png',14986
                         'image' => 'https://tudrgroup.com/images/01K535GEERHFKCBC108PTWCCG4.png',
                         'caption' => $body
                     );

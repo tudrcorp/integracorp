@@ -24,7 +24,6 @@ class NotificationMasiveService
             set_time_limit(0);
 
             $infoArray = $record->toArray();
-            Log::info($infoArray);
 
             $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
             Log::info($array);
@@ -45,12 +44,12 @@ class NotificationMasiveService
                     $params = array(
                         'token' => config('parameters.TOKEN'),
                         'to' => $array[$i]['phone'],
-                        'image' => config('parameters.INTEGRACORP_URL') . '/storage/' . $infoArray['file'],
+                        'image' => config('parameters.PUBLIC_URL') . '/' . $infoArray['file'],
                         'caption' => $body
                     );
                     $curl = curl_init();
                     curl_setopt_array($curl, array(
-                        CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                        CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
                         CURLOPT_RETURNTRANSFER => true,
                         CURLOPT_ENCODING => "",
                         CURLOPT_MAXREDIRS => 10,
