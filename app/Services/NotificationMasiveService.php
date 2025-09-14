@@ -26,7 +26,6 @@ class NotificationMasiveService
             $infoArray = $record->toArray();
 
             $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
-            Log::info($array);
 
             for ($i = 0; $i < count($array); $i++) {
 
