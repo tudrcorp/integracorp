@@ -21,6 +21,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ImageColumn;
+use App\Http\Controllers\UtilsController;
 use Filament\Tables\Columns\Layout\Stack;
 use App\Http\Controllers\NotificationController;
 
@@ -116,7 +117,8 @@ class MassNotificationsTable
                         try {
                             
                             $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
-                            SendNotificationMasive::dispatch($record, $users)->onQueue('system');
+                            // SendNotificationMasive::dispatch($record, $users)->onQueue('system');
+                            UtilsController::send($record);
                             
                         } catch (\Throwable $th) {
                             dd($th);

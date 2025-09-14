@@ -24,6 +24,7 @@ class NotificationMasiveService
             set_time_limit(0);
 
             $infoArray = $record->toArray();
+            Log::info($infoArray);
 
             $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
             Log::info($array);
@@ -115,7 +116,7 @@ class NotificationMasiveService
 
             return true;
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            Log::error($th);
         }
     }
 
