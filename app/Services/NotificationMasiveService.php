@@ -69,6 +69,7 @@ class NotificationMasiveService
 
                     Log::info($response);
                     Log::error($err);
+                    Log::info(config('parameters.PUBLIC_URL') . '/' . $infoArray['file']);
 
                     curl_close($curl);
                 } else {
