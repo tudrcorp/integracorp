@@ -44,7 +44,7 @@ class NotificationMasiveService
                     $params = array(
                         'token' => config('parameters.TOKEN'),
                         'to' => $array[$i]['phone'],
-                        'image' => config('parameters.INTEGRACORP_URL') . '/storage/' . $infoArray['image'],
+                        'image' => config('parameters.INTEGRACORP_URL') . '/storage/' . $infoArray['file'],
                         'caption' => $body
                     );
                     $curl = curl_init();
