@@ -114,7 +114,7 @@ class MassNotificationsTable
                     })
                     ->action(function ($record) {
                         try {
-                            dd($record);
+                            
                             $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
                             SendNotificationMasive::dispatch($record, $users)->onQueue('system');
                             
