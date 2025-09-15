@@ -18,7 +18,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use App\Http\Controllers\NotificationController;
 
-class SendNotificationMasive implements ShouldQueue
+class SendNotificationMasiveEmail implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -42,13 +42,12 @@ class SendNotificationMasive implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($record, $user) 
+    public function __construct($record, $user)
     {
         $this->record = $record;
         $this->user = $user;
         //
     }
-
 
     /**
      * Execute the job.
@@ -62,7 +61,7 @@ class SendNotificationMasive implements ShouldQueue
             $recipient_for_user = User::find($user->id);
             Notification::make()
                 ->title('¡TAREA COMPLETADA!')
-                ->body('La notificación masiva via WhatsApp ha sido enviada correctamente.')
+                ->body('La notificación masiva via email ha sido enviada correctamente.')
                 ->icon('heroicon-m-tag')
                 ->iconColor('success')
                 ->success()
@@ -73,7 +72,7 @@ class SendNotificationMasive implements ShouldQueue
     private function sendNotifications()
     {
         $masiveNotification = new NotificationMasiveService();
-        $masiveNotification->send($this->record);
+        $masiveNotification->sendEmail($this->record);
     }
 
     /**

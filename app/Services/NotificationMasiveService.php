@@ -6,7 +6,9 @@ use App\Models\AgentDocument;
 use App\Models\DataNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Mail\NotificationMasiveMail;
 use App\Models\BirthdayNotification;
+use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\NotificationController;
 
 class NotificationMasiveService
@@ -111,6 +113,34 @@ class NotificationMasiveService
 
                     curl_close($curl);
                 }
+            }
+
+            return true;
+        } catch (\Throwable $th) {
+            Log::error($th);
+        }
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    static function sendEmail($record)
+    {
+
+        try {
+
+            set_time_limit(0);
+
+            $infoArray = $record->toArray();
+
+            $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
+
+            for ($i = 0; $i < count($array); $i++) {
+                //envio del email
+                Mail::to($array[$i]['email'])->send(new NotificationMasiveMail($infoArray));
+                
             }
 
             return true;

@@ -22,6 +22,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ImageColumn;
 use App\Http\Controllers\UtilsController;
+use App\Jobs\SendNotificationMasiveEmail;
 use Filament\Tables\Columns\Layout\Stack;
 use App\Http\Controllers\NotificationController;
 
@@ -114,10 +115,32 @@ class MassNotificationsTable
                         return $record->status == 'POR-APROBAR';
                     })
                     ->action(function ($record) {
+                        
                         try {
                             
+                            if(in_array('whatsapp', $record->channels)) {
+                                
                             $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
                             SendNotificationMasive::dispatch($record, $users)->onQueue('system');
+                            
+                            Notification::make()
+                                ->body('La notificación via whatsapp ya fue enviada.')
+                                ->success()
+                                ->send();
+
+                            }
+                            if (in_array('email', $record->channels)) {
+
+                                $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
+                                SendNotificationMasiveEmail::dispatch($record, $users)->onQueue('system');
+
+                                Notification::make()
+                                    ->body('La notificación via whatsapp ya fue enviada.')
+                                    ->success()
+                                    ->send();
+
+                            }
+                            
                             
                         } catch (\Throwable $th) {
                             dd($th);
