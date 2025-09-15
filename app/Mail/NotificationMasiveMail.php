@@ -31,8 +31,7 @@ class NotificationMasiveMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('marketing@tudrencasa.com', 'TuDrEnCasa.(INTEGRACORP)'),
-            subject: 'Notificación',
+            subject: 'Correo de prueba desde INTRACORP-TDC',
         );
     }
 
