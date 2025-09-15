@@ -149,7 +149,7 @@
 </head>
 <body>
     <!-- Primera página: Imagen de fondo -->
-    <div class="cover" style="background-image: url('{{ public_path('storage/footer-inicial.png') }}');">
+    <div class="cover" style="background-image: url('{{ public_path('storage/footer-plan-inicial.webp') }}');">
 
         <div style="position: absolute; top: 0px; left: 0px; margin-top: 15px; padding: 20px; margin-left: 20px">
             <p class="sin-margen" style="margin-bottom: 5px; font-size: 18px;">
