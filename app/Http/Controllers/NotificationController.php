@@ -1644,7 +1644,7 @@ class NotificationController extends Controller
         try {
 
             $record->heading = $record['header_title'] . ': ' . $data['name'];
-            dd($data);
+
             $body = <<<HTML
     
                     *{$record->heading}* 
