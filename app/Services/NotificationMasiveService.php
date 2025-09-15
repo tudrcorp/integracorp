@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Mail\NotificationMasiveMail;
 use App\Models\BirthdayNotification;
 use Illuminate\Support\Facades\Mail;
+use Barryvdh\Debugbar\Facades\Debugbar;
 use App\Http\Controllers\NotificationController;
 
 class NotificationMasiveService
@@ -139,7 +140,7 @@ class NotificationMasiveService
 
             for ($i = 0; $i < count($array); $i++) {
                 //envio del email
-                Log::info('Destinatario:' . $array[$i]['email']);
+                Debugbar::info('Destinatario:' . $array[$i]['email']);
                 Mail::to($array[$i]['email'])->send(new NotificationMasiveMail($infoArray));
                 
             }

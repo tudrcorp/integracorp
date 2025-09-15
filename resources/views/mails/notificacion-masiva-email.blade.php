@@ -21,7 +21,7 @@
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                         <td align="center" style="padding: 20px 10px;">
-                            <img src="{{ public_path('storage/').$record['file'] }}" alt="Banner Tu Dr. en Casa" style="max-width: 100%; height: auto; border-radius: 8px;">
+                            <img src="{{ config('parameters.PUBLIC_URL').'/'.$record['file'] }}" alt="Banner Tu Dr. en Casa" style="max-width: 100%; height: auto; border-radius: 8px;">
 
                         </td>
                     </tr>
