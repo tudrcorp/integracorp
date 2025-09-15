@@ -117,30 +117,24 @@ class MassNotificationsTable
                     ->action(function ($record) {
                         
                         try {
-                            
-                            if(in_array('whatsapp', $record->channels)) {
-                                
+
                             $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
-                            SendNotificationMasive::dispatch($record, $users)->onQueue('system');
-                            
+
+                            $array_channels = $record->channels;
+
+                            for ($i = 0; $i < count($array_channels); $i++) {
+                                if($array_channels[$i] == 'whatsapp') {
+                                    SendNotificationMasive::dispatch($record, $users)->onQueue('system');
+                                }
+                                if ($array_channels[$i] == 'email') {
+                                    SendNotificationMasiveEmail::dispatch($record, $users)->onQueue('system');
+                                }
+                            }
+
                             Notification::make()
-                                ->body('La notificación via whatsapp ya fue enviada.')
+                                ->body('La notificación fue enviada exitosamente. Integracorp le notificara cuando el proceso finalice.')
                                 ->success()
                                 ->send();
-
-                            }
-                            if (in_array('email', $record->channels)) {
-
-                                $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
-                                SendNotificationMasiveEmail::dispatch($record, $users)->onQueue('system');
-
-                                Notification::make()
-                                    ->body('La notificación via whatsapp ya fue enviada.')
-                                    ->success()
-                                    ->send();
-
-                            }
-                            
                             
                         } catch (\Throwable $th) {
                             dd($th);
