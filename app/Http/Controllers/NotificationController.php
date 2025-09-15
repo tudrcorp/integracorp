@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Jobs\SendNotificacionWhatsApp;
+use App\Mail\SendNotificationMailSingle;
 use Filament\Notifications\Notification;
 use App\Http\Controllers\UtilsController;
 
@@ -1634,6 +1635,70 @@ class NotificationController extends Controller
             //code...
         } catch (\Throwable $th) {
             dd($th);
+        }
+    }
+
+
+    public static function sendNotificationWpSingle($record, $data) {
+
+        try {
+
+            $record->heading = $record['header_title'] . ': ' . $data['name'];
+            dd($data);
+            $body = <<<HTML
+    
+                    *{$record->heading}* 
+    
+                    {$record->content}
+    
+                    HTML;
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => $data['phone'],
+                'image' => config('parameters.PUBLIC_URL') . '/' . $record['file'],
+                'caption' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            Log::info($response);
+            Log::error($err);
+
+            curl_close($curl);
+            //...
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
+        
+    }
+
+    public static function sendNotificationEmailSingle($record, $data) {
+
+        try {
+
+            Mail::to($data['email'])->send(new SendNotificationMailSingle($record));
+            
+            //...
+        } catch (\Throwable $th) {
+            //throw $th;
         }
     }
 

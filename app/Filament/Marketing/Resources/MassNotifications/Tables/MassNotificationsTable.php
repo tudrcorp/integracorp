@@ -10,6 +10,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Facades\Log;
 use App\Jobs\SendNotificationMasive;
 use Filament\Support\Enums\TextSize;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ImageColumn;
 use App\Http\Controllers\UtilsController;
@@ -39,6 +41,9 @@ class MassNotificationsTable
                         ->imageWidth(250)
                         ->imageHeight(250)
                         ->visibility('public'),
+                    TextColumn::make('content')
+                        ->prefix('Copy: ')
+                        ->size(TextSize::Medium),
                     Stack::make([
                         TextColumn::make('status')
                             ->badge()
@@ -69,26 +74,9 @@ class MassNotificationsTable
         ->recordActions([
             ActionGroup::make([
 
-                Action::make('details')
-                    ->label('Ver Copy')
-                    ->icon('fontisto-info')
-                    ->color('primary')
-                    ->modalHeading('Copy de la notificación')
-                    ->modalIcon('fontisto-info')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->modalSubmitAction(false)
-                    ->form([
-                        Textarea::make('content')
-                            ->label('Copy')
-                            ->disabled()
-                            ->autoSize()
-                            ->default(fn($record) => $record->content)
-                            ->required(),
-                    ]),
-
                 Action::make('change_status')
                     ->label('Aprobar Notificación')
-                    ->icon('fontisto-question')
+                    ->icon('heroicon-o-power')
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('APROBAR NOTIFICACIÓN')
@@ -104,10 +92,79 @@ class MassNotificationsTable
                             ->success()
                             ->send();
                     }),
+
+                Action::make('test_notification_wp')
+                    ->label('Test(Via WhatsApp)')
+                    ->icon('heroicon-c-device-phone-mobile')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('ENVIAR NOTIFICACIÓN')
+                    ->hidden(function ($record) {
+                        return $record->status == 'POR-APROBAR';
+                    })
+                    ->form([
+                        TextInput::make('phone')
+                            ->label('Número de Teléfono')
+                            ->helperText('Debe agregar los códigos de area. Ejemplo: +56, +57, +58, +1, etc. Si es un numero local: +58412, +58414, +58424, +58426, +58212, etc.')
+                            ->tel()
+                            ->required(),
+                        TextInput::make('name')
+                            ->label('Nombre y Apellido')
+                            ->helperText('Opcional! solo si es personalizada')
+                    ])
+                    ->action(function ($record, $data) {
+
+                        try {
+                            
+                            NotificationController::sendNotificationWpSingle($record, $data);
+                            
+                            Notification::make()
+                                ->body('La notificación fue enviada exitosamente.')
+                                ->success()
+                                ->send();
+                                
+                        } catch (\Throwable $th) {
+                            Log::error($th);
+                        }
+                    }),
+
+                Action::make('test_notification_email')
+                    ->label('Test(Via Email)')
+                    ->icon('heroicon-c-at-symbol')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('ENVIAR NOTIFICACIÓN')
+                    ->hidden(function ($record) {
+                        return $record->status == 'POR-APROBAR';
+                    })
+                    ->form([
+                        TextInput::make('email')
+                            ->label('Correo Electrónico')
+                            ->required(),
+                        TextInput::make('name')
+                            ->label('Nombre y Apellido')
+                            ->helperText('Opcional! solo si es personalizada')
+                    ])
+                    ->action(function ($record, $data) {
+
+                        try {
+
+                            NotificationController::sendNotificationEmailSingle($record, $data);
+
+                            Notification::make()
+                                ->body('La notificación fue enviada exitosamente.')
+                                ->success()
+                                ->send();
+                                
+                        } catch (\Throwable $th) {
+                            Log::error($th);
+                        }
+                    }),
+
                     
                 Action::make('send_notification')
-                    ->label('Enviar Notificación')
-                    ->icon('fontisto-rss')
+                    ->label('Envío Masivo')
+                    ->icon('heroicon-s-megaphone')
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('ENVIAR NOTIFICACIÓN')
@@ -137,7 +194,7 @@ class MassNotificationsTable
                                 ->send();
                             
                         } catch (\Throwable $th) {
-                            dd($th);
+                            Log::error($th);
                         }
                     }),
 
