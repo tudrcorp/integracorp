@@ -139,7 +139,7 @@ class NotificationMasiveService
 
             for ($i = 0; $i < count($array); $i++) {
                 //envio del email
-                Log::info('Destinatario:', $array[$i]['email']);
+                Log::info('Destinatario:' . $array[$i]['email']);
                 Mail::to($array[$i]['email'])->send(new NotificationMasiveMail($infoArray));
                 
             }
