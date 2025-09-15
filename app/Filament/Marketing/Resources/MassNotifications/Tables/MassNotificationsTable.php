@@ -127,6 +127,7 @@ class MassNotificationsTable
                                     SendNotificationMasive::dispatch($record, $users)->onQueue('system');
                                 }
                                 if ($array_channels[$i] == 'email') {
+                                    dd($array_channels[$i]);
                                     SendNotificationMasiveEmail::dispatch($record, $users)->onQueue('system');
                                 }
                             }
