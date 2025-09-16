@@ -145,7 +145,7 @@
                     Fecha de emisión:
                 </span>
                 <span style="margin-left: 50px">
-                    21/05/2025
+                    {{ now()->format('d/m/Y') }}
                     <br>
                     <span style="font-size: 12px; font-style: italic; font-weight: bold">
                         Propuesta válida por 15 días a partir de la fecha de emisión.

@@ -87,7 +87,6 @@
 
     @if($details['plan'] == 1)
         @livewire('planes-cotizacion-individual', ['data' => $collect, 'name' => $details['name']])
-
     @endif
 
     @if($details['plan'] == 2)
