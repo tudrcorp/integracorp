@@ -38,12 +38,9 @@ class MassNotificationsTable
         ->columns([
                 Stack::make([
                     ImageColumn::make('file')
-                        ->imageWidth(250)
-                        ->imageHeight(250)
+                        ->imageHeight('auto')
+                        ->imageWidth('70%')
                         ->visibility('public'),
-                    TextColumn::make('content')
-                        ->prefix('Copy: ')
-                        ->size(TextSize::Medium),
                     Stack::make([
                         TextColumn::make('status')
                             ->badge()

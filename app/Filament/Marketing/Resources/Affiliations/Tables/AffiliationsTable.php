@@ -170,6 +170,10 @@ class AffiliationsTable
                                 ->success()
                                 ->send();
 
+                            $id = $data['mass_notification_id'];
+
+                            return redirect()->route('filament.marketing.resources.mass-notifications.view', ['record' => $id]);
+
                         } )
                         ->requiresConfirmation()
                         ->color('primary'),

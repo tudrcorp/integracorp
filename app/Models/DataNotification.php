@@ -17,6 +17,6 @@ class DataNotification extends Model
 
     public function massNotification()
     {
-        return $this->belongsTo(MassNotification::class);
+        return $this->belongsTo(MassNotification::class, 'mass_notification_id', 'id');
     }
 }

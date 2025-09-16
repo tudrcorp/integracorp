@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MassNotification extends Model
 {
@@ -33,8 +34,8 @@ class MassNotification extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function dataNotifications()
+    public function dataNotifications(): HasMany
     {
-        return $this->hasMany(DataNotification::class);
+        return $this->hasMany(DataNotification::class, 'mass_notification_id', 'id');
     }
 }

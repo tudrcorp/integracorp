@@ -20,7 +20,7 @@ class DataNotificationsTable
         ->description('Listado de destinatarios asociada a las notificaciones, desde aquí puedes ver, editar o eliminar los destinatarios asociada a las notificaciones')
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('dataNotifications.title')
+                TextColumn::make('massNotification.title')
                     ->label('Notificación Asociada'),
                 TextColumn::make('fullName')
                     ->label('Nombre y Apellido')
