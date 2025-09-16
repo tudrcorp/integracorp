@@ -45,8 +45,8 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('corporate_quote.code')
-                    ->label('Cotizacion')
+                TextColumn::make('name_corporate')
+                    ->label('Cliente Corporativo')
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
@@ -92,13 +92,8 @@ class AffiliationCorporatesTable
                         ->color('success')
                         ->searchable(),
                 ]),
-
-
-
-
-
-                    
-                TextColumn::make('rif')
+            
+            TextColumn::make('rif')
                     ->label('Rif')
                     ->prefix('J-')
                     ->badge()
