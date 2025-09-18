@@ -26,30 +26,36 @@ class NotificationMasiveService
 
             set_time_limit(0);
 
-            $infoArray = $record->toArray();
-
             $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
 
             for ($i = 0; $i < count($array); $i++) {
 
-                if ($infoArray['header_title'] != null) {
+                if ($record->header_title == null) {
+                    $header = '';
+                }
 
-                    $record->heading = $infoArray['header_title'] . ' ' . $array[$i]['fullName'];
-                    $body = <<<HTML
-    
-                    *{$record->heading}* 
-    
-                    {$record->content}
-    
-                    HTML;
+                if ($record->header_title != null) {
+                    $header = $record->header_title . ' ' . $array[$i]['fullName'];
+                }
 
+                $body = <<<HTML
+    
+                *{$header}* 
+
+                {$record->content}
+
+                HTML;
+
+                $curl = curl_init();
+
+                if($record->type == 'image') {
                     $params = array(
-                        'token' => config('parameters.TOKEN'),
-                        'to' => $array[$i]['phone'],
-                        'image' => config('parameters.PUBLIC_URL') . '/' . $infoArray['file'],
-                        'caption' => $body
+                        'token'     => config('parameters.TOKEN'),
+                        'to'        => $array[$i]['phone'],
+                        'image'     => config('parameters.PUBLIC_URL') . '/' . $record->file,
+                        'caption'   => $body
                     );
-                    $curl = curl_init();
+
                     curl_setopt_array($curl, array(
                         CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
                         CURLOPT_RETURNTRANSFER => true,
@@ -65,33 +71,24 @@ class NotificationMasiveService
                             "content-type: application/x-www-form-urlencoded"
                         ),
                     ));
-
                     $response = curl_exec($curl);
                     $err = curl_error($curl);
 
                     Log::info($response);
                     Log::error($err);
-                    Log::info(config('parameters.PUBLIC_URL') . '/' . $infoArray['file']);
 
-                    curl_close($curl);
-                } else {
-
-                    $body = <<<HTML
-    
-                    {$record->content}
-    
-                    HTML;
-
+                }
+                
+                if ($record->type == 'video') {
                     $params = array(
-                        'token' => 'yuvh9eq5kn8bt666',
-                        'to' => $array[$i],
-                        // 'image' => 'https://tudrenviajes.com/images/logo_3.png',14986
-                        'image' => 'https://tudrgroup.com/images/logoTDG.png',
-                        'caption' => $body
+                        'token'     => config('parameters.TOKEN'),
+                        'to'        => $array[$i]['phone'],
+                        'video'     => config('parameters.PUBLIC_URL') . '/' . $record->file,
+                        'caption'   => $body
                     );
-                    $curl = curl_init();
+
                     curl_setopt_array($curl, array(
-                        CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                        CURLOPT_URL => config('parameters.CURLOPT_URL_VIDEO'),
                         CURLOPT_RETURNTRANSFER => true,
                         CURLOPT_ENCODING => "",
                         CURLOPT_MAXREDIRS => 10,
@@ -105,18 +102,50 @@ class NotificationMasiveService
                             "content-type: application/x-www-form-urlencoded"
                         ),
                     ));
-
                     $response = curl_exec($curl);
                     $err = curl_error($curl);
 
                     Log::info($response);
                     Log::error($err);
 
-                    curl_close($curl);
                 }
+                
+                if ($record->type == 'url') {
+                    $params = array(
+                        'token'     => config('parameters.TOKEN'),
+                        'to'        => $array[$i]['phone'],
+                        'body'      => $body
+                    );
+
+                    curl_setopt_array($curl, array(
+                        CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_ENCODING => "",
+                        CURLOPT_MAXREDIRS => 10,
+                        CURLOPT_TIMEOUT => 30,
+                        CURLOPT_SSL_VERIFYHOST => 0,
+                        CURLOPT_SSL_VERIFYPEER => 0,
+                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_CUSTOMREQUEST => "POST",
+                        CURLOPT_POSTFIELDS => http_build_query($params),
+                        CURLOPT_HTTPHEADER => array(
+                            "content-type: application/x-www-form-urlencoded"
+                        ),
+                    ));
+                    $response = curl_exec($curl);
+                    $err = curl_error($curl);
+
+                    Log::info($response);
+                    Log::error($err);
+
+                }
+
+                curl_close($curl);
+                
             }
 
             return true;
+            
         } catch (\Throwable $th) {
             Log::error($th);
         }

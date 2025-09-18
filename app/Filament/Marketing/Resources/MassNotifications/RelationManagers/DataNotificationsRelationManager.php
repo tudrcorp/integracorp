@@ -6,6 +6,7 @@ use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -53,9 +54,9 @@ class DataNotificationsRelationManager extends RelationManager
                 
             ])
             ->toolbarActions([
-                BulkAction::make('delete')
-                    ->label('Eliminar Destinatario')
-                    ->requiresConfirmation()
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
             ]);
     }
 }

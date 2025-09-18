@@ -7,6 +7,7 @@ return [
     'CURLOPT_URL'                       => 'https://api.ultramsg.com/instance117518/messages/chat',
     'CURLOPT_URL_IMAGE'                 => 'https://api.ultramsg.com/instance117518/messages/image',
     'CURLOPT_URL_DOCUMENT'              => 'https://api.ultramsg.com/instance117518/messages/document',
+    'CURLOPT_URL_VIDEO'                 => 'https://api.ultramsg.com/instance117518/messages/video',
     'PATH_MASTER'                       => "/master",
     'PATH_GENERAL'                      => "/general",
     'PATH_AGENT'                        => "/agents",
