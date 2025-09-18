@@ -277,7 +277,7 @@
     </div>
 
     <div style="position: absolute; top: 680px; left: 250px; padding: 10px;">
-        <img src="{{ public_path('storage/sello.png') }}" style="width: 150px; height: auto;" alt="">
+        <img src="{{ public_path('storage/sello-nuevo.png') }}" style="width: 150px; height: auto;" alt="">
     </div>
 
     <div style="position: absolute; top: 870px; right: 0px; padding: 0px; width: 100%;">

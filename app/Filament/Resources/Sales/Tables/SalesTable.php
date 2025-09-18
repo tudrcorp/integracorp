@@ -38,9 +38,11 @@ class SalesTable
             ->description('Registro de pagos(ventas) de afiliaciones activas')
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('date')
+                TextColumn::make('created_at')
                     ->label('Fecha')
+                    ->dateTime()
                     ->badge()
+                    ->color('verde')
                     ->icon('heroicon-s-calendar-days')
                     ->searchable(),
                 TextColumn::make('invoice_number')
@@ -102,17 +104,8 @@ class SalesTable
                     ->label('Población')
                     ->searchable(),
                 TextColumn::make('created_by')
-                    ->label('Creado por')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->label('Aprobado por')
+                    ->searchable(),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->searchable(),
@@ -240,7 +233,7 @@ class SalesTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/reciboDePago/ADP-' . $record->invoice_number . '.pdf');
+                                $path = public_path('storage/reciboDePago/RDP-' . $record->invoice_number . '.pdf');
                                 return response()->download($path);
                                 /**
                                  * LOG

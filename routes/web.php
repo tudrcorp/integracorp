@@ -2,6 +2,7 @@
 
 use Carbon\Carbon;
 use App\Models\Fee;
+use App\Models\Sale;
 use App\Models\Agent;
 use App\Models\Guest;
 use App\Models\Agency;
@@ -246,5 +247,6 @@ Route::get('/truncate', function () {
 
 Route::get('/convertir', function () {
 
-    UtilsController::generateCorrelative('09-00189');
+dd(1);
+
 });  

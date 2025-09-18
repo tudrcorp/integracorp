@@ -141,6 +141,8 @@ class NotificationMasiveService
                 }
 
                 curl_close($curl);
+
+                sleep(5);
                 
             }
 
@@ -171,6 +173,8 @@ class NotificationMasiveService
                 //envio del email
                 Debugbar::info('Destinatario:' . $array[$i]['email']);
                 Mail::to($array[$i]['email'])->send(new NotificationMasiveMail($infoArray));
+
+                sleep(5);
                 
             }
 

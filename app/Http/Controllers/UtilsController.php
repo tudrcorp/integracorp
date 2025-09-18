@@ -1636,7 +1636,7 @@ class UtilsController extends Controller
         $nuevoNumero = $numero + 1;   // Sumamos 1
 
         // Formateamos el nuevo número con al menos 3 dígitos (por si llega a 1000, etc.)
-        return sprintf('%s-00%d', date('m'), $nuevoNumero);
+        return sprintf('%s-00%d', '08', $nuevoNumero);
     }
 
     
