@@ -68,7 +68,6 @@ class PaidMembershipController extends Controller
                 $sales->payment_method          = $record->payment_method;
                 $sales->payment_frequency       = $record->affiliation->payment_frequency;
                 $sales->created_by              = Auth::user()->name;
-
                 $sales->pay_amount_usd          = $record->pay_amount_usd;
                 $sales->pay_amount_ves          = $record->pay_amount_ves;
                 $sales->payment_method_usd      = $record->payment_method_usd;
@@ -77,7 +76,6 @@ class PaidMembershipController extends Controller
                 $sales->bank_ves                = $record->bank_ves;
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
-
                 $sales->save();
 
                 /**
@@ -182,9 +180,10 @@ class PaidMembershipController extends Controller
                         $collections->payment_frequency       = $record->affiliation->payment_frequency;
                         $collections->reference               = $record->reference_payment;
                         $collections->created_by              = Auth::user()->name;
-                        $collections->next_payment_date       =  Carbon::createFromFormat('d-m-Y', $prox_date)->addMonth(3)->format('d-m-Y');
+                        $collections->next_payment_date       = Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                         $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days'));
                         $collections->created_by              = Auth::user()->name;
+                        // dd($collections);
                         $collections->save();
 
                         /**Ejecutamos el Job para crea el aviso de cobro */
@@ -241,7 +240,7 @@ class PaidMembershipController extends Controller
                     $collections->reference               = $record->reference_payment;
                     $collections->created_by              = Auth::user()->name;
                     $collections->next_payment_date       = $record->prox_payment_date;
-                    $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days'));
+                    $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                     $collections->created_by              = Auth::user()->name;
                     $collections->save();
 
@@ -300,7 +299,7 @@ class PaidMembershipController extends Controller
                         $collections->reference               = $record->reference_payment;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = $record->prox_payment_date;
-                        $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days'));
+                        $collections->expiration_date         = date($collections->next_payment_date, strtotime('+30 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                         $collections->created_by              = Auth::user()->name;
                         $collections->save();
 
@@ -430,6 +429,7 @@ class PaidMembershipController extends Controller
             }
             
         } catch (\Throwable $th) {
+            dd($th);
             Notification::make()
                 ->title('EXCEPCION')
                 ->body($th->getMessage())

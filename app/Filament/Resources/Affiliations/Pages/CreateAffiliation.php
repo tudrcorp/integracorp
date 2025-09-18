@@ -8,4 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateAffiliation extends CreateRecord
 {
     protected static string $resource = AffiliationResource::class;
+
+    protected static ?string $title = 'Registro de Preafiliacion';
 }

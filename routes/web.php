@@ -228,8 +228,8 @@ Route::get('/notify', function () {
 
 Route::get('/notification', function () {
 
-    // NotificationController::notificationImage();
-    NotificationController::notificationVideo();
+    NotificationController::notificationImage();
+    // NotificationController::notificationVideo();
     dd('listo');
 
 });
@@ -246,77 +246,5 @@ Route::get('/truncate', function () {
 
 Route::get('/convertir', function () {
 
-    // $fechaNac = CheckAffiliation::all();
-    // foreach ($fechaNac as $value) {
-    //     $fechaNacStr = Carbon::createFromFormat('d/m/Y', $value->fecha_nacimiento);
-    //     $hoy = Carbon::now();
-    //     $diferencia = $hoy->diff($fechaNacStr);
-    //     $value->edad = $diferencia->y;
-    //     $value->save();
-    // }
-    // dd('listo');
-
-    // $c = Coverage::where('plan_id', 3)->get()->pluck('price', 'id');
-    // $e = AgeRange::where('plan_id', 3)->where('id', 5)->with('fees')->get()->toArray();
-    // $f = Fee::where('age_range_id', 5)->where('coverage_id', 12)->get()->pluck('price', 'price');
-    // $r = AgeRange::where('plan_id', 3)
-    //     ->where('id', 5)
-    //     ->with('fees')
-    //     ->get()
-    //     ->toArray();
-    // dd($c, $e, $f, $r);
-
-    //---------------------------------------------------------------------------------------------------------
-
-    // $tables = BirthdayNotification::where('status', 'INACTIVA')->get()->toArray();
-    // if (count($tables) == 0) {
-    //     dd('No hay notificaciones');
-    //     return;
-    // }
-    // $now = now()->format('d/m/Y');
-
-    // // dd($tables);
-    // for ($i = 0; $i < count($tables); $i++) {
-    //     /**
-    //      * Preparamos la data para el envio de la notificacion
-    //      * 
-    //      * @param $tables
-    //      * @param $now
-    //      * 
-    //      */
-    //     $data = DB::table($tables[$i]['data_type'])
-    //             ->select('name', 'email', 'phone', 'birthday_date')
-    //             ->where('birthday_date', $now)
-    //             ->get()
-    //             ->toArray();
-    //             // dd($data[0]->name);
-    //     /**
-    //      * Envio de notificacion de cumpleaños
-    //      * 
-    //      * @param $data
-    //      * 
-    //      */
-    //     for ($j = 0; $j < count($data); $j++) {
-    //         NotificationController::notificationBirthday($data[$j], $tables[$i]);
-    //     }
-    //     dd('listo');
-    // }
-
-    //---------------------------------------------------------------------------------------------------------
-
-    $phones = Agent::all();
-    $phones_agency = Agency::all();
-
-    foreach ($phones as $value) {
-        $phone = UtilsController::normalizeVenezuelanPhone($value->phone);
-        $value->phone = $phone;
-        $value->save();
-    }
-
-    foreach ($phones_agency as $value) {
-        $phone = UtilsController::normalizeVenezuelanPhone($value->phone);
-        $value->phone = $phone;
-        $value->save();
-    }
-    dd('listo');
-});
+    UtilsController::generateCorrelative('09-00189');
+});  

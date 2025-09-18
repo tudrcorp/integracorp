@@ -153,6 +153,7 @@ class MigrationHistoricalController extends Controller
             return true;
             //code...
         } catch (\Throwable $th) {
+            dd($th);
             Log::error($th);
             Notification::make()
                 ->title('Error al migrar')

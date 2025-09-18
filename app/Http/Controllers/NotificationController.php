@@ -1639,42 +1639,100 @@ class NotificationController extends Controller
     }
 
 
-    public static function sendNotificationWpSingle($record, $data) {
+    public static function sendNotificationWpSingle($record, $data) 
+    {
 
         try {
 
-            $record->heading = $record['header_title'] . ': ' . $data['name'];
+            if($record->header_title == null){
+                $header = '';
+            }
 
+            if($record->header_title != null){
+                $header = $record->header_title . ': ' . $data['name'];
+            }
+            
             $body = <<<HTML
     
-                    *{$record->heading}* 
-    
-                    {$record->content}
-    
-                    HTML;
+            *{$header}* 
 
-            $params = array(
-                'token' => config('parameters.TOKEN'),
-                'to' => $data['phone'],
-                'image' => config('parameters.PUBLIC_URL') . '/' . $record['file'],
-                'caption' => $body
-            );
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+            {$record->content}
+
+            HTML;
+
+            if($record->type == 'image') {
+                $params = array(
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $data['phone'],
+                    'image' => config('parameters.PUBLIC_URL') . '/' . $record->file,
+                    'caption' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+            }
+            
+            if ($record->type == 'video') {
+                $params = array(
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $data['phone'],
+                    'video' => config('parameters.PUBLIC_URL') . '/' . $record->file,
+                    'caption' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+            }
+            
+            if ($record->type == 'url') {
+                $params = array(
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $data['phone'],
+                    'body' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+            }
 
             $response = curl_exec($curl);
             $err = curl_error($curl);

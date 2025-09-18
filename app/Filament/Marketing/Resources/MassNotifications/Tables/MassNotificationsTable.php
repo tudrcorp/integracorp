@@ -110,9 +110,8 @@ class MassNotificationsTable
                             ->helperText('Opcional! solo si es personalizada')
                     ])
                     ->action(function ($record, $data) {
-
                         try {
-                            
+
                             NotificationController::sendNotificationWpSingle($record, $data);
                             
                             Notification::make()

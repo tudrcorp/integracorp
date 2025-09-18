@@ -356,4 +356,109 @@ class NotificationMasiveService
             Log::error($th->getMessage());
         }
     }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    static function sendUrl($record)
+    {
+
+        try {
+
+            set_time_limit(0);
+
+            $infoArray = $record->toArray();
+
+            $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
+
+            for ($i = 0; $i < count($array); $i++) {
+
+                if ($infoArray['header_title'] != null) {
+
+                    $record->heading = $infoArray['header_title'] . ' ' . $array[$i]['fullName'];
+                    $body = <<<HTML
+    
+                    *{$record->heading}* 
+    
+                    {$record->content}
+    
+                    HTML;
+
+                    $params = array(
+                        'token' => config('parameters.TOKEN'),
+                        'to' => $array[$i]['phone'],
+                        'body' => $body
+                    );
+                    $curl = curl_init();
+                    curl_setopt_array($curl, array(
+                        CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_ENCODING => "",
+                        CURLOPT_MAXREDIRS => 10,
+                        CURLOPT_TIMEOUT => 30,
+                        CURLOPT_SSL_VERIFYHOST => 0,
+                        CURLOPT_SSL_VERIFYPEER => 0,
+                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_CUSTOMREQUEST => "POST",
+                        CURLOPT_POSTFIELDS => http_build_query($params),
+                        CURLOPT_HTTPHEADER => array(
+                            "content-type: application/x-www-form-urlencoded"
+                        ),
+                    ));
+
+                    $response = curl_exec($curl);
+                    $err = curl_error($curl);
+
+                    Log::info($response);
+                    Log::error($err);
+
+                    curl_close($curl);
+                    
+                } else {
+
+                    $body = <<<HTML
+    
+                    {$record->content}
+    
+                    HTML;
+
+                    $params = array(
+                        'token' => config('parameters.TOKEN'),
+                        'to' => $array[$i]['phone'],
+                        'body' => $body
+                    );
+                    $curl = curl_init();
+                    curl_setopt_array($curl, array(
+                        CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_ENCODING => "",
+                        CURLOPT_MAXREDIRS => 10,
+                        CURLOPT_TIMEOUT => 30,
+                        CURLOPT_SSL_VERIFYHOST => 0,
+                        CURLOPT_SSL_VERIFYPEER => 0,
+                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_CUSTOMREQUEST => "POST",
+                        CURLOPT_POSTFIELDS => http_build_query($params),
+                        CURLOPT_HTTPHEADER => array(
+                            "content-type: application/x-www-form-urlencoded"
+                        ),
+                    ));
+
+                    $response = curl_exec($curl);
+                    $err = curl_error($curl);
+
+                    Log::info($response);
+                    Log::error($err);
+
+                    curl_close($curl);
+                }
+            }
+
+            return true;
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
 }

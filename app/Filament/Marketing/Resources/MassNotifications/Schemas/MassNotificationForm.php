@@ -54,13 +54,30 @@ class MassNotificationForm
                                     DatePicker::make('date_programmed')
                                         ->label('Fecha programada')
                                         ->helperText('Selecciona la fecha y hora en la que deseas que se envíe la notificación. Esta sera enviada por el sistema.'),
+                                    Fieldset::make('Tipo de Envio')
+                                        ->schema([
+                                            Radio::make('type')
+                                                ->options([
+                                                    'image' => 'Imagen',
+                                                    'video' => 'Video',
+                                                    'url' => 'URL',
+                                                ])
+                                                ->descriptions([
+                                                    'image' => 'La imagen debe ser de 16MB de tamaño. Formatos permitidos: png, jpg, jpeg, webp. Si la imagen es mayor a 16MB no sera cargado correctamente.',
+                                                    'video' => 'El video debe ser de 32MB de tamaño. Formatos permitidos: mp4, 3gp , mov. Si el video es mayor a 32MB no sera cargado correctamente.',
+                                                    'url' => 'El URL debe tener como prefijo http:// ó https://.',
+                                                ])
+                                                ->helperText('Selecciona el estado de la notificación.')
+                                                ->required()
+                                                ->label('Status de la notificación'),
+                                        ])->columnSpanFull(),
                                     Fieldset::make('Encabezado de la notificación')
                                         ->schema([
                                             TextInput::make('header_title')
                                                 ->label('Titulo de la notificación')
                                                 ->helperText('En este campo va el titulo del encabezado, si la notificación no es personalizada dejar en blanco. Ejemplo: "Hola, {nombre}", donde {nombre} será reemplazado por el nombre del usuario.'),
                                         ])->columnSpanFull(),
-                                        Fieldset::make('Contenido de la notificación')
+                                    Fieldset::make('Imagen de la notificación')
                                         ->schema([
                                             FileUpload::make('file')
                                                 ->helperText('El tamaño máximo de la imagen debe ser 16MB. Si la imagen es mayor a 16MB no sera cargado correctamente.'),

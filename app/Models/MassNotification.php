@@ -23,6 +23,7 @@ class MassNotification extends Model
         'date_programed',
         'header_title',
         'channels',
+        'type',
     ];
 
     protected $casts = [

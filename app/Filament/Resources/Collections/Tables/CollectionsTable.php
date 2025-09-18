@@ -41,7 +41,7 @@ class CollectionsTable
                 TextColumn::make('collection_invoice_number')
                     ->badge()
                     ->icon('heroicon-s-document-text')
-                    ->label('Factura')
+                    ->label('Nro. de Aviso')
                     ->searchable(),
                 TextColumn::make('quote_number')
                     ->badge()
@@ -132,7 +132,6 @@ class CollectionsTable
                     ->label('Frecuencia de pago')
                     ->searchable(),
                 TextColumn::make('next_payment_date')
-                    ->dateTime('d/m/Y')
                     ->badge()
                     ->icon('heroicon-s-calendar-days')
                     ->color('warning')

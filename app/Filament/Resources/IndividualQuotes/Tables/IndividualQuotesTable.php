@@ -14,12 +14,14 @@ use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use Filament\Actions\ExportAction;
+use Illuminate\Support\HtmlString;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\Radio;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Forms\Components\Textarea;
@@ -176,11 +178,6 @@ class IndividualQuotesTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    /**EDIT */
-                    EditAction::make()
-                        ->label('Editar')
-                        ->color('warning')
-                        ->icon('heroicon-s-pencil'),
 
                     /**EMIT */
                     Action::make('emit')
@@ -190,12 +187,20 @@ class IndividualQuotesTable
                             }
                             return false;
                         })
-                        ->label('Emitir')
-                        ->icon('heroicon-m-power')
+                        ->label('Aprobar')
+                        ->icon('heroicon-m-shield-check')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('APROBACIÓN DIRECTA PARA PR-AFILIACIÓN')
-                        ->modalWidth(Width::FiveExtraLarge)
+                        ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
+                        ->modalIcon('heroicon-m-shield-check')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalDescription(new HtmlString(Blade::render(<<<BLADE
+                                        <div class="fi-section-header-description mt-5 mb-5">
+                                            Felicitaciones!.
+                                            <br>
+                                        Solo falta completar el formulario de pre-afiliación
+                                        </div>
+                                BLADE)))
                         ->action(function (IndividualQuote $record) {
 
                             try {
@@ -206,11 +211,15 @@ class IndividualQuotesTable
                                 $record->status = 'APROBADA';
                                 $record->save();
 
+                                /**Creamos una variable de session con la cantidad dde personas en la cotizacion */
+                                session()->put('persons', $record->detailsQuote()->first()->total_persons);
+
                                 Notification::make()
                                     ->title('COTIZACION INDIVIDUAL APROBADA')
-                                    ->body('Se realizo la aprobacion directa de la cotizacion Nro.' . $record->code . ' para realizar la pre-afiliacion')
+                                    ->body('Nro.' . $record->code . ', puede proceder a realizar la pre-afiliación')
                                     ->icon('heroicon-s-user-group')
                                     ->iconColor('success')
+                                    ->persistent()
                                     ->success()
                                     ->send();
 
@@ -232,10 +241,10 @@ class IndividualQuotesTable
                                 $count_plans = $record->detailsQuote()->distinct()->pluck('plan_id');
                                 // dd($count_plans[0]);
                                 if ($count_plans->count() == 1) {
-                                    return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->id, 'plan_id' => $count_plans[0]]);
+                                    return redirect()->route('filament.admin.resources.affiliations.create', ['id' => $record->id, 'plan_id' => $count_plans[0]]);
                                 }
 
-                                return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
+                                return redirect()->route('filament.admin.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.emit', $th->getMessage());
                                 Notification::make()
@@ -246,6 +255,12 @@ class IndividualQuotesTable
                                     ->danger()
                                     ->send();
                             }
+                        })
+                        ->hidden(function (IndividualQuote $record) {
+                            if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
+                                return true;
+                            }
+                            return false;
                         }),
 
                     /**FORWARD */

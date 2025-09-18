@@ -15,9 +15,7 @@ class ListAffiliations extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Nueva afiliación')
-                ->icon('heroicon-m-plus'),
+            
         ];
     }
 }

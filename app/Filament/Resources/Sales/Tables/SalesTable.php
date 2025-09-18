@@ -46,7 +46,7 @@ class SalesTable
                 TextColumn::make('invoice_number')
                     ->badge()
                     ->icon('heroicon-s-document-text')
-                    ->label('Nro. Factura')
+                    ->label('Nro. Recibo de Pago')
                     ->searchable(),
                 TextColumn::make('affiliation_code')
                     ->badge()

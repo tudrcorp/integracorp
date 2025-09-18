@@ -20,26 +20,33 @@ class FeesTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->defaultSort('created_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->heading('TARIFAS')
             ->description('Lista de tarifas calculadas registradas en el sistema')
             ->columns([
                 TextColumn::make('code')
+                    ->label('Código')
                     ->badge()
                     ->searchable(),
                 TextColumn::make('ageRange.range')
+                    ->label('Rango de Edad')
                     ->numeric()
-                    ->sortable(),
+                    ->searchable(),
                 TextColumn::make('coverage.price')
+                    ->label('Cobertura')
                     ->suffix(' UD$')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('price')
+                    ->label('Tarifa')
                     ->money()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('status')
                     ->searchable(),
                 TextColumn::make('created_by')
+                    ->label('Creado por')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()
