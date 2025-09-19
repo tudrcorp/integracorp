@@ -142,7 +142,7 @@ class NotificationMasiveService
 
                 curl_close($curl);
 
-                sleep(5);
+                sleep(1);
                 
             }
 
