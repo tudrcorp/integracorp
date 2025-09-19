@@ -25,19 +25,7 @@ class SendNotificationMasive implements ShouldQueue
     protected $record;
     protected $user;
 
-    /**
-     * Número máximo de intentos.
-     *
-     * @var int
-     */
-    public $tries = 5;
-
-    /**
-     * Tiempo en segundos para esperar antes de reintentar (opcional).
-     *
-     * @var int
-     */
-    public $backoff = 3; // Espera 3 segundos entre intentos
+    public $tries = 1;
 
     /**
      * Create a new job instance.
