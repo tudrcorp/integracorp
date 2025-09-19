@@ -60,6 +60,8 @@ class Affiliation extends Model
         'cuestion_13',
         'cuestion_14',
         'cuestion_15',
+        'cuestion_16',
+        'observations_cuestions',
         
         'full_name_applicant',
         'signature_applicant',
