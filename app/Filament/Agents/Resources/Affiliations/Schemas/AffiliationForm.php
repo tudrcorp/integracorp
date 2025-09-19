@@ -464,6 +464,7 @@ class AffiliationForm
                                             Fieldset::make('Información personal del afiliado')
                                                 ->schema([
                                                     TextInput::make('full_name')
+                                                        ->label('Nombre y Apellido')
                                                         ->afterStateUpdatedJs(<<<'JS'
                                                             $set('adress_ti', $state.toUpperCase());
                                                         JS)
@@ -474,6 +475,7 @@ class AffiliationForm
                                                         ->live(onBlur: true)
                                                         ->maxLength(255),
                                                     TextInput::make('nro_identificacion')
+                                                    ->label('Número de Identificación')
                                                         ->numeric()
                                                         ->unique(
                                                             ignoreRecord: true,
@@ -490,6 +492,7 @@ class AffiliationForm
                                                             'required'  => 'Campo Requerido',
                                                         ]),
                                                     Select::make('sex')
+                                                        ->label('Sexo')
                                                         ->options([
                                                             'MASCULINO' => 'MASCULINO',
                                                             'FEMENINO' => 'FEMENINO',
@@ -499,6 +502,7 @@ class AffiliationForm
                                                             'required'  => 'Campo Requerido',
                                                         ]),
                                                     DatePicker::make('birth_date')
+                                                        ->label('Fecha de Nacimiento')
                                                         ->displayFormat('d-m-Y')
                                                         ->format('d-m-Y')
                                                         ->required()
