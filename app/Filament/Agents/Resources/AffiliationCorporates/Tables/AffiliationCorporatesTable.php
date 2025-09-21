@@ -10,6 +10,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use App\Models\AffiliateCorporate;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Log;
 use App\Models\AffiliationCorporate;
 use App\Models\DetailCorporateQuote;
@@ -24,8 +25,12 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\AffiliationCorporateController;
@@ -42,132 +47,73 @@ class AffiliationCorporatesTable
             ->description('Lista de afiliaciones corporativas registradas en el sistema')
             ->columns([
                 TextColumn::make('code')
-                    ->label('Código')
+                    ->label('Codigo')
                     ->badge()
-                    ->color('success')
-                    ->icon('heroicon-m-tag')
+                    ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('corporate_quote.code')
-                    ->label('Nro. de cotización')
+                TextColumn::make('name_corporate')
+                    ->label('Cliente Corporativo')
                     ->badge()
-                    ->color('primary')
-                    ->icon('heroicon-m-tag')
+                    ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('plan.description')
-                    ->label('Plan')
-                    ->badge()
-                    ->color(function ($state) {
-                        return match ($state) {
-                            'PLAN INICIAL'  => 'azul',
-                            'PLAN IDEAL'    => 'azulOscuro',
-                            'PLAN ESPECIAL' => 'verde',
-                            default => 'secondary',
-                        };
-                    })
-                    ->searchable(),
-            TextColumn::make('full_name_con')
-                    ->label('Nombre contratante')
-                    ->badge()
-                    ->color('verde')
-                    ->searchable(),
+
+                //...  
+                ColumnGroup::make('Plan Afiliado', [
+                    TextColumn::make('payment_frequency')
+                        ->label('Frecuencia de pago')
+                        ->alignCenter()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('poblation')
+                        ->label('Población')
+                        ->alignCenter()
+                        ->suffix(' persona(s)')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('fee_anual')
+                        ->label('Tarifa Anual')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('total_amount')
+                        ->label('Total a Pagar')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                ]),
+
                 TextColumn::make('rif')
                     ->label('Rif')
+                    ->prefix('J-')
                     ->badge()
                     ->color('verde')
                     ->searchable(),
-                TextColumn::make('email_con')
+                TextColumn::make('email')
                     ->label('Email contratante')
-                    ->badge()
-                    ->color('verde')
                     ->searchable(),
-                TextColumn::make('phone_con')
+                TextColumn::make('phone')
                     ->label('Telefono contratante')
-                    ->badge()
-                    ->color('verde')
                     ->searchable(),
-                TextColumn::make('adress_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('city_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('state_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('country_id_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('region_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                IconColumn::make('cuestion_1')
-                    ->label('Prgunta 1')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_2')
-                    ->label('Prgunta 2')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_3')
-                    ->label('Prgunta 3')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_4')
-                    ->label('Prgunta 4')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_5')
-                    ->label('Prgunta 5')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_6')
-                    ->label('Prgunta 6')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_7')
-                    ->label('Prgunta 7')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_8')
-                    ->label('Prgunta 8')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_9')
-                    ->label('Prgunta 9')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_10')
-                    ->label('Prgunta 10')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_11')
-                    ->label('Prgunta 11')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_12')
-                    ->label('Prgunta 12')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_13')
-                    ->label('Prgunta 13')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_14')
-                    ->label('Prgunta 14')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('date_today')
-                    ->label('Fecha')
-                    // ->dateTime()
+                TextColumn::make('address')
+                    ->label('Direccion')
                     ->searchable(),
-                TextColumn::make('created_by')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('city.definition')
+                    ->label('Ciudad')
+                    ->searchable(),
+                TextColumn::make('state.definition')
+                    ->label('Estado')
+                    ->searchable(),
+                TextColumn::make('country.name')
+                    ->label('Pais')
+                    ->searchable(),
                 TextColumn::make('status')
                     ->label('Estatus')
-
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
@@ -177,18 +123,45 @@ class AffiliationCorporatesTable
                             'EXCLUIDO'              => 'danger',
                         };
                     })
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->searchable()
+                    ->icon(function (mixed $state): ?string {
+                        return match ($state) {
+                            'PRE-APROBADA'          => 'heroicon-c-information-circle',
+                            'ACTIVA'                => 'heroicon-s-check-circle',
+                            'PENDIENTE'             => 'heroicon-s-exclamation-circle',
+                            'EXCLUIDO'              => 'heroicon-c-x-circle',
+                        };
+                    }),
+
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->recordActions([
                 ActionGroup::make([
