@@ -60,8 +60,8 @@ class AffiliationCorporativeChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Afiliaciones Corporativas',
-                    // 'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
-                    'data' => [0, 10, 5, 2, 21, 32, 45, 74, 65, 45, 77, 89],
+                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    // 'data' => [0, 10, 5, 2, 21, 32, 45, 74, 65, 45, 77, 89],
                     'backgroundColor' => [
                         '#B8E6FF', // Rosado muy claro
                         '#E6FFF0', // Verde menta claro

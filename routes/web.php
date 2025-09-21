@@ -245,8 +245,12 @@ Route::get('/truncate', function () {
     
 });
 
-Route::get('/convertir', function () {
+Route::get('/rp', function () {
 
-dd(1);
-
+    Log::error('Job Fallido: ' . static::class, [
+        'mensaje' => 'hello world',
+        'archivo' => 'file.php',
+        'linea' => '123',
+        'pila' => 'trace',
+    ]);
 });  

@@ -65,8 +65,8 @@ class CorporateQuoteChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Cotizaciones Corporativas',
-                    // 'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
-                    'data' => [30, 10, 5, 40, 21, 32, 1, 74, 65, 45, 77, 89],
+                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    // 'data' => [30, 10, 5, 40, 21, 32, 1, 74, 65, 45, 77, 89],
                     'backgroundColor' => [
                         '#D2D2FF', // Rosado muy claro
                         '#E6FFF0', // Verde menta claro

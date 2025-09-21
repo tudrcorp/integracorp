@@ -66,8 +66,8 @@ class IndividualQuoteChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Cotizaciones Individuales',
-                    // 'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
-                    'data' => [30, 10, 5, 2, 21, 32, 45, 74, 65, 0, 0, 0],
+                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    // 'data' => [30, 10, 5, 2, 21, 32, 45, 74, 65, 0, 0, 0],
                     'backgroundColor' => [
                         '#FFE6E6', // Rosado muy claro
                         '#E6FFF0', // Verde menta claro
