@@ -81,7 +81,7 @@
     </style>
 </head>
 <body>
-    {{-- @livewire('portada-cotizacion-individual', ['name' => $details['name']]) --}}
+    @livewire('portada-cotizacion-individual', ['name' => $details['name']])
 
     {{-- @livewire('propuesta-economica.propuesta-economica-page-2') --}}
 
