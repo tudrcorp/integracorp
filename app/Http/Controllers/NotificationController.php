@@ -512,7 +512,7 @@ class NotificationController extends Controller
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
                 'filename' => $nameDoc,
-                'document' => config('parameters.PUBLIC_URL').'/'.$nameDoc,
+                'document' => config('parameters.PUBLIC_URL').'/quotes/'.$nameDoc,
                 'caption' => 'Cotizacion Individual'
             );
             $curl = curl_init();
@@ -537,7 +537,7 @@ class NotificationController extends Controller
 
             Log::info($response);
             Log::info($phone);
-            Log::info('Document: ' .config('parameters.PUBLIC_URL') . '/' . $nameDoc);
+            Log::info('Document: ' .config('parameters.PUBLIC_URL') . '/quotes/' . $nameDoc);
             
             Log::error($err);
 
