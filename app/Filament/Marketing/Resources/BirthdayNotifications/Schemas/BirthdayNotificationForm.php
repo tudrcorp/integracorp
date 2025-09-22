@@ -11,7 +11,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 
@@ -22,80 +24,102 @@ class BirthdayNotificationForm
         return $schema
             ->components([
                 Wizard::make([
-                    Step::make('Informacion Incial')
+                    Step::make('Información Inicial')
                         ->schema([
                             Section::make('Status')
-                                ->heading('Informacion Previa')
+                                ->heading('Información Previa')
                                 ->schema([
                                     TextInput::make('title')
                                         ->label('Titulo de la notificación')
+                                        ->helperText('Este campo es necesario para identificar la notificación y ser visible para asociarla a los destinatarios.')
                                         ->required()
                                         ->validationMessages([
                                             'required' => 'El titulo de la notificación es obligatorio.',
-                                        ]),
+                                        ])
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                            $set('title', $state.toUpperCase());
+                                        JS),
+                                    Select::make('channels')
+                                        ->options([
+                                            'whatsapp' => 'WHATSAPP',
+                                            'email' => 'CORREO ELECTRÓNICO',
+                                            'sms' => 'SMS',
+                                        ])
+                                        ->helperText('Selecciona el canal de notificación. Este campo es de selección multiple, puedes seleccionar mas de un canal.')
+                                        ->required()
+                                        ->validationMessages([
+                                            'required' => 'Debe seleccionar al menos un canal.',
+                                        ])
+                                        ->label('Canal de notificación')
+                                        ->multiple(),
                                     Select::make('data_type')
                                         ->options([
-                                            'users'         => 'Usuarios',
-                                            'affiliations'  => 'Afilliados Individuales',
+                                            'users'         => 'COLABORADORES/EMPLEADOS',
+                                            'suppliers'     => 'PROVEEDORES',
+                                            'affiliations'  => 'AFILIADOS/CLIENTES',
                                             'capemiacs'     => 'CAPEMIAC',
-                                            'agents'        => 'Agentes',
+                                            'agents'        => 'AGENTES',
                                         ])
                                         ->required()
                                         ->searchable()
                                         ->label('Destinatarios')
                                         ->helperText('Selecciona los destinatarios de la notificación.'),
-                                    Textarea::make('content')
-                                        ->label('Contenido de la notificación(copy)')
-                                        ->columnSpanFull()
-                                        ->minLength(2)
-                                        ->maxLength(1024)
-                                        ->helperText('Aquí puedes escribir el contenido de la notificación que se enviará a los usuarios. Puedes incluir texto y emojis, enlaces y otros elementos según sea necesario. MÁXIMO 1024 CARACTERES')
-                                        ->required()
-                                        ->validationMessages([
-                                            'required' => 'El contenido de la notificación es obligatorio.',
-                                            'max' => 'El contenido de la notificación no puede exceder los 1024 caracteres.',
-                                            'min' => 'El contenido de la notificación debe tener al menos 2 caracteres.',
-                                        ])
-                                ])->columnSpanFull()->columns(4),
-                        ]),
-                    Step::make('Carga de Image o Video')
-                        ->schema([
-                            Section::make('image')
-                                ->heading('Imagen')
-                                ->schema([
-                                    Radio::make('is_personalized')
-                                        ->label('¿Que tipo de archivo desea cargar?')
-                                        ->options([
-                                            'image' => 'Imagen (jpg, jpeg, gif, png, webp, bmp)',
-                                            'video' => 'Video (MP4)',
-                                            'link' => 'Link (URL externa)',
-                                        ])
-                                        ->inline()
-                                        ->live()
-                                        ->label('¿La notificación tendrá un encabezado personalizado?')
-                                        ->required()
-                                        ->columnSpanFull(),
-                                    FileUpload::make('image')
-                                        ->image()
-                                        ->visibility('public')
-                                        ->hidden(fn(Get $get) => $get('is_personalized') != 'image')
-                                        ->helperText('El tamaño máximo de la imagen debe ser 16MB. Si la imagen es mayor a 16MB no sera cargado correctamente.'),
-                                    FileUpload::make('video')
-                                        ->previewable(false)
-                                        ->visibility('public')
-                                        ->hidden(fn(Get $get) => $get('is_personalized') != 'video')
-                                        ->helperText('El tamaño máximo del video debe ser 32MB. Si el video es mayor a 32MB no sera cargado correctamente.'),
-                                    TextInput::make('link')
-                                        ->label('Link Externo')
-                                        ->placeholder('https://examplo.com')
-                                        ->url()
-                                        ->validationMessages([
-                                            'url' => 'El valor ingresado no es una URL válida. Asegúrate de ingresar una URL que comience con "https://".',
-                                        ])
-                                        ->hidden(fn(Get $get) => $get('is_personalized') != 'link')
-                                        ->helperText('En este campo puedes ingresar una URL externa que deseas que los usuarios puedan visitar al interactuar con la notificación. Asegúrate de ingresar una URL válida, comenzando con "https://".'),
+                                    Fieldset::make()
+                                        ->schema([
+                                            Radio::make('type')
+                                                ->label('Tipo de archivo:')
+                                                ->options([
+                                                    'image' => 'IMAGEN',
+                                                    'video' => 'VIDEO',
+                                                    'url' => 'URL',
+                                                ])
+                                                ->descriptions([
+                                                    'image' => 'La imagen debe ser de 16MB de tamaño. Formatos permitidos: png, jpg, jpeg, webp. Si la imagen es mayor a 16MB no sera cargado correctamente.',
+                                                    'video' => 'El video debe ser de 32MB de tamaño. Formatos permitidos: mp4, 3gp , mov. Si el video es mayor a 32MB no sera cargado correctamente.',
+                                                    'url' => 'El URL debe tener como prefijo http:// ó https://. Ejemplo: http://www.pagina.com, https://www.pagina.com, etc. El URL debe ser colocado en el contidenido de la notificación(copy).',
+                                                ])
+                                                ->required()
+                                                ->live(),
+                                        ])->columnSpanFull(),
+                                    Fieldset::make('Encabezado de la notificación')
+                                        ->schema([
+                                            TextInput::make('header_title')
+                                                ->label('Titulo de la notificación')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required' => 'El titulo de la notificación es obligatorio.',
+                                                ])
+                                                ->helperText('Aquí puedes escribir el titulo de la notificación que se enviará a los usuarios. Ejemplo: Estimado(a):, Sr(a)., Amigo(a), etc.'),
+                                        ])->columnSpanFull(),
+                                    Fieldset::make('Archivo')
+                                        ->hidden(fn(Get $get) => $get('type') == 'url')
+                                        ->schema([
+                                            FileUpload::make('file')
+                                            ->label('Archivo de la notificación (Imagen o Video)')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required' => 'La imagen es obligatoria.',
+                                                ])
+                                                ->helperText('El tamaño máximo de la imagen debe ser 16MB. Si la imagen es mayor a 16MB no sera cargado correctamente.')
+                                        ])->columnSpanFull(),
+                                    Fieldset::make('Contenido de la notificación')
+                                        ->schema([
+                                            Textarea::make('content')
+                                                ->label('Copy:')
+                                                ->columnSpanFull()
+                                                ->minLength(2)
+                                                ->maxLength(1024)
+                                                ->helperText('Aquí puedes escribir el contenido de la notificación que se enviará a los usuarios. Puedes incluir texto y emojis, enlaces y otros elementos según sea necesario. MÁXIMO 1024 CARACTERES')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required' => 'El contenido de la notificación es obligatorio.',
+                                                    'max' => 'El contenido de la notificación no puede exceder los 1024 caracteres.',
+                                                    'min' => 'El contenido de la notificación debe tener al menos 2 caracteres.',
+                                                ]),
+
+                                        ])->columnSpanFull(),
                                 ])->columnSpanFull()->columns(3),
-                        ]),
+                        ])
                 ])
                     ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button

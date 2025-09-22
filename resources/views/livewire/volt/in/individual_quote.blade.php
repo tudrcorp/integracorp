@@ -135,7 +135,7 @@ new #[Layout('components.layouts.interactive')] class extends Component {
         $id = $this->quote;
         $individual_quote = IndividualQuote::where('id', $id)->first();
         //descargo la cotizacion de mi carpeta storage
-        $file = public_path('storage/quotes/' . $individual_quote->code .'.pdf');
+        $file = public_path('storage/quotes/' . $individual_quote->code . '.pdf');
         return response()->download($file);
     }
 }; ?>
@@ -146,7 +146,7 @@ new #[Layout('components.layouts.interactive')] class extends Component {
     <div class="flex flex-col justify-center items-center mb-5 mt-5">
 
         <div class="flex justify-center items-center h-12">
-            <img class="h-12" src="{{ asset('image/logo_new.png') }}" alt="Logo" />
+            <img class="h-12" src="{{ asset('image/logoNewTDG.png') }}" alt="Logo" />
         </div>
 
         <flux:text class="mt-2 mb-6 text-base text-center">

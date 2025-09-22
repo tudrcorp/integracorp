@@ -9,17 +9,22 @@ class BirthdayNotification extends Model
     protected $table = 'birthday_notifications';
 
     protected $fillable = [
-        'image',
-        'video',
-        'link',
+        'title',
         'content',
+        'file',
+        'is_sent',
+        'is_approved',
+        'approved_by',
+        'reason',
+        'header_title',
+        'channels',
         'data_type',
-        'status',
+        'type'
     ];
 
-    // protected $casts = [
-    //     'data_type' => 'array',
-    // ];
+    protected $casts = [
+        'channels' => 'array',
+    ];
 
     // public function scopeActive($query)
     // {

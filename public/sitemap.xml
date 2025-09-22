@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+    <!-- Página principal -->
+    <url>
+        <loc>https://integracorp.tudrgroup.com</loc>
+        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Panel Admin -->
+    <url>
+        <loc>https://integracorp.tudrgroup.com/admin</loc>
+        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Secciones del menú -->
+    <url>
+        <loc>https://integracorp.tudrgroup.com/master</loc>
+        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://integracorp.tudrgroup.com/general</loc>
+        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://integracorp.tudrgroup.com/agente</loc>
+        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://integracorp.tudrgroup.com/marketing</loc>
+        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://integracorp.tudrgroup.com/telemedicina</loc>
+        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+</urlset>

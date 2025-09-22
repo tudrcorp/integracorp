@@ -496,12 +496,12 @@ class NotificationController extends Controller
 
             Contáctanos para mayor información. 
 
-            📱 WhatsApp: (+58) 424 227 1498
+            📱 WhatsApp: (+58) 424 222 0056
             ✉️ Email: 
+            cotizaciones@tudrencasa.com
             comercial@tudrencasa.com
-            comercial@tudrenviajes.com
 
-            ¡Esperamos verte pronto en nuestra plataforma!
+            ¡Gracias por darnos la oportunidad de servirte!
 
             Atentamente,
             Gerencia Comercial Tu Dr. Group 🫱🏼‍🫲🏼 
@@ -1606,42 +1606,93 @@ class NotificationController extends Controller
         }
     }
 
-    static function notificationBirthday($user, $notification)
+    static function notificationBirthday($name, $phone, $content, $file, $type)
     {
         
         try {
 
+
             $body = <<<HTML
 
-            Apreciado/a: *{$user->name}*
+            Apreciado/a: *{$name}*
 
-            {$notification['content']}
+            {$content}
 
             HTML;
 
-            $params = array(
-                'token' => config('parameters.TOKEN'),
-                'to' => $user->phone,
-                // 'image' => config('parameters.PUBLIC_URL').'/'.$notification['image'],
-                'image' => 'https://tudrgroup.com/images/nuevaInvitacion.jpg',
-                'caption' => $body
-            );
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+            if ($type == 'image') {
+                $params = array(
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $phone,
+                    'image' => config('parameters.PUBLIC_URL') . '/' . $file,
+                    'caption' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+            }
+
+            if ($type == 'video') {
+                $params = array(
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $phone,
+                    'video' => config('parameters.PUBLIC_URL') . '/' . $file,
+                    'caption' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+            }
+
+            if ($type == 'url') {
+                $params = array(
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $phone,
+                    'body' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+            }
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1650,6 +1701,10 @@ class NotificationController extends Controller
 
             Log::info($response);
             Log::error($err);
+            
+            Log::info('Tipo: '. $type);
+            Log::info($name);
+            Log::info($phone);
 
         
             //code...

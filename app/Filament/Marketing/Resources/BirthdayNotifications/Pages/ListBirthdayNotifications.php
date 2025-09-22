@@ -10,10 +10,14 @@ class ListBirthdayNotifications extends ListRecords
 {
     protected static string $resource = BirthdayNotificationResource::class;
 
+    protected static ?string $title = 'Notificaciones de Cumpleaños';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear Notificación')
+                ->icon('heroicon-s-plus')
         ];
     }
 }

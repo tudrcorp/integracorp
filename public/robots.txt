@@ -1,2 +1,23 @@
 User-agent: *
-Disallow:
+Allow: /
+
+# Sitemap
+Sitemap: https://integracorp.tudrgroup.com/sitemap.xml
+
+# Disallow acceso a áreas privadas
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+Disallow: /storage/
+
+# Bloquear archivos sensibles
+Disallow: /*.env
+Disallow: /*.log
+Disallow: /artisan
+
+# Bots específicos (opcional)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /

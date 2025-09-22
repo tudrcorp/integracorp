@@ -10,6 +10,7 @@ use App\Mail\NotificationMasiveMail;
 use App\Models\BirthdayNotification;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\Debugbar\Facades\Debugbar;
+use App\Mail\NotificationMasiveMailBirthday;
 use App\Http\Controllers\NotificationController;
 
 class NotificationMasiveService
@@ -189,6 +190,27 @@ class NotificationMasiveService
      *
      * @return \Illuminate\Http\Response
      */
+    static function sendEmailBirthday($email, $name, $content, $file)
+    {
+
+        try {
+
+            set_time_limit(0);
+
+            Mail::to($email)->send(new NotificationMasiveMailBirthday($name, $content, $file));
+
+            return true;
+            
+        } catch (\Throwable $th) {
+            Log::error($th);
+        }
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
     static function sendVideo($record)
     {
 
@@ -351,7 +373,9 @@ class NotificationMasiveService
     {
         try {
 
-            $tables = BirthdayNotification::where('status', 'ACTIVA')->get()->toArray();
+            set_time_limit(0);
+
+            $tables = BirthdayNotification::where('status', 'APROBADA')->get()->toArray();
             if (count($tables) == 0) {
                 return;
             }
@@ -366,11 +390,45 @@ class NotificationMasiveService
                  * @param $now
                  * 
                  */
-                $data = DB::table($tables[$i]['data_type'])
-                    ->select('name', 'email', 'phone', 'birthday_date')
-                    ->where('birthday_date', $now)
-                    ->get()
-                    ->toArray();
+                if($tables[$i]['data_type'] == 'agents' || $tables[$i]['data_type'] == 'users' || $tables[$i]['data_type'] == 'suppliers' ) {
+                    $data_type = 1;
+                    $data = DB::table($tables[$i]['data_type'])
+                        ->select('name', 'email', 'phone', 'birth_date')
+                        ->where('birth_date', $now)
+                        ->get()
+                        ->toArray();
+                    //Data para el envio
+                    $name = $tables[$i]['name'];
+                    $email = $tables[$i]['email'];
+                    $phone = $tables[$i]['phone'];
+
+                }
+                if ($tables[$i]['data_type'] == 'capemiacs') {
+                    $data_type = 2;
+                    $data = DB::table($tables[$i]['data_type'])
+                        ->select('cliente', 'email', 'telefonoUno', 'fecha_registro')
+                        ->where('fecha_registro', $now)
+                        ->get()
+                        ->toArray();
+                    //Data para el envio
+                    $email = $tables[$i]['email'];
+                    $name = $tables[$i]['cliente'];
+                    $phone = $tables[$i]['telefonoUno'];
+                   
+                }
+                if ($tables[$i]['data_type'] == 'affiliations') {
+                    $data_type = 3;
+                    $data = DB::table($tables[$i]['data_type'])
+                        ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
+                        ->where('birth_date_ti', $now)
+                        ->get()
+                        ->toArray();
+                    //Data para el envio
+                    $email = $tables[$i]['email_ti'];
+                    $name = $tables[$i]['full_name_ti'];
+                    $phone = $tables[$i]['phone_ti'];
+                    
+                }
                 // dd($data[0]->name);
                 /**
                  * Envio de notificacion de cumpleaños
@@ -378,8 +436,18 @@ class NotificationMasiveService
                  * @param $data
                  * 
                  */
-                for ($j = 0; $j < count($data); $j++) {
-                    NotificationController::notificationBirthday($data[$j], $tables[$i]);
+                if($tables[$i]['type']  == 'whatsapp') {
+                    for ($j = 0; $j < count($data); $j++) {
+                        NotificationController::notificationBirthday($name, $phone, $tables[$i]['content'], $tables[$i]['file'], $tables[$i]['type']);
+                        sleep(1);
+                    }
+                }
+
+                if($tables[$i]['type']  == 'email') {
+                    for ($j = 0; $j < count($data); $j++) {
+                        self::sendEmailBirthday($email, $name, $tables[$i]['content'], $tables[$i]['file']);
+                        sleep(1);
+                    }
                 }
             }
 
