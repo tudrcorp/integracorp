@@ -537,6 +537,7 @@ class NotificationController extends Controller
 
             Log::info($response);
             Log::info($phone);
+            Log::info('Document: ' .config('parameters.PUBLIC_URL') . '/' . $nameDoc);
             
             Log::error($err);
 
