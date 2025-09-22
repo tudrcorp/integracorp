@@ -249,33 +249,6 @@
 
     <!-- Font Awesome para íconos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" crossorigin="anonymous"></script>
-    <script type="application/ld+json">
-        {
-            "@context": "https://schema.org"
-            , "@type": "Organization"
-            , "name": "Integracorp"
-            , "url": "https://integracorp.tudrgroup.com"
-            , "logo": "https://integracorp.tudrgroup.com/image/logoTDG.png"
-            , "description": "Empresa especializada en la integración de servicios médicos y tecnología digital para mejorar la salud en Venezuela."
-            , "address": {
-                "@type": "PostalAddress"
-                , "addressLocality": "Caracas"
-                , "addressRegion": "Distrito Capital"
-                , "addressCountry": "VE"
-            }
-            , "contactPoint": {
-                "@type": "ContactPoint"
-                , "telephone": "+58-424-5718777"
-                , "contactType": "Atención al cliente"
-            }
-            , "sameAs": [
-                "https://facebook.com/integracorp"
-                , "https://instagram.com/integracorp"
-                , "https://linkedin.com/company/integracorp"
-            ]
-        }
-
-    </script>
 
 
 </body>
