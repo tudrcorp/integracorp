@@ -344,7 +344,7 @@ class CheckAffiliationsTable
                             ->live()
                             ->options([
                                 'BASICO' => 'BÁSICO',
-                                'DRESS-TAILOR' => 'DRESS-TAILOR',
+                                'DRESS-TAYLOR' => 'DRESS-TAYLOR',
                             ]),
                         Select::make('corporate_quote_id')
                             ->label('Seleccione la Cotización Corporativa')

@@ -483,19 +483,41 @@ class NotificationController extends Controller
      * @return bool
      */
 
-    static function sendQuote($phone, $message)
+    static function sendQuote($phone, $nameDoc)
     {
 
         try {
 
+            $body = <<<HTML
+
+            *Estimado(a)*.
+
+            Le confirmamos que el documento que acaba de recibir corresponde a la cotización solicitada, en la cual se detalla el plan(s) y sus tarifas.
+
+            Contáctanos para mayor información. 
+
+            📱 WhatsApp: (+58) 424 227 1498
+            ✉️ Email: 
+            comercial@tudrencasa.com
+            comercial@tudrenviajes.com
+
+            ¡Esperamos verte pronto en nuestra plataforma!
+
+            Atentamente,
+            Gerencia Comercial Tu Dr. Group 🫱🏼‍🫲🏼 
+
+            HTML;
+            
             $params = array(
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
-                'body' => $message,
+                'filename' => $nameDoc,
+                'document' => config('parameters.PUBLIC_URL').'/'.$nameDoc,
+                'caption' => 'Cotizacion Individual'
             );
             $curl = curl_init();
             curl_setopt_array($curl, array(
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                CURLOPT_URL => config('parameters.CURLOPT_URL_DOCUMENT'),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => "",
                 CURLOPT_MAXREDIRS => 10,
@@ -513,21 +535,18 @@ class NotificationController extends Controller
             $response = curl_exec($curl);
             $err = curl_error($curl);
 
-            curl_close($curl);
+            Log::info($response);
+            Log::info($phone);
+            
+            Log::error($err);
 
             curl_close($curl);
 
-            if ($err) {
-                Log::error($err);
-                return false;
-            } else {
-                Log::info($response);
-                return true;
-            }
+            return true;
 
-            //code...
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::sendCotizaPlanInicial()', $th->getMessage());
+            Log::error($th->getMessage());
+            return false;
         }
     }
 
@@ -1741,7 +1760,9 @@ class NotificationController extends Controller
             Log::error($err);
 
             curl_close($curl);
-            //...
+            
+            return true;
+            
         } catch (\Throwable $th) {
             //throw $th;
         }
@@ -1754,7 +1775,8 @@ class NotificationController extends Controller
 
             Mail::to($data['email'])->send(new SendNotificationMailSingle($record));
             
-            //...
+            return true;
+        //...
         } catch (\Throwable $th) {
             //throw $th;
         }

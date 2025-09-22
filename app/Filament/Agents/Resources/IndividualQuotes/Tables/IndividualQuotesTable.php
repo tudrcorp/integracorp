@@ -287,12 +287,9 @@ class IndividualQuotesTable
                                 if (isset($data['phone'])) {
                                     
                                     $phone = $data['phone'];
-                                    $doc = $record->code . '.pdf';
-                                    $link = config('parameters.INTEGRACORP_URL') . '/w/' . Crypt::encryptString($record->id);
-
-                                    $message = MessageController::messageIndividualQuote($link);
+                                    $nameDoc = $record->code . '.pdf';
                                     
-                                    $res = NotificationController::sendQuote($phone, $message);
+                                    $res = NotificationController::sendQuote($phone, $nameDoc);
 
                                     if (!$res) {
                                         Notification::make()
@@ -306,7 +303,7 @@ class IndividualQuotesTable
                                 }
 
                                 Notification::make()
-                                    ->title('ENVIADO EXITOSO')
+                                    ->title('ENVÍO EXITOSO')
                                     ->body('La cotización fue reenviada exitosamente.')
                                     ->icon('heroicon-s-check-circle')
                                     ->iconColor('verde')

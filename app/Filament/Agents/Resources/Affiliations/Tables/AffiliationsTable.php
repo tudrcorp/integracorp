@@ -162,9 +162,6 @@ class AffiliationsTable
                     ->badge()
                     ->dateTime('d/m/Y h:i:s a')
                     ->searchable(),
-                TextColumn::make('created_by')
-                    ->label('Agente')
-                    ->searchable(),
                 TextColumn::make('family_members')
                     ->label('Afiliados')
                     ->suffix(' Persona(s)')
