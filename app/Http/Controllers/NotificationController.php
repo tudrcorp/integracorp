@@ -513,7 +513,7 @@ class NotificationController extends Controller
                 'to' => $phone,
                 'filename' => $nameDoc,
                 'document' => config('parameters.PUBLIC_URL').'/quotes/'.$nameDoc,
-                'caption' => 'Cotizacion Individual'
+                'caption' => $body
             );
             $curl = curl_init();
             curl_setopt_array($curl, array(
