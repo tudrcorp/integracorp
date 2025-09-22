@@ -230,17 +230,6 @@
                <p class="text-sm md:text-base text-gray-200 font-light leading-tight">
                    © {{ date('Y') }} INTEGRACORP. Tu Doctor Group, Todos los derechos reservados.
                </p>
-               {{-- <div class="flex justify-center space-x-6 mt-3 text-lg">
-                   <a href="#" class="text-gray-300 hover:text-blue-400 transition-all duration-200 transform hover:scale-110">
-                       <i class="fab fa-facebook-f"></i>
-                   </a>
-                   <a href="#" class="text-gray-300 hover:text-pink-400 transition-all duration-200 transform hover:scale-110">
-                       <i class="fab fa-instagram"></i>
-                   </a>
-                   <a href="#" class="text-gray-300 hover:text-green-400 transition-all duration-200 transform hover:scale-110">
-                       <i class="fab fa-whatsapp"></i>
-                   </a>
-               </div> --}}
            </div>
        </div>
    </footer>
