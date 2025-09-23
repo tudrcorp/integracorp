@@ -14,6 +14,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Columns\TextInputColumn;
 
 class FeesTable
 {
@@ -38,9 +39,8 @@ class FeesTable
                     ->numeric()
                     ->sortable()
                     ->searchable(),
-                TextColumn::make('price')
+                TextInputColumn::make('price')
                     ->label('Tarifa')
-                    ->money()
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('status')

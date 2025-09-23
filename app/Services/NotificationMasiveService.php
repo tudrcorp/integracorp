@@ -10,8 +10,10 @@ use App\Mail\NotificationMasiveMail;
 use App\Models\BirthdayNotification;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\Debugbar\Facades\Debugbar;
+use App\Http\Controllers\UtilsController;
 use App\Mail\NotificationMasiveMailBirthday;
 use App\Http\Controllers\NotificationController;
+use App\Jobs\SendNotificationMasiveMailBirthday;
 
 class NotificationMasiveService
 {
@@ -197,7 +199,7 @@ class NotificationMasiveService
 
             set_time_limit(0);
 
-            Mail::to($email)->send(new NotificationMasiveMailBirthday($name, $content, $file));
+            SendNotificationMasiveMailBirthday::dispatch($email, $name, $content, $file)->onQueue('system');
 
             return true;
             
@@ -375,80 +377,148 @@ class NotificationMasiveService
 
             set_time_limit(0);
 
-            $tables = BirthdayNotification::where('status', 'APROBADA')->get()->toArray();
-            if (count($tables) == 0) {
+            $rowsNotifications = BirthdayNotification::where('status', 'APROBADA')->get()->toArray();
+            if (count($rowsNotifications) == 0) {
                 return;
             }
-            $now = now()->format('d/m/Y');
+            //Fecha actual con el formato para comparar dia y mes
+            $now = now()->format('d/m');
 
             // dd($tables);
-            for ($i = 0; $i < count($tables); $i++) {
-                /**
-                 * Preparamos la data para el envio de la notificacion
-                 * 
-                 * @param $tables
-                 * @param $now
-                 * 
-                 */
-                if($tables[$i]['data_type'] == 'agents' || $tables[$i]['data_type'] == 'users' || $tables[$i]['data_type'] == 'suppliers' ) {
-                    $data_type = 1;
-                    $data = DB::table($tables[$i]['data_type'])
-                        ->select('name', 'email', 'phone', 'birth_date')
-                        ->where('birth_date', $now)
-                        ->get()
-                        ->toArray();
-                    //Data para el envio
-                    $name = $tables[$i]['name'];
-                    $email = $tables[$i]['email'];
-                    $phone = $tables[$i]['phone'];
+            for ($i = 0; $i < count($rowsNotifications); $i++) {
 
-                }
-                if ($tables[$i]['data_type'] == 'capemiacs') {
-                    $data_type = 2;
-                    $data = DB::table($tables[$i]['data_type'])
-                        ->select('cliente', 'email', 'telefonoUno', 'fecha_registro')
-                        ->where('fecha_registro', $now)
-                        ->get()
-                        ->toArray();
-                    //Data para el envio
-                    $email = $tables[$i]['email'];
-                    $name = $tables[$i]['cliente'];
-                    $phone = $tables[$i]['telefonoUno'];
-                   
-                }
-                if ($tables[$i]['data_type'] == 'affiliations') {
-                    $data_type = 3;
-                    $data = DB::table($tables[$i]['data_type'])
-                        ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
-                        ->where('birth_date_ti', $now)
-                        ->get()
-                        ->toArray();
-                    //Data para el envio
-                    $email = $tables[$i]['email_ti'];
-                    $name = $tables[$i]['full_name_ti'];
-                    $phone = $tables[$i]['phone_ti'];
+                //For para recorrer los canales de envio
+                for ($j = 0; $j < count($rowsNotifications[$i]['channels']); $j++) {
+
+                    //Canal Whatsapp
+                    if($rowsNotifications[$i]['channels'][$j] == 'whatsapp') {
+                        
+                        //AGENTS, USERS, SUPPLIERS  
+                        if($rowsNotifications[$i]['data_type'] == 'agents' || $rowsNotifications[$i]['data_type'] == 'users' || $rowsNotifications[$i]['data_type'] == 'suppliers' ) {
+                            
+                            //Selecciono la data que voy a utilizar segun la notificacion
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('name', 'email', 'phone', 'birth_date')
+                                ->get()
+                                ->toArray();
+                            
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+
+                                /**
+                                 * En caso de que la data venga NULL
+                                 */
+                                if ($data[$k]->phone != null && $data[$k]->birth_date != null) {
+                                    //Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
+                                    $conversionDate = UtilsController::converterDate($data[$k]->birth_date);
+    
+                                    //comparamos la fecha de nacimiento con la fecha actual
+                                    if($conversionDate == $now){
+                                        //Ejecuto el envio de la notificacion
+                                        NotificationController::notificationBirthday($data[$k]->name, $data[$k]->phone, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file'], $rowsNotifications[$i]['type']);
+    
+                                    }
+                                }else{
+                                    continue;
+                                }
+                                
+                            }
+                            
+                        }
+
+                        //AFFILIATIONS
+                        if ($rowsNotifications[$i]['data_type'] == 'affiliations') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
+                                ->where('birth_date_ti', $now)
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+
+                                /**
+                                 * En caso de que la data venga NULL
+                                 */
+                                if ($data[$k]->phone_ti != null && $data[$k]->birth_date_ti != null) {
+                                    //Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
+                                    $conversionDate = UtilsController::converterDate($data[$k]->birth_date_ti);
+
+                                    //comparamos la fecha de nacimiento con la fecha actual
+                                    if ($conversionDate == $now) {
+                                        //Ejecuto el envio de la notificacion
+                                        NotificationController::notificationBirthday($data[$k]->full_name_ti, $data[$k]->phone_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file'], $rowsNotifications[$i]['type']);
+                                    }
+                                    
+                                } else {
+                                    continue;
+                                }
+                            }
+                        }
+                        
+                    }
+
+                    //Canal Email
+                    //sendEmailBirthday($email, $name, $content, $file)
+                    if ($rowsNotifications[$i]['channels'][$j] == 'email') {
+                        
+                        //AGENTS, USERS, SUPPLIERS
+                        if ($rowsNotifications[$i]['data_type'] == 'agents' || $rowsNotifications[$i]['data_type'] == 'users' || $rowsNotifications[$i]['data_type'] == 'suppliers') {
+
+                            //Selecciono la data que voy a utilizar segun la notificacion
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('name', 'email', 'phone', 'birth_date')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+
+                                /**
+                                 * En caso de que la data venga NULL
+                                 */
+                                if ($data[$k]->email != null) {
+                                    
+                                    //Ejecuto el envio de la notificacion
+                                    self::sendEmailBirthday($data[$k]->email, $data[$k]->name, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                    
+                                } else {
+                                    continue;
+                                }
+                            }
+                            
+                        }
+
+                        //AFFILIATIONS
+                        if ($rowsNotifications[$i]['data_type'] == 'affiliations') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
+                                ->where('birth_date_ti', $now)
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+
+                                /**
+                                 * En caso de que la data venga NULL
+                                 */
+                                if ($data[$k]->email_ti != null) {
+
+                                    //Ejecuto el envio de la notificacion
+                                    self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                } else {
+                                    continue;
+                                }
+                            }
+                            
+                        }
+                    }
                     
+                    //End...
                 }
-                // dd($data[0]->name);
-                /**
-                 * Envio de notificacion de cumpleaños
-                 * 
-                 * @param $data
-                 * 
-                 */
-                if($tables[$i]['type']  == 'whatsapp') {
-                    for ($j = 0; $j < count($data); $j++) {
-                        NotificationController::notificationBirthday($name, $phone, $tables[$i]['content'], $tables[$i]['file'], $tables[$i]['type']);
-                        sleep(1);
-                    }
-                }
-
-                if($tables[$i]['type']  == 'email') {
-                    for ($j = 0; $j < count($data); $j++) {
-                        self::sendEmailBirthday($email, $name, $tables[$i]['content'], $tables[$i]['file']);
-                        sleep(1);
-                    }
-                }
+                
+                //End...
             }
 
             return true;

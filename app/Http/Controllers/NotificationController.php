@@ -1624,7 +1624,8 @@ class NotificationController extends Controller
                 $params = array(
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'image' => config('parameters.PUBLIC_URL') . '/' . $file,
+                    // 'image' => config('parameters.PUBLIC_URL') . '/' . $file,
+                    'image' => 'https://tudrgroup.com/images/nuevaInvitacion.jpg',
                     'caption' => $body
                 );
                 $curl = curl_init();
@@ -1654,7 +1655,7 @@ class NotificationController extends Controller
                 );
                 $curl = curl_init();
                 curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+                    CURLOPT_URL => config('parameters.CURLOPT_URL_VIDEO'),
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => "",
                     CURLOPT_MAXREDIRS => 10,

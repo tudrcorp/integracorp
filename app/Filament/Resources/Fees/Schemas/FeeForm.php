@@ -48,7 +48,7 @@ class FeeForm
                                     ->description('Formulario para el registro de los rangos dd edades. Campo Requerido(*)')
                                     ->icon('heroicon-s-adjustments-vertical')
                                     ->schema([
-                                        Grid::make(2)->schema([
+                                        Grid::make(3)->schema([
                                             TextInput::make('code')
                                                 ->label('Código')
                                                 ->prefixIcon('heroicon-m-clipboard-document-check')
@@ -72,14 +72,40 @@ class FeeForm
                                                 ->required()
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
+                                                ]),
+                                            TextInput::make('range')
+                                                ->label('Rango de edad')
+                                                ->helperText('Debe colocar la descripción del rango de edad en texto plano. Ej: 1 a 10, 25 a 35, 45 a 80.')
+                                                ->prefixIcon('heroicon-m-shield-check')
+                                                ->maxLength(255),
+                                            TextInput::make('age_init')
+                                                ->label('Edad de Inicio')
+                                                ->numeric()
+                                                ->validationMessages([
+                                                    'required' => 'Campo requerido',
+                                                    'numeric'  => 'Debe ser un número entero',
+                                                    'regex'    => 'Rango de edad inválido',
                                                 ])
-                                        ]),
-                                        TextInput::make('range')
-                                            ->label('Rango de edad')
-                                            ->prefixIcon('heroicon-m-shield-check')
-                                            ->maxLength(255),
-                                        Hidden::make('status')->default('ACTIVO'),
-                                        Hidden::make('created_by')->default(Auth::user()->name)
+                                                ->regex('/^\d{1,3}$/')
+                                                ->prefixIcon('heroicon-m-shield-check')
+                                                ->helperText('Edad Inicio: Rango de edad en años. Debe ser un número entero.')
+                                                ->maxLength(255),
+                                            TextInput::make('age_end')
+                                                ->label('Edad Fin')
+                                                ->helperText('Edad Fin: Rango de edad en años. Debe ser un número entero.')
+                                                ->numeric()
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required' => 'Campo requerido',
+                                                    'numeric'  => 'Debe ser un número entero',
+                                                    'regex'    => 'Rango de edad inválido',
+                                                ])
+                                                ->regex('/^\d{1,3}$/')
+                                                ->prefixIcon('heroicon-m-shield-check')
+                                                ->maxLength(255),
+                                                Hidden::make('status')->default('ACTIVO'),
+                                                Hidden::make('created_by')->default(Auth::user()->name)
+                                        ])->columnSpanFull(),
                                     ])->columnSpanFull()->columns(3),
                             ])
                             ->searchable()
@@ -120,14 +146,15 @@ class FeeForm
                                                 ->validationMessages([
                                                     'required' => 'El precio debe ser numérico.',
                                                 ]),
-                                        ]),
-
+                                        ])->columnSpanFull(),
                                         hidden::make('status')->default('ACTIVO'),
                                         hidden::make('created_by')->default(Auth::user()->name)
                                     ])->columnSpanFull()->columns(3),
                             ]),
 
                         TextInput::make('price')
+                            ->label('Precio US$')
+                            ->helperText('Precio del beneficio en dólares estadounidenses. Utilice separador decimal(.)')
                             ->required()
                             ->numeric()
                             ->prefix('$'),

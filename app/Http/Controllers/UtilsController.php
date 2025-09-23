@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Fee;
 use App\Models\City;
 use App\Models\Plan;
@@ -1637,6 +1638,14 @@ class UtilsController extends Controller
 
         // Formateamos el nuevo número con al menos 3 dígitos (por si llega a 1000, etc.)
         return sprintf('%s-00%d', '08', $nuevoNumero);
+    }
+
+    public static function converterDate($date): string
+    {
+        $fecha = Carbon::createFromFormat('d/m/Y', $date);
+        $soloDiaMes = $fecha->format('d/m');
+        return $soloDiaMes;
+
     }
 
     

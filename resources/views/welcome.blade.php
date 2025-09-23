@@ -140,7 +140,14 @@
         </button>
 
         <!-- Dropdown con iconos y efecto glow -->
-        <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="origin-top-left absolute mt-2 w-52 rounded-xl shadow-lg bg-black bg-opacity-95 backdrop-blur-md border border-gray-700 overflow-hidden">
+        <div x-show="open" 
+        x-transition:enter="transition ease-out duration-150" 
+        x-transition:enter-start="opacity-0 transform scale-95" 
+        x-transition:enter-end="opacity-100 transform scale-100" 
+        x-transition:leave="transition ease-in duration-100" 
+        x-transition:leave-start="opacity-100 transform scale-100" 
+        x-transition:leave-end="opacity-0 transform scale-95" 
+        class="origin-top-left absolute mt-2 w-52 rounded-xl shadow-lg bg-black bg-opacity-20 backdrop-blur-sm border border-white border-opacity-20 hover:bg-opacity-200 overflow-hidden">
             <div class="py-1 text-sm text-gray-200">
 
                 <!-- Item 1: Panel Principal -->

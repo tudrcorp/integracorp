@@ -10,7 +10,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-class NotificationMasiveMailBirthday extends Mailable
+class NotificationMasiveMailBirthday extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -45,7 +45,7 @@ class NotificationMasiveMailBirthday extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.cumpleanos-email',
+            view: 'mails.cumpleanos-email',
         );
     }
 
