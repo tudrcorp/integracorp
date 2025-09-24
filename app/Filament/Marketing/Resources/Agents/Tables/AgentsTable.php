@@ -15,6 +15,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Columns\TextInputColumn;
 use Illuminate\Database\Eloquent\Collection;
 
 class AgentsTable
@@ -53,14 +54,13 @@ class AgentsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
-                TextColumn::make('email')
+                TextInputColumn::make('email')
                     ->label('Correo electrónico')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('phone')
+                    ->searchable(),
+                TextInputColumn::make('phone')
                     ->label('Número de Teléfono')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->searchable(),
+                    
                 TextColumn::make('user_instagram')
                     ->label('Usuario de Instagram')
                     ->searchable()
