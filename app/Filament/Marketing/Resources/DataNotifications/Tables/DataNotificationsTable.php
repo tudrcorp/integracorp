@@ -10,6 +10,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
 
 class DataNotificationsTable
 {
@@ -25,10 +26,10 @@ class DataNotificationsTable
                 TextColumn::make('fullName')
                     ->label('Nombre y Apellido')
                     ->searchable(),
-                TextColumn::make('email')
+                TextInputColumn::make('email')
                     ->label('Correo Electrónico')
                     ->searchable(),
-                TextColumn::make('phone')
+               TextInputColumn::make('phone')
                     ->label('Numero de Teléfono')
                     ->searchable(),
                 TextColumn::make('created_at')
