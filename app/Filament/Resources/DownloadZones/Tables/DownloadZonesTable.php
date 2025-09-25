@@ -22,8 +22,9 @@ class DownloadZonesTable
             ->columns([
                 Stack::make([
                     ImageColumn::make('image_icon')
-                        ->imageWidth(250)
-                        ->imageHeight(250),
+                        ->imageHeight('auto')
+                        ->imageWidth('50%')
+                        ->visibility('public'),
                     Stack::make([
                         TextColumn::make('description')
                             ->weight(FontWeight::Bold),

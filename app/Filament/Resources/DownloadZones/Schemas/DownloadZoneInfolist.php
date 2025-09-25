@@ -20,7 +20,10 @@ class DownloadZoneInfolist
                     ->dateTime(),
                 TextEntry::make('updated_at')
                     ->dateTime(),
-                ImageEntry::make('image_icon'),
+                ImageEntry::make('image_icon')
+                    ->imageHeight('auto')
+                    ->imageWidth('25%'),
+                    // ->visibility('public'),
                 TextEntry::make('description'),
             ]);
     }

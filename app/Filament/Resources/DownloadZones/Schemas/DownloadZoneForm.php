@@ -20,10 +20,34 @@ class DownloadZoneForm
                     ->schema([
                         Grid::make()->schema([
                             FileUpload::make('document')
-                                ->label('Documento')
+                                    ->label('Documento')
+                                    ->disk('public')
+                                    ->directory('download-zone')
+                                    ->preserveFilenames()
+                                    ->maxSize(10240) // 10 MB
+                                    ->acceptedFileTypes([
+                                        'application/pdf',
+                                        'application/msword',
+                                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                        'application/vnd.ms-excel',
+                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'application/vnd.ms-powerpoint',
+                                        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                                        'text/plain',
+                                        'image/jpeg',
+                                        'image/png',
+                                        'image/gif',
+                                        'image/svg+xml',
+                                        'application/zip',
+                                        'application/x-rar-compressed',
+                                    ])
+                                 ->visibility('public')
                                 ->required(),
                             FileUpload::make('image_icon')
                                 ->label('previsualizacion')
+                                ->image()
+                                ->disk('public')
+                                ->directory('download-zone')
                                 ->required(),
                         ])->columnSpanFull()->columns(2),
                         Select::make('zone_id')
