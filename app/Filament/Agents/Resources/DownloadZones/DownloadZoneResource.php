@@ -58,4 +58,10 @@ class DownloadZoneResource extends Resource
             'edit' => EditDownloadZone::route('/{record}/edit'),
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        // Deshabilitado temporalmente por mantenimiento
+        return false;
+    }
 }
