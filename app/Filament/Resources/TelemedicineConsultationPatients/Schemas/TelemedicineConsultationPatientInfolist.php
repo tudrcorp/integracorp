@@ -9,6 +9,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Infolists\Components\TextEntry;
 use App\Models\TelemedicineConsultationPatient;
+use Filament\Infolists\Components\RepeatableEntry;
 
 class TelemedicineConsultationPatientInfolist
 {
@@ -17,11 +18,12 @@ class TelemedicineConsultationPatientInfolist
         return $schema
             ->components([
                 Section::make()
+                    ->collapsed(true)
                     ->description(fn(TelemedicineConsultationPatient $record) => 'PACIENTE: ' . $record->full_name . ' | ' . 'EDAD: ' . $record->telemedicinePatient->age . ' años | ' . 'SEXO: ' . $record->telemedicinePatient->sex)
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
-                        Fieldset::make('INFORMACIÓN PRINCIPAL')
+                        Fieldset::make('INFORMACIÓN PRINCIPAL DE LA TELEMEDICINA')
                             ->schema([
                                 TextEntry::make('telemedicine_case_code')
                                     ->label('Numero de Caso:')
@@ -42,22 +44,6 @@ class TelemedicineConsultationPatientInfolist
                                     ->prefix('Dr(a). '),
                                 TextEntry::make('type_service')
                                     ->label('Tipo de Servicio:'),
-                                    
-                                Fieldset::make('VALORES')
-                                    ->schema([
-                                        TextEntry::make('vs_pa')
-                                            ->label('PA:'),
-                                        TextEntry::make('vs_fc')
-                                            ->label('FC:'),
-                                        TextEntry::make('vs_fr')
-                                            ->label('FR:'),
-                                        TextEntry::make('vs_temp')
-                                            ->label('Temperatura:'),
-                                        TextEntry::make('vs_sat')
-                                            ->label('SAT:'),
-                                        TextEntry::make('vs_weight')
-                                            ->label('Peso:'),
-                                    ])->columnSpanFull()->columns(6),
 
                                 Fieldset::make('INFORMACION MEDICA')
                                     ->schema([
@@ -76,7 +62,21 @@ class TelemedicineConsultationPatientInfolist
                                                 TextEntry::make('diagnostic_impression')
                                                     ->label('Impresión Diagnóstica:'),
                                             ])->columnSpanFull()->columns(1),
-                                        
+
+                                        Fieldset::make('Tratamiento Medico')
+                                            ->schema([
+                                                RepeatableEntry::make('TelemedicinePatientMedications')
+                                                    ->label('Medicamentos Indicados')
+                                                    ->schema([
+                                                        TextEntry::make('medicine')
+                                                            ->label('Medicamento'),
+                                                        TextEntry::make('indications')
+                                                            ->label('Indicaciones'),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->grid(1),
+                                            ])->columnSpanFull()->columns(1),
+                                                        
                                         Grid::make()
                                             ->schema([
                                                 Fieldset::make()
@@ -122,7 +122,7 @@ class TelemedicineConsultationPatientInfolist
                                                             ->label('Otros Especialistas:'),
                                                     ]),
                                             
-                                        ])->columnSpanFull()->columns(3),
+                                    ])->columnSpanFull()->columns(3),
                                         
                     ])->columnSpanFull()->columns(5),
                             ])->columnSpanFull()->columns(5),

@@ -9,6 +9,7 @@ use App\Mail\ExampleCsvEmail;
 use App\Mail\AgentRegisterEmail;
 use App\Models\DataNotification;
 use App\Mail\AgencyRegisterEmail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -1540,53 +1541,50 @@ class NotificationController extends Controller
 
         try {
 
-            // $array = Guest::all()->toArray();
-            $array = [
-                '+584127018390',
-                '+584120208119'
-            ];
+            $array = DB::table('new_table_agent')->select('*')->get()->toArray();
 
             for ($i = 0; $i < count($array); $i++) {
                 
                 $body = <<<HTML
 
-                Nuestro encuentro es mañana🔥
+                ¡Hola!
+                ¿Ya ingresaste a nuestro portal? 
+                Recuerda que accedes desde la página inicial de tudrencasa.com 
 
-                🗓️ Viernes 12 de Septiembre a las 06:00 pm
-                📍Centro LIDO, Av. Francisco de Miranda, Torre A, Piso 15.
+                Selecciona tu opción: {$array[$i]->tipo}
+                Usuario: {$array[$i]->email}
+                Contraseña: 12345678
 
-                ¿Cómo llegar?
-                Te dejo la ubicación en Google Maps https://maps.app.goo.gl/iFPMe84URDqH73hS7
+                ✅ Cotiza en línea 
+                🔥 Emite y paga 
+                📑 Obtén la información de la empresa en tiempo real 
 
-                ¿Qué ascensor debo tomar?
-                Ubica el ascensor de la Torre A y llega hasta el Piso 13. Allí una de nuestras ejecutivas te estará esperando. 
-
-                Nuestra nueva era comienza mañana ¿estás listo?
+                ¿Quieres refrescar nuestros servicios de salud? 
+                Escríbenos y te enviamos la invitación al próximo seminario 🩵🩺
     
                 HTML;
 
-                $params = array(
+                $params=array(
                     'token' => 'yuvh9eq5kn8bt666',
-                    'to' => $array[$i]['phone'],
-                    'image' => 'https://tudrgroup.com/images/nuevaInvitacion.jpg',
-                    'caption' => $body
-                );
-                $curl = curl_init();
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 30,
-                    CURLOPT_SSL_VERIFYHOST => 0,
-                    CURLOPT_SSL_VERIFYPEER => 0,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
-                    CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
+                    'to' => $array[$i]->telefono,
+                    'body' => $body
+                    );
+                    $curl = curl_init();
+                    curl_setopt_array($curl, array(
+                      CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/chat",
+                      CURLOPT_RETURNTRANSFER => true,
+                      CURLOPT_ENCODING => "",
+                      CURLOPT_MAXREDIRS => 10,
+                      CURLOPT_TIMEOUT => 30,
+                      CURLOPT_SSL_VERIFYHOST => 0,
+                      CURLOPT_SSL_VERIFYPEER => 0,
+                      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                      CURLOPT_CUSTOMREQUEST => "POST",
+                      CURLOPT_POSTFIELDS => http_build_query($params),
+                      CURLOPT_HTTPHEADER => array(
                         "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                      ),
+                    ));
 
                 $response = curl_exec($curl);
                 $err = curl_error($curl);
@@ -1594,7 +1592,7 @@ class NotificationController extends Controller
                 curl_close($curl);
 
                 Log::info($response);
-                Log::info($array[$i]['phone']);
+                Log::info($array[$i]->telefono);
                 Log::error($err);
             
             }

@@ -16,9 +16,8 @@ class TelemedicineDoctorsTable
     {
         return $table
             ->columns([
-                TextColumn::make('first_name')
-                    ->searchable(),
-                TextColumn::make('last_name')
+                TextColumn::make('full_name')
+                    ->Label('Nombre y Apellido')
                     ->searchable(),
                 TextColumn::make('nro_identificacion')
                     ->searchable(),

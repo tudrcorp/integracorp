@@ -28,20 +28,21 @@ class TelemedicineFollowUpsTable
                     ->badge()
                     ->color('primary')
                     ->searchable(),
-                TextColumn::make('telemedicine_consultation_patient_id')
-                    ->label('Número de consulta')
-                    ->badge()
-                    ->color('primary')
-                    ->prefix('TEL-CON-000')
-                    ->sortable(),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
+                    ->description(fn(TelemedicineFollowUp $record): string => 'Doctor(a): '.$record->telemedicineDoctor->full_name)
+                    ->sortable()
                     ->searchable(),
-                TextColumn::make('telemedicineDoctor.full_name')
-                    ->label('Doctor(a)')   
+                TextColumn::make('telemedicineServiceList.name')
+                    ->label('Servicio')
+                    ->badge()
+                    ->color('success')
+                    ->icon('heroicon-s-check')
+                    ->searchable()    
                     ->sortable(),
                 TextColumn::make('created_by')
-                    ->label('Creado por')
+                    ->label('Registrado por:')
+                    ->searchable()
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->label('Fecha de creación')
@@ -49,10 +50,9 @@ class TelemedicineFollowUpsTable
                     ->sortable(),
                 TextColumn::make('next_follow_up')
                     ->label('Proxima Seguimiento')
-                    ->searchable(),
-                TextColumn::make('hour')
-                    ->label('Hora de Seguimiento')
-                    ->time()
+                    ->badge()
+                    ->color('warning')
+                    ->icon('heroicon-s-calendar')
                     ->searchable(),
                 TextColumn::make('updated_at')
                     ->label('Fecha de actualización')

@@ -28,7 +28,7 @@ class TelemedicinePatientsTable
             ->query(
                 TelemedicinePatient::join( 'telemedicine_cases', 'telemedicine_cases.telemedicine_patient_id', '=', 'telemedicine_patients.id')
                 ->select('telemedicine_patients.*')
-                ->where('telemedicine_cases.status', 'ASIGNADO') 
+                ->where('telemedicine_cases.status', '!=', 'PACIENTE DE ALTA')
                 ->where('telemedicine_cases.telemedicine_doctor_id', Auth::user()->doctor_id)
                 )
             ->columns([

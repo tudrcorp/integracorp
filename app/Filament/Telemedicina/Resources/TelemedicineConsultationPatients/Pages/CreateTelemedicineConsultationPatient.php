@@ -63,7 +63,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        session()->put('medications', $data['medications']);
+        isset($data['medications']) ? session()->put('medications', $data['medications']) : null;
 
         return $data;
     }
@@ -84,10 +84,20 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
     {
         try {
 
+            $record = $this->getRecord()->toArray();
+
             $array = session()->get('medications');
 
-            $record = $this->getRecord()->toArray();
-// dd($record);
+            //...Si no hay medicamentos asignados, no hacemos nada
+            if (empty($array)) {
+                
+                //...actualizo el estado del paciente
+                $case = TelemedicineCase::find($record['telemedicine_case_id']);
+                $case->status = 'EN SEGUIMIENTO';
+                $case->save();
+                return;
+            }
+
             for ($i = 0; $i < count($array); $i++) {
                 // dd($medications[1]['indications']);
                 $medications = new TelemedicinePatientMedications();

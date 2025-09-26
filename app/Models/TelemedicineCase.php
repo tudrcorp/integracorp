@@ -16,9 +16,9 @@ class TelemedicineCase extends Model
         'patient_sex',
         'patient_phone',
         'patient_address',
-        'patient_country',
-        'patient_state',
-        'patient_city',
+        'patient_country_id',
+        'patient_state_id',
+        'patient_city_id',
         'assigned_by',
         'status',
         'reason',
@@ -38,6 +38,21 @@ class TelemedicineCase extends Model
     public function consultations()
     {
         return $this->hasMany(TelemedicineConsultationPatient::class);
+    }
+
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'patient_country_id');
+    }
+
+    public function state()
+    {
+        return $this->belongsTo(State::class, 'patient_state_id');
+    }
+
+    public function city()
+    {
+        return $this->belongsTo(City::class, 'patient_city_id');
     }
     
 }

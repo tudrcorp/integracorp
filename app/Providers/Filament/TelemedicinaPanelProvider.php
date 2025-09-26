@@ -94,7 +94,10 @@ class TelemedicinaPanelProvider extends PanelProvider
                     ->icon('healthicons-f-doctor-male')
                     ->color('primary')
                     ->url(TelemedicineDoctorResource::getUrl('edit', ['record' => Auth::user()->doctor_id], panel: 'telemedicina')),
-                 
+                'logout' => fn(Action $action) => $action
+                    ->label('Cerrar Sesión')
+                    ->color('danger')
+                    ->url(route('internal')),
             ])
             ->plugins([
                 FilamentBackgroundsPlugin::make()

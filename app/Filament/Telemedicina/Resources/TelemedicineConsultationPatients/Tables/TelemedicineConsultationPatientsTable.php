@@ -23,7 +23,7 @@ class TelemedicineConsultationPatientsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('Listado de Servicios')
+            ->heading('Listado de Telemedicinas por caso')
             ->description('...')
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -48,16 +48,24 @@ class TelemedicineConsultationPatientsTable
                     ->badge()
                     ->color('primary')
                     ->searchable(),
-                TextColumn::make('type_service')
-                    ->label('Tipo de Servicio')
-                    ->searchable(),
-                
+                TextColumn::make('telemedicineServiceList.name')
+                    ->label('Servicio')
+                    ->badge()
+                    ->color('success')
+                    ->icon('heroicon-s-check')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('labs')
                     ->label('Laboratorio')
                     ->alignCenter()
                     ->wrap()
                     ->badge()
-                    ->color('success')
+                    ->color(function (TelemedicineConsultationPatient $record) {
+                        return $record->labs ? 'success' : 'gray';
+                    })
+                    ->default(function (TelemedicineConsultationPatient $record) {
+                        return $record->labs ? $record->labs : 'N/A';
+                    })
                     ->description(fn (TelemedicineConsultationPatient $record): string => 'Otro: '. $record->other_labs)
                     ->searchable(),
                 TextColumn::make('studies')
@@ -65,7 +73,12 @@ class TelemedicineConsultationPatientsTable
                     ->alignCenter()
                     ->wrap()
                     ->badge()
-                    ->color('success')
+                    ->color(function (TelemedicineConsultationPatient $record) {
+                        return $record->studies ? 'success' : 'gray';
+                    })
+                    ->default(function (TelemedicineConsultationPatient $record) {
+                        return $record->studies ? $record->studies : 'N/A';
+                    })
                     ->description(fn(TelemedicineConsultationPatient $record): string => 'Otro: ' . $record->other_studies)
                     ->searchable(),
                 TextColumn::make('consult_specialist')
@@ -73,7 +86,12 @@ class TelemedicineConsultationPatientsTable
                     ->alignCenter()
                     ->wrap()
                     ->badge()
-                    ->color('success')
+                    ->color(function (TelemedicineConsultationPatient $record) {
+                        return $record->consult_specialist ? 'success' : 'gray';
+                    })
+                    ->default(function (TelemedicineConsultationPatient $record) {
+                        return $record->consult_specialist ? $record->consult_specialist : 'N/A';
+                    })   
                     ->description(fn(TelemedicineConsultationPatient $record): string => 'Otro: ' . $record->other_specialist)
                     ->searchable(),
                 

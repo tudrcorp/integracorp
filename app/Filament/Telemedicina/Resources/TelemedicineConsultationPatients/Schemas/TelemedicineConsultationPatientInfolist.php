@@ -43,22 +43,6 @@ class TelemedicineConsultationPatientInfolist
                                     ->prefix('Dr(a). '),
                                 TextEntry::make('type_service')
                                     ->label('Tipo de Servicio:'),
-                                    
-                                Fieldset::make('VALORES')
-                                    ->schema([
-                                        TextEntry::make('vs_pa')
-                                            ->label('PA:'),
-                                        TextEntry::make('vs_fc')
-                                            ->label('FC:'),
-                                        TextEntry::make('vs_fr')
-                                            ->label('FR:'),
-                                        TextEntry::make('vs_temp')
-                                            ->label('Temperatura:'),
-                                        TextEntry::make('vs_sat')
-                                            ->label('SAT:'),
-                                        TextEntry::make('vs_weight')
-                                            ->label('Peso:'),
-                                    ])->columnSpanFull()->columns(6),
 
                                 Fieldset::make('INFORMACION MEDICA')
                                     ->schema([
@@ -103,9 +87,11 @@ class TelemedicineConsultationPatientInfolist
                                                             ->label('Otros Estudios:'),
                                                         TextEntry::make('part_body')
                                                             ->hidden(function (TelemedicineConsultationPatient $record) {
-                                                                $exite = in_array('RX DE TORAX', $record->studies);
-                                                                if (!$exite) {
-                                                                    return true;
+                                                                if (isset($record->studies)) {
+                                                                    $exite = in_array('RX DE TORAX', $record->studies);
+                                                                    if (!$exite) {
+                                                                        return true;
+                                                                    } 
                                                                 }
                                                                 return false;
                                                             })

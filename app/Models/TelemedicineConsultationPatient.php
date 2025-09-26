@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\TelemedicineServiceList;
 use Illuminate\Database\Eloquent\Model;
 
 class TelemedicineConsultationPatient extends Model
@@ -16,17 +17,12 @@ class TelemedicineConsultationPatient extends Model
         'code_reference',
         'full_name',
         'nro_identificacion',
-        'type_service',
+        'telemedicine_service_list_id',
         'reason_consultation',
         'actual_phatology',
-        'vs_pa',
-        'vs_fc',
-        'vs_fr',
-        'vs_temp',
-        'vs_sat',
-        'vs_weight',
         'background',
         'diagnostic_impression',
+        
         'labs',
         'studies',
         'other_labs',
@@ -116,5 +112,12 @@ class TelemedicineConsultationPatient extends Model
     {
         return $this->hasMany(TelemedicineConsultationPatient::class, 'telemedicine_case_code', 'code');
     }
+
+    public function telemedicineServiceList()
+    {
+        return $this->belongsTo(TelemedicineServiceList::class, 'telemedicine_service_list_id');
+    }
+
+    
     
 }

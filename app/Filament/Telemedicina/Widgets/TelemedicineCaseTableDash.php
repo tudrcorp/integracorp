@@ -5,6 +5,7 @@ namespace App\Filament\Telemedicina\Widgets;
 use App\Models\User;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use Filament\Widgets\TableWidget;
 use App\Models\TelemedicinePatient;
@@ -80,61 +81,89 @@ class TelemedicineCaseTableDash extends TableWidget
                 //
             ])
             ->recordActions([
-                Action::make('consultation')
-                    ->label('Consulta')
-                    ->icon('healthicons-f-call-centre')
-                    ->button()
-                    ->color(function (TelemedicineCase $record) {
-                        return $record->status == 'ASIGNADO' ? 'primary' : 'gray';
-                    })
-                    ->disabled(function (TelemedicineCase $record) {
-                        $case = TelemedicineConsultationPatient::where('telemedicine_case_code', $record->code)->exists();
-                        // dd($record->status);
-                        if($case && $record->status == 'ATENDIDO') {
+                ActionGroup::make([
+                    
+                    //...Actions consultation
+                    Action::make('consultation')
+                        ->label('Telemedicína')
+                        ->icon('healthicons-f-call-centre')
+                        ->color('primary')
+                        ->disabled(function (TelemedicineCase $record) {
+                            $case = TelemedicineConsultationPatient::where('telemedicine_case_code', $record->code)->exists();
+                            // dd($record->status);
+                            if($case && $record->status == 'ATENDIDO') {
+                                return true;
+                            }
+                            return false;
+                        })
+                        ->action(function (TelemedicineCase $record) {
+    
+                            $case        = TelemedicineCase::where('code', $record->code)->first();
+                            $patient     = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
+                            $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->exists();
+    
+                            session()->forget('case');
+                            session()->forget('patient');
+                            session()->forget('exit_record');
+    
+                            //Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
+                            session(['case' => $case]);
+                            session(['patient' => $patient]);
+                            session(['exit_record' => $exit_record]);
+    
+                            Log::info(session()->get('case'));
+                            Log::info(session()->get('patient'));
+                            Log::info(session()->get('exit_record'));
+    
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
+                            
+                        })
+                        ->hidden(function (TelemedicineCase $record) {
+                            return $record->status != 'ASIGNADO';
+                        }),
+                        
+                    //...Actions last follow up
+                    Action::make('view_last')
+                        ->label('Ver ultimo Seguimiento')
+                        ->icon('heroicon-s-eye')
+                        ->color('')
+                        ->action(function (TelemedicineCase $record) {
+    
+                            $follow_up = TelemedicineFollowUp::where('code', $record->code)->latest()->first();
+    
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-follow-ups.view', ['record' => $follow_up->id]);
+    
+                            
+                        })
+                        ->hidden(function (TelemedicineCase $record) {
+                            $follow_up = TelemedicineFollowUp::where('code', $record->code)->latest()->first();
+                            if(isset($follow_up)) {
+                                return false;
+                            }
                             return true;
-                        }
-                        return false;
-                    })
-                    ->action(function (TelemedicineCase $record) {
-
-                        $case        = TelemedicineCase::where('code', $record->code)->first();
-                        $patient     = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
-                        $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->exists();
-                        // dd($exit_record);
-                        //Creo la variable de sesion con la informacion del caso y si existe la variable la actualizo
-                        session()->forget('case');
-                        session()->forget('patient');
-                        session()->forget('exit_record');
-
-                        //Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
-                        session(['case' => $case]);
-                        session(['patient' => $patient]);
-                        session(['exit_record' => $exit_record]);
-
-                        Log::info(session()->get('case'));
-                        Log::info(session()->get('patient'));
-                        Log::info(session()->get('exit_record'));
-
-                        return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
+                        }),
                         
-                    }),
-                Action::make('follow_up')
-                    ->label('Seguimiento')
-                    ->icon('healthicons-f-health-literacy')
-                    ->color('success')
-                    ->button()
-                    ->action(function (TelemedicineCase $record) {
-
-                        $follow_up_count = TelemedicineFollowUp::where('code', $record->code)->get();
-
-                        if($follow_up_count->count() == 1) {
-                            $id = $follow_up_count->where('code', $record->code)->first()->id;
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-follow-ups.edit', ['record' => $id]);
-                        }
+                    //...Actions follow up
+                    Action::make('add_follow_up')
+                        ->label('Hacer Seguimiento')
+                        ->icon('healthicons-f-health-literacy')
+                        ->color('success')
+                        ->action(function (TelemedicineCase $record) {
+    
+                            $follow_up_count = TelemedicineFollowUp::where('code', $record->code)->get();
+    
+                            if($follow_up_count->count() == 1) {
+                                $id = $follow_up_count->where('code', $record->code)->first()->id;
+                                return redirect()->route('filament.telemedicina.resources.telemedicine-follow-ups.edit', ['record' => $id]);
+                            }
+                            
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-follow-ups.create', ['record' => $record->id]);
+                        })
+                        ->hidden(function (TelemedicineCase $record) {
+                            return $record->status != 'EN SEGUIMIENTO';
+                        }),
                         
-                        return redirect()->route('filament.telemedicina.resources.telemedicine-follow-ups.create', ['record' => $record->id]);
-                    }),
-                
+                ])
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

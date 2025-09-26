@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
@@ -68,6 +69,12 @@ class MarketingPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->userMenuItems([
+                'logout' => fn(Action $action) => $action
+                    ->label('Cerrar Sesión')
+                    ->color('danger')
+                    ->url(route('internal')),
             ])
             ->plugins([
                 FilamentBackgroundsPlugin::make()

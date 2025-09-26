@@ -25,7 +25,7 @@ class AgenciesTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->query(Agency::query()->where('owner_code', Auth::user()->code_agency))
+            ->query(Agency::query()->where('owner_code', Auth::user()->code_agency))
             ->heading('PERFIL DE LA AGENCIA')
             ->description('Información principal de la agencia')
             ->columns([

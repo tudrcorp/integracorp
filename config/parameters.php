@@ -17,5 +17,7 @@ return [
     'PHONE_COTIZACIONES_AFILIACIONES'   => "+584242220056",
     'INTEGRACORP_URL'                   => "https://integracorp.dev.tudrgroup.com",
     'PUBLIC_URL'                        => "https://integracorp.dev.tudrgroup.com/storage",
+    'REDIRECT_LOGOUT_EXTERNAL_URL'      => "https://tudrencasa.test",
+    'REDIRECT_LOGOUT_INTERNAL_URL'      => "https://integracorp.test",
 
 ];

@@ -24,7 +24,7 @@ class TelemedicineConsultationPatientResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-call-centre';
 
-    protected static ?string $pluralLabel = 'Gestión de Servicio';
+    protected static ?string $pluralLabel = 'Telemedicinas';
 
     protected static ?int $navigationSort = 4;
 

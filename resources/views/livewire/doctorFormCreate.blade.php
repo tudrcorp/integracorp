@@ -56,8 +56,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
              * y cargamos la informacion previa en la tabla de agent
              */
             $create_doctor = new TelemedicineDoctor();
-            $create_doctor->first_name          = $this->first_name;
-            $create_doctor->last_name           = $this->last_name;
+            $create_doctor->full_name           = $this->full_name;
             $create_doctor->nro_identificacion  = $this->nro_identificacion;
             $create_doctor->phone               = $this->phone;
             $create_doctor->email               = $this->email;
@@ -69,7 +68,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             $create_user = new User();
             $create_user->doctor_id         = $create_doctor->id;
             $create_user->is_doctor         = true;
-            $create_user->name              = strtoupper($this->first_name . ' ' . $this->last_name);
+            $create_user->name              = strtoupper($this->full_name);
             $create_user->email             = $this->email;
             $create_user->password          = $validated['password'];
             $create_user->status            = 'ACTIVO';
@@ -84,7 +83,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
             Notification::make()
                 ->title('DOCTOR REGISTRADO')
-                ->body('BIENVENIDO Dr(a). ' . $this->first_name . ' ' . $this->last_name . ' A INTEGRACORP! Registro exitoso!.')
+                ->body('BIENVENIDO Dr(a). ' . $this->full_name . ' A INTEGRACORP! Registro exitoso!.')
                 ->icon('heroicon-m-user-plus')
                 ->iconColor('success')
                 ->success()
@@ -109,13 +108,8 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
     <form wire:submit="register" class="flex flex-col gap-6">
         <!-- First Name -->
-        <flux:input input icon="user" wire:model="first_name" :label="__('Nombre(s)')" type="text" autofocus
+        <flux:input input icon="user" wire:model="full_name" :label="__('Nombre y Apellido')" type="text" autofocus
             autocomplete="first_name" placeholder="Carlos Eduardo"
-            oninput="this.value = this.value.replace(/[^a-zA-Z\sáéíóúÁÉÍÓÚÑñ]/g, '')" />
-
-        <!-- Last Name -->
-        <flux:input input icon="user" wire:model="last_name" :label="__('Apellido(s)')" type="text" autofocus
-            autocomplete="last_name" placeholder="Navas Pereira"
             oninput="this.value = this.value.replace(/[^a-zA-Z\sáéíóúÁÉÍÓÚÑñ]/g, '')" />
 
         <!-- Nro Identificacion -->

@@ -120,6 +120,10 @@ class AdminPanelProvider extends PanelProvider
             ->userMenuItems([
                 'profile' => fn(Action $action) => $action->label('Profile'),
                 // ...
+                'logout' => fn(Action $action) => $action
+                    ->label('Cerrar Sesión')
+                    ->color('danger')
+                    ->url(route('internal')),
             ])
             ->authMiddleware([
                 Authenticate::class,

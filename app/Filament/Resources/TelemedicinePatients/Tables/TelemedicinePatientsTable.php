@@ -34,6 +34,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\ColumnGroup;
+use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
 use Illuminate\Database\Eloquent\Builder;
@@ -447,22 +448,22 @@ class TelemedicinePatientsTable
                     ->action(function (Collection $records, array $data) {
                         // ...
                         $record = $records->toArray();
-                        dd($record);
+
                         for ($i = 0; $i < count($record); $i++) {
                             if ($data['feedback'] == true) {
-    
+
                                 $case = TelemedicineCase::create([
-                                    'code'                      => random_int(11111, 99999),
+                                    'code'                      => UtilsController::generateCaseCode(),
                                     'telemedicine_patient_id'   => $record[$i]['id'],
                                     'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record->full_name,
-                                    'patient_age'               => $record->age,
-                                    'patient_sex'               => $record->sex,
-                                    'patient_phone'             => $record->phone,
-                                    'patient_address'           => $record->address,
-                                    'patient_country_id'        => $record->country_id,
-                                    'patient_state_id'          => $record->state_id,
-                                    'patient_city_id'           => $record->city_id,
+                                    'patient_name'              => $record[$i]['full_name'],
+                                    'patient_age'               => $record[$i]['age'],
+                                    'patient_sex'               => $record[$i]['sex'],
+                                    'patient_phone'             => $record[$i]['phone'],
+                                    'patient_address'           => $record[$i]['address'],
+                                    'patient_country_id'        => $record[$i]['country_id'],
+                                    'patient_state_id'          => $record[$i]['state_id'],
+                                    'patient_city_id'           => $record[$i]['city_id'],
                                     'reason'                    => $data['reason'],
                                     'status'                    => 'ASIGNADO',
                                     'assigned_by'               => Auth::user()->name,
@@ -489,7 +490,8 @@ class TelemedicinePatientsTable
                             } else {
     
                                 $case = TelemedicineCase::create([
-                                    'code'                      => random_int(11111, 99999),
+                                    
+                                    'code'                      => UtilsController::generateCaseCode(),
                                     'telemedicine_patient_id'   => $record->id,
                                     'telemedicine_doctor_id'    => $data['doctor_id'],
                                     'patient_name'              => $record->full_name,

@@ -21,7 +21,7 @@ class TelemedicineConsultationPatientsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->columns([
+        ->columns([
                 TextColumn::make('telemedicine_case_code')
                     ->label('Numero de Caso')
                     ->badge()
@@ -34,7 +34,7 @@ class TelemedicineConsultationPatientsTable
                     ->searchable(),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
-                    ->description(fn ($record): string => 'Atenido por: Dr(a):'.$record->telemedicineDoctor->full_name)
+                    ->description(fn($record): string => 'Atenido por: Dr(a):' . $record->telemedicineDoctor->full_name)
                     ->sortable(),
                 TextColumn::make('nro_identificacion')
                     ->label('Número de Identificación')
@@ -43,24 +43,37 @@ class TelemedicineConsultationPatientsTable
                     ->badge()
                     ->color('primary')
                     ->searchable(),
-                TextColumn::make('type_service')
-                    ->label('Tipo de Servicio')
-                    ->searchable(),
-                
+                TextColumn::make('telemedicineServiceList.name')
+                    ->label('Servicio')
+                    ->badge()
+                    ->color('success')
+                    ->icon('heroicon-s-check')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('labs')
                     ->label('Laboratorio')
                     ->alignCenter()
                     ->wrap()
                     ->badge()
-                    ->color('success')
-                    ->description(fn (TelemedicineConsultationPatient $record): string => 'Otro: '. $record->other_labs)
+                    ->color(function (TelemedicineConsultationPatient $record) {
+                        return $record->labs ? 'success' : 'gray';
+                    })
+                    ->default(function (TelemedicineConsultationPatient $record) {
+                        return $record->labs ? $record->labs : 'N/A';
+                    })
+                    ->description(fn(TelemedicineConsultationPatient $record): string => 'Otro: ' . $record->other_labs)
                     ->searchable(),
                 TextColumn::make('studies')
                     ->label('Estudios')
                     ->alignCenter()
                     ->wrap()
                     ->badge()
-                    ->color('success')
+                    ->color(function (TelemedicineConsultationPatient $record) {
+                        return $record->studies ? 'success' : 'gray';
+                    })
+                    ->default(function (TelemedicineConsultationPatient $record) {
+                        return $record->studies ? $record->studies : 'N/A';
+                    })
                     ->description(fn(TelemedicineConsultationPatient $record): string => 'Otro: ' . $record->other_studies)
                     ->searchable(),
                 TextColumn::make('consult_specialist')
@@ -68,15 +81,29 @@ class TelemedicineConsultationPatientsTable
                     ->alignCenter()
                     ->wrap()
                     ->badge()
-                    ->color('success')
+                    ->color(function (TelemedicineConsultationPatient $record) {
+                        return $record->consult_specialist ? 'success' : 'gray';
+                    })
+                    ->default(function (TelemedicineConsultationPatient $record) {
+                        return $record->consult_specialist ? $record->consult_specialist : 'N/A';
+                    })
                     ->description(fn(TelemedicineConsultationPatient $record): string => 'Otro: ' . $record->other_specialist)
                     ->searchable(),
-                
+                //...Estadisticas
+                TextColumn::make('total_follow_ups')
+                    ->label('Total de Seguimientos')
+                    ->suffix(' Seguimientos')
+                    ->alignCenter()
+                    ->badge()
+                    ->color('primary')
+                    ->searchable()
+                    ->default(fn(TelemedicineConsultationPatient $record) => $record->telemedicineFollowUps->count()),
+
                 TextColumn::make('created_at')
                     ->label('Fecha de Registro')
                     ->dateTime()
-                // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
-                    ->description(fn (TelemedicineConsultationPatient $record): string => $record->updated_at->diffForHumans())
+                    // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
+                    ->description(fn(TelemedicineConsultationPatient $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
             ])
             ->filters([

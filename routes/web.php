@@ -16,16 +16,32 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\BirthdayNotification;
 use Illuminate\Support\Facades\Auth;
+use App\Models\DetailIndividualQuote;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\UtilsController;
 use App\Http\Controllers\NotificationController;
+use Filament\Facades\Filament;
 
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+Route::post('/', function () {
+    Filament::auth()->logout();
+    session()->invalidate();
+    session()->regenerateToken();
+    return redirect('/');
+})->name('internal');
+    
+Route::post('/external', function () {
+    Filament::auth()->logout();
+    session()->invalidate();
+    session()->regenerateToken();
+    return redirect()->to(config('parameters.REDIRECT_LOGOUT_EXTERNAL_URL'));
+})->name('external');
 
 // Route::redirect('/', '/admin');
 
@@ -246,6 +262,17 @@ Route::get('/truncate', function () {
 });
 
 Route::get('/rp', function () {
+
+    $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
+        ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
+        ->where('individual_quotes.id', 86)
+        ->where('detail_individual_quotes.plan_id', 2)
+        ->select('coverages.id as coverage_id', 'coverages.price as description')
+        ->distinct() // Asegurarse de que no haya duplicados
+        ->get()
+        ->pluck('description', 'coverage_id');
+
+    dd($coverages);
 
     Log::error('Job Fallido: ' . static::class, [
         'mensaje' => 'hello world',

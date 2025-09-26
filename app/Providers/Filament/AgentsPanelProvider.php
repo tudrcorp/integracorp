@@ -119,7 +119,12 @@ class AgentsPanelProvider extends PanelProvider
                     ->color('primary')
                     ->url(function (Component $livewire) {
                         return AgentResource::getUrl('edit', ['record' => Auth::user()->agent_id], panel: 'agents');
-                    })
+                    }),
+                // ...
+                'logout' => fn(Action $action) => $action
+                    ->label('Cerrar Sesión')
+                    ->color('danger')
+                    ->url(route('external')),
                 // // ...
                 // // ...
             ])

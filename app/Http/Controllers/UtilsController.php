@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use App\Models\DataNotification;
+use App\Models\TelemedicineCase;
 use App\Models\CorporateQuoteData;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -1646,6 +1647,24 @@ class UtilsController extends Controller
         $soloDiaMes = $fecha->format('d/m');
         return $soloDiaMes;
 
+    }
+
+    public static function generateCaseCode()
+    {
+        
+        try {
+            
+            if(TelemedicineCase::max('id') == NULL) {
+                $parteEntera = 1;
+            }else{
+                $parteEntera = TelemedicineCase::max('id') + 1;
+            }
+
+            return random_int(11111, 99999).'-0'.$parteEntera;
+
+        } catch (\Throwable $th) {
+            Log::error($th);
+        }
     }
 
     
