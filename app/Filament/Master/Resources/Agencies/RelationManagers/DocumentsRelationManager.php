@@ -141,7 +141,7 @@ class DocumentsRelationManager extends RelationManager
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('verde')
                     ->url(function ($record) {
-                        return asset('storage/agency/documents/' . $record->document);
+                        return asset('storage/' . $record->document);
                     })
                     ->button()
                     ->openUrlInNewTab(),
