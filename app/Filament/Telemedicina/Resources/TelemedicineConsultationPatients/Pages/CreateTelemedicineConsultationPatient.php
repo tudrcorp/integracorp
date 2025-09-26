@@ -121,6 +121,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             $followUp->telemedicine_case_id                 = $record['telemedicine_case_id'];
             $followUp->telemedicine_doctor_id               = $record['telemedicine_doctor_id'];
             $followUp->telemedicine_consultation_patient_id = $record['id'];
+            $followUp->telemedicine_service_list_id         = $record['telemedicine_service_list_id'];
             //Agregamos 1 dia a la fecha
             $followUp->next_follow_up = now()->addDay()->format('d/m/Y');
             $followUp->created_by = 'INTEGRACORP';

@@ -36,6 +36,7 @@ class DocumentsRelationManager extends RelationManager
                         Grid::make()
                             ->schema([
                                 FileUpload::make('doc_document_identity')
+                                    ->directory('agency/documents')
                                     ->label('Documento de Identidad')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->required()
@@ -44,6 +45,7 @@ class DocumentsRelationManager extends RelationManager
                                     ])
                                     ->hidden(fn() => AgencyDocument::where('agency_id', $this->getOwnerRecord()->id)->where('title', 'DOCUMENTO DE IDENTIDAD')->where('document', '!=', null)->exists()),
                                 FileUpload::make('doc_digital_signature')
+                                    ->directory('agency/documents')
                                     ->label('Firma Digital')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->required()
@@ -53,6 +55,7 @@ class DocumentsRelationManager extends RelationManager
                                     ->hidden(fn() => AgencyDocument::where('agency_id', $this->getOwnerRecord()->id)->where('title', 'FIRMA DIGITAL AGENTE')->where('document', '!=', null)->exists()),
 
                                 FileUpload::make('doc_w8_w9')
+                                    ->directory('agency/documents')
                                     ->label('W8/W9')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->required()
@@ -64,10 +67,12 @@ class DocumentsRelationManager extends RelationManager
                         Grid::make()
                             ->schema([
                                 FileUpload::make('doc_bank_data_ves')
+                                    ->directory('agency/documents')
                                     ->label('Soporte datos bancarios(VES)')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->hidden(fn() => AgencyDocument::where('agency_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA VES')->where('document', '!=', null)->exists()),
                                 FileUpload::make('doc_bank_data_usd')
+                                    ->directory('agency/documents')
                                     ->label('Soporte datos bancarios(US$)')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->hidden(fn() => AgencyDocument::where('agency_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA USD')->where('document', '!=', null)->exists()),
@@ -136,7 +141,7 @@ class DocumentsRelationManager extends RelationManager
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('verde')
                     ->url(function ($record) {
-                        return asset('storage/' . $record->document);
+                        return asset('storage/agency/documents/' . $record->document);
                     })
                     ->button()
                     ->openUrlInNewTab(),
