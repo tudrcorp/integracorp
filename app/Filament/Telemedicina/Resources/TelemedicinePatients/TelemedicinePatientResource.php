@@ -15,6 +15,7 @@ use App\Filament\Telemedicina\Resources\TelemedicinePatients\Pages\CreateTelemed
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\Schemas\TelemedicinePatientForm;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\Tables\TelemedicinePatientsTable;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\Schemas\TelemedicinePatientInfolist;
+use App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManagers\TelemedicineCasesRelationManager;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManagers\TelemedicinePatientHistoryRelationManager;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManagers\TelemedicineConsultationPatientsRelationManager;
 
@@ -47,7 +48,7 @@ class TelemedicinePatientResource extends Resource
     {
         return [
             TelemedicinePatientHistoryRelationManager::class,
-            TelemedicineConsultationPatientsRelationManager::class
+            TelemedicineCasesRelationManager::class,
         ];
     }
 

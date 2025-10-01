@@ -158,6 +158,11 @@ class Agency extends Model
         return $this->hasMany(AgencyDocument::class);
     }
 
+    public function notes()
+    {
+        return $this->hasMany(AgencyNoteBlog::class);
+    }
+
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de la carta de bienvenida

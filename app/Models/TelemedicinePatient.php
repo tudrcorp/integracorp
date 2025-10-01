@@ -34,7 +34,19 @@ class TelemedicinePatient extends Model
         'date_affiliation',
         'code',
         'code_affiliation',
+        'business_unit_id',
+        'business_line_id'
     ];
+
+    public function businessLine()
+    {
+        return $this->belongsTo(BusinessLine::class);
+    }
+
+    public function businessUnit()
+    {
+        return $this->belongsTo(BusinessUnit::class);
+    }
 
     public function city()
     {
@@ -98,9 +110,16 @@ class TelemedicinePatient extends Model
         return $this->hasMany(TelemedicinePatientMedications::class);
     }
 
+    public function telemedicineCases()
+    {
+        return $this->hasMany(TelemedicineCase::class);
+    }
+
     public function telemedicinePatientHistory()
     {
         return $this->hasOne(TelemedicineHistoryPatient::class);
     }
+
+    
     
 }

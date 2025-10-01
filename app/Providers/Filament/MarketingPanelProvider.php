@@ -67,6 +67,11 @@ class MarketingPanelProvider extends PanelProvider
             ])
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
+            ->registerErrorNotification(
+                title: 'ERROR DE EJECUCIÓN',
+                body: 'Se produjo un error de ejecución, por favor contacte con el administrador.',
+                statusCode: 404,
+            )
             ->authMiddleware([
                 Authenticate::class,
             ])

@@ -11,6 +11,10 @@ class ViewTelemedicinePatient extends ViewRecord
 {
     protected static string $resource = TelemedicinePatientResource::class;
 
+    //title
+    protected static ?string $title = 'Informacion principal del paciente';
+    
+
     protected function getHeaderActions(): array
     {
         return [
@@ -20,7 +24,6 @@ class ViewTelemedicinePatient extends ViewRecord
                 ->icon('heroicon-s-arrow-left')
                 ->color('gray')
                 ->url(TelemedicinePatientResource::getUrl('index')),
-            EditAction::make(),
         ];
     }
 }

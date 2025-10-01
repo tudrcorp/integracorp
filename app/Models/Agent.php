@@ -169,6 +169,11 @@ class Agent extends Model
         return $this->hasMany(AgentDocument::class);
     }
 
+    public function notes()
+    {
+        return $this->hasMany(AgentNoteBlog::class);
+    }
+
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de la carta de bienvenida

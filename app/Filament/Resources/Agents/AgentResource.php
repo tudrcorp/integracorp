@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Agents;
 
+use UnitEnum;
 use BackedEnum;
 use App\Models\Agent;
 use Filament\Tables\Table;
@@ -15,8 +16,8 @@ use App\Filament\Resources\Agents\Pages\CreateAgent;
 use App\Filament\Resources\Agents\Schemas\AgentForm;
 use App\Filament\Resources\Agents\Tables\AgentsTable;
 use App\Filament\Resources\Agents\Schemas\AgentInfolist;
+use App\Filament\Resources\Agents\RelationManagers\NotesRelationManager;
 use App\Filament\Resources\Agents\RelationManagers\DocumentsRelationManager;
-use UnitEnum;
 
 class AgentResource extends Resource
 {
@@ -26,7 +27,7 @@ class AgentResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'TDEC';
 
-    protected static ?string $navigationLabel = 'Gestión de Agentes';
+    protected static ?string $navigationLabel = 'Agentes';
 
     public static function form(Schema $schema): Schema
     {
@@ -46,7 +47,8 @@ class AgentResource extends Resource
     public static function getRelations(): array
     {
         return [
-            DocumentsRelationManager::class
+            DocumentsRelationManager::class,
+            NotesRelationManager::class
         ];
     }
 

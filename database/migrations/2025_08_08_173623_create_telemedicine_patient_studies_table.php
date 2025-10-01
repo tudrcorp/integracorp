@@ -13,13 +13,12 @@ return new class extends Migration
     {
         Schema::create('telemedicine_patient_studies', function (Blueprint $table) {
             $table->id();
-            $table->integer('telemedicine_case_id');
-            $table->integer('telemedicine_case_code');
             $table->integer('telemedicine_patient_id');
+            $table->integer('telemedicine_case_id');
             $table->integer('telemedicine_doctor_id');
-            $table->integer('telemedicine_consultation_patient_id');
-            $table->json('studies');
-            $table->string('observations');
+            $table->integer('telemedicine_consultation_id');
+            $table->string('study');
+            $table->string('type'); //cubierto o no cubiertoc
             $table->timestamps();
         });
     }

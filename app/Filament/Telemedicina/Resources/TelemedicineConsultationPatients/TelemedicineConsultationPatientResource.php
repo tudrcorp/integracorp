@@ -16,17 +16,22 @@ use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Tables\TelemedicineConsultationPatientsTable;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientInfolist;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicineFollowUpsRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientLabsRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientStudiesRelationManager;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientMedicationsRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientSpecialistsRelationManager;
 
 class TelemedicineConsultationPatientResource extends Resource
 {
     protected static ?string $model = TelemedicineConsultationPatient::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-call-centre';
+    protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-desktop-app';
 
-    protected static ?string $pluralLabel = 'Telemedicinas';
+    protected static ?string $pluralLabel = 'Gestión de Servicio';
 
     protected static ?int $navigationSort = 4;
+
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Schema $schema): Schema
     {
@@ -47,7 +52,11 @@ class TelemedicineConsultationPatientResource extends Resource
     {
         return [
             TelemedicinePatientMedicationsRelationManager::class,
-            TelemedicineFollowUpsRelationManager::class
+            TelemedicinePatientLabsRelationManager::class,
+            TelemedicinePatientStudiesRelationManager::class,
+            TelemedicinePatientSpecialistsRelationManager::class,
+            
+            
         ];
     }
 

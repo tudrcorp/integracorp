@@ -7,6 +7,7 @@ use App\Models\Agency;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
+use App\Models\AgencyNoteBlog;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use App\Http\Controllers\LogController;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Navigation\NavigationGroup;
 use Filament\Notifications\Notification;
@@ -106,8 +108,8 @@ class MasterPanelProvider extends PanelProvider
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
             ->registerErrorNotification(
-                title: 'Registro No Encontrado',
-                body: 'El registro que intenta consultar no existe.',
+                title: 'ERROR DE EJECUCIÓN',
+                body: 'Se produjo un error de ejecución, por favor contacte con el administrador.',
                 statusCode: 404,
             )
             ->userMenuItems([

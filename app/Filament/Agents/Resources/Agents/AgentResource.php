@@ -16,6 +16,7 @@ use App\Filament\Agents\Resources\Agents\Pages\CreateAgent;
 use App\Filament\Agents\Resources\Agents\Schemas\AgentForm;
 use App\Filament\Agents\Resources\Agents\Tables\AgentsTable;
 use App\Filament\Agents\Resources\Agents\Schemas\AgentInfolist;
+use App\Filament\Agents\Resources\Agents\RelationManagers\NotesRelationManager;
 use App\Filament\Agents\Resources\Agents\RelationManagers\DocumentsRelationManager;
 
 class AgentResource extends Resource
@@ -47,7 +48,8 @@ class AgentResource extends Resource
     public static function getRelations(): array
     {
         return [
-            DocumentsRelationManager::class
+            DocumentsRelationManager::class,
+            NotesRelationManager::class
         ];
     }
 

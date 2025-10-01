@@ -24,7 +24,7 @@ class DocumentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'documents';
 
-    protected static ?string $title = 'DOCUMENTOS ASOCIADOS';
+    protected static ?string $title = 'Documentos Asociados';
 
     protected static string|BackedEnum|null $icon = 'heroicon-s-document';
 

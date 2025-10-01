@@ -2,20 +2,21 @@
 
 namespace App\Filament\Resources\AgeRanges;
 
-use App\Filament\Resources\AgeRanges\Pages\CreateAgeRange;
-use App\Filament\Resources\AgeRanges\Pages\EditAgeRange;
-use App\Filament\Resources\AgeRanges\Pages\ListAgeRanges;
-use App\Filament\Resources\AgeRanges\Pages\ViewAgeRange;
-use App\Filament\Resources\AgeRanges\Schemas\AgeRangeForm;
-use App\Filament\Resources\AgeRanges\Schemas\AgeRangeInfolist;
-use App\Filament\Resources\AgeRanges\Tables\AgeRangesTable;
-use App\Models\AgeRange;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use App\Models\AgeRange;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use App\Filament\Resources\AgeRanges\Pages\EditAgeRange;
+use App\Filament\Resources\AgeRanges\Pages\ViewAgeRange;
+use App\Filament\Resources\AgeRanges\Pages\ListAgeRanges;
+use App\Filament\Resources\AgeRanges\Pages\CreateAgeRange;
+use App\Filament\Resources\AgeRanges\Schemas\AgeRangeForm;
+use App\Filament\Resources\AgeRanges\Tables\AgeRangesTable;
+use App\Filament\Resources\AgeRanges\Schemas\AgeRangeInfolist;
 
 class AgeRangeResource extends Resource
 {
@@ -57,5 +58,14 @@ class AgeRangeResource extends Resource
             'view' => ViewAgeRange::route('/{record}'),
             'edit' => EditAgeRange::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        // Deshabilitado temporalmente por mantenimiento
+        if (Auth::user()->is_superAdmin) {
+            return true;
+        }
+        return false;
     }
 }

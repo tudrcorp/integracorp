@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\TelemedicineHistoryPatients\Schemas;
 
+use App\Models\AllergyList;
 use Filament\Schemas\Schema;
 use App\Models\TelemedicinePatient;
+use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -41,7 +43,7 @@ class TelemedicineHistoryPatientForm
                                                     } else {
                                                         $parte_entera = TelemedicineHistoryPatient::max('id');
                                                     }
-                                                    return 'TEL-HIS-000' . $parte_entera + 1;
+                                                    return 'HIS-000' . $parte_entera + 1;
                                                 })
                                                 ->disabled()
                                                 ->dehydrated()
@@ -52,31 +54,21 @@ class TelemedicineHistoryPatientForm
                                         ->label('Paciente')
                                         ->options(TelemedicinePatient::all()->pluck('full_name', 'id'))
                                         ->default(function () {
-                                            if (request('record')) {
-                                                return request('record');
+                                            if (session()->get('patient')) {
+                                                $patient = session()->get('patient')->id;
+
+                                                return $patient;
                                             }
                                             return null;
-                                        })
-                                        ->disabled(function () {
-                                            if (request('record')) {
-                                                return true;
-                                            }
-                                            return false;
-                                        })
-                                        ->dehydrated(function () {
-                                            if (request('record')) {
-                                                return true;
-                                            }
-                                            return false;
                                         })
                                         ->required(),
                                     // ...
                                     DatePicker::make('history_date')
                                         ->label('Fecha')
-                                        ->default(now()->format('d/m/Y'))
-                                        ->disabled()
-                                        ->dehydrated()
-                                        ->required(),
+                                        ->default(now()),
+                                    // ...
+                                    Hidden::make('telemedicine_doctor_id')->default(Auth::user()->doctor_id),
+                                    Hidden::make('created_by')->default(Auth::user()->name),
                                 ])->columnSpanFull()->columns(3),
                         ])->columns(3),
                     Step::make('Signos Vitales')
@@ -86,15 +78,45 @@ class TelemedicineHistoryPatientForm
                                 ->description('...')
                                 ->schema([
                                     // ...
-                                    TextInput::make('vs_weight')
+                                    // TextInput::make('vs_pa')
+                                    //     ->label('Presión Arterial')
+                                    //     ->helperText('Presión Arterial (mmHg)')
+                                    //     ->numeric()
+                                    //     ->prefixIcon('healthicons-f-i-utensils')
+                                    //     ->required(),
+                                    // TextInput::make('vs_fc')
+                                    //     ->label('Frecuencia Cardíaca')
+                                    //     ->helperText('Frecuencia Cardíaca (lpm)')
+                                    //     ->numeric()
+                                    //     ->prefixIcon('healthicons-f-i-utensils')
+                                    //     ->required(),
+                                    // TextInput::make('vs_fr')
+                                    //     ->label('Frecuencia Respiratoria')
+                                    //     ->helperText('Frecuencia Respiratoria (rpm)')
+                                    //     ->numeric()
+                                    //     ->prefixIcon('healthicons-f-i-utensils')
+                                    //     ->required(),
+                                    // TextInput::make('vs_temp')
+                                    //     ->label('Temperatura')
+                                    //     ->helperText('Temperatura (°C)')
+                                    //     ->numeric()
+                                    //     ->prefixIcon('healthicons-f-i-utensils')
+                                    //     ->required(),
+                                    // TextInput::make('vs_sat')
+                                    //     ->label('Saturación')
+                                    //     ->helperText('Saturación (% de oxigeno en sangre)')
+                                    //     ->numeric()
+                                    //     ->prefixIcon('healthicons-f-i-utensils')
+                                    //     ->required(),
+                                    TextInput::make('weight')
                                         ->label('Peso')
                                         ->helperText('Peso (kg)')
                                         ->numeric()
                                         ->prefixIcon('healthicons-f-i-utensils')
                                         ->required(),
-                                    TextInput::make('vs_height')
+                                    TextInput::make('height')
                                         ->label('Altura')
-                                        ->helperText('Altura (cm)')
+                                        ->helperText('Altura (mts)')
                                         ->numeric()
                                         ->prefixIcon('healthicons-f-i-utensils')
                                         ->required(),
@@ -113,7 +135,7 @@ class TelemedicineHistoryPatientForm
                                     Toggle::make('alteraciones_coagulacion'),
                                     Toggle::make('trombosis_embooleanas'),
                                     Toggle::make('tranfusiones_sanguineas'),
-                                    Toggle::make('covid_19'),
+                                    Toggle::make('COVID19'),
                                     Grid::make()
                                         ->schema([
                                             TextArea::make('observations_personal')
@@ -127,7 +149,7 @@ class TelemedicineHistoryPatientForm
                                 ->schema([
                                     // ...
                                     Toggle::make('hepatitis'),
-                                    Toggle::make('vih'),
+                                    Toggle::make('VIH_SIDA'),
                                     Toggle::make('gastritis_ulceras'),
                                     Toggle::make('neurologia'),
                                     Toggle::make('ansiedad_angustia'),
@@ -191,27 +213,45 @@ class TelemedicineHistoryPatientForm
                                 ->numeric(),
                             TextInput::make('cesareas')
                                 ->numeric(),
-                            TextInput::make('observations_ginecologica'),
-                        ])->columns(3),
+                            Grid::make(1)
+                                ->schema([
+                                    Textarea::make('observations_ginecologica')
+                                        ->autoSize()
+                                        ->label('Observaciones Ginecológicas'),
+                                ])->columnSpanFull()->columns(1),
+                        ])->columns(4),
                     Step::make('Alergias')
                         ->schema([
                             // ...
-                            TextInput::make('allergies'),
-                            TextInput::make('observations_allergies'),
+                            Select::make('allergies')
+                                ->options(AllergyList::all()->pluck('description', 'description')->toArray())
+                                ->multiple()
+                                ->searchable(),
+                            Grid::make(1)
+                                ->schema([
+                                    Textarea::make('observations_allergies')
+                                        ->autoSize()
+                                        ->label('Observaciones Adicionales'),
+                                ])->columnSpanFull()->columns(1),
                         ]),
                     Step::make('Antecedentes Quirúrgicos')
                         ->schema([
                             // ...
                             Textarea::make('history_surgical')
+                                ->label('Antecedentes Quirúrgicos')
+                                ->autoSize()
                                 ->columnSpanFull(),
                         ]),
                     Step::make('Medicamentos(Crónicos) y Suplementos Usados')
                         ->schema([
                             // ...
                             Textarea::make('medications_supplements')
-                                ->columnSpanFull(),
-                            TextInput::make('observations_medication'),
-                        ]),
+                                ->label('Medicamentos(Crónicos) y Suplementos Usados')
+                                ->autoSize(),
+                            Textarea::make('observations_medication')
+                                ->label('Observaciones Medicamentos')
+                                ->autoSize(),
+                        ])->columnSpanFull()->columns(2),
                 ])->columnSpanFull(),
             ]);
     }

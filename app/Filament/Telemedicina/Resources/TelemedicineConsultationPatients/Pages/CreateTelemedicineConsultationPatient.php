@@ -8,11 +8,19 @@ use App\Models\TelemedicinePatient;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use App\Models\TelemedicineFollowUp;
+use Illuminate\Support\Facades\Auth;
+use App\Models\TelemedicineListStudy;
+use App\Models\TelemedicinePatientLab;
+use App\Models\TelemedicinePatientStudy;
 use Filament\Notifications\Notification;
+use App\Models\TelemedicineListLaboratory;
+use App\Models\TelemedicineListSpecialist;
 use Filament\Resources\Pages\CreateRecord;
+use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientMedications;
 use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
+use App\Models\TelemedicineConsultationPatient;
 
 class CreateTelemedicineConsultationPatient extends CreateRecord
 {
@@ -63,7 +71,25 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+
+        if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {
+            session()->put('feedbackOne', $data['feedbackOne']);
+        }
+        //...Asignamos los valores a la variable de sesion
+        //Medicamentos
         isset($data['medications']) ? session()->put('medications', $data['medications']) : null;
+
+        //Laboratorios
+        isset($data['labs']) ? session()->put('labs', $data['labs']) : null;
+        isset($data['other_labs']) ? session()->put('other_labs', $data['other_labs']) : null;
+
+        //Estudios
+        isset($data['studies']) ? session()->put('studies', $data['studies']) : null;
+        isset($data['other_studies']) ? session()->put('other_studies', $data['other_studies']) : null;
+
+        //Consultas con especialistas
+        isset($data['consult_specialist']) ? session()->put('consult_specialist', $data['consult_specialist']) : null;
+        isset($data['other_specialist']) ? session()->put('other_specialist', $data['other_specialist']) : null;
 
         return $data;
     }
@@ -86,51 +112,126 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
             $record = $this->getRecord()->toArray();
 
-            $array = session()->get('medications');
+            $feedbackOne = session()->get('feedbackOne');
 
-            //...Si no hay medicamentos asignados, no hacemos nada
-            if (empty($array)) {
+            $medicationsArr         = session()->get('medications') ?? null;
+            $labsArr                = session()->get('labs') ?? null;
+            $otherLabsArr           = session()->get('other_labs') ?? null;
+            $studiesArr             = session()->get('studies') ?? null;
+            $otherStudiesArr        = session()->get('other_studies') ?? null;
+            $consultSpecialistArr   = session()->get('consult_specialist') ?? null;
+            $otherSpecialistArr     = session()->get('other_specialist') ?? null;
+
+            if($feedbackOne != true)
+            {
+                $finalArrLabs           = array_merge($labsArr, $otherLabsArr);
+                $finalArrStudies        = array_merge($studiesArr, $otherStudiesArr);
+                $finalArrSpecialist     = array_merge($consultSpecialistArr, $otherSpecialistArr);
                 
-                //...actualizo el estado del paciente
-                $case = TelemedicineCase::find($record['telemedicine_case_id']);
-                $case->status = 'EN SEGUIMIENTO';
-                $case->save();
-                return;
             }
 
-            for ($i = 0; $i < count($array); $i++) {
-                // dd($medications[1]['indications']);
-                $medications = new TelemedicinePatientMedications();
-                $medications->telemedicine_patient_id               = $record['telemedicine_patient_id'];
-                $medications->telemedicine_case_id                  = $record['telemedicine_case_id'];
-                $medications->telemedicine_doctor_id                = $record['telemedicine_doctor_id'];
-                $medications->telemedicine_consultation_patient_id  = $record['id'];
-                $medications->medicine                              = $array[$i]['medicines'];
-                $medications->indications                           = $array[$i]['indications'];
-                $medications->save();
+
+            // dd($finalArrLabs, $finalArrStudies, $finalArrSpecialist);  
+
+            //Arreglo de medicamento
+            if(!empty($medicationsArr) && $medicationsArr[0]['medicines'] != null) {
+                // Log::info('Medicamentos: ' . json_encode($medicationsArr));
+                for ($i = 0; $i < count($medicationsArr); $i++) {
+                    $medications = new TelemedicinePatientMedications();
+                    $medications->telemedicine_consultation_patient_id  = $record['id'];
+                    $medications->telemedicine_patient_id               = $record['telemedicine_patient_id'];
+                    $medications->telemedicine_case_id                  = $record['telemedicine_case_id'];
+                    $medications->telemedicine_doctor_id                = $record['telemedicine_doctor_id'];
+                    $medications->medicine                              = $medicationsArr[$i]['medicines'];
+                    $medications->indications                           = $medicationsArr[$i]['indications'];
+                    $medications->save();
+                }
+            }
+
+            //Arreglo de Laboratorios
+            if (!empty($finalArrLabs)) {
+                // Log::info('Lab: ' . json_encode($medicationsArr));
+                for ($i = 0; $i < count($finalArrLabs); $i++) {
+                    $labs = new TelemedicinePatientLab();
+                    $labs->telemedicine_consultation_patient_id  = $record['id'];
+                    $labs->telemedicine_patient_id               = $record['telemedicine_patient_id'];
+                    $labs->telemedicine_case_id                  = $record['telemedicine_case_id'];
+                    $labs->telemedicine_doctor_id                = $record['telemedicine_doctor_id'];
+                    $labs->laboratory                            = $finalArrLabs[$i];
+                    $labs->type                                  = TelemedicineListLaboratory::where('name', $finalArrLabs[$i])->first()->type;
+                    $labs->assigned_by                           = Auth::user()->id;
+                    $labs->save();
+                }
+            }
+
+            //Arreglo de Estudios
+            if (!empty($finalArrStudies)) {
+                // Log::info('Estudios: ' . json_encode($medicationsArr));
+                for ($i = 0; $i < count($finalArrStudies); $i++) {
+                    $study = new TelemedicinePatientStudy();
+                    $study->telemedicine_consultation_patient_id  = $record['id'];
+                    $study->telemedicine_patient_id               = $record['telemedicine_patient_id'];
+                    $study->telemedicine_case_id                  = $record['telemedicine_case_id'];
+                    $study->telemedicine_doctor_id                = $record['telemedicine_doctor_id'];
+                    $study->study                                 = $finalArrStudies[$i];
+                    $study->assigned_by                           = Auth::user()->id;
+                    $study->type                                  = TelemedicineListStudy::where('name', $finalArrStudies[$i])->first()->type;
+                    $study->save();
+                }
+            }
+
+            //Arreglo Especialistas
+            if (!empty($finalArrSpecialist)) {
+                // Log::info('Especialista: ' . json_encode($medicationsArr));
+                for ($i = 0; $i < count($finalArrSpecialist); $i++) {
+                    $specialist = new TelemedicinePatientSpecialty();
+                    $specialist->telemedicine_consultation_patient_id  = $record['id'];
+                    $specialist->telemedicine_patient_id               = $record['telemedicine_patient_id'];
+                    $specialist->telemedicine_case_id                  = $record['telemedicine_case_id'];
+                    $specialist->telemedicine_doctor_id                = $record['telemedicine_doctor_id'];
+                    $specialist->specialty                            = $finalArrSpecialist[$i];
+                    $specialist->assigned_by                           = Auth::user()->id;
+                    $specialist->type                                  = TelemedicineListSpecialist::where('name', $finalArrSpecialist[$i])->first()->type;
+                    $specialist->save();
+                }
             }
 
             //...Limpio la variable de sesion
             session()->forget('medications');
+            session()->forget('labs');
+            session()->forget('other_labs');
+            session()->forget('studies');
+            session()->forget('other_studies');
+            session()->forget('consult_specialist');
+            session()->forget('other_specialist');
 
-            //creamos el primer seguimiento
-            $followUp = new TelemedicineFollowUp();
-            //telemedicine_case_code
-            $followUp->code                                 = $record['telemedicine_case_code'];
-            $followUp->telemedicine_patient_id              = $record['telemedicine_patient_id'];
-            $followUp->telemedicine_case_id                 = $record['telemedicine_case_id'];
-            $followUp->telemedicine_doctor_id               = $record['telemedicine_doctor_id'];
-            $followUp->telemedicine_consultation_patient_id = $record['id'];
-            $followUp->telemedicine_service_list_id         = $record['telemedicine_service_list_id'];
-            //Agregamos 1 dia a la fecha
-            $followUp->next_follow_up = now()->addDay()->format('d/m/Y');
-            $followUp->created_by = 'INTEGRACORP';
-            $followUp->save();
+            //Actualizo el estatus del
+            
+            if(isset($feedbackOne) && $feedbackOne == true){
+                //Actualizamos la informacion en la tabla de casos
+                $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
+                $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
+                $case->updated_at = now();
+                $case->status = 'ALTA MEDICA';
+                $case->save();
 
-            //actualizo el estado del paciente
-            $case = TelemedicineCase::find($record['telemedicine_case_id']);
-            $case->status = 'EN SEGUIMIENTO';
-            $case->save();
+                //Actualizamos la informacion en la tabla de consultas
+                $consult = TelemedicineConsultationPatient::where('id', $record['id'])->first();
+                $consult->updated_at = now();
+                $consult->status = 'ALTA MEDICA';
+                $consult->save();
+
+                session()->forget('feedbackOne');
+
+                
+            } else {
+                $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
+                $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
+                $case->updated_at = now();
+                $case->status = 'EN SEGUIMIENTO';
+                $case->save();
+            }
+
             
             //code...
         } catch (\Throwable $th) {

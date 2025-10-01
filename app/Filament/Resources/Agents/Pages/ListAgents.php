@@ -3,12 +3,14 @@
 namespace App\Filament\Resources\Agents\Pages;
 
 use Filament\Actions\Action;
+use App\Models\AgentNoteBlog;
 use Filament\Support\Enums\Width;
 use Filament\Actions\CreateAction;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use App\Http\Controllers\LogController;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
@@ -196,7 +198,7 @@ class ListAgents extends ListRecords
                             ->color('danger')
                             ->send();
                     }
-                })
+                }) 
         ];
     }
 }

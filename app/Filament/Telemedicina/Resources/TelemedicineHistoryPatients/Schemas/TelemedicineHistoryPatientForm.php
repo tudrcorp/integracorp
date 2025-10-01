@@ -46,7 +46,7 @@ class TelemedicineHistoryPatientForm
                                                     } else {
                                                         $parte_entera = TelemedicineHistoryPatient::max('id');
                                                     }
-                                                    return 'TEL-HIS-000' . $parte_entera + 1;
+                                                    return 'HIS-000' . $parte_entera + 1;
                                                 })
                                                 ->disabled()
                                                 ->dehydrated()

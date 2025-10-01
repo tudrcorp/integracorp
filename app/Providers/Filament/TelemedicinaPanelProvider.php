@@ -85,15 +85,15 @@ class TelemedicinaPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->registerErrorNotification(
-                title: 'Registro No Encontrado',
-                body: 'El registro que intenta consultar no existe.',
+                title: 'ERROR DE EJECUCIÓN',
+                body: 'Se produjo un error de ejecución, por favor contacte con el administrador.',
                 statusCode: 404,
             )
             ->userMenuItems([
                 'profile' => fn(Action $action) => $action->label('Perfil del Doctor')
                     ->icon('healthicons-f-doctor-male')
                     ->color('primary')
-                    ->url(TelemedicineDoctorResource::getUrl('edit', ['record' => Auth::user()->doctor_id], panel: 'telemedicina')),
+                    ->url(TelemedicineDoctorResource::getUrl('view', ['record' => Auth::user()->doctor_id], panel: 'telemedicina')),
                 'logout' => fn(Action $action) => $action
                     ->label('Cerrar Sesión')
                     ->color('danger')

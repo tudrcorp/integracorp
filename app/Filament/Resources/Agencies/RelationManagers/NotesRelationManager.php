@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Filament\Resources\Agencies\RelationManagers;
+
+use BackedEnum;
+use Filament\Tables\Table;
+use Filament\Actions\Action;
+use App\Models\AgencyNoteBlog;
+use Filament\Support\Enums\Width;
+use Filament\Actions\CreateAction;
+use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Notifications\Notification;
+use App\Filament\Resources\Agencies\AgencyResource;
+use Filament\Resources\RelationManagers\RelationManager;
+
+class NotesRelationManager extends RelationManager
+{
+    protected static string $relationship = 'notes';
+
+    protected static ?string $title = 'Notas';
+
+    protected static string|BackedEnum|null $icon = 'heroicon-o-square-3-stack-3d';
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->heading('Notas y/o Observaciones')
+            ->description('Listas de Notas y/o registradas en la Agencia, ordenas de forma cronológica.')
+            ->defaultSort('created_at', 'desc')
+            ->columns([
+                TextColumn::make('created_at')
+                    ->label('Fecha de Registro')
+                    ->dateTime()
+                    ->description(fn($record): string => $record->created_at->diffForHumans())
+                    ->sortable(),
+                TextColumn::make('note')
+                    ->label('Nota')
+                    ->searchable()
+                    ->wrap(),
+            ])
+            ->headerActions([
+                Action::make('uploadNote')
+                    ->label('Agregar Nota')
+                    ->color('success')
+                    ->icon('heroicon-o-square-3-stack-3d')
+                    ->modalWidth(Width::Large)
+                    ->modalHeading('Cargar Notas')
+                    ->modalButton('Cargar')
+                    ->modalIcon('heroicon-o-square-3-stack-3d')
+                    ->form([
+                        Textarea::make('note')
+                            ->autosize()
+                            ->label('Notas y/o Observaciones')
+                            ->required(),
+                    ])
+                    ->action(function (array $data) {
+                        AgencyNoteBlog::create([
+                            'agent_id'  => $this->getOwnerRecord()->id,
+                            'note'       => $data['note'],
+                            'created_by' => Auth::user()->name
+                        ]);
+
+                        Notification::make()
+                            ->title('Nota Cargada')
+                            ->success()
+                            ->send();
+                    })
+            ]);
+    }
+}

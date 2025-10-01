@@ -23,8 +23,19 @@ class TelemedicinePatientMedicationsRelationManager extends RelationManager
             ->heading('Medicamentos e Indicacaciones')
             ->description(fn (RelationManager $livewire): string => 'Indicador por el Dr(a): ' . $livewire->ownerRecord->telemedicineDoctor->full_name)
             ->columns([
-                TextColumn::make('medicine'),
-                TextColumn::make('indications'),
+                TextColumn::make('medicine')
+                    ->label('Medicamento')
+                    ->searchable(),
+                TextColumn::make('indications')
+                    ->label('Indicaciones')
+                    ->searchable(),
+                TextColumn::make('created_at')
+                    ->label('Fecha de Solicitud')
+                    ->badge()
+                    ->date('d/m/Y')
+                    ->color('primary')
+                    ->icon('heroicon-s-calendar')
+                    ->searchable(),
             ])
             ->headerActions([
                 CreateAction::make(),

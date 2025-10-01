@@ -16,6 +16,7 @@ use App\Filament\Master\Resources\Agencies\Pages\ListAgencies;
 use App\Filament\Master\Resources\Agencies\Schemas\AgencyForm;
 use App\Filament\Master\Resources\Agencies\Tables\AgenciesTable;
 use App\Filament\Master\Resources\Agencies\Schemas\AgencyInfolist;
+use App\Filament\Master\Resources\Agencies\RelationManagers\NotesRelationManager;
 use App\Filament\Master\Resources\Agencies\RelationManagers\DocumentsRelationManager;
 
 class AgencyResource extends Resource
@@ -49,6 +50,7 @@ class AgencyResource extends Resource
     {
         return [
             DocumentsRelationManager::class,
+            NotesRelationManager::class
         ];
     }
 

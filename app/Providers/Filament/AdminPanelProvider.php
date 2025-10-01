@@ -101,10 +101,10 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-s-calculator'),
                 NavigationGroup::make()
                     ->label('TELEMEDICINA')
-                    ->icon('healthicons-f-telemedicine'),
+                    ->icon('healthicons-f-call-centre'),
                 NavigationGroup::make()
                     ->label('MARKETING')
-                    ->icon('healthicons-f-telemedicine'),
+                    ->icon('heroicon-s-gift'),
                 NavigationGroup::make()
                     ->label('CONFIGURACION')
                     ->icon('heroicon-m-cog-8-tooth'),
@@ -129,8 +129,8 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->registerErrorNotification(
-                title: 'Registro No Encontrado',
-                body: 'El registro que intenta consultar no existe.',
+                title: 'ERROR DE EJECUCIÓN',
+                body: 'Se produjo un error de ejecución, por favor contacte con el administrador.',
                 statusCode: 404,
             )
             ->plugins([

@@ -8,4 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateTelemedicineDoctor extends CreateRecord
 {
     protected static string $resource = TelemedicineDoctorResource::class;
+
+    protected static ?string $title = 'Formulario de Registro de Médicos';
 }

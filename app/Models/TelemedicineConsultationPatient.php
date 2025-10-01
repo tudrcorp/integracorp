@@ -14,10 +14,12 @@ class TelemedicineConsultationPatient extends Model
         'telemedicine_case_code',
         'telemedicine_patient_id',
         'telemedicine_doctor_id',
+        'telemedicine_service_list_id',
+        'telemedicine_priority_id',
+        
         'code_reference',
         'full_name',
         'nro_identificacion',
-        'telemedicine_service_list_id',
         'reason_consultation',
         'actual_phatology',
         'background',
@@ -29,45 +31,16 @@ class TelemedicineConsultationPatient extends Model
         'other_studies',
         'consult_specialist',
         'other_specialist',
-        'created_by',
 
-        'hombre_izq',
-        'hombro_der',
-        'hombro_comp',
-        
-        'codo_izq',
-        'codo_der',
-        'codo_comp',
-        
-        'muneca_izq',
-        'muneca_der',
-        'muneca_comp',
-        
-        'mano_izq',
-        'mano_der',
-        'mano_comp',
-        
-        'humero_izq',
-        'humero_der',
-        'humero_comp',
-        
-        'ante_izq',
-        'ante_der',
-        'ante_comp',
-        
-        'cdl_ap',
-        
-        'pocep',
-        
-        'cc_ap',
-        'cc_oblicuas',
-        'cc_la_flexion',
-        'cc_la_extension',
-        
-        'cls_ap',
-        'cls_oblicuas',
-        'cls_la_flexion',
-        'cls_la_extension',
+        'assigned_by',
+
+        'status',
+        'cuestion_1',
+        'cuestion_2',
+        'cuestion_3',
+        'cuestion_4',
+        'cuestion_5',
+        'feedbackOne',
         
     ];
 
@@ -75,6 +48,9 @@ class TelemedicineConsultationPatient extends Model
         'labs'                  => 'array',
         'studies'               => 'array',
         'consult_specialist'    => 'array',
+        'other_labs'            => 'array',
+        'other_studies'         => 'array',
+        'other_specialist'      => 'array',
     ];
 
     
@@ -98,14 +74,28 @@ class TelemedicineConsultationPatient extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    //...Muchos medicamentos
     public function telemedicinePatientMedications()
     {
         return $this->hasMany(TelemedicinePatientMedications::class);
     }
 
-    public function telemedicineFollowUps()
+    //...Muchos laboratorios
+    public function telemedicinePatientLabs()
     {
-        return $this->hasMany(TelemedicineFollowUp::class);
+        return $this->hasMany(TelemedicinePatientLab::class);
+    }
+
+    //...Muchas imagenes
+    public function telemedicinePatientStudies()
+    {
+        return $this->hasMany(TelemedicinePatientStudy::class);
+    }
+
+    //...Muchas consultas con especialistas
+    public function telemedicinePatientSpecialists()
+    {
+        return $this->hasMany(TelemedicinePatientSpecialty::class);
     }
 
     public function telemedicineConsultationPatient()
@@ -116,6 +106,11 @@ class TelemedicineConsultationPatient extends Model
     public function telemedicineServiceList()
     {
         return $this->belongsTo(TelemedicineServiceList::class, 'telemedicine_service_list_id');
+    }
+
+    public function telemedicinePriority()
+    {
+        return $this->belongsTo(TelemedicinePriority::class, 'telemedicine_priority_id');
     }
 
     

@@ -15,9 +15,9 @@ class ListTelemedicineHistoryPatients extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Crear Historia Clínica')
-                ->icon('heroicon-s-plus')
+            // CreateAction::make()
+            //     ->label('Crear Historia Clínica')
+            //     ->icon('heroicon-s-plus')
         ];
     }
 }

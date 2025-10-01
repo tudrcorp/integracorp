@@ -22,9 +22,9 @@ class Limit extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function benefits(): HasMany
+    public function benefit(): BelongsTo
     {
-        return $this->hasMany(Benefit::class, 'limit_id', 'id');
+        return $this->belongsTo(Benefit::class);
     }
 
 }

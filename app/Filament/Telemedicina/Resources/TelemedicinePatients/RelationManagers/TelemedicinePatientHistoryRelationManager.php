@@ -4,12 +4,15 @@ namespace App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManag
 
 use BackedEnum;
 use Filament\Tables\Table;
+use Filament\Actions\ViewAction;
 use Filament\Actions\CreateAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ColumnGroup;
+use App\Models\TelemedicineHistoryPatient;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\TelemedicinePatientResource;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 
 class TelemedicinePatientHistoryRelationManager extends RelationManager
 {
@@ -17,11 +20,14 @@ class TelemedicinePatientHistoryRelationManager extends RelationManager
 
     protected static ?string $title = 'Historia';
 
-    protected static string|BackedEnum|null $icon = 'heroicon-s-user-group';
+    protected static string|BackedEnum|null $icon = 'healthicons-f-health-worker-form';
 
     public function table(Table $table): Table
     {
         return $table
+            ->heading('Historia del Paciente')
+            // ->description(fn (RelationManager $livewire): string => 'Historia del Paciente: ' . $livewire->ownerRecord->telemedicinePatient->full_name)
+            ->description('Descripción detallada de la historia clínica del paciente, y sus antecedentes personales y familiares. Para ver todos los detalles de la historia del paciente haga click en Ver Detalles')
             ->columns([
                 ColumnGroup::make('DATOS DEL PACIENTE')
                     ->columns([
@@ -134,53 +140,66 @@ class TelemedicinePatientHistoryRelationManager extends RelationManager
                             ->boolean(),
                     ]),
 
-            ColumnGroup::make('ANTECEDENTES GINECÓLOGOS')
-                ->columns([
-                    TextColumn::make('numero_embarazos')
-                        ->numeric()
-                        ->sortable(),
-                    TextColumn::make('numero_partos')
-                        ->numeric()
-                        ->sortable(),
-                    TextColumn::make('numero_abortos')
-                        ->numeric()
-                        ->sortable(),
-                    TextColumn::make('cesareas')
-                        ->numeric()
-                        ->sortable(),
-                    
-                ]),
-                TextColumn::make('allergies')
-                    ->searchable(),
-                TextColumn::make('history_surgical')
-                    ->searchable(),
-                TextColumn::make('medications_supplements')
-                    ->searchable(),
-                TextColumn::make('observations_ginecologica')
-                    ->searchable(),
-                TextColumn::make('observations_allergies')
-                    ->searchable(),
-                TextColumn::make('observations_medication')
-                    ->searchable(),
-                TextColumn::make('observations_personal')
-                    ->searchable(),
-                TextColumn::make('observations_not_pathological')
-                    ->searchable(),
-                TextColumn::make('observations_pathological')
-                    ->searchable(),
-                TextColumn::make('created_by')
-                    ->searchable(),
+            // ColumnGroup::make('ANTECEDENTES GINECÓLOGOS')
+            //     ->columns([
+            //         TextColumn::make('numero_embarazos')
+            //             ->badge()
+            //             ->color('primary')
+            //             ->default(function ($record){
+            //                 if(isset($record->numero_embarazos)){
+            //                     return $record->numero_embarazos;
+            //                 }
+            //                 return '----';
+            //             })
+            //             ->sortable(),
+            //         TextColumn::make('numero_partos')
+            //             ->badge()
+            //             ->color('primary')
+            //             ->default(function ($record) {
+            //                 if (isset($record->numero_partos)) {
+            //                     return $record->numero_partos;
+            //                 }
+            //                 return '----';
+            //             })
+            //             ->sortable(),
+            //         TextColumn::make('numero_abortos')
+            //             ->badge()
+            //             ->color('primary')
+            //             ->default(function ($record) {
+            //                     if (isset($record->numero_abortos)) {
+            //                         return $record->numero_abortos;
+            //                     }
+            //                     return '----';
+            //                 })
+            //                 ->sortable(),
+            //         TextColumn::make('cesareas')
+            //             ->badge()
+            //             ->color('primary')
+            //             ->default(function ($record) {
+            //                     if (isset($record->cesareas)) {
+            //                         return $record->cesareas;
+            //                     }
+            //                     return '----';
+            //                 })
+            //             ->sortable(),
+
+            // ]),
+                
                 TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->label('Fecha de Registro')
+                    ->dateTime(),
             ])
             ->headerActions([
                 // CreateAction::make(),
+            ])
+            ->recordActions([
+                ViewAction::make()
+                    ->icon('heroicon-s-eye')
+                    ->label('Ver Detalle')
+                    ->color('primary')
+                    ->url(function (TelemedicineHistoryPatient $record) {
+                        return TelemedicineHistoryPatientResource::getUrl('view', ['record' => $record->getKey()]);
+                    })
             ]);
     }
 }

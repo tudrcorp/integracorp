@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TelemedicinePatients\Tables;
 
 use Carbon\Carbon;
 use App\Models\City;
+use App\Models\Plan;
 use App\Models\State;
 use App\Models\Region;
 use App\Models\Country;
@@ -43,6 +44,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\NotificationController;
+use App\Filament\Resources\Plans\Tables\PlansTable;
 use App\Filament\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 
 class TelemedicinePatientsTable
@@ -50,9 +52,27 @@ class TelemedicinePatientsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->heading('Listado de Pacientes')
+            ->description('Tabla que muestra la lista de pacientes aifiliados y/o pacientes externos')
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('full_name')
                     ->label('Paciente')
+                    ->searchable(),
+                TextColumn::make('businessUnit.definition')
+                    ->label('Unidad de Negocios')
+                    ->badge()
+                    ->color('success')
+                    ->searchable(),
+                TextColumn::make('businessLine.definition')
+                    ->label('Linea de Servicio')
+                    ->badge()
+                    ->color('success')
+                    ->searchable(),
+                TextColumn::make('type_affiliation')
+                    ->label('Tipo de Afiliación')
+                    ->badge()
+                    ->color('success')
                     ->searchable(),
                 TextColumn::make('nro_identificacion')
                     ->label('Número de Identificación')
@@ -102,22 +122,10 @@ class TelemedicinePatientsTable
                                 ->modal()
                                 ->modalHeading('Beneficios del Plan')
                                 ->modalWidth('xl')
-                                ->schema([
-                                    Fieldset::make()
-                                        ->schema([
-                                            TextColumn::make('plan.description')
-                                                ->label('Plan')
-                                                ->badge()
-                                                ->color('success')
-                                                ->searchable(),
-                                            TextColumn::make('plan.price')
-                                                ->label('Precio')                                                
-                                                ->badge()
-                                                ->color('success')
-                                                ->searchable(),
-                                        ]),
-                                ])
-                                
+                                ->modalContent(function () {
+                                    //quiero colocar un recurso de tabla en el modal
+                                    
+                                }),
                         ),
                     TextColumn::make('coverage.price')
                         ->label('Cobertura')

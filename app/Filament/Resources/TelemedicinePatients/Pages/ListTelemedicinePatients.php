@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\TelemedicinePatients\Pages;
 
+use App\Models\Plan;
 use App\Models\Affiliate;
+use App\Models\BusinessLine;
 use Filament\Actions\Action;
 use Filament\Support\Enums\Width;
 use App\Models\AffiliateCorporate;
@@ -22,7 +24,7 @@ class ListTelemedicinePatients extends ListRecords
 {
     protected static string $resource = TelemedicinePatientResource::class;
 
-    protected static ?string $title = 'Pacientes';
+    protected static ?string $title = 'Gestión de Pacientes Afiliados y No Afiliados';
 
     protected function getHeaderActions(): array
     {
@@ -89,9 +91,17 @@ class ListTelemedicinePatients extends ListRecords
                 ->action(function (array $data) {
                     
                     if($data['type_affiliate'] == 'inv') {
-                        $affiliation = Affiliate::where('id', $data['affiliate_id'])->with('affiliation')->get()->toArray();
-                        // dd($affiliation, $affiliation[0]['affiliation']['plan_id']);
-                        //Creamos el registro en la tabla de pacientes
+                        
+                        $affiliation = Affiliate::where('id', $data['affiliate_id'])
+                        ->with('affiliation')
+                        ->get()
+                        ->toArray();
+                        
+                        $plan = Plan::where('id', $affiliation[0]['affiliation']['plan_id'])
+                        ->with('businessUnit')
+                        ->first()
+                        ->toArray();
+
                         $patient = TelemedicinePatient::create([
                             
                             //Informacion de la Afiliacion
@@ -119,7 +129,11 @@ class ListTelemedicinePatients extends ListRecords
                             'email'                     => $affiliation[0]['affiliation']['email_ti'],
                             'phone_contact'             => $affiliation[0]['affiliation']['email_ti'],
                             'email_contact'             => $affiliation[0]['affiliation']['phone_ti'],
-                            'created_by'                => Auth::user()->name
+                            'created_by'                => Auth::user()->name,
+
+                            //Unidad de Negocios
+                            'business_unit_id'          => $plan['business_unit']['id'],
+                            'business_line_id'          => BusinessLine::where('business_unit_id', $plan['business_unit']['id'])->first()->id
                         ]);
                         
                         
@@ -127,7 +141,12 @@ class ListTelemedicinePatients extends ListRecords
                     
                     if ($data['type_affiliate'] == 'cor') {
                         $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->get()->toArray();
-                        // dd($affiliation);
+                    // dd($affiliation);
+                        $plan = Plan::where('id', $affiliation[0]['plan_id'])
+                        ->with('businessUnit')
+                        ->first()
+                        ->toArray();
+                        
                             $patient = TelemedicinePatient::create([
 
                                 //Informacion de la Afiliacion
@@ -155,7 +174,11 @@ class ListTelemedicinePatients extends ListRecords
                                 'email'                     => $affiliation[0]['email'],
                                 'phone_contact'             => $affiliation[0]['affiliation_corporate']['phone'],
                                 'email_contact'             => $affiliation[0]['affiliation_corporate']['email'],
-                                'created_by'                => Auth::user()->name
+                                'created_by'                => Auth::user()->name,
+
+                                //Unidad de Negocios
+                                'business_unit_id'          => $plan['business_unit']['id'],
+                                'business_line_id'          => BusinessLine::where('business_unit_id', $plan['business_unit']['id'])->first()->id,
                             ]);
                         
                     }

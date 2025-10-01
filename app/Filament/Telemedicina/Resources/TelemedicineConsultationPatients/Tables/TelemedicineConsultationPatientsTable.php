@@ -15,6 +15,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Schemas\Components\Fieldset;
 use App\Models\TelemedicineConsultationPatient;
 
@@ -55,44 +56,112 @@ class TelemedicineConsultationPatientsTable
                     ->icon('heroicon-s-check')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('labs')
-                    ->label('Laboratorio')
-                    ->alignCenter()
-                    ->wrap()
+                ColumnGroup::make('LABORATORIOS Y ESTUDIOS CUBIERTOS', [
+                    TextColumn::make('labs')
+                        ->label('Laboratorio')
+                        ->alignCenter()
+                        ->wrap()
+                        ->badge()
+                        ->color(function (TelemedicineConsultationPatient $record) {
+                            return $record->labs ? 'success' : 'gray';
+                        })
+                        ->default(function (TelemedicineConsultationPatient $record) {
+                            return $record->labs ? $record->labs : 'N/A';
+                        })
+                        ->searchable(),
+                    TextColumn::make('studies')
+                        ->label('Estudios')
+                        ->alignCenter()
+                        ->wrap()
+                        ->badge()
+                        ->color(function (TelemedicineConsultationPatient $record) {
+                            return $record->studies ? 'success' : 'gray';
+                        })
+                        ->default(function (TelemedicineConsultationPatient $record) {
+                            return $record->studies ? $record->studies : 'N/A';
+                        })
+                        ->searchable(),
+                    TextColumn::make('consult_specialist')
+                        ->label('Consultas de Especialistas')
+                        ->alignCenter()
+                        ->wrap()
+                        ->badge()
+                        ->color(function (TelemedicineConsultationPatient $record) {
+                            return $record->consult_specialist ? 'success' : 'gray';
+                        })
+                        ->default(function (TelemedicineConsultationPatient $record) {
+                            return $record->consult_specialist ? $record->consult_specialist : 'N/A';
+                        })
+                        ->searchable(),
+                ]),
+
+                ColumnGroup::make('LABORATORIOS Y ESTUDIOS NO CUBIERTOS', [
+                    TextColumn::make('other_labs')
+                        ->label('Otros Laboratorios')
+                        ->alignCenter()
+                        ->wrap()
+                        ->badge()
+                        ->color(function (TelemedicineConsultationPatient $record) {
+                            return $record->other_labs ? 'success' : 'gray';
+                        })
+                        ->default(function (TelemedicineConsultationPatient $record) {
+                            return $record->other_labs ? $record->labs : 'N/A';
+                        })
+                        ->searchable(),
+
+                    TextColumn::make('other_studies')
+                        ->label('Otros Estudios')
+                        ->alignCenter()
+                        ->wrap()
+                        ->badge()
+                        ->color(function (TelemedicineConsultationPatient $record) {
+                            return $record->studies ? 'success' : 'gray';
+                        })
+                        ->default(function (TelemedicineConsultationPatient $record) {
+                            return $record->studies ? $record->studies : 'N/A';
+                        })
+                        ->searchable(),
+
+                    TextColumn::make('other_specialist')
+                        ->label('Otros Especialistas')
+                        ->alignCenter()
+                        ->wrap()
+                        ->badge()
+                        ->color(function (TelemedicineConsultationPatient $record) {
+                            return $record->consult_specialist ? 'success' : 'gray';
+                        })
+                        ->default(function (TelemedicineConsultationPatient $record) {
+                            return $record->consult_specialist ? $record->consult_specialist : 'N/A';
+                        })
+                        ->searchable(),
+                ]),
+
+                TextColumn::make('status')
+                    ->label('Estado')
                     ->badge()
                     ->color(function (TelemedicineConsultationPatient $record) {
-                        return $record->labs ? 'success' : 'gray';
-                    })
-                    ->default(function (TelemedicineConsultationPatient $record) {
-                        return $record->labs ? $record->labs : 'N/A';
-                    })
-                    ->description(fn (TelemedicineConsultationPatient $record): string => 'Otro: '. $record->other_labs)
-                    ->searchable(),
-                TextColumn::make('studies')
-                    ->label('Estudios')
-                    ->alignCenter()
-                    ->wrap()
+                        return $record->status == 'EN SEGUIMIENTO' ? 'warning' : 'success';
+                    }),
+
+                TextColumn::make('telemedicinePriority.name')
+                    ->label('Prioridad')
                     ->badge()
-                    ->color(function (TelemedicineConsultationPatient $record) {
-                        return $record->studies ? 'success' : 'gray';
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'ALTA'          => 'success',
+                            'MEDIA'         => 'warning',
+                            'BAJA'          => 'primary',
+                            'EMERGENCIA'    => 'danger',
+                        };
                     })
-                    ->default(function (TelemedicineConsultationPatient $record) {
-                        return $record->studies ? $record->studies : 'N/A';
+                    ->icon(function (string $state): string {
+                        return match ($state) {
+                            'ALTA'             => 'healthicons-f-health',
+                            'MEDIA'            => 'healthicons-f-health',
+                            'BAJA'             => 'healthicons-f-health',
+                            'EMERGENCIA'       => 'heroicon-c-shield-exclamation',
+                        };
                     })
-                    ->description(fn(TelemedicineConsultationPatient $record): string => 'Otro: ' . $record->other_studies)
-                    ->searchable(),
-                TextColumn::make('consult_specialist')
-                    ->label('Consultas de Especialistas')
-                    ->alignCenter()
-                    ->wrap()
-                    ->badge()
-                    ->color(function (TelemedicineConsultationPatient $record) {
-                        return $record->consult_specialist ? 'success' : 'gray';
-                    })
-                    ->default(function (TelemedicineConsultationPatient $record) {
-                        return $record->consult_specialist ? $record->consult_specialist : 'N/A';
-                    })   
-                    ->description(fn(TelemedicineConsultationPatient $record): string => 'Otro: ' . $record->other_specialist)
                     ->searchable(),
                 
                 TextColumn::make('created_at')

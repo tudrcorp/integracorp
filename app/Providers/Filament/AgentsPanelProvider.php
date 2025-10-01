@@ -9,6 +9,7 @@ use Livewire\Component;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
 use Sabberworm\CSS\Settings;
+use App\Models\AgentNoteBlog;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
@@ -19,6 +20,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
 use Illuminate\Support\Facades\Blade;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Navigation\NavigationGroup;
 use Filament\Notifications\Notification;
@@ -109,8 +111,8 @@ class AgentsPanelProvider extends PanelProvider
                 
             ])
             ->registerErrorNotification(
-                title: 'Registro No Encontrado',
-                body: 'El registro que intenta consultar no existe.',
+                title: 'ERROR DE EJECUCIÓN',
+                body: 'Se produjo un error de ejecución, por favor contacte con el administrador.',
                 statusCode: 404,
             )
             ->userMenuItems([

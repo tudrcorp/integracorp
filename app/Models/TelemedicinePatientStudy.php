@@ -9,17 +9,13 @@ class TelemedicinePatientStudy extends Model
     protected $table = 'telemedicine_patient_studies';
 
     protected $fillable = [
-        'telemedicine_case_id',
-        'telemedicine_case_code',
         'telemedicine_patient_id',
+        'telemedicine_case_id',
         'telemedicine_doctor_id',
         'telemedicine_consultation_patient_id',
-        'studies',
-        'observations',
-    ];
-
-    protected $casts = [
-        'studies' => 'array',
+        'study',
+        'type',
+        'assigned_by',
     ];
 
     public function telemedicineCase()

@@ -6,13 +6,16 @@ use function Psy\debug;
 use Filament\Schemas\Schema;
 use App\Models\TelemedicineCase;
 use Illuminate\Support\HtmlString;
+use App\Models\TelemedicinePriority;
 use Filament\Forms\Components\Radio;
+use Illuminate\Support\Facades\Auth;
+use App\Models\TelemedicineListStudy;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\Blade;
-use App\Models\TelemedicineStudiesList;
 use App\Models\TelemedicineServiceList;
+use App\Models\TelemedicineStudiesList;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
@@ -20,8 +23,11 @@ use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Fieldset;
+use App\Models\TelemedicineListLaboratory;
+use App\Models\TelemedicineListSpecialist;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
+use App\Models\TelemedicineConsultationPatient;
 use Filament\Forms\Components\Repeater\TableColumn;
 
 class TelemedicineConsultationPatientForm
@@ -32,6 +38,7 @@ class TelemedicineConsultationPatientForm
         //------------------------------------------------
         $case = session()->get('case');
         $patient = session()->get('patient');
+        $countCase = TelemedicineConsultationPatient::where('telemedicine_case_id', $case->id)->count();
         //------------------------------------------------
 
         return $schema
@@ -44,9 +51,16 @@ class TelemedicineConsultationPatientForm
                                 ->schema([
                                     Fieldset::make()
                                         ->schema([
-                                            Hidden::make('telemedicine_case_id')->default($case->id)->hiddenOn('edit'),
-                                            Hidden::make('telemedicine_doctor_id')->default($case->telemedicine_doctor_id)->hiddenOn('edit'),
-                                            Hidden::make('telemedicine_patient_id')->default($case->telemedicine_patient_id)->hiddenOn('edit'),
+                                            Hidden::make('telemedicine_case_id')->default($case->id),
+                                            Hidden::make('telemedicine_doctor_id')->default($case->telemedicine_doctor_id),
+                                            Hidden::make('telemedicine_patient_id')->default($case->telemedicine_patient_id),
+                                            Hidden::make('assigned_by')->default(Auth::user()->id),
+                                            Hidden::make('status')->default(function () use ($countCase) {
+                                                if ($countCase < 1) {
+                                                    return 'CONSULTA INICIAL';
+                                                }
+                                                return 'EN SEGUIMIENTO';
+                                            }),
                                             TextInput::make('code_reference')
                                                 ->label('Referencia')
                                                 ->default('REF-' . rand(11111, 99999))
@@ -74,6 +88,12 @@ class TelemedicineConsultationPatientForm
                                 ->columnSpanFull(),
                         ]),
                     Step::make('Motivo de la Consulta')
+                        ->hidden(function () use ($countCase) {
+                            if($countCase < 1){
+                                return false;
+                            }
+                            return true;
+                        })
                         ->schema([
                             Section::make()
                                 ->heading('Motivo de la Consulta')
@@ -112,7 +132,65 @@ class TelemedicineConsultationPatientForm
                                 ])
                                 ->columnSpanFull(),
                         ]),
+                    Step::make('Cuestionario de Seguimiento')
+                        //Este hidden es para ocultar el paso de seguimiento si solo hay un caso registrado (consulta inicial)
+                        ->hidden(function () use ($countCase) {
+                            if($countCase < 1){
+                                return true;
+                            }
+                            return false;
+                        })
+                        ->schema([
+                            Fieldset::make('Preguntas de Seguimiento')
+                                ->schema([
+                                    Textarea::make('cuestion_1')
+                                        ->label('1.- ¿COMO SE SIENTE EL DIA DE HOY?')
+                                        ->required()
+                                        ->live()
+                                        ->autosize()
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                            $set('cuestion_1', $state.toUpperCase());
+                                                        JS),
+                                    Textarea::make('cuestion_2')
+                                        ->label('2.- ¿COMO HA RESPONDIDO AL TRATAMIENTO INDICADO?')
+                                        ->required()
+                                        ->autosize()
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                            $set('cuestion_2', $state.toUpperCase());
+                                                        JS),
+                                    Textarea::make('cuestion_3')
+                                        ->label('3. ¿SIENTE QUE HAN MEJORADO LOS SÍNTOMAS?')
+                                        ->required()
+                                        ->autosize()
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                            $set('cuestion_3', $state.toUpperCase());
+                                                        JS),
+                                    Textarea::make('cuestion_4')
+                                        ->label('4. ¿SE REALIZO LOS ESTUDIOS SOLICITADOS?')
+                                        ->required()
+                                        ->autosize()
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                            $set('cuestion_4', $state.toUpperCase());
+                                                        JS),
+                                    Textarea::make('cuestion_5')
+                                        ->label('5. EN VISTA DE QUE SUS RESULTADOS DE LABORATORIO ESTÁN ALTERADOS, SE MODIFICAN LAS INDICACIONES MEDICAS.')
+                                        ->required()
+                                        ->autosize()
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                            $set('cuestion_5', $state.toUpperCase());
+                                                        JS),
+                                ])->columnSpanFull()->columns(2),
+                            Fieldset::make('Estatus del Caso')
+                                ->schema([
+                                    Radio::make('feedbackOne')
+                                        ->label('El paciente ya se encuentra de ALTA?')
+                                        ->boolean(falseLabel: 'No, asignar un nuevo servicio!')
+                                        ->inline()
+                                        ->live(),
+                                ])->columnSpanFull(),
+                        ]),
                     Step::make('Tipo de Servicio')
+                        ->hidden(fn (Get $get) => $get('feedbackOne') == true)
                         ->schema([
                             // ...
                             Fieldset::make('Selección de Servicios')
@@ -120,35 +198,30 @@ class TelemedicineConsultationPatientForm
                                     Select::make('telemedicine_service_list_id')
                                         ->label('Tipo de Servicio')
                                         ->live()
-                                        ->options(TelemedicineServiceList::all()->except(1)->pluck('name', 'id'))
-                                        ->hint('Seleccione un servicio para ver detalles')
-                                        ->hintIcon('heroicon-m-information-circle', tooltip: 'Cada servicio incluye consulta médica virtual, seguimiento y receta digital.')
+                                        ->options(function (Get $get) use ($countCase) {
+                                            if($countCase < 1){
+                                                return TelemedicineServiceList::where('level', 1)->get()->pluck('name', 'id');
+                                            }
+                                            return TelemedicineServiceList::all()->pluck('name', 'id');
+                                        })
+                                        // ->hint('Seleccione un servicio para ver detalles')
+                                        // ->hintIcon('heroicon-m-information-circle', tooltip: 'Cada servicio incluye consulta médica virtual, seguimiento y receta digital.')
                                         ->helperText(function (Get $get, $state) {
                                             $service = TelemedicineServiceList::find($state);
                                             return $service ? $service->description : '---';
                                         })
                                         ->searchable()
                                         ->required(),
-                                    Grid::make(1)
-                                        ->schema([
-                                            Radio::make('feedback')
-                                                ->label('Desea agregar algún tipo de tratamiento de forma preventiva?')
-                                                ->live()
-                                                ->options([
-                                                    'si' => 'Si',
-                                                    'no' => 'No',
-                                                ])
-                                                ->inline()
-                                        ])->columnSpanFull(),
+                                    Select::make('telemedicine_priority_id')
+                                        ->label('Prioridad de Servicio')
+                                        ->live()
+                                        ->options(TelemedicinePriority::all()->pluck('name', 'id'))
+                                        ->searchable()
+                                        ->required(),
                                 ])->columnSpanFull()->columns(3),
                         ]),
                     Step::make('Medicamentos e Indicaciones')
-                        ->hidden(function (Get $get) {
-                            if ($get('feedback') == 'si') {
-                                return false;
-                            }
-                            return true;
-                        }) // Solo se muestra si el servicio es "Consulta General"
+                        ->hidden(fn(Get $get) => $get('feedbackOne') == true)
                         ->schema([
                             // ...
                             Repeater::make('medications')
@@ -158,195 +231,66 @@ class TelemedicineConsultationPatientForm
                                 ])
                                 ->schema([
                                     TextInput::make('medicines')
-                                        ->required()
                                         ->afterStateUpdatedJs(<<<'JS'
                                             $set('medicines', $state.toUpperCase());
                                         JS),
                                     TextInput::make('indications')
-                                        ->required()
                                         ->afterStateUpdatedJs(<<<'JS'
                                             $set('indications', $state.toUpperCase());
                                         JS)
                                 ])
                         ]),
-                    Step::make('Laboratorios y Estudios')
-                        ->hidden(fn(Get $get): bool => $get('telemedicine_service_list_id') != 4) // Solo se muestra si el servicio es "Consulta General"
+                    Step::make('Laboratorios y Estudios de Imagenología')
+                        ->hidden(fn(Get $get) => $get('feedbackOne') == true)
                         ->schema([
                             // ...
                             Grid::make()
                                 ->schema([
-                                    Fieldset::make('Estudios de Laboratorio')
+                                    Fieldset::make('Exámenes Laboratorios')
                                         ->schema([
                                             Select::make('labs')
-                                                ->label('Estudios de Laboratorio')
-                                                ->options([
-                                                    'HEMATOLOGÍA COMPLETA'              => 'HEMATOLOGÍA COMPLETA',
-                                                    'VSG / PCR'                         => 'VSG / PCR',
-                                                    'UROANÁLISIS'                       => 'UROANÁLISIS',
-                                                    'COPROANÁLISIS'                     => 'COPROANÁLISIS',
-                                                    'GLICEMIA'                          => 'GLICEMIA',
-                                                    'UREA Y CREATININA'                 => 'UREA Y CREATININA',
-                                                    'TGO / TPG (PERFIL HEPATICO)'       => 'TGO / TPG (PERFIL HEPATICO)',
-                                                    'BILIRRUBINA TOTAL Y FRACCIONADA'   => 'BILIRRUBINA TOTAL Y FRACCIONADA',
-                                                    'FOSFATASA ALCALINA'                => 'FOSFATASA ALCALINA',
-                                                    'PERFIL 20'                         => 'PERFIL 20',
-                                                ])
+                                                ->label('Laboratorios (CUBIERTOS)')
+                                                ->options(TelemedicineListLaboratory::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->helperText('Seleccione el/los estudios de Laboratorio que requiera el paciente'),
-                                            TextInput::make('other_labs')
-                                                ->label('Otros Estudios de Laboratorio') // BVA
-                                                ->helperText('Ingrese otros estudios de Laboratorio que requiera el paciente'),
+                                                ->helperText('Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
+                                            Select::make('other_labs')
+                                                ->label('Otros Laboratorio (NO CUBIERTOS)')
+                                                ->options(TelemedicineListLaboratory::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
+                                                ->multiple()
+                                                ->helperText('Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
                                         ])->columns(1),
-                                    Fieldset::make('Estudios de Imagenes')
+                                    Fieldset::make('Imagenología')
                                         ->schema([
                                             Select::make('studies')
-                                                ->label('Estudios de Imágenes')
+                                                ->label('Estudios de Imágenes (CIBERTOS)')
                                                 ->live()
-                                                ->options([
-                                                    'RX SIMPLE'       => 'RX SIMPLE (Por accidentes)',
-                                                    'RX DE TORAX'     => 'RX DE TORAX (Por infección respiratoria)',
-                                                    'ECO ABDOMINAL '  => 'ULTRASONIDO (Con fines diagnósticos)',
-                                                ])
+                                                ->options(TelemedicineListStudy::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
                                                 ->helperText('Seleccione el/los estudios de Imágenes que requiera el paciente'),
-                                            Fieldset::make('Ingrese la parte del cuerpo que requiera el estudio')
-                                                ->hidden(fn(Get $get): bool => !in_array('RX SIMPLE', $get('studies')))
-                                                ->schema([
-                                                    Fieldset::make('HOMBRO')
-                                                        ->schema([
-                                                            Checkbox::make('hombro_izq')
-                                                                ->label('IZQ'),
-                                                            Checkbox::make('hombro_der')
-                                                                ->label('DER'),
-                                                            Checkbox::make('hombro_comp')
-                                                                ->label('COMP'),
-                                                        ])->columns(3),
-                                                    Fieldset::make('CODO AP Y Lateral')
-                                                        ->schema([
-                                                            Checkbox::make('codo_izq')
-                                                                ->label('IZQ'),
-                                                            Checkbox::make('codo_der')
-                                                                ->label('DER'),
-                                                            Checkbox::make('codo_comp')
-                                                                ->label('COMP'),
-                                                        ])->columns(3),
-                                                    Fieldset::make('MUÑECA AP Y Lateral')
-                                                        ->schema([
-                                                            Checkbox::make('muneca_izq')
-                                                                ->label('IZQ'),
-                                                            Checkbox::make('muneca_der')
-                                                                ->label('DER'),
-                                                            Checkbox::make('muneca_comp')
-                                                                ->label('COMP'),
-                                                        ])->columns(3),
-                                                    Fieldset::make('MANO AP, Lateral y Oblicua')
-                                                        ->schema([
-                                                            Checkbox::make('mano_izq')
-                                                                ->label('IZQ'),
-                                                            Checkbox::make('mano_der')
-                                                                ->label('DER'),
-                                                            Checkbox::make('mano_comp')
-                                                                ->label('COMP'),
-                                                        ])->columns(3),
-                                                    Fieldset::make('HUMERO')
-                                                        ->schema([
-                                                            Checkbox::make('humero_izq')
-                                                                ->label('IZQ'),
-                                                            Checkbox::make('humero_der')
-                                                                ->label('DER'),
-                                                            Checkbox::make('humero_comp')
-                                                                ->label('COMP'),
-                                                        ])->columns(3),
-                                                    Fieldset::make('ANTEBRAZO')
-                                                        ->schema([
-                                                            Checkbox::make('ante_izq')
-                                                                ->label('IZQ'),
-                                                            Checkbox::make('ante_der')
-                                                                ->label('DER'),
-                                                            Checkbox::make('ante_comp')
-                                                                ->label('COMP'),
-                                                        ])->columns(3),
-                                                    Fieldset::make('COLUMNA DORSO LUMBAR')
-                                                        ->schema([
-                                                            Checkbox::make('cdl_ap')
-                                                                ->label('AP y LATERAL'),
-                                                        ]),
-                                                    Fieldset::make('PELVIS OSEA CENTRADA EN PUBIS')
-                                                        ->schema([
-                                                            Checkbox::make('pocep')
-                                                                ->label('AP DE PIE'),
-                                                        ]),
-                                                    Fieldset::make('COLUMNA CERVICAL')
-                                                        ->schema([
-                                                            Checkbox::make('cc_ap')
-                                                                ->label('AP'),
-                                                            Checkbox::make('cc_oblicuas')
-                                                                ->label('OBLICUAS'),
-                                                            Fieldset::make('Lateral')
-                                                                ->schema([
-                                                                    Checkbox::make('cc_la_flexion')
-                                                                        ->label('FLEXION'),
-                                                                    Checkbox::make('cc_la_extension')
-                                                                        ->label('EXTENSION'),
-                                                                ])->columnSpanfull(),
-                                                        ])->columns(2),
-                                                    Fieldset::make('COLUMNA LUMBO SACRA')
-                                                        ->schema([
-                                                            Checkbox::make('cls_ap')
-                                                                ->label('AP'),
-                                                            Checkbox::make('cls_oblicuas')
-                                                                ->label('OBLICUAS'),
-                                                            Fieldset::make('Lateral')
-                                                                ->schema([
-                                                                    Checkbox::make('cls_la_flexion')
-                                                                        ->label('FLEXION'),
-                                                                    Checkbox::make('cls_la_extension')
-                                                                        ->label('EXTENSION'),
-                                                                ])->columnSpanfull(),
-                                                        ])->columns(2),
-                                                ]),
-                                            TextInput::make('other_studies')
-                                                ->label('Otros Estudios de Imágenes') // BVA
-                                                ->helperText('Ingrese otros estudios de Imágenes que requiera el paciente')
-                                                ->afterStateUpdatedJs(<<<'JS'
-                                                    $set('other_studies', $state.toUpperCase());
-                                                JS)
+                                            Select::make('other_studies')
+                                                ->label(' Otros Estudios de Imágenes (NO CIBERTOS)')
+                                                ->live()
+                                                ->options(TelemedicineListStudy::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
+                                                ->multiple()
+                                                ->helperText('Seleccione el/los estudios de Imágenes que requiera el paciente'),
                                         ])->columnSpan(2)->columns(1),
                                     //...
                                 ])->columns(3),
                         ]),
                     Step::make('Interconsulta con Especialista')
-                        ->hidden(fn(Get $get): bool => $get('telemedicine_service_list_id') != 6) // Solo se muestra si el servicio es "Consulta General"
+                        ->hidden(fn(Get $get) => $get('feedbackOne') == true)
                         ->schema([
                             // ...
                             Fieldset::make()
                                 ->schema([
                                     Select::make('consult_specialist')
                                         ->label('Interconsultas Especialistas para Patologías Agudas')
-                                        ->multiple()
-                                        ->options([
-                                            'MÉDICO DE URGENCIAS'       => 'MÉDICO DE URGENCIAS',
-                                            'TRAUMATÓLOGO'              => 'TRAUMATÓLOGO',
-                                            'NEURÓLOGO'                 => 'NEURÓLOGO',
-                                            'CARDIÓLOGO'                => 'CARDIÓLOGO',
-                                            'NEUMÓLOGO'                 => 'NEUMÓLOGO',
-                                            'GASTROENTERÓLOGO'          => 'GASTROENTERÓLOGO',
-                                            'INFECTÓLOGO'               => 'INFECTÓLOGO',
-                                            'NEFRÓLOGO'                 => 'NEFRÓLOGO',
-                                            'ENDOCRINÓLOGO'             => 'ENDOCRINÓLOGO',
-                                            'PSIQUIATRA DE URGENCIAS'   => 'PSIQUIATRA DE URGENCIAS',
-                                            'CIRUJANO GENERAL'          => 'CIRUJANO GENERAL',
-                                            'OFTALMÓLOGO'               => 'OFTALMÓLOGO',
-                                            'OTORRINOLARINGÓLOGO'       => 'OTORRINOLARINGÓLOGO',
-                                            'DERMATÓLOGO'               => 'DERMATÓLOGO',
-                                            'ESIÓLOGO / MEDICINA CRÍTICA' => 'ANESTESIÓLOGO / MEDICINA CRÍTICA',
-                                        ]),
-                                    TextInput::make('other_specialist')
+                                        ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                        ->multiple(),
+                                    Select::make('other_specialist')
                                         ->label('Otros Especialistas') // BVA
-                                        ->helperText('Ingrese otros especialistas que requiera el paciente')
-                                        ->afterStateUpdatedJs(<<<'JS'
-                                            $set('other_specialist', $state.toUpperCase());
-                                        JS)
+                                        ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                        ->multiple(),
                                 ])->columnSpanFull()->columns(2),
                         ]),
                 ])

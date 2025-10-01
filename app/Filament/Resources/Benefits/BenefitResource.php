@@ -2,20 +2,21 @@
 
 namespace App\Filament\Resources\Benefits;
 
-use App\Filament\Resources\Benefits\Pages\CreateBenefit;
-use App\Filament\Resources\Benefits\Pages\EditBenefit;
-use App\Filament\Resources\Benefits\Pages\ListBenefits;
-use App\Filament\Resources\Benefits\Pages\ViewBenefit;
-use App\Filament\Resources\Benefits\Schemas\BenefitForm;
-use App\Filament\Resources\Benefits\Schemas\BenefitInfolist;
-use App\Filament\Resources\Benefits\Tables\BenefitsTable;
-use App\Models\Benefit;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use App\Models\Benefit;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use App\Filament\Resources\Benefits\Pages\EditBenefit;
+use App\Filament\Resources\Benefits\Pages\ViewBenefit;
+use App\Filament\Resources\Benefits\Pages\ListBenefits;
+use App\Filament\Resources\Benefits\Pages\CreateBenefit;
+use App\Filament\Resources\Benefits\Schemas\BenefitForm;
+use App\Filament\Resources\Benefits\Tables\BenefitsTable;
+use App\Filament\Resources\Benefits\Schemas\BenefitInfolist;
 
 class BenefitResource extends Resource
 {
@@ -57,5 +58,14 @@ class BenefitResource extends Resource
             'view' => ViewBenefit::route('/{record}'),
             'edit' => EditBenefit::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        // Deshabilitado temporalmente por mantenimiento
+        if (Auth::user()->is_superAdmin) {
+            return true;
+        }
+        return false;
     }
 }

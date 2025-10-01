@@ -63,13 +63,23 @@ class TelemedicinePatientInfolist
                             ])->columnSpanFull()->columns(5),
 
                         Fieldset::make('INFORMACIÓN DE LA AFILIACIÓN')
-                            ->hidden(fn(TelemedicinePatient $record) => $record->type == 'PACIENTE')
+                            ->hidden(function(TelemedicinePatient $record) {
+                                if($record->type_affiliation == 'INDIVIDUAL' || $record->type_affiliation == 'CORPORATIVO') {
+                                    return false;
+                                }
+                                return true;
+                            })
                             ->schema([
                                 TextEntry::make('plan.description')
                                     ->badge()
                                     ->color('info')
                                     ->icon('fluentui-person-available-16')
                                     ->label('Plan:'),
+                                TextEntry::make('plan.businessUnit.definition')
+                                    ->label('Unidad de Negocio:')
+                                    ->badge()
+                                    ->color('info')
+                                    ->icon('fluentui-person-available-16'),
                                 TextEntry::make('coverage.price')
                                     ->badge()
                                     ->color('info')
@@ -90,8 +100,27 @@ class TelemedicinePatientInfolist
                                     ->color('info')
                                     ->icon('fluentui-money-hand-20')
                                     ->label('Estado de Afiliación:'),
-
                             ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make('INFORMACIÓN DE BENEFICIOS Y SUS LIMITES')
+                            ->schema([
+                                TextEntry::make('plan.benefitPlans.description')
+                                    // ->belowContent(Text::make('This is the user\'s full name.')->weight(FontWeight::Bold))
+                                    ->label('Beneficios del Plan:')
+                                    ->icon('heroicon-c-check')
+                                    ->badge()
+                                    ->color('success')
+                                    // ->bulleted()
+                                    ->listWithLineBreaks(),
+                                TextEntry::make('plan.benefitPlans.limit.description')
+                                    // ->belowContent(Text::make('This is the user\'s full name.')->weight(FontWeight::Bold))
+                                    ->label('Limite por Beneficios:')
+                                    ->icon('heroicon-s-arrow-small-right')
+                                    ->badge()
+                                    ->color('gray')
+                                    // ->bulleted()
+                                    ->listWithLineBreaks(),
+                            ])->columnSpanFull()->columns(2),
                     ])->columnSpanFull(),
             ]);
     }

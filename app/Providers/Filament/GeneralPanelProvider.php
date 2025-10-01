@@ -104,8 +104,8 @@ class GeneralPanelProvider extends PanelProvider
             ])
             ->breadcrumbs(false)
             ->registerErrorNotification(
-                title: 'Registro No Encontrado',
-                body: 'El registro que intenta consultar no existe.',
+                title: 'ERROR DE EJECUCIÓN',
+                body: 'Se produjo un error de ejecución, por favor contacte con el administrador.',
                 statusCode: 404,
             )
             ->userMenuItems([
