@@ -52,6 +52,11 @@ class IndividualQuotesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
+                TextColumn::make('agent.name')
+                    ->label('Agente')
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->searchable(),
                 TextColumn::make('full_name')
                     ->label('Cliente')
                     ->searchable(),

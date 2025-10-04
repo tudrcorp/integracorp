@@ -41,6 +41,7 @@ class TelemedicineConsultationPatient extends Model
         'cuestion_4',
         'cuestion_5',
         'feedbackOne',
+        'duration',
         
     ];
 

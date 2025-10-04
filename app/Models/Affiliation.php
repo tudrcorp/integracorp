@@ -92,7 +92,10 @@ class Affiliation extends Model
         'observations',
         'feedback',
         'feedback_dos',
-        // 'is_accepted',
+
+        //...Unidad de Negocio y linea de servicio
+        'business_unit_id',
+        'business_line_id',
         
     ];
 

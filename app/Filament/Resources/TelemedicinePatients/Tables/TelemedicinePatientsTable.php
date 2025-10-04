@@ -477,18 +477,18 @@ class TelemedicinePatientsTable
                                     'assigned_by'               => Auth::user()->name,
                                 ]);
     
-    
-                                $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                $name_patient   = $case['patient_name'];
-                                $name           = $doctor->full_name;
-                                $phone          = $doctor->phone;
-                                $code           = $case->code;
-                                $reason         = $data['reason'];
-                                $email          = $doctor->email;
-    
-                                AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email);
-    
                                 if ($case) {
+
+                                    $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
+                                    $name_patient   = $case['patient_name'];
+                                    $name           = $doctor->full_name;
+                                    $phone          = $doctor->phone;
+                                    $code           = $case->code;
+                                    $reason         = $data['reason'];
+                                    $email          = $doctor->email;
+        
+                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email);
+                                    
                                     Notification::make()
                                         ->title('Paciente Asignado')
                                         ->body('El paciente ha sido asignado exitosamente.')
@@ -500,11 +500,11 @@ class TelemedicinePatientsTable
                                 $case = TelemedicineCase::create([
                                     
                                     'code'                      => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id'   => $record->id,
+                                    'telemedicine_patient_id'   => $record[0]['id'],
                                     'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record->full_name,
-                                    'patient_age'               => $record->age,
-                                    'patient_sex'               => $record->sex,
+                                    'patient_name'              => $record[0]['full_name'],
+                                    'patient_age'               => $record[0]['age'],
+                                    'patient_sex'               => $record[0]['sex'],
                                     'patient_phone'             => $data['other_phone'],
                                     'patient_address'           => $data['other_address'],
                                     'patient_country_id'        => $data['other_country_id'],
@@ -516,6 +516,17 @@ class TelemedicinePatientsTable
                                 ]);
     
                                 if ($case) {
+
+                                    $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
+                                    $name_patient   = $case['patient_name'];
+                                    $name           = $doctor->full_name;
+                                    $phone          = $doctor->phone;
+                                    $code           = $case->code;
+                                    $reason         = $data['reason'];
+                                    $email          = $doctor->email;
+        
+                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email);
+
                                     Notification::make()
                                         ->title('Paciente Asignado')
                                         ->body('El paciente ha sido asignado exitosamente.')

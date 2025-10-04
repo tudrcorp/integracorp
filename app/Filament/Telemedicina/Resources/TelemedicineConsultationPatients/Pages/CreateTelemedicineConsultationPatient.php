@@ -144,6 +144,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $medications->telemedicine_doctor_id                = $record['telemedicine_doctor_id'];
                     $medications->medicine                              = $medicationsArr[$i]['medicines'];
                     $medications->indications                           = $medicationsArr[$i]['indications'];
+                    $medications->duration                              = $medicationsArr[$i]['duration'];
+                    $medications->telemedicine_priority_id              = $record['telemedicine_priority_id'];
+                    $medications->assigned_by                           = Auth::user()->id;
                     $medications->save();
                 }
             }

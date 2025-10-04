@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\TelemedicineListStudy;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\Blade;
 use App\Models\TelemedicineServiceList;
@@ -83,6 +84,7 @@ class TelemedicineConsultationPatientForm
                                                 ->default($patient->nro_identificacion)
                                                 ->disabled()
                                                 ->dehydrated(),
+                        
                                         ])->columnSpanFull()->columns(2),
                                 ])
                                 ->columnSpanFull(),
@@ -115,18 +117,26 @@ class TelemedicineConsultationPatientForm
                                                         ->afterStateUpdatedJs(<<<'JS'
                                                         $set('actual_phatology', $state.toUpperCase());
                                                     JS),
-                                                    Textarea::make('background')
-                                                        ->label('Antecedentes')
-                                                        ->autosize()
-                                                        ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('background', $state.toUpperCase());
-                                                    JS),
+                                                    
+                                                    
+                                                    Fieldset::make()
+                                                        ->schema([
+                                                            Textarea::make('background')
+                                                                ->label('Antecedentes Asociados')
+                                                                ->autosize()
+                                                                ->afterStateUpdatedJs(<<<'JS'
+                                                                                $set('background', $state.toUpperCase());
+                                                                            JS),
+                                                            Toggle::make('question')
+                                                                ->label('No refiere antecedentes relacionados con la patología aguda que esta presentando'),
+                                                        ])->columnSpanFull(),
+
                                                     Textarea::make('diagnostic_impression')
                                                         ->label('Impresión Diagnóstica')
                                                         ->autosize()
                                                         ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('diagnostic_impression', $state.toUpperCase());
-                                                    JS),
+                                                            $set('diagnostic_impression', $state.toUpperCase());
+                                                        JS),
                                                 ])->columnSpanFull()->columns(2),
                                         ])->columnSpanFull(),
                                 ])
@@ -228,6 +238,7 @@ class TelemedicineConsultationPatientForm
                                 ->table([
                                     TableColumn::make('Medicamento'),
                                     TableColumn::make('Indicaciones'),
+                                    TableColumn::make('Duración(en días)'),
                                 ])
                                 ->schema([
                                     TextInput::make('medicines')
@@ -237,7 +248,11 @@ class TelemedicineConsultationPatientForm
                                     TextInput::make('indications')
                                         ->afterStateUpdatedJs(<<<'JS'
                                             $set('indications', $state.toUpperCase());
-                                        JS)
+                                        JS),
+                                    TextInput::make('duration')
+                                        ->numeric()
+                                        ->regex('/^[0-9]*$/')
+                                        ->required(),
                                 ])
                         ]),
                     Step::make('Laboratorios y Estudios de Imagenología')

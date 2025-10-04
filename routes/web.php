@@ -11,6 +11,8 @@ use Livewire\Volt\Volt;
 use App\Models\AgeRange;
 use App\Models\Coverage;
 use App\Models\AgentDocument;
+use Filament\Facades\Filament;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\CheckAffiliation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,8 +24,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\UtilsController;
+use App\Models\TelemedicinePatientMedications;
 use App\Http\Controllers\NotificationController;
-use Filament\Facades\Filament;
 
 Route::get('/', function () {
     return view('welcome');
@@ -263,21 +265,54 @@ Route::get('/truncate', function () {
 
 Route::get('/rp', function () {
 
-    $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
-        ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
-        ->where('individual_quotes.id', 86)
-        ->where('detail_individual_quotes.plan_id', 2)
-        ->select('coverages.id as coverage_id', 'coverages.price as description')
-        ->distinct() // Asegurarse de que no haya duplicados
-        ->get()
-        ->pluck('description', 'coverage_id');
+    // $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
+    //     ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
+    //     ->where('individual_quotes.id', 86)
+    //     ->where('detail_individual_quotes.plan_id', 2)
+    //     ->select('coverages.id as coverage_id', 'coverages.price as description')
+    //     ->distinct() // Asegurarse de que no haya duplicados
+    //     ->get()
+    //     ->pluck('description', 'coverage_id');
 
-    dd($coverages);
+    // dd($coverages);
 
-    Log::error('Job Fallido: ' . static::class, [
-        'mensaje' => 'hello world',
-        'archivo' => 'file.php',
-        'linea' => '123',
-        'pila' => 'trace',
-    ]);
+    // Log::error('Job Fallido: ' . static::class, [
+    //     'mensaje' => 'hello world',
+    //     'archivo' => 'file.php',
+    //     'linea' => '123',
+    //     'pila' => 'trace',
+    // ]);
+
+    // $pdf = Pdf::loadView('documents.informe-medico-general');
+    // return $pdf->stream();
+
+    $medications = TelemedicinePatientMedications::with('telemedicinePatient')->get()->toArray();
+
+    for ($i = 0; $i < count($medications); $i++) {
+        
+        //... Fecha de asignacion del tratamiento
+        $asignationDate = Carbon::parse($medications[$i]['created_at'])->format('Y-m-d');
+
+        //... Fecha de Hoy
+        $today = now()->format('Y-m-d');
+
+        //... Dias Trascurridos
+        $diasTranscurridos = Carbon::parse($asignationDate)->diffInDays($today);
+
+        if($diasTranscurridos <= $medications[$i]['duration']) {
+
+            $name = $medications[$i]['telemedicine_patient']['full_name'];
+            $phone = $medications[$i]['telemedicine_patient']['phone'];
+            $medicine = $medications[$i]['medicine'];
+            $indications = $medications[$i]['indications'];
+            $duration = $medications[$i]['duration'];
+            
+            //... Disparo la notificacion
+            NotificationController::rememberMedication($name, $phone, $medicine, $indications, $duration);
+        }
+        
+    }
+
+    dd('qia');  
+    
 });  

@@ -219,9 +219,6 @@
 
                     <td class="td_table_info_ti" style="font-weight: bold">Tarifa Periodo:</td>
                     <td class="td_table_info_ti">US$ {{ $data['total_amount'] }}</td>
-
-
-
                 </tr>
 
                 <tr class="tr_table_info_ti">

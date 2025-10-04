@@ -87,49 +87,49 @@ class DetailsQuoteRelationManager extends RelationManager
                 // CreateAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                BulkAction::make('quote_multiple')
-                    ->label('Preparar afiliación')
-                    ->color('success')
-                    ->icon('heroicon-c-receipt-percent')
-                    ->requiresConfirmation()
-                    ->deselectRecordsAfterCompletion()
-                    ->action(function (Collection $records, RelationManager $livewire) {
-                        // dd($records);
-                        try {
+                // BulkActionGroup::make([
+                // BulkAction::make('quote_multiple')
+                //     ->label('Preparar afiliación')
+                //     ->color('success')
+                //     ->icon('heroicon-c-receipt-percent')
+                //     ->requiresConfirmation()
+                //     ->deselectRecordsAfterCompletion()
+                //     ->action(function (Collection $records, RelationManager $livewire) {
+                //         // dd($records);
+                //         try {
 
-                            //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+                //             //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
 
-                            session()->get('data_records', []);
+                //             session()->get('data_records', []);
 
-                            session()->put('data_records', $records->toArray());
+                //             session()->put('data_records', $records->toArray());
 
-                            $data_records = session()->get('data_records');
+                //             $data_records = session()->get('data_records');
 
-                            /**
-                             * Actualizo el status a APROBADA
-                             */
-                            $record = $records->first();
+                //             /**
+                //              * Actualizo el status a APROBADA
+                //              */
+                //             $record = $records->first();
                             
-                            $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
-                            $individual_quote->status = 'APROBADA';
-                            $individual_quote->save();
+                //             $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
+                //             $individual_quote->status = 'APROBADA';
+                //             $individual_quote->save();
 
-                        if ($records->count() == 1) {
-                                return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => $record->plan_id, 'individual_quote_id' => $livewire->ownerRecord->id]);
-                            }
+                //         if ($records->count() == 1) {
+                //                 return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => $record->plan_id, 'individual_quote_id' => $livewire->ownerRecord->id]);
+                //             }
 
-                            if ($records->count() > 1) {
-                                return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => null, 'individual_quote_id' => $livewire->ownerRecord->id]);
-                            }
-                        } catch (\Throwable $th) {
-                            dd($th);
-                            // $parte_entera = 0;
-                        }
-                    }),
+                //             if ($records->count() > 1) {
+                //                 return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => null, 'individual_quote_id' => $livewire->ownerRecord->id]);
+                //             }
+                //         } catch (\Throwable $th) {
+                //             dd($th);
+                //             // $parte_entera = 0;
+                //         }
+                //     }),
 
-                DeleteBulkAction::make(),
-                ]),
+                // DeleteBulkAction::make(),
+                // ]),
             ]);
     }
 }

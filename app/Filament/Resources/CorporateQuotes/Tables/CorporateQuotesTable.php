@@ -43,6 +43,12 @@ class CorporateQuotesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
+                TextColumn::make('created_by')
+                    ->label('Creado por:')
+                    ->icon('heroicon-s-user')
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->searchable(),
                 TextColumn::make('full_name')
                     ->label('Solicitada por:')
                     ->searchable(),

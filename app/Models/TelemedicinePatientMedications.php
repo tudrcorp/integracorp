@@ -16,6 +16,8 @@ class TelemedicinePatientMedications extends Model
         'telemedicine_follow_up_id',
         'medicine',
         'indications',
+        'telemedicine_priority_id',
+        'duration',
     ];
 
     public function telemedicinePatient()
@@ -41,6 +43,11 @@ class TelemedicinePatientMedications extends Model
     public function telemedicineFollowUp()
     {
         return $this->belongsTo(TelemedicineFollowUp::class);
+    }
+
+    public function telemedicinePriority()
+    {
+        return $this->belongsTo(TelemedicinePriority::class);
     }
 
     

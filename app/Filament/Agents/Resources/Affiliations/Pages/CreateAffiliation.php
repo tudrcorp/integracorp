@@ -8,10 +8,12 @@ use App\Models\Affiliate;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
 use App\Http\Controllers\PdfController;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use App\Http\Controllers\NotificationController;
 use App\Filament\Agents\Resources\Affiliations\AffiliationResource;
 
 class CreateAffiliation extends CreateRecord
@@ -350,6 +352,13 @@ class CreateAffiliation extends CreateRecord
                     }
                     
                 }
+
+
+                /**
+                 * Notificación para el usuario que creo la cotización
+                 * ----------------------------------------------------------------------------------
+                 */
+                NotificationController::createdIndividualPreAfilliation($record->code, Auth::user()->name);
                 
         } catch (\Throwable $th) {
             dd($th);

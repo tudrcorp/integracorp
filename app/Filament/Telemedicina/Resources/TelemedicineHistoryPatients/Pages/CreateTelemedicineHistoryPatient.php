@@ -13,6 +13,13 @@ class CreateTelemedicineHistoryPatient extends CreateRecord
 {
     protected static string $resource = TelemedicineHistoryPatientResource::class;
 
+    protected static ?string $title = 'Formulario de Historia Clinica';
+
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
     protected function getRedirectUrl(): string
     {
         try {

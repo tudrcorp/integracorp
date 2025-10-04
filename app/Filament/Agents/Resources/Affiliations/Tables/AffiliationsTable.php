@@ -37,6 +37,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\AffiliationController;
+use App\Http\Controllers\NotificationController;
 use App\Jobs\ResendMailNotificacionAfiliacionIndividual;
 use App\Filament\Agents\Resources\Affiliations\AffiliationResource;
 
@@ -722,24 +723,14 @@ class AffiliationsTable
                                         ])
                                         ->sendToDatabase($recipient_for_user);
                                 }
+
+                                /**
+                                 * Notificación para el usuario que creo la cotización
+                                 * ----------------------------------------------------------------------------------
+                                 */
+                                NotificationController::uploadVoucherOfPayment($record->code, Auth::user()->name);
                             }
                         }),
-                        // ->hidden(function (Affiliation $record) {
-
-                        //     if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
-                        //         return true;
-                        //     }
-
-                        //     if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
-                        //         return true;
-                        //     }
-
-                        //     if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
-                        //         return true;
-                        //     }
-
-                        //     return false;
-                        // }),
 
                     /**DESCARGAR */
                     Action::make('download')

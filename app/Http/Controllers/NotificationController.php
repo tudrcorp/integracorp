@@ -918,6 +918,160 @@ class NotificationController extends Controller
         }
     }
 
+    static function uploadVoucherOfPayment($code, $agent)
+    {
+        try {
+
+            $body = <<<HTML
+
+            Hola!👋
+
+            El Agente: *{$agent}* ha cargado el *COMPROBANTE DE PAGO* que corresponde a: 
+            
+            Codigo de Afiliacion: *{$code}*
+            
+            Por favor, dirijase al sistema integracorp para realizar su verificacion y posterior aprobación.
+         
+            Muchas gracias. 🙌
+ 
+            HTML;
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
+                'body' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($response) {
+
+                Log::info($response);
+                $data = [
+                    'action' => 'uploadVoucherOfPayment',
+                    'objeto' => 'NotificationController::uploadVoucherOfPayment',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'uploadVoucherOfPayment',
+                    'objeto' => 'NotificationController::uploadVoucherOfPayment',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
+            }
+            
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
+    static function createdIndividualPreAfilliation($code, $agent)
+    {
+        try {
+
+            $body = <<<HTML
+
+            Hola!👋
+
+            El Agente: *{$agent}* ha completado el proiceso de *PREAFILIACION* individual de forma exitosa con el siguiente codigo: 
+            
+            *{$code}*
+         
+            Muchas gracias. 🙌
+ 
+            HTML;
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
+                'body' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($response) {
+
+                Log::info($response);
+                $data = [
+                    'action' => 'createdIndividualPreAfilliation',
+                    'objeto' => 'NotificationController::createdIndividualPreAfilliation',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'createdIndividualPreAfilliation',
+                    'objeto' => 'NotificationController::createdIndividualPreAfilliation',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
+            }
+            
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
     static function createdCorporateQuote($code, $agent)
     {
         try {
@@ -1332,10 +1486,15 @@ class NotificationController extends Controller
 
             Te informamos que el caso *#{$code}* acaba de ser asignado a tu equipo.   
 
-            El paciente *{$name_patient}* está estable y listo para evaluación. Puedes revisar todos los detalles en tu panel de control.
-            
+            Paciente: 
+            *{$name_patient}*
+
             *Motivo de la Consulta:* 
             *{$reason}*
+
+            Para validar los detalles del caso puedes acceder al portal de Telemedicina con tu usuario y contraseña
+
+            https://integracorp.tudrgroup.com/telemedicina
 
             ¡Gracias por tu colaboración! 🙌
                 
@@ -1834,6 +1993,88 @@ class NotificationController extends Controller
         //...
         } catch (\Throwable $th) {
             //throw $th;
+        }
+    }
+
+    static function rememberMedication($name, $phone, $medicine, $indications, $duration)
+    {
+        try {
+
+            $body = <<<HTML
+
+            Hola!👋
+
+            Sr(a): *{$name}*, el equipo de Telemedicina de Tu Doctor Group le recuerda tomar su tratamiento de forma correcta y oportuna.
+            
+            *RECORDATORIO DE TRATAMIENTO*
+
+            *MEDICAMENTO:* {$medicine}
+            
+            *INDICACIONES:* {$indications}
+            
+            *DURACION:* {$duration}
+         
+            Su Salud es nuestra prioridad...
+            Muchas gracias. 🙌
+ 
+            HTML;
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => $phone,
+                'body' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($response) {
+
+                Log::info($response);
+                $data = [
+                    'action' => 'createdCorporateQuote',
+                    'objeto' => 'NotificationController::createdCorporateQuote',
+                    'message' => $response,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'success'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return true;
+            }
+
+            if ($err) {
+
+                Log::error($err);
+                $data = [
+                    'action' => 'assignedCase',
+                    'objeto' => 'NotificationController::assignedCase',
+                    'message' => $err,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'icon' => 'error'
+                ];
+                UtilsController::notificacionToAdmin($data);
+                return false;
+            }
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
         }
     }
 

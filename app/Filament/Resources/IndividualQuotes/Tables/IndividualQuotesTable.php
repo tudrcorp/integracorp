@@ -64,37 +64,43 @@ class IndividualQuotesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('registrated_by')
-                    ->label('Registrado por:')
-                    ->default(function ($record) {
-                        if ($record->agent_id == null) {
-                            return $record->code_agency;
-                        }
-                        if ($record->agent_id != null) {
-                            if (Agent::where('id', $record->agent_id)->where('agent_type_id', 3)->exists()) {
-                                return 'SUB-AGT-000' . $record->agent_id;
-                            }
-                            return 'AGT-000' . $record->agent_id;
-                        }
-                    })
+                TextColumn::make('agent.name')
+                    ->label('Agente')
                     ->badge()
-                    ->icon(function ($record) {
-                        $agency_type = Agency::select('agency_type_id')
-                            ->where('code', $record->code_agency)
-                            ->with('typeAgency')
-                            ->first();
-                        if (Agent::where('id', $record->agent_id)->where('agent_type_id', 3)->exists()) {
-                            return 'heroicon-m-users';
-                        } elseif (Agent::where('id', $record->agent_id)->where('agent_type_id', 2)->exists()) {
-                            return 'heroicon-m-user';
-                        } elseif ($agency_type->typeAgency->definition == 'MASTER') {
-                            return 'heroicon-m-academic-cap';
-                        } else {
-                            return 'heroicon-s-building-library';
-                        }
-                    })
-                    ->color('azul')
+                    ->color('warning')
+                    ->icon('heroicon-m-user')
                     ->searchable(),
+                // TextColumn::make('registrated_by')
+                //     ->label('Registrado por:')
+                //     ->default(function ($record) {
+                //         if ($record->agent_id == null) {
+                //             return $record->code_agency;
+                //         }
+                //         if ($record->agent_id != null) {
+                //             if (Agent::where('id', $record->agent_id)->where('agent_type_id', 3)->exists()) {
+                //                 return 'SUB-AGT-000' . $record->agent_id;
+                //             }
+                //             return 'AGT-000' . $record->agent_id;
+                //         }
+                //     })
+                //     ->badge()
+                //     ->icon(function ($record) {
+                //         $agency_type = Agency::select('agency_type_id')
+                //             ->where('code', $record->code_agency)
+                //             ->with('typeAgency')
+                //             ->first();
+                //         if (Agent::where('id', $record->agent_id)->where('agent_type_id', 3)->exists()) {
+                //             return 'heroicon-m-users';
+                //         } elseif (Agent::where('id', $record->agent_id)->where('agent_type_id', 2)->exists()) {
+                //             return 'heroicon-m-user';
+                //         } elseif ($agency_type->typeAgency->definition == 'MASTER') {
+                //             return 'heroicon-m-academic-cap';
+                //         } else {
+                //             return 'heroicon-s-building-library';
+                //         }
+                //     })
+                //     ->color('azul')
+                //     ->searchable(),
                 TextColumn::make('full_name')
                     ->label('Solicitada por:')
                     ->searchable(),

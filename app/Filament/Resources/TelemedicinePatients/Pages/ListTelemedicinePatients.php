@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Textarea;
+use App\Http\Controllers\UtilsController;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Utilities\Get;
@@ -96,11 +97,10 @@ class ListTelemedicinePatients extends ListRecords
                         ->with('affiliation')
                         ->get()
                         ->toArray();
-                        
-                        $plan = Plan::where('id', $affiliation[0]['affiliation']['plan_id'])
-                        ->with('businessUnit')
-                        ->first()
-                        ->toArray();
+
+                        $businessUnitId = UtilsController::getBusinessUnitId($affiliation[0]['affiliation']['plan_id']);
+
+                        $businessLineId = UtilsController::getBusinessLineId($affiliation[0]['affiliation']['plan_id']);
 
                         $patient = TelemedicinePatient::create([
                             
@@ -132,8 +132,8 @@ class ListTelemedicinePatients extends ListRecords
                             'created_by'                => Auth::user()->name,
 
                             //Unidad de Negocios
-                            'business_unit_id'          => $plan['business_unit']['id'],
-                            'business_line_id'          => BusinessLine::where('business_unit_id', $plan['business_unit']['id'])->first()->id
+                            'business_unit_id'          => $businessUnitId,
+                            'business_line_id'          => $businessLineId,
                         ]);
                         
                         
@@ -141,11 +141,10 @@ class ListTelemedicinePatients extends ListRecords
                     
                     if ($data['type_affiliate'] == 'cor') {
                         $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->get()->toArray();
-                    // dd($affiliation);
-                        $plan = Plan::where('id', $affiliation[0]['plan_id'])
-                        ->with('businessUnit')
-                        ->first()
-                        ->toArray();
+
+                        $businessUnitId = UtilsController::getBusinessUnitId($affiliation[0]['plan_id']);
+
+                        $businessLineId = UtilsController::getBusinessLineId($affiliation[0]['plan_id']);
                         
                             $patient = TelemedicinePatient::create([
 
@@ -177,8 +176,8 @@ class ListTelemedicinePatients extends ListRecords
                                 'created_by'                => Auth::user()->name,
 
                                 //Unidad de Negocios
-                                'business_unit_id'          => $plan['business_unit']['id'],
-                                'business_line_id'          => BusinessLine::where('business_unit_id', $plan['business_unit']['id'])->first()->id,
+                                'business_unit_id'          => $businessUnitId,
+                                'business_line_id'          => $businessLineId,
                             ]);
                         
                     }

@@ -4,9 +4,9 @@
 @source '../../../../resources/views/filament/agents/**/*';
 
 
-.fi-simple-main {
+/* .fi-simple-main {
     background-color: color-mix(in oklab,#ffffff4d 80%,transparent);
-}
+} */
 
 .fi-fo-repeater-add .fi-btn {
     @apply bg-[#00cdbd];

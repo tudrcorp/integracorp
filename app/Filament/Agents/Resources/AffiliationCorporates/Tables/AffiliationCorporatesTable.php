@@ -33,6 +33,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AffiliationCorporateController;
 use App\Filament\Resources\AffiliationCorporates\AffiliationCorporateResource;
 
@@ -640,6 +641,12 @@ class AffiliationCorporatesTable
                                     ])
                                     ->sendToDatabase($recipient_for_user);
                             }
+
+                            /**
+                             * Notificación para el usuario que creo la cotización
+                             * ----------------------------------------------------------------------------------
+                             */
+                            NotificationController::uploadVoucherOfPayment($record->code, Auth::user()->name);
                         }
                     })
                     ->hidden(function (AffiliationCorporate $record) {

@@ -10,6 +10,7 @@ use App\Models\State;
 use App\Models\Agency;
 use App\Models\Region;
 use App\Models\AgeRange;
+use App\Models\BusinessLine;
 use Illuminate\Http\Request;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
@@ -1665,6 +1666,23 @@ class UtilsController extends Controller
         } catch (\Throwable $th) {
             Log::error($th);
         }
+    }
+
+    public static function getBusinessUnitId($plan_id)
+    {
+        $businessUnitId = Plan::where('id', $plan_id)
+            ->with('businessUnit')
+            ->first()
+            ->toArray();
+
+        return $businessUnitId['business_unit_id'];
+    }
+
+    public static function getBusinessLineId($plan_id)
+    {
+        $businessLineId = BusinessLine::where('business_unit_id', self::getBusinessUnitId($plan_id))->first()->id;
+
+        return $businessLineId;
     }
 
     

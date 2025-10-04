@@ -57,6 +57,11 @@ class AffiliationsTable
                     ->color('success')
                     ->icon('heroicon-m-tag')
                     ->searchable(),
+                TextColumn::make('agent.name')
+                    ->label('Agente')
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->searchable(),
                 TextColumn::make('plan.description')
                     ->label('Plan')
                     ->badge()

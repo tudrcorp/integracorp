@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use App\Models\AgentDocument;
 use App\Models\DataNotification;
+use PhpParser\Node\Stmt\TryCatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Mail\NotificationMasiveMail;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Mail;
 use Barryvdh\Debugbar\Facades\Debugbar;
 use App\Http\Controllers\UtilsController;
 use App\Mail\NotificationMasiveMailBirthday;
+use App\Models\TelemedicinePatientMedications;
 use App\Http\Controllers\NotificationController;
 use App\Jobs\SendNotificationMasiveMailBirthday;
 
@@ -631,5 +634,40 @@ class NotificationMasiveService
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    static function notificationRemenberMedication()
+    {
+        try {
+
+            $medications = TelemedicinePatientMedications::with('telemedicinePatient')->get()->toArray();
+
+            for ($i = 0; $i < count($medications); $i++) {
+
+                //... Fecha de asignacion del tratamiento
+                $asignationDate = Carbon::parse($medications[$i]['created_at'])->format('Y-m-d');
+
+                //... Fecha de Hoy
+                $today = now()->format('Y-m-d');
+
+                //... Dias Trascurridos
+                $diasTranscurridos = Carbon::parse($asignationDate)->diffInDays($today);
+
+                if ($diasTranscurridos <= $medications[$i]['duration']) {
+
+                    //... Disparo la notificacion
+                }
+            }
+
+            
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
+        
     }
 }

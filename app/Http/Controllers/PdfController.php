@@ -14,6 +14,12 @@ class PdfController extends Controller
         return $pdf->stream();
     }
 
+    public function generatePdfInformeMedicoGeneral()
+    {
+        $pdf = Pdf::loadView('documents.informe-medico-general');
+        return $pdf->stream();
+    }
+
     public function generatePdf_propuestaEconomica()
     {
         $pdf = Pdf::loadView('documents.propuesta-economica');
