@@ -9,6 +9,7 @@ use App\Models\Collection;
 use Illuminate\Http\Request;
 use App\Jobs\SendAvisoDePago;
 use App\Jobs\CreateAvisoDeCobro;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 
@@ -37,7 +38,7 @@ class PaidMembershipController extends Controller
                  * ----------------------------------------------------------------------------------------------------
                  */
                 if ($record->affiliation->activated_at == null) {
-                    $record->affiliation->activated_at = now()->format('d-m-Y');
+                    $record->affiliation->activated_at = now()->format('d/m/Y');
                     $record->affiliation->status = 'ACTIVA';
                     $record->affiliation->save();
                 }
@@ -57,7 +58,7 @@ class PaidMembershipController extends Controller
                 $sales->plan_id                 = $record->affiliation->plan_id;
                 $sales->coverage_id             = $record->affiliation->coverage_id ?? null;
                 $sales->agent_id                = $record->affiliation->agent_id;
-                $sales->invoice_number          = UtilsController::generateCorrelative($lastInvoiceNumber->invoice_number);
+                $sales->invoice_number          = UtilsController::generateCorrelativeSale($lastInvoiceNumber->invoice_number);
                 $sales->affiliation_code        = $record->affiliation->code;
                 $sales->affiliate_full_name     = $record->affiliation->full_name_ti;
                 $sales->affiliate_contact       = $record->affiliation->full_name_con;
@@ -88,7 +89,7 @@ class PaidMembershipController extends Controller
                 if ($record->affiliation->payment_frequency == 'ANUAL') {
                     
                     //Pregunto cual es el ultimo numero de factura
-                    $lastInvoiceNumberCollection = Collection::latest()->first();
+                    $lastInvoiceNumberCollection = Collection::where('id', Collection::max('id'))->get()->toArray();
                     
                     $collections = new Collection();
                     $collections->sale_id                 = $sales->id;
@@ -98,7 +99,7 @@ class PaidMembershipController extends Controller
                     $collections->plan_id                 = $record->affiliation->plan_id;
                     $collections->coverage_id             = $record->affiliation->coverage_id ?? null;
                     $collections->agent_id                = $record->affiliation->agent_id;
-                    $collections->collection_invoice_number     = UtilsController::generateCorrelative($lastInvoiceNumberCollection->invoice_number);
+                    $collections->collection_invoice_number     = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
                     $collections->quote_number                  = $record->affiliation->individual_quote->code;
                     $collections->affiliation_code        = $record->affiliation->code;
                     $collections->affiliate_full_name     = $record->affiliation->full_name_ti;
@@ -146,19 +147,22 @@ class PaidMembershipController extends Controller
                 }
 
                 if ($record->affiliation->payment_frequency == 'TRIMESTRAL') {
-
-                    //Pregunto cual es el ultimo numero de factura
-                    $lastInvoiceNumberCollection = Collection::latest()->first();
                     
                     $trimestral = 3;
                     for ($i = 0; $i < $trimestral; $i++) {
                         /**Seleccion de fecha para calculo*/
                         $prox_date = Collection::select('id', 'include_date', 'next_payment_date')->where('affiliation_code', $record->affiliation->code)->orderBy('id', 'desc')->first();
+                        
                         if ($prox_date == null) {
                             $prox_date = $record->affiliation->activated_at;
                         } else {
                             $prox_date = $prox_date->next_payment_date;
                         }
+                        //Pregunto cual es el ultimo numero de factura
+                        $lastInvoiceNumberCollection = Collection::where('id', Collection::max('id'))->get()->toArray();
+                        Log::info('correlativo de cobro: '. $lastInvoiceNumberCollection[0]['collection_invoice_number']);
+
+
                         $collections = new Collection();
                         $collections->sale_id                 = $sales->id;
                         $collections->include_date            = $record->affiliation->activated_at;
@@ -167,7 +171,7 @@ class PaidMembershipController extends Controller
                         $collections->plan_id                 = $record->affiliation->plan_id;
                         $collections->coverage_id             = $record->affiliation->coverage_id ?? null;
                         $collections->agent_id                = $record->affiliation->agent_id;
-                        $collections->collection_invoice_number     = UtilsController::generateCorrelative($lastInvoiceNumber->invoice_number);
+                        $collections->collection_invoice_number     = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
                         $collections->quote_number                  = $record->affiliation->individual_quote->code;
                         $collections->affiliation_code        = $record->affiliation->code;
                         $collections->affiliate_full_name     = $record->affiliation->full_name_ti;
@@ -212,6 +216,8 @@ class PaidMembershipController extends Controller
                             'frequency'         => $record->affiliation->payment_frequency,
                         ];
 
+                        Log::info($array_data);
+
                         /** Ejecutamos el job */
                         dispatch(new CreateAvisoDeCobro($array_data));
                     }
@@ -220,7 +226,7 @@ class PaidMembershipController extends Controller
                 if ($record->affiliation->payment_frequency == 'SEMESTRAL') {
 
                     //Pregunto cual es el ultimo numero de factura
-                    $lastInvoiceNumberCollection = Collection::latest()->first();
+                    $lastInvoiceNumberCollection = Collection::where('id', Collection::max('id'))->get()->toArray();
                     
                     $collections = new Collection();
                     $collections->sale_id                 = $sales->id;
@@ -230,7 +236,7 @@ class PaidMembershipController extends Controller
                     $collections->plan_id                 = $record->affiliation->plan_id;
                     $collections->coverage_id             = $record->affiliation->coverage_id ?? null;
                     $collections->agent_id                = $record->affiliation->agent_id;
-                    $collections->collection_invoice_number     = UtilsController::generateCorrelative($lastInvoiceNumber->invoice_number);
+                    $collections->collection_invoice_number     = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
                     $collections->quote_number                  = $record->affiliation->individual_quote->code;
                     $collections->affiliation_code        = $record->affiliation->code;
                     $collections->affiliate_full_name     = $record->affiliation->full_name_ti;
@@ -389,7 +395,7 @@ class PaidMembershipController extends Controller
                 $sales->plan_id                 = $record->affiliation->plan_id;
                 $sales->coverage_id             = $record->affiliation->coverage_id ?? null;
                 $sales->agent_id                = $record->affiliation->agent_id;
-                $sales->invoice_number          = UtilsController::generateCorrelative($lastInvoiceNumber->invoice_number);
+                $sales->invoice_number          = UtilsController::generateCorrelativeSale($lastInvoiceNumber->invoice_number);
                 $sales->affiliation_code        = $record->affiliation->code;
                 $sales->affiliate_full_name     = $record->affiliation->full_name_ti;
                 $sales->affiliate_contact       = $record->affiliation->full_name_con;
