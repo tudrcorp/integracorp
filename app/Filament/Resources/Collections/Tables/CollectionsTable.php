@@ -5,12 +5,15 @@ namespace App\Filament\Resources\Collections\Tables;
 use Carbon\Carbon;
 use App\Models\Collection;
 use Filament\Tables\Table;
+use App\Models\Affiliation;
 use Filament\Actions\Action;
 use App\Mail\MailAvisoDeCobro;
+use App\Jobs\CreateAvisoDeCobro;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Tables\Filters\Filter;
+use App\Models\AffiliationCorporate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Filament\Actions\BulkActionGroup;
@@ -23,6 +26,7 @@ use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Columns\TextInputColumn;
 
 class CollectionsTable
 {
@@ -131,10 +135,7 @@ class CollectionsTable
                 TextColumn::make('payment_frequency')
                     ->label('Frecuencia de pago')
                     ->searchable(),
-                TextColumn::make('next_payment_date')
-                    ->badge()
-                    ->icon('heroicon-s-calendar-days')
-                    ->color('warning')
+                TextInputColumn::make('next_payment_date')
                     ->label('Proximo pago')
                     ->searchable(),
                 TextColumn::make('total_amount')
@@ -340,7 +341,54 @@ class CollectionsTable
                                     ->send();
                             }
                         }),
-                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+
+                    /**REGENERAR PDF */
+                    Action::make('regenerate_pdf')
+                        ->label('Renerar PDF')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('warning')
+                        ->action(function (Collection $record) {
+
+                            try {
+                                // dd($record->affiliation);
+
+                                if ($record->type == 'AFILIACION INDIVIDUAL') {
+                                    $address = Affiliation::where('code', $record->affiliation_code)->first();
+                                } else {
+                                    $address = AffiliationCorporate::where('code', $record->affiliation_code)->first();
+                                }
+
+                                /**Ejecutamos el Job para crea el aviso de cobro */
+                                $array_data = [
+                                    'invoice_number'    => $record->collection_invoice_number,
+                                    'emission_date'     => $record->next_payment_date,
+                                    'full_name_ti'      => $record->affiliate_full_name,
+                                    'ci_rif_ti'         => $record->affiliate_ci_rif,
+                                    'address_ti'        => $address->adress_ti,
+                                    'phone_ti'          => $record->affiliate_phone,
+                                    'email_ti'          => $record->affiliate_email,
+                                    'total_amount'      => $record->total_amount,
+                                    'plan'              => $record->plan->description,
+                                    'coverage'          => $record->coverage->price ?? null,
+                                    'frequency'         => $record->payment_frequency,
+                                ];
+                                // dd($array_data);
+                                dispatch(new CreateAvisoDeCobro($array_data));
+
+                                Notification::make()
+                                    ->title('REGENERADO CON EXITO')
+                                    ->body('Aviso de cobro generado correctamente')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->iconColor('success')
+                                    ->success()
+                                    ->send();
+                                
+                            } catch (\Throwable $th) {
+                                dd($th);
+                            }
+                        }),
+                        
+            ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
