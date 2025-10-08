@@ -12,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Tables\Filters\Filter;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
@@ -347,6 +348,9 @@ class AgenciesTable
                                     return true;
                                 }
 
+                                $record->status = 'ACTIVO';
+                                $record->save();
+
                                 $user = new User();
                                 $user->name = $record->name_corporative;
                                 $user->email = $record->email;
@@ -377,7 +381,7 @@ class AgenciesTable
                                 $record->sendCartaBienvenida($record->code, $record->name_corporative, $record->email);
                                 
                             } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPCION', 'AgencyResource:Tables\Actions\Action::make(Activate)', $th->getMessage());
+                                Log::error($th);
                                 Notification::make()
                                     ->title('EXCEPCION')
                                     ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
