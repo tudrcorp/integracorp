@@ -51,10 +51,10 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/favicon.png'))
+            ->favicon(asset('image/imagotipo.png'))
             ->sidebarCollapsibleOnDesktop()
             ->colors([
-                'primary' => '#00cefd',
+                'primary' => '#005ca9',
             ])
             ->discoverResources(in: app_path('Filament/Telemedicina/Resources'), for: 'App\Filament\Telemedicina\Resources')
             ->discoverPages(in: app_path('Filament/Telemedicina/Pages'), for: 'App\Filament\Telemedicina\Pages')
@@ -92,11 +92,11 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->userMenuItems([
                 'profile' => fn(Action $action) => $action->label('Perfil del Doctor')
                     ->icon('healthicons-f-doctor-male')
-                    ->color('primary')
+                    ->color('no-urgente')
                     ->url(TelemedicineDoctorResource::getUrl('view', ['record' => Auth::user()->doctor_id], panel: 'telemedicina')),
                 'logout' => fn(Action $action) => $action
                     ->label('Cerrar Sesión')
-                    ->color('danger')
+                    ->color('critico')
                     ->url(route('internal')),
             ])
             ->plugins([

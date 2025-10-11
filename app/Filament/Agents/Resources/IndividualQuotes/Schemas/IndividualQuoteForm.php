@@ -77,7 +77,7 @@ class IndividualQuoteForm
 
                                             Select::make('country_code')
                                                 ->label('Código de país')
-                                                ->options(fn () => UtilsController::getCountries())
+                                                ->options(fn() => UtilsController::getCountries())
                                                 ->searchable()
                                                 ->default('+58')
                                                 ->live(onBlur: true)
@@ -108,6 +108,10 @@ class IndividualQuoteForm
                                                 ])
                                                 ->maxLength(255),
                                         ])->columnSpanFull(),
+                                    Hidden::make('ownerAccountManagers')->default(function () {
+                                        $user_id = Auth::user()->agent_id;
+                                        return Agent::where('id', $user_id)->first()->ownerAccountManagers;
+                                    }),
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
                                     Hidden::make('agent_id')->default(Auth::user()->agent_id),
@@ -167,9 +171,9 @@ class IndividualQuoteForm
                                         ->required()
                                         ->live()
                                         ->options(function () {
-                                            
+
                                             $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
-                                            
+
                                             //agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 

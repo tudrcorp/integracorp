@@ -10,8 +10,10 @@ use App\Models\Region;
 use App\Models\Country;
 use App\Jobs\AssignedCase;
 use Filament\Tables\Table;
+use Filament\Support\RawJs;
 use Filament\Actions\Action;
 use App\Mail\MailAssignedCase;
+use App\Models\AnotherAddress;
 use App\Models\TelemedicineCase;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
@@ -29,6 +31,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
@@ -71,6 +74,11 @@ class TelemedicinePatientsTable
                     ->searchable(),
                 TextColumn::make('type_affiliation')
                     ->label('Tipo de Afiliación')
+                    ->badge()
+                    ->color('success')
+                    ->searchable(),
+                TextColumn::make('name_corporate')
+                    ->label('Nombre Corporativo')
                     ->badge()
                     ->color('success')
                     ->searchable(),
@@ -199,99 +207,132 @@ class TelemedicinePatientsTable
                         ->modalWidth(Width::ThreeExtraLarge)
                         ->modalHeading('Asignación de Caso')
                         ->form([
+                            
+                            //...Informacion del Doctor
                             Fieldset::make('Asignar Doctor')
-                                ->schema([
-                                    Select::make('doctor_id')
-                                        ->label('Doctor')
-                                        ->required()
-                                        ->options(TelemedicineDoctor::all()->pluck('full_name', 'id')),
-                                    Grid::make()
-                                        ->schema([
-                                            Textarea::make('reason')
-                                                ->label('Motivo de la consulta')
-                                                ->autosize()
-                                                ->required()
-                                                ->afterStateUpdated(function (Set $set, $state) {
-                                                    $set('reason', strtoupper($state));
-                                                })
-                                                ->helperText('Escriba el motivo de la llamada del paciente. Por favor sea lo más especifico posible ya que el médico tomará esta información para determinar el tipo de atención que requiere el paciente.'),
-                                        ])->columnSpanFull()->columns(1),
-                                    Grid::make(1)
-                                        ->schema([
-                                            Radio::make('feedback')
-                                                ->label('¿La ubicación actual del paciente es la registrada en el sistema?')
-                                                ->default(true)
-                                                ->live()
-                                                ->boolean()
-                                                ->inline()
-                                                ->inlineLabel(false)
-                                        ])->columnSpanFull()->hiddenOn('edit'),
+                            ->schema([
+                                Select::make('doctor_id')
+                                    ->label('Doctor')
+                                    ->required()
+                                    ->options(TelemedicineDoctor::all()->pluck('full_name', 'id')),
+                                Grid::make()
+                                    ->schema([
+                                        Textarea::make('reason')
+                                            ->label('Motivo de la consulta')
+                                            ->autosize()
+                                            ->required()
+                                            ->afterStateUpdatedJs(<<<'JS'
+                                                $set('reason', $state.toUpperCase());
+                                            JS)
+                                            ->helperText('Escriba el motivo de la llamada del paciente. Por favor sea lo más especifico posible ya que el médico tomará esta información para determinar el tipo de atención que requiere el paciente.'),
+                                    ])->columnSpanFull()->columns(1),
+                                Grid::make(1)
+                                    ->schema([
+                                        Radio::make('feedback')
+                                            ->label('¿La ubicación actual del paciente es la registrada en el sistema?')
+                                            ->default(true)
+                                            ->live()
+                                            ->boolean()
+                                            ->inline()
+                                            ->inlineLabel(false)
+                                    ])->columnSpanFull()->hiddenOn('edit'),
 
-                                ])->columnSpanFull()->columns(1),
+                            ])->columnSpanFull()->columns(1),
+
+                            //... Lista de ubicaciones ya registradas
+                            Fieldset::make('Lista de ubicaciones registradas por el paciente')
+                            ->hidden(fn(Get $get) => $get('feedback'))
+                            ->schema([
+                                Select::make('address_id')
+                                    ->label('Ubicación')
+                                    ->options(function ($record, Get $get) {
+                                        return AnotherAddress::where('telemedicine_patient_id', $record->id)->pluck('address', 'id');
+                                    }),
+                                Checkbox::make('new_address')
+                                    ->inline()
+                                    ->live()
+                                    ->label('Nueva Ubicacion')
+                                    ->default(false)
+                            ])->columnSpanFull()->columns(1),
+
+                            //...SECCION NUEVA UBICACION
                             Section::make()
-                                ->hidden(fn(Get $get) => $get('feedback'))
-                                ->heading('Ubicación Actual del Paciente')
-                                ->description('La ubicación actual permite coordinar un servicio IN SITU. No afecta los datos registrados del afiliado.')
-                                ->schema([
-                                    TextInput::make('other_phone')
-                                        ->label('Número de Teléfono'),
+                            ->hidden(fn(Get $get) => !$get('new_address'))
+                            ->heading('Registro  de Nueva Ubicación')
+                            ->description('La ubicación actual permite coordinar un servicio IN SITU. No afecta los datos registrados del afiliado.')
+                            ->schema([
+                                Select::make('country_id')
+                                    ->label('País')
+                                    ->live()
+                                    ->options(Country::all()->pluck('name', 'id'))
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required'  => 'Campo Requerido',
+                                    ])
+                                    ->default(189)
+                                    ->preload(),
+                                Select::make('state_id')
+                                    ->label('Estado')
+                                    ->options(function (Get $get) {
+                                        return State::where('country_id', $get('country_id'))->pluck('definition', 'id');
+                                    })
+                                    ->live()
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required'  => 'Campo Requerido',
+                                    ])
+                                    ->preload(),
+                                Select::make('city_id')
+                                    ->label('Ciudad')
+                                    ->options(function (Get $get) {
+                                        return City::where('country_id', $get('country_id'))->where('state_id', $get('state_id'))->pluck('definition', 'id');
+                                    })
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required'  => 'Campo Requerido',
+                                    ])
+                                    ->preload(),
+                                TextInput::make('phone_1')
+                                    ->label('Número de Teléfono Principal')
+                                    ->tel()
+                                    ->mask(fn(Get $get) => $get('country_id') == 189 ? '99999999999' : '')
+                                    ->required()
+                                    ->helperText('Ejemplo: 04161234567'),
+                                TextInput::make('phone_2')
+                                    ->label('Número de Teléfono Alternativo')
+                                    ->tel()
+                                    ->mask(fn(Get $get) => $get('country_id') == 189 ? '99999999999' : '')
+                                    ->helperText('Ejemplo: 04161234567'),
 
-                                    Select::make('other_country_id')
-                                        ->label('País')
-                                        ->live()
-                                        ->options(Country::all()->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ])
-                                        ->default(189)
-                                        ->preload(),
-                                    Select::make('other_state_id')
-                                        ->label('Estado')
-                                        ->options(function (Get $get) {
-                                            return State::where('country_id', $get('other_country_id'))->pluck('definition', 'id');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ])
-                                        ->preload(),
-                                    Select::make('other_city_id')
-                                        ->label('Ciudad')
-                                        ->options(function (Get $get) {
-                                            return City::where('country_id', $get('other_country_id'))->where('state_id', $get('other_state_id'))->pluck('definition', 'id');
-                                        })
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-s-globe-europe-africa')
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ])
-                                        ->preload(),
-                                    Grid::make()
-                                        ->schema([
-                                            Textarea::make('other_address')
-                                                ->label('Dirección Exacta')
-                                                ->autosize()
-                                                ->required()
-                                                ->afterStateUpdated(function (Set $set, $state) {
-                                                    $set('other_address', strtoupper($state));
-                                                })
-                                                ->helperText('Redacte la ubicación exacta del paciente, describa esquinas, calle, edificio, piso en el edificio, casa, número de la casa, y puntos de referencia. Por favor sea lo más específico posible.'),
-                                        ])->columnSpanFull()->columns(1),
-                                ])->columnSpanFull()->columns(2)
+                                Grid::make()
+                                    ->schema([
+                                        Textarea::make('address')
+                                            ->label('Dirección Exacta')
+                                            ->autosize()
+                                            ->required()
+                                            ->afterStateUpdatedJs(<<<'JS'
+                                            $set('address', $state.toUpperCase());
+                                        JS)
+                                            ->helperText('Redacte la ubicación exacta del paciente, describa esquinas, calle, edificio, piso en el edificio, casa, número de la casa, y puntos de referencia. Por favor sea lo más específico posible.'),
+                                    ])->columnSpanFull()->columns(1),
+                            ])->columnSpanFull()->columns(2)
+                            
                         ])
                         ->action(function (TelemedicinePatient $record, array $data) {
-                            // ...
+                            
+                            /**
+                             * CASO 1: El paciente tiene la misma ubicacion que la registrada en la afiliacion
+                             */
                             if ($data['feedback'] == true) {
 
                                 $case = TelemedicineCase::create([
-                                    'code'                      => random_int(11111, 99999),
+                                    'code'                      => UtilsController::generateCaseCode(),
                                     'telemedicine_patient_id'   => $record->id,
                                     'telemedicine_doctor_id'    => $data['doctor_id'],
                                     'patient_name'              => $record->full_name,
@@ -307,44 +348,19 @@ class TelemedicinePatientsTable
                                     'assigned_by'               => Auth::user()->name,
                                 ]);
 
-
-                                $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                $name_patient   = $case['patient_name'];
-                                $name           = $doctor->full_name;
-                                $phone          = $doctor->phone;
-                                $code           = $case->code;
-                                $reason         = $data['reason'];
-                                $email          = $doctor->email;
-
-                                AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email);
-
                                 if ($case) {
-                                    Notification::make()
-                                        ->title('Paciente Asignado')
-                                        ->body('El paciente ha sido asignado exitosamente.')
-                                        ->success()
-                                        ->send();
-                                }
-                            } else {
 
-                                $case = TelemedicineCase::create([
-                                    'code'                      => random_int(11111, 99999),
-                                    'telemedicine_patient_id'   => $record->id,
-                                    'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record->full_name,
-                                    'patient_age'               => $record->age,
-                                    'patient_sex'               => $record->sex,
-                                    'patient_phone'             => $data['other_phone'],
-                                    'patient_address'           => $data['other_address'],
-                                    'patient_country_id'        => $data['other_country_id'],
-                                    'patient_state_id'          => $data['other_state_id'],
-                                    'patient_city_id'           => $data['other_city_id'],
-                                    'reason'                    => $data['reason'],
-                                    'status'                    => 'ASIGNADO',
-                                    'assigned_by'               => Auth::user()->name,
-                                ]);
+                                    $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
+                                    $name_patient   = $case['patient_name'];
+                                    $name           = $doctor->full_name;
+                                    $phone          = $doctor->phone;
+                                    $address        = $record->address;
+                                    $code           = $case->code;
+                                    $reason         = $data['reason'];
+                                    $email          = $doctor->email;
 
-                                if ($case) {
+                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+
                                     Notification::make()
                                         ->title('Paciente Asignado')
                                         ->body('El paciente ha sido asignado exitosamente.')
@@ -352,180 +368,102 @@ class TelemedicinePatientsTable
                                         ->send();
                                 }
                             }
-                        })
-                ])
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    // DeleteBulkAction::make(),
-                    BulkAction::make('asigned_doctor')
-                        ->label('Asignar Doctor')
-                        ->icon('healthicons-f-i-exam-qualification')
-                        ->color('success')
-                        ->requiresConfirmation()
-                        ->modalWidth(Width::ThreeExtraLarge)
-                        ->modalHeading('Asignación de Caso')
-                    ->form([
-                        Fieldset::make('Asignar Doctor')
-                            ->schema([
-                                Select::make('doctor_id')
-                                    ->label('Doctor')
-                                    ->required()
-                                    ->options(TelemedicineDoctor::all()->pluck('full_name', 'id')),
-                                Grid::make()
-                                    ->schema([
-                                        Textarea::make('reason')
-                                            ->label('Motivo de la consulta')
-                                            ->autosize()
-                                            ->required()
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('reason', strtoupper($state));
-                                            })
-                                            ->helperText('Escriba el motivo de la llamada del paciente. Por favor sea lo más especifico posible ya que el médico tomará esta información para determinar el tipo de atención que requiere el paciente.'),
-                                    ])->columnSpanFull()->columns(1),
-                                Grid::make(1)
-                                    ->schema([
-                                        Radio::make('feedback')
-                                            ->label('¿La ubicación actual del paciente es la registrada en el sistema?')
-                                            ->default(true)
-                                            ->live()
-                                            ->boolean()
-                                            ->inline()
-                                            ->inlineLabel(false)
-                                    ])->columnSpanFull()->hiddenOn('edit'),
 
-                            ])->columnSpanFull()->columns(1),
-                        Section::make()
-                            ->hidden(fn(Get $get) => $get('feedback'))
-                            ->heading('Ubicación Actual del Paciente')
-                            ->description('La ubicación actual permite coordinar un servicio IN SITU. No afecta los datos registrados del afiliado.')
-                            ->schema([
-                                TextInput::make('other_phone')
-                                    ->label('Número de Teléfono'),
+                            /**
+                             * CASO 2: El paciente selecciono una ubicacion de la lista
+                             */
+                            if ($data['feedback'] == false && $data['address_id'] != null) {
 
-                                Select::make('other_country_id')
-                                    ->label('País')
-                                    ->live()
-                                    ->options(Country::all()->pluck('name', 'id'))
-                                    ->searchable()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Requerido',
-                                    ])
-                                    ->default(189)
-                                    ->preload(),
-                                Select::make('other_state_id')
-                                    ->label('Estado')
-                                    ->options(function (Get $get) {
-                                        return State::where('country_id', $get('other_country_id'))->pluck('definition', 'id');
-                                    })
-                                    ->live()
-                                    ->searchable()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Requerido',
-                                    ])
-                                    ->preload(),
-                                Select::make('other_city_id')
-                                    ->label('Ciudad')
-                                    ->options(function (Get $get) {
-                                        return City::where('country_id', $get('other_country_id'))->where('state_id', $get('other_state_id'))->pluck('definition', 'id');
-                                    })
-                                    ->searchable()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Requerido',
-                                    ])
-                                    ->preload(),
-                                Grid::make()
-                                    ->schema([
-                                        Textarea::make('other_address')
-                                            ->label('Dirección Exacta')
-                                            ->autosize()
-                                            ->required()
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('other_address', strtoupper($state));
-                                            })
-                                            ->helperText('Redacte la ubicación exacta del paciente, describa esquinas, calle, edificio, piso en el edificio, casa, número de la casa, y puntos de referencia. Por favor sea lo más específico posible.'),
-                                    ])->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(2)
-                    ])
-                    ->action(function (Collection $records, array $data) {
-                        // ...
-                        $record = $records->toArray();
-
-                        for ($i = 0; $i < count($record); $i++) {
-                            if ($data['feedback'] == true) {
+                                /**Tomo la informacion de la tabla de ubicaciones registradas */
+                                $address = AnotherAddress::find($data['address_id'])->first();
 
                                 $case = TelemedicineCase::create([
+
                                     'code'                      => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id'   => $record[$i]['id'],
+                                    'telemedicine_patient_id'   => $record->id,
                                     'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record[$i]['full_name'],
-                                    'patient_age'               => $record[$i]['age'],
-                                    'patient_sex'               => $record[$i]['sex'],
-                                    'patient_phone'             => $record[$i]['phone'],
-                                    'patient_address'           => $record[$i]['address'],
-                                    'patient_country_id'        => $record[$i]['country_id'],
-                                    'patient_state_id'          => $record[$i]['state_id'],
-                                    'patient_city_id'           => $record[$i]['city_id'],
+                                    'patient_name'              => $record->full_name,
+                                    'patient_age'               => $record->age,
+                                    'patient_sex'               => $record->sex,
+                                    'patient_phone'             => $address['phone_1'],
+                                    'patient_phone_2'           => $address['phone_2'],
+                                    'patient_address'           => $address['address'],
+                                    'patient_country_id'        => $address['country_id'],
+                                    'patient_state_id'          => $address['state_id'],
+                                    'patient_city_id'           => $address['city_id'],
                                     'reason'                    => $data['reason'],
                                     'status'                    => 'ASIGNADO',
                                     'assigned_by'               => Auth::user()->name,
                                 ]);
-    
+
                                 if ($case) {
 
                                     $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
                                     $name_patient   = $case['patient_name'];
                                     $name           = $doctor->full_name;
                                     $phone          = $doctor->phone;
+                                    $address        = $address['address'];
                                     $code           = $case->code;
                                     $reason         = $data['reason'];
                                     $email          = $doctor->email;
-        
-                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email);
-                                    
+
+                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+
                                     Notification::make()
                                         ->title('Paciente Asignado')
                                         ->body('El paciente ha sido asignado exitosamente.')
                                         ->success()
                                         ->send();
                                 }
-                            } else {
-    
+                            }
+
+                            /**
+                             * CASO 3: El paciente registro una NUEVA ubicacion
+                             */
+                            if ($data['feedback'] == false && $data['address_id'] == null) {
+                                
+                                //...Creo la nueva ubicacion en la tabla de ubicaciones
+                                $address = new AnotherAddress();
+                                $address->address = $data['address'];
+                                $address->phone_1 = $data['phone_1'];
+                                $address->phone_2 = $data['phone_2'];
+                                $address->city_id = $data['city_id'];
+                                $address->state_id = $data['state_id'];
+                                $address->country_id = $data['country_id'];
+                                $address->telemedicine_patient_id = $record->id;
+                                $address->save();
+                                
                                 $case = TelemedicineCase::create([
-                                    
+
                                     'code'                      => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id'   => $record[0]['id'],
+                                    'telemedicine_patient_id'   => $record->id,
                                     'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record[0]['full_name'],
-                                    'patient_age'               => $record[0]['age'],
-                                    'patient_sex'               => $record[0]['sex'],
-                                    'patient_phone'             => $data['other_phone'],
-                                    'patient_address'           => $data['other_address'],
-                                    'patient_country_id'        => $data['other_country_id'],
-                                    'patient_state_id'          => $data['other_state_id'],
-                                    'patient_city_id'           => $data['other_city_id'],
+                                    'patient_name'              => $record->full_name,
+                                    'patient_age'               => $record->age,
+                                    'patient_sex'               => $record->sex,
+                                    'patient_phone'             => $address->phone_1,
+                                    'patient_phone_2'           => $address->phone_2,
+                                    'patient_address'           => $address->address,
+                                    'patient_country_id'        => $address->country_id,
+                                    'patient_state_id'          => $address->state_id,
+                                    'patient_city_id'           => $address->city_id,
                                     'reason'                    => $data['reason'],
                                     'status'                    => 'ASIGNADO',
                                     'assigned_by'               => Auth::user()->name,
                                 ]);
-    
+
                                 if ($case) {
 
                                     $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
                                     $name_patient   = $case['patient_name'];
                                     $name           = $doctor->full_name;
                                     $phone          = $doctor->phone;
+                                    $address        = $address->address;
                                     $code           = $case->code;
                                     $reason         = $data['reason'];
                                     $email          = $doctor->email;
-        
-                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email);
+
+                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
 
                                     Notification::make()
                                         ->title('Paciente Asignado')
@@ -535,9 +473,8 @@ class TelemedicinePatientsTable
                                 }
                             }
                             
-                        }
-                    })
-                ]),
+                        })
+                ])
             ]);
     }
 }

@@ -17,6 +17,10 @@ class ViewTelemedicineHistoryPatient extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+
+            EditAction::make()
+                ->label('Editar Historia Clínica')
+                ->color('warning'),
             
             Action::make('back_to_consultations')
                 ->label('Regresar a Consultas')

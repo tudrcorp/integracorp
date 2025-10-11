@@ -16,6 +16,7 @@ class TelemedicineCase extends Model
         'patient_age',
         'patient_sex',
         'patient_phone',
+        'patient_phone_2',
         'patient_address',
         'patient_country_id',
         'patient_state_id',

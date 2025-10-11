@@ -29,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
             'verdeOpaco'    => Color::hex('#4A8982'),
             'verde'         => Color::hex('#529471'),
             'gris'          => Color::hex('#E8EBEA'),
+
+            'no-urgente'  => '#005ca9',
+            'estandar'    => '#02976d',
+            'urgencia'    => '#eab527',
+            'emergencia'  => '#f17f29',
+            'critico'     => '#e4003b',
         ]);
     }
 

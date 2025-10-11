@@ -235,11 +235,33 @@ class AffiliationForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->live(),
+                                Fieldset::make('Asociar Agencia y/o Agente')
+                                    ->schema([
+                                        Select::make('code_agency')
+                                            ->label('Lista de Agencias')
+                                            ->options(function (Get $get) {
+                                                return Agency::all()->pluck('name_corporative', 'code');
+                                            })
+                                            ->live()
+                                            ->searchable()
+                                            ->prefixIcon('heroicon-c-building-library')
+                                            ->preload(),
+                                        Select::make('agent_id')
+                                            ->label('Agentes')
+                                            ->options(function (Get $get) {
+                                                if ($get('code_agency') == null) {
+                                                    return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
+                                                }
+                                                return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                            })
+                                            ->live()
+                                            ->searchable()
+                                            ->prefixIcon('fontisto-person')
+                                            ->preload(),
+                                    ])->columnSpanFull(),
 
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('status')->default('PRE-APROBADA'),
-                                Hidden::make('agent_id')->default(null),
-                                Hidden::make('code_agency')->default(null),
                                 Hidden::make('owner_code')->default('TDG-100'),
                             ])
                         ]),

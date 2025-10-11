@@ -42,8 +42,19 @@ class CorporateQuote extends Model
         'data_doc',
         'observation_dress_tailor',
         'type',
+        'ownerAccountManagers'
 
     ];
+
+    /**
+     * Get the user that owns the Agent
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function accountManager()
+    {
+        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
+    }
 
     /**
      * Get all of the comments for the IndividualQuote
@@ -85,7 +96,7 @@ class CorporateQuote extends Model
     {
         return $this->hasOne(Agent::class, 'id', 'agent_id');
     }
-    
+
     public function state(): HasOne
     {
         return $this->hasOne(State::class, 'id', 'state_id');
@@ -142,7 +153,7 @@ class CorporateQuote extends Model
      */
     public function sendPropuestaEconomicaPlanEspecial($details)
     {
-        
+
         $collect = collect($details['data']);
         $group_collect = $collect->groupBy('age_range');
 

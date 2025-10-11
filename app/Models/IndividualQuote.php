@@ -34,9 +34,20 @@ class IndividualQuote extends Model
         'code_agent',
         'owner_code',
         'owner_agent',
-        'plan'
-        
+        'plan',
+        'ownerAccountManagers'
+
     ];
+
+    /**
+     * Get the user that owns the Agent
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function accountManager()
+    {
+        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
+    }
 
     /**
      * Get all of the comments for the IndividualQuote
@@ -119,7 +130,6 @@ class IndividualQuote extends Model
          * JOB
          */
         SendEmailPropuestaEconomicaPlanIdeal::dispatch($details, $group_collect, Auth::user());
-        
     }
 
     public function sendPropuestaEconomicaPlanEspecial($details)
@@ -131,12 +141,11 @@ class IndividualQuote extends Model
          * JOB
          */
         SendEmailPropuestaEconomicaPlanEspecial::dispatch($details, $group_collect, Auth::user());
-        
     }
 
     public function sendPropuestaEconomicaMultiple($collect_final)
     {
-    
+
         try {
 
             /**
@@ -161,7 +170,6 @@ class IndividualQuote extends Model
         } catch (\Throwable $th) {
             dd($th);
         }
-        
     }
     /*------------------------------------------------------------------- */
 

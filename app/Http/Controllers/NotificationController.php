@@ -1474,7 +1474,7 @@ class NotificationController extends Controller
         }
     }
 
-    static function assignedCase($phone, $doctor, $code, $reason, $name_patient)
+    static function assignedCase($phone, $doctor, $code, $reason, $name_patient, $address)
     {
         // dd($phone, $doctor, $code, $reason);
         try {
@@ -1488,6 +1488,9 @@ class NotificationController extends Controller
 
             Paciente: 
             *{$name_patient}*
+
+            Dirección: 
+            *{$address}*
 
             *Motivo de la Consulta:* 
             *{$reason}*

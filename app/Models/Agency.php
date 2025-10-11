@@ -29,7 +29,7 @@ class Agency extends Model
         'state_id',
         'city_id',
         'region',
-        
+
         //contacto secundario
         'name_contact_2',
         'email_contact_2',
@@ -78,8 +78,9 @@ class Agency extends Model
         'doc_w8_w9',
         'doc_bank_data_ves',
         'doc_bank_data_usd',
-        
-        
+        'ownerAccountManagers'
+
+
     ];
 
     /**
@@ -117,7 +118,7 @@ class Agency extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function city(): BelongsTo 
+    public function city(): BelongsTo
     {
         return $this->belongsTo(City::class, 'city_id', 'id');
     }
@@ -180,5 +181,13 @@ class Agency extends Model
         SendCartaBienvenidaAgenteAgenciaTwo::dispatch($code, $name, $email);
     }
 
-    
+    /**
+     * Get the user that owns the Agent
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function accountManager()
+    {
+        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
+    }
 }

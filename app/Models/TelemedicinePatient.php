@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TelemedicinePatient extends Model
 {
@@ -35,7 +36,8 @@ class TelemedicinePatient extends Model
         'code',
         'code_affiliation',
         'business_unit_id',
-        'business_line_id'
+        'business_line_id',
+        'name_corporate',
     ];
 
     public function businessLine()
@@ -118,6 +120,31 @@ class TelemedicinePatient extends Model
     public function telemedicinePatientHistory()
     {
         return $this->hasOne(TelemedicineHistoryPatient::class);
+    }
+
+    public function pathologicalHistories(): HasMany
+    {
+        return $this->hasMany(PathologicalHistory::class);
+    }
+
+    public function noPathologicalHistories(): HasMany
+    {
+        return $this->hasMany(NoPathologicalHistory::class);
+    }
+
+    public function surgicalHistories(): HasMany
+    {
+        return $this->hasMany(SurgicalHistory::class);
+    }
+
+    public function familyHistories(): HasMany
+    {
+        return $this->hasMany(FamilyHistory::class);
+    }
+
+    public function gynecologicalHistories(): HasMany
+    {
+        return $this->hasMany(GynecologicalHistory::class);
     }
 
     

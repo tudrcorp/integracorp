@@ -45,8 +45,23 @@ class AffiliationCorporate extends Model
         'poblation',
         'activated_at',
 
+        //...Unidad de Negocio y linea de servicio
+        'business_unit_id',
+        'business_line_id',
+        
+
 
     ];
+
+    /**
+     * Get the user that owns the Agent
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function accountManager()
+    {
+        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
+    }
 
     public function plan()
     {

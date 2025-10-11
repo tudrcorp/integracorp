@@ -18,7 +18,7 @@ class AssignedCase implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $phone, $name, $code, $reason, $name_patient, $email;
+    public $phone, $name, $code, $reason, $name_patient, $email, $address;
 
 
     /**
@@ -38,7 +38,7 @@ class AssignedCase implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($phone, $name, $code, $reason, $name_patient, $email)
+    public function __construct($phone, $name, $code, $reason, $name_patient, $email, $address)
     {
         $this->phone = $phone;
         $this->name = $name;
@@ -46,6 +46,7 @@ class AssignedCase implements ShouldQueue
         $this->reason = $reason;
         $this->name_patient = $name_patient;
         $this->email = $email;
+        $this->address = $address;
     }
 
     /**
@@ -64,7 +65,8 @@ class AssignedCase implements ShouldQueue
             $this->name,
             $this->code,
             $this->reason,
-            $this->name_patient
+            $this->name_patient,
+            $this->address
         );
 
         //email

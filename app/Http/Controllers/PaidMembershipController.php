@@ -143,7 +143,7 @@ class PaidMembershipController extends Controller
                         'frequency'         => $record->affiliation->payment_frequency,
                     ];
 
-                    dispatch(new CreateAvisoDeCobro($array_data));
+                    dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                 }
 
                 if ($record->affiliation->payment_frequency == 'TRIMESTRAL') {
@@ -219,7 +219,7 @@ class PaidMembershipController extends Controller
                         Log::info($array_data);
 
                         /** Ejecutamos el job */
-                        dispatch(new CreateAvisoDeCobro($array_data));
+                        dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                     }
                 }
 
@@ -281,7 +281,7 @@ class PaidMembershipController extends Controller
                     ];
 
                     /** Ejecutamos el job */
-                    dispatch(new CreateAvisoDeCobro($array_data));
+                    dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                 }
 
                 if ($record->affiliation->payment_frequency == 'MENSUAL') {
@@ -299,7 +299,7 @@ class PaidMembershipController extends Controller
                         $collections->plan_id                 = $record->affiliation->plan_id;
                         $collections->coverage_id             = $record->affiliation->coverage_id ?? null;
                         $collections->agent_id                = $record->affiliation->agent_id;
-                        $collections->collection_invoice_number     = UtilsController::generateCorrelative($lastInvoiceNumber->invoice_number);
+                        $collections->collection_invoice_number     = UtilsController::generateCorrelativeCollection($lastInvoiceNumber->invoice_number);
                         $collections->quote_number                  = $record->affiliation->individual_quote->code;
                         $collections->affiliation_code        = $record->affiliation->code;
                         $collections->affiliate_full_name     = $record->affiliation->full_name_ti;
@@ -344,7 +344,7 @@ class PaidMembershipController extends Controller
                         ];
 
                         /** Ejecutamos el job */
-                        dispatch(new CreateAvisoDeCobro($array_data));
+                        dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                     }
                 }
 

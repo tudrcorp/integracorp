@@ -13,7 +13,7 @@ class CorporateQuoteRequest extends Model
 {
     protected $table = 'corporate_quote_requests';
 
-     protected $fillable = [
+    protected $fillable = [
         'code',
         'owner_code',
         'code_agency',
@@ -27,8 +27,19 @@ class CorporateQuoteRequest extends Model
         'status',
         'created_by',
         'observations',
-        'poblation'
-     ];
+        'poblation',
+        'ownerAccountManagers'
+    ];
+
+    /**
+     * Get the user that owns the Agent
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function accountManager()
+    {
+        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
+    }
 
     public function details()
     {
@@ -67,14 +78,13 @@ class CorporateQuoteRequest extends Model
      * @see SendNotificacionSolicitudCotizacion
      * 
      */
-    public function sendNotification($record) {
+    public function sendNotification($record)
+    {
         try {
-            
+
             SendNotificacionSolicitudCotizacion::dispatch($record);
-            
         } catch (\Throwable $th) {
             LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_link_preAffiliation()', $th->getMessage());
         }
     }
-    
 }

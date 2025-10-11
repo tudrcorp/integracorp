@@ -2,19 +2,27 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients;
 
-use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\CreateTelemedicineHistoryPatient;
-use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\EditTelemedicineHistoryPatient;
-use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\ListTelemedicineHistoryPatients;
-use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\ViewTelemedicineHistoryPatient;
-use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Schemas\TelemedicineHistoryPatientForm;
-use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Schemas\TelemedicineHistoryPatientInfolist;
-use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Tables\TelemedicineHistoryPatientsTable;
-use App\Models\TelemedicineHistoryPatient;
 use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
+use Filament\Pages\Page;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Models\TelemedicineHistoryPatient;
+use Filament\Pages\Enums\SubNavigationPosition;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\EditTelemedicineHistoryPatient;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\ViewTelemedicineHistoryPatient;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\ListTelemedicineHistoryPatients;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Pages\CreateTelemedicineHistoryPatient;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Schemas\TelemedicineHistoryPatientForm;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Tables\TelemedicineHistoryPatientsTable;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Schemas\TelemedicineHistoryPatientInfolist;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\RelationManagers\FamilyHistoriesRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\RelationManagers\SurgicalHistoriesRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\RelationManagers\PathologicalHistoriesRelationManager;
+
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\RelationManagers\GynecologicalHistoriesRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\RelationManagers\NoPathologicalHistoriesRelationManager;
 
 class TelemedicineHistoryPatientResource extends Resource
 {
@@ -46,7 +54,11 @@ class TelemedicineHistoryPatientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            PathologicalHistoriesRelationManager::class,
+            NoPathologicalHistoriesRelationManager::class,
+            FamilyHistoriesRelationManager::class,
+            SurgicalHistoriesRelationManager::class,
+            GynecologicalHistoriesRelationManager::class,
         ];
     }
 

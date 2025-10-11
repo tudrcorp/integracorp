@@ -116,6 +116,10 @@ class User extends Authenticatable implements FilamentUser
             return $this->is_designer;
         }
 
+        if ($panel->getId() === 'business') {
+            return str_ends_with($this->email, '@tudrencasa.com') && $this->is_business_admin;
+        }
+
         return true;
 
     }

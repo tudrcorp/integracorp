@@ -152,8 +152,10 @@ class CorporateQuoteForm
                                                 ->hidden(fn(Get $get) => $get('type') == 'BASICO')
 
                                         ])->columnSpanFull(),
-                                    Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
+                                    Hidden::make('code_agency')->default('TDG-100'),
+                                    Hidden::make('owner_code')->default('TDG-100'),
+                                    Hidden::make('status')->default('PRE-APROBADA'),
                             Select::make('code_agency')
                                 ->label('Lista de Agencias')
                                 ->options(function (Get $get) {

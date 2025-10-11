@@ -114,6 +114,4 @@ class TelemedicineConsultationPatient extends Model
         return $this->belongsTo(TelemedicinePriority::class, 'telemedicine_priority_id');
     }
 
-    
-    
 }

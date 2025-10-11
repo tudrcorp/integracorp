@@ -134,7 +134,7 @@ class PaidMembershipCorporateController extends Controller
                         'frequency'         => $record->affiliation_corporate->payment_frequency,
                     ];
 
-                    dispatch(new CreateAvisoDeCobro($array_data));
+                    dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                 }
 
                 if ($record->affiliation_corporate->payment_frequency == 'TRIMESTRAL') {
@@ -200,7 +200,7 @@ class PaidMembershipCorporateController extends Controller
                         ];
 
                         /** Ejecutamos el job */
-                        dispatch(new CreateAvisoDeCobro($array_data));
+                        dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                     }
                 }
 
@@ -258,7 +258,7 @@ class PaidMembershipCorporateController extends Controller
                     ];
 
                     /** Ejecutamos el job */
-                    dispatch(new CreateAvisoDeCobro($array_data));
+                    dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                 }
 
                 if ($record->affiliation_corporate->payment_frequency == 'MENSUAL') {
@@ -317,7 +317,7 @@ class PaidMembershipCorporateController extends Controller
                         ];
 
                         /** Ejecutamos el job */
-                        dispatch(new CreateAvisoDeCobro($array_data));
+                        dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
                     }
                 }
 

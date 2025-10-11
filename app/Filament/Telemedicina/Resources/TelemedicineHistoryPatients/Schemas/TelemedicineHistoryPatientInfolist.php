@@ -35,6 +35,25 @@ class TelemedicineHistoryPatientInfolist
                                 ->label('Nro. de Historia:')
                                 ->badge()
                                 ->color('success'),
+                            TextEntry::make('weight')
+                                ->label('Peso')
+                                ->helperText('Peso (kg)')
+                                ->icon('healthicons-f-i-utensils')
+                                ->badge()
+                                ->color('success'),
+                            TextEntry::make('height')
+                                ->label('Estatura')
+                                ->helperText('Centímetros(cm) / Metros(mts)')
+                                ->icon('healthicons-f-i-utensils')
+                                ->badge()
+                                ->color('success'),
+                            TextEntry::make('imc')
+                                //peso/estatura * 2
+                                ->label('Indice de Masa Corporal (IMC)')
+                                ->helperText('')
+                                ->icon('healthicons-f-i-utensils')
+                                ->badge()
+                                ->color('success'),
                             TextEntry::make('created_by')
                                 ->label('Registrado por:')
                                 ->badge()
@@ -44,7 +63,7 @@ class TelemedicineHistoryPatientInfolist
                                 ->badge()
                                 ->icon(Heroicon::CalendarDays)
                                 ->dateTime(),
-                        ])->columnSpanFull()->columns(3),
+                        ])->columnSpanFull()->columns(4),
 
                         Section::make()
                             ->collapsed()
@@ -54,33 +73,51 @@ class TelemedicineHistoryPatientInfolist
                             ->schema([
                                 Fieldset::make()
                                     ->schema([
-                                        IconEntry::make('cancer')
-                                            ->label('Cáncer')
-                                            ->boolean(),
-                                        IconEntry::make('diabetes')
-                                            ->label('Diábetes')
-                                            ->boolean(),
                                         IconEntry::make('tension_alta')
-                                            ->label('Tensión Alta')
-                                            ->boolean(),
+                                            ->boolean()
+                                            ->label('Hipertensión Arterial'),
+                                        IconEntry::make('diabetes')
+                                            ->boolean()
+                                            ->label('Diábetes Mellitus'),
+                                        IconEntry::make('asma')
+                                            ->boolean()
+                                            ->label('Asma Bronquial'),
                                         IconEntry::make('cardiacos')
-                                            ->label('Cardíacos')
-                                            ->boolean(),
-                                        IconEntry::make('psiquiatricas')
-                                            ->label('Psiquiátricas')
-                                            ->boolean(),
-                                        IconEntry::make('alteraciones_coagulacion')
-                                            ->label('Alteraciones de Coagulación')
-                                            ->boolean(),
+                                            ->boolean()
+                                            ->label('Enfermedades Cardíacas'),
+                                        IconEntry::make('gastritis_ulceras')
+                                            ->boolean()
+                                            ->label('Gastropatias'),
+                                        IconEntry::make('enfermedad_autoimmune')
+                                            ->boolean()
+                                            ->label('Enfermedad Autoimmune'),
                                         IconEntry::make('trombosis_embooleanas')
-                                            ->label('Trombosis Emboleanas')
-                                            ->boolean(),
+                                            ->boolean()
+                                            ->label('Insuficiencia Venosa'),
+                                        IconEntry::make('fracturas')
+                                            ->boolean()
+                                            ->label('Traumatismos'),
+                                        IconEntry::make('cancer')
+                                            ->boolean()
+                                            ->label('Cáncer'),
                                         IconEntry::make('tranfusiones_sanguineas')
-                                            ->label('Transfusiones Sanguíneas')
-                                            ->boolean(),
+                                            ->boolean()
+                                            ->label('Anemia'),
+                                        IconEntry::make('tiroides')
+                                            ->boolean()
+                                            ->label('Tiroides'),
+                                        IconEntry::make('hepatitis')
+                                            ->boolean()
+                                            ->label('Hepatitis'),
+                                        IconEntry::make('moretones_frecuentes')
+                                            ->boolean()
+                                            ->label('Enfermedades Hematológicas'),
+                                        IconEntry::make('psiquiatricas')
+                                            ->boolean()
+                                            ->label('Enfermedades Psiquiátricas'),
                                         IconEntry::make('covid')
-                                            ->label('COVID')
-                                            ->boolean(),
+                                            ->boolean()
+                                            ->label('COVID-19'),
                                     ])->columnSpanFull()->columns(4),
                                 Fieldset::make('Observaciones Adicionales de Antecedentes Personales y Familiares')
                                     ->schema([
@@ -98,67 +135,54 @@ class TelemedicineHistoryPatientInfolist
                                 ->schema([
                                     Fieldset::make()
                                         ->schema([
-                                            IconEntry::make('hepatitis')
-                                                ->label('Hepatitis')
-                                                ->boolean(),
-                                            IconEntry::make('vih')
-                                                ->label('VIH')  
-                                                ->boolean(),
-                                            IconEntry::make('gastritis_ulceras')
-                                                ->label('Gastritis y úlceras')
-                                                ->boolean(),
-                                            IconEntry::make('neurologia')
-                                                ->label('Neurología')
-                                                ->boolean(),
-                                            IconEntry::make('ansiedad_angustia')
-                                                ->label('Ansiedad y Angustia')
-                                                ->boolean(),
-                                            IconEntry::make('tiroides')
-                                                ->label('Tiroides')
-                                                ->boolean(),
-                                            IconEntry::make('lupus')
-                                                ->label('Lupus')
-                                                ->boolean(),
-                                            IconEntry::make('enfermedad_autoimmune')
-                                                ->label('Enfermedad Autoimmune')
-                                                ->boolean(),
-                                            IconEntry::make('diabetes_mellitus')
-                                                ->label('Diábetes Mellitus')
-                                                ->boolean(),
-                                            IconEntry::make('presion_arterial_alta')
-                                                ->label('Presión Arterial Alta')
-                                                ->boolean(),
-                                            IconEntry::make('tiene_cateter_venoso')
-                                                 ->label('Tiene Cateter Venoso')
-                                                ->boolean(),
-                                            IconEntry::make('fracturas')
-                                                ->label('Fracturas')
-                                                ->boolean(),
-                                            IconEntry::make('trombosis_venosa')
-                                                ->label('Trombosis Venosa')
-                                                ->boolean(),
-                                            IconEntry::make('embooleania_pulmonar')
-                                                ->label('Embolia Pulmonar')
-                                                ->boolean(),
-                                            IconEntry::make('varices_piernas')
-                                                ->label('Varices en Piernas')
-                                                ->boolean(),
-                                            IconEntry::make('insuficiencia_arterial')
-                                                ->label('Insuficiencia Arterial')
-                                                ->boolean(),
-                                            IconEntry::make('coagulacion_anormal')
-                                                ->label('Coagulación Anormal')
-                                                ->boolean(),
-                                            IconEntry::make('moretones_frecuentes')
-                                                ->label('Moretones Frecuentes')  
-                                                ->boolean(),
-                                            IconEntry::make('sangrado_cirugias_previas')
-                                                ->label('Sangrado en Cirugías Previas')
-                                                ->boolean(),
-                                            IconEntry::make('sangrado_cepillado_dental')
-                                                ->label('Sangrado al cepillado Dental')
-                                                ->boolean(),
-                                        
+                                            IconEntry::make('tension_alta_app')
+                                                ->boolean()
+                                                ->label('Hipertensión Arterial'),
+                                            IconEntry::make('diabetes')
+                                            ->boolean()
+                                                ->label('Diábetes Mellitus'),
+                                            IconEntry::make('asma_app')
+                                            ->boolean()
+                                                ->label('Asma Bronquial'),
+                                            IconEntry::make('cardiacos_app')
+                                            ->boolean()
+                                                ->label('Enfermedades Cardíacas'),
+                                            IconEntry::make('gastritis_ulceras_app')
+                                            ->boolean()
+                                                ->label('Gastropatias'),
+                                            IconEntry::make('enfermedad_autoimmune_app')
+                                            ->boolean()
+                                                ->label('Enfermedad Autoimmune'),
+                                            IconEntry::make('trombosis_embooleanas_app')
+                                            ->boolean()
+                                                ->label('Insuficiencia Venosa'),
+                                            IconEntry::make('fracturas_app')
+                                            ->boolean()
+                                                ->label('Traumatismos'),
+                                            // IconEntry::make('alteraciones_coagulacion')
+                                            //     ->label('Alteraciones de Coagulación'),
+                                            IconEntry::make('cancer_app')
+                                            ->boolean()
+                                                ->label('Cáncer'),
+                                            IconEntry::make('tranfusiones_sanguineas_app')
+                                            ->boolean()
+                                                ->label('Anemia'),
+                                            IconEntry::make('tiroides_app')
+                                            ->boolean()
+                                                ->label('Tiroides'),
+                                            IconEntry::make('hepatitis_app')
+                                            ->boolean()
+                                                ->label('Hepatitis'),
+                                            IconEntry::make('moretones_frecuentes_app')
+                                            ->boolean()
+                                                ->label('Enfermedades Hematológicas'),
+                                            IconEntry::make('psiquiatricas_app')
+                                            ->boolean()
+                                                ->label('Enfermedades Psiquiátricas'),
+                                            IconEntry::make('covid_app')
+                                            ->boolean()
+                                                ->label('COVID-19'),
+                                    
                                         ])->columnSpanFull()->columns(5),
                                     Fieldset::make('Observaciones Adicionales de Antecedentes Personales y Patológicos')
                                         ->schema([
@@ -176,18 +200,15 @@ class TelemedicineHistoryPatientInfolist
                                 ->schema([
                                     Fieldset::make()
                                         ->schema([
+                                            IconEntry::make('tabaco')
+                                                ->boolean()
+                                                ->label('Tabaquismo'),
                                             IconEntry::make('alcohol')
-                                                ->label('Alcohol')
-                                                ->boolean(),
+                                                ->boolean()
+                                                ->label('Alcohol'),
                                             IconEntry::make('drogas')
-                                                ->label('Drogas')
-                                                ->boolean(),
-                                            IconEntry::make('vacunas_recientes')
-                                                ->label('Vacunas Recientes')
-                                                ->boolean(),
-                                            IconEntry::make('transfusiones_sanguineas')
-                                                ->label('Transfusiones Sanguíneas')
-                                                ->boolean(),
+                                                ->boolean()
+                                                ->label('Drogas'),
                                             
                                         ])->columnSpanFull()->columns(4),
                                     Fieldset::make('Observaciones Adicionales de Antecedentes No Patológicos')

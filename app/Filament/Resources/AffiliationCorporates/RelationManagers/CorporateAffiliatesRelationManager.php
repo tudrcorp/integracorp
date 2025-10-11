@@ -12,6 +12,7 @@ use Filament\Actions\BulkActionGroup;
 use Illuminate\Validation\Rules\File;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
 use App\Filament\Imports\AffiliateCorporateImporter;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Imports\CorporateQuoteRequestDataImporter;
@@ -50,7 +51,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('sex')
                     ->label('Sexo'),
-                TextColumn::make('phone')
+                TextInputColumn::make('phone')
                     ->label('Telefono'),
                 TextColumn::make('condition_medical')
                     ->label('Condicion Medica'),

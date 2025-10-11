@@ -112,6 +112,10 @@ class CorporateQuoteRequestForm
                                                 ->required()
                                                 ->autosize()
                                         ])->columnSpanFull(),
+                                    Hidden::make('ownerAccountManagers')->default(function () {
+                                        $user_id = Auth::user()->agent_id;
+                                        return Agent::where('id', $user_id)->first()->ownerAccountManagers;
+                                    }),
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
                                     Hidden::make('agent_id')->default(Auth::user()->agent_id),
@@ -158,7 +162,7 @@ class CorporateQuoteRequestForm
                                 ->columnSpanFull()
                         ]),
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -166,8 +170,8 @@ class CorporateQuoteRequestForm
                         Crear cotización
                     </x-filament::button>
                 BLADE)))
-                ->hiddenOn('edit')
-                ->columnSpanFull(),
+                    ->hiddenOn('edit')
+                    ->columnSpanFull(),
             ]);
     }
 }

@@ -73,18 +73,21 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'ALTA'          => 'success',
-                            'MEDIA'         => 'warning',
-                            'BAJA'          => 'primary',
-                            'EMERGENCIA'    => 'danger',
+                            'No Urgente'  => 'no-urgente',
+                            'Estándar'    => 'estandar',
+                            'Urgencia'    => 'urgencia',
+                            'Emergencia'  => 'emergencia',
+                            'Critico'     => 'critico',
                         };
                     })
                     ->icon(function (string $state): string {
                         return match ($state) {
-                            'ALTA'             => 'healthicons-f-health',
-                            'MEDIA'            => 'healthicons-f-health',
-                            'BAJA'             => 'healthicons-f-health',
-                            'EMERGENCIA'       => 'heroicon-c-shield-exclamation',
+                            'No Urgente'  => 'healthicons-f-health',
+                            'Estándar'    => 'healthicons-f-health',
+                            'Urgencia'    => 'healthicons-f-health',
+                            'Emergencia'  => 'heroicon-c-shield-exclamation',
+                            'Critico'     => 'heroicon-c-shield-exclamation',
+                    
                         };
                     })
                     ->searchable(),
@@ -111,8 +114,10 @@ class TelemedicineCaseTableDash extends TableWidget
                         ->icon('heroicon-s-book-open')
                         ->color('primary')
                         ->action(function (TelemedicineCase $record) {
-                                
+                                // dd($record);
                             $history = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->first();
+
+                            // dd($record, $history, TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first());
     
                             if(isset($history)) {
                                 return redirect()->route('filament.telemedicina.resources.telemedicine-history-patients.view', ['record' => $history->id]);
@@ -127,7 +132,7 @@ class TelemedicineCaseTableDash extends TableWidget
                     Action::make('consultation')
                         ->label('Consulta Inicial')
                         ->icon('healthicons-f-call-centre')
-                        ->color('primary')
+                        ->color('success')
                         ->disabled(function (TelemedicineCase $record) {
                             $case = TelemedicineConsultationPatient::where('telemedicine_case_code', $record->code)->exists();
                             // dd($record->status);
@@ -144,16 +149,13 @@ class TelemedicineCaseTableDash extends TableWidget
     
                             session()->forget('case');
                             session()->forget('patient');
-                            session()->forget('exit_record');
+                            // session()->forget('exit_record');
+                            session()->forget('redCode');
     
                             //Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
                             session(['case' => $case]);
                             session(['patient' => $patient]);
-                            session(['exit_record' => $exit_record]);
-    
-                            Log::info(session()->get('case'));
-                            Log::info(session()->get('patient'));
-                            Log::info(session()->get('exit_record'));
+                            // session(['exit_record' => $exit_record]);
     
                             return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
                             
@@ -201,8 +203,14 @@ class TelemedicineCaseTableDash extends TableWidget
 
                         return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.view', ['record' => $last->id]);
 
-
-                }),
+                        })
+                        ->hidden(function (TelemedicineCase $record) {
+                            $last = TelemedicineConsultationPatient::where('telemedicine_case_id', $record->id)->latest()->first();
+                            if($last == null) {
+                                return true;
+                            }
+                            return false;
+                        }),
                         
                 ])
             ])

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Affiliations\RelationManagers;
 
+use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use Filament\Actions\CreateAction;
@@ -10,9 +11,9 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Columns\TextInputColumn;
 use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Resources\Affiliations\AffiliationResource;
-use BackedEnum;
 
 class AffiliatesRelationManager extends RelationManager
 {
@@ -77,6 +78,21 @@ class AffiliatesRelationManager extends RelationManager
                     ->label('Genero'),
                 TextColumn::make('relationship')
                     ->label('Parentesco'),
+                TextColumn::make('address')
+                    ->label('Direccion Completa'),
+                TextInputColumn::make('phone')
+                    ->label('Numero de Telefono'),
+                TextColumn::make('relationship')
+                    ->label('Parentesco'),
+                TextColumn::make('plan.description')
+                    ->label('Plan'),
+                TextColumn::make('coverage.price')
+                    ->label('Cobertura'),
+                TextColumn::make('status')
+                    ->color('success')
+                    ->badge()   
+                    ->label('Estatus'),
+                
             ])
             ->filters([
                 //

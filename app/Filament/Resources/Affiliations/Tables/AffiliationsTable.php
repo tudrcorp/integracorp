@@ -332,6 +332,9 @@ class AffiliationsTable
                                                     ->where('plan_id', $record->plan_id)
                                                     ->where('coverage_id', $record->coverage_id)
                                                     ->first();
+                                                Log::info('Detalle: '. $amount);
+                                                Log::info('Afiliacion: '. $record);
+
 
                                                 if ($record->payment_frequency == 'ANUAL') {
                                                     return $amount->subtotal_anual;

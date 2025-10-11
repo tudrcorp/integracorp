@@ -238,6 +238,10 @@ class AffiliationForm
                                     ->dehydrated()
                                     ->live(),
 
+                                Hidden::make('ownerAccountManagers')->default(function () {
+                                    $user_id = Auth::user()->agent_id;
+                                    return Agent::where('id', $user_id)->first()->ownerAccountManagers;
+                                }),
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('status')->default('PRE-APROBADA'),
                                 Hidden::make('agent_id')->default(Auth::user()->agent_id),
@@ -281,7 +285,7 @@ class AffiliationForm
                                 }),
                                 //...Unidad de Negocio y linea de servicio
                                 //.......................................................
-                                Hidden::make('business_unit_id')->default(fn (Get $get) => UtilsController::getBusinessUnitId($get('plan_id'))),
+                                Hidden::make('business_unit_id')->default(fn(Get $get) => UtilsController::getBusinessUnitId($get('plan_id'))),
                                 Hidden::make('business_line_id')->default(fn(Get $get) => UtilsController::getBusinessLineId($get('plan_id'))),
                                 //.......................................................
                             ])
@@ -480,7 +484,7 @@ class AffiliationForm
                                                         ->live(onBlur: true)
                                                         ->maxLength(255),
                                                     TextInput::make('nro_identificacion')
-                                                    ->label('Número de Identificación')
+                                                        ->label('Número de Identificación')
                                                         ->numeric()
                                                         ->unique(
                                                             ignoreRecord: true,
@@ -634,13 +638,13 @@ class AffiliationForm
                                         ->boolean()
                                         ->inline(),
                                 ])->columns(1)->columnSpanFull(),
-                                Fieldset::make('Información Adicional')
-                                    ->schema([
-                                        Textarea::make('observations_cuestions')
-                                            ->label('Observaciones adicionales')
-                                            ->helperText('En caso de haber respondido afirmativamente alguna de las preguntas de la DECLARACIÓN CONDICIONES MÉDICAS, indique la pregunta que
+                            Fieldset::make('Información Adicional')
+                                ->schema([
+                                    Textarea::make('observations_cuestions')
+                                        ->label('Observaciones adicionales')
+                                        ->helperText('En caso de haber respondido afirmativamente alguna de las preguntas de la DECLARACIÓN CONDICIONES MÉDICAS, indique la pregunta que
                                                         corresponda, especifique la persona solicitante e indique detalles como: Diagnistico/Enfermedad, Fecha y Condicion actual.')
-                                    ])->columnSpanFull()->columns(1),
+                                ])->columnSpanFull()->columns(1),
                         ])->columnSpanFull(),
                     Step::make('Información Adicional')
                         ->description('Datos del Pagador')

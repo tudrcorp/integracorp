@@ -99,6 +99,16 @@ class Affiliation extends Model
         
     ];
 
+    /**
+     * Get the user that owns the Agent
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function accountManager()
+    {
+        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
+    }
+
     protected $casts = [
         'upload_documents' => 'array',
     ];

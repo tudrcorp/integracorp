@@ -132,6 +132,7 @@ class IndividualQuoteForm
                                                 ->prefixIcon('fontisto-person')
                                                 ->preload(),
                                         ])->columnSpanFull(),
+                                    Hidden::make('created_by')->default(Auth::user()->name),
                                 ])
                                 ->columns(3)
                                 ->columnSpanFull()

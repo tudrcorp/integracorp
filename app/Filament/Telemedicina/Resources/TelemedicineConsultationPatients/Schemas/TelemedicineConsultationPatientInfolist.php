@@ -69,22 +69,24 @@ class TelemedicineConsultationPatientInfolist
                                         }
                                     }),
                                 TextEntry::make('telemedicinePriority.name')
-                                    ->label('PRIORIDAD:')
+                                    ->label('Prioridad')
                                     ->badge()
                                     ->color(function (string $state): string {
                                         return match ($state) {
-                                            'ALTA'          => 'success',
-                                            'MEDIA'         => 'warning',
-                                            'BAJA'          => 'primary',
-                                            'EMERGENCIA'    => 'danger',
+                                            'No Urgente'  => 'no-urgente',
+                                            'Estándar'    => 'estandar',
+                                            'Urgencia'    => 'urgencia',
+                                            'Emergencia'  => 'emergencia',
+                                            'Critico'     => 'critico',
                                         };
                                     })
                                     ->icon(function (string $state): string {
                                         return match ($state) {
-                                            'ALTA'             => 'healthicons-f-health',
-                                            'MEDIA'            => 'healthicons-f-health',
-                                            'BAJA'             => 'healthicons-f-health',
-                                            'EMERGENCIA'       => 'heroicon-c-shield-exclamation',
+                                            'No Urgente'  => 'healthicons-f-health',
+                                            'Estándar'    => 'healthicons-f-health',
+                                            'Urgencia'    => 'healthicons-f-health',
+                                            'Emergencia'  => 'heroicon-c-shield-exclamation',
+                                            'Critico'     => 'heroicon-c-shield-exclamation',
                                         };
                                     }),
                                 TextEntry::make('updated_at')

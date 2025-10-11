@@ -19,61 +19,6 @@ class CreateCorporateQuote extends CreateRecord
 
     protected static ?string $title = 'CREAR';
 
-    // //mutateFormDataBeforeSave()
-    // protected function mutateFormDataBeforeCreate(array $data): array
-    // {
-    //     // dd($data);
-    //     /**
-    //      * Caso Unico
-    //      * La los select de agencia y agente bien vasios
-    //      * ya que el usuario no selecciono ningun agente ni agencia
-    //      * ----------------------------------------------------------------------------------------------------
-    //      */
-    //     if (isset($data['corporate_quote_request_id'])) {
-
-    //         /**Si la cotizacion fue generada por una solicitud */
-    //         $data_agent_or_agency = CorporateQuoteRequest::select('agent_id', 'code_agency', 'owner_code', 'id')
-    //             ->where('id', $data['corporate_quote_request_id'])
-    //             ->first();
-
-    //         $data['owner_code']     = $data_agent_or_agency->owner_code;
-    //         $data['agent_id']       = $data_agent_or_agency->owner_code != null ? $data_agent_or_agency->agent_id : null;
-    //         $data['code_agency']    =  $data_agent_or_agency->code_agency;
-    //     } elseif ($data['code_agency'] == null) {
-    //         $data['owner_code']     = 'TDG-100';
-    //         $data['code_agency']    = 'TDG-100';
-    //         $data['agent_id']       = null;
-    //     } else {
-    //         $data['owner_code']     = $data['code_agency'];
-    //         $data['code_agency']    = $data['code_agency'];
-    //         $data['agent_id']       = $data['agent_id'];
-    //     }
-
-    //     /**
-    //      * Logica para conformar la cotizacion que sera enviada
-    //      * por correo electronico
-    //      * ----------------------------------------------------------------------------------------------------
-    //      */
-    //     if ($data['plan'] == 1) {
-    //         //guardar en la variable de sesion los detalles de la cotizacion
-    //         session()->put('details_corporate_quote', $data['details_corporate_quote_plan_inicial']);
-    //     }
-    //     if ($data['plan'] == 2) {
-    //         //guardar en la variable de sesion los detalles de la cotizacion
-    //         session()->put('details_corporate_quote', $data['details_corporate_quote_plan_ideal']);
-    //     }
-    //     if ($data['plan'] == 3) {
-    //         //guardar en la variable de sesion los detalles de la cotizacion
-    //         session()->put('details_corporate_quote', $data['details_corporate_quote_plan_especial']);
-    //     }
-    //     if ($data['plan'] == 'CM') {
-    //         //guardar en la variable de sesion los detalles de la cotizacion
-    //         session()->put('details_corporate_quote', $data['details_corporate_quote']);
-    //     }
-
-    //     return $data;
-    // }
-
     //mutateFormDataBeforeSave()
     protected function mutateFormDataBeforeCreate(array $data): array
     {

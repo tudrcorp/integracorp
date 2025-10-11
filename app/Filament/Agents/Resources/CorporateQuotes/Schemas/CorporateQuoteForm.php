@@ -58,8 +58,8 @@ class CorporateQuoteForm
                                                 ])
                                                 ->required()
                                                 ->default('BASICO')
-                                        
-                                    ])->columnSpanFull(),
+
+                                        ])->columnSpanFull(),
                                     Grid::make(4)
                                         ->schema([
                                             TextInput::make('code')
@@ -135,6 +135,10 @@ class CorporateQuoteForm
                                                 ->hidden(fn(Get $get) => $get('type') == 'BASICO')
 
                                         ])->columnSpanFull(),
+                                    Hidden::make('ownerAccountManagers')->default(function () {
+                                        $user_id = Auth::user()->agent_id;
+                                        return Agent::where('id', $user_id)->first()->ownerAccountManagers;
+                                    }),
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
                                     Hidden::make('agent_id')->default(Auth::user()->agent_id),
@@ -195,7 +199,7 @@ class CorporateQuoteForm
                                         ->live()
                                         ->options(function () {
                                             $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
-                                            
+
                                             //agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 
@@ -386,7 +390,7 @@ class CorporateQuoteForm
                                 ])
                         ])
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -394,8 +398,8 @@ class CorporateQuoteForm
                         Crear cotización
                     </x-filament::button>
                 BLADE)))
-                ->hiddenOn('edit')
-                ->columnSpanFull(),
+                    ->hiddenOn('edit')
+                    ->columnSpanFull(),
             ]);
     }
 }

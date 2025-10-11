@@ -86,6 +86,7 @@ class Agent extends Model
         'comments',
 
         'conf_position_menu',
+        'ownerAccountManagers'
 
     ];
 
@@ -107,6 +108,16 @@ class Agent extends Model
     public function agency(): BelongsTo
     {
         return $this->belongsTo(Agency::class, 'agency_id', 'id');
+    }
+
+    /**
+     * Get the user that owns the Agent
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function accountManager()
+    {
+        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
     }
 
     /**

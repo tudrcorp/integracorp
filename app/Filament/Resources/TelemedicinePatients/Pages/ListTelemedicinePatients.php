@@ -97,7 +97,7 @@ class ListTelemedicinePatients extends ListRecords
                         ->with('affiliation')
                         ->get()
                         ->toArray();
-
+                        
                         $businessUnitId = UtilsController::getBusinessUnitId($affiliation[0]['affiliation']['plan_id']);
 
                         $businessLineId = UtilsController::getBusinessLineId($affiliation[0]['affiliation']['plan_id']);
@@ -148,7 +148,8 @@ class ListTelemedicinePatients extends ListRecords
                         
                             $patient = TelemedicinePatient::create([
 
-                                //Informacion de la Afiliacion
+                        //Informacion de la Afiliacion
+                                'name_corporate'            => $affiliation[0]['affiliation_corporate']['name_corporate'],
                                 'plan_id'                   => $affiliation[0]['plan_id'],
                                 'coverage_id'               => $affiliation[0]['coverage_id'],
                                 'afilliation_corporate_id'  => $affiliation[0]['affiliation_corporate']['id'],
