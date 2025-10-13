@@ -4,6 +4,10 @@ namespace App\Filament\Business\Resources\CorporateQuotes\Schemas;
 
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
+use App\Models\CorporateQuote;
+use Filament\Support\Icons\Heroicon;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Fieldset;
 
 class CorporateQuoteInfolist
 {
@@ -11,54 +15,68 @@ class CorporateQuoteInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('corporate_quote_request_id')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('owner_code')
-                    ->placeholder('-'),
-                TextEntry::make('code'),
-                TextEntry::make('code_agency')
-                    ->placeholder('-'),
-                TextEntry::make('agent_id')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('state_id')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('region')
-                    ->placeholder('-'),
-                TextEntry::make('count_days')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('full_name')
-                    ->placeholder('-'),
-                TextEntry::make('rif')
-                    ->placeholder('-'),
-                TextEntry::make('email')
-                    ->label('Email address')
-                    ->placeholder('-'),
-                TextEntry::make('phone')
-                    ->placeholder('-'),
-                TextEntry::make('status')
-                    ->placeholder('-'),
-                TextEntry::make('created_by'),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('plan')
-                    ->placeholder('-'),
-                TextEntry::make('observations')
-                    ->placeholder('-'),
-                TextEntry::make('data_doc')
-                    ->placeholder('-'),
-                TextEntry::make('observation_dress_tailor')
-                    ->placeholder('-')
-                    ->columnSpanFull(),
-                TextEntry::make('type')
-                    ->placeholder('-'),
+                Section::make()
+                    ->description(fn(CorporateQuote $record) => 'Cotización Corporativa generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                    ->columnSpanFull()
+                    ->icon(Heroicon::Bars3BottomLeft)
+                    ->schema([
+                        Fieldset::make('Cotización Corporativa')
+                            ->schema([
+                                TextEntry::make('code')
+                                    ->label('Número de Cotización')
+                                    ->badge()
+                                    ->color('success'),
+
+                                TextEntry::make('corporateQuoteRequest.code')
+                                    ->label('Número de solicitud')
+                                    ->badge()
+                                    ->color('success'),
+                                // ...
+                                TextEntry::make('code_agency')
+                                    ->label('Código de agencia')
+                                    ->badge()
+                                    ->color('primary'),
+                                TextEntry::make('registrated_by')
+                                    ->label('Registrado por:')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->default(fn(CorporateQuote $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
+                                TextEntry::make('created_at')
+                                    ->label('Fecha de solicitud')
+                                    ->badge()
+                                    ->dateTime(),
+                            ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make()
+                            ->schema([
+                                TextEntry::make('full_name')
+                                    ->label('Nombre completo'),
+                                TextEntry::make('rif')
+                                    ->label('RIF:')
+                                    ->prefix('J-'),
+                                TextEntry::make('phone')
+                                    ->label('Número de teléfono'),
+                                TextEntry::make('email')
+                                    ->label('Correo electrónico'),
+
+                                TextEntry::make('status')
+                                    ->label('Estatus')
+                                    ->badge()
+                                    ->color('success'),
+                                TextEntry::make('created_by')
+                                    ->label('Registrado por:')
+                                    ->badge()
+                                    ->color('primary'),
+                            ])->columnSpanFull()->columns(4),
+
+                        Fieldset::make('Cotización DRESS-TAILOR')
+                            ->schema([
+                                TextEntry::make('observation_dress_tailor')
+                                    ->label('Características de la cotización')
+                                    ->hidden(fn(CorporateQuote $record) => $record->observation_dress_tailor == null),
+                            ])->columnSpanFull()->columns(5),
+
+                    ])->columnSpanFull(),
             ]);
     }
 }

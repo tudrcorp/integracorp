@@ -15,12 +15,12 @@ class StatesTable
     {
         return $table
             ->columns([
-                TextColumn::make('country_id')
+                TextColumn::make('country.name')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('definition')
                     ->searchable(),
-                TextColumn::make('region_id')
+                TextColumn::make('region.definition')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('created_at')

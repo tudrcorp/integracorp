@@ -16,18 +16,16 @@ class AffiliationCorporateController extends Controller
     {
 
         try {
-            // dd($record);
+            // dd($record, $data, $type_roll, AffiliateCorporate::select('affiliation_corporate_id')->where('affiliation_corporate_id', $record->id)->count());
             // $validate = self::getValidation($record, $data);
 
             //1. Actualizamos la tabla de afiliaciones
             $record->update([
-                'payment_frequency'     => $data['payment_frequency'],
-                'plan_id'               => $data['plan_id'],
-                'coverage_id'           => $data['coverage_id'],
-                'corporate_members'     => AffiliateCorporate::select('affiliation_corporate_id')->where('affiliation_corporate_id', $record->id)->count(),
+                'payment_frequency' => $record['payment_frequency'],
+                'poblation'         => AffiliateCorporate::select('affiliation_corporate_id')->where('affiliation_corporate_id', $record->id)->count(),
             ]);
 
-            if ($data['payment_frequency'] == 'ANUAL') {
+            if ($record['payment_frequency'] == 'ANUAL') {
 
                 /** PAGO USD */
                 if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
@@ -36,8 +34,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'pay_amount_usd'            => $data['total_amount'],
                         'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -50,7 +48,7 @@ class AffiliationCorporateController extends Controller
                         'reference_payment_ves'     => isset($data['reference_payment_ves']) ? $data['reference_payment_ves'] : 'N/A',
                         'bank_usd'                  => isset($data['bank_usd']) ? $data['bank_usd'] : 'N/A',
                         'bank_ves'                  => isset($data['bank_ves']) ? $data['bank_ves'] : 'N/A',
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
@@ -67,8 +65,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
@@ -78,7 +76,7 @@ class AffiliationCorporateController extends Controller
                         'payment_method'            => $data['payment_method'],
                         'payment_method_usd'            => 'N/A',
                         'payment_method_ves'            => 'N/A',
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_ves'     => $data['reference_payment_ves'],
@@ -99,8 +97,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -110,7 +108,7 @@ class AffiliationCorporateController extends Controller
                         'payment_method'            => $data['payment_method'],
                         'payment_method_usd'        => $data['payment_method_usd'],
                         'payment_method_ves'        => $data['payment_method_ves'],
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
@@ -125,7 +123,7 @@ class AffiliationCorporateController extends Controller
                 }
             }
 
-            if ($data['payment_frequency'] == 'TRIMESTRAL') {
+            if ($record['payment_frequency'] == 'TRIMESTRAL') {
 
                 /** PAGO USD */
                 if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
@@ -134,8 +132,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'pay_amount_usd'            => $data['total_amount'],
                         'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -146,7 +144,7 @@ class AffiliationCorporateController extends Controller
                         'reference_payment_ves'     => isset($data['reference_payment_ves']) ? $data['reference_payment_ves'] : 'N/A',
                         'bank_usd'                  => isset($data['bank_usd']) ? $data['bank_usd'] : 'N/A',
                         'bank_ves'                  => isset($data['bank_ves']) ? $data['bank_ves'] : 'N/A',
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
@@ -163,8 +161,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
@@ -172,7 +170,7 @@ class AffiliationCorporateController extends Controller
                         'document_ves'              => $data['document_ves'],
                         'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                         'payment_method'            => $data['payment_method'],
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_ves'     => $data['reference_payment_ves'],
@@ -193,8 +191,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -204,7 +202,7 @@ class AffiliationCorporateController extends Controller
                         'payment_method'            => $data['payment_method'],
                         'payment_method_usd'        => $data['payment_method_usd'],
                         'payment_method_ves'        => $data['payment_method_ves'],
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
@@ -219,7 +217,7 @@ class AffiliationCorporateController extends Controller
                 }
             }
 
-            if ($data['payment_frequency'] == 'SEMESTRAL') {
+            if ($record['payment_frequency'] == 'SEMESTRAL') {
 
                 /** PAGO USD */
                 if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
@@ -228,8 +226,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'pay_amount_usd'            => $data['total_amount'],
                         'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -240,7 +238,7 @@ class AffiliationCorporateController extends Controller
                         'reference_payment_ves'     => isset($data['reference_payment_ves']) ? $data['reference_payment_ves'] : 'N/A',
                         'bank_usd'                  => isset($data['bank_usd']) ? $data['bank_usd'] : 'N/A',
                         'bank_ves'                  => isset($data['bank_ves']) ? $data['bank_ves'] : 'N/A',
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
@@ -257,8 +255,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
@@ -266,7 +264,7 @@ class AffiliationCorporateController extends Controller
                         'document_ves'              => $data['document_ves'],
                         'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                         'payment_method'            => $data['payment_method'],
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_ves'     => $data['reference_payment_ves'],
@@ -287,8 +285,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -298,7 +296,7 @@ class AffiliationCorporateController extends Controller
                         'payment_method'            => $data['payment_method'],
                         'payment_method_usd'        => $data['payment_method_usd'],
                         'payment_method_ves'        => $data['payment_method_ves'],
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
@@ -313,7 +311,7 @@ class AffiliationCorporateController extends Controller
                 }
             }
 
-            if ($data['payment_frequency'] == 'MENSUAL') {
+            if ($record['payment_frequency'] == 'MENSUAL') {
 
                 /** PAGO USD */
                 if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
@@ -322,8 +320,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'pay_amount_usd'            => $data['total_amount'],
                         'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
@@ -334,7 +332,7 @@ class AffiliationCorporateController extends Controller
                         'reference_payment_ves'     => isset($data['reference_payment_ves']) ? $data['reference_payment_ves'] : 'N/A',
                         'bank_usd'                  => isset($data['bank_usd']) ? $data['bank_usd'] : 'N/A',
                         'bank_ves'                  => isset($data['bank_ves']) ? $data['bank_ves'] : 'N/A',
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
@@ -351,8 +349,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
@@ -360,7 +358,7 @@ class AffiliationCorporateController extends Controller
                         'document_ves'              => $data['document_ves'],
                         'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                         'payment_method'            => $data['payment_method'],
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_ves'     => $data['reference_payment_ves'],
@@ -381,8 +379,8 @@ class AffiliationCorporateController extends Controller
                         'affiliation_corporate_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
                         'code_agency'               => $record->code_agency,
-                        'plan_id'                   => $data['plan_id'],
-                        'coverage_id'               => $data['coverage_id'],
+                        // 'plan_id'                   => $data['plan_id'],
+                        // 'coverage_id'               => $data['coverage_id'],
                         'total_amount'              => $data['total_amount'],
                         'tasa_bcv'                  => $data['tasa_bcv'],
                         'pay_amount_usd'            => $data['pay_amount_usd'],
@@ -392,7 +390,7 @@ class AffiliationCorporateController extends Controller
                         'payment_method'            => $data['payment_method'],
                         'payment_method_usd'        => $data['payment_method_usd'],
                         'payment_method_ves'        => $data['payment_method_ves'],
-                        'payment_frequency'         => $data['payment_frequency'],
+                        'payment_frequency'         => $record['payment_frequency'],
                         'payment_date'              => now()->format('d-m-Y'),
                         'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'reference_payment_zelle'   => $data['reference_payment_zelle'] == null ? 'N/A' : $data['reference_payment_zelle'],
@@ -411,6 +409,7 @@ class AffiliationCorporateController extends Controller
 
             //code...
         } catch (\Throwable $th) {
+            dd($th);
             Log::error($th->getMessage());
             Notification::make()
                 ->title('EXCEPTION')

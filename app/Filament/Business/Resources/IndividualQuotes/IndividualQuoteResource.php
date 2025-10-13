@@ -2,20 +2,21 @@
 
 namespace App\Filament\Business\Resources\IndividualQuotes;
 
-use App\Filament\Business\Resources\IndividualQuotes\Pages\CreateIndividualQuote;
-use App\Filament\Business\Resources\IndividualQuotes\Pages\EditIndividualQuote;
-use App\Filament\Business\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
-use App\Filament\Business\Resources\IndividualQuotes\Pages\ViewIndividualQuote;
-use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
-use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
-use App\Filament\Business\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
-use App\Models\IndividualQuote;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use App\Models\IndividualQuote;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Business\Resources\IndividualQuotes\Pages\EditIndividualQuote;
+use App\Filament\Business\Resources\IndividualQuotes\Pages\ViewIndividualQuote;
+use App\Filament\Business\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
+use App\Filament\Business\Resources\IndividualQuotes\Pages\CreateIndividualQuote;
+use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
+use App\Filament\Business\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
+use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
+use App\Filament\Business\Resources\IndividualQuotes\RelationManagers\DetailsQuoteRelationManager;
 
 class IndividualQuoteResource extends Resource
 {
@@ -45,7 +46,7 @@ class IndividualQuoteResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DetailsQuoteRelationManager::class
         ];
     }
 

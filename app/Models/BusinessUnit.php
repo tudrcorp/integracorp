@@ -15,6 +15,7 @@ class BusinessUnit extends Model
         'definition',
         'status',
         'created_by',
+        
     ];
 
 

@@ -48,9 +48,14 @@ class AffiliationCorporate extends Model
         //...Unidad de Negocio y linea de servicio
         'business_unit_id',
         'business_line_id',
-        
+        'ownerAccountManagers',
 
+        //PROVEEDORRES DE SERVICIOS
+        'service_providers',
+    ];
 
+    protected $casts = [
+        'service_providers' => 'array',
     ];
 
     /**

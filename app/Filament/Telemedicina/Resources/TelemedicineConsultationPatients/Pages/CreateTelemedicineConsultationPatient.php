@@ -76,7 +76,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
             Notification::make()
                 ->title('¡Atención: Historia Clínica Pendiente! ⚠️')
-                ->body('El paciente no tiene un registro de historia clínica. Debe crearlo antes de continuar con la consulta.')
+                ->body('El paciente no tiene un registro de historia clínica. Debe crearlo antes de continuar con la consulta. Si es un paciente crítico o de emergencia ingresa por clave roja.')
                 ->actions([
                     // Este es el Action que se mostrará dentro de la Notificación
                     Action::make('create_history')

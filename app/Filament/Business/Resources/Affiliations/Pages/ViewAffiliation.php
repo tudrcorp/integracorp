@@ -10,6 +10,8 @@ class ViewAffiliation extends ViewRecord
 {
     protected static string $resource = AffiliationResource::class;
 
+    protected static ?string $title = 'Detalles de la Afiliación';
+
     protected function getHeaderActions(): array
     {
         return [

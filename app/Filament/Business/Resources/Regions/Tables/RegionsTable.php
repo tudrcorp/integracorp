@@ -15,7 +15,7 @@ class RegionsTable
     {
         return $table
             ->columns([
-                TextColumn::make('country_id')
+                TextColumn::make('country.name')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('definition')

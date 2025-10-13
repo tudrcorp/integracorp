@@ -2,8 +2,11 @@
 
 namespace App\Filament\Business\Resources\States\Schemas;
 
-use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\DB;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
 
 class StateForm
 {
@@ -11,12 +14,20 @@ class StateForm
     {
         return $schema
             ->components([
-                TextInput::make('country_id')
-                    ->numeric(),
-                TextInput::make('definition')
-                    ->required(),
-                TextInput::make('region_id')
-                    ->numeric(),
+                Section::make('Estado')
+                    ->description('Información de la entidad.')
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
+                        Select::make('country_id')
+                            ->label('Pais')
+                            ->options(DB::table('countries')->pluck('name', 'id')),
+                        TextInput::make('definition')
+                            ->label('Estado')   
+                            ->required(),
+                        Select::make('region_id')
+                            ->label('Región')
+                            ->options(DB::table('regions')->pluck('definition', 'id')),
+                    ])->columnSpanFull()->columns(3)
             ]);
     }
 }

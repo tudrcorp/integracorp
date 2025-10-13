@@ -89,7 +89,7 @@ class TelemedicineConsultationPatientForm
                                     ->dehydrated(),
                             ])->columnSpanFull()->columns(6),
 
-                            Fieldset::make('Informacion Adicional')
+                            Fieldset::make('Información Adicional')
                             ->schema([
                                 TextInput::make('full_name')
                                     ->label('Paciente')
@@ -114,18 +114,18 @@ class TelemedicineConsultationPatientForm
                                     ->disabled()
                                     ->dehydrated(),
                                 TextInput::make('phone_ppal')
-                                    ->label('Numero de Telefono Principal')
+                                    ->label('Número de Teléfono Principal')
                                     ->default($case->patient_phone)
                                     ->disabled()
                                     ->dehydrated(),
                                 TextInput::make('phone_secondary')
-                                    ->label('Numero de Telefono Secundario')
+                                    ->label('Número de Teléfono Secundario')
                                     ->default($case->patient_phone_2)
                                     ->disabled()
                                     ->dehydrated(),
                                 TextArea::make('address')
                                     ->autosize()
-                                    ->label('Direccion')
+                                    ->label('Dirección')
                                     ->helperText('Direccion descrita por el paciente al momento de la asignación del caso.')
                                     ->default($case->patient_address)
                                     ->disabled()
@@ -286,8 +286,8 @@ class TelemedicineConsultationPatientForm
                                             ->live()
                                             ->gridDirection(GridDirection::Row)
                                             ->options([
-                                                1 => 'Asigancion de Medicamentos',
-                                                2 => 'Indicacion de Laboratorios o Estudios de Imagenologia',
+                                                1 => 'Asignación de Medicamentos',
+                                                2 => 'Indicación de Laboratorios o Estudios de Imagenología',
                                                 3 => 'Consulta con Especialista',
                                             ])
                                     ])->columnSpanFull()->columns(4),
@@ -360,7 +360,7 @@ class TelemedicineConsultationPatientForm
                         ])->columnSpanFull(),
 
                         //...Asignación de Servicio
-                        Fieldset::make('Asignación de Servicio y Actualización de Priroridad')
+                        Fieldset::make('Asignación de Servicio y Actualización de Prioridad')
                         ->hidden(function (Get $get) {
                             if ($get('feedbackOne') == false) {
                                 return false;
@@ -459,13 +459,13 @@ class TelemedicineConsultationPatientForm
                                 Fieldset::make('Imagenología')
                                     ->schema([
                                         Select::make('studies')
-                                            ->label('Estudios de Imágenes (CIBERTOS)')
+                                            ->label('Estudios de Imágenes (CUBIERTOS)')
                                             ->live()
                                             ->options(TelemedicineListStudy::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                             ->multiple()
                                             ->helperText('Seleccione el/los estudios de Imágenes que requiera el paciente'),
                                         Select::make('other_studies')
-                                            ->label(' Otros Estudios de Imágenes (NO CIBERTOS)')
+                                            ->label(' Otros Estudios de Imágenes (NO CUBIERTOS)')
                                             ->live()
                                             ->options(TelemedicineListStudy::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                             ->multiple()
@@ -483,11 +483,11 @@ class TelemedicineConsultationPatientForm
                             ->schema([
                                 Select::make('consult_specialist')
                                     ->label('Interconsultas Especialistas para Patologías Agudas')
-                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTOS')->get()->pluck('name', 'name'))
                                     ->multiple(),
                                 Select::make('other_specialist')
                                     ->label('Otros Especialistas') // BVA
-                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTOS')->get()->pluck('name', 'name'))
                                     ->multiple(),
                             ])->columnSpanFull()->columns(2),
                     ]),

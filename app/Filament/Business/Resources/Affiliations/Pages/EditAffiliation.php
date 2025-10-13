@@ -18,4 +18,16 @@ class EditAffiliation extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Afiliación Actualizada Correctamente';
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+    
+
 }

@@ -10,6 +10,8 @@ class ListStates extends ListRecords
 {
     protected static string $resource = StateResource::class;
 
+    protected static ?string $title = 'Ubicaciones Geográficas: Estados';
+
     protected function getHeaderActions(): array
     {
         return [

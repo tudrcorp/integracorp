@@ -237,7 +237,6 @@ class AffiliationForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->live(),
-
                                 Hidden::make('ownerAccountManagers')->default(function () {
                                     $user_id = Auth::user()->agent_id;
                                     return Agent::where('id', $user_id)->first()->ownerAccountManagers;
@@ -283,11 +282,6 @@ class AffiliationForm
                                         return $owner;
                                     }
                                 }),
-                                //...Unidad de Negocio y linea de servicio
-                                //.......................................................
-                                Hidden::make('business_unit_id')->default(fn(Get $get) => UtilsController::getBusinessUnitId($get('plan_id'))),
-                                Hidden::make('business_line_id')->default(fn(Get $get) => UtilsController::getBusinessLineId($get('plan_id'))),
-                                //.......................................................
                             ])
                         ]),
                     Step::make('Titular')

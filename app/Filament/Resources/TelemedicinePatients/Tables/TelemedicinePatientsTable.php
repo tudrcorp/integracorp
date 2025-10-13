@@ -103,7 +103,7 @@ class TelemedicinePatientsTable
                     ->searchable(),
                 ColumnGroup::make('Domicilio y Ubicación')->columns([
                     TextColumn::make('address')
-                        ->label('Dirección')
+                        ->label('Dirección Principal')
                         ->searchable(),
                     TextColumn::make('country.name')
                         ->label('País')
@@ -224,7 +224,7 @@ class TelemedicinePatientsTable
                                             ->afterStateUpdatedJs(<<<'JS'
                                                 $set('reason', $state.toUpperCase());
                                             JS)
-                                            ->helperText('Escriba el motivo de la llamada del paciente. Por favor sea lo más especifico posible ya que el médico tomará esta información para determinar el tipo de atención que requiere el paciente.'),
+                                            ->helperText('Escriba el motivo de la llamada del paciente. Por favor sea lo más específico posible ya que el médico tomará esta información para determinar el tipo de atención que requiere el paciente.'),
                                     ])->columnSpanFull()->columns(1),
                                 Grid::make(1)
                                     ->schema([
@@ -251,7 +251,7 @@ class TelemedicinePatientsTable
                                 Checkbox::make('new_address')
                                     ->inline()
                                     ->live()
-                                    ->label('Nueva Ubicacion')
+                                    ->label('Nueva Ubicación')
                                     ->default(false)
                             ])->columnSpanFull()->columns(1),
 
@@ -318,9 +318,9 @@ class TelemedicinePatientsTable
                                             ->required()
                                             ->afterStateUpdatedJs(<<<'JS'
                                             $set('address', $state.toUpperCase());
-                                        JS)
-                                            ->helperText('Redacte la ubicación exacta del paciente, describa esquinas, calle, edificio, piso en el edificio, casa, número de la casa, y puntos de referencia. Por favor sea lo más específico posible.'),
-                                    ])->columnSpanFull()->columns(1),
+                                            JS)
+                                            ->helperText('Redacte la ubicación exacta del paciente, avenida, calle, nombre del edificio/casa, piso, apto y puntos de referencia. Por favor sea lo más específico posible.'),
+                                        ])->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(2)
                             
                         ])

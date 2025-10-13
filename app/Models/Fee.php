@@ -31,9 +31,14 @@ class Fee extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
-    public function coverage(): HasOne
+    // public function coverage(): HasOne
+    // {
+    //     return $this->hasOne(Coverage::class, 'id', 'coverage_id');
+    // }
+
+    public function coverage(): BelongsTo
     {
-        return $this->hasOne(Coverage::class, 'id', 'coverage_id');
+        return $this->belongsTo(Coverage::class, 'coverage_id', 'id');
     }
 
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\States\Schemas;
 
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Schema;
 
 class StateInfolist
@@ -11,19 +12,23 @@ class StateInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('country_id')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('definition'),
-                TextEntry::make('region_id')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
+                Fieldset::make('Informacion de la entidad')
+                    ->schema([
+                        TextEntry::make('country')
+                            ->numeric()
+                            ->placeholder('-'),
+                        TextEntry::make('definition'),
+                        TextEntry::make('region')
+                            ->numeric()
+                            ->placeholder('-'),
+                        TextEntry::make('created_at')
+                            ->dateTime()
+                            ->placeholder('-'),
+                        TextEntry::make('updated_at')
+                            ->dateTime()
+                            ->placeholder('-'),
+                    
+                    ])->columnSpanFull(),
             ]);
     }
 }

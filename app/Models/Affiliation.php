@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Model;
 use App\Jobs\SendNotificacionAfiliacionIndividual;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Affiliation extends Model
 {
@@ -96,6 +98,10 @@ class Affiliation extends Model
         //...Unidad de Negocio y linea de servicio
         'business_unit_id',
         'business_line_id',
+        'ownerAccountManagers',
+
+        //PROVEEDORRES DE SERVICIOS
+        'service_providers',
         
     ];
 
@@ -111,6 +117,7 @@ class Affiliation extends Model
 
     protected $casts = [
         'upload_documents' => 'array',
+        'service_providers' => 'array',
     ];
 
     public function city()
@@ -312,4 +319,17 @@ class Affiliation extends Model
     {
         return $this->hasMany(AfilliationIndividualPlan::class);
     }
+
+    public function businessUnit(): HasOne
+    {
+        return $this->hasOne(BusinessUnit::class, 'id', 'business_unit_id');
+    }
+
+    public function businessLine(): HasOne
+    {
+        return $this->hasOne(BusinessLine::class, 'id', 'business_line_id');
+    }
+
+    
+    
 }

@@ -25,7 +25,8 @@ class Affiliate extends Model
         'region',
         'address',
         'plan_id',
-        'coverage_id'
+        'coverage_id',
+        'age_range_id',
     ];
 
     public function affiliation()
@@ -56,6 +57,11 @@ class Affiliate extends Model
     public function city()
     {
         return $this->belongsTo(City::class);
+    }
+
+    public function ageRange()
+    {
+        return $this->belongsTo(AgeRange::class);
     }
 
 }

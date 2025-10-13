@@ -85,7 +85,7 @@ class CreateTelemedicineHistoryPatient extends CreateRecord
     {
         try {
             
-            session()->put('case', TelemedicineCase::where('telemedicine_patient_id', $this->data['telemedicine_patient_id'])->first());
+            // session()->put('case', TelemedicineCase::where('telemedicine_patient_id', $this->data['telemedicine_patient_id'])->first());
 
             //... Le digo a la varianle de sesion que maneja el formulario que lo muestre
             session()->put('redCode', false);

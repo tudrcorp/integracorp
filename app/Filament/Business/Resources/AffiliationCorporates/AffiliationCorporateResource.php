@@ -2,20 +2,23 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates;
 
-use App\Filament\Business\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
-use App\Filament\Business\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
-use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
-use App\Filament\Business\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
-use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
-use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
-use App\Filament\Business\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
-use App\Models\AffiliationCorporate;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use App\Models\AffiliationCorporate;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
+use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
+use App\Filament\Business\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
+use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
+use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
+use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
 
 class AffiliationCorporateResource extends Resource
 {
@@ -45,7 +48,9 @@ class AffiliationCorporateResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            AffiliationCorporatePlansRelationManager::class,
+            CorporateAffiliatesRelationManager::class,
+            PaidMembershipCorporatesRelationManager::class,
         ];
     }
 

@@ -356,44 +356,27 @@ class CreateIndividualQuote extends CreateRecord
             }
 
             /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
+             * Notificacion cuando la cotizacion sea crea desde el modulo de negocios
              */
-
-            if ($record->agent_id != null) {
-                $recipient = User::where('is_agent', 1)->where('agent_id', $record->agent_id)->get();
-                foreach ($recipient as $user) {
-                    $recipient_for_user = User::find($user->id);
-                    Notification::make()
-                        ->title('COTIZACION INDIVIDUAL CREADA')
-                        ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
-                        ->icon('heroicon-s-user-group')
-                        ->iconColor('success')
-                        ->success()
-                        ->actions([
-                            Action::make('view')
-                                ->label('Ver detalle de solicitud')
-                                ->button()
-                                ->url(IndividualQuoteResource::getUrl('view', ['record' => $record->id], panel: 'agents')),
-                        ])
-                        ->sendToDatabase($recipient_for_user);
-                }
+            $recipient = User::where('departament', 'NEGOCIOS')->get();
+            foreach ($recipient as $user) {
+                $recipient_for_user = User::find($user->id);
+                Notification::make()
+                    ->title('COTIZACION INDIVIDUAL CREADA')
+                    ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
+                    ->icon('heroicon-s-user-group')
+                    ->iconColor('success')
+                    ->success()
+                    ->actions([
+                        Action::make('view')
+                            ->label('Ver detalle de solicitud')
+                            ->button()
+                            ->url(IndividualQuoteResource::getUrl('view', ['record' => $record->id], panel: 'business')),
+                    ])
+                    ->sendToDatabase($recipient_for_user);
             }
 
-            if ($record->agent_id == null) {
-                $recipient = User::where('is_agency', 1)->where('code_agency', $record->code_agency)->get();
-                foreach ($recipient as $user) {
-                    $recipient_for_user = User::find($user->id);
-                    Notification::make()
-                        ->title('COTIZACION INDIVIDUAL CREADA')
-                        ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
-                        ->icon('heroicon-s-user-group')
-                        ->iconColor('success')
-                        ->success()
-                        ->sendToDatabase($recipient_for_user);
-                }
-            }
+            
         } catch (\Throwable $th) {
             dd($th);
             Notification::make()

@@ -136,7 +136,7 @@ class CreateCorporateQuote extends CreateRecord
              * ----------------------------------------------------------------------------------------------------
              * $record [Data de la cotizacion guardada en la base de dastos]
              */
-            $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
+            $recipient = User::where('is_admin', 1)->where('departament', 'NEGOCIOS')->get();
             foreach ($recipient as $user) {
                 $recipient_for_user = User::find($user->id);
                 Notification::make()

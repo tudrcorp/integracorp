@@ -101,10 +101,6 @@ class BusinessPanelProvider extends PanelProvider
                         MyImages::make()
                             ->directory('backgroundBusenissPanelLogin')
                     ),
-            ])
-            ->renderHook(
-                PanelsRenderHook::FOOTER,
-                fn() => view('footer-panel-admin')
-            );
+            ]);
     }
 }

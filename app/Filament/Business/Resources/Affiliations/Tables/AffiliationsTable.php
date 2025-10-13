@@ -113,10 +113,18 @@ class AffiliationsTable
                         ->badge()
                         ->color('success')
                         ->searchable(),
-                    TextColumn::make('total_amount')
-                        ->label('Total a Pagar')
-                        ->alignCenter()
-                        ->money()
+                    TextColumn::make('businessUnit.definition')
+                        ->label('Unidad de Negocio')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('businessLine.definition')
+                        ->label('Linea de Servicio')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('service_providers')
+                        ->label('Proveedor(es) de Servicio')
                         ->badge()
                         ->color('success')
                         ->searchable(),
@@ -336,24 +344,26 @@ class AffiliationsTable
                                             })
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, Affiliation $record) {
-                                                $amount = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)
-                                                    ->where('plan_id', $record->plan_id)
-                                                    ->where('coverage_id', $record->coverage_id)
-                                                    ->first();
+                                                /**
+                                                 * Se modifica la logia para buscar el monto a pagar en la tabla 
+                                                 * de afiliaciones y no en la tabla de cotizaciones
+                                                 */
+                                                $amount = Affiliation::where('id', $record->id)->first();
+                                                return $amount->total_amount;
 
-                                                if ($record->payment_frequency == 'ANUAL') {
-                                                    return $amount->subtotal_anual;
-                                                }
+                                                // if ($record->payment_frequency == 'ANUAL') {
+                                                //     return $amount->fee_anual;
+                                                // }
 
-                                                if ($record->payment_frequency == 'TRIMESTRAL') {
-                                                    return $amount->subtotal_quarterly;
-                                                }
+                                                // if ($record->payment_frequency == 'TRIMESTRAL') {
+                                                //     return $amount->fee_anual / 4;
+                                                // }
 
-                                                if ($record->payment_frequency == 'SEMESTRAL') {
-                                                    return $amount->subtotal_biannual;
-                                                }
+                                                // if ($record->payment_frequency == 'SEMESTRAL') {
+                                                //     return $amount->fee_anual / 2;
+                                                // }
 
-                                                return null;
+                                                // return null;
                                             })
                                             ->numeric()
                                             ->live(),
