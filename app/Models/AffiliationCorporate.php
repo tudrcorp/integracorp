@@ -52,6 +52,9 @@ class AffiliationCorporate extends Model
 
         //PROVEEDORRES DE SERVICIOS
         'service_providers',
+
+        //...Fecha de Vigencia de la afiliacion
+        'effective_date'
     ];
 
     protected $casts = [

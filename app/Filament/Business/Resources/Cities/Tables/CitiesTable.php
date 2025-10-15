@@ -15,10 +15,10 @@ class CitiesTable
     {
         return $table
             ->columns([
-                TextColumn::make('country_id')
+                TextColumn::make('country.name')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('state_id')
+                TextColumn::make('state.definition')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('definition')

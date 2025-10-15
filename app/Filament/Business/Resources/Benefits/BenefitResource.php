@@ -23,7 +23,7 @@ class BenefitResource extends Resource
 
     protected static ?string $navigationLabel = 'Beneficios';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-vertical';
 
     protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
 

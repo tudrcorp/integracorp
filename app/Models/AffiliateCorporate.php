@@ -32,6 +32,14 @@ class AffiliateCorporate extends Model
         'subtotal_payment_frequency',
         'subtotal_daily',
         'status',
+        'created_by',
+
+        //...Informacion ILS
+        'vaucherIls',
+        'dateInit',
+        'dateEnd',
+        'numberDays',
+        'document_ils',
     ];
 
     public function affiliationCorporate()

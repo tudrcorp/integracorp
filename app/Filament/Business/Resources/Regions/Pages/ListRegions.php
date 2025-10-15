@@ -13,7 +13,10 @@ class ListRegions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear región')
+                ->icon('heroicon-s-plus')
+                ->color('primary'),
         ];
     }
 }

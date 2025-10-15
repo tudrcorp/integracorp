@@ -23,7 +23,7 @@ class BusinessLineResource extends Resource
 
     protected static ?string $navigationLabel = 'Lineas de Servicio';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-equals';
 
     protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
 

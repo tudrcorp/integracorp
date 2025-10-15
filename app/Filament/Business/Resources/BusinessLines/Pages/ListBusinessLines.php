@@ -10,10 +10,15 @@ class ListBusinessLines extends ListRecords
 {
     protected static string $resource = BusinessLineResource::class;
 
+    protected static ?string $title = 'Formulario de creacion de Lineas de Servicio';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear linea de servicio')
+                ->icon('heroicon-s-plus')
+                ->color('primary'),
         ];
     }
 }

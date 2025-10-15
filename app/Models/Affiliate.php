@@ -27,6 +27,14 @@ class Affiliate extends Model
         'plan_id',
         'coverage_id',
         'age_range_id',
+        'created_by',
+
+        //...Informacion ILS
+        'vaucherIls',
+        'dateInit',
+        'dateEnd',
+        'numberDays',
+        'document_ils',
     ];
 
     public function affiliation()

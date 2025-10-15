@@ -23,7 +23,7 @@ class FeeResource extends Resource
 
     protected static ?string $navigationLabel = 'Tarifas';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
     protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
 

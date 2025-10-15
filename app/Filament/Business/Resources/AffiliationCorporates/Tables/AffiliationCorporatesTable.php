@@ -94,14 +94,14 @@ class AffiliationCorporatesTable
                         ->alignCenter()
                         ->money()
                         ->badge()
-                        ->color('success')
+                        ->color('warning')
                         ->searchable(),
                     TextColumn::make('total_amount')
                         ->label('Total a Pagar')
                         ->alignCenter()
                         ->money()
                         ->badge()
-                        ->color('success')
+                        ->color('warning')
                         ->searchable(),
                 ]),
 
@@ -125,9 +125,6 @@ class AffiliationCorporatesTable
                     ->searchable(),
                 TextColumn::make('country.name')
                     ->searchable(),
-                TextColumn::make('region_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 //...
                 ColumnGroup::make('Información ILS', [
                     TextColumn::make('vaucher_ils')
@@ -154,7 +151,17 @@ class AffiliationCorporatesTable
                     ->searchable(),
 
                 TextColumn::make('activated_at')
-                    ->label('Activado el:')
+                    ->label('Fecha de Emisión')
+                    ->color('warning')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
+                    ->searchable(),
+
+                TextColumn::make('effective_date')
+                    ->label('Vigencia')
+                    ->color('success')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
                     ->searchable(),
 
                 TextColumn::make('status')
@@ -261,22 +268,22 @@ class AffiliationCorporatesTable
                                         ->label('Total a pagar')
                                         ->prefix('US$')
                                         ->default(function ($state, $set, Get $get, AffiliationCorporate $record) {
-
+                                            
                                             $amount = $record->total_amount;
 
-                                            if ($record->payment_frequency == 'ANUAL') {
-                                                return $amount;
-                                            }
+                                            // if ($record->payment_frequency == 'ANUAL') {
+                                            //     return $amount;
+                                            // }
 
-                                            if ($record->payment_frequency == 'TRIMESTRAL') {
-                                                return $amount / 4;
-                                            }
+                                            // if ($record->payment_frequency == 'TRIMESTRAL') {
+                                            //     return $amount / 4;
+                                            // }
 
-                                            if ($record->payment_frequency == 'SEMESTRAL') {
-                                                return $amount / 2;
-                                            }
+                                            // if ($record->payment_frequency == 'SEMESTRAL') {
+                                            //     return $amount / 2;
+                                            // }
 
-                                            return null;
+                                            return $amount;
                                         })
                                         ->numeric()
                                         ->live(),

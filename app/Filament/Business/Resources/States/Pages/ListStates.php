@@ -15,7 +15,10 @@ class ListStates extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear estado')
+                ->icon('heroicon-s-plus')
+                ->color('primary'),
         ];
     }
 }

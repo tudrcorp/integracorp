@@ -10,10 +10,15 @@ class ListCities extends ListRecords
 {
     protected static string $resource = CityResource::class;
 
+    protected static ?string $title = 'Lista de Ciudades';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear ciudad')
+                ->icon('heroicon-s-plus')
+                ->color('primary'),
         ];
     }
 }

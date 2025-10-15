@@ -45,6 +45,11 @@ class AffiliationCorporateInfolist
                                     ->label('Fecha de solicitud')
                                     ->badge()
                                     ->dateTime(),
+                                    
+                                TextEntry::make('activated_at')
+                                    ->label('Fecha de Emisión:')
+                                    ->badge()
+                                    ->color('success'),
 
                             ])->columnSpanFull()->columns(5),
 

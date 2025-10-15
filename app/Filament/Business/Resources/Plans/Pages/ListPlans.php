@@ -10,10 +10,15 @@ class ListPlans extends ListRecords
 {
     protected static string $resource = PlanResource::class;
 
+    protected static ?string $title = 'Listado de Planes';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear plan')
+                ->icon('heroicon-s-plus')
+                ->color('primary'),
         ];
     }
 }

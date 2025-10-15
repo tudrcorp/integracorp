@@ -1631,11 +1631,11 @@ class UtilsController extends Controller
      */
     public static function generateCorrelativeSale($correlativo): string
     {
+        
         // Obtenemos el mes y el número
         preg_match('/^(\d{2})-00(\d+)$/', $correlativo, $matches);
 
         $numero = (int) $matches[2]; // Ej: 100
-
         $nuevoNumero = $numero + 1;   // Sumamos 1
 
         // Formateamos el nuevo número con al menos 3 dígitos (por si llega a 1000, etc.)
@@ -1662,6 +1662,7 @@ class UtilsController extends Controller
         $numero = (int) $matches[2]; // Ej: 100
 
         $nuevoNumero = $numero + 1;   // Sumamos 1
+
 
         // Formateamos el nuevo número con al menos 3 dígitos (por si llega a 1000, etc.)
         return sprintf('%s-00%d', date('m'), $nuevoNumero);

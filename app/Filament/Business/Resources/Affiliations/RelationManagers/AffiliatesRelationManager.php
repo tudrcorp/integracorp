@@ -8,19 +8,26 @@ use App\Models\Fee;
 use App\Models\Plan;
 use App\Models\AgeRange;
 use App\Models\Coverage;
+use App\Models\Affiliate;
 use Filament\Tables\Table;
+use Filament\Actions\Action;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Filament\Support\Enums\Alignment;
 use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Schemas\Components\Utilities\Get;
@@ -216,12 +223,113 @@ class AffiliatesRelationManager extends RelationManager
                         };
                     })
                     ->badge()
-                    ->label('Estatus')
-            ])
+                    ->label('Estatus'),
+                TextColumn::make('vaucherIls')
+                    ->label('Voucher ILS')
+                    ->badge()
+                    ->color('warning')
+                    ->searchable()
+                    ->default(fn($record) => $record->vaucherIls == null ? '--------' : $record->vaucherIls),
+                TextColumn::make('dateInit')
+                    ->label('Fecha Inicio')
+                    ->badge()
+                    ->color('warning')
+                    ->searchable()
+                    ->default(fn($record) => $record->dateInit == null ? '--/--/---' : $record->dateInit),
+                TextColumn::make('dateEnd')
+                    ->label('Fecha Fin')
+                    ->badge()
+                    ->color('warning')
+                    ->searchable()
+                    ->default(fn($record) => $record->DateEnd == null ? '--/--/---' : $record->DateEnd),
+                TextColumn::make('numberDays')
+                    ->label('Dias Cobertura')
+                    ->suffix(' Dias Restantes')
+                    ->badge()
+                    ->color('warning')
+                    ->searchable()
+                    ->default(fn($record) => $record->numberDays == null ? '0 ' : $record->numberDays),
+                IconColumn::make('document_ils')
+                    ->alignment(Alignment::Center)
+                    ->label('Comprobante')
+                    ->icon(function ($record) {
+                        // Muestra un ícono si la imagen existe
+                        return $record->document_ils != null
+                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
+                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
+                    })
+                    // ->iconPosition(IconPosition::After), // Posición del ícono
+                    ->color(function ($record) {
+                        // Color del ícono basado en la existencia de la imagen
+                        return $record->document_ils != null
+                            ? 'success' // Verde si la imagen existe
+                            : 'danger'; // Rojo si no existe
+                    })
+                    ->url(function ($record) {
+                        return asset('storage/' . $record->document_ils);
+                    })
+                    ->openUrlInNewTab(),
+        ])
             ->filters([
                 //
             ])
             ->recordActions([
+                Action::make('upload_info_ils')
+                    ->label('Vaucher ILS')
+                    ->color('warning')
+                    ->icon('heroicon-o-paper-clip')
+                    ->requiresConfirmation()
+                    ->modalWidth(Width::ExtraLarge)
+                    ->modalHeading('Activar afiliacion')
+                    ->form([
+                        Section::make('ACTIVAR AFILIACION')
+                            ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
+                            ->icon('heroicon-s-check-circle')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    TextInput::make('vaucherIls')
+                                        ->label('Vaucher ILS')
+                                        ->required(),
+                                ]),
+                                Grid::make(2)->schema([
+                                    DatePicker::make('dateInit')
+                                        ->label('Desde')
+                                        ->format('d-m-Y')
+                                        ->required(),
+                                    DatePicker::make('dateEnd')
+                                        ->label('Hasta')
+                                        ->format('d-m-Y')
+                                        ->required(),
+
+                                ]),
+                                Grid::make(1)->schema([
+                                    FileUpload::make('document_ils')
+                                        ->label('Documento/Comprobante ILS')
+                                        ->required(),
+                                ])
+                            ])
+                    ])
+                    ->action(function (Affiliate $record, array $data): void {
+
+                        $record->update([
+                            'vaucherIls'    => $data['vaucherIls'],
+                            'dateInit'      => $data['dateInit'],
+                            'dateEnd'       => $data['dateEnd'],
+                            'numberDays'    => 180,
+                            'document_ils'  => $data['document_ils']
+                        ]);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Vaucher ILS Activado')
+                            ->send();
+                    })
+                    ->hidden(function (Affiliate $record): bool {
+                        if ($record->vaucherIls != null) {
+                            return true;
+                        }
+                        return false;
+                    }),
                 DeleteAction::make()
                     ->label('Dar de Baja')
                     ->icon('heroicon-s-trash')

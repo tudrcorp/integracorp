@@ -10,10 +10,15 @@ class ListBenefits extends ListRecords
 {
     protected static string $resource = BenefitResource::class;
 
+    protected static ?string $title = 'Beneficios';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Crear Beneficio')
+                ->icon('heroicon-s-plus')
+                ->color('primary'),
         ];
     }
 }

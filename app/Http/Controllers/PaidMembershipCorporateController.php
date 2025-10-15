@@ -35,6 +35,7 @@ class PaidMembershipCorporateController extends Controller
                  */
                 if ($record->affiliation_corporate->activated_at == null) {
                     $record->affiliation_corporate->activated_at = now()->format('d-m-Y');
+                    $record->affiliation_corporate->effective_date = Carbon::createFromFormat('d/mY/', now()->format('d/m/Y'))->addYear()->format('d/m/Y');
                     $record->affiliation_corporate->status = 'ACTIVA';
                     $record->affiliation_corporate->save();
                 }
@@ -53,11 +54,11 @@ class PaidMembershipCorporateController extends Controller
                 $sales->agent_id                = $record->affiliation_corporate->agent_id;
                 $sales->invoice_number          = date('m-') . rand(11111, 99999);
                 $sales->affiliation_code        = $record->affiliation_corporate->code;
-                $sales->affiliate_full_name     = $record->affiliation_corporate->full_name_ti;
-                $sales->affiliate_contact       = $record->affiliation_corporate->full_name_con;
-                $sales->affiliate_ci_rif        = $record->affiliation_corporate->nro_identificacion_ti;
-                $sales->affiliate_phone         = $record->affiliation_corporate->phone_ti;
-                $sales->affiliate_email         = $record->affiliation_corporate->email_ti;
+                $sales->affiliate_full_name     = $record->affiliation_corporate->name_corporate;
+                $sales->affiliate_contact       = $record->affiliation_corporate->full_name_contact;
+                $sales->affiliate_ci_rif        = $record->affiliation_corporate->rif;
+                $sales->affiliate_phone         = $record->affiliation_corporate->phone;
+                $sales->affiliate_email         = $record->affiliation_corporate->email;
                 $sales->service                 = 'servicio';
                 $sales->persons                 = $record->affiliation_corporate->poblation;
                 $sales->total_amount            = $record->total_amount;
@@ -93,11 +94,11 @@ class PaidMembershipCorporateController extends Controller
                     $collections->collection_invoice_number     = date('m-') . rand(11111, 99999);
                     $collections->quote_number                  = $record->affiliation_corporate->corporate_quote->code;
                     $collections->affiliation_code        = $record->affiliation_corporate->code;
-                    $collections->affiliate_full_name     = $record->affiliation_corporate->full_name_con;
-                    $collections->affiliate_contact       = $record->affiliation_corporate->full_name_con;
+                    $collections->affiliate_full_name     = $record->affiliation_corporate->name_corporate;
+                    $collections->affiliate_contact       = $record->affiliation_corporate->full_name_contact;
                     $collections->affiliate_ci_rif        = $record->affiliation_corporate->rif;
-                    $collections->affiliate_phone         = $record->affiliation_corporate->phone_con;
-                    $collections->affiliate_email         = $record->affiliation_corporate->email_con;
+                    $collections->affiliate_phone         = $record->affiliation_corporate->phone;
+                    $collections->affiliate_email         = $record->affiliation_corporate->email;
                     $collections->affiliate_status        = $record->affiliation_corporate->status;
                     $collections->type                    = 'AFILIACIÓN CORPORATIVA';
                     $collections->service                 = 'servicio';
@@ -129,8 +130,8 @@ class PaidMembershipCorporateController extends Controller
                         'phone_ti'          => $sales->affiliate_phone,
                         'email_ti'          => $sales->affiliate_email,
                         'total_amount'      => $record->total_amount,
-                        'plan'              => $record->plan->description,
-                        'coverage'          => $record->coverage->price ?? null,
+                        // 'plan'              => $record->plan->description,
+                        // 'coverage'          => $record->coverage->price ?? null,
                         'frequency'         => $record->affiliation_corporate->payment_frequency,
                     ];
 
@@ -158,11 +159,11 @@ class PaidMembershipCorporateController extends Controller
                         $collections->collection_invoice_number     = date('m-') . rand(11111, 99999);
                         $collections->quote_number                  = $record->affiliation_corporate->corporate_quote->code;
                         $collections->affiliation_code        = $record->affiliation_corporate->code;
-                        $collections->affiliate_full_name     = $record->affiliation_corporate->full_name_con;
-                        $collections->affiliate_contact       = $record->affiliation_corporate->full_name_con;
+                        $collections->affiliate_full_name     = $record->affiliation_corporate->name_corporate;
+                        $collections->affiliate_contact       = $record->affiliation_corporate->full_name_contact;
                         $collections->affiliate_ci_rif        = $record->affiliation_corporate->rif;
-                        $collections->affiliate_phone         = $record->affiliation_corporate->phone_con;
-                        $collections->affiliate_email         = $record->affiliation_corporate->email_con;
+                        $collections->affiliate_phone         = $record->affiliation_corporate->phone;
+                        $collections->affiliate_email         = $record->affiliation_corporate->email;
                         $collections->affiliate_status        = $record->affiliation_corporate->status;
                         $collections->type                    = 'AFILIACIÓN CORPORATIVA';
                         $collections->service                 = 'servicio';
@@ -194,8 +195,8 @@ class PaidMembershipCorporateController extends Controller
                             'phone_ti'          => $sales->affiliate_phone,
                             'email_ti'          => $sales->affiliate_email,
                             'total_amount'      => $record->total_amount,
-                            'plan'              => $record->plan->description,
-                            'coverage'          => $record->coverage->price ?? null,
+                            // 'plan'              => $record->plan->description,
+                            // 'coverage'          => $record->coverage->price ?? null,
                             'frequency'         => $record->affiliation_corporate->payment_frequency,
                         ];
 
@@ -216,11 +217,11 @@ class PaidMembershipCorporateController extends Controller
                     $collections->collection_invoice_number     = date('m-') . rand(11111, 99999);
                     $collections->quote_number                  = $record->affiliation_corporate->corporate_quote->code;
                     $collections->affiliation_code        = $record->affiliation_corporate->code;
-                    $collections->affiliate_full_name     = $record->affiliation_corporate->full_name_con;
-                    $collections->affiliate_contact       = $record->affiliation_corporate->full_name_con;
+                    $collections->affiliate_full_name     = $record->affiliation_corporate->name_corporate;
+                    $collections->affiliate_contact       = $record->affiliation_corporate->full_name_contact;
                     $collections->affiliate_ci_rif        = $record->affiliation_corporate->rif;
-                    $collections->affiliate_phone         = $record->affiliation_corporate->phone_con;
-                    $collections->affiliate_email         = $record->affiliation_corporate->email_con;
+                    $collections->affiliate_phone         = $record->affiliation_corporate->phone;
+                    $collections->affiliate_email         = $record->affiliation_corporate->email;
                     $collections->affiliate_status        = $record->affiliation_corporate->status;
                     $collections->type                    = 'AFILIACIÓN CORPORATIVA';
                     $collections->service                 = 'servicio';
@@ -252,8 +253,8 @@ class PaidMembershipCorporateController extends Controller
                         'phone_ti'          => $sales->affiliate_phone,
                         'email_ti'          => $sales->affiliate_email,
                         'total_amount'      => $record->total_amount,
-                        'plan'              => $record->plan->description,
-                        'coverage'          => $record->coverage->price ?? null,
+                        // 'plan'              => $record->plan->description,
+                        // 'coverage'          => $record->coverage->price ?? null,
                         'frequency'         => $record->affiliation_corporate->payment_frequency,
                     ];
 
@@ -275,11 +276,11 @@ class PaidMembershipCorporateController extends Controller
                         $collections->collection_invoice_number     = date('m-') . rand(11111, 99999);
                         $collections->quote_number                  = $record->affiliation_corporate->corporate_quote->code;
                         $collections->affiliation_code        = $record->affiliation_corporate->code;
-                        $collections->affiliate_full_name     = $record->affiliation_corporate->full_name_con;
-                        $collections->affiliate_contact       = $record->affiliation_corporate->full_name_con;
+                        $collections->affiliate_full_name     = $record->affiliation_corporate->name_corporate;
+                        $collections->affiliate_contact       = $record->affiliation_corporate->full_name_contact;
                         $collections->affiliate_ci_rif        = $record->affiliation_corporate->rif;
-                        $collections->affiliate_phone         = $record->affiliation_corporate->phone_con;
-                        $collections->affiliate_email         = $record->affiliation_corporate->email_con;
+                        $collections->affiliate_phone         = $record->affiliation_corporate->phone;
+                        $collections->affiliate_email         = $record->affiliation_corporate->email;
                         $collections->affiliate_status        = $record->affiliation_corporate->status;
                         $collections->type                    = 'AFILIACIÓN CORPORATIVA';
                         $collections->service                 = 'servicio';
@@ -311,8 +312,8 @@ class PaidMembershipCorporateController extends Controller
                             'phone_ti'          => $sales->affiliate_phone,
                             'email_ti'          => $sales->affiliate_email,
                             'total_amount'      => $record->total_amount,
-                            'plan'              => $record->plan->description,
-                            'coverage'          => $record->coverage->price ?? null,
+                            // 'plan'              => $record->plan->description,
+                            // 'coverage'          => $record->coverage->price ?? null,
                             'frequency'         => $record->affiliation_corporate->payment_frequency,
                         ];
 
@@ -334,8 +335,8 @@ class PaidMembershipCorporateController extends Controller
                     'email_ti'          => $sales->affiliate_email,
                     'total_amount'      => $record->total_amount,
                     'currency'          => $record->currency,
-                    'plan'              => $record->plan->description,
-                    'coverage'          => $record->coverage->price ?? null,
+                    // 'plan'              => $record->plan->description,
+                    // 'coverage'          => $record->coverage->price ?? null,
                     'frequency'         => $record->affiliation_corporate->payment_frequency,
                 ];
 
@@ -366,11 +367,11 @@ class PaidMembershipCorporateController extends Controller
                 $sales->agent_id                = $record->affiliation_corporate->agent_id;
                 $sales->invoice_number          = date('m-') . rand(11111, 99999);
                 $sales->affiliation_code        = $record->affiliation_corporate->code;
-                $sales->affiliate_full_name     = $record->affiliation_corporate->full_name_con;
-                $sales->affiliate_contact       = $record->affiliation_corporate->full_name_con;
+                $sales->affiliate_full_name     = $record->affiliation_corporate->name_corporate;
+                $sales->affiliate_contact       = $record->affiliation_corporate->full_name_contact;
                 $sales->affiliate_ci_rif        = $record->affiliation_corporate->rif;
-                $sales->affiliate_phone         = $record->affiliation_corporate->phone_con;
-                $sales->affiliate_email         = $record->affiliation_corporate->email_con;
+                $sales->affiliate_phone         = $record->affiliation_corporate->phone;
+                $sales->affiliate_email         = $record->affiliation_corporate->email;
                 $sales->service                 = 'servicio';
                 $sales->persons                 = $record->affiliation_corporate->poblation;
                 $sales->total_amount            = $record->total_amount;
@@ -412,8 +413,8 @@ class PaidMembershipCorporateController extends Controller
                     'email_ti'          => $sales->affiliate_email,
                     'total_amount'      => $record->total_amount,
                     'currency'          => $record->currency,
-                    'plan'              => $record->plan->description,
-                    'coverage'          => $record->coverage->price ?? null,
+                    // 'plan'              => $record->plan->description,
+                    // 'coverage'          => $record->coverage->price ?? null,
                     'frequency'         => $record->affiliation_corporate->payment_frequency,
                 ];
 

@@ -39,6 +39,7 @@ class PaidMembershipController extends Controller
                  */
                 if ($record->affiliation->activated_at == null) {
                     $record->affiliation->activated_at = now()->format('d/m/Y');
+                    $record->affiliation->effective_date = Carbon::createFromFormat('d/m/Y', now()->format('d/m/Y'))->addYear()->format('d/m/Y');
                     $record->affiliation->status = 'ACTIVA';
                     $record->affiliation->save();
                 }
@@ -160,8 +161,6 @@ class PaidMembershipController extends Controller
                         }
                         //Pregunto cual es el ultimo numero de factura
                         $lastInvoiceNumberCollection = Collection::where('id', Collection::max('id'))->get()->toArray();
-                        Log::info('correlativo de cobro: '. $lastInvoiceNumberCollection[0]['collection_invoice_number']);
-
 
                         $collections = new Collection();
                         $collections->sale_id                 = $sales->id;

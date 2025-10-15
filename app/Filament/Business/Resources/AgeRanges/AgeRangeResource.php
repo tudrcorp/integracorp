@@ -23,7 +23,7 @@ class AgeRangeResource extends Resource
 
     protected static ?string $navigationLabel = 'Rango de Edades';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-list-bullet';
 
     protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
 

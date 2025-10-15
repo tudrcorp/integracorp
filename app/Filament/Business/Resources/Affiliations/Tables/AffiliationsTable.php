@@ -111,9 +111,17 @@ class AffiliationsTable
                         ->alignCenter()
                         ->money()
                         ->badge()
-                        ->color('success')
+                        ->color('warning')
                         ->searchable(),
-                    TextColumn::make('businessUnit.definition')
+                //total_amount
+                    TextColumn::make('total_amount')
+                        ->label('Total a Pagar')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('warning')
+                        ->searchable(),
+                TextColumn::make('businessUnit.definition')
                         ->label('Unidad de Negocio')
                         ->badge()
                         ->color('success')
@@ -218,7 +226,17 @@ class AffiliationsTable
                     ->searchable(),
 
                 TextColumn::make('activated_at')
-                    ->label('Activado el:')
+                    ->label('Fecha de Emisión')
+                    ->color('warning')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
+                    ->searchable(),
+
+                TextColumn::make('effective_date')
+                    ->label('Vigencia')
+                    ->color('success')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
                     ->searchable(),
 
                 TextColumn::make('status')
@@ -242,14 +260,6 @@ class AffiliationsTable
                             'EXCLUIDO'              => 'heroicon-c-x-circle',
                         };
                     }),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
