@@ -5,6 +5,7 @@ namespace App\Filament\Telemedicina\Widgets;
 use App\Models\User;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use App\Models\ObservationCase;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use Filament\Widgets\TableWidget;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicineConsultationPatient;
@@ -199,9 +201,9 @@ class TelemedicineCaseTableDash extends TableWidget
                         ->color('')
                         ->action(function (TelemedicineCase $record) {
 
-                        $last = TelemedicineConsultationPatient::where('telemedicine_case_id', $record->id)->latest()->first();
+                            $last = TelemedicineConsultationPatient::where('telemedicine_case_id', $record->id)->latest()->first();
 
-                        return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.view', ['record' => $last->id]);
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.view', ['record' => $last->id]);
 
                         })
                         ->hidden(function (TelemedicineCase $record) {
@@ -210,6 +212,48 @@ class TelemedicineCaseTableDash extends TableWidget
                                 return true;
                             }
                             return false;
+                        }),
+
+                    Action::make('addObservation')
+                        ->label('Agregar Observaciones')
+                        ->icon('heroicon-s-hand-raised')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('OBSERVACIONES DEL CASO')
+                        ->modalDescription('Agrega las observaciones del caso.')
+                        ->modalSubmitActionLabel('Registrar Observación')
+                        ->modalIcon('heroicon-s-hand-raised')
+                        ->form([
+                            Textarea::make('observation')
+                                ->label('Observaciones')
+                                ->autosize()
+                        ])
+                        ->action(function (TelemedicineCase $record, array $data) {
+                            
+                            try {
+                                
+                                $observation = new ObservationCase();
+                                $observation->description = $data['observation'];
+                                $observation->telemedicine_case_id = $record->id;
+                                $observation->created_by = Auth::user()->id;
+                                $observation->save();
+
+                                Notification::make()
+                                    ->body('Las observaciones fueron registradas exitosamente.')
+                                    ->success()
+                                    ->send();
+                                    
+                            } catch (\Throwable $th) {
+                                Log::error($th->getMessage());
+                                Notification::make()
+                                    ->body('Ocurrio un error al registrar las observaciones.')
+                                    ->danger()
+                                    ->send();
+                            }
+                            
+                        })
+                        ->hidden(function (TelemedicineCase $record) {
+                            return $record->status == 'EJECUTADA' || $record->status == 'APROBADA';
                         }),
                         
                 ])

@@ -56,23 +56,23 @@ class CreateAffiliation extends CreateRecord
         return $data;
     }
 
-    protected function beforeCreate(): void
-    {
-        //Si el titular en menor de edad no puede afiliarse
-        if(Carbon::parse($this->data['birth_date_ti'])->age < 18)  
-        {
-            Notification::make()
-                ->title('El titular debe ser mayor de 18 años')
-                ->icon('heroicon-s-exclamation-triangle')
-                ->danger()
-                ->send();
+    // protected function beforeCreate(): void
+    // {
+    //     //Si el titular en menor de edad no puede afiliarse
+    //     if(Carbon::parse($this->data['birth_date_ti'])->age < 18)  
+    //     {
+    //         Notification::make()
+    //             ->title('El titular debe ser mayor de 18 años')
+    //             ->icon('heroicon-s-exclamation-triangle')
+    //             ->danger()
+    //             ->send();
                 
-            $this->halt();
-        }
+    //         $this->halt();
+    //     }
 
-        return;
+    //     return;
         
-    }
+    // }
 
     protected function afterCreate(): void
     {

@@ -15,6 +15,7 @@ use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\CreateTelemedici
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseForm;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Tables\TelemedicineCasesTable;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\ObservationsRelationManager;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\ConsultationsRelationManager;
 
 class TelemedicineCaseResource extends Resource
@@ -47,7 +48,8 @@ class TelemedicineCaseResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ConsultationsRelationManager::class
+            ConsultationsRelationManager::class,
+            ObservationsRelationManager::class
         ];
     }
 

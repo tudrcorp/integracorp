@@ -423,18 +423,25 @@ class IndividualQuotesTable
 
                             try {
 
+                                if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
+
+                                    Notification::make()
+                                        ->title('NOTIFICACIÓN')
+                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('warning')
+                                        ->warning()
+                                        ->send();
+
+                                    return;
+                                }
                                 /**
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/' . $record->code . '.pdf');
+                                $path = public_path('storage/quotes/' . $record->code . '.pdf');
                                 return response()->download($path);
 
-
-                                /**
-                                 * LOG
-                                 */
-                                LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()

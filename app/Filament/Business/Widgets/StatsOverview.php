@@ -24,22 +24,34 @@ class StatsOverview extends StatsOverviewWidget
                 ->icon('fontisto-person')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
+                ->color('success')
+                ->extraAttributes([
+                    'class' => 'border-2 border-[#00a7d1] font-bold text-white',
+                ]),
             Stat::make('COTIZACIONES CORPORATIVAS', CorporateQuote::count())
                 ->icon('fontisto-person')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
+                ->color('success')
+                ->extraAttributes([
+                    'class' => 'border-2 border-[#00a7d1] font-bold text-white',
+                ]),
             Stat::make('AFILIACIONES INDIVIDUALES', Affiliation::count())
                 ->icon('fontisto-person')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
+                ->color('success')
+                ->extraAttributes([
+                    'class' => 'border-2 border-[#00a7d1] font-bold text-white',
+                ]),
             Stat::make('AFILIACIONES CORPORATIVAS', AffiliationCorporate::count())
                 ->icon('fontisto-person')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
+                ->color('success')
+                ->extraAttributes([
+                    'class' => 'border-2 border-[#00a7d1] font-bold text-white',
+                ]),
         ];
     }
 }

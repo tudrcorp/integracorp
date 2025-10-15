@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
@@ -73,8 +74,16 @@ class BusinessPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Business/Widgets'), for: 'App\Filament\Business\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                // AccountWidget::class,
+                // FilamentInfoWidget::class,
+            ])
+            ->userMenuItems([
+                'profile' => fn(Action $action) => $action->label('Profile'),
+                // ...
+                'logout' => fn(Action $action) => $action
+                    ->label('Cerrar Sesión')
+                    ->color('danger')
+                    ->url(route('internal')),
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -101,6 +110,10 @@ class BusinessPanelProvider extends PanelProvider
                         MyImages::make()
                             ->directory('backgroundBusenissPanelLogin')
                     ),
-            ]);
+            ])
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_END,
+                fn() => view('filament.name-user')
+            );
     }
 }

@@ -66,5 +66,11 @@ class TelemedicineCase extends Model
     {
         return $this->hasMany(TelemedicineOperationsLog::class);
     }
+
+    public function observations()
+    {
+        return $this->hasMany(ObservationCase::class);
+    }
+
     
 }

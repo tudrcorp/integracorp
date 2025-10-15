@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
+use Carbon\Carbon;
 use App\Models\User;
 use Filament\Tables\Table;
 use App\Models\Affiliation;
@@ -12,6 +13,7 @@ use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Collection;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Radio;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +23,6 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\Alignment;
 use Filament\Actions\DeleteBulkAction;
-use Illuminate\Database\Query\Builder;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -32,10 +33,12 @@ use Filament\Tables\Columns\ColumnGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\AffiliationController;
 use App\Filament\Resources\Affiliations\AffiliationResource;
+use Illuminate\Database\Eloquent\Builder;
 
 class AffiliationsTable
 {
@@ -262,8 +265,50 @@ class AffiliationsTable
                     }),
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
+                    SelectFilter::make('plan_id')
+                        ->label('Plan(es) afiliado(s)')
+                        ->relationship('plan', 'description')
+                        ->multiple(),
+                    SelectFilter::make('payment_frequency')
+                        ->label('Frecuencia de Pago')
+                        ->options([
+                            'ANUAL'         => 'ANUAL',
+                            'TRIMESTRAL'    => 'TRIMESTRAL',
+                            'SEMESTRAL'     => 'SEMESTRAL',
+                        ]),
             ])
+            ->filtersTriggerAction(
+                fn(Action $action) => $action
+                    ->button()
+                    ->label('Filtros'),
+            )
             ->recordActions([
                 ActionGroup::make([
 
