@@ -325,6 +325,11 @@ class AffiliationsTable
             ->recordActions([
                 ActionGroup::make([
 
+                    EditAction::make()
+                        ->label('Editar')
+                        ->color('warning')
+                        ->icon('heroicon-o-pencil-square'),
+
                     Action::make('upload_info_ils')
                         ->label('Vaucher ILS')
                         ->color('warning')
