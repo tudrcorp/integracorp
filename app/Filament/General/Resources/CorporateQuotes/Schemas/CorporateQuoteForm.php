@@ -45,20 +45,6 @@ class CorporateQuoteForm
                                 ->schema([
                                     Grid::make(4)
                                         ->schema([
-                                            Radio::make('type')
-                                                ->label('Seleccione el tipo de cotización')
-                                                ->live()
-                                                ->inline()
-                                                ->options([
-                                                    'BASICO' => 'BÁSICA',
-                                                    'DRESS-TAILOR' => 'DRESS-TAYLOR / PLANES A LA MEDIDA',
-                                                ])
-                                                ->required()
-                                                ->default('BASICO')
-
-                                        ])->columnSpanFull(),
-                                    Grid::make(4)
-                                        ->schema([
                                             TextInput::make('code')
                                                 ->label('Nro. de cotización')
                                                 ->prefixIcon('heroicon-m-clipboard-document-check')
@@ -84,10 +70,9 @@ class CorporateQuoteForm
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
                                                 ])
-                                                ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
-                                                    $set('full_name', strtoupper($state));
-                                                })
-                                                ->live(onBlur: true),
+                                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('full_name', $state.toUpperCase());
+                                                JS),
 
                                             Select::make('country_code')
                                                 ->label('Código de país')
@@ -121,16 +106,6 @@ class CorporateQuoteForm
                                                     'required' => 'Campo requerido',
                                                 ])
                                                 ->maxLength(255),
-                                        ])->columnSpanFull(),
-                                    Grid::make(1)
-                                        ->schema([
-                                            Textarea::make('observation_dress_tailor')
-                                                ->label('Especificaciones de la cotización')
-                                                ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
-                                                ->required()
-                                                ->autosize()
-                                                ->hidden(fn(Get $get) => $get('type') == 'BASICO')
-
                                         ])->columnSpanFull(),
                                     Fieldset::make('Asignación de Cotización')
                                         ->schema([

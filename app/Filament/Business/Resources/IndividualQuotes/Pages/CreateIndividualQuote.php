@@ -53,23 +53,6 @@ class CreateIndividualQuote extends CreateRecord
             session()->put('details_quote', $data['details_quote']);
         }
 
-        // if ($data['agent_id'] != null) {
-
-        //     $owner = Agent::select('owner_code', 'id')->where('id', $data['agent_id'])->first()->owner_code;
-
-        //     if ($owner == 'TDG-100') {
-
-        //         $data['owner_code']  = 'TDG-100';
-        //         $data['code_agency'] = 'TDG-100';
-        //     } else {
-
-        //         $data['owner_code']  = Agency::select('owner_code', 'code')->where('code', $data['code_agency'])->first()->owner_code;
-        //     }
-        // } else {
-        //     $data['code_agency'] = $data['code_agency'];
-        //     $data['owner_code']  = Agency::select('owner_code', 'code')->where('code', $data['code_agency'])->first()->owner_code;
-        // }
-
         return $data;
     }
 
@@ -88,17 +71,6 @@ class CreateIndividualQuote extends CreateRecord
             }
 
             $record = $this->getRecord();
-            // dd($record);
-
-            /**
-             * Actualizo el dato owner_agent con el id del agente que creo la cotizacion
-             * ----------------------------------------------------------------------------------------------------
-             */
-            // $user = Auth::user()->id;
-            // $record->owner_agent = $user;
-            // $record->save();
-
-
 
             $array_form = $record->toArray();
 
@@ -146,23 +118,6 @@ class CreateIndividualQuote extends CreateRecord
 
             //elimino la variable de sesion para evitar sobrecargar
             session()->forget('details_quote');
-
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            $recipient = User::where('is_admin', 1)->get();
-            foreach ($recipient as $user) {
-                $recipient_for_user = User::find($user->id);
-                Notification::make()
-                    ->title('NUEVA COTIZACION INDIVUDUAL')
-                    ->body('Se ha registrado una nueva cotizacion individual de forma exitosa. Codigo: ' . $record->code)
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('success')
-                    ->success()
-                    ->sendToDatabase($recipient_for_user);
-            }
 
             /**
              * LOgica para el envio de correo con los detalles de la cotizacion
@@ -356,29 +311,24 @@ class CreateIndividualQuote extends CreateRecord
             }
 
             /**
-             * Notificacion cuando la cotizacion sea crea desde el modulo de negocios
+             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
+             * ----------------------------------------------------------------------------------------------------
+             * $record [Data de la cotizacion guardada en la base de dastos]
              */
-            $recipient = User::where('departament', 'NEGOCIOS')->get();
+            $recipient = User::where('is_business_admin', 1)->where('departament', 'NEGECIOS')->get();
             foreach ($recipient as $user) {
                 $recipient_for_user = User::find($user->id);
                 Notification::make()
-                    ->title('COTIZACION INDIVIDUAL CREADA')
+                    ->title('NUEVA COTIZACION INDIVUDUAL')
                     ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
-                    ->icon('heroicon-s-user-group')
+                    ->icon('heroicon-m-tag')
                     ->iconColor('success')
                     ->success()
-                    ->actions([
-                        Action::make('view')
-                            ->label('Ver detalle de solicitud')
-                            ->button()
-                            ->url(IndividualQuoteResource::getUrl('view', ['record' => $record->id], panel: 'business')),
-                    ])
                     ->sendToDatabase($recipient_for_user);
             }
 
             
         } catch (\Throwable $th) {
-            dd($th);
             Notification::make()
                 ->title('ERROR')
                 ->body($th->getMessage())

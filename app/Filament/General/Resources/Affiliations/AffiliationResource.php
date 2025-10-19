@@ -2,20 +2,22 @@
 
 namespace App\Filament\General\Resources\Affiliations;
 
-use App\Filament\General\Resources\Affiliations\Pages\CreateAffiliation;
-use App\Filament\General\Resources\Affiliations\Pages\EditAffiliation;
-use App\Filament\General\Resources\Affiliations\Pages\ListAffiliations;
-use App\Filament\General\Resources\Affiliations\Pages\ViewAffiliation;
-use App\Filament\General\Resources\Affiliations\Schemas\AffiliationForm;
-use App\Filament\General\Resources\Affiliations\Schemas\AffiliationInfolist;
-use App\Filament\General\Resources\Affiliations\Tables\AffiliationsTable;
-use App\Models\Affiliation;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use Filament\Tables\Table;
+use App\Models\Affiliation;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\General\Resources\Affiliations\Pages\EditAffiliation;
+use App\Filament\General\Resources\Affiliations\Pages\ViewAffiliation;
+use App\Filament\General\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\General\Resources\Affiliations\Pages\CreateAffiliation;
+use App\Filament\General\Resources\Affiliations\Schemas\AffiliationForm;
+use App\Filament\General\Resources\Affiliations\Tables\AffiliationsTable;
+use App\Filament\General\Resources\Affiliations\Schemas\AffiliationInfolist;
+use App\Filament\General\Resources\Affiliations\RelationManagers\AffiliatesRelationManager;
+use App\Filament\General\Resources\Affiliations\RelationManagers\PaidMembershipsRelationManager;
 
 class AffiliationResource extends Resource
 {
@@ -45,7 +47,8 @@ class AffiliationResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            AffiliatesRelationManager::class,
+            PaidMembershipsRelationManager::class
         ];
     }
 

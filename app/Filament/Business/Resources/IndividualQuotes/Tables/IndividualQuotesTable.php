@@ -30,6 +30,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use Filament\Schemas\Components\Utilities\Get;
@@ -75,35 +76,72 @@ class IndividualQuotesTable
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
-                    ->color('warning'),
+                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            '-----' => 'info',
+                            default => 'success',
+                        };
+                    }),
                 TextColumn::make('agent.name')
                     ->label('Agente')
                     ->badge()
-                    ->color('warning')
+                    ->default(fn($record): string => $record->agent_id ? $record->agent_id : '-----')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            '-----' => 'info',
+                            default => 'success',
+                        };
+                    })
                     ->icon('heroicon-m-user')
                     ->searchable(),
                 TextColumn::make('full_name')
                     ->label('Solicitada por:')
                     ->searchable(),
+                TextColumn::make('type')
+                    ->label('Tipo de Cotizacion')
+                    ->default(function ($record) {
+                        if($record->plan == '1') {
+                            return 'Plan Inicial';
+                        }
+                        if($record->plan == '2') {
+                            return 'Plan Ideal';
+                        }
+                        if($record->plan == '3') {
+                            return 'Plan Especial';
+                        }
+                        if($record->plan == 'CM') {
+                            return 'MultiPlan';
+                        }
+                        if ($record->plan == null) {
+                            return '-----';
+                        }
+                    })
+                    ->badge()
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'Plan Inicial' => 'azulClaro',
+                            'Plan Ideal' => 'azulOscuro',
+                            'Plan Especial' => 'verde',
+                            'MultiPlan' => 'warning',
+                            default => 'info',
+                        };
+                    })
+                    ->searchable(),
                 TextColumn::make('email')
                     ->label('Email')
+                    ->badge()
+                    ->default(fn($record): string => $record->email ? $record->email : '-----')
                     ->searchable(),
                 TextColumn::make('phone')
                     ->label('Nro. de Teléfono')
-                    ->searchable(),
-                TextColumn::make('birth_date')
-                    ->label('Fecha de Nacimiento')
+                    ->badge()
+                    ->default(fn ($record): string => $record->phone ? $record->phone : '-----')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Generada el:')
+                    ->description(fn ($record): string => Carbon::parse($record->created_at)->diffForHumans())
                     ->dateTime()
-                    ->sortable(),
-                TextColumn::make('count_days')
-                    ->label('Transcurrido')
-                    ->alignCenter()
-                    ->badge()
-                    ->suffix(' dias')
-                    ->color('warning')
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Estatus')
@@ -129,10 +167,6 @@ class IndividualQuotesTable
                         };
                     })
                     ->searchable(),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Filter::make('created_at')
@@ -162,6 +196,22 @@ class IndividualQuotesTable
 
                         return $indicators;
                     }),
+                    
+                    SelectFilter::make('status')
+                    ->options([
+                        'PRE-APROBADA'  => 'PRE-APROBADA',
+                        'APROBADA'      => 'APROBADA',
+                        'EJECUTADA'       => 'EJECUTADA',
+                    ]),
+                    SelectFilter::make('plan')
+                    ->options([
+                        1       => 'Plan Inicial',
+                        2       => 'Plan Ideal',
+                        3       => 'Plan Especial',
+                        'CM'    => 'MultiPlan',
+                    ])
+                    ->label('Tipo de Plan')
+                    
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -228,10 +278,10 @@ class IndividualQuotesTable
                                 $count_plans = $record->detailsQuote()->distinct()->pluck('plan_id');
                                 // dd($count_plans[0]);
                                 if ($count_plans->count() == 1) {
-                                    return redirect()->route('filament.admin.resources.affiliations.create', ['id' => $record->id, 'plan_id' => $count_plans[0]]);
+                                    return redirect()->route('filament.business.resources.affiliations.create', ['id' => $record->id, 'plan_id' => $count_plans[0]]);
                                 }
 
-                                return redirect()->route('filament.admin.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
+                                return redirect()->route('filament.business.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.emit', $th->getMessage());
                                 Notification::make()

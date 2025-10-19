@@ -263,7 +263,7 @@ class AffiliationCorporatesTable
                         /** INFORMACION PRINCIPAL */
                         Fieldset::make('INFORMACION PRINCIPAL')
                             ->schema([
-                                Grid::make(1)->schema([
+                                Grid::make(2)->schema([
                                     TextInput::make('total_amount')
                                         ->label('Total a pagar')
                                         ->prefix('US$')
@@ -271,25 +271,14 @@ class AffiliationCorporatesTable
                                             
                                             $amount = $record->total_amount;
 
-                                            // if ($record->payment_frequency == 'ANUAL') {
-                                            //     return $amount;
-                                            // }
-
-                                            // if ($record->payment_frequency == 'TRIMESTRAL') {
-                                            //     return $amount / 4;
-                                            // }
-
-                                            // if ($record->payment_frequency == 'SEMESTRAL') {
-                                            //     return $amount / 2;
-                                            // }
-
                                             return $amount;
                                         })
                                         ->numeric()
                                         ->live(),
-
-
-
+                                    DatePicker::make('date_payment_voucher')
+                                        ->label('Fecha del Comprobante de Pago')
+                                        ->required()
+                                        ->format('d/m/Y')
                                 ])->columnSpanFull(),
                             ])->columnSpanFull(),
 

@@ -30,6 +30,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
@@ -52,86 +53,188 @@ class AffiliationsTable
             ->description('Al seleccionar varias afiliaciones, encuentras un acceso rápido para realizar un pago masivo. Haciendo click en el botón "Abrir acciones" se desplegará "Pagar Afiliaciones".')
             ->columns([
                 TextColumn::make('code')
-                    ->label('Código de afiliación')
-                    ->badge()
-                    ->color('success')
-                    ->icon('heroicon-m-tag')
-                    ->searchable(),
-                TextColumn::make('agent.name')
-                    ->label('Agente')
+                    ->label('Codigo')
+                    ->icon('heroicon-s-user-group')
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('plan.description')
-                    ->label('Plan')
+                TextColumn::make('individual_quote.code')
+                    ->label('Nro. de cotización')
                     ->badge()
-                    ->color('primary')
+                    ->color('verde')
+                    ->icon('heroicon-m-tag')
                     ->searchable(),
-                TextColumn::make('coverage.price')
-                    ->label('Cobertura')
-                    ->numeric()
-                    ->suffix('US$')
+                TextColumn::make('accountManager.name')
+                    ->label('Account Manager')
+                    ->icon('heroicon-o-shield-check')
                     ->badge()
-                    ->color('success')
-                    ->searchable(),
-                TextColumn::make('payment_frequency')
-                    ->label('Frecuencia de pago')
-                    ->alignCenter()
+                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            '-----' => 'info',
+                            default => 'success',
+                        };
+                    }),
+                TextColumn::make('agency.name_corporative')
+                    ->label('CO-Agencia')
                     ->badge()
-                    ->color('primary')
+                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
+                    ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('full_name_ti')
-                    ->label('Titular')
+                TextColumn::make('agent.name')
+                    ->label('Nombre del agente')
                     ->badge()
-                    ->color('info')
-                    ->icon('fluentui-person-available-16')
+                    ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
+                    ->color('azulOscuro')
+                    ->icon('heroicon-m-user')
                     ->searchable(),
-                TextColumn::make('nro_identificacion_ti')
-                    ->label('Cédula titular')
-                    ->badge()
-                    ->color('info')
-                    ->icon('fluentui-person-available-16')
-                    ->searchable(),
-                TextColumn::make('full_name_payer')
-                    ->label('Pagador')
-                    ->badge()
-                    ->color('info')
-                    ->icon('fluentui-money-hand-20')
-                    ->searchable(),
-                TextColumn::make('nro_identificacion_payer')
-                    ->label('Cedula pagador')
-                    ->badge()
-                    ->color('info')
-                    ->icon('fluentui-money-hand-20')
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->label('Fecha de registro')
-                    ->badge()
-                    ->dateTime('d/m/Y h:i:s a')
-                    ->searchable(),
+
+                //...  
+                ColumnGroup::make('Plan Afiliado', [
+                    TextColumn::make('plan.description')
+                        ->label('Plan')
+                        ->alignCenter()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('coverage.price')
+                        ->label('Covertura')
+                        ->alignCenter()
+                        ->numeric()
+                        ->badge()
+                        ->color('success')
+                        ->suffix(' US$')
+                        ->searchable(),
+                    TextColumn::make('payment_frequency')
+                        ->label('Frecuencia de pago')
+                        ->alignCenter()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('family_members')
+                        ->label('Poblacion')
+                        ->alignCenter()
+                        ->suffix(' persona(s)')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('fee_anual')
+                        ->label('Tarifa Anual')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('warning')
+                        ->searchable(),
+                    //total_amount
+                    TextColumn::make('total_amount')
+                        ->label('Total a Pagar')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('warning')
+                        ->searchable(),
+                ]),
+
+                //...
+                ColumnGroup::make('Información del Titular', [
+                    TextColumn::make('full_name_ti')
+                        ->label('Nombre titular')
+                        ->badge()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                    TextColumn::make('nro_identificacion_ti')
+                        ->label('CI. titular')
+                        ->badge()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                    TextColumn::make('sex_ti')
+                        ->label('Sexo')
+                        ->searchable(),
+                    TextColumn::make('birth_date_ti')
+                        ->label('Fecha de nacimiento')
+                        ->searchable(),
+                    TextColumn::make('phone_ti')
+                        ->label('Telefono titular')
+                        ->icon('heroicon-m-phone')
+                        ->searchable(),
+                    TextColumn::make('email_ti')
+                        ->label('Email titular')
+                        ->icon('fontisto-email')
+                        ->searchable(),
+                    TextColumn::make('adress_ti')
+                        ->label('Direccion')
+                        ->icon('fontisto-map-marker-alt')
+                        ->searchable(),
+                    TextColumn::make('city.definition')
+                        ->label('Ciudad')
+                        ->searchable(),
+                    TextColumn::make('state.definition')
+                        ->label('Estado')
+                        ->searchable(),
+                    TextColumn::make('region_ti')
+                        ->label('Region')
+                        ->searchable(),
+                    TextColumn::make('country.name')
+                        ->label('Pais')
+                        ->searchable(),
+                ]),
+
+                //...
+                ColumnGroup::make('Información del Tomador', [
+                    TextColumn::make('full_name_payer')
+                        ->label('Nombre y Apellido')
+                        ->badge()
+                        ->alignCenter()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                    TextColumn::make('nro_identificacion_payer')
+                        ->label('Numero de Identificación')
+                        ->badge()
+                        ->alignCenter()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                ]),
+
+                //...
                 TextColumn::make('created_by')
-                    ->label('Agente')
+                    ->label('Creado por')
                     ->searchable(),
-                TextColumn::make('family_members')
-                    ->label('Afiliados')
-                    ->suffix(' Persona(s)')
-                    ->searchable(),
+
                 TextColumn::make('activated_at')
-                    ->label('Activado')
+                    ->label('Fecha de Emisión')
+                    ->color('warning')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
                     ->searchable(),
+
+                TextColumn::make('effective_date')
+                    ->label('Vigencia')
+                    ->color('success')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
+                    ->searchable(),
+
                 TextColumn::make('status')
                     ->label('Estatus')
+
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
-                            'PRE-APROBADA' => 'success',
-                            'ACTIVA'       => 'success',
-                            'PENDIENTE'    => 'warning',
-                            'EXCLUIDO'     => 'danger',
-                            'EJECUTADA'    => 'success',
+                            'PRE-APROBADA'          => 'success',
+                            'ACTIVA'                => 'success',
+                            'PENDIENTE'             => 'warning',
+                            'EXCLUIDO'              => 'danger',
                         };
                     })
-                    ->searchable(),
+                    ->searchable()
+                    ->icon(function (mixed $state): ?string {
+                        return match ($state) {
+                            'PRE-APROBADA'          => 'heroicon-c-information-circle',
+                            'ACTIVA'                => 'heroicon-s-check-circle',
+                            'PENDIENTE'             => 'heroicon-s-exclamation-circle',
+                            'EXCLUIDO'              => 'heroicon-c-x-circle',
+                        };
+                    }),
             ])
             ->filters([
                 Filter::make('created_at')
@@ -164,127 +267,167 @@ class AffiliationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    /**EDIT */
+                /**EDIT */
 
-                    /**UPLOAD */
-                    Action::make('upload')
-                        ->label('Comprobante de Pago')
-                        ->color('azul')
-                        ->icon('heroicon-s-cloud-arrow-up')
-                        ->modalWidth(Width::FourExtraLarge)
-                        ->form([
+                /**UPLOAD */
+                Action::make('upload')
+                    ->label('Comprobante de Pago')
+                    ->color('azul')
+                    ->icon('heroicon-s-cloud-arrow-up')
+                    ->modalWidth(Width::FourExtraLarge)
+                    ->form([
 
-                            /** INFORMACION PRINCIPAL */
-                            Fieldset::make('INFORMACION PRINCIPAL')
-                                ->schema([
-                                    Grid::make(1)->schema([
-                                        TextInput::make('total_amount')
-                                            ->label('Total a pagar')
-                                            ->helperText(function ($state, $set, Get $get, Affiliation $record) {
-                                                return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . isset($record->coverage->price) ? $record->coverage->price : 'N/A' . ' - Frecuencia: ' . $record->payment_frequency;
-                                            })
-                                            ->prefix('US$')
-                                            ->default(function ($state, $set, Get $get, Affiliation $record) {
-                                                $amount = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)
-                                                    ->where('plan_id', $record->plan_id)
-                                                    ->where('coverage_id', $record->coverage_id)
-                                                    ->first();
-
-                                                if ($record->payment_frequency == 'ANUAL') {
-                                                    return $amount->subtotal_anual;
-                                                }
-
-                                                if ($record->payment_frequency == 'TRIMESTRAL') {
-                                                    return $amount->subtotal_quarterly;
-                                                }
-
-                                                if ($record->payment_frequency == 'SEMESTRAL') {
-                                                    return $amount->subtotal_biannual;
-                                                }
-
-                                                return null;
-                                            })
-                                            ->numeric()
-                                            ->live(),
-
-
-
-                                    ])->columnSpanFull(),
+                        /** INFORMACION PRINCIPAL */
+                        Fieldset::make('INFORMACION PRINCIPAL')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    TextInput::make('total_amount')
+                                        ->label('Total a pagar')
+                                        ->helperText(function ($state, $set, Get $get, Affiliation $record) {
+                                            // dd($record->coverage_id);
+                                            if (isset($record->coverage_id)) {
+                                                return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . $record->coverage->price . ' - Frecuencia: ' . $record->payment_frequency;
+                                            }
+                                            return 'Plan: ' . $record->plan->description . ' - Frecuencia: ' . $record->payment_frequency;
+                                        })
+                                        ->prefix('US$')
+                                        ->default(function ($state, $set, Get $get, Affiliation $record) {
+                                            /**
+                                             * Se modifica la logia para buscar el monto a pagar en la tabla 
+                                             * de afiliaciones y no en la tabla de cotizaciones
+                                             */
+                                            $amount = Affiliation::where('id', $record->id)->first();
+                                            return $amount->total_amount;
+                                        })
+                                        ->numeric()
+                                        ->live(),
+                                    DatePicker::make('date_payment_voucher')
+                                        ->label('Fecha del Comprobante de Pago')
+                                        ->required()
+                                        ->format('d/m/Y')
                                 ])->columnSpanFull(),
+                            ])->columnSpanFull(),
 
 
-                            /**FORMA DE PAGO */
-                            Fieldset::make('FORMA DE PAGO')
-                                ->schema([
+                        /**FORMA DE PAGO */
+                        Fieldset::make('FORMA DE PAGO')
+                            ->schema([
 
-                                    /**SELECCION DEL METODO DE PAGO */
-                                    Grid::make()
-                                        ->schema([
-                                            Select::make('payment_method')
-                                                ->native(false)
-                                                ->label('Método de pago')
-                                                ->options([
-                                                    'ZELLE'             => 'ZELLE',
-                                                    'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
-                                                    'EFECTIVO US$'      => 'EFECTIVO US$',
-                                                    'MULTIPLE'          => 'MULTIPLE',
-                                                    'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
-                                                    'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
+                                /**SELECCION DEL METODO DE PAGO */
+                                Grid::make()
+                                    ->schema([
+                                        Select::make('payment_method')
+                                            ->native(false)
+                                            ->label('Método de pago')
+                                            ->options([
+                                                'ZELLE'             => 'ZELLE',
+                                                'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
+                                                'EFECTIVO US$'      => 'EFECTIVO US$',
+                                                'MULTIPLE'          => 'MULTIPLE',
+                                                'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
+                                                'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
 
-                                                ])
-                                                ->live()
-                                                ->required()
-                                                ->validationMessages([
-                                                    'required'  => 'Seleccione un tipo de pago',
-                                                ]),
-                                            TextInput::make('tasa_bcv')
-                                                ->live()
-                                                ->label('Tasa BCV')
-                                                ->helperText('Punto(.) para separar decimales. Ejemplo: 123.45')
-                                                ->prefix('VES')
-                                                ->numeric()
-                                                ->required()
-                                                ->validationMessages([
-                                                    'required'  => 'Campo requerido',
-                                                    'numeric'   => 'El campo es numerico',
-                                                ])
-                                                ->afterStateUpdated(function (?string $state, Get $get, Set $set) {
-                                                    if ($get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
-                                                        $set('pay_amount_ves', $state * $get('total_amount'));
-                                                    }
-                                                    return $state;
-                                                })
-                                                ->hidden(function ($state, $set, Get $get) {
-                                                    if ($get('payment_method') == 'MULTIPLE' || $get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
-                                                        return false;
-                                                    }
-                                                    return true;
-                                                })
-                                        ])->columnSpan(3),
+                                            ])
+                                            ->live()
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Seleccione un tipo de pago',
+                                            ]),
+                                        TextInput::make('tasa_bcv')
+                                            ->live()
+                                            ->label('Tasa BCV')
+                                            ->helperText('Punto(.) para separar decimales. Ejemplo: 123.45')
+                                            ->prefix('VES')
+                                            ->numeric()
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Campo requerido',
+                                                'numeric'   => 'El campo es numerico',
+                                            ])
+                                            ->afterStateUpdated(function (?string $state, Get $get, Set $set) {
+                                                if ($get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
+                                                    $set('pay_amount_ves', $state * $get('total_amount'));
+                                                }
+                                                return $state;
+                                            })
+                                            ->hidden(function ($state, $set, Get $get) {
+                                                if ($get('payment_method') == 'MULTIPLE' || $get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
+                                                    return false;
+                                                }
+                                                return true;
+                                            })
+                                    ])->columnSpan(3),
 
 
-                                    /* PAGO EN DOLARES ZELLE */
-                                    Fieldset::make('INFORMACION DE PAGO EN ZELLE (US$)')
-                                        ->schema([
+                                /* PAGO EN DOLARES ZELLE */
+                                Fieldset::make('INFORMACION DE PAGO EN ZELLE (US$)')
+                                    ->schema([
+                                        TextInput::make('name_ti_usd')
+                                            ->label('Nombre del Titular')
+                                            ->helperText('Debe colocar Nombre y Apellido')
+                                            ->prefixIcon('heroicon-s-pencil')
+                                            ->required()
+                                            ->validationMessages([
+                                                'required'  => 'Seleccione un tipo de pago',
+                                            ]),
+                                        TextInput::make('reference_payment_zelle')
+                                            ->label('Nro. de Referencia')
+                                            ->helperText('Debe colocar el número de referencia completo')
+                                            ->prefix('#')
+                                            ->regex('/^[A-Za-z0-9\-]+$/')
+                                            ->helperText('Solo se permiten letras, números y el guion (-)')
+                                            ->required()
+                                            ->validationMessages([
+                                                'regex'  => 'Solo se permite el guion (-)',
+                                                'required'  => 'Seleccione un tipo de pago',
+                                            ]),
+
+                                        Grid::make(1)->schema([
+                                            FileUpload::make('document_usd')
+                                                ->label('Comprobante(US$)')
+                                                ->uploadingMessage('Cargando...')
+                                                ->required(),
+                                        ])
+                                    ])->columnSpanFull()->hidden(function (Get $get) {
+                                        if ($get('payment_method') == 'ZELLE') {
+                                            return false;
+                                        }
+                                        return true;
+                                    }),
+
+
+                                /** PAGO EN TRANSFERENCIA US$ */
+                                Fieldset::make('INFORMACIÓN DE PAGO EN TRANSFERENCIA (US$)')
+                                    ->schema([
+                                        Grid::make()->schema([
                                             TextInput::make('name_ti_usd')
                                                 ->label('Nombre del Titular')
                                                 ->helperText('Debe colocar Nombre y Apellido')
                                                 ->prefixIcon('heroicon-s-pencil')
                                                 ->required()
                                                 ->validationMessages([
-                                                    'required'  => 'Seleccione un tipo de pago',
+                                                    'required'  => 'Campo requerido',
                                                 ]),
-                                            TextInput::make('reference_payment_zelle')
-                                                ->label('Nro. de Referencia')
-                                                ->helperText('Debe colocar el número de referencia completo')
-                                                ->prefix('#')
-                                                ->regex('/^[A-Za-z0-9\-]+$/')
-                                                ->helperText('Solo se permiten letras, números y el guion (-)')
+
+                                            Select::make('bank_usd')
+                                                ->native(false)
+                                                ->label('Banco')
+                                                ->live()
                                                 ->required()
                                                 ->validationMessages([
-                                                    'regex'  => 'Solo se permite el guion (-)',
-                                                    'required'  => 'Seleccione un tipo de pago',
-                                                ]),
+                                                    'required'  => 'Seleccione un banco',
+                                                ])
+                                                ->options([
+                                                    'CHASE BANK'                => 'CHASE BANK',
+                                                    'BANK OF AMERICA'           => 'BANK OF AMERICA',
+                                                    'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
+                                                    'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
+                                                    'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                ])
+                                                ->searchable()
+                                                ->live()
+                                                ->prefixIcon('heroicon-s-globe-europe-africa'),
+
 
                                             Grid::make(1)->schema([
                                                 FileUpload::make('document_usd')
@@ -292,389 +435,342 @@ class AffiliationsTable
                                                     ->uploadingMessage('Cargando...')
                                                     ->required(),
                                             ])
-                                        ])->columnSpanFull()->hidden(function (Get $get) {
-                                            if ($get('payment_method') == 'ZELLE') {
-                                                return false;
-                                            }
-                                            return true;
-                                        }),
+                                        ])->columnSpanFull(),
+                                    ])->columnSpanFull()->hidden(function (Get $get) {
+                                        if ($get('payment_method') == 'TRANSFERENCIA US$') {
+                                            return false;
+                                        }
+                                        return true;
+                                    }),
 
 
-                                    /** PAGO EN TRANSFERENCIA US$ */
-                                    Fieldset::make('INFORMACIÓN DE PAGO EN TRANSFERENCIA (US$)')
-                                        ->schema([
-                                            Grid::make()->schema([
-                                                TextInput::make('name_ti_usd')
-                                                    ->label('Nombre del Titular')
-                                                    ->helperText('Debe colocar Nombre y Apellido')
-                                                    ->prefixIcon('heroicon-s-pencil')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required'  => 'Campo requerido',
-                                                    ]),
-
-                                                Select::make('bank_usd')
-                                                    ->native(false)
-                                                    ->label('Banco')
-                                                    ->live()
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required'  => 'Seleccione un banco',
-                                                    ])
-                                                    ->options([
-                                                        'CHASE BANK'                => 'CHASE BANK',
-                                                        'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                                                        'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                                                        'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                        'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
-                                                    ])
-                                                    ->searchable()
-                                                    ->live()
-                                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
-
-
-                                                Grid::make(1)->schema([
-                                                    FileUpload::make('document_usd')
-                                                        ->label('Comprobante(US$)')
-                                                        ->uploadingMessage('Cargando...')
-                                                        ->required(),
+                                /** PAGO EN EFECTIVO US$ */
+                                Fieldset::make('INFORMACIÓN DE PAGO EN EFECTIVO (US$)')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Select::make('bank_usd')
+                                                ->native(false)
+                                                ->label('Banco')
+                                                ->live()
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required'  => 'Seleccione un banco',
                                                 ])
+                                                ->options([
+                                                    'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
+                                                    'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                ])
+                                                ->searchable()
+                                                ->live()
+                                                ->prefixIcon('heroicon-s-globe-europe-africa'),
+
+
+                                            Grid::make()->schema([
+                                                FileUpload::make('document_usd')
+                                                    ->label('Comprobante(US$)')
+                                                    ->uploadingMessage('Cargando...')
+                                                    ->required(),
                                             ])->columnSpanFull(),
-                                        ])->columnSpanFull()->hidden(function (Get $get) {
-                                            if ($get('payment_method') == 'TRANSFERENCIA US$') {
-                                                return false;
-                                            }
-                                            return true;
-                                        }),
-
-
-                                    /** PAGO EN EFECTIVO US$ */
-                                    Fieldset::make('INFORMACIÓN DE PAGO EN EFECTIVO (US$)')
-                                        ->schema([
-                                            Grid::make(2)->schema([
-                                                Select::make('bank_usd')
-                                                    ->native(false)
-                                                    ->label('Banco')
-                                                    ->live()
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required'  => 'Seleccione un banco',
-                                                    ])
-                                                    ->options([
-                                                        'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                        'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
-                                                    ])
-                                                    ->searchable()
-                                                    ->live()
-                                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
-
-
-                                                Grid::make()->schema([
-                                                    FileUpload::make('document_usd')
-                                                        ->label('Comprobante(US$)')
-                                                        ->uploadingMessage('Cargando...')
-                                                        ->required(),
-                                                ])->columnSpanFull(),
-                                            ])->hidden(function (Get $get) {
-                                                if ($get('payment_method') == 'EFECTIVO US$') {
-                                                    return false;
-                                                }
-                                                return true;
-                                            })->columnSpanFull(),
-
-                                        ])->columnSpanFull()->hidden(function (Get $get) {
+                                        ])->hidden(function (Get $get) {
                                             if ($get('payment_method') == 'EFECTIVO US$') {
                                                 return false;
                                             }
                                             return true;
-                                        }),
+                                        })->columnSpanFull(),
+
+                                    ])->columnSpanFull()->hidden(function (Get $get) {
+                                        if ($get('payment_method') == 'EFECTIVO US$') {
+                                            return false;
+                                        }
+                                        return true;
+                                    }),
 
 
-                                    /* PAGO MOVIL Y TRANSFERENCIA */
-                                    Fieldset::make('INFORMACIÓN DE PAGO EN MONEDA NACIONAL (VES)')
-                                        ->schema([
-                                            Grid::make(2)->schema([
+                                /* PAGO MOVIL Y TRANSFERENCIA */
+                                Fieldset::make('INFORMACIÓN DE PAGO EN MONEDA NACIONAL (VES)')
+                                    ->schema([
+                                        Grid::make(2)->schema([
 
-                                                TextInput::make('pay_amount_ves')
-                                                    ->inputMode('numeric') // activa teclado numérico en móvil
-                                                    ->live()
-                                                    ->label('Monto a pagar en VES')
-                                                    ->helperText('Punto(.) para separar decimales')
-                                                    ->prefix('VES')
-                                                    ->numeric()
-                                                    ->disabled()
-                                                    ->dehydrated(),
-                                                Select::make('bank_ves')
-                                                    ->native(false)
-                                                    ->label('Banco')
-                                                    ->live()
-                                                    ->options([
-                                                        'BANCAMIGA(VES)'           => 'BANCAMIGA',
-                                                        'BANCO DE VENEZUELA(VES)'  => 'BANCO DE VENEZUELA',
-                                                    ])
-                                                    ->searchable()
-                                                    ->live()
-                                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                                    ->preload(),
-                                                TextInput::make('reference_payment_ves')
-                                                    ->label('Referencia de pago(VES)')
-                                                    ->live()
-                                                    ->inputMode('numeric') // activa teclado numérico en móvil
-                                                    ->helperText('Últimos 6 dígitos del comprobante de pago')
-                                                    ->mask('999999')
-                                                    ->maxLength(6)
-                                                    ->rules([
-                                                        'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
-                                                    ])
-                                                    ->prefix('Ref:'),
-                                                Grid::make(1)->schema([
+                                            TextInput::make('pay_amount_ves')
+                                                ->inputMode('numeric') // activa teclado numérico en móvil
+                                                ->live()
+                                                ->label('Monto a pagar en VES')
+                                                ->helperText('Punto(.) para separar decimales')
+                                                ->prefix('VES')
+                                                ->numeric()
+                                                ->disabled()
+                                                ->dehydrated(),
+                                            Select::make('bank_ves')
+                                                ->native(false)
+                                                ->label('Banco')
+                                                ->live()
+                                                ->options([
+                                                    'BANCAMIGA(VES)'           => 'BANCAMIGA',
+                                                    'BANCO DE VENEZUELA(VES)'  => 'BANCO DE VENEZUELA',
+                                                ])
+                                                ->searchable()
+                                                ->live()
+                                                ->prefixIcon('heroicon-s-globe-europe-africa')
+                                                ->preload(),
+                                            TextInput::make('reference_payment_ves')
+                                                ->label('Referencia de pago(VES)')
+                                                ->live()
+                                                ->inputMode('numeric') // activa teclado numérico en móvil
+                                                ->helperText('Últimos 6 dígitos del comprobante de pago')
+                                                ->mask('999999')
+                                                ->maxLength(6)
+                                                ->rules([
+                                                    'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
+                                                ])
+                                                ->prefix('Ref:'),
+                                            Grid::make(1)->schema([
+                                                FileUpload::make('document_ves')
+                                                    ->label('Comprobante de pago(VES)')
+                                                    ->disk('public')
+                                                    ->uploadingMessage('Cargando...')
+                                                    ->required()
+                                            ])
+
+                                        ])->columnSpanFull(),
+                                    ])->columnSpanFull()->hidden(function (Get $get) {
+                                        if ($get('payment_method') == 'TRANSFERENCIA VES' || $get('payment_method') == 'PAGO MOVIL VES' && $get('tasa_bcv') > 0) {
+                                            return false;
+                                        }
+                                        return true;
+                                    }),
+
+
+                                /** PAGO MULTIPLE */
+                                Fieldset::make('INFORMACIÓN DE PAGO MULTIPLE EN BOLIVARES (VES) Y DOLARES (US$)')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+
+                                            /* PAGO EN DOLARES(USD)) */
+                                            Fieldset::make('PAGO EN DOLARES (US$)')
+                                                ->schema([
+                                                    /**Metodo de pago en US$ */
+                                                    Select::make('payment_method_usd')
+                                                        ->live()
+                                                        ->native(false)
+                                                        ->label('Método de pago en dólares(US$)')
+                                                        ->options([
+                                                            'ZELLE'             => 'ZELLE',
+                                                            'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
+                                                            'EFECTIVO US$'      => 'EFECTIVO US$',
+                                                        ])
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Seleccione un tipo de pago',
+                                                        ]),
+
+                                                    TextInput::make('pay_amount_usd')
+                                                        ->inputMode('numeric') // activa teclado numérico en móvil
+                                                        ->live(onBlur: true)
+                                                        ->label('Monto US$:')
+                                                        ->helperText('Punto(.) para separar decimales. Ingresa el monto en dólares(US$).')
+                                                        ->prefix('US$')
+                                                        ->numeric()
+                                                        ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                                            $res = $get('total_amount') - $state;
+                                                            Log::info($get('total_amount'));
+                                                            Log::info($res);
+                                                            Log::info($res / $get('tasa_bcv'));
+                                                            $set('pay_amount_ves', $res * $get('tasa_bcv'));
+                                                        }),
+
+                                                    TextInput::make('name_ti_usd')
+                                                        ->label('Nombre del Titular')
+                                                        ->helperText('Debe colocar Nombre y Apellido')
+                                                        ->prefixIcon('heroicon-s-pencil')
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Seleccione un tipo de pago',
+                                                        ])
+                                                        ->hidden(function (Get $get) {
+                                                            if ($get('payment_method_usd') == 'TRANSFERENCIA US$' || $get('payment_method_usd') == 'ZELLE') {
+                                                                return false;
+                                                            }
+                                                            return true;
+                                                        }),
+
+                                                    /**Banco US$ */
+                                                    Select::make('bank_usd')
+                                                        ->native(false)
+                                                        ->label('Banco Moneda Extranjera(US$)')
+                                                        ->live()
+                                                        ->options([
+                                                            'CHASE BANK'                => 'CHASE BANK',
+                                                            'BANK OF AMERICA'           => 'BANK OF AMERICA',
+                                                            'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
+                                                            'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
+                                                            'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                        ])
+                                                        ->searchable()
+                                                        ->prefixIcon('heroicon-s-globe-europe-africa'),
+
+
+                                                    TextInput::make('reference_payment_zelle')
+                                                        ->label('Nro. de Referencia')
+                                                        ->helperText('Debe colocar el número de referencia completo')
+                                                        ->prefix('#')
+                                                        ->regex('/^[A-Za-z0-9\-]+$/')
+                                                        ->helperText('Solo se permiten letras, números y el guion (-)')
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'regex'  => 'Solo se permite el guion (-)',
+                                                            'required'  => 'Seleccione un tipo de pago',
+                                                        ])
+                                                        ->hidden(function (Get $get) {
+                                                            if ($get('payment_method_usd') == 'ZELLE') {
+                                                                return false;
+                                                            }
+                                                            return true;
+                                                        }),
+
+                                                    FileUpload::make('document_usd')
+                                                        ->label('Comprobante de pago(US$)')
+                                                        ->disk('public')
+                                                        ->uploadingMessage('Cargando...'),
+
+                                                ])->columns(1),
+
+                                            /* PAGO EN BOLIVARES (VES) */
+                                            Fieldset::make('PAGO EN BOLIVARES (VES)')
+                                                ->schema([
+                                                    /**Metodo de pago en VES */
+                                                    Select::make('payment_method_ves')
+                                                        ->native(false)
+                                                        ->label('Método de pago en bolivares(VES)')
+                                                        ->options([
+                                                            'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
+                                                            'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
+                                                        ])
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Seleccione un tipo de pago',
+                                                        ]),
+
+                                                    TextInput::make('pay_amount_ves')
+                                                        ->inputMode('numeric') // activa teclado numérico en móvil
+                                                        ->label('Monto VES:')
+                                                        ->helperText('Punto(.) para separar decimales. El Sistema calcula el restante en bolivares.')
+                                                        ->prefix('VES')
+                                                        ->numeric()
+                                                        ->disabled()
+                                                        ->dehydrated(),
+
+
+                                                    /**Banco VES */
+                                                    Select::make('bank_ves')
+                                                        ->native(false)
+                                                        ->label('Banco Moneda Nacional(VES)')
+                                                        ->options([
+                                                            'BANCAMIGA - VES'           => 'BANCAMIGA - VES',
+                                                            'BANCO DE VENEZUELA - VES'  => 'BANCO DE VENEZUELA - VES',
+                                                        ])
+                                                        ->searchable()
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Seleccione un banco',
+                                                        ])
+                                                        ->prefixIcon('heroicon-s-globe-europe-africa'),
+
+
+
+                                                    TextInput::make('reference_payment_ves')
+                                                        ->label('Referencia de pago(VES)')
+                                                        ->inputMode('numeric') // activa teclado numérico en móvil
+                                                        ->helperText('Ultimos 6 dígitos del comprobante de pago')
+                                                        ->mask('999999')
+                                                        ->maxLength(6)
+                                                        ->rules([
+                                                            'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
+                                                        ])
+                                                        ->required()
+                                                        ->validationMessages([
+                                                            'required'  => 'Campo requerido',
+                                                        ])
+                                                        ->prefix('Ref:'),
                                                     FileUpload::make('document_ves')
                                                         ->label('Comprobante de pago(VES)')
                                                         ->disk('public')
                                                         ->uploadingMessage('Cargando...')
                                                         ->required()
-                                                ])
+                                                        ->validationMessages([
+                                                            'required'  => 'El comprobante es requerido',
+                                                        ])
+                                                ])->columns(1),
 
-                                            ])->columnSpanFull(),
-                                        ])->columnSpanFull()->hidden(function (Get $get) {
-                                            if ($get('payment_method') == 'TRANSFERENCIA VES' || $get('payment_method') == 'PAGO MOVIL VES' && $get('tasa_bcv') > 0) {
-                                                return false;
-                                            }
-                                            return true;
-                                        }),
+                                        ])->columnSpanFull()
+                                    ])->columnSpanFull()->hidden(function (Get $get) {
+                                        if ($get('payment_method') == 'MULTIPLE' && $get('tasa_bcv') > 0) {
+                                            return false;
+                                        }
+                                        return true;
+                                    }),
 
-
-                                    /** PAGO MULTIPLE */
-                                    Fieldset::make('INFORMACIÓN DE PAGO MULTIPLE EN BOLIVARES (VES) Y DOLARES (US$)')
-                                        ->schema([
-                                            Grid::make(2)->schema([
-
-                                                /* PAGO EN DOLARES(USD)) */
-                                                Fieldset::make('PAGO EN DOLARES (US$)')
-                                                    ->schema([
-                                                        /**Metodo de pago en US$ */
-                                                        Select::make('payment_method_usd')
-                                                            ->live()
-                                                            ->native(false)
-                                                            ->label('Método de pago en dólares(US$)')
-                                                            ->options([
-                                                                'ZELLE'             => 'ZELLE',
-                                                                'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
-                                                                'EFECTIVO US$'      => 'EFECTIVO US$',
-                                                            ])
-                                                            ->required()
-                                                            ->validationMessages([
-                                                                'required'  => 'Seleccione un tipo de pago',
-                                                            ]),
-
-                                                        TextInput::make('pay_amount_usd')
-                                                            ->inputMode('numeric') // activa teclado numérico en móvil
-                                                            ->live(onBlur: true)
-                                                            ->label('Monto US$:')
-                                                            ->helperText('Punto(.) para separar decimales. Ingresa el monto en dólares(US$).')
-                                                            ->prefix('US$')
-                                                            ->numeric()
-                                                            ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                                                                $res = $get('total_amount') - $state;
-                                                                Log::info($get('total_amount'));
-                                                                Log::info($res);
-                                                                Log::info($res / $get('tasa_bcv'));
-                                                                $set('pay_amount_ves', $res * $get('tasa_bcv'));
-                                                            }),
-
-                                                        TextInput::make('name_ti_usd')
-                                                            ->label('Nombre del Titular')
-                                                            ->helperText('Debe colocar Nombre y Apellido')
-                                                            ->prefixIcon('heroicon-s-pencil')
-                                                            ->required()
-                                                            ->validationMessages([
-                                                                'required'  => 'Seleccione un tipo de pago',
-                                                            ])
-                                                            ->hidden(function (Get $get) {
-                                                                if ($get('payment_method_usd') == 'TRANSFERENCIA US$' || $get('payment_method_usd') == 'ZELLE') {
-                                                                    return false;
-                                                                }
-                                                                return true;
-                                                            }),
-
-                                                        /**Banco US$ */
-                                                        Select::make('bank_usd')
-                                                            ->native(false)
-                                                            ->label('Banco Moneda Extranjera(US$)')
-                                                            ->live()
-                                                            ->options([
-                                                                'CHASE BANK'                => 'CHASE BANK',
-                                                                'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                                                                'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                                                                'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                                'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
-                                                            ])
-                                                            ->searchable()
-                                                            ->prefixIcon('heroicon-s-globe-europe-africa'),
-
-
-                                                        TextInput::make('reference_payment_zelle')
-                                                            ->label('Nro. de Referencia')
-                                                            ->helperText('Debe colocar el número de referencia completo')
-                                                            ->prefix('#')
-                                                            ->regex('/^[A-Za-z0-9\-]+$/')
-                                                            ->helperText('Solo se permiten letras, números y el guion (-)')
-                                                            ->required()
-                                                            ->validationMessages([
-                                                                'regex'  => 'Solo se permite el guion (-)',
-                                                                'required'  => 'Seleccione un tipo de pago',
-                                                            ])
-                                                            ->hidden(function (Get $get) {
-                                                                if ($get('payment_method_usd') == 'ZELLE') {
-                                                                    return false;
-                                                                }
-                                                                return true;
-                                                            }),
-
-                                                        FileUpload::make('document_usd')
-                                                            ->label('Comprobante de pago(US$)')
-                                                            ->disk('public')
-                                                            ->uploadingMessage('Cargando...'),
-
-                                                    ])->columns(1),
-
-                                                /* PAGO EN BOLIVARES (VES) */
-                                                Fieldset::make('PAGO EN BOLIVARES (VES)')
-                                                    ->schema([
-                                                        /**Metodo de pago en VES */
-                                                        Select::make('payment_method_ves')
-                                                            ->native(false)
-                                                            ->label('Método de pago en bolivares(VES)')
-                                                            ->options([
-                                                                'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
-                                                                'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
-                                                            ])
-                                                            ->required()
-                                                            ->validationMessages([
-                                                                'required'  => 'Seleccione un tipo de pago',
-                                                            ]),
-
-                                                        TextInput::make('pay_amount_ves')
-                                                            ->inputMode('numeric') // activa teclado numérico en móvil
-                                                            ->label('Monto VES:')
-                                                            ->helperText('Punto(.) para separar decimales. El Sistema calcula el restante en bolivares.')
-                                                            ->prefix('VES')
-                                                            ->numeric()
-                                                            ->disabled()
-                                                            ->dehydrated(),
-
-
-                                                        /**Banco VES */
-                                                        Select::make('bank_ves')
-                                                            ->native(false)
-                                                            ->label('Banco Moneda Nacional(VES)')
-                                                            ->options([
-                                                                'BANCAMIGA - VES'           => 'BANCAMIGA - VES',
-                                                                'BANCO DE VENEZUELA - VES'  => 'BANCO DE VENEZUELA - VES',
-                                                            ])
-                                                            ->searchable()
-                                                            ->required()
-                                                            ->validationMessages([
-                                                                'required'  => 'Seleccione un banco',
-                                                            ])
-                                                            ->prefixIcon('heroicon-s-globe-europe-africa'),
-
-
-
-                                                        TextInput::make('reference_payment_ves')
-                                                            ->label('Referencia de pago(VES)')
-                                                            ->inputMode('numeric') // activa teclado numérico en móvil
-                                                            ->helperText('Ultimos 6 dígitos del comprobante de pago')
-                                                            ->mask('999999')
-                                                            ->maxLength(6)
-                                                            ->rules([
-                                                                'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
-                                                            ])
-                                                            ->required()
-                                                            ->validationMessages([
-                                                                'required'  => 'Campo requerido',
-                                                            ])
-                                                            ->prefix('Ref:'),
-                                                        FileUpload::make('document_ves')
-                                                            ->label('Comprobante de pago(VES)')
-                                                            ->disk('public')
-                                                            ->uploadingMessage('Cargando...')
-                                                            ->required()
-                                                            ->validationMessages([
-                                                                'required'  => 'El comprobante es requerido',
-                                                            ])
-                                                    ])->columns(1),
-
-                                            ])->columnSpanFull()
-                                        ])->columnSpanFull()->hidden(function (Get $get) {
-                                            if ($get('payment_method') == 'MULTIPLE' && $get('tasa_bcv') > 0) {
-                                                return false;
-                                            }
-                                            return true;
-                                        }),
-
-                                ]),
-
-
-                            /**OBSERVACIONES */
-                            Grid::make(1)->schema([
-                                Textarea::make('observations_payment')
-                                    ->label('Observaciones')
-                                    ->rows(2)
-                                    ->autosize()
-                                    ->dehydrated()
                             ]),
-                        ])
-                        ->action(function (Affiliation $record, array $data): void {
-                            // dd($data, $record);
-                            $upload = AffiliationController::uploadPayment($record, $data, 'AGENTE');
 
-                            if ($upload) {
+
+                        /**OBSERVACIONES */
+                        Grid::make(1)->schema([
+                            Textarea::make('observations_payment')
+                                ->label('Observaciones')
+                                ->rows(2)
+                                ->autosize()
+                                ->dehydrated()
+                        ]),
+                    ])
+                    ->action(function (Affiliation $record, array $data): void {
+                        // dd($data, $record);
+                        $upload = AffiliationController::uploadPayment($record, $data, 'AGENTE');
+
+                        if ($upload) {
+                            Notification::make()
+                                ->title('NOTIFICACION')
+                                ->body('El comprobante de pago se ha registrado con exito')
+                                ->icon('heroicon-m-user-plus')
+                                ->iconColor('success')
+                                ->success()
+                                ->seconds(5)
+                                ->send();
+
+                            //Notificacion para Admin
+                            $recipient = User::where('is_admin', 1)->get();
+                            foreach ($recipient as $user) {
+                                $recipient_for_user = User::find($user->id);
                                 Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('El comprobante de pago se ha registrado con exito')
+                                    ->title('REGISTRO DE COMPROBANTE')
+                                    ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
                                     ->icon('heroicon-m-user-plus')
                                     ->iconColor('success')
                                     ->success()
-                                    ->seconds(5)
-                                    ->send();
-
-                                //Notificacion para Admin
-                                $recipient = User::where('is_admin', 1)->get();
-                                foreach ($recipient as $user) {
-                                    $recipient_for_user = User::find($user->id);
-                                    Notification::make()
-                                        ->title('REGISTRO DE COMPROBANTE')
-                                        ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
-                                        ->icon('heroicon-m-user-plus')
-                                        ->iconColor('success')
-                                        ->success()
-                                        ->actions([
-                                            Action::make('view')
-                                                ->label('Ver detalle de pago')
-                                                ->button()
-                                                ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                        ])
-                                        ->sendToDatabase($recipient_for_user);
-                                }
+                                    ->actions([
+                                        Action::make('view')
+                                            ->label('Ver detalle de pago')
+                                            ->button()
+                                            ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
+                                    ])
+                                    ->sendToDatabase($recipient_for_user);
                             }
-                        })
-                        ->hidden(function (Affiliation $record) {
+                        }
+                    })
+                    ->hidden(function (Affiliation $record) {
 
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
-                                return true;
-                            }
+                        if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
+                            return true;
+                        }
 
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
-                                return true;
-                            }
+                        if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
+                            return true;
+                        }
 
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
-                                return true;
-                            }
+                        if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
+                            return true;
+                        }
 
-                            return false;
-                        }),
+                        return false;
+                    }),
 
                     /**DESCARGAR */
                     Action::make('download')

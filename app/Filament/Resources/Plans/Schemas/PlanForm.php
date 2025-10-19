@@ -139,31 +139,25 @@ class PlanForm
                     ->description('Seleccion multiple de beneficios')
                     ->icon('heroicon-s-share')
                     ->schema([
-                        CheckboxList::make('beneficios')
+                        Select::make('beneficios')
                             ->label('Beneficios asociados')
-                            // ->multiple()
+                            ->multiple()
                             ->relationship(name: 'benefitPlans', titleAttribute: 'description')
-                            ->pivotData([
-                                'description' => true,
-                            ])
+                            ->preload()
                             ->getOptionLabelFromRecordUsing(fn(Benefit $record) => "{$record->code} - {$record->description}")
                             ->searchable(),
-                        // ->searchable()
-                        // ->preload(),
                     ])->columnSpanFull()->columns(1),
                 Section::make('ASOCIACION DE COBERTURAS')
                     ->collapsible()
                     ->description('Seleccion multiple de coberturas')
                     ->icon('heroicon-s-share')
                     ->schema([
-                        CheckboxList::make('coverturas')
+                        Select::make('coverturas')
                             ->label('Coverturas asociadas')
-                            // ->multiple()
                             ->relationship(name: 'coveragePlans', titleAttribute: 'price')
-                            ->pivotData([
-                                'price' => true,
-                            ])
-                            ->getOptionLabelFromRecordUsing(fn(Coverage $record) => "{$record->price} US$")
+                            ->multiple()
+                            ->preload()
+                            ->getOptionLabelFromRecordUsing(fn(Coverage $record) => "{$record->price} US$ - Plan: {$record->plan->description}")
                             ->searchable(),
                     ])->columnSpanFull()->columns(1),
 
@@ -172,14 +166,11 @@ class PlanForm
                     ->description('Seleccion multiple de coberturas')
                     ->icon('heroicon-s-share')
                     ->schema([
-                        CheckboxList::make('tarifas')
+                        Select::make('tarifas')
                             ->label('Tarifas asociadas')
-                            // ->multiple()
                             ->relationship(name: 'feePlans', titleAttribute: 'range')
-                            ->pivotData([
-                                'range' => true,
-                                'price' => true,
-                            ])
+                            ->multiple()
+                            ->preload()
                             ->getOptionLabelFromRecordUsing(fn(Fee $record) => "{$record->range}años - Covertura: {$record->coverage} US$ - Tarifa: {$record->price} US$")
                             ->searchable(),
                     ])->columnSpanFull()->columns(1),

@@ -2,31 +2,134 @@
 
 namespace App\Filament\Business\Resources\Benefits\Schemas;
 
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+use App\Models\Limit;
+use App\Models\Benefit;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Grid;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 
 class BenefitForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->components([
-                Select::make('limit_id')
-                    ->relationship('limit', 'id'),
-                TextInput::make('code')
-                    ->required(),
-                TextInput::make('description')
-                    ->required(),
-                TextInput::make('status')
-                    ->required()
-                    ->default('ACTIVO'),
-                TextInput::make('created_by')
-                    ->required(),
-                TextInput::make('price')
-                    ->numeric()
-                    ->default(0.0)
-                    ->prefix('$'),
+        ->components([
+                Section::make('BENEFICIOS')
+                    ->description('Formulario para el registro de los beneficios asociados a los planes. Campo Requerido(*)')
+                    ->icon('heroicon-s-share')
+                    ->schema([
+                        Grid::make()->schema([
+                            TextInput::make('code')
+                                ->label('Código')
+                                ->prefixIcon('heroicon-m-clipboard-document-check')
+                                ->default(function () {
+                                    if (Benefit::max('id') == null) {
+                                        $parte_entera = 0;
+                                    } else {
+                                        $parte_entera = Benefit::max('id');
+                                    }
+                                    return 'TDEC-BN-000' . $parte_entera + 1;
+                                })
+                                ->required()
+                                ->disabled()
+                                ->dehydrated()
+                                ->maxLength(255),
+                        ])->columnSpanFull()->columns(3),
+                        TextInput::make('description')
+                            ->label('Definición')
+                            ->prefixIcon('heroicon-m-pencil')
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                $set('description', strtoupper($state));
+                            })
+                            ->live(onBlur: true)
+                            ->required()
+                            ->maxLength(255),
+
+                        Select::make('limit_id')
+                            ->label('Límite de Consumo del Beneficio')
+                            ->relationship('limit', 'description')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Section::make('LIMITES')
+                                    ->description('Formulario para el registro de los limites asociados a los beneficios de planes. Campo Requerido(*)')
+                                    ->icon('heroicon-c-adjustments-horizontal')
+                                    ->schema([
+                                        Grid::make(3)->schema([
+                                            TextInput::make('code')
+                                                ->label('Código')
+                                                ->prefixIcon('heroicon-m-clipboard-document-check')
+                                                ->default(function () {
+                                                    if (Limit::max('id') == null) {
+                                                        $parte_entera = 0;
+                                                    } else {
+                                                        $parte_entera = Limit::max('id');
+                                                    }
+                                                    return 'TDEC-BN-000' . $parte_entera + 1;
+                                                })
+                                                ->required()
+                                                ->disabled()
+                                                ->dehydrated()
+                                                ->maxLength(255),
+                                        ]),
+                                        TextInput::make('description')
+                                            ->label('Definición')
+                                            ->prefixIcon('heroicon-m-pencil')
+                                            ->afterStateUpdated(function (Set $set, $state) {
+                                                $set('description', strtoupper($state));
+                                            })
+                                            ->live(onBlur: true)
+                                            ->required()
+                                            ->maxLength(255),
+                                        TextInput::make('status')
+                                            ->label('Estatus')
+                                            ->prefixIcon('heroicon-m-shield-check')
+                                            ->disabled()
+                                            ->dehydrated()
+                                            ->maxLength(255)
+                                            ->default('ACTIVO'),
+                                        TextInput::make('created_by')
+                                            ->label('Creado Por:')
+                                            ->prefixIcon('heroicon-s-user-circle')
+                                            ->disabled()
+                                            ->dehydrated()
+                                            ->default(Auth::user()->name)
+                                            ->maxLength(255),
+                                    ])->columnSpanFull()->columns(3),
+                            ]),
+                        TextInput::make('limit_coverage')
+                            ->label('Límite de Consumo por Cobertura')
+                            ->prefixIcon('heroicon-m-pencil')
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                $set('description', strtoupper($state));
+                            })
+                            ->live(onBlur: true)
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('price')
+                            ->label('Precio US$')
+                            ->prefixIcon('heroicon-m-shield-check')
+                            ->numeric()
+                            ->placeholder('0,00 US$'),
+                        TextInput::make('status')
+                            ->label('Estatus')
+                            ->prefixIcon('heroicon-m-shield-check')
+                            ->disabled()
+                            ->dehydrated()
+                            ->maxLength(255)
+                            ->default('ACTIVO'),
+                        TextInput::make('created_by')
+                            ->label('Creado Por:')
+                            ->prefixIcon('heroicon-s-user-circle')
+                            ->disabled()
+                            ->dehydrated()
+                            ->default(Auth::user()->name)
+                            ->maxLength(255),
+                    ])->columnSpanFull()->columns(3),
             ]);
     }
 }

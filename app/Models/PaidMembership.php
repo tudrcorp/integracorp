@@ -39,6 +39,7 @@ class PaidMembership extends Model
 
         //Agregado
         'name_ti_usd',
+        'date_payment_voucher',
         
     ];
 

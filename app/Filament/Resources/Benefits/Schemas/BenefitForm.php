@@ -2,15 +2,24 @@
 
 namespace App\Filament\Resources\Benefits\Schemas;
 
+use App\Models\Plan;
 use App\Models\Limit;
 use App\Models\Benefit;
+use App\Models\Coverage;
+use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Barryvdh\Debugbar\Facades\Debugbar;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+
+use Illuminate\Database\Eloquent\Builder;
 
 class BenefitForm
 {
@@ -18,7 +27,7 @@ class BenefitForm
     {
         return $schema
             ->components([
-            Section::make('BENEFICIOS')
+                Section::make('BENEFICIOS')
                 ->description('Formulario para el registro de los beneficios asociados a los planes. Campo Requerido(*)')
                 ->icon('heroicon-s-share')
                 ->schema([
@@ -120,7 +129,7 @@ class BenefitForm
                         ->dehydrated()
                         ->default(Auth::user()->name)
                         ->maxLength(255),
-                ])->columnSpanFull()->columns(3),
+            ])->columnSpanFull()->columns(3),
             ]);
     }
 }

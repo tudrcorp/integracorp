@@ -68,14 +68,27 @@ class AffiliationsTable
                     ->color('verde')
                     ->icon('heroicon-m-tag')
                     ->searchable(),
+                TextColumn::make('accountManager.name')
+                    ->label('Account Manager')
+                    ->icon('heroicon-o-shield-check')
+                    ->badge()
+                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            '-----' => 'info',
+                            default => 'success',
+                        };
+                    }),
                 TextColumn::make('agency.name_corporative')
                     ->label('CO-Agencia')
                     ->badge()
+                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
                     ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('agent.name')
                     ->label('Nombre del agente')
                     ->badge()
+                    ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
                     ->color('azulOscuro')
                     ->icon('heroicon-m-user')
                     ->searchable(),
@@ -387,7 +400,7 @@ class AffiliationsTable
                             /** INFORMACION PRINCIPAL */
                             Fieldset::make('INFORMACION PRINCIPAL')
                                 ->schema([
-                                    Grid::make(1)->schema([
+                                    Grid::make(2)->schema([
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
                                             ->helperText(function ($state, $set, Get $get, Affiliation $record) {
@@ -405,26 +418,13 @@ class AffiliationsTable
                                                  */
                                                 $amount = Affiliation::where('id', $record->id)->first();
                                                 return $amount->total_amount;
-
-                                                // if ($record->payment_frequency == 'ANUAL') {
-                                                //     return $amount->fee_anual;
-                                                // }
-
-                                                // if ($record->payment_frequency == 'TRIMESTRAL') {
-                                                //     return $amount->fee_anual / 4;
-                                                // }
-
-                                                // if ($record->payment_frequency == 'SEMESTRAL') {
-                                                //     return $amount->fee_anual / 2;
-                                                // }
-
-                                                // return null;
                                             })
                                             ->numeric()
                                             ->live(),
-
-
-
+                                        DatePicker::make('date_payment_voucher')
+                                            ->label('Fecha del Comprobante de Pago')
+                                            ->required()
+                                            ->format('d/m/Y')
                                     ])->columnSpanFull(),
                                 ])->columnSpanFull(),
 

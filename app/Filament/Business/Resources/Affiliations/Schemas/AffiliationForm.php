@@ -68,12 +68,26 @@ class AffiliationForm
                                     ->required(),
                             ])->columns(3),
                             Grid::make(3)->schema([
-                                TextInput::make('full_name_ti')
+                                Select::make('individual_quote_id')
                                     ->label('Nombre del cliente')
                                     ->live()
                                     ->disabled()
                                     ->dehydrated()
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
+                                    ->options(IndividualQuote::select('id', 'agent_id', 'status', 'full_name')->where('agent_id', Auth::user()->agent_id)->where('status', 'APROBADA')->pluck('full_name', 'id'))
+                                    ->default(function () {
+                                        $id = request()->query('id');
+                                        if (isset($id)) {
+                                            return $id;
+                                        }
+                                        return null;
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->afterStateUpdated(function (Set $set, $state) {
+                                        $code = IndividualQuote::select('code', 'id')->where('id', $state)->first()->code;
+                                        $set('code_individual_quote', $code);
+                                    })
                                     ->required()
                                     ->validationMessages([
                                         'required'  => 'Campo Requerido',
@@ -223,74 +237,71 @@ class AffiliationForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->live(),
-                                
                                 Fieldset::make('Asociar Agencia y/o Agente')
-                                ->schema([
-                                    Select::make('code_agency')
-                                        ->hidden(fn($state) => $state == 'TDG-100')
-                                        ->label('Lista de Agencias')
-                                        ->options(function (Get $get) {
-                                            return Agency::all()->pluck('name_corporative', 'code');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-c-building-library')
-                                        ->preload(),
-                                    Select::make('agent_id')
-                                        ->label('Agentes')
-                                        ->options(function (Get $get) {
-                                            if ($get('code_agency') == null) {
-                                                return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
-                                            }
-                                            return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('fontisto-person')
-                                        ->preload(),
-                                ])->columnSpanFull(),
+                                    ->schema([
+                                        Select::make('code_agency')
+                                            ->hidden(fn($state) => $state == 'TDG-100')
+                                            ->label('Lista de Agencias')
+                                            ->options(function (Get $get) {
+                                                return Agency::all()->pluck('name_corporative', 'code');
+                                            })
+                                            ->live()
+                                            ->searchable()
+                                            ->prefixIcon('heroicon-c-building-library')
+                                            ->preload(),
+                                        Select::make('agent_id')
+                                            ->label('Agentes')
+                                            ->options(function (Get $get) {
+                                                if ($get('code_agency') == null) {
+                                                    return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
+                                                }
+                                                return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                            })
+                                            ->live()
+                                            ->searchable()
+                                            ->prefixIcon('fontisto-person')
+                                            ->preload(),
+                                    ])->columnSpanFull(),
 
                                 Fieldset::make('Información adicional de la Afiliación')
-                                ->schema([
-                                    Select::make('business_unit_id')
-                                        ->label('Unidad de Negocio')
-                                        ->options(function (Get $get) {
-                                            return BusinessUnit::all()->pluck('definition', 'id');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-c-building-library')
-                                        ->preload(),
-                                    Select::make('business_line_id')
-                                        ->label('Lineas de Servicio')
-                                        ->options(function (Get $get) {
-                                            if ($get('business_unit_id') == null) {
-                                                return [];
-                                            }
-                                            return BusinessLine::where('business_unit_id', $get('business_unit_id'))->pluck('definition', 'id'); //Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('fontisto-person')
-                                        ->preload(),
-                                    Select::make('service_providers')
-                                        ->label('Provvedor(es) de Servicios')
-                                        ->multiple()
-                                        ->options(ServiceProvider::all()->pluck('name', 'name'))
-                                        ->searchable()
-                                        ->prefixIcon('fontisto-person')
-                                        ->preload(),
-                                ])->columnSpanFull()->columns(3),
-
+                                    ->schema([
+                                        Select::make('business_unit_id')
+                                            ->label('Unidad de Negocio')
+                                            ->options(function (Get $get) {
+                                                return BusinessUnit::all()->pluck('definition', 'id');
+                                            })
+                                            ->live()
+                                            ->searchable()
+                                            ->prefixIcon('heroicon-c-building-library')
+                                            ->preload(),
+                                        Select::make('business_line_id')
+                                            ->label('Lineas de Servicio')
+                                            ->options(function (Get $get) {
+                                                if ($get('business_unit_id') == null) {
+                                                    return [];
+                                                }
+                                                return BusinessLine::where('business_unit_id', $get('business_unit_id'))->pluck('definition', 'id'); //Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                            })
+                                            ->live()
+                                            ->searchable()
+                                            ->prefixIcon('fontisto-person')
+                                            ->preload(),
+                                        Select::make('service_providers')
+                                            ->label('Provvedor(es) de Servicios')
+                                            ->multiple()
+                                            ->options(ServiceProvider::all()->pluck('name', 'name'))
+                                            ->searchable()
+                                            ->prefixIcon('fontisto-person')
+                                            ->preload(),
+                                    ])->columnSpanFull()->columns(3),
                                 Hidden::make('created_by')->default(Auth::user()->name),
-                                Hidden::make('status')->default('PRE-APROBADA'),
+                                Hidden::make('code_agency')->default('TDG-100'),
                                 Hidden::make('owner_code')->default('TDG-100'),
+                                Hidden::make('status')->default('PRE-APROBADA'),
                             ])
                         ]),
                     Step::make('Titular')
                         ->description('Información del titular')
-                        // ->icon(Heroicon::User)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(3)->schema([
                                 TextInput::make('full_name_ti')
@@ -321,6 +332,7 @@ class AffiliationForm
                                         'numeric'   => 'El campo es numerico',
                                     ])
                                     ->required(),
+
                                 Select::make('sex_ti')
                                     ->label('Sexo')
                                     ->live()
@@ -349,6 +361,17 @@ class AffiliationForm
                                     ->label('Email')
                                     ->prefixIcon('heroicon-s-at-symbol')
                                     ->email()
+                                    ->required()
+                                    ->unique(
+                                        ignoreRecord: true,
+                                        table: 'affiliations',
+                                        column: 'email_ti',
+                                    )
+                                    ->validationMessages([
+                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
+                                        'required'  => 'Campo requerido',
+                                        'email'     => 'El campo es un email',
+                                    ])
                                     ->maxLength(255),
                                 TextInput::make('adress_ti')
                                     ->label('Dirección')
@@ -451,8 +474,6 @@ class AffiliationForm
                     Step::make('Afiliados')
                         ->hidden(fn(Get $get) => !$get('feedback'))
                         ->description('Data de afiliados')
-                        // ->icon(Heroicon::UserGroup)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Repeater::make('affiliates')
                                 ->label('Información de afiliados')
@@ -462,6 +483,7 @@ class AffiliationForm
                                             Fieldset::make('Información personal del afiliado')
                                                 ->schema([
                                                     TextInput::make('full_name')
+                                                        ->label('Nombre y Apellido')
                                                         ->afterStateUpdatedJs(<<<'JS'
                                                             $set('adress_ti', $state.toUpperCase());
                                                         JS)
@@ -472,6 +494,7 @@ class AffiliationForm
                                                         ->live(onBlur: true)
                                                         ->maxLength(255),
                                                     TextInput::make('nro_identificacion')
+                                                        ->label('Número de Identificación')
                                                         ->numeric()
                                                         ->unique(
                                                             ignoreRecord: true,
@@ -488,6 +511,7 @@ class AffiliationForm
                                                             'required'  => 'Campo Requerido',
                                                         ]),
                                                     Select::make('sex')
+                                                        ->label('Sexo')
                                                         ->options([
                                                             'MASCULINO' => 'MASCULINO',
                                                             'FEMENINO' => 'FEMENINO',
@@ -497,6 +521,7 @@ class AffiliationForm
                                                             'required'  => 'Campo Requerido',
                                                         ]),
                                                     DatePicker::make('birth_date')
+                                                        ->label('Fecha de Nacimiento')
                                                         ->displayFormat('d-m-Y')
                                                         ->format('d-m-Y')
                                                         ->required()
@@ -539,11 +564,100 @@ class AffiliationForm
                                 })
                                 ->addActionLabel('Agregar afiliado')
                         ]),
+                    Step::make('Declaración de Condiciones Médicas')
+                        ->hidden(fn(Get $get) => $get('plan_id') != 3)
+                        ->description('Data de afiliados')
+                        ->schema([
+                            Fieldset::make('Cuestionario de salud')
+                                ->schema([
+                                    Radio::make('cuestion_1')
+                                        ->label('¿Usted y el grupo de beneficiarios solicitantes, gozan de buena salud?')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_2')
+                                        ->label('¿Usted o el grupo de beneficiarios presentan alguna condición médica o congénita?')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_3')
+                                        ->label('¿Usted o el grupo de beneficiario ha sido intervenido quirúrgicamente? ')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_4')
+                                        ->label('¿Usted o el grupo de beneficiario padece o ha padecido alguna enfermedad?')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_5')
+                                        ->label('Enfermedades Cardiovasculares, tales como; Hipertensión Arterial, Ataque cardíaco, Angina o dolor de pecho,
+                                                    Soplo Cardíaco, Insuficiencia Cardíaca Congestiva o desórdenes del corazón o sistema circulatorio.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_6')
+                                        ->label('Enfermedades Cerebrovasculares, tales como: Desmayos, confusión, parálisis de miembros, dificultad para
+                                                    hablar, articular y entender, Accidente Cerebro-vascular (ACV). Cefalea o migraña. Epilepsia o Convulsiones.
+                                                    Otros trastornos o enfermedad del Cerebro o Sistema Nervioso.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_7')
+                                        ->label('Enfermedades Respiratorias, tales como: Asma Bronquial, Bronquitis, Bronquiolitis, Enfisema, Neumonía, Enfer-
+                                                    medad pulmonar Obstructiva Crónica (EPOC) u otras enfermedades del Sistema Respiratorio.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_8')
+                                        ->label('Enfermedades o Trastornos Endocrinos tales como: Diabetes Mellitus, Bocio, hipertiroidismo, hipotiroidismo,
+                                                Tiroiditis, Resistencia a la insulina, enfermedad de Cushing, cáncer de tiroides.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_9')
+                                        ->label('Enfermedades Gastrointestinales como: Litiasis vesicular, Cólico Biliar, Úlcera gástrica, gastritis, Hemorragia
+                                                digestivas, colitis, hemorroides, Apendicitis, Peritonitis, Pancreatitis u otros desórdenes del estómago, intestino,
+                                                hígado o vesícula biliar.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_10')
+                                        ->label('Enfermedades Renales: Litiasis renal, Cólico nefrítico, Sangre en la orina o Hematuria, Cistitis, Infecciones
+                                                urinarias, Pielonefritis, Insuficiencia renal aguda. Otras enfermedades del riñón, vejiga o próstata.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_11')
+                                        ->label('Enfermedades Osteoarticulares, Artrosis, Artritis reumatoide, Traumatismo craneoencefálico, Fracturas óseas,
+                                                Luxaciones o esguinces, tumores óseos, u otros trastornos de los músculos, articulaciones o columna vertical o
+                                                espalda.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_12')
+                                        ->label('¿Ha sufrido o padece de alguna enfermedad de la Piel como: Dermatitis, Celulitis, Abscesos cutáneos, quistes,
+                                                tumores o cáncer? ,Quemaduras o Heridas Complicadas.')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_13')
+                                        ->label('¿Padece de alguna enfermedad o desorden de los ojos, oídos, nariz o garganta?')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_14')
+                                        ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamen-
+                                                tosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_15')
+                                        ->label('¿Usted o alguno de los solicitantes, toma algún tipo de medicamentos por tratamiento prolongado?')
+                                        ->boolean()
+                                        ->inline(),
+                                    Radio::make('cuestion_16')
+                                        ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamen-
+                                                tosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?')
+                                        ->boolean()
+                                        ->inline(),
+                                ])->columns(1)->columnSpanFull(),
+                            Fieldset::make('Información Adicional')
+                                ->schema([
+                                    Textarea::make('observations_cuestions')
+                                        ->label('Observaciones adicionales')
+                                        ->helperText('En caso de haber respondido afirmativamente alguna de las preguntas de la DECLARACIÓN CONDICIONES MÉDICAS, indique la pregunta que
+                                                        corresponda, especifique la persona solicitante e indique detalles como: Diagnistico/Enfermedad, Fecha y Condicion actual.')
+                                ])->columnSpanFull()->columns(1),
+                        ])->columnSpanFull(),
                     Step::make('Información Adicional')
-                        ->hiddenOn('edit')
                         ->description('Datos del Pagador')
-                        // ->icon(Heroicon::ClipboardDocumentList)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Grid::make(1)
                                 ->schema([
@@ -710,10 +824,7 @@ class AffiliationForm
                                 ])->columns(3)->hidden(fn(Get $get) => $get('feedback_dos')),
                         ]),
                     Step::make('Acuerdo y condiciones')
-                        ->hiddenOn('edit')
                         ->description('Leer y aceptar las condiciones')
-                        // ->icon(Heroicon::ShieldCheck)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {

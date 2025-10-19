@@ -17,7 +17,7 @@ class AffiliationCorporateChart extends ChartWidget
 
     protected static ?int $sort = 4;
 
-    protected ?string $maxHeight = '280px';
+    protected ?string $maxHeight = '300px';
 
     protected function getFilters(): ?array
     {
@@ -64,8 +64,8 @@ class AffiliationCorporateChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Afiliaciones Individuales',
-                    // 'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
-                    'data' => [30, 10, 5, 2, 21, 32, 45, 74, 65, 45, 77, 89],
+                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    // 'data' => [30, 10, 5, 2, 21, 32, 45, 74, 65, 45, 77, 89],
                     'backgroundColor' => [
                         '#D2FFD2', // Rosado muy claro
                         '#E6FFF0', // Verde menta claro

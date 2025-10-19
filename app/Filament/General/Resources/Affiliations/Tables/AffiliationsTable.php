@@ -29,6 +29,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
@@ -51,86 +52,188 @@ class AffiliationsTable
             ->description('Al seleccionar varias afiliaciones, encuentras un acceso rápido para realizar un pago masivo. Haciendo click en el botón "Abrir acciones" se desplegará "Pagar Afiliaciones".')
             ->columns([
                 TextColumn::make('code')
-                    ->label('Código de afiliación')
-                    ->badge()
-                    ->color('success')
-                    ->icon('heroicon-m-tag')
-                    ->searchable(),
-                TextColumn::make('agent.name')
-                    ->label('Agente')
+                    ->label('Codigo')
+                    ->icon('heroicon-s-user-group')
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('plan.description')
-                    ->label('Plan')
+                TextColumn::make('individual_quote.code')
+                    ->label('Nro. de cotización')
                     ->badge()
-                    ->color('primary')
+                    ->color('verde')
+                    ->icon('heroicon-m-tag')
                     ->searchable(),
-                TextColumn::make('coverage.price')
-                    ->label('Cobertura')
-                    ->numeric()
-                    ->suffix('US$')
+                TextColumn::make('accountManager.name')
+                    ->label('Account Manager')
+                    ->icon('heroicon-o-shield-check')
                     ->badge()
-                    ->color('success')
-                    ->searchable(),
-                TextColumn::make('payment_frequency')
-                    ->label('Frecuencia de pago')
-                    ->alignCenter()
+                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            '-----' => 'info',
+                            default => 'success',
+                        };
+                    }),
+                TextColumn::make('agency.name_corporative')
+                    ->label('CO-Agencia')
                     ->badge()
-                    ->color('primary')
+                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
+                    ->color('azulOscuro')
                     ->searchable(),
-                TextColumn::make('full_name_ti')
-                    ->label('Titular')
+                TextColumn::make('agent.name')
+                    ->label('Nombre del agente')
                     ->badge()
-                    ->color('info')
-                    ->icon('fluentui-person-available-16')
+                    ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
+                    ->color('azulOscuro')
+                    ->icon('heroicon-m-user')
                     ->searchable(),
-                TextColumn::make('nro_identificacion_ti')
-                    ->label('Cédula titular')
-                    ->badge()
-                    ->color('info')
-                    ->icon('fluentui-person-available-16')
-                    ->searchable(),
-                TextColumn::make('full_name_payer')
-                    ->label('Pagador')
-                    ->badge()
-                    ->color('info')
-                    ->icon('fluentui-money-hand-20')
-                    ->searchable(),
-                TextColumn::make('nro_identificacion_payer')
-                    ->label('Cedula pagador')
-                    ->badge()
-                    ->color('info')
-                    ->icon('fluentui-money-hand-20')
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->label('Fecha de registro')
-                    ->badge()
-                    ->dateTime('d/m/Y h:i:s a')
-                    ->searchable(),
+
+                //...  
+                ColumnGroup::make('Plan Afiliado', [
+                    TextColumn::make('plan.description')
+                        ->label('Plan')
+                        ->alignCenter()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('coverage.price')
+                        ->label('Covertura')
+                        ->alignCenter()
+                        ->numeric()
+                        ->badge()
+                        ->color('success')
+                        ->suffix(' US$')
+                        ->searchable(),
+                    TextColumn::make('payment_frequency')
+                        ->label('Frecuencia de pago')
+                        ->alignCenter()
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('family_members')
+                        ->label('Poblacion')
+                        ->alignCenter()
+                        ->suffix(' persona(s)')
+                        ->badge()
+                        ->color('success')
+                        ->searchable(),
+                    TextColumn::make('fee_anual')
+                        ->label('Tarifa Anual')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('warning')
+                        ->searchable(),
+                    //total_amount
+                    TextColumn::make('total_amount')
+                        ->label('Total a Pagar')
+                        ->alignCenter()
+                        ->money()
+                        ->badge()
+                        ->color('warning')
+                        ->searchable(),
+                ]),
+
+                //...
+                ColumnGroup::make('Información del Titular', [
+                    TextColumn::make('full_name_ti')
+                        ->label('Nombre titular')
+                        ->badge()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                    TextColumn::make('nro_identificacion_ti')
+                        ->label('CI. titular')
+                        ->badge()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                    TextColumn::make('sex_ti')
+                        ->label('Sexo')
+                        ->searchable(),
+                    TextColumn::make('birth_date_ti')
+                        ->label('Fecha de nacimiento')
+                        ->searchable(),
+                    TextColumn::make('phone_ti')
+                        ->label('Telefono titular')
+                        ->icon('heroicon-m-phone')
+                        ->searchable(),
+                    TextColumn::make('email_ti')
+                        ->label('Email titular')
+                        ->icon('fontisto-email')
+                        ->searchable(),
+                    TextColumn::make('adress_ti')
+                        ->label('Direccion')
+                        ->icon('fontisto-map-marker-alt')
+                        ->searchable(),
+                    TextColumn::make('city.definition')
+                        ->label('Ciudad')
+                        ->searchable(),
+                    TextColumn::make('state.definition')
+                        ->label('Estado')
+                        ->searchable(),
+                    TextColumn::make('region_ti')
+                        ->label('Region')
+                        ->searchable(),
+                    TextColumn::make('country.name')
+                        ->label('Pais')
+                        ->searchable(),
+                ]),
+
+                //...
+                ColumnGroup::make('Información del Tomador', [
+                    TextColumn::make('full_name_payer')
+                        ->label('Nombre y Apellido')
+                        ->badge()
+                        ->alignCenter()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                    TextColumn::make('nro_identificacion_payer')
+                        ->label('Numero de Identificación')
+                        ->badge()
+                        ->alignCenter()
+                        ->color('azulOscuro')
+                        ->searchable(),
+                ]),
+
+                //...
                 TextColumn::make('created_by')
-                    ->label('Agente')
+                    ->label('Creado por')
                     ->searchable(),
-                TextColumn::make('family_members')
-                    ->label('Afiliados')
-                    ->suffix(' Persona(s)')
-                    ->searchable(),
+
                 TextColumn::make('activated_at')
-                    ->label('Activado')
+                    ->label('Fecha de Activación')
+                    ->color('warning')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
                     ->searchable(),
+
+                TextColumn::make('effective_date')
+                    ->label('Vigencia')
+                    ->color('success')
+                    ->icon('heroicon-s-calendar')
+                    ->badge()
+                    ->searchable(),
+
                 TextColumn::make('status')
                     ->label('Estatus')
+
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
-                            'PRE-APROBADA' => 'success',
-                            'ACTIVA'       => 'success',
-                            'PENDIENTE'    => 'warning',
-                            'EXCLUIDO'     => 'danger',
-                            'EJECUTADA'    => 'success',
+                            'PRE-APROBADA'          => 'success',
+                            'ACTIVA'                => 'success',
+                            'PENDIENTE'             => 'warning',
+                            'EXCLUIDO'              => 'danger',
                         };
                     })
-                    ->searchable(),
+                    ->searchable()
+                    ->icon(function (mixed $state): ?string {
+                        return match ($state) {
+                            'PRE-APROBADA'          => 'heroicon-c-information-circle',
+                            'ACTIVA'                => 'heroicon-s-check-circle',
+                            'PENDIENTE'             => 'heroicon-s-exclamation-circle',
+                            'EXCLUIDO'              => 'heroicon-c-x-circle',
+                        };
+                    }),
             ])
             ->filters([
                 Filter::make('created_at')
@@ -163,7 +266,7 @@ class AffiliationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    /**EDIT */
+                /**EDIT */
 
                     /**UPLOAD */
                     Action::make('upload')
@@ -176,38 +279,31 @@ class AffiliationsTable
                             /** INFORMACION PRINCIPAL */
                             Fieldset::make('INFORMACION PRINCIPAL')
                                 ->schema([
-                                    Grid::make(1)->schema([
+                                    Grid::make(2)->schema([
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
                                             ->helperText(function ($state, $set, Get $get, Affiliation $record) {
-                                                return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . isset($record->coverage->price) ? $record->coverage->price : 'N/A' . ' - Frecuencia: ' . $record->payment_frequency;
+                                                // dd($record->coverage_id);
+                                                if (isset($record->coverage_id)) {
+                                                    return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . $record->coverage->price . ' - Frecuencia: ' . $record->payment_frequency;
+                                                }
+                                                return 'Plan: ' . $record->plan->description . ' - Frecuencia: ' . $record->payment_frequency;
                                             })
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, Affiliation $record) {
-                                                $amount = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)
-                                                    ->where('plan_id', $record->plan_id)
-                                                    ->where('coverage_id', $record->coverage_id)
-                                                    ->first();
-
-                                                if ($record->payment_frequency == 'ANUAL') {
-                                                    return $amount->subtotal_anual;
-                                                }
-
-                                                if ($record->payment_frequency == 'TRIMESTRAL') {
-                                                    return $amount->subtotal_quarterly;
-                                                }
-
-                                                if ($record->payment_frequency == 'SEMESTRAL') {
-                                                    return $amount->subtotal_biannual;
-                                                }
-
-                                                return null;
+                                                /**
+                                                 * Se modifica la logia para buscar el monto a pagar en la tabla 
+                                                 * de afiliaciones y no en la tabla de cotizaciones
+                                                 */
+                                                $amount = Affiliation::where('id', $record->id)->first();
+                                                return $amount->total_amount;
                                             })
                                             ->numeric()
                                             ->live(),
-
-
-
+                                        DatePicker::make('date_payment_voucher')
+                                            ->label('Fecha del Comprobante de Pago')
+                                            ->required()
+                                            ->format('d/m/Y')
                                     ])->columnSpanFull(),
                                 ])->columnSpanFull(),
 

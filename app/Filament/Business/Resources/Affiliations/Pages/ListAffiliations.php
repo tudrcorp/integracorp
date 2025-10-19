@@ -2,14 +2,22 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Pages;
 
-use App\Filament\Business\Resources\Affiliations\AffiliationResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use App\Filament\Business\Resources\Affiliations\AffiliationResource;
+use App\Filament\Business\Resources\Affiliations\Widgets\StatsOverview;
 
 class ListAffiliations extends ListRecords
 {
     protected static string $resource = AffiliationResource::class;
 
     protected static ?string $title = 'Afiliaciones Individuales';
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            StatsOverview::class
+        ];
+    }
 
 }

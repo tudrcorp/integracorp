@@ -71,6 +71,34 @@ class AffiliationCorporateInfolist
                                     ->color('primary'),
                             ])->columnSpanFull()->columns(5),
 
+                        Fieldset::make('Información de Pagos')
+                            ->schema([
+                                TextEntry::make('payment_frequency')
+                                    ->badge()
+                                    ->color('warning')
+                                    ->label('Frecuencia de Pago:'),
+                                TextEntry::make('fee_anual')
+                                    ->badge()
+                                    ->color('warning')
+                                    ->label('Costo Anual:'),
+                                TextEntry::make('total_amount')
+                                    ->badge()
+                                    ->color('warning')
+                                    ->label('Total a Pagar:'),
+                                TextEntry::make('vaucher_ils')
+                                    ->label('Vaucher ILS:')
+                                    ->badge()
+                                    ->color('success'),
+                                TextEntry::make('date_payment_initial_ils')
+                                    ->label('Fecha de Inicio:')
+                                    ->badge()
+                                    ->color('success'),
+                                TextEntry::make('date_payment_final_ils')
+                                    ->label('Fecha de Vencimiento:')
+                                    ->badge()
+                                    ->color('success'),
+                            ])->columnSpanFull()->columns(3),
+
                     ])->columnSpanFull(),
             ]);
     }

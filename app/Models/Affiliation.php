@@ -196,7 +196,7 @@ class Affiliation extends Model
             if (isset($record->agent)) {
                 $name_agent = $record->agent->name;
             } else {
-                $name_agent = $record->agency->name_corporative;
+                $name_agent = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
             }
 
             $plan = $record->plan->description;
@@ -261,7 +261,7 @@ class Affiliation extends Model
 
     public function sendCertificateOnlyHolder($record, $afiliates)
     {
-        // dd($record->toArray(), $afiliates);
+
         try {
 
             $data = $record->toArray();
@@ -271,7 +271,7 @@ class Affiliation extends Model
             if (isset($record->agent)) {
                 $name_agent = $record->agent->name;
             } else {
-                $name_agent = $record->agency->name_corporative;
+                $name_agent = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
             }
 
             $plan = $record->plan->description;

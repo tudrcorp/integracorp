@@ -228,7 +228,7 @@ class AffiliationsTable
                             /** INFORMACION PRINCIPAL */
                             Fieldset::make('INFORMACION PRINCIPAL')
                                 ->schema([
-                                    Grid::make(1)->schema([
+                                    Grid::make(2)->schema([
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
                                             ->helperText(function ($state, $set, Get $get, Affiliation $record) {
@@ -261,9 +261,9 @@ class AffiliationsTable
                                             })
                                             ->numeric()
                                             ->live(),
-
-
-
+                                        DatePicker::make('date_payment_voucher')
+                                            ->label('Fecha del Comprobante de Pago')
+                                            ->format('d/m/Y')
                                     ])->columnSpanFull(),
                                 ])->columnSpanFull(),
 

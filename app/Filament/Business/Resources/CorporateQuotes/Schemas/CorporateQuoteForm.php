@@ -52,16 +52,11 @@ class CorporateQuoteForm
                                                 ->live()
                                                 ->inline()
                                                 ->options([
-                                                    'BASICO' => 'BASICO',
-                                                    'DRESS-TAYLOR' => 'DRESS-TAYLOR',
+                                                    'BASICO' => 'BÁSICA',
+                                                    // 'DRESS-TAILOR' => 'DRESS-TAYLOR / PLANES A LA MEDIDA',
                                                 ])
                                                 ->required()
-                                                ->default(function () {
-                                                    if (request('record') != null) {
-                                                        return 'DRESS-TAYLOR';
-                                                    }
-                                                    return 'BASICO';
-                                                })
+                                                ->default('BASICO')
 
                                         ])->columnSpanFull(),
                                     Grid::make(4)
@@ -80,6 +75,7 @@ class CorporateQuoteForm
                                                 ->disabled()
                                                 ->dehydrated()
                                                 ->maxLength(255),
+
                                         ])->columnSpanFull(),
                                     Grid::make(4)
                                         ->schema([
@@ -90,16 +86,10 @@ class CorporateQuoteForm
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
                                                 ])
-                                                ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
-                                                    $set('full_name', strtoupper($state));
-                                                })
-                                                ->live(onBlur: true)
-                                                ->default(function () {
-                                                    if (request('record') != null) {
-                                                        return CorporateQuoteRequest::find(request('record'))->full_name;
-                                                    }
-                                                    return '';
-                                                }),
+                                                ->maxLength(255)
+                                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('full_name', $state.toUpperCase());
+                                                JS),
 
                                             Select::make('country_code')
                                                 ->label('Código de país')
@@ -141,45 +131,19 @@ class CorporateQuoteForm
                                                 ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
                                                 ->required()
                                                 ->autosize()
-                                                ->default(function () {
-                                                    if (session('quote_type') != null) {
-                                                        if (session('quote_type') == 'dress-taylor') {
-                                                            return session('quote')->observations;
-                                                        }
-                                                    }
-                                                    return '';
-                                                })
                                                 ->hidden(fn(Get $get) => $get('type') == 'BASICO')
 
                                         ])->columnSpanFull(),
-                                    Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
-                                    Select::make('code_agency')
-                                        ->label('Lista de Agencias')
-                                        ->options(function (Get $get) {
-                                            return Agency::all()->pluck('name_corporative', 'code');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('heroicon-c-building-library')
-                                        ->preload(),
-                                    Select::make('agent_id')
-                                        ->label('Agentes')
-                                        ->options(function (Get $get) {
-                                            if ($get('code_agency') == null) {
-                                                return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
-                                            }
-                                            return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                        })
-                                        ->live()
-                                        ->searchable()
-                                        ->prefixIcon('fontisto-person')
-                                        ->preload(),
+                                    Hidden::make('code_agency')->default('TDG-100'),
+                                    Hidden::make('owner_code')->default('TDG-100'),
+                                    Hidden::make('status')->default('PRE-APROBADA'),
                                 ])
                                 ->columns(3)
                                 ->columnSpanFull()
                         ]),
                     Step::make('PLANES A COTIZAR')
+                        ->hidden(fn(Get $get) => $get('type') == 'DRESS-TAILOR')
                         ->description('Plan(es) que desea cotizar:')
                         ->schema([
                             Section::make('plans')
@@ -192,7 +156,6 @@ class CorporateQuoteForm
                                         ->required()
                                         ->live()
                                         ->options(function () {
-
                                             $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
 
                                             //agregar el plan livewire
@@ -209,10 +172,19 @@ class CorporateQuoteForm
                                 ])
                         ]),
                     Step::make('RANGO DE EDAD')
+                        ->hidden(fn(Get $get) => $get('type') == 'DRESS-TAILOR')
                         ->description('Rango de edad y/o población:')
                         ->schema([
                             Section::make('age_range')
                                 ->heading('¡Listo para el último paso! 🏁')
+                                // ->description(new HtmlString(Blade::render(<<<BLADE
+                                //         <div class="fi-section-header-description">
+                                //             Por favor, selecciona el rango de edades de los beneficiarios. Al hacerlo, habrás finalizado la configuración principal de la cotización y estarás a un clic de generar el resultado final.
+                                //             <br>
+                                //             ¡Gracias por tu gran trabajo!
+                                //         </div>
+                                //     BLADE))
+                                // )
                                 ->schema([
 
                                     /**
@@ -249,20 +221,7 @@ class CorporateQuoteForm
                                                 ->options(function (Get $get) {
                                                     return AgeRange::where('plan_id', 1)->pluck('range', 'id');
                                                 })->columnSpan(4),
-                                            Select::make('total_persons')
-                                                // ->label(false)
-                                                ->options([
-                                                    1 => 1,
-                                                    2 => 2,
-                                                    3 => 3,
-                                                    4 => 4,
-                                                    5 => 5,
-                                                    6 => 6,
-                                                    7 => 7,
-                                                    8 => 8,
-                                                    9 => 9,
-                                                    10 => 10,
-                                                ])
+                                            TextInput::make('total_persons')
                                                 ->placeholder('Cantidad de personas'),
                                         ])->columns(2),
 
@@ -299,21 +258,7 @@ class CorporateQuoteForm
                                                 ->options(function (Get $get) {
                                                     return AgeRange::where('plan_id', 2)->pluck('range', 'id');
                                                 })->columnSpan(4),
-                                            Select::make('total_persons')
-                                                ->label(false)
-                                                // ->native(false)
-                                                ->options([
-                                                    1 => 1,
-                                                    2 => 2,
-                                                    3 => 3,
-                                                    4 => 4,
-                                                    5 => 5,
-                                                    6 => 6,
-                                                    7 => 7,
-                                                    8 => 8,
-                                                    9 => 9,
-                                                    10 => 10,
-                                                ])
+                                            TextInput::make('total_persons')
                                                 ->placeholder('Cantidad de personas'),
                                         ])->columns(4),
 
@@ -350,19 +295,7 @@ class CorporateQuoteForm
                                                 ->options(function (Get $get) {
                                                     return AgeRange::where('plan_id', 3)->pluck('range', 'id');
                                                 })->columnSpan(4),
-                                            Select::make('total_persons')
-                                                ->options([
-                                                    1 => 1,
-                                                    2 => 2,
-                                                    3 => 3,
-                                                    4 => 4,
-                                                    5 => 5,
-                                                    6 => 6,
-                                                    7 => 7,
-                                                    8 => 8,
-                                                    9 => 9,
-                                                    10 => 10,
-                                                ])
+                                            TextInput::make('total_persons')
                                                 ->placeholder('Cantidad de personas'),
                                         ])->columns(2),
 
@@ -386,7 +319,7 @@ class CorporateQuoteForm
                                                 ->live()
                                                 ->options(function (Get $get) {
                                                     Log::info($get('plan'));
-                                                    return Plan::all()->pluck('description', 'id');
+                                                    return Plan::where('type', 'BASICO')->pluck('description', 'id');
                                                 })->columnSpan(3),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')
@@ -415,7 +348,7 @@ class CorporateQuoteForm
                                 ])
                         ])
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -423,16 +356,9 @@ class CorporateQuoteForm
                         Crear cotización
                     </x-filament::button>
                 BLADE)))
-                ->columnSpanFull()
+                    ->hiddenOn('edit')
+                    ->columnSpanFull(),
             ]);
     }
 
-    public function prueba(Get $get, Set $set, $state)
-    {
-        $this->quote_plan_id = $get('plan_id');
-        Log::info($this->quote_plan_id);
-        Log::info($get('plan_id'));
-        Log::info($get('age_range_id'));
-        Log::info($get('total_persons'));
-    }
 }

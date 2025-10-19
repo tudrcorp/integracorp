@@ -71,10 +71,9 @@ class IndividualQuoteForm
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
                                                 ])
-                                                ->maxLength(255)->afterStateUpdated(function (Set $set, $state) {
-                                                    $set('full_name', strtoupper($state));
-                                                })
-                                                ->live(onBlur: true),
+                                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('full_name', $state.toUpperCase());
+                                                JS),
 
                                             Select::make('country_code')
                                                 ->label('Código de país')
@@ -123,7 +122,7 @@ class IndividualQuoteForm
                                         
                                         //...
                                         //Jerarquia
-                                        Hidden::make('status')->default('ACTIVA-PENDIENTE'),
+                                        Hidden::make('status')->default('PRE-APROBADA'),
                                         Hidden::make('created_by')->default(Auth::user()->name),
                                         Hidden::make('code_agency')->default(Auth::user()->code_agency),
                                         Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),

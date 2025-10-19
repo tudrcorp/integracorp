@@ -11,5 +11,12 @@ class ViewBenefit extends ViewRecord
 {
     protected static string $resource = BenefitResource::class;
 
+    protected function getActions(): array
+    {
+        return [
+            EditAction::make(),
+            CreateAction::make(),
+        ];
+    }
     
 }

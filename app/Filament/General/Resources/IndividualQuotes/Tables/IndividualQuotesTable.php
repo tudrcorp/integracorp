@@ -199,12 +199,12 @@ class IndividualQuotesTable
                                 $count_plans = $record->detailsQuote()->distinct()->pluck('plan_id');
                                 // dd($count_plans[0]);
                                 if ($count_plans->count() == 1) {
-                                    return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->id, 'plan_id' => $count_plans[0]]);
+                                    return redirect()->route('filament.general.resources.affiliations.create', ['id' => $record->id, 'plan_id' => $count_plans[0]]);
                                 }
 
-                                return redirect()->route('filament.agents.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
+                                return redirect()->route('filament.general.resources.affiliations.create', ['id' => $record->id, 'plan_id' => null]);
                             } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.emit', $th->getMessage());
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'general.IndividualQuoteResource.action.emit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body($th->getMessage())
