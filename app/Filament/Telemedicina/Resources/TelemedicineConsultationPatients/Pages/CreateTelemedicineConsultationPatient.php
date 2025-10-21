@@ -40,6 +40,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
      * El paciente se obtiene de la sesión (como se vio en errores anteriores).
      */
     protected $patient;
+    protected $case;
 
     public function mount(): void
     {
@@ -48,6 +49,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
         // 2. Obtener el paciente desde la sesión
         $this->patient = session()->get('patient');
+        $this->case = session()->get('case');
 
         if (!$this->patient) {
             // Manejar si el paciente no está en sesión (por seguridad)
@@ -94,6 +96,16 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         ->color('critico')
                         ->button()
                         ->dispatch('undoEditingPost')
+                        ->hidden(function () {
+                            $consultation = TelemedicineConsultationPatient::where('telemedicine_case_id', $this->case->id)
+                                ->where('telemedicine_case_code', $this->case->code)
+                                ->where('status', 'CONSULTA INICIAL')
+                                ->count();
+                            if($consultation > 0){
+                                return true;
+                            }
+                            return false;
+                        })
                         ->close(),
                 ])
                 ->icon('heroicon-s-exclamation-triangle')
@@ -254,6 +266,25 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->hidden(function () {
                     $patient = session()->get('patient');
                     $records = $patient->telemedicineConsultationPatients()->exists();
+                    return !$records;
+                }),
+
+            Action::make('consultation_history_case')
+                ->label('Últimos Casos')
+                ->button()
+                ->icon('heroicon-s-clipboard-document-list')
+                ->color('primary')
+                ->slideOver()
+                ->modalHeading('Historial de Casos del Paciente')
+                ->modalContent(function () {
+                    $patient = session()->get('patient');
+                    $records = $patient?->telemedicineCases()->orderByDesc('created_at')->get();
+                    // dd($records);
+                    return view('table-telemedicine-cases', ['records' => $records]);
+                })
+                ->hidden(function () {
+                    $patient = session()->get('patient');
+                    $records = $patient->telemedicineCases()->exists();
                     return !$records;
                 }),
             

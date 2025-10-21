@@ -105,83 +105,7 @@
         }
 
         /* Estilos de la tabla */
-        table {
-            width: 100%;
-            /* Ancho total */
-            border-collapse: separate;
-            /* Necesario para bordes redondeados */
-            border-spacing: 0;
-            /* Elimina el espacio entre celdas */
-            margin: 0 auto;
-            /* Centra la tabla */
-            max-width: 800px;
-            /* Ancho máximo */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            /* Sombra suave */
-            font-size: 14px;
-        }
-
-        /* Encabezados de columna */
-        thead tr th {
-            background-color: #cccccc;
-            /* Color gris */
-            color: #333333;
-            /* Texto oscuro */
-            padding: 5px;
-            /* Espaciado interno */
-            text-align: center;
-            /* Alineación centrada */
-            border-radius: 30px;
-            /* Esquinas redondeadas solo en la parte superior */
-        }
-
-        /* Celdas de la tabla */
-        tbody tr td {
-            background-color: #e6f7ff;
-            /* Azul muy claro */
-            color: #333333;
-            /* Texto oscuro */
-            padding: 5px;
-            /* Espaciado interno */
-            text-align: center;
-            /* Alineación centrada */
-            border-radius: 30px;
-            /* Esquinas redondeadas */
-        }
-
-        /* Separación entre filas */
-        tbody tr {
-            margin-bottom: 5px;
-            /* Espacio entre filas */
-        }
-
-        /* Efecto hover en las filas */
-        tbody tr:hover {
-            background-color: #d9edff;
-            /* Cambia el color al pasar el cursor */
-        }
-
-        .table_info_ti {
-            width: 100%;
-            /* Ancho total */
-            font-size: 14px;
-        }
-
-        .tr_table_info_ti .td_table_info_ti {
-
-            background-color: #ffffff;
-            /* Color gris */
-            text-align: left;
-            /* Alineación centrada */
-            background-color: none;
-            padding: 2px;
-            /* Espaciado interno */
-
-        }
-
-        .tr_table_info_ti .td_table_info_ti p {
-            line-height: 0.5;
-        }
+        
 
         footer {
             display: flex;
@@ -193,138 +117,96 @@
             text-align: center;
         }
 
+        .cover {
+            position: relative;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* page-break-after: always; */
+        }
+
+
     </style>
 
 
 </head>
+
 <body>
+    <!-- Primera página: Imagen de fondo -->
+    <div class="cover" style="background-image: url('{{ public_path('storage/telemedicina/fondoInforme.png') }}');">
+
+
+        <div style="position: absolute; top: 32px; left: 568px; margin-top: 0px; padding: 0px; margin-left: 0px">
+            <p class="sin-margen" style="font-size: 30px;">
+                <span style="color: #7ab2db; font-size: 22px; font-style: sans-serif; font-family: 'Helvetica', Century, sans-serif;">Informe Médico</span>
+            </p>
+        </div>
+
+        @php
+        // ** SIMULACIÓN DE DATOS **
+        // Asume que esta variable viene de tu componente o controlador
+        $movitoConsulta = "El paciente presenta un historial médico complejo.SDVDSNVKDSNVDKSSDJVBKJVVKEGVJEWGJESGFJDSHGFSJDHFGSDJHFDSGJDHSFGDSJHFGESJHFSDGFJHSFGDSJHFGDSJHFGDSJFHDGSFJHDSGFDJSHFGSDJHFGSDJHFGDSJHFDSGJSHFGSJHGFSD";
+
+        // Si la variable viene de la base de datos, debería estar disponible aquí.
+        // Ejemplo: $antecedentesTexto = $this->record->antecedentes_medicos;
+
+        @endphp
+
+
+        <div style="position: absolute; top: 200px; left: 60px; width: 600px; max-width: 100%; margin: 10px 0;">
+
+            <table style="
+            width: 650px;
+
+            border-collapse: collapse;
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            ">
+                {{-- Fila 1: Etiqueta Antecedentes --}}
+                <tr style="border: 1px solid #000000;">
+                    <td style="
+            padding: 2px 2px;
+            font-weight: bold;
+            text-transform: uppercase;
+            width: 100%;
+            border: 1px solid #000000;
+            ">
+                        Motivo de la Consulta
+                    </td>
+                </tr>
+
+                {{-- Fila 2: Campo de Texto (Contenido Dinámico) --}}
+                <tr>
+                    <td style="
+                        padding: 2px 2px;
+                        font-weight: bold;
+                        text-transform: uppercase;
+                        width: 100%;
+                        border: 1px solid #000000;
+                        /* pre-wrap respeta saltos de línea y ajusta el texto automáticamente */
+                        white-space: pre-wrap;
+                    ">
+                        {{ $movitoConsulta }}
+
+                    </td>
+                </tr>
+            </table>
+
+
+        </div>
+
+
+
+        
+
+    </div>
      
-    <div style="position: absolute; top: 45px; left: 50px; margin-top: 0px; padding: 0px; margin-left: 0px">
-        <img class="logo-top-left" src="{{ public_path('storage/logoNewPdfTDEC.png') }}" style="width: auto; height: 50px;" alt="">
-    </div>
-
-    {{-- Linea horizontal debajo del encabezado --}}
-    <div style="position: absolute; top: 78px; left: 59px; height: 2px; background-color: #add8e6; width: 670px; margin: 0; padding: 0;"></div>
-
-    {{-- Línea vertical derecha --}}
-    <div style="position: absolute; top: 78px; left: 728px; width: 2px; background-color: #add8e6; height: 100%; display: inline-block;"></div>
-  
-
-    <div style="position: absolute; top: 32px; left: 568px; margin-top: 0px; padding: 0px; margin-left: 0px">
-        <p class="sin-margen" style="font-size: 30px;">
-            <span style="color: #7ab2db; font-size: 22px; font-style: sans-serif; font-family: 'Helvetica', Century, sans-serif;">Informe Médico</span>
-        </p>
-    </div>
-
-    <div style="
-        position: absolute;
-        top: 80px;
-        right: 70px; /* ← Fija el borde DERECHO */
-        text-align: right;
-        font-family: 'Helvetica', sans-serif;
-        font-size: 15px;
-        padding: 4px 8px;
-        display: inline-block; /* ← clave: el ancho se ajusta al contenido */
-        max-width: 100%; /* evita que se salga del contenedor */
-    ">
-        Fecha: {{ now()->format('d/m/Y') }}<br>
-        Clave de Servicio: 78654-09<br>
-        Tipo de Servicio: Atencion Medica Domiciliaria
-    </div>
-
-    
-    <div style="
-        position: absolute;
-        top: 140px;
-        left: 50px; /* ← Fija el borde DERECHO */
-        text-align: left;
-        font-family: 'Helvetica', sans-serif;
-        font-size: 15px;
-        background-color: #ffffff; /* opcional: para ver el tamaño */
-        padding: 4px 8px;
-        display: inline-block; /* ← clave: el ancho se ajusta al contenido */
-        max-width: 100%; /* evita que se salga del contenedor */
-    ">
-        Nombre y Apellido: Gustavo Camacho<br>
-        Cedula de Identidad: 16007868
-    </div>
-
-    <div style=" position: absolute; top: 140px; left: 50px; text-align: left; font-family: 'Helvetica', sans-serif; font-size: 15px; background-color: #ffffff; padding: 4px 8px; display: inline-block; max-width: 100%;">
-        Nombre y Apellido: Gustavo Camacho<br>
-        Cedula de Identidad: 16007868
-    </div>
-
-    <div style=" position: absolute; top: 190px; left: 50px; text-align: left; font-family: 'Helvetica', sans-serif; font-size: 15px; background-color: #ffffff; padding: 4px 8px; display: inline-block; max-width: 100%;">
-        Motivo de la Consulta:
-    </div>
-    {{-- Linea horizontal debajo del encabezado --}}
-    <div style="position: absolute; top: 205px; left: 210px; height: 2px; background-color: #add8e6; width: 505px; margin: 0; padding: 0;"></div>
-    
-    <div style="position: absolute; top: 210px; left: 59px; width: 653px; padding: 0; margin: 0;">
-        <p style="
-            text-align: justify;
-            text-justify: inter-word;
-            font-family: 'Helvetica', Arial, sans-serif;
-            font-size: 15px;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            hyphens: auto;
-        ">
-        Dolor de cabeza muy fuerte
-        </p>
-    </div>
-
-
-
-    <div style=" position: absolute; top: 255px; left: 50px; text-align: left; font-family: 'Helvetica', sans-serif; font-size: 15px; background-color: #ffffff; padding: 4px 8px; display: inline-block; max-width: 100%;">
-        Enfermedad Actual:
-    </div>
-
-    {{-- Linea horizontal debajo del encabezado --}}
-    <div style="position: absolute; top: 269px; left: 190px; height: 2px; background-color: #add8e6; width: 520px; margin: 0; padding: 0;"></div>
-    
-    <div style="position: absolute; top: 280px; left: 59px; width: 653px; padding: 0; margin: 0;">
-        <p style="
-            text-align: justify;
-            text-justify: inter-word;
-            font-family: 'Helvetica', Arial, sans-serif;
-            font-size: 15px;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            hyphens: auto;
-        ">
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Debitis totam minus quis unde voluptate repellendus ratione at molestiae laboriosam laudantium harum, illum saepe, earum eveniet suscipit. Distinctio dignissimos nulla sed.
-        </p>
-    </div>
-
-
-    <div style=" position: absolute; top: 375px; left: 50px; text-align: left; font-family: 'Helvetica', sans-serif; font-size: 15px; background-color: #ffffff; padding: 4px 8px; display: inline-block; max-width: 100%;">
-        Antecedentes:
-    </div>
-
-    {{-- Linea horizontal debajo del encabezado --}}
-    <div style="position: absolute; top: 390px; left: 190px; height: 2px; background-color: #add8e6; width: 520px; margin: 0; padding: 0;"></div>
-    
-    <div style="position: absolute; top: 280px; left: 59px; width: 653px; padding: 0; margin: 0;">
-        <p style="
-            text-align: justify;
-            text-justify: inter-word;
-            font-family: 'Helvetica', Arial, sans-serif;
-            font-size: 15px;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            hyphens: auto;
-        ">
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Debitis totam minus quis unde voluptate repellendus ratione at molestiae laboriosam laudantium harum, illum saepe, earum eveniet suscipit. Distinctio dignissimos nulla sed.
-        </p>
-    </div>
-    <footer>
-        <img src="{{ public_path('storage/firma-pdf.png') }}" style="width: 35%" alt="">
-        <img src="{{ public_path('storage/bannerFooter.png') }}" style="width: 100%; margin-top: 5px" alt="">
-    </footer>
+        
     <script type="text/php">
         if ( isset($pdf) ) {
             $pdf->page_script('

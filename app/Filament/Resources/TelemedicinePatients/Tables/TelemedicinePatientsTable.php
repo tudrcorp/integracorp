@@ -216,27 +216,31 @@ class TelemedicinePatientsTable
                                     ->required()
                                     ->options(TelemedicineDoctor::all()->pluck('full_name', 'id')),
                                 Grid::make()
-                                    ->schema([
-                                        Textarea::make('reason')
-                                            ->label('Motivo de la consulta')
-                                            ->autosize()
-                                            ->required()
-                                            ->afterStateUpdatedJs(<<<'JS'
-                                                $set('reason', $state.toUpperCase());
-                                            JS)
-                                            ->helperText('Escriba el motivo de la llamada del paciente. Por favor sea lo más específico posible ya que el médico tomará esta información para determinar el tipo de atención que requiere el paciente.'),
-                                    ])->columnSpanFull()->columns(1),
+                                ->schema([
+                                    Textarea::make('reason')
+                                        ->label('Motivo de la consulta')
+                                        ->autosize()
+                                        ->required()
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                            $set('reason', $state.toUpperCase());
+                                        JS)
+                                        ->helperText('Escriba el motivo de la llamada del paciente. Por favor sea lo más específico posible ya que el médico tomará esta información para determinar el tipo de atención que requiere el paciente.'),
+                                ])->columnSpanFull()->columns(1),
                                 Grid::make(1)
-                                    ->schema([
-                                        Radio::make('feedback')
-                                            ->label('¿La ubicación actual del paciente es la registrada en el sistema?')
-                                            ->default(true)
-                                            ->live()
-                                            ->boolean()
-                                            ->inline()
-                                            ->inlineLabel(false)
-                                    ])->columnSpanFull()->hiddenOn('edit'),
-
+                                ->schema([
+                                    Radio::make('feedback')
+                                        ->label('¿La ubicación actual del paciente es la registrada en el sistema?')
+                                        ->default(true)
+                                        ->live()
+                                        ->boolean()
+                                        ->inline()
+                                        ->inlineLabel(false),
+                                    Radio::make('ambulanceParking')
+                                        ->label('La dirección posee estacionamiento para ambulancia?')
+                                        ->boolean()
+                                        ->inline()
+                                        ->hidden(fn(Get $get) => !$get('feedback'))
+                                ])->columnSpanFull()->hiddenOn('edit'),
                             ])->columnSpanFull()->columns(1),
 
                             //... Lista de ubicaciones ya registradas
@@ -245,8 +249,15 @@ class TelemedicinePatientsTable
                             ->schema([
                                 Select::make('address_id')
                                     ->label('Ubicación')
+                                    ->live()
                                     ->options(function ($record, Get $get) {
                                         return AnotherAddress::where('telemedicine_patient_id', $record->id)->pluck('address', 'id');
+                                    })
+                                    ->helperText(function ($record, Get $get, $state) {
+                                        if($state == null){
+                                            return '';
+                                        }   
+                                        return AnotherAddress::where('telemedicine_patient_id', $record->id)->where('id', $get('address_id'))->first()->ambulanceParking == true ? 'La Dirección SI posee estacionamiento para ambulancias' : 'La Dirección NO posee estacionamiento para ambulancias';
                                     }),
                                 Checkbox::make('new_address')
                                     ->inline()
@@ -309,6 +320,15 @@ class TelemedicinePatientsTable
                                     ->tel()
                                     ->mask(fn(Get $get) => $get('country_id') == 189 ? '99999999999' : '')
                                     ->helperText('Ejemplo: 04161234567'),
+                                Select::make('relationship')
+                                ->options([
+                                    'MADRE'     => 'MADRE',
+                                    'PADRE'     => 'PADRE',
+                                    'HIJO(A)'   => 'HIJO(A)',
+                                    'ABUELO(A)' => 'ABUELO(A)',
+                                    'AMIGO(A)'  => 'AMIGO(A)',
+                                    'OTRO'      => 'OTRO',
+                                ]),
 
                                 Grid::make()
                                     ->schema([
@@ -320,12 +340,15 @@ class TelemedicinePatientsTable
                                             $set('address', $state.toUpperCase());
                                             JS)
                                             ->helperText('Redacte la ubicación exacta del paciente, avenida, calle, nombre del edificio/casa, piso, apto y puntos de referencia. Por favor sea lo más específico posible.'),
+                                        Radio::make('ambulanceParking')
+                                            ->label('La dirección posee estacionamiento para ambulancia?')
+                                            ->boolean()
+                                            ->inline()
                                         ])->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(2)
                             
                         ])
                         ->action(function (TelemedicinePatient $record, array $data) {
-                            
                             /**
                              * CASO 1: El paciente tiene la misma ubicacion que la registrada en la afiliacion
                              */
@@ -344,6 +367,7 @@ class TelemedicinePatientsTable
                                     'patient_state_id'          => $record->state_id,
                                     'patient_city_id'           => $record->city_id,
                                     'reason'                    => $data['reason'],
+                                    'ambulanceParking'         => $data['ambulanceParking'],
                                     'status'                    => 'ASIGNADO',
                                     'assigned_by'               => Auth::user()->name,
                                 ]);
@@ -392,6 +416,7 @@ class TelemedicinePatientsTable
                                     'patient_state_id'          => $address['state_id'],
                                     'patient_city_id'           => $address['city_id'],
                                     'reason'                    => $data['reason'],
+                                    'ambulanceParking'         => $data['ambulanceParking'],
                                     'status'                    => 'ASIGNADO',
                                     'assigned_by'               => Auth::user()->name,
                                 ]);
@@ -424,13 +449,15 @@ class TelemedicinePatientsTable
                                 
                                 //...Creo la nueva ubicacion en la tabla de ubicaciones
                                 $address = new AnotherAddress();
-                                $address->address = $data['address'];
-                                $address->phone_1 = $data['phone_1'];
-                                $address->phone_2 = $data['phone_2'];
-                                $address->city_id = $data['city_id'];
-                                $address->state_id = $data['state_id'];
-                                $address->country_id = $data['country_id'];
-                                $address->telemedicine_patient_id = $record->id;
+                                $address->address                   = $data['address'];
+                                $address->phone_1                   = $data['phone_1'];
+                                $address->phone_2                   = $data['phone_2'];
+                                $address->city_id                   = $data['city_id'];
+                                $address->state_id                  = $data['state_id'];
+                                $address->country_id                = $data['country_id'];
+                                $address->ambulanceParking          = $data['ambulanceParking'];
+                                $address->relationship              = $data['relationship']; 
+                                $address->telemedicine_patient_id   = $record->id;
                                 $address->save();
                                 
                                 $case = TelemedicineCase::create([
@@ -448,6 +475,7 @@ class TelemedicinePatientsTable
                                     'patient_state_id'          => $address->state_id,
                                     'patient_city_id'           => $address->city_id,
                                     'reason'                    => $data['reason'],
+                                    'ambulanceParking'         => $data['ambulanceParking'],
                                     'status'                    => 'ASIGNADO',
                                     'assigned_by'               => Auth::user()->name,
                                 ]);

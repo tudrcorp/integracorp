@@ -74,14 +74,7 @@ class AffiliationForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
-                                    ->options(IndividualQuote::select('id', 'agent_id', 'status', 'full_name')->where('agent_id', Auth::user()->agent_id)->where('status', 'APROBADA')->pluck('full_name', 'id'))
-                                    ->default(function () {
-                                        $id = request()->query('id');
-                                        if (isset($id)) {
-                                            return $id;
-                                        }
-                                        return null;
-                                    })
+                                    ->options(IndividualQuote::all()->pluck('full_name', 'id'))
                                     ->searchable()
                                     ->preload()
                                     ->afterStateUpdated(function (Set $set, $state) {

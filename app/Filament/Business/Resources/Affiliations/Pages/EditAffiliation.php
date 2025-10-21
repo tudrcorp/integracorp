@@ -11,11 +11,12 @@ class EditAffiliation extends EditRecord
 {
     protected static string $resource = AffiliationResource::class;
 
+    protected static ?string $title = 'Editar Afiliación Individual';
+
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
-            DeleteAction::make(),
+            
         ];
     }
 

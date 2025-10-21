@@ -24,6 +24,7 @@ use App\Models\TelemedicineHistoryPatient;
 use Filament\Schemas\Components\FusedGroup;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 
 class TelemedicineHistoryPatientForm
 {
@@ -73,21 +74,28 @@ class TelemedicineHistoryPatientForm
                                 ->label('Peso')
                                 ->helperText('Peso (kg)')
                                 ->numeric()
+                                ->live(onBlur: true)
                                 ->prefixIcon('healthicons-f-i-utensils')
                                 ->required(),
                             TextInput::make('height')
                                 ->label('Estatura')
-                                ->helperText('Centímetros(cm) / Metros(mts)')
+                                ->helperText('Metros(mts)')
                                 ->numeric()
+                                ->live(onBlur: true)
                                 ->prefixIcon('healthicons-f-i-utensils')
+                                ->afterStateUpdated(function (string $context, $state, Set $set, Get $get) {
+                                    $cal = $get('weight') / ($get('height') * $get('height'));
+                                    $set('imc', round($cal, 2));
+                                })
                                 ->required(),
                             TextInput::make('imc')
                                 //peso/estatura * 2
                                 ->label('Indice de Masa Corporal (IMC)')
                                 ->helperText('')
                                 ->numeric()
-                                ->prefixIcon('healthicons-f-i-utensils')
-                                ->required(),
+                                ->disabled()
+                                ->dehydrated()
+                                ->prefixIcon('healthicons-f-i-utensils'),
                             // ...
                             DatePicker::make('history_date')
                                 ->label('Fecha')
@@ -147,7 +155,7 @@ class TelemedicineHistoryPatientForm
                                                     ->live()
                                                     ->label('Hipertensión Arterial'),
                                                 TextInput::make('input_tension_alta')
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->disabled(fn ($get) => !$get('tension_alta'))
                                                     ->placeholder('----'),
                                             ]),
@@ -159,7 +167,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Diábetes Mellitus'),
                                                 TextInput::make('input_diabetes')
                                                     ->disabled(fn($get) => !$get('diabetes'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -170,7 +178,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Asma Bronquial'),
                                                 TextInput::make('input_asma')
                                                     ->disabled(fn($get) => !$get('asma'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -181,7 +189,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedades Cardíacas'),
                                                 TextInput::make('input_cardiacos')
                                                     ->disabled(fn($get) => !$get('cardiacos'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -192,7 +200,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Gastropatias'),
                                                 TextInput::make('input_gastritis_ulceras')
                                                     ->disabled(fn($get) => !$get('gastritis_ulceras'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -203,7 +211,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedad Autoimmune'),
                                                 TextInput::make('input_enfermedad_autoimmune')
                                                     ->disabled(fn($get) => !$get('enfermedad_autoimmune'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -215,7 +223,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Insuficiencia Venosa'),
                                                 TextInput::make('input_trombosis_embooleanas')
                                                     ->disabled(fn($get) => !$get('trombosis_embooleanas'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -226,7 +234,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Traumatismos'),
                                                 TextInput::make('input_fracturas')
                                                     ->disabled(fn($get) => !$get('fracturas'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -238,7 +246,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Cáncer'),
                                                 TextInput::make('input_cancer')
                                                     ->disabled(fn($get) => !$get('cancer'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -249,7 +257,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Anemia'),
                                                 TextInput::make('input_ftranfusiones_sanguineas')
                                                     ->disabled(fn($get) => !$get('tranfusiones_sanguineas'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -261,7 +269,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Tiroides'),
                                                 TextInput::make('input_tiroides')
                                                     ->disabled(fn($get) => !$get('tiroides'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -272,7 +280,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Hepatitis'),
                                                 TextInput::make('input_hepatitis')
                                                     ->disabled(fn($get) => !$get('hepatitis'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -284,7 +292,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedades Hematológicas'),
                                                 TextInput::make('input_moretones_frecuentes')
                                                     ->disabled(fn($get) => !$get('moretones_frecuentes'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -295,7 +303,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedades Psiquiátricas'),
                                                 TextInput::make('input_psiquiatricas')
                                                     ->disabled(fn($get) => !$get('psiquiatricas'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -327,7 +335,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Hipertensión Arterial'),
                                                 TextInput::make('input_tension_alta_app')
                                                     ->disabled(fn($get) => !$get('tension_alta_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -337,7 +345,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Diábetes Mellitus'),
                                                 TextInput::make('input_diabetes_app')
                                                     ->disabled(fn($get) => !$get('diabetes_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -347,7 +355,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Asma Bronquial'),
                                                 TextInput::make('input_asma_app')
                                                     ->disabled(fn($get) => !$get('asma_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -357,7 +365,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedades Cardíacas'),
                                                 TextInput::make('input_cardiacos_app')
                                                     ->disabled(fn($get) => !$get('cardiacos_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -367,7 +375,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Gastropatias'),
                                                 TextInput::make('input_gastritis_ulceras_app')
                                                     ->disabled(fn($get) => !$get('gastritis_ulceras_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -377,7 +385,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedad Autoimmune'),
                                                 TextInput::make('input_enfermedad_autoimmune_app')
                                                     ->disabled(fn($get) => !$get('enfermedad_autoimmune_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -390,7 +398,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Insuficiencia Venosa'),
                                                 TextInput::make('input_trombosis_embooleanas_app')
                                                     ->disabled(fn($get) => !$get('trombosis_embooleanas_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -400,7 +408,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Traumatismos'),
                                                 TextInput::make('input_fracturas_app')
                                                     ->disabled(fn($get) => !$get('fracturas_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -411,7 +419,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Cáncer'),
                                                 TextInput::make('input_cancer_app')
                                                     ->disabled(fn($get) => !$get('cancer_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -421,7 +429,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Anemia'),
                                                 TextInput::make('input_ftranfusiones_sanguineas_app')
                                                     ->disabled(fn($get) => !$get('tranfusiones_sanguineas_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -432,7 +440,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Tiroides'),
                                                 TextInput::make('input_tiroides_app')
                                                     ->disabled(fn($get) => !$get('tiroides_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -442,7 +450,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Hepatitis'),
                                                 TextInput::make('input_hepatitis_app')
                                                     ->disabled(fn($get) => !$get('hepatitis_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 
@@ -453,7 +461,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedades Hematológicas'),
                                                 TextInput::make('input_moretones_frecuentes_app')
                                                     ->disabled(fn($get) => !$get('moretones_frecuentes_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
                                         Section::make()
@@ -463,7 +471,7 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Enfermedades Psiquiátricas'),
                                                 TextInput::make('input_psiquiatricas_app')
                                                     ->disabled(fn($get) => !$get('psiquiatricas_app'))
-                                                    ->label('Tipo (opcional)')
+                                                    ->label('Descripción (opcional):')
                                                     ->placeholder('----'),
                                             ]),
 

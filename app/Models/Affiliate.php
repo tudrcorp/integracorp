@@ -18,6 +18,7 @@ class Affiliate extends Model
         'relationship',
         'document',
         'phone',
+        'email',
         'status',
         'country_id',
         'city_id',
@@ -35,6 +36,12 @@ class Affiliate extends Model
         'dateEnd',
         'numberDays',
         'document_ils',
+
+        //...Informacion adicional
+        'document_telemedicine',
+        'fee',
+        'total_amount',
+        'created_by'
     ];
 
     public function affiliation()

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\Alignment;
@@ -149,20 +150,14 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->searchable()
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->preload(),
-
-                                Select::make('fee')
+                                TextInput::make('fee')
                                     ->label('Tarifa Anual')
-                                    ->options(function (get $get) {
-                                        return Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'price');
-                                    })
-                                    ->live()
-                                    ->searchable()
+                                    ->live(onBlur: true)
                                     ->required()
                                     ->validationMessages([
                                         'required'  => 'Campo Obligatorio',
                                     ])
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->preload(),
+                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
                                 TextInput::make('payment_frequency')
                                     ->label('Frecuencia de pago')
                                     ->live()
@@ -171,7 +166,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->dehydrated()   
                                     ->default(function () {
                                         return $this->getOwnerRecord()->payment_frequency;
-                                    })
+                                    }),
+                                Hidden::make('created_by')->default(Auth::user()->name),
                             ])->columnSpanFull()->columns(2),
 
                     ])->columnSpanFull()->columns(3),
@@ -397,13 +393,32 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         }
                         return false;
                     }),
-                DeleteAction::make()
+                Action::make('changet_status')
                     ->label('Dar de Baja')
                     ->icon('heroicon-s-trash')
                     ->color('danger')
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->action(function (AffiliateCorporate $record): void {
 
-            ])
+                        //... Actualizo la afiliacion
+                        $owner = $this->getOwnerRecord();
+                        $owner->fee_anual = $owner->fee_anual - $record->fee;
+                        $owner->total_amount = $owner->total_amount - $record->total_amount;
+                        $owner->family_members = $owner->family_members - 1;
+                        $owner->save();
+
+                        //... Actualizo el familiar
+                        $record->update([
+                            'status' => 'INACTIVO'
+                        ]);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Afiliacion de Baja')
+                            ->send();
+                    })
+
+        ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()

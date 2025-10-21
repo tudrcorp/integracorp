@@ -16,7 +16,6 @@ class TelemedicineConsultationPatient extends Model
         'telemedicine_doctor_id',
         'telemedicine_service_list_id',
         'telemedicine_priority_id',
-        
         'code_reference',
         'full_name',
         'nro_identificacion',
@@ -24,16 +23,13 @@ class TelemedicineConsultationPatient extends Model
         'actual_phatology',
         'background',
         'diagnostic_impression',
-        
         'labs',
         'studies',
         'other_labs',
         'other_studies',
         'consult_specialist',
         'other_specialist',
-
         'assigned_by',
-
         'status',
         'cuestion_1',
         'cuestion_2',
@@ -42,7 +38,8 @@ class TelemedicineConsultationPatient extends Model
         'cuestion_5',
         'feedbackOne',
         'duration',
-        
+        'priorityMonitoring',
+        'observations',
     ];
 
     protected $casts = [

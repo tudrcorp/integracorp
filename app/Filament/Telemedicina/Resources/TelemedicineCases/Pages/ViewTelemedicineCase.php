@@ -45,7 +45,23 @@ class ViewTelemedicineCase extends ViewRecord
                 })
                 ->hidden(function () {
                     return $this->record->status == 'ALTA MEDICA';
-                })
+                }),
+                Action::make('returnToConsultation')
+                    ->label('Volver a Consulta')
+                    ->icon('heroicon-s-arrow-right')
+                    ->color('warning')
+                    ->action(function () {
+                        if(session()->has('historyCasesToDetails')) {
+                            //retunr back page
+                            session()->forget('historyCasesToDetails');
+                            $patient = session()->get('patient');
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
+                            // session()->forget('historyCasesToDetails');
+                        }
+                    })
+                    ->hidden(function () {
+                        return !session()->has('historyCasesToDetails');
+                    }),
         ];
     }
 }

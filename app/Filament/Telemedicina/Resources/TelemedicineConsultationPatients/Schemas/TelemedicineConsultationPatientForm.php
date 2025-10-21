@@ -144,158 +144,234 @@ class TelemedicineConsultationPatientForm
                         return true;
                     })
                     ->schema([
-                        Section::make()
-                        ->heading('Motivo de la Consulta')
+                        Fieldset::make('Información sobre Signos Vitales')
                         ->schema([
-                            Fieldset::make()
+                            TextInput::make('vs_pa')
+                                ->label('Presión Arterial')
+                                ->helperText('Presión Arterial (mmHg)')
+                                ->numeric()
+                                ->prefixIcon('healthicons-f-i-utensils'),
+                            TextInput::make('vs_fc')
+                                ->label('Frecuencia Cardíaca')
+                                ->helperText('Frecuencia Cardíaca (lpm)')
+                                ->numeric()
+                                ->prefixIcon('healthicons-f-i-utensils'),
+                            TextInput::make('vs_fr')
+                                ->label('Frecuencia Respiratoria')
+                                ->helperText('Frecuencia Respiratoria (rpm)')
+                                ->numeric()
+                                ->prefixIcon('healthicons-f-i-utensils'),
+                            TextInput::make('vs_temp')
+                                ->label('Temperatura')
+                                ->helperText('Temperatura (°C)')
+                                ->numeric()
+                                ->prefixIcon('healthicons-f-i-utensils'),
+                            TextInput::make('vs_sat')
+                                ->label('Saturación')
+                                ->helperText('Saturación (% de oxigeno en sangre)')
+                                ->numeric()
+                                ->prefixIcon('healthicons-f-i-utensils'),
+                        ])->columnSpanFull()->columns(5),
+                        
+                        Fieldset::make('Indice de Masa Corporal (IMC)')
+                        ->schema([
+                            TextInput::make('weight')
+                                ->label('Peso')
+                                ->helperText('Peso (kg), el punto(.) es el separador de decimales. Ej: 60.5')
+                                ->numeric()
+                                ->live(onBlur: true)
+                                ->prefixIcon('healthicons-f-i-utensils')
+                                ->required(),
+                            TextInput::make('height')
+                                ->label('Estatura')
+                                ->helperText('Metros(mts), el punto(.) es el separador de decimales, Ej: 1.70')
+                                ->numeric()
+                                ->live(onBlur: true)
+                                ->prefixIcon('healthicons-f-i-utensils')
+                                ->afterStateUpdated(function (string $context, $state, Set $set, Get $get) {
+                                    $cal = $get('weight') / ($get('height') * $get('height'));
+                                    $set('imc', round($cal, 2));
+                                })
+                                ->required(),
+                            TextInput::make('imc')
+                                //peso/estatura * 2
+                                ->label('Indice de Masa Corporal (IMC)')
+                                ->helperText('')
+                                ->numeric()
+                                ->disabled()
+                                ->dehydrated()
+                                ->prefixIcon('healthicons-f-i-utensils'),
+                        ])->columnSpanFull()->columns(3),
+                        
+                        Fieldset::make('Consulta')
+                        ->schema([
+                            Grid::make(1)
                             ->schema([
-                                Grid::make(1)
-                                ->schema([
-                                    Textarea::make('reason_consultation')
-                                        ->label('Motivo de Consulta')
-                                        ->autosize()
-                                        ->default($case->reason)
-                                        ->afterStateUpdatedJs(<<<'JS'
-                                        $set('reason_consultation', $state.toUpperCase());
+                                Textarea::make('reason_consultation')
+                                    ->label('Motivo de Consulta')
+                                    ->autosize()
+                                    ->default($case->reason)
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                    $set('reason_consultation', $state.toUpperCase());
+                                JS),
+                                Textarea::make('actual_phatology')
+                                    ->label('Enfermedad Actual')
+                                    ->autosize()
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('actual_phatology', $state.toUpperCase());
                                     JS),
-                                    Textarea::make('actual_phatology')
-                                        ->label('Enfermedad Actual')
-                                        ->autosize()
-                                        ->afterStateUpdatedJs(<<<'JS'
-                                            $set('actual_phatology', $state.toUpperCase());
-                                        JS),
-                                    
-                                    Textarea::make('background')
-                                        ->label('Antecedentes Asociados')
-                                        ->autosize()
-                                        ->default(function () {
-                                            $history = session()->get('patologicalHistorySelected');
-                                            Log::info($history);
-                                            if ($history) {
-                                                return $history;
-                                            }
-                                            return null;
-                                        })
-                                        ->belowContent([
-                                            // Icon::make(Heroicon::InformationCircle),
-                                            // 'This is the user\'s full name.',
-                                            Action::make('associatePathologicalHistory')
-                                                ->label('Asociar Antecedente')
-                                                ->color('no-urgente')
-                                                ->icon('heroicon-s-share')
-                                                ->slideOver()
-                                                ->modalHeading('Histórico de Antecedentes No Patológicos')
-                                                ->modalContent(function () {
-                                                    
-                                                    $patient = session()->get('patient');
-                                                    $records = $patient?->telemedicinePatientHistory()->orderByDesc('created_at')->get()->first();
-                                                    $record = $records->toArray();
-                                                    $history = NoPathologicalHistory::where('telemedicine_history_patient_id', $record['id'])->get();
-
-                                                    return view('pathological-history-table', ['records' => $history]);
-                                                })
-                                                ->action(function (Action $action, Component $livewire) use ($case, $patient) { // 👈 INYECTA Component $livewire
-
-                                                    // 1. **Lógica de procesamiento (Aquí se establece la sesión)**
-                                                    // Si la modal tiene campos, se procesan aquí.
-                                                    $nuevoValorDeSesion = session()->get('patologicalHistorySelected');
-                                                    // Session::put('patologicalHistorySelected', $nuevoValorDeSesion);
-
-                                                    // 2. **Sincronización del estado (EL PASO CLAVE)**
-                                                    // Accede al formulario del componente Livewire y establece el valor del campo 'background'.
-                                                    $livewire->form->fill([
-                                                        'telemedicine_case_id'      => $case->id,    
-                                                        'telemedicine_doctor_id'    => $case->telemedicine_doctor_id,
-                                                        'telemedicine_patient_id'   => $case->telemedicine_patient_id,
-                                                        'assigned_by'               => Auth::user()->id,
-                                                        'status'                    => 'CONSULTA INICIAL',
-                                                        'code_reference'            => 'REF-' . rand(11111, 99999),
-                                                        'full_name'                 => $case->patient_name,
-                                                        'telemedicine_case_code'    => $case->code,
-                                                        'nro_identificacion'        => $patient->nro_identificacion,
-                                                        'age'                       => $patient->age,
-                                                        'sex'                       => $patient->sex,
-                                                        'phone_ppal'                => $case->patient_phone,
-                                                        'phone_secondary'           => $case->patient_phone_2,
-                                                        'address'                   => $case->patient_address,
-                                                        'reason_consultation'       => $case->reason,
-                                                        'background'                => $nuevoValorDeSesion,
-                                                    ]);
-                                                })
-                                                ->hidden(function () use ($countCase) {
-                                                    $patient = session()->get('patient');
-                                                    $exist = $patient?->noPathologicalHistories()->exists();
-                                                    if ($exist) {
-                                                        //... Si el paciente tiene historia registrada lo muestro!
-                                                        return false;
-                                                    }
-                                                    //... Si el paciente no tiene historia registrada lo oculto!
-                                                    return true;
-                                                })
-                                        ])
-                                        ->afterStateUpdatedJs(<<<'JS'
-                                            $set('background', $state.toUpperCase());
-                                        JS),
-
-                                    Textarea::make('diagnostic_impression')
-                                        ->label('Impresión Diagnóstica')
-                                        ->autosize()
-                                        ->afterStateUpdatedJs(<<<'JS'
-                                            $set('diagnostic_impression', $state.toUpperCase());
-                                        JS),
-
-                                //...Asignación de Servicio
-                                Fieldset::make('Asignación de Servicio y Actualización de Priroridad')
-                                    ->hidden(function (Get $get) {
-                                        if ($get('feedbackOne') == false) {
-                                            return false;
+                                
+                                Textarea::make('background')
+                                    ->label('Antecedentes Asociados')
+                                    ->autosize()
+                                    ->default(function () {
+                                        $history = session()->get('patologicalHistorySelected');
+                                        Log::info($history);
+                                        if ($history) {
+                                            return $history;
                                         }
-                                        return true;
+                                        return null;
                                     })
-                                    ->schema([
-                                        Select::make('telemedicine_service_list_id')
-                                            ->label('Tipo de Servicio')
-                                            ->live()
-                                            ->options(function (Get $get) use ($countCase) {
-                                                if ($countCase < 1) {
-                                                    return TelemedicineServiceList::where('level', 1)->get()->pluck('name', 'id');
+                                    ->belowContent([
+                                        // Icon::make(Heroicon::InformationCircle),
+                                        // 'This is the user\'s full name.',
+                                        Action::make('associatePathologicalHistory')
+                                            ->label('Asociar Antecedente')
+                                            ->color('no-urgente')
+                                            ->icon('heroicon-s-share')
+                                            ->slideOver()
+                                            ->modalHeading('Histórico de Antecedentes No Patológicos')
+                                            ->modalContent(function () {
+                                                
+                                                $patient = session()->get('patient');
+                                                $records = $patient?->telemedicinePatientHistory()->orderByDesc('created_at')->get()->first();
+                                                $record = $records->toArray();
+                                                $history = NoPathologicalHistory::where('telemedicine_history_patient_id', $record['id'])->get();
+
+                                                return view('pathological-history-table', ['records' => $history]);
+                                            })
+                                            ->action(function (Action $action, Component $livewire) use ($case, $patient) { // 👈 INYECTA Component $livewire
+
+                                                // 1. **Lógica de procesamiento (Aquí se establece la sesión)**
+                                                // Si la modal tiene campos, se procesan aquí.
+                                                $nuevoValorDeSesion = session()->get('patologicalHistorySelected');
+                                                // Session::put('patologicalHistorySelected', $nuevoValorDeSesion);
+
+                                                // 2. **Sincronización del estado (EL PASO CLAVE)**
+                                                // Accede al formulario del componente Livewire y establece el valor del campo 'background'.
+                                                $livewire->form->fill([
+                                                    'telemedicine_case_id'      => $case->id,    
+                                                    'telemedicine_doctor_id'    => $case->telemedicine_doctor_id,
+                                                    'telemedicine_patient_id'   => $case->telemedicine_patient_id,
+                                                    'assigned_by'               => Auth::user()->id,
+                                                    'status'                    => 'CONSULTA INICIAL',
+                                                    'code_reference'            => 'REF-' . rand(11111, 99999),
+                                                    'full_name'                 => $case->patient_name,
+                                                    'telemedicine_case_code'    => $case->code,
+                                                    'nro_identificacion'        => $patient->nro_identificacion,
+                                                    'age'                       => $patient->age,
+                                                    'sex'                       => $patient->sex,
+                                                    'phone_ppal'                => $case->patient_phone,
+                                                    'phone_secondary'           => $case->patient_phone_2,
+                                                    'address'                   => $case->patient_address,
+                                                    'reason_consultation'       => $case->reason,
+                                                    'background'                => $nuevoValorDeSesion,
+                                                ]);
+                                            })
+                                            ->hidden(function () use ($countCase) {
+                                                $patient = session()->get('patient');
+                                                $exist = $patient?->noPathologicalHistories()->exists();
+                                                if ($exist) {
+                                                    //... Si el paciente tiene historia registrada lo muestro!
+                                                    return false;
                                                 }
-                                                return TelemedicineServiceList::all()->pluck('name', 'id');
+                                                //... Si el paciente no tiene historia registrada lo oculto!
+                                                return true;
                                             })
-                                            ->helperText(function (Get $get, $state) {
-                                                $service = TelemedicineServiceList::find($state);
-                                                return $service ? $service->description : '---';
-                                            })
-                                            ->searchable()
-                                            ->required(),
-                                        Select::make('telemedicine_priority_id')
-                                            ->label('Prioridad de Servicio')
-                                            ->live()
-                                            ->options(TelemedicinePriority::all()->pluck('name', 'id'))
-                                            ->searchable()
-                                            ->required(),
-                                        CheckboxList::make('complements')
-                                            ->hidden(function (Get $get) {
-                                                if ($get('telemedicine_service_list_id') == 2) {
-                                                    return true;
-                                                }
-                                                return false;
-                                            })
-                                            ->label('Complementos')
-                                            ->columnSpanFull(1)
-                                            ->live()
-                                            ->gridDirection(GridDirection::Row)
-                                            ->options([
-                                                1 => 'Asignación de Medicamentos',
-                                                2 => 'Indicación de Laboratorios o Estudios de Imagenología',
-                                                3 => 'Consulta con Especialista',
-                                            ])
-                                    ])->columnSpanFull()->columns(4),
-                                        
-                                ])->columnSpanFull()->columns(2),
-                            ])->columnSpanFull(),
-                        ])
-                        ->columnSpanFull(),
+                                    ])
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('background', $state.toUpperCase());
+                                    JS),
+
+                                Textarea::make('diagnostic_impression')
+                                    ->label('Impresión Diagnóstica')
+                                    ->autosize()
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('diagnostic_impression', $state.toUpperCase());
+                                    JS),
+
+                            //...Asignación de Servicio
+                            Fieldset::make('Asignación de Servicio y Actualización de Priroridad')
+                                ->hidden(function (Get $get) {
+                                    if ($get('feedbackOne') == false) {
+                                        return false;
+                                    }
+                                    return true;
+                                })
+                                ->schema([
+                                    Select::make('telemedicine_service_list_id')
+                                        ->label('Tipo de Servicio')
+                                        ->live()
+                                        ->options(function (Get $get) use ($countCase) {
+                                            if ($countCase < 1) {
+                                                return TelemedicineServiceList::where('level', 1)->get()->pluck('name', 'id');
+                                            }
+                                            return TelemedicineServiceList::all()->pluck('name', 'id');
+                                        })
+                                        ->helperText(function (Get $get, $state) {
+                                            $service = TelemedicineServiceList::find($state);
+                                            return $service ? $service->description : '---';
+                                        })
+                                        ->searchable()
+                                        ->required(),
+                                    Select::make('telemedicine_priority_id')
+                                        ->label('Prioridad de Servicio')
+                                        ->live()
+                                        ->options(TelemedicinePriority::all()->pluck('name', 'id'))
+                                        ->searchable()
+                                        ->required(),
+                                    CheckboxList::make('complements')
+                                        ->hidden(function (Get $get) {
+                                            if ($get('telemedicine_service_list_id') == 2) {
+                                                return true;
+                                            }
+                                            return false;
+                                        })
+                                        ->label('Complementos')
+                                        ->columnSpanFull(1)
+                                        ->live()
+                                        ->gridDirection(GridDirection::Row)
+                                        ->options([
+                                            1 => 'Asignación de Medicamentos',
+                                            2 => 'Indicación de Laboratorios o Estudios de Imagenología',
+                                            3 => 'Consulta con Especialista',
+                                        ])
+                                ])->columnSpanFull()->columns(4),
+                                    
+                            ])->columnSpanFull()->columns(2),
+                        ])->columnSpanFull(),
+
+                        Fieldset::make('Observaciones')
+                        ->schema([
+                            Grid::make(4)
+                            ->schema([
+                                Select::make('priorityMonitoring')
+                                ->label('Próximo Seguimiento')
+                                ->required()
+                                ->options([
+                                    30 => '30 minutos',
+                                    60 => '60 minutos',
+                                    90 => '90 minutos',
+                                    120 => '120 minutos',
+                                    150 => '150 minutos',
+                                    180 => '180 minutos',
+                                ]),    
+                            ]),
+                            Textarea::make('observations')
+                                ->label('Observaciones')
+                                ->autosize()
+                        ])->columnSpanFull()->columns(1),
+
                     ]),
                     
                     Step::make('Cuestionario de Seguimiento')
@@ -309,44 +385,65 @@ class TelemedicineConsultationPatientForm
                     ->schema([
                         //...Preguntas
                         Fieldset::make('Preguntas de Seguimiento')
-                            ->schema([
-                                Textarea::make('cuestion_1')
-                                    ->label('1.- ¿COMO SE SIENTE EL DIA DE HOY?')
-                                    ->required()
-                                    ->live()
-                                    ->autosize()
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('cuestion_1', $state.toUpperCase());
-                                                    JS),
-                                Textarea::make('cuestion_2')
-                                    ->label('2.- ¿COMO HA RESPONDIDO AL TRATAMIENTO INDICADO?')
-                                    ->required()
-                                    ->autosize()
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('cuestion_2', $state.toUpperCase());
-                                                    JS),
-                                Textarea::make('cuestion_3')
-                                    ->label('3. ¿SIENTE QUE HAN MEJORADO LOS SÍNTOMAS?')
-                                    ->required()
-                                    ->autosize()
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('cuestion_3', $state.toUpperCase());
-                                                    JS),
-                                Textarea::make('cuestion_4')
-                                    ->label('4. ¿SE REALIZO LOS ESTUDIOS SOLICITADOS?')
-                                    ->required()
-                                    ->autosize()
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('cuestion_4', $state.toUpperCase());
-                                                    JS),
-                                Textarea::make('cuestion_5')
-                                    ->label('5. EN VISTA DE QUE SUS RESULTADOS DE LABORATORIO ESTÁN ALTERADOS, SE MODIFICAN LAS INDICACIONES MEDICAS.')
-                                    ->required()
-                                    ->autosize()
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('cuestion_5', $state.toUpperCase());
-                                                    JS),
-                            ])->columnSpanFull()->columns(2),
+                        ->schema([
+                            Textarea::make('cuestion_1')
+                                ->label('1.- ¿COMO SE SIENTE EL DIA DE HOY?')
+                                ->required()
+                                ->live()
+                                ->autosize()
+                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('cuestion_1', $state.toUpperCase());
+                                                JS),
+                            Textarea::make('cuestion_2')
+                                ->label('2.- ¿COMO HA RESPONDIDO AL TRATAMIENTO INDICADO?')
+                                ->required()
+                                ->autosize()
+                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('cuestion_2', $state.toUpperCase());
+                                                JS),
+                            Textarea::make('cuestion_3')
+                                ->label('3. ¿SIENTE QUE HAN MEJORADO LOS SÍNTOMAS?')
+                                ->required()
+                                ->autosize()
+                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('cuestion_3', $state.toUpperCase());
+                                                JS),
+                            Textarea::make('cuestion_4')
+                                ->label('4. ¿SE REALIZO LOS ESTUDIOS SOLICITADOS?')
+                                ->required()
+                                ->autosize()
+                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('cuestion_4', $state.toUpperCase());
+                                                JS),
+                            Textarea::make('cuestion_5')
+                                ->label('5. EN VISTA DE QUE SUS RESULTADOS DE LABORATORIO ESTÁN ALTERADOS, SE MODIFICAN LAS INDICACIONES MEDICAS.')
+                                ->required()
+                                ->autosize()
+                                ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('cuestion_5', $state.toUpperCase());
+                                                JS),
+                        ])->columnSpanFull()->columns(2),
+
+                        Fieldset::make('Observaciones')
+                        ->schema([
+                            Grid::make(4)
+                                ->schema([
+                                    Select::make('priorityMonitoring')
+                                        ->label('Próximo Seguimiento')
+                                        ->required()
+                                        ->options([
+                                            30 => '30 minutos',
+                                            60 => '60 minutos',
+                                            90 => '90 minutos',
+                                            120 => '120 minutos',
+                                            150 => '150 minutos',
+                                            180 => '180 minutos',
+                                        ]),
+                                ]),
+                            Textarea::make('observations')
+                                ->label('Observaciones')
+                                ->autosize()
+                        ])->columnSpanFull()->columns(1),
 
                         //...Estatus de caso
                         Fieldset::make('Estatus del Caso')

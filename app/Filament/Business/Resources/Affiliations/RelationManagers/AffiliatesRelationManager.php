@@ -12,10 +12,14 @@ use App\Models\Affiliate;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
+use Filament\Actions\EditAction;
+use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\Alignment;
@@ -56,7 +60,7 @@ class AffiliatesRelationManager extends RelationManager
                             ->required()
                             ->label('Nombre completo'),
                         TextInput::make('nro_identificacion')
-                            ->label('Numero de Identificacion')
+                            ->label('Numero de Identificación')
                             ->required()
                             ->numeric(),
                         Select::make('sex')
@@ -66,39 +70,45 @@ class AffiliatesRelationManager extends RelationManager
                                 'MASCULINO' => 'MASCULINO',
                                 'FEMENINO' => 'FEMENINO',
                             ]),
-                        Grid::make()
-                            ->schema([
-                                DatePicker::make('birth_date')
-                                    ->label('Fecha de Nacimiento')
-                                    ->required()
-                                    ->live()
-                                    ->format('d/m/Y')
-                                    ->afterStateUpdated(function (Set $set, $state) {
-                                        $set('age', intval(Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now())));
-                                    }),
-                                TextInput::make('age')
-                                    ->label('Edad')
-                                    ->required()
-                                    ->live()
-                                    ->numeric(),
-                                Select::make('relationship')
-                                    ->label('Parentesco')
-                                    ->required()
-                                    ->options([
-                                        'MADRE'     => 'MADRE',
-                                        'PADRE'     => 'PADRE',
-                                        'ESPOSA'    => 'ESPOSA',
-                                        'ESPOSO'    => 'ESPOSO',
-                                        'HIJO'      => 'HIJO',
-                                        'HIJA'      => 'HIJA',
-                                    ]),
-                                
-                            ])->columnSpanFull()->columns(2),
+                        TextInput::make('email')
+                            ->label('Correo Electrónico')
+                            ->required()
+                            ->email(),
+                        TextInput::make('phone')
+                            ->label('Numero de Teléfono')
+                            ->required()
+                            ->numeric(),
+                        DatePicker::make('birth_date')
+                            ->label('Fecha de Nacimiento')
+                            ->required()
+                            ->live()
+                            ->format('d/m/Y')
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                $set('age', intval(Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now())));
+                            }),
+                        TextInput::make('age')
+                            ->label('Edad')
+                            ->required()
+                            ->live()
+                            ->numeric(),
+                        Select::make('relationship')
+                            ->label('Parentesco')
+                            ->required()
+                            ->options([
+                                'MADRE'     => 'MADRE',
+                                'PADRE'     => 'PADRE',
+                                'ESPOSA'    => 'ESPOSA',
+                                'ESPOSO'    => 'ESPOSO',
+                                'HIJO'      => 'HIJO',
+                                'HIJA'      => 'HIJA',
+                            ]),
                         Textarea::make('address')
                             ->label('Direccion')
                             ->columnSpanFull()
                             ->required()
                             ->autosize(),
+                        Hidden::make('created_by')->default(Auth::user()->name),
+                        Hidden::make('status')->default('ACTIVO'),
                         Fieldset::make('Plan de afiliación')
                             ->schema([
                                 Select::make('plan_id')
@@ -140,39 +150,54 @@ class AffiliatesRelationManager extends RelationManager
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->preload(),
 
-                                Select::make('fee')
+                                TextInput::make('fee')
                                     ->label('Tarifa Anual')
-                                    ->options(function (get $get) {
-                                        Log::info(Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'price'));
-                                        return Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'price');
-                                    })
-                                    ->live()
-                                    ->searchable()
+                                    ->live(onBlur: true)
                                     ->required()
                                     ->validationMessages([
                                         'required'  => 'Campo Obligatorio',
                                     ])
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->preload(),
+                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
                                 Select::make('payment_frequency')
                                     ->label('Frecuencia de pago')
-                                    ->live()
+                                    ->live(onBlur: true)
                                     ->options([
                                         'ANUAL'      => 'ANUAL',
                                         'SEMESTRAL'  => 'SEMESTRAL',
                                         'TRIMESTRAL' => 'TRIMESTRAL',
                                     ])
                                     ->searchable()
-                                    ->live()
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->required()
                                     ->validationMessages([
                                         'required'  => 'Campo Obligatorio',
                                     ])
-                                    ->preload(),
+                                    ->preload()
+                                    ->afterStateUpdated(function (Set $set, $state, Get $get) {
+                                        if  ($state == 'ANUAL') {
+                                            $set('total_amount', $get('fee'));
+                                        }
+                                        if  ($state == 'SEMESTRAL') {
+                                            $set('total_amount', $get('fee') / 2);
+                                        }
+                                        if  ($state == 'TRIMESTRAL') {
+                                            $set('total_amount', $get('fee') / 4);
+                                        }
+                                    }),
+                                TextInput::make('total_amount')
+                                    ->label('Monto Total')
+                                    ->required()
+                                    ->live()
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                    ->validationMessages([
+                                        'required'  => 'Campo Obligatorio',
+                                    ])
                             ])->columnSpanFull()->columns(2),
 
-                    ])->columnSpanFull()->columns(3),
+                    ])->columnSpanFull()->columns(2),
             ]);
     }
 
@@ -203,7 +228,6 @@ class AffiliatesRelationManager extends RelationManager
                     ->label('Correo Electronico'),
                 TextColumn::make('relationship')
                     ->label('Parentesco'),
-                    
                 TextColumn::make('plan.description')
                     ->label('Plan')
                     ->badge(),
@@ -213,7 +237,13 @@ class AffiliatesRelationManager extends RelationManager
                     ->badge(),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
-                    ->badge(),  
+                    ->badge(),
+                TextColumn::make('fee')
+                    ->label('Tarifa Anual')
+                    ->badge(),
+                TextColumn::make('total_amount')
+                    ->label('Total a Pagar')
+                    ->badge(),
                 TextColumn::make('status')
                     ->color(function (string $state): string {
                         return match ($state) {
@@ -274,67 +304,93 @@ class AffiliatesRelationManager extends RelationManager
                 //
             ])
             ->recordActions([
-                Action::make('upload_info_ils')
-                    ->label('Vaucher ILS')
-                    ->color('warning')
-                    ->icon('heroicon-o-paper-clip')
-                    ->requiresConfirmation()
-                    ->modalWidth(Width::ExtraLarge)
-                    ->modalHeading('Activar afiliacion')
-                    ->form([
-                        Section::make('ACTIVAR AFILIACION')
-                            ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
-                            ->icon('heroicon-s-check-circle')
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    TextInput::make('vaucherIls')
-                                        ->label('Vaucher ILS')
-                                        ->required(),
-                                ]),
-                                Grid::make(2)->schema([
-                                    DatePicker::make('dateInit')
-                                        ->label('Desde')
-                                        ->format('d-m-Y')
-                                        ->required(),
-                                    DatePicker::make('dateEnd')
-                                        ->label('Hasta')
-                                        ->format('d-m-Y')
-                                        ->required(),
-
-                                ]),
-                                Grid::make(1)->schema([
-                                    FileUpload::make('document_ils')
-                                        ->label('Documento/Comprobante ILS')
-                                        ->required(),
-                                ])
+                ActionGroup::make([
+                        Action::make('upload_info_ils')
+                            ->label('Vaucher ILS')
+                            ->color('info')
+                            ->icon('heroicon-o-paper-clip')
+                            ->requiresConfirmation()
+                            ->modalWidth(Width::ExtraLarge)
+                            ->modalHeading('Activar afiliacion')
+                            ->form([
+                                Section::make('ACTIVAR AFILIACION')
+                                    ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            TextInput::make('vaucherIls')
+                                                ->label('Vaucher ILS')
+                                                ->required(),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            DatePicker::make('dateInit')
+                                                ->label('Desde')
+                                                ->format('d-m-Y')
+                                                ->required(),
+                                            DatePicker::make('dateEnd')
+                                                ->label('Hasta')
+                                                ->format('d-m-Y')
+                                                ->required(),
+        
+                                        ]),
+                                        Grid::make(1)->schema([
+                                            FileUpload::make('document_ils')
+                                                ->label('Documento/Comprobante ILS')
+                                                ->required(),
+                                        ])
+                                    ])
                             ])
-                    ])
-                    ->action(function (Affiliate $record, array $data): void {
+                            ->action(function (Affiliate $record, array $data): void {
+        
+                                $record->update([
+                                    'vaucherIls'    => $data['vaucherIls'],
+                                    'dateInit'      => $data['dateInit'],
+                                    'dateEnd'       => $data['dateEnd'],
+                                    'numberDays'    => 180,
+                                    'document_ils'  => $data['document_ils']
+                                ]);
+        
+                                Notification::make()
+                                    ->success()
+                                    ->title('Vaucher ILS Activado')
+                                    ->send();
+                            })
+                            ->hidden(function (Affiliate $record): bool {
+                                if ($record->vaucherIls != null) {
+                                    return true;
+                                }
+                                return false;
+                            }),
+                        EditAction::make()
+                            ->label('Editar')
+                            ->icon('heroicon-s-pencil')
+                            ->color('warning'),
+                        Action::make('changet_status')
+                            ->label('Dar de Baja')
+                            ->icon('heroicon-s-trash')
+                            ->color('danger')
+                            ->requiresConfirmation()
+                            ->action(function (Affiliate $record): void {
+                                
+                                //... Actualizo la afiliacion
+                                $owner = $this->getOwnerRecord();
+                                $owner->fee_anual = $owner->fee_anual - $record->fee;
+                                $owner->total_amount = $owner->total_amount - $record->total_amount;
+                                $owner->family_members = $owner->family_members - 1;
+                                $owner->save();
 
-                        $record->update([
-                            'vaucherIls'    => $data['vaucherIls'],
-                            'dateInit'      => $data['dateInit'],
-                            'dateEnd'       => $data['dateEnd'],
-                            'numberDays'    => 180,
-                            'document_ils'  => $data['document_ils']
-                        ]);
-
-                        Notification::make()
-                            ->success()
-                            ->title('Vaucher ILS Activado')
-                            ->send();
-                    })
-                    ->hidden(function (Affiliate $record): bool {
-                        if ($record->vaucherIls != null) {
-                            return true;
-                        }
-                        return false;
-                    }),
-                DeleteAction::make()
-                    ->label('Dar de Baja')
-                    ->icon('heroicon-s-trash')
-                    ->color('danger')
-                    ->requiresConfirmation(),
+                                //... Actualizo el familiar
+                                $record->update([
+                                    'status' => 'INACTIVO'
+                                ]);
+                                
+                                Notification::make()
+                                    ->success()
+                                    ->title('Afiliacion de Baja')
+                                    ->send();
+                            })
+                        
+                    ]),
                     
             ])
             ->headerActions([
@@ -344,27 +400,11 @@ class AffiliatesRelationManager extends RelationManager
                     //Actualizo el total de familiarles en la afiliacion
                     ->after(function (array $data) {
                         $record = $this->getOwnerRecord();
-                        if($record->payment_frequency == 'ANUAL'){
-                            $record->fee_anual = $record->fee_anual + $data['fee'];
-                            $record->total_amount = $record->total_amount + $data['fee'];
-                            $record->family_members = $record->family_members + 1;
-                            $record->save();
-                            return;
-                        }
-                        if( $record->payment_frequency == 'SEMESTRAL'){
-                            $record->fee_anual = $record->fee_anual + $data['fee'];
-                            $record->total_amount = $record->total_amount + ($data['fee'] / 2);
-                            $record->family_members = $record->family_members + 1;
-                            $record->save();
-                            return;
-                        }
-                        if( $record->payment_frequency == 'TRIMESTRAL'){
-                            $record->fee_anual = $record->fee_anual + $data['fee'];
-                            $record->total_amount = $record->total_amount + ($data['fee'] / 4);
-                            $record->family_members = $record->family_members + 1;
-                            $record->save();
-                            return;
-                        }
+                        $record->fee_anual = $record->fee_anual + $data['fee'];
+                        $record->total_amount = $record->total_amount + $data['total_amount'];
+                        $record->family_members = $record->family_members + 1;
+                        $record->save();
+                        return;
                     }),
             ]);
     }

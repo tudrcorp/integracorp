@@ -330,19 +330,15 @@ class AgentForm
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
                                         ->required()
-                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
-                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
                                         ]),
                                     TextInput::make('commission_tdec_renewal')
                                         ->label('Comisión Renovacion TDEC US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
-                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
-                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
                                         ]),
 
                                 ])->columnSpanFull(),
@@ -352,19 +348,15 @@ class AgentForm
                                         ->label('Comisión TDEV US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
-                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
-                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
                                         ]),
                                     TextInput::make('commission_tdev_renewal')
                                         ->label('Comisión Renovacion TDEV US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
-                                        ->regex('/^[1-9]+(\.[1-9]+)?$/')
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
-                                            'regex'     => 'El campo debe ser numerico entre 1 y 9 y el separador decimal en el punto(.).',
                                         ]),
                                 ])->columnSpanFull()
                         ]),

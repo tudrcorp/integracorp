@@ -286,33 +286,34 @@ Route::get('/rp', function () {
     // $pdf = Pdf::loadView('documents.informe-medico-general');
     // return $pdf->stream();
 
-    $medications = TelemedicinePatientMedications::with('telemedicinePatient')->get()->toArray();
+    // $medications = TelemedicinePatientMedications::with('telemedicinePatient')->get()->toArray();
 
-    for ($i = 0; $i < count($medications); $i++) {
-        
-        //... Fecha de asignacion del tratamiento
-        $asignationDate = Carbon::parse($medications[$i]['created_at'])->format('Y-m-d');
+    // for ($i = 0; $i < count($medications); $i++) {
 
-        //... Fecha de Hoy
-        $today = now()->format('Y-m-d');
+    //     //... Fecha de asignacion del tratamiento
+    //     $asignationDate = Carbon::parse($medications[$i]['created_at'])->format('Y-m-d');
 
-        //... Dias Trascurridos
-        $diasTranscurridos = Carbon::parse($asignationDate)->diffInDays($today);
+    //     //... Fecha de Hoy
+    //     $today = now()->format('Y-m-d');
 
-        if($diasTranscurridos <= $medications[$i]['duration']) {
+    //     //... Dias Trascurridos
+    //     $diasTranscurridos = Carbon::parse($asignationDate)->diffInDays($today);
 
-            $name = $medications[$i]['telemedicine_patient']['full_name'];
-            $phone = $medications[$i]['telemedicine_patient']['phone'];
-            $medicine = $medications[$i]['medicine'];
-            $indications = $medications[$i]['indications'];
-            $duration = $medications[$i]['duration'];
-            
-            //... Disparo la notificacion
-            NotificationController::rememberMedication($name, $phone, $medicine, $indications, $duration);
-        }
-        
-    }
+    //     if($diasTranscurridos <= $medications[$i]['duration']) {
 
-    dd('qia');  
+    //         $name = $medications[$i]['telemedicine_patient']['full_name'];
+    //         $phone = $medications[$i]['telemedicine_patient']['phone'];
+    //         $medicine = $medications[$i]['medicine'];
+    //         $indications = $medications[$i]['indications'];
+    //         $duration = $medications[$i]['duration'];
+
+    //         //... Disparo la notificacion
+    //         NotificationController::rememberMedication($name, $phone, $medicine, $indications, $duration);
+    //     }
+
+    // }
+
+    $pdf = Pdf::loadView('documents.informe-medico-general');
+    return $pdf->stream();
     
 });  

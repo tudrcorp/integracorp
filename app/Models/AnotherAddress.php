@@ -16,6 +16,8 @@ class AnotherAddress extends Model
         'state_id',
         'phone_1',
         'phone_2',
+        'ambulanceParking',
+        'relationship',
     ];
     
     public function telemedicinePatient()
