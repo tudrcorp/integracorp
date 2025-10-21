@@ -40,6 +40,16 @@ class TelemedicineConsultationPatient extends Model
         'duration',
         'priorityMonitoring',
         'observations',
+
+        //... Datos agregados
+        'pa',           //presion arterial
+        'fc',           //frecuencia cardiaca
+        'fr',           //frecuencia respiratoria
+        'temp',         //temperatura
+        'saturacion',   //saturacion
+        'peso',         //peso
+        'estatura',     //estatura
+        'imc',          //indice de masa corporal
     ];
 
     protected $casts = [

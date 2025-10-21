@@ -12,6 +12,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Field;
 
 class UserForm
 {
@@ -25,42 +26,54 @@ class UserForm
                     ->icon('heroicon-s-user')
                     ->schema([
                         Fieldset::make('Informacion del Usuario')
-                            ->schema([
-                                TextInput::make('name')
-                                    ->label('Nombre y Apellido del usuario')
-                                    ->required(),
-                                TextInput::make('phone')
-                                    ->label('Telefono')
-                                    ->tel(),
-                                DatePicker::make('birth_date')
-                                    ->label('Fecha de Nacimiento')
-                                    ->format('d/m/Y')
-                                    ->native(false)
-                                    ->displayFormat('d/m/Y'),
-                                TextInput::make('email')
-                                    ->label('Correo Electrónico')
-                                    ->email(),
-                                Select::make('departament')
-                                    ->label('Departamento')
-                                    ->helperText('El usuario solo recibirá las notificaciones asociadas al departamento.')
-                                    ->options([
-                                        'COMERCIAL'     => 'COMERCIAL',
-                                        'COTIZACIONES'  => 'COTIZACIONES',
-                                        'AFILIACIONES'  => 'AFILIACIONES',
-                                        'OPERACIONES'   => 'OPERACIONES',
-                                        'ADMINISTRACION'=> 'ADMINISTRACION',
-                                        'MARKETING'     => 'MARKETING',
-                                        'TELEMEDICINA'  => 'TEEMEDICINA',
-                                        'NEGOCIOS'      => 'NEGOCIOS',
-                                    ]),
-                                Select::make('status')
-                                    ->label('Estado')
-                                    ->options([
-                                        'ACTIVO'    => 'ACTIVO',
-                                        'INACTIVO'  => 'INACTIVO',
-                                    ]),  
-                                
-                            ])->columnSpanFull()->columns(3),
+                        ->schema([
+                            TextInput::make('name')
+                                ->label('Nombre y Apellido del usuario')
+                                ->required(),
+                            TextInput::make('phone')
+                                ->label('Telefono')
+                                ->tel(),
+                            DatePicker::make('birth_date')
+                                ->label('Fecha de Nacimiento')
+                                ->format('d/m/Y')
+                                ->native(false)
+                                ->displayFormat('d/m/Y'),
+                            TextInput::make('email')
+                                ->label('Correo Electrónico')
+                                ->email(),
+                            Select::make('departament')
+                                ->label('Departamento')
+                                ->helperText('El usuario solo recibirá las notificaciones asociadas al departamento.')
+                                ->options([
+                                    'COMERCIAL'     => 'COMERCIAL',
+                                    'COTIZACIONES'  => 'COTIZACIONES',
+                                    'AFILIACIONES'  => 'AFILIACIONES',
+                                    'OPERACIONES'   => 'OPERACIONES',
+                                    'ADMINISTRACION'=> 'ADMINISTRACION',
+                                    'MARKETING'     => 'MARKETING',
+                                    'TELEMEDICINA'  => 'TEEMEDICINA',
+                                    'NEGOCIOS'      => 'NEGOCIOS',
+                                ]),
+                            Select::make('status')
+                                ->label('Estado')
+                                ->options([
+                                    'ACTIVO'    => 'ACTIVO',
+                                    'INACTIVO'  => 'INACTIVO',
+                                ]),  
+                            
+                        ])->columnSpanFull()->columns(3),
+
+                        Fieldset::make('Contraseño del Usuario')
+                        ->schema([
+                            TextInput::make('password')
+                                ->label('Contraseño')
+                                ->password()
+                                ->revealable(),
+                            TextInput::make('password_confirmation')
+                                ->label('Confirmar Contraseño')
+                                ->password()
+                                ->revealable(),
+                        ])->columnSpanFull()->columns(2),
                     ])->columnSpanFull()->columns(3),
 
                 Section::make('Roles del Usuario')

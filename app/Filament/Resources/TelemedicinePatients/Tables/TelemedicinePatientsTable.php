@@ -238,8 +238,14 @@ class TelemedicinePatientsTable
                                     Radio::make('ambulanceParking')
                                         ->label('La dirección posee estacionamiento para ambulancia?')
                                         ->boolean()
+                                        ->default(true)
                                         ->inline()
-                                        ->hidden(fn(Get $get) => !$get('feedback'))
+                                        ->live()
+                                        ->hidden(fn(Get $get) => !$get('feedback')),
+                                    Textarea::make('directionAmbulance')
+                                        ->label('Dirección alternativa del Estacionamiento para Ambulancias')
+                                        ->autosize()
+                                        ->hidden(fn(Get $get) => $get('ambulanceParking'))
                                 ])->columnSpanFull()->hiddenOn('edit'),
                             ])->columnSpanFull()->columns(1),
 
@@ -343,7 +349,13 @@ class TelemedicinePatientsTable
                                         Radio::make('ambulanceParking')
                                             ->label('La dirección posee estacionamiento para ambulancia?')
                                             ->boolean()
-                                            ->inline()
+                                            ->live()
+                                            ->default(true)
+                                            ->inline(),
+                                        Textarea::make('directionAmbulance')
+                                            ->label('Dirección alternativa del Estacionamiento para Ambulancias')
+                                            ->autosize()
+                                            ->hidden(fn(Get $get) => $get('ambulanceParking'))
                                         ])->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(2)
                             

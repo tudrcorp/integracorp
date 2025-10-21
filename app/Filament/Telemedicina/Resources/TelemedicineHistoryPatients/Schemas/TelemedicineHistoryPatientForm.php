@@ -70,32 +70,32 @@ class TelemedicineHistoryPatientForm
                                     return null;
                                 })
                                 ->required(),
-                            TextInput::make('weight')
-                                ->label('Peso')
-                                ->helperText('Peso (kg)')
-                                ->numeric()
-                                ->live(onBlur: true)
-                                ->prefixIcon('healthicons-f-i-utensils')
-                                ->required(),
-                            TextInput::make('height')
-                                ->label('Estatura')
-                                ->helperText('Metros(mts)')
-                                ->numeric()
-                                ->live(onBlur: true)
-                                ->prefixIcon('healthicons-f-i-utensils')
-                                ->afterStateUpdated(function (string $context, $state, Set $set, Get $get) {
-                                    $cal = $get('weight') / ($get('height') * $get('height'));
-                                    $set('imc', round($cal, 2));
-                                })
-                                ->required(),
-                            TextInput::make('imc')
-                                //peso/estatura * 2
-                                ->label('Indice de Masa Corporal (IMC)')
-                                ->helperText('')
-                                ->numeric()
-                                ->disabled()
-                                ->dehydrated()
-                                ->prefixIcon('healthicons-f-i-utensils'),
+                            // TextInput::make('weight')
+                            //     ->label('Peso')
+                            //     ->helperText('Peso (kg)')
+                            //     ->numeric()
+                            //     ->live(onBlur: true)
+                            //     ->prefixIcon('healthicons-f-i-utensils')
+                            //     ->required(),
+                            // TextInput::make('height')
+                            //     ->label('Estatura')
+                            //     ->helperText('Metros(mts)')
+                            //     ->numeric()
+                            //     ->live(onBlur: true)
+                            //     ->prefixIcon('healthicons-f-i-utensils')
+                            //     ->afterStateUpdated(function (string $context, $state, Set $set, Get $get) {
+                            //         $cal = $get('weight') / ($get('height') * $get('height'));
+                            //         $set('imc', round($cal, 2));
+                            //     })
+                            //     ->required(),
+                            // TextInput::make('imc')
+                            //     //peso/estatura * 2
+                            //     ->label('Indice de Masa Corporal (IMC)')
+                            //     ->helperText('')
+                            //     ->numeric()
+                            //     ->disabled()
+                            //     ->dehydrated()
+                            //     ->prefixIcon('healthicons-f-i-utensils'),
                             // ...
                             DatePicker::make('history_date')
                                 ->label('Fecha')
@@ -105,40 +105,40 @@ class TelemedicineHistoryPatientForm
                             Hidden::make('created_by')->default(Auth::user()->name),
                         ])->columnSpanFull()->columns(5),   
                     ])->columnSpanFull(),
-                    Section::make('Signos Vitales del Paciente')
-                    ->collapsible()
-                    ->schema([
-                        Section::make()
-                            ->description('Los signos vitales serán tomados al momento de realizar una Asistencia Medica Domiciliaria (AMD) o en sitio.')
-                            ->schema([
-                                // ...
-                                TextInput::make('vs_pa')
-                                    ->label('Presión Arterial')
-                                    ->helperText('Presión Arterial (mmHg)')
-                                    ->numeric()
-                                    ->prefixIcon('healthicons-f-i-utensils'),
-                                TextInput::make('vs_fc')
-                                    ->label('Frecuencia Cardíaca')
-                                    ->helperText('Frecuencia Cardíaca (lpm)')
-                                    ->numeric()
-                                    ->prefixIcon('healthicons-f-i-utensils'),
-                                TextInput::make('vs_fr')
-                                    ->label('Frecuencia Respiratoria')
-                                    ->helperText('Frecuencia Respiratoria (rpm)')
-                                    ->numeric()
-                                    ->prefixIcon('healthicons-f-i-utensils'),
-                                TextInput::make('vs_temp')
-                                    ->label('Temperatura')
-                                    ->helperText('Temperatura (°C)')
-                                    ->numeric()
-                                    ->prefixIcon('healthicons-f-i-utensils'),
-                                TextInput::make('vs_sat')
-                                    ->label('Saturación')
-                                    ->helperText('Saturación (% de oxigeno en sangre)')
-                                    ->numeric()
-                                    ->prefixIcon('healthicons-f-i-utensils'),
-                            ])->columnSpanFull()->columns(5),
-                    ])->columnSpanFull(),
+                    // Section::make('Signos Vitales del Paciente')
+                    // ->collapsible()
+                    // ->schema([
+                    //     Section::make()
+                    //         ->description('Los signos vitales serán tomados al momento de realizar una Asistencia Medica Domiciliaria (AMD) o en sitio.')
+                    //         ->schema([
+                    //             // ...
+                    //             TextInput::make('vs_pa')
+                    //                 ->label('Presión Arterial')
+                    //                 ->helperText('Presión Arterial (mmHg)')
+                    //                 ->numeric()
+                    //                 ->prefixIcon('healthicons-f-i-utensils'),
+                    //             TextInput::make('vs_fc')
+                    //                 ->label('Frecuencia Cardíaca')
+                    //                 ->helperText('Frecuencia Cardíaca (lpm)')
+                    //                 ->numeric()
+                    //                 ->prefixIcon('healthicons-f-i-utensils'),
+                    //             TextInput::make('vs_fr')
+                    //                 ->label('Frecuencia Respiratoria')
+                    //                 ->helperText('Frecuencia Respiratoria (rpm)')
+                    //                 ->numeric()
+                    //                 ->prefixIcon('healthicons-f-i-utensils'),
+                    //             TextInput::make('vs_temp')
+                    //                 ->label('Temperatura')
+                    //                 ->helperText('Temperatura (°C)')
+                    //                 ->numeric()
+                    //                 ->prefixIcon('healthicons-f-i-utensils'),
+                    //             TextInput::make('vs_sat')
+                    //                 ->label('Saturación')
+                    //                 ->helperText('Saturación (% de oxigeno en sangre)')
+                    //                 ->numeric()
+                    //                 ->prefixIcon('healthicons-f-i-utensils'),
+                    //         ])->columnSpanFull()->columns(5),
+                    // ])->columnSpanFull(),
                     Section::make('Antecedentes Patológicos Familiares')
                     ->collapsible()
                     ->schema([

@@ -59,10 +59,12 @@ class TelemedicineConsultationPatientForm
         return $schema
             ->components([
                 Wizard::make([
+                    
                     Step::make('Datos del Paciente')
                     ->schema([
                         Section::make()
                         ->heading('Datos del Paciente')
+                        ->description('Información principal sobre el paciente')
                         ->schema([
                             Fieldset::make('Datos del Caso')
                             ->schema([
@@ -131,6 +133,15 @@ class TelemedicineConsultationPatientForm
                                     ->disabled()
                                     ->columnSpanFull()
                                     ->dehydrated(),
+                                TextArea::make('directionAmbulance')
+                                    ->autosize()
+                                    ->label('Dirección alternativa para estacionamiento de Ambulancia')
+                                    ->helperText('Esta en la dirección alternativa donde el paciente puede recibir un servicio de ambulancia.')
+                                    ->default($case->directionAmbulance)
+                                    ->disabled()
+                                    ->columnSpanFull()
+                                    ->dehydrated()
+                                    ->hidden(fn () => $case->directionAmbulance == null),
                             ])->columnSpanFull()->columns(3)
                         ])
                         ->columnSpanFull(),
@@ -146,27 +157,27 @@ class TelemedicineConsultationPatientForm
                     ->schema([
                         Fieldset::make('Información sobre Signos Vitales')
                         ->schema([
-                            TextInput::make('vs_pa')
+                            TextInput::make('pa')
                                 ->label('Presión Arterial')
                                 ->helperText('Presión Arterial (mmHg)')
                                 ->numeric()
                                 ->prefixIcon('healthicons-f-i-utensils'),
-                            TextInput::make('vs_fc')
+                            TextInput::make('fc')
                                 ->label('Frecuencia Cardíaca')
                                 ->helperText('Frecuencia Cardíaca (lpm)')
                                 ->numeric()
                                 ->prefixIcon('healthicons-f-i-utensils'),
-                            TextInput::make('vs_fr')
+                            TextInput::make('fr')
                                 ->label('Frecuencia Respiratoria')
                                 ->helperText('Frecuencia Respiratoria (rpm)')
                                 ->numeric()
                                 ->prefixIcon('healthicons-f-i-utensils'),
-                            TextInput::make('vs_temp')
+                            TextInput::make('temp')
                                 ->label('Temperatura')
                                 ->helperText('Temperatura (°C)')
                                 ->numeric()
                                 ->prefixIcon('healthicons-f-i-utensils'),
-                            TextInput::make('vs_sat')
+                            TextInput::make('saturacion')
                                 ->label('Saturación')
                                 ->helperText('Saturación (% de oxigeno en sangre)')
                                 ->numeric()
@@ -175,14 +186,14 @@ class TelemedicineConsultationPatientForm
                         
                         Fieldset::make('Indice de Masa Corporal (IMC)')
                         ->schema([
-                            TextInput::make('weight')
+                            TextInput::make('peso')
                                 ->label('Peso')
                                 ->helperText('Peso (kg), el punto(.) es el separador de decimales. Ej: 60.5')
                                 ->numeric()
                                 ->live(onBlur: true)
                                 ->prefixIcon('healthicons-f-i-utensils')
                                 ->required(),
-                            TextInput::make('height')
+                            TextInput::make('estatura')
                                 ->label('Estatura')
                                 ->helperText('Metros(mts), el punto(.) es el separador de decimales, Ej: 1.70')
                                 ->numeric()
@@ -359,9 +370,9 @@ class TelemedicineConsultationPatientForm
                                 ->label('Próximo Seguimiento')
                                 ->required()
                                 ->options([
-                                    30 => '30 minutos',
-                                    60 => '60 minutos',
-                                    90 => '90 minutos',
+                                    30  => '30 minutos',
+                                    60  => '60 minutos',
+                                    90  => '90 minutos',
                                     120 => '120 minutos',
                                     150 => '150 minutos',
                                     180 => '180 minutos',
@@ -375,7 +386,6 @@ class TelemedicineConsultationPatientForm
                     ]),
                     
                     Step::make('Cuestionario de Seguimiento')
-                    //Este hidden es para ocultar el paso de seguimiento si solo hay un caso registrado (consulta inicial)
                     ->hidden(function () use ($countCase) {
                         if($countCase < 1){
                             return true;
@@ -423,27 +433,6 @@ class TelemedicineConsultationPatientForm
                                                     $set('cuestion_5', $state.toUpperCase());
                                                 JS),
                         ])->columnSpanFull()->columns(2),
-
-                        Fieldset::make('Observaciones')
-                        ->schema([
-                            Grid::make(4)
-                                ->schema([
-                                    Select::make('priorityMonitoring')
-                                        ->label('Próximo Seguimiento')
-                                        ->required()
-                                        ->options([
-                                            30 => '30 minutos',
-                                            60 => '60 minutos',
-                                            90 => '90 minutos',
-                                            120 => '120 minutos',
-                                            150 => '150 minutos',
-                                            180 => '180 minutos',
-                                        ]),
-                                ]),
-                            Textarea::make('observations')
-                                ->label('Observaciones')
-                                ->autosize()
-                        ])->columnSpanFull()->columns(1),
 
                         //...Estatus de caso
                         Fieldset::make('Estatus del Caso')
@@ -506,6 +495,30 @@ class TelemedicineConsultationPatientForm
                                     3 => 'Consulta con Especialista',
                                 ])
                         ])->columnSpanFull()->columns(3),
+
+                        Fieldset::make('Observaciones')
+                        ->schema([
+                            Grid::make(4)
+                                ->schema([
+                                    Select::make('priorityMonitoring')
+                                        ->label('Próximo Seguimiento')
+                                        ->required()
+                                        ->options([
+                                            30 => '30 minutos',
+                                            60 => '60 minutos',
+                                            90 => '90 minutos',
+                                            120 => '120 minutos',
+                                            150 => '150 minutos',
+                                            180 => '180 minutos',
+                                            24  => '24 horas',
+                                            48  => '48 horas',
+                                            72  => '72 horas',
+                                        ]),
+                                ]),
+                            Textarea::make('observations')
+                                ->label('Observaciones')
+                                ->autosize()
+                        ])->columnSpanFull()->columns(1),
                     ]),
                     
                     Step::make('Medicamentos e Indicaciones')
