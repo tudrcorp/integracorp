@@ -2,9 +2,11 @@
 
 namespace App\Filament\General\Resources\Agencies\Schemas;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Schema;
 
 class AgencyInfolist
 {
@@ -12,77 +14,115 @@ class AgencyInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('owner_code'),
-                TextEntry::make('code'),
-                TextEntry::make('agency_type_id'),
-                TextEntry::make('rif'),
-                TextEntry::make('name_corporative'),
-                TextEntry::make('ci_responsable'),
-                TextEntry::make('address'),
-                TextEntry::make('email'),
-                TextEntry::make('phone'),
-                TextEntry::make('user_instagram'),
-                TextEntry::make('country.name')
-                    ->numeric(),
-                TextEntry::make('state.id')
-                    ->numeric(),
-                TextEntry::make('city.id')
-                    ->numeric(),
-                TextEntry::make('region'),
-                TextEntry::make('name_contact_2'),
-                TextEntry::make('email_contact_2'),
-                TextEntry::make('phone_contact_2'),
-                TextEntry::make('local_beneficiary_name'),
-                TextEntry::make('local_beneficiary_rif'),
-                TextEntry::make('local_beneficiary_account_number'),
-                TextEntry::make('local_beneficiary_account_bank'),
-                TextEntry::make('local_beneficiary_account_type'),
-                TextEntry::make('local_beneficiary_phone_pm'),
-                TextEntry::make('extra_beneficiary_name'),
-                TextEntry::make('extra_beneficiary_ci_rif'),
-                TextEntry::make('extra_beneficiary_account_number'),
-                TextEntry::make('extra_beneficiary_account_bank'),
-                TextEntry::make('extra_beneficiary_account_type'),
-                TextEntry::make('extra_beneficiary_route'),
-                TextEntry::make('extra_beneficiary_zelle'),
-                TextEntry::make('extra_beneficiary_ach'),
-                TextEntry::make('extra_beneficiary_swift'),
-                TextEntry::make('extra_beneficiary_aba'),
-                TextEntry::make('extra_beneficiary_address'),
-                IconEntry::make('tdec')
-                    ->boolean(),
-                IconEntry::make('tdev')
-                    ->boolean(),
-                TextEntry::make('commission_tdec')
-                    ->numeric(),
-                TextEntry::make('commission_tdec_renewal')
-                    ->numeric(),
-                TextEntry::make('commission_tdev')
-                    ->numeric(),
-                TextEntry::make('commission_tdev_renewal')
-                    ->numeric(),
-                TextEntry::make('file_acuerdo'),
-                TextEntry::make('file_planilla'),
-                TextEntry::make('status'),
-                TextEntry::make('created_by'),
-                TextEntry::make('created_at')
-                    ->dateTime(),
-                TextEntry::make('updated_at')
-                    ->dateTime(),
-                TextEntry::make('fir_dig_agent'),
-                TextEntry::make('fir_dig_agency'),
-                TextEntry::make('date_register'),
-                IconEntry::make('is_accepted')
-                    ->boolean(),
-                TextEntry::make('file_ci_rif'),
-                TextEntry::make('file_w8_w9'),
-                TextEntry::make('file_account_usd'),
-                TextEntry::make('file_account_bsd'),
-                TextEntry::make('file_account_zelle'),
-                TextEntry::make('owner_master'),
-                TextEntry::make('owner_general'),
-                TextEntry::make('owner_agent'),
-                TextEntry::make('user_tdev'),
+                Section::make('Informacion General de la Agencia')
+                    ->schema([
+                        Fieldset::make('Informacion de la entidad')
+                            ->schema([
+                                TextEntry::make('code')
+                                    ->badge()
+                                    ->color('success')
+                                    ->placeholder('-'),
+                                TextEntry::make('typeAgency.definition')
+                                    ->badge()
+                                    ->color('success'),
+                                TextEntry::make('accountManager.name')
+                                    ->badge()
+                                    ->color('success'),
+                            ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make('Datos Principales de la Agencia')
+                            ->schema([
+                                TextEntry::make('name_corporative')
+                                    ->badge()
+                                    ->color('success')
+                                    ->placeholder('-'),
+                                TextEntry::make('rif')
+                                    ->badge()
+                                    ->color('success')
+                                    ->placeholder('-'),
+                                TextEntry::make('ci_responsable')
+                                    ->placeholder('-'),
+                                TextEntry::make('address')
+                                    ->placeholder('-'),
+                                TextEntry::make('email')
+                                    ->label('Email address'),
+                                TextEntry::make('phone')
+                                    ->placeholder('-'),
+                                TextEntry::make('user_instagram')
+                                    ->placeholder('-'),
+                                TextEntry::make('country.name')
+                                    ->label('Country')
+                                    ->placeholder('-'),
+                                TextEntry::make('state.definition')
+                                    ->label('State')
+                                    ->placeholder('-'),
+                                TextEntry::make('city.definition')
+                                    ->label('City')
+                                    ->placeholder('-'),
+                                TextEntry::make('region')
+                                    ->placeholder('-'),
+                            ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make('Datos Bancarios Moneda Nacional')
+                            ->schema([
+                                TextEntry::make('local_beneficiary_name')
+                                    ->placeholder('-'),
+                                TextEntry::make('local_beneficiary_rif')
+                                    ->placeholder('-'),
+                                TextEntry::make('local_beneficiary_account_number')
+                                    ->placeholder('-'),
+                                TextEntry::make('local_beneficiary_account_bank')
+                                    ->placeholder('-'),
+                                TextEntry::make('local_beneficiary_account_type')
+                                    ->placeholder('-'),
+                                TextEntry::make('local_beneficiary_phone_pm')
+                                    ->placeholder('-'),
+                            ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make('Datos Bancarios Moneda Extra')
+                            ->schema([
+                                TextEntry::make('extra_beneficiary_name')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_ci_rif')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_account_number')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_account_bank')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_account_type')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_route')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_zelle')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_ach')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_swift')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_aba')
+                                    ->placeholder('-'),
+                                TextEntry::make('extra_beneficiary_address')
+                                    ->placeholder('-'),
+                            ])->columnSpanFull()->columns(5),
+
+                        Fieldset::make('Comiciones')
+                            ->schema([
+                                TextEntry::make('commission_tdec')
+                                    ->numeric()
+                                    ->placeholder('-'),
+                                TextEntry::make('commission_tdec_renewal')
+                                    ->numeric()
+                                    ->placeholder('-'),
+                                TextEntry::make('commission_tdev')
+                                    ->numeric()
+                                    ->placeholder('-'),
+                                TextEntry::make('commission_tdev_renewal')
+                                    ->numeric()
+                                    ->placeholder('-'),
+                            ])->columnSpanFull()->columns(5),
+
+                    ])->columnSpanFull(),
+
             ]);
     }
 }

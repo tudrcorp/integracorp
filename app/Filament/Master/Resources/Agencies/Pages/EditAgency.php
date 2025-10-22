@@ -8,8 +8,10 @@ use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
 use Filament\Actions\DeleteAction;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Fieldset;
 use App\Filament\Master\Resources\Agencies\AgencyResource;
@@ -58,12 +60,17 @@ class EditAgency extends EditRecord
                         return redirect('/master');
                     }
                 }),
-            Action::make('regresar')
-                ->label('Regresar')
-                ->button()
-                ->icon('heroicon-s-arrow-left')
-                ->color('gray')
-                ->url(IndividualQuoteResource::getUrl('index')),
+            // Action::make('regresar')
+            //     ->label('Regresar')
+            //     ->button()
+            //     ->icon('heroicon-s-arrow-left')
+            //     ->color('gray')
+            //     ->url(IndividualQuoteResource::getUrl('index')),
+            Action::make('back')
+                ->label('Dashboard')
+                ->icon(Heroicon::Home)
+                ->color('success')
+                ->url(route('filament.master.pages.dashboard')),
         ];
     }
 
@@ -71,4 +78,14 @@ class EditAgency extends EditRecord
     {
         return [];
     }
+
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->icon('heroicon-s-check-circle')
+            ->title('PERFIL ACTUALIZADO!')
+            ->body('La informacion de tu perfel ha sido actualizada de forma exitosa.');
+    }
+
 }

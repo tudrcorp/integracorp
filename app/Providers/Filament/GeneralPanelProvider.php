@@ -128,6 +128,7 @@ class GeneralPanelProvider extends PanelProvider
                         MyImages::make()
                             ->directory('backgroundGeneralPanelLogin')
                     ),
-            ]);
+            ])
+            ->resourceEditPageRedirect('index');
     }
 }

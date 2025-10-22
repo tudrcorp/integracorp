@@ -55,4 +55,10 @@ class AgencyRegisterEmail extends Mailable implements ShouldQueue
     {
         return [];
     }
+
+    //Manejo de excepciones
+    public function failed($exception)
+    {
+        report($exception);
+    }
 }

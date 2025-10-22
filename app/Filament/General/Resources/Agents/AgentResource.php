@@ -2,20 +2,21 @@
 
 namespace App\Filament\General\Resources\Agents;
 
-use App\Filament\General\Resources\Agents\Pages\CreateAgent;
-use App\Filament\General\Resources\Agents\Pages\EditAgent;
-use App\Filament\General\Resources\Agents\Pages\ListAgents;
-use App\Filament\General\Resources\Agents\Pages\ViewAgent;
-use App\Filament\General\Resources\Agents\Schemas\AgentForm;
-use App\Filament\General\Resources\Agents\Schemas\AgentInfolist;
-use App\Filament\General\Resources\Agents\Tables\AgentsTable;
-use App\Models\Agent;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use App\Models\Agent;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\General\Resources\Agents\Pages\EditAgent;
+use App\Filament\General\Resources\Agents\Pages\ViewAgent;
+use App\Filament\General\Resources\Agents\Pages\ListAgents;
+use App\Filament\General\Resources\Agents\Pages\CreateAgent;
+use App\Filament\General\Resources\Agents\Schemas\AgentForm;
+use App\Filament\General\Resources\Agents\Tables\AgentsTable;
+use App\Filament\General\Resources\Agents\Schemas\AgentInfolist;
+use App\Filament\General\Resources\Agents\RelationManagers\DocumentsRelationManager;
 
 class AgentResource extends Resource
 {
@@ -45,7 +46,7 @@ class AgentResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DocumentsRelationManager::class
         ];
     }
 

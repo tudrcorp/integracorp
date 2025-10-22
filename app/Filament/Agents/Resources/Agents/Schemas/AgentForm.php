@@ -272,6 +272,10 @@ class AgentForm
                                 ->disabled()
                                 ->dehydrated()
                                 ->maxLength(255),
+                            TextInput::make('user_tdev')
+                                ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                                ->prefixIcon('heroicon-s-identification')
+                                ->maxLength(255),
                             TextInput::make('user_instagram')
                                 ->label('Usuario de Instagram')
                                 ->prefixIcon('heroicon-s-user')

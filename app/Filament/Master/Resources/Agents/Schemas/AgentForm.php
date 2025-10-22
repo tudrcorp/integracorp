@@ -9,11 +9,13 @@ use App\Models\Region;
 use App\Models\Country;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
@@ -59,6 +61,8 @@ class AgentForm
                                     ->preload()
                                     ->helperText('Esta lista despliega solo los agentes activos y que este registrados en su organización'),
                                 /**Jerarquia */
+                                Hidden::make('created_by')->default(Auth::user()->name),
+                                Hidden::make('status')->default('ACTIVO'),
                                 Hidden::make('owner_code')->default(function (Get $get) {
                                     return Auth::user()->code_agency;
                                 }),
@@ -308,6 +312,10 @@ class AgentForm
                                     'required'  => 'Campo Requerido',
                                 ])
                                 ->preload(),
+                            TextInput::make('user_tdev')
+                                ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                                ->prefixIcon('heroicon-s-identification')
+                                ->maxLength(255),
                             TextInput::make('user_instagram')
                                 ->label('Usuario de Instagram')
                                 ->prefixIcon('heroicon-s-user')
@@ -329,16 +337,21 @@ class AgentForm
                                         ->label('Comisión TDEC US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
-                                        ->required()
+                                        ->numeric()
+                                        ->rules(['required', 'max:20'])
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
+                                            'max'  => 'El valor no puede ser mayor al 20%',
                                         ]),
                                     TextInput::make('commission_tdec_renewal')
                                         ->label('Comisión Renovacion TDEC US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
+                                        ->numeric()
+                                        ->rules(['required', 'max:20'])
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
+                                            'max'  => 'El valor no puede ser mayor al 20%',
                                         ]),
 
                                 ])->columnSpanFull(),
@@ -348,15 +361,21 @@ class AgentForm
                                         ->label('Comisión TDEV US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
+                                        ->numeric()
+                                        ->rules(['required', 'max:35'])
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
+                                            'max'  => 'El valor no puede ser mayor al 20%',
                                         ]),
                                     TextInput::make('commission_tdev_renewal')
                                         ->label('Comisión Renovacion TDEV US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
+                                        ->numeric()
+                                        ->rules(['required', 'max:35'])
                                         ->validationMessages([
                                             'required'  => 'Campo Requerido.',
+                                            'max'  => 'El valor no puede ser mayor al 20%',
                                         ]),
                                 ])->columnSpanFull()
                         ]),
@@ -551,7 +570,14 @@ class AgentForm
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
                         ]),
-                ])->columnSpanFull()->columns(4),
+                ])
+                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    <x-filament::button type="submit" size="sm">
+                        Enviar Información   
+                    </x-filament::button>
+                BLADE)))
+                ->columnSpanFull()
+                ->columns(4),
             ]);
     }
 }

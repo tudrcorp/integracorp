@@ -78,7 +78,10 @@ class Agency extends Model
         'doc_w8_w9',
         'doc_bank_data_ves',
         'doc_bank_data_usd',
-        'ownerAccountManagers'
+        'ownerAccountManagers',
+        'name_representative',
+        'user_tdev',
+        'brithday_date',
 
 
     ];

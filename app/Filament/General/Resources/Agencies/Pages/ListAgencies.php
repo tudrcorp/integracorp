@@ -10,10 +10,6 @@ class ListAgencies extends ListRecords
 {
     protected static string $resource = AgencyResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
-    }
+    protected static ?string $title = 'Información de la Agencia';
+
 }

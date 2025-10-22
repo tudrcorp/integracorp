@@ -58,10 +58,6 @@ class DocumentsRelationManager extends RelationManager
                                     ->directory('agency/documents')
                                     ->label('W8/W9')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Documento Requerido',
-                                    ])
                                     ->hidden(fn() => AgencyDocument::where('agency_id', $this->getOwnerRecord()->id)->where('title', 'W8/W9')->where('document', '!=', null)->exists()),
                             ])->columnSpanFull()->columns(3),
                         Grid::make()

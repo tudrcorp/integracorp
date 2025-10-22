@@ -19,12 +19,14 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
     public string $owner_code;
     #[Validate('required', message: 'Campo requerido')]
+    
     public string $name;
 
     #[Validate('required', message: 'Debes ingresar un correo electrónico!')]
     #[Validate('email', message: 'El correo ingresado no es valido!')]
     #[Validate('unique:' . Agency::class, message: 'El correo ingresado ya se encuentra registrado!')]
     public string $email;
+    
     #[Validate('required', message: 'Campo requerido')]
     public string $type;
 
@@ -49,8 +51,6 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
      */
     public function register(): void
     {
-        // dd($this->type);
-        try {
 
             $validated = $this->validate([
                 'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . Agency::class],
@@ -226,10 +226,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             //     $this->redirect(route('filament.agents.auth.login'));
             // }
 
-            //code...
-        } catch (\Throwable $th) {
-            dd($th); //$th;
-        }
+
     }
 }; ?>
 

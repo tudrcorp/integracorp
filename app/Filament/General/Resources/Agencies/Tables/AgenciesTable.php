@@ -2,149 +2,230 @@
 
 namespace App\Filament\General\Resources\Agencies\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use App\Models\Agency;
+use Filament\Tables\Table;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Illuminate\Support\Facades\Auth;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
 
 class AgenciesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->query(Agency::query()->where('code', Auth::user()->code_agency))
+            ->heading('PERFIL DE LA AGENCIA')
+            ->description('Información principal de la agencia')
             ->columns([
-                TextColumn::make('owner_code')
-                    ->searchable(),
                 TextColumn::make('code')
+                    ->label('Codigo')
+                    // ->prefix(fn(Agency $record) => Agency::where('code', $record->code)->with('typeAgency')->first()->typeAgency->definition . ' - ')
+                    ->badge()
+                    ->icon('heroicon-s-building-library')
+                    ->color('warning')
                     ->searchable(),
-                TextColumn::make('agency_type_id')
+                TextColumn::make('typeAgency.definition')
+                    ->label('Tipo')
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('name_corporative')
+                    ->label('Razon social')
+                    ->badge()
+                    ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('rif')
-                    ->searchable(),
-                TextColumn::make('name_corporative')
+                    ->label('Rif')
+                    ->prefix('J-')
+                    ->badge()
+                    ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('ci_responsable')
+                    ->label('CI. Responsable')
+                    ->badge()
+                    ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('address')
-                    ->searchable(),
+                    ->label('Direccion')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('email')
-                    ->searchable(),
+                    ->label('Email')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('phone')
-                    ->searchable(),
+                    ->label('Nro. de teléfono')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('user_instagram')
-                    ->searchable(),
+                    ->label('Usuario de Instagram')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('country.name')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('state.id')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('city.id')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('País')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('state.definition')
+                    ->label('Estado')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('city.definition')
+                    ->label('Ciudad')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('region')
-                    ->searchable(),
+                    ->label('Región')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('name_contact_2')
-                    ->searchable(),
+                    ->label('Contacto secundario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email_contact_2')
-                    ->searchable(),
+                    ->label('Email secundario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('phone_contact_2')
-                    ->searchable(),
+                    ->label('Telefono secundario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('local_beneficiary_name')
-                    ->searchable(),
+                    ->label('Nombre beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('local_beneficiary_rif')
-                    ->searchable(),
+                    ->label('Rif beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('local_beneficiary_account_number')
-                    ->searchable(),
+                    ->label('Nro. Cta. beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('local_beneficiary_account_bank')
-                    ->searchable(),
+                    ->label('Banco beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('local_beneficiary_account_type')
-                    ->searchable(),
+                    ->label('Tipo de Cuenta beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('local_beneficiary_phone_pm')
-                    ->searchable(),
+                    ->label('Nro. Pago movil')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                /**
+                 * datos bancarios moneda extrangera
+                 */
                 TextColumn::make('extra_beneficiary_name')
-                    ->searchable(),
+                    ->label('MoEx. beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_ci_rif')
-                    ->searchable(),
+                    ->label('MoEx. Rif beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_account_number')
-                    ->searchable(),
+                    ->label('MoEx. Nro. Cta. beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_account_bank')
-                    ->searchable(),
+                    ->label('MoEx. Banco beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_account_type')
-                    ->searchable(),
+                    ->label('MoEx. Tipo de Cuenta beneficiario')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_route')
-                    ->searchable(),
+                    ->label('MoEx. Ruta')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_zelle')
-                    ->searchable(),
+                    ->label('MoEx. Zelle')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_ach')
-                    ->searchable(),
+                    ->label('MoEx. ACH')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_swift')
-                    ->searchable(),
+                    ->label('MoEx. Swift')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_aba')
-                    ->searchable(),
+                    ->label('MoEx. ABA')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_address')
-                    ->searchable(),
+                    ->label('MoEx. Direccion')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+
+
                 IconColumn::make('tdec')
-                    ->boolean(),
+                    ->label('TDEC')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 IconColumn::make('tdev')
-                    ->boolean(),
+                    ->label('TDEV')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdec')
+                    ->label('Comisión TDEC %')
+                    ->alignCenter()
+                    ->suffix('%')
+                    ->badge()
+                    ->color('verde')
                     ->numeric()
-                    ->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdec_renewal')
+                    ->label('Comisión TDEC Renovacion')
+                    ->alignCenter()
+                    ->suffix('%')
+                    ->badge()
+                    ->color('verde')
                     ->numeric()
-                    ->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdev')
+                    ->alignCenter()
+                    ->label('Comisión TDEV %')
+                    ->suffix('%')
+                    ->badge()
+                    ->color('verde')
                     ->numeric()
-                    ->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdev_renewal')
+                    ->alignCenter()
+                    ->label('Comisión TDEV Renovacion')
+                    ->suffix('%')
+                    ->badge()
+                    ->color('verde')
                     ->numeric()
-                    ->sortable(),
-                TextColumn::make('file_acuerdo')
-                    ->searchable(),
-                TextColumn::make('file_planilla')
-                    ->searchable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('status')
-                    ->searchable(),
-                TextColumn::make('created_by')
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('fir_dig_agent')
-                    ->searchable(),
-                TextColumn::make('fir_dig_agency')
-                    ->searchable(),
-                TextColumn::make('date_register')
-                    ->searchable(),
-                IconColumn::make('is_accepted')
-                    ->boolean(),
-                TextColumn::make('file_ci_rif')
-                    ->searchable(),
-                TextColumn::make('file_w8_w9')
-                    ->searchable(),
-                TextColumn::make('file_account_usd')
-                    ->searchable(),
-                TextColumn::make('file_account_bsd')
-                    ->searchable(),
-                TextColumn::make('file_account_zelle')
-                    ->searchable(),
-                TextColumn::make('owner_master')
-                    ->searchable(),
-                TextColumn::make('owner_general')
-                    ->searchable(),
-                TextColumn::make('owner_agent')
-                    ->searchable(),
-                TextColumn::make('user_tdev')
-                    ->searchable(),
+                    ->label('Estatus')
+                    ->badge()
+                    ->color(function (mixed $state): string {
+                        return match ($state) {
+                            'ACTIVO' => 'success',
+                            'INACTIVO' => 'danger',
+                            'POR REVISION' => 'warning',
+                        };
+                    })
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 //

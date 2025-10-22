@@ -69,25 +69,14 @@ class NotificationController extends Controller
             $response = curl_exec($curl);
             $err = curl_error($curl);
 
+            curl_close($curl);
+
             if ($err) {
                 Log::error($err);
                 return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Registro publico de agencias',
-                        'objeto' => 'NotificationController::agency_activated',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            } 
 
-                return true;
-            }
+            return true;
             
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
@@ -322,25 +311,14 @@ class NotificationController extends Controller
             $response = curl_exec($curl);
             $err = curl_error($curl);
 
+            curl_close($curl);
+
             if ($err) {
                 Log::error($err);
                 return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link para registro del agencia',
-                        'objeto' => 'NotificationController::send_link_agency_register_wp',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            } 
 
-                return true;
-            }
+            return true;
 
             
         } catch (\Throwable $th) {

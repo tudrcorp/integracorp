@@ -314,6 +314,10 @@ class AgentForm
                                 'required'  => 'Campo Requerido',
                             ])
                             ->preload(),
+                        TextInput::make('user_tdev')
+                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                            ->prefixIcon('heroicon-s-identification')
+                            ->maxLength(255),
                         TextInput::make('user_instagram')
                             ->label('Usuario de Instagram')
                             ->prefixIcon('heroicon-s-user')
@@ -519,34 +523,6 @@ class AgentForm
                             ->prefixIcon('heroicon-s-identification')
                             ->maxLength(255),
                     ])->columnSpanFull()->columns(4),
-                Section::make('CARGA DE DOCUMENTOS')
-                    ->collapsed()
-                    ->description('El tamaño máximo de los documentos es de 2MB. Acepta .jpg, .jpeg, .pdf, .txt, .xls, .xlsx')
-                    ->icon('heroicon-m-folder-plus')
-                    ->schema([
-
-                        FileUpload::make('fir_dig_agent')
-                            ->label('Firma Digitalizada del Agente')
-                            ->uploadingMessage('Cargando firma...'),
-                        FileUpload::make('fir_dig_agency')
-                            ->label('Firma Digitalizada Agencia Master')
-                            ->uploadingMessage('Cargando firma...'),
-                        FileUpload::make('file_ci_rif')
-                            ->label('CI/RIF')
-                            ->uploadingMessage('Cargando documento...'),
-                        FileUpload::make('file_w8_w9')
-                            ->label('W8/W9')
-                            ->uploadingMessage('Cargando documento...'),
-                        FileUpload::make('file_account_usd')
-                            ->label('Cta. US$')
-                            ->uploadingMessage('Cargando documento...'),
-                        FileUpload::make('file_account_bsd')
-                            ->label('Cta.VES(Bs.) ')
-                            ->uploadingMessage('Cargando documento...'),
-                        FileUpload::make('file_account_zelle')
-                            ->label('Cta. Zelle')
-                            ->uploadingMessage('Cargando documento...'),
-                    ])->columnSpanFull()->columns(3),
                 Section::make('COMENTARIOS')
                     ->collapsed()
                     ->icon('heroicon-m-folder-plus')

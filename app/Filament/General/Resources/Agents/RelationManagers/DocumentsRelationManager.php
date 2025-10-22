@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Filament\Agents\Resources\Agents\RelationManagers;
+namespace App\Filament\General\Resources\Agents\RelationManagers;
 
-use BackedEnum;
+use App\Filament\General\Resources\Agents\AgentResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use App\Models\AgentDocument;
-use Filament\Actions\CreateAction;
+use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\FontWeight;
@@ -18,14 +20,12 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Schemas\Components\Utilities\Get;
-use App\Filament\Agents\Resources\Agents\AgentResource;
-use Filament\Resources\RelationManagers\RelationManager;
 
 class DocumentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'documents';
 
-    protected static ?string $title = 'DOCUMENTOS ASOCIADOS';
+    protected static ?string $title = 'Documentos Asociados';
 
     protected static string|BackedEnum|null $icon = 'heroicon-s-document';
 
@@ -55,7 +55,7 @@ class DocumentsRelationManager extends RelationManager
                                         'required'  => 'Documento Requerido',
                                     ])
                                     ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'FIRMA DIGITAL AGENTE')->where('document', '!=', null)->exists()),
-                                
+
                                 FileUpload::make('doc_w8_w9')
                                     ->directory('agents/documents')
                                     ->label('W8/W9')
@@ -65,12 +65,12 @@ class DocumentsRelationManager extends RelationManager
                         Grid::make()
                             ->schema([
                                 FileUpload::make('doc_bank_data_ves')
-                                ->directory('agents/documents')
+                                    ->directory('agents/documents')
                                     ->label('Soporte datos bancarios(VES)')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA VES')->where('document', '!=', null)->exists()),
                                 FileUpload::make('doc_bank_data_usd')
-                                ->directory('agents/documents')
+                                    ->directory('agents/documents')
                                     ->label('Soporte datos bancarios(US$)')
                                     ->uploadingMessage('Cargando documento, por favor espere...')
                                     ->hidden(fn() => AgentDocument::where('agent_id', $this->getOwnerRecord()->id)->where('title', 'CUENTA USD')->where('document', '!=', null)->exists()),
@@ -86,9 +86,9 @@ class DocumentsRelationManager extends RelationManager
             ->columns([
                 Stack::make([
                     ImageColumn::make('image')
-                        ->imageHeight(100)
-                        ->square()
-                        ->visibility('public'),
+                    ->imageHeight(100)
+                    ->square()
+                    ->visibility('public'),
                     Stack::make([
                         TextColumn::make('title')
                             ->weight(FontWeight::Bold),
@@ -109,7 +109,7 @@ class DocumentsRelationManager extends RelationManager
                     ->color('verde')
                     ->modalHeading('Agregar Documentos')
                     ->modalButton('Agregar')
-                    
+
                     ->action(function (array $data) {
                         $array_title = [
                             'doc_digital_signature' => 'FIRMA DIGITAL AGENTE',
@@ -140,7 +140,7 @@ class DocumentsRelationManager extends RelationManager
                     ->color('verde')
                     ->url(function ($record) {
                         return asset('storage/' . $record->document);
-                    })  
+                    })
                     ->button()
                     ->openUrlInNewTab(),
                 DeleteAction::make()

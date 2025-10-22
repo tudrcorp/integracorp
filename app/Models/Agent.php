@@ -86,7 +86,8 @@ class Agent extends Model
         'comments',
 
         'conf_position_menu',
-        'ownerAccountManagers'
+        'ownerAccountManagers',
+        'user_tdev'
 
     ];
 

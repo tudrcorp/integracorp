@@ -9,14 +9,19 @@ use App\Models\Region;
 use App\Models\Country;
 use App\Models\AgencyType;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Wizard\Step;
@@ -61,9 +66,10 @@ class AgencyForm
 
                             /**JERARQUÍA */
                             /*---------------------------------------------------------- */
-                            // Hidden::make('owner_code')->default(function (Get $get) {
-                            //     return Auth::user()->code_agency;
-                            // }),
+                            Hidden::make('owner_code')->default(function (Get $get) {
+                                $info = Agency::where('code', Auth::user()->code_agency)->first();
+                                return $info->owner_code;
+                            }),
 
                             TextInput::make('name_corporative')
                                 ->label('Nombre de la Agencia')
@@ -126,6 +132,13 @@ class AgencyForm
                                     'numeric'   => 'El campo es numerico',
                                 ])
                                 ->required(),
+                            DatePicker::make('brithday_date')
+                                ->label('Fecha de Nacimiento')
+                                ->format('d/m/Y')
+                                ->required()
+                                ->validationMessages([
+                                    'required'  => 'Campo Requerido',
+                                ]),
 
                             TextInput::make('address')
                                 ->label('Dirección')
@@ -288,6 +301,10 @@ class AgencyForm
                                     'required'  => 'Campo Requerido',
                                 ])
                                 ->preload(),
+                            TextInput::make('user_tdev')
+                                ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                                ->prefixIcon('heroicon-s-identification')
+                                ->maxLength(255),
                             TextInput::make('user_instagram')
                                 ->label('Usuario de Instagram')
                                 ->prefixIcon('heroicon-s-user')
@@ -448,19 +465,25 @@ class AgencyForm
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
                                         ->numeric()
+                                        ->rules(['required', 'max:22'])
                                         ->validationMessages([
                                             'numeric'   => 'Campo tipo numerico.',
-                                        ])
-                                        ->readOnly(),
+                                            'required'  => 'Campo Requerido',
+                                            'max'       => 'El campo no debe ser mayor a 22%',
+
+                                        ]),
                                     TextInput::make('commission_tdec_renewal')
                                         ->label('Comisión Renovacion TDEC US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
                                         ->numeric()
+                                        ->rules(['required', 'max:22'])
                                         ->validationMessages([
                                             'numeric'   => 'Campo tipo numerico.',
-                                        ])
-                                        ->readOnly(),
+                                            'required'  => 'Campo Requerido',
+                                            'max'       => 'El campo no debe ser mayor a 22%',
+
+                                        ]),
 
                                 ])->columnSpanFull(),
                             Grid::make(2)
@@ -470,19 +493,25 @@ class AgencyForm
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
                                         ->numeric()
+                                        ->rules(['required', 'max:40'])
                                         ->validationMessages([
                                             'numeric'   => 'Campo tipo numerico.',
-                                        ])
-                                        ->readOnly(),
+                                            'required'  => 'Campo Requerido',
+                                            'max'       => 'El campo no debe ser mayor a 40%',
+
+                                        ]),
                                     TextInput::make('commission_tdev_renewal')
                                         ->label('Comisión Renovacion TDEV US$')
                                         ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
                                         ->prefix('%')
                                         ->numeric()
+                                        ->rules(['required', 'max:40'])
                                         ->validationMessages([
                                             'numeric'   => 'Campo tipo numerico.',
-                                        ])
-                                        ->readOnly(),
+                                            'required'  => 'Campo Requerido',
+                                            'max'       => 'El campo no debe ser mayor a 40%',
+
+                                        ]),
                                 ])->columnSpanFull()
                         ]),
                     Step::make('Datos Bancarios(VES)')
@@ -764,9 +793,6 @@ class AgencyForm
                                 ->maxLength(255),
                         ]),
                     Step::make('Acuerdo y condiciones')
-                        // ->description('Leer y aceptar las condiciones')
-                        // ->icon(Heroicon::ShieldCheck)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {
@@ -789,45 +815,14 @@ class AgencyForm
                                         ->label('ACEPTO')
                                         ->required(),
                                 ])->columnSpanFull(),
-                            Fieldset::make('Documentos')
-                                ->hidden(fn(Get $get) => !$get('is_accepted_conditions'))
-                                ->schema([
-                                    Grid::make()
-                                        ->schema([
-                                            FileUpload::make('doc_digital_signature')
-                                                ->label('Firma Digital')
-                                                ->uploadingMessage('Cargando documento, por favor espere...')
-                                                ->required()
-                                                ->validationMessages([
-                                                    'required'  => 'Documento Requerido',
-                                                ]),
-                                            FileUpload::make('doc_document_identity')
-                                                ->label('Docuemnto de Identidad')
-                                                ->uploadingMessage('Cargando documento, por favor espere...')
-                                                ->required()
-                                                ->validationMessages([
-                                                    'required'  => 'Documento Requerido',
-                                                ]),
-                                            FileUpload::make('doc_w8_w9')
-                                                ->label('W8/W9')
-                                                ->uploadingMessage('Cargando documento, por favor espere...')
-                                                ->required()
-                                                ->validationMessages([
-                                                    'required'  => 'Docuemnto Requerido',
-                                                ]),
-                                        ])->columnSpanFull()->columns(3),
-                                    Grid::make()
-                                        ->schema([
-                                            FileUpload::make('doc_bank_data_ves')
-                                                ->label('Soporte datos bancanarios(VES)')
-                                                ->uploadingMessage('Cargando documento, por favor espere...'),
-                                            FileUpload::make('document')
-                                                ->label('Soporte datos bancanarios(US$)')
-                                                ->uploadingMessage('Cargando documento, por favor espere...'),
-                                        ])->columnSpanFull()->columns(2),
-                                ])->columnSpanFull(),
                         ]),
-                ])->columnSpanFull()->columns(4),
+                ])
+                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    <x-filament::button type="submit" size="sm">
+                        Enviar Información   
+                    </x-filament::button>
+                BLADE)))
+                ->columnSpanFull()->columns(4),
             ]);
     }
 }

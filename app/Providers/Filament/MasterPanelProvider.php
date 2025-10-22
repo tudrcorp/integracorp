@@ -128,7 +128,7 @@ class MasterPanelProvider extends PanelProvider
                         MyImages::make()
                             ->directory('backgroundMasterPanelLogin')
                     ),
-            ]);
-            // ->navigation(false);
+            ])
+            ->resourceEditPageRedirect('index');
     }
 }
