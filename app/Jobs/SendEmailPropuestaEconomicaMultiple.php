@@ -97,22 +97,17 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
                     $group_collect_plan_especial = $collect_plan_especial->groupBy('age_range');
                 }
                 
-                //...Dress Taylor
-                if ($this->collect_final[$i]['plan'] != 1 && $this->collect_final[$i]['plan'] != 2 && $this->collect_final[$i]['plan'] != 3 && !empty($this->collect_final[$i]['data'])) {
-                    $collect_plan_dt = collect($this->collect_final[$i]['data']);
-                    $group_collect_plan_dt = $collect_plan_dt->groupBy('age_range');
-                }
             }
 
             if(!empty($group_collect_plan_inicial)){
                 $data_inicial   =  (array) $group_collect_plan_inicial[0];
                 $data_ideal     = $group_collect_plan_ideal;
                 $data_especial  = $group_collect_plan_especial;
-                $data_dt        = $group_collect_plan_dt;
+
             }else{
                 $data_ideal     = $group_collect_plan_ideal;
                 $data_especial  = $group_collect_plan_especial;
-                $data_dt        = $group_collect_plan_dt;
+
             }
             // $data_inicial   =  (array) $group_collect_plan_inicial[0];
             // $data_ideal     = $group_collect_plan_ideal;
