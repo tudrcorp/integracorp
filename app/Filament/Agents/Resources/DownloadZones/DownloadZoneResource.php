@@ -59,9 +59,9 @@ class DownloadZoneResource extends Resource
         ];
     }
 
-    public static function canAccess(): bool
-    {
-        // Deshabilitado temporalmente por mantenimiento
-        return false;
-    }
+    // public static function canAccess(): bool
+    // {
+    //     // Deshabilitado temporalmente por mantenimiento
+    //     return false;
+    // }
 }
