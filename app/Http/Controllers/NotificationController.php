@@ -2059,6 +2059,123 @@ class NotificationController extends Controller
         }
     }
 
+    static function previewMessage($phone)
+    {
+        try {
+
+            $body = <<<HTML
+
+            ¡Hola! 👋 Esperamos que tu consulta de Telemedicina haya sido de gran ayuda.
+
+            Queremos informarte que en breve, recibirás los documentos generados por el médico durante la consulta.
+
+            Por favor, revísalos con atención y guárdalos de forma segura. Si tienes alguna duda sobre las indicaciones, no dudes en consultarnos.
+         
+            Su Salud es nuestra prioridad...
+            Muchas gracias. 🙌
+ 
+            HTML;
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => '04127018390',
+                'body' => $body
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error($err);
+                return false;
+            } else {
+                Log::info($response);
+                return true;
+            }
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
+    static function sendDocumentsToPatient($phone, $type_document, $name_pdf)
+    {
+
+        try {
+
+            if ($type_document == 'imagenologia') {
+                $name_doc = 'REFERENCIA ESTUDIOS IMAGENOLOGIA';
+            }
+            if ($type_document == 'laboratorios') {
+                $name_doc = 'REFERENCIA EXAMENES DE LABORATORIO';
+
+            }
+            if ($type_document == 'medicamentos') {
+                $name_doc = 'RECIPE / INDICACIONES';
+
+            }
+            if ($type_document == 'especialista') {
+                $name_doc = 'REFERENCIA A ESPECIALISTA';
+
+            }
+
+            $params = array(
+                'token' => config('parameters.TOKEN'),
+                'to' => '04127018390',
+                'filename' => $name_pdf,
+                'document' => config('parameters.PUBLIC_URL_DOC_TELEMEDICINA') .$name_pdf,
+                'caption' => $name_doc
+            );
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => config('parameters.CURLOPT_URL_DOCUMENT'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error($err);
+                return false;
+            } else {
+                Log::info($response);
+                return true;
+            }
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
 
     
 }
