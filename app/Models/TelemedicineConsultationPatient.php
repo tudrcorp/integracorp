@@ -121,4 +121,9 @@ class TelemedicineConsultationPatient extends Model
         return $this->belongsTo(TelemedicinePriority::class, 'telemedicine_priority_id');
     }
 
+    public function telemedicineDocuments()
+    {
+        return $this->hasMany(TelemedicineDocument::class);
+    }
+
 }

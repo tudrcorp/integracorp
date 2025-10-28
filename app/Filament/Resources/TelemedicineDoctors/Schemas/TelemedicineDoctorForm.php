@@ -32,7 +32,9 @@ class TelemedicineDoctorForm
                 TextInput::make('address'),
                 FileUpload::make('image')
                     ->image(),
-                TextInput::make('signature'),
+                FileUpload::make('signature')
+                    ->directory('firmas-medicos')
+                    ->image(),
             ]);
     }
 }

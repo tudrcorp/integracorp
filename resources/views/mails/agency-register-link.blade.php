@@ -4,84 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notificación</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-            /* Centra todo el contenido */
-        }
-
-
-        .header {
-            /* background-color: #00539C; */
-            /* Azul oscuro */
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .content {
-            margin-top: 20px;
-            text-align: justify;
-            /* Justifica el texto */
-        }
-
-
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            font-size: 0.9em;
-            color: #555;
-
-        }
-
-        .social-icons {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .social-icons img {
-            width: 40px;
-            height: 40px;
-        }
-
-        ul {
-            list-style-type: disc;
-            padding-left: 20px;
-        }
-
-        li {
-            margin-bottom: 10px;
-        }
-
-    </style>
 </head>
-<body>
-    <div class="header">
-        <img src="https://app.piedy.com/images/BANER-GUSTAVO-1.png" alt="Logo Bancamiga" style="max-width: 100%;">
-    </div>
 
-    <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
 
-        <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrEnCasa! 🌟</span> </p>
+    <!-- Contenedor principal centrado de 600px -->
+    <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
+        <tr>
+            <td style="
+                    padding: 5px; 
+                    background-color: #ffffff; 
+                    border: 1px solid #e7e7e7; 
+                    border-radius: 8px;
+                ">
+                <!-- Contenido interno con padding de 5px -->
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td align="center" style="padding: 20px 10px;">
+                            <img src="https://app.piedy.com/images/BANER-GUSTAVO-1.png" alt="Banner Tu Dr. en Casa" style="max-width: 100%; height: auto; border-radius: 8px;">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding: 15px 10px; color: #333333; font-size: 12px; line-height: 1.6;">
+                            <h1 style="color: #2c3e50; font-size: 22px; margin: 0 0 10px 0;">LINK DE REGISTRO DIRECTO</h1>
+                            <p style="margin: 0; color: #555555;">Estimado(a),</p>
+                            <p>Nos complace recibirte como parte de nuestra comunidad corporativa. En Tu Dr. en Casa , estamos comprometidos con brindarte una experiencia excepcional en salud y atención médica personalizada. ¡Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa! </p>
+                            <p>Para comenzar, debes acceder a este link y llenar el formulario de registro para poder iniciar la gestión de tu perfil como agencia! <br> Link: <a href="{{ $content['link'] }}">{{ $content['link'] }}</a></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding: 15px 10px; font-size: 12px; color: #aaaaaa;">
+                            Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding: 20px 10px;">
+                            <img src="https://app.piedy.com/images/BANER-GUSTAVO-2.png" alt="Banner Tu Dr. en Casa" style="max-width: 100%; height: auto; border-radius: 8px;">
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 
-        <p>Estimado(a),</p>
-        <p>Nos complace recibirte como parte de nuestra comunidad corporativa. En Tu Dr. en Casa , estamos comprometidos con brindarte una experiencia excepcional en salud y atención médica personalizada. ¡Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa! </p>
-        <p>Para comenzar, debes acceder a este link y llenar el formulario de registro para poder iniciar la gestión de tu perfil como agente! <br> Link: <a href="{{ $content['link'] }}">{{ $content['link'] }}</a></p>
-
-        <p>Atentamente,</p>
-        <p>TuDrEnCasa</p>
-    </div>
-
-    <div class="footer">
-        <img src="https://app.piedy.com/images/BANER-GUSTAVO-2.png" alt="Logo Tubanca" style="max-width: 100%;">
-        <p style="font-size: 0.8em; font-style: italic;">Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa</p>
-    </div>
 </body>
+
 </html>
 

@@ -200,7 +200,7 @@ class TelemedicineConsultationPatientForm
                                 ->live(onBlur: true)
                                 ->prefixIcon('healthicons-f-i-utensils')
                                 ->afterStateUpdated(function (string $context, $state, Set $set, Get $get) {
-                                    $cal = $get('weight') / ($get('height') * $get('height'));
+                                    $cal = $get('peso') / ($get('estatura') * $get('estatura'));
                                     $set('imc', round($cal, 2));
                                 })
                                 ->required(),
@@ -593,11 +593,11 @@ class TelemedicineConsultationPatientForm
                             ->schema([
                                 Select::make('consult_specialist')
                                     ->label('Interconsultas Especialistas para Patologías Agudas')
-                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTOS')->get()->pluck('name', 'name'))
+                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                     ->multiple(),
                                 Select::make('other_specialist')
                                     ->label('Otros Especialistas') // BVA
-                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTOS')->get()->pluck('name', 'name'))
+                                    ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                     ->multiple(),
                             ])->columnSpanFull()->columns(2),
                     ]),

@@ -56,11 +56,11 @@ class TelemedicineDoctorForm
                                         ->required()
                                         ->default('MÉDICO GENERAL'),
                                     TextInput::make('code_cm')
-                                    ->label('Código CM(Colegio de Medicos)')
+                                        ->label('Código CM(Colegio de Medicos)')
                                         ->mask('99999')
                                         ->required(),
                                     TextInput::make('code_mpps')
-                                    ->label('Código MPPS(Ministerio de Salud Publica)')
+                                        ->label('Código MPPS(Ministerio de Salud Publica)')
                                         ->numeric()
                                         ->mask('999999'),
                                 ])->columnSpanFull()->columns(3)
@@ -69,8 +69,11 @@ class TelemedicineDoctorForm
                         ->schema([
                             FileUpload::make('signature')
                                 ->image()
-                                ->required(),
-                        ]),
+                                ->label('Firma Digital del Doctor(a)')
+                                 ->directory('firmas-medicos')
+                                ->required()
+                                ->visibility('public'),
+                        ])->columnSpanFull()->columns(3),
                 ])->columnSpanFull(),
                 
             ]);

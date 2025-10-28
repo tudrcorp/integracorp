@@ -120,14 +120,24 @@ class AffiliationsTable
                         ->alignCenter()
                         ->suffix(' persona(s)')
                         ->badge()
-                        ->color('success')
+                        ->color(function (mixed $state): string {
+                            if ($state > 0) {
+                                return 'warning';
+                            }
+                            return 'danger';
+                        })
                         ->searchable(),
                     TextColumn::make('fee_anual')
                         ->label('Tarifa Anual')
                         ->alignCenter()
                         ->money()
                         ->badge()
-                        ->color('warning')
+                        ->color(function (mixed $state): string {
+                            if ($state > 0) {
+                                return 'warning';
+                            }
+                            return 'danger';
+                        })
                         ->searchable(),
                 //total_amount
                     TextColumn::make('total_amount')
@@ -135,7 +145,12 @@ class AffiliationsTable
                         ->alignCenter()
                         ->money()
                         ->badge()
-                        ->color('warning')
+                        ->color(function (mixed $state): string {
+                            if ($state > 0) {
+                                return 'warning';
+                            }
+                            return 'danger';
+                        })
                         ->searchable(),
                 TextColumn::make('businessUnit.definition')
                         ->label('Unidad de Negocio')
@@ -994,7 +1009,14 @@ class AffiliationsTable
 
                             if ($data['action'] == 'exclude') {
                                 $record->update([
-                                    'status' => 'EXCLUIDO',
+                                    'status'            => 'EXCLUIDO',
+                                    'fee_anual'         => 0.0,
+                                    'activated_at'      => null,
+                                    'total_amount'      => 0.0,
+                                    'family_members'    => 0
+                                ]);
+                                $record->affiliates()->update([
+                                    'status'  => 'EXCLUIDO',
                                 ]);
                                 $record->status_log_affiliations()->create([
                                     'affiliation_id'    => $record->id,
@@ -1015,7 +1037,7 @@ class AffiliationsTable
                                 ->success()
                                 ->send();
                         }),
-                ])
+                ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

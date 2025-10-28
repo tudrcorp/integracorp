@@ -19,5 +19,6 @@ return [
     'PUBLIC_URL'                        => "https://integracorp.dev.tudrgroup.com/storage",
     'REDIRECT_LOGOUT_EXTERNAL_URL'      => "https://tudrencasa.test",
     'REDIRECT_LOGOUT_INTERNAL_URL'      => "https://integracorp.test",
+    'PUBLIC_URL_DOC_TELEMEDICINA'       => "https://integracorp.test/storage/telemedicina-doc/",
 
 ];

@@ -206,7 +206,6 @@ class AffiliatesRelationManager extends RelationManager
         return $table
             ->heading('CARGA FAMILIAR')
             ->description('Lista de familiares afiliados')
-            ->recordTitleAttribute('affiliation_id')
             ->columns([
                 TextInputColumn::make('full_name')
                     ->label('Nombre y Apellidos'),
@@ -247,9 +246,10 @@ class AffiliatesRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'ACTIVO' => 'success',
-                            'INACTIVO' => 'danger',
-                            default => 'primary',
+                            'ACTIVO'    => 'success',
+                            'INACTIVO'  => 'danger',
+                            'EXCLUIDO'  => 'danger',
+                            default     => 'primary',
                         };
                     })
                     ->badge()
@@ -299,98 +299,102 @@ class AffiliatesRelationManager extends RelationManager
                         return asset('storage/' . $record->document_ils);
                     })
                     ->openUrlInNewTab(),
-        ])
+            ])
             ->filters([
                 //
             ])
             ->recordActions([
                 ActionGroup::make([
-                        Action::make('upload_info_ils')
-                            ->label('Vaucher ILS')
-                            ->color('info')
-                            ->icon('heroicon-o-paper-clip')
-                            ->requiresConfirmation()
-                            ->modalWidth(Width::ExtraLarge)
-                            ->modalHeading('Activar afiliacion')
-                            ->form([
-                                Section::make('ACTIVAR AFILIACION')
-                                    ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
-                                    ->icon('heroicon-s-check-circle')
-                                    ->schema([
-                                        Grid::make(2)->schema([
-                                            TextInput::make('vaucherIls')
-                                                ->label('Vaucher ILS')
-                                                ->required(),
-                                        ]),
-                                        Grid::make(2)->schema([
-                                            DatePicker::make('dateInit')
-                                                ->label('Desde')
-                                                ->format('d-m-Y')
-                                                ->required(),
-                                            DatePicker::make('dateEnd')
-                                                ->label('Hasta')
-                                                ->format('d-m-Y')
-                                                ->required(),
-        
-                                        ]),
-                                        Grid::make(1)->schema([
-                                            FileUpload::make('document_ils')
-                                                ->label('Documento/Comprobante ILS')
-                                                ->required(),
-                                        ])
+                    Action::make('upload_info_ils')
+                        ->label('Vaucher ILS')
+                        ->color('info')
+                        ->icon('heroicon-o-paper-clip')
+                        ->requiresConfirmation()
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalHeading('Activar afiliacion')
+                        ->form([
+                            Section::make('ACTIVAR AFILIACION')
+                                ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
+                                ->icon('heroicon-s-check-circle')
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        TextInput::make('vaucherIls')
+                                            ->label('Vaucher ILS')
+                                            ->required(),
+                                    ]),
+                                    Grid::make(2)->schema([
+                                        DatePicker::make('dateInit')
+                                            ->label('Desde')
+                                            ->format('d-m-Y')
+                                            ->required(),
+                                        DatePicker::make('dateEnd')
+                                            ->label('Hasta')
+                                            ->format('d-m-Y')
+                                            ->required(),
+    
+                                    ]),
+                                    Grid::make(1)->schema([
+                                        FileUpload::make('document_ils')
+                                            ->label('Documento/Comprobante ILS')
+                                            ->required(),
                                     ])
-                            ])
-                            ->action(function (Affiliate $record, array $data): void {
-        
-                                $record->update([
-                                    'vaucherIls'    => $data['vaucherIls'],
-                                    'dateInit'      => $data['dateInit'],
-                                    'dateEnd'       => $data['dateEnd'],
-                                    'numberDays'    => 180,
-                                    'document_ils'  => $data['document_ils']
-                                ]);
-        
-                                Notification::make()
-                                    ->success()
-                                    ->title('Vaucher ILS Activado')
-                                    ->send();
-                            })
-                            ->hidden(function (Affiliate $record): bool {
-                                if ($record->vaucherIls != null) {
-                                    return true;
-                                }
-                                return false;
-                            }),
-                        EditAction::make()
-                            ->label('Editar')
-                            ->icon('heroicon-s-pencil')
-                            ->color('warning'),
-                        Action::make('changet_status')
-                            ->label('Dar de Baja')
-                            ->icon('heroicon-s-trash')
-                            ->color('danger')
-                            ->requiresConfirmation()
-                            ->action(function (Affiliate $record): void {
-                                
-                                //... Actualizo la afiliacion
-                                $owner = $this->getOwnerRecord();
-                                $owner->fee_anual = $owner->fee_anual - $record->fee;
-                                $owner->total_amount = $owner->total_amount - $record->total_amount;
-                                $owner->family_members = $owner->family_members - 1;
-                                $owner->save();
+                                ])
+                        ])
+                        ->action(function (Affiliate $record, array $data): void {
+    
+                            $record->update([
+                                'vaucherIls'    => $data['vaucherIls'],
+                                'dateInit'      => $data['dateInit'],
+                                'dateEnd'       => $data['dateEnd'],
+                                'numberDays'    => 180,
+                                'document_ils'  => $data['document_ils']
+                            ]);
+    
+                            Notification::make()
+                                ->success()
+                                ->title('Vaucher ILS Activado')
+                                ->send();
+                        })
+                        ->hidden(function (Affiliate $record): bool {
+                            if ($record->vaucherIls != null) {
+                                return true;
+                            }
+                            return false;
+                        }),
+                    EditAction::make()
+                        ->label('Editar')
+                        ->icon('heroicon-s-pencil')
+                        ->color('warning'),
+                    Action::make('changet_status')
+                        ->label('Dar de Baja')
+                        ->icon('heroicon-s-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->action(function (Affiliate $record): void {
+                            
+                            //... Actualizo la afiliacion
+                            $owner = $this->getOwnerRecord();
+                            $owner->fee_anual = $owner->fee_anual - $record->fee;
+                            $owner->total_amount = $owner->total_amount - $record->total_amount;
+                            $owner->family_members = $owner->family_members - 1;
+                            $owner->save();
 
-                                //... Actualizo el familiar
-                                $record->update([
-                                    'status' => 'INACTIVO'
-                                ]);
-                                
-                                Notification::make()
-                                    ->success()
-                                    ->title('Afiliacion de Baja')
-                                    ->send();
-                            })
-                        
-                    ]),
+                            //... Actualizo el familiar
+                            $record->update([
+                                'status' => 'INACTIVO'
+                            ]);
+                            
+                            Notification::make()
+                                ->success()
+                                ->title('Afiliacion de Baja')
+                                ->send();
+                        })
+                ])->hidden(function ($record): bool {
+                    if ($this->getOwnerRecord()->status == 'EXCLUIDO') {
+                        return true;
+                    }
+                    return false;
+                }),
                     
             ])
             ->headerActions([

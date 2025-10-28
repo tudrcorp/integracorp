@@ -147,6 +147,16 @@ class TelemedicinePatient extends Model
         return $this->hasMany(GynecologicalHistory::class);
     }
 
+    public function doctors(): HasMany
+    {
+        return $this->hasMany(TelemedicineDoctor::class);
+    }
+
+    public function telemedicineDocuments()
+    {
+        return $this->hasMany(TelemedicineDocument::class);
+    }
+
     
     
 }

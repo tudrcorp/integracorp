@@ -97,10 +97,6 @@ class ListTelemedicinePatients extends ListRecords
                         ->with('affiliation')
                         ->get()
                         ->toArray();
-                        
-                        $businessUnitId = UtilsController::getBusinessUnitId($affiliation[0]['affiliation']['plan_id']);
-
-                        $businessLineId = UtilsController::getBusinessLineId($affiliation[0]['affiliation']['plan_id']);
 
                         $patient = TelemedicinePatient::create([
                             
@@ -131,21 +127,18 @@ class ListTelemedicinePatients extends ListRecords
                             'email_contact'             => $affiliation[0]['affiliation']['phone_ti'],
                             'created_by'                => Auth::user()->name,
 
-                            //Unidad de Negocios
-                            'business_unit_id'          => $businessUnitId,
-                            'business_line_id'          => $businessLineId,
+                        //Unidad de Negocios
+                        'business_unit_id'          => $affiliation[0]['affiliation']['business_unit_id'] == NULL ? '----' : $affiliation[0]['affiliation']['business_unit_id'],
+                        'business_line_id'          => $affiliation[0]['affiliation']['business_line_id'] == NULL ? '----' : $affiliation[0]['affiliation']['business_line_id']
                         ]);
                         
                         
                     }
                     
                     if ($data['type_affiliate'] == 'cor') {
-                        $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->get()->toArray();
-
-                        $businessUnitId = UtilsController::getBusinessUnitId($affiliation[0]['plan_id']);
-
-                        $businessLineId = UtilsController::getBusinessLineId($affiliation[0]['plan_id']);
                         
+                            $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->get()->toArray();
+
                             $patient = TelemedicinePatient::create([
 
                         //Informacion de la Afiliacion
@@ -177,16 +170,12 @@ class ListTelemedicinePatients extends ListRecords
                                 'created_by'                => Auth::user()->name,
 
                                 //Unidad de Negocios
-                                'business_unit_id'          => $businessUnitId,
-                                'business_line_id'          => $businessLineId,
+                                'business_unit_id'          => $affiliation[0]['affiliation_corporate']['business_unit_id'] == NULL ? null : $affiliation[0]['affiliation_corporate']['business_unit_id'],
+                                'business_line_id'          => $affiliation[0]['affiliation_corporate']['business_line_id'] == NULL ? null : $affiliation[0]['affiliation_corporate']['business_line_id']
                             ]);
                         
                     }
-                    // $this->redirect(route('filament.admin.resources.telemedicine-patients.create', [
-                    //     'type_affiliate' => $data['type_affiliate'],
-                    //     'affiliate_id' => $data['affiliate_id'],
-                    //     // 'affiliate_corporate_id' => $data['affiliate_corporate_id'],
-                    // ]));
+
                 })
         ];
     }

@@ -15,10 +15,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
 
     #[Validate('required', message: 'Campo requerido')]
-    public string $first_name;
-
-    #[Validate('required', message: 'Campo requerido')]
-    public string $last_name;
+    public string $full_name;
 
     #[Validate('required', message: 'Campo requerido')]
     public string $nro_identificacion;

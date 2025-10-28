@@ -17,6 +17,7 @@ use App\Filament\Telemedicina\Resources\TelemedicineCases\Tables\TelemedicineCas
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\ObservationsRelationManager;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\ConsultationsRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\TelemedicineDocumentsRelationManager;
 
 class TelemedicineCaseResource extends Resource
 {
@@ -49,7 +50,8 @@ class TelemedicineCaseResource extends Resource
     {
         return [
             ConsultationsRelationManager::class,
-            ObservationsRelationManager::class
+            ObservationsRelationManager::class,
+            TelemedicineDocumentsRelationManager::class
         ];
     }
 

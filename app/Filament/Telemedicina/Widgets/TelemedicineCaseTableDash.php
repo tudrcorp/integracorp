@@ -231,11 +231,13 @@ class TelemedicineCaseTableDash extends TableWidget
                         ->action(function (TelemedicineCase $record, array $data) {
                             
                             try {
-                                
+                                // dd($data, $record);
                                 $observation = new ObservationCase();
                                 $observation->description = $data['observation'];
                                 $observation->telemedicine_case_id = $record->id;
                                 $observation->created_by = Auth::user()->id;
+
+                                // dd($observation);
                                 $observation->save();
 
                                 Notification::make()

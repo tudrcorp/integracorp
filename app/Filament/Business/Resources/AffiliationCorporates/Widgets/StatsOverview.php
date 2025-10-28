@@ -12,15 +12,15 @@ class StatsOverview extends StatsOverviewWidget
     protected function getStats(): array
     {
         return [
-            Stat::make('Total Corporativos', AffiliationCorporate::all()->count() . ' empresas')
+            Stat::make('Total Corporativos', AffiliationCorporate::where('status', 'ACTIVA')->count() . ' empresas')
                 ->icon('heroicon-m-user-group')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
-            Stat::make('Total Afiliados Corporativos', AffiliateCorporate::all()->count().' afiliados')
+            Stat::make('Total Afiliados Corporativos', AffiliateCorporate::where('status', 'ACTIVO')->count().' afiliados')
                 ->icon('heroicon-m-user-group')
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color('danger'),
-            Stat::make('Total Neto', 'US$ '.AffiliationCorporate::all()->sum('total_amount'))
+            Stat::make('Total Neto', 'US$ '.number_format(AffiliationCorporate::all()->sum('total_amount'), 2, ',', '.'))
                 ->icon('heroicon-m-user-group')
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color('danger'),

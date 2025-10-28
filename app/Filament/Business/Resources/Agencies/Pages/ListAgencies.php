@@ -148,22 +148,13 @@ class ListAgencies extends ListRecords
 
                             $link = config('parameters.register_agency');
                             $sendEmail  = NotificationController::send_email_agency_register($link, $data['email']);
-                            if ($sendEmail == true) {
-                                LogController::log(Auth::user()->id, 'ENVIAO DE LINK PARA REGISTRO DE AGENCIA', 'ListAgencies::getHeaderActions:action()', 'NOTIFICACION ENVIADA');
-                                Notification::make()
-                                    ->title('NOTIFICACION ENVIADA')
-                                    ->body('La notificación via email fue enviada con exito.')
-                                    ->icon('heroicon-c-shield-check')
-                                    ->color('success')
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('ENVIO FALLIDO')
-                                    ->body('La notificación via email NO fue enviada con exito.')
-                                    ->icon('heroicon-c-shield-check')
-                                    ->color('danger')
-                                    ->send();
-                            }
+                            
+                            Notification::make()
+                                ->title('NOTIFICACION ENVIADA')
+                                ->body('La notificación via email fue enviada con exito.')
+                                ->icon('heroicon-c-shield-check')
+                                ->color('success')
+                                ->send();
                         }
 
                         if ($data['phone'] != null) {
@@ -171,22 +162,14 @@ class ListAgencies extends ListRecords
                             $link = config('parameters.register_agency');
                             $phone = $data['country_code'] . ltrim(preg_replace('/[^0-9]/', '', $data['phone']), '0');
                             $sendWp     = NotificationController::send_link_agency_register_wp($link, $phone);
-                            if ($sendWp['success']) {
-                                LogController::log(Auth::user()->id, 'ENVIAO DE LINK PARA REGISTRO DE AGENCIA', 'ListAgencies::getHeaderActions:action()', 'NOTIFICACION ENVIADA');
-                                Notification::make()
-                                    ->title('NOTIFICACION ENVIADA')
-                                    ->body('La notificación via whatsapp fue enviada con exito.')
-                                    ->icon('heroicon-c-shield-check')
-                                    ->color('success')
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('ENVIO FALLIDO')
-                                    ->body('La notificación via email NO fue enviada con exito.')
-                                    ->icon('heroicon-c-shield-check')
-                                    ->color('danger')
-                                    ->send();
-                            }
+                            
+                            Notification::make()
+                                ->title('NOTIFICACION ENVIADA')
+                                ->body('La notificación via WhataApp fue enviada con exito.')
+                                ->icon('heroicon-c-shield-check')
+                                ->color('success')
+                                ->send();
+                            
                         }
                     } catch (\Throwable $th) {
                         Notification::make()

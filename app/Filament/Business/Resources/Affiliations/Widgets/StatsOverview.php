@@ -12,11 +12,11 @@ class StatsOverview extends StatsOverviewWidget
     protected function getStats(): array
     {
         return [
-            Stat::make('Total Afiliados Individuales', Affiliate::all()->count() . ' afiliados')
+            Stat::make('Total Afiliados Individuales', Affiliate::where('status', 'ACTIVO')->count() . ' afiliados')
                 ->icon('heroicon-m-user-group')
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color('danger'),
-            Stat::make('Total Neto', 'US$ ' . Affiliation::all()->sum('total_amount'))
+            Stat::make('Total Neto', 'US$ ' . number_format(Affiliation::where('status', 'ACTIVA')->sum('total_amount'), 2, ',', '.'))
                 ->icon('heroicon-m-user-group')
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color('danger'),

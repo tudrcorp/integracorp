@@ -74,5 +74,10 @@ class TelemedicineCase extends Model
         return $this->hasMany(ObservationCase::class);
     }
 
+    public function telemedicineDocuments()
+    {
+        return $this->hasMany(TelemedicineDocument::class);
+    }
+
     
 }

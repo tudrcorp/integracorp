@@ -315,5 +315,38 @@ Route::get('/rp', function () {
 
     $pdf = Pdf::loadView('documents.informe-medico-general');
     return $pdf->stream();
+
+    // return view ('pr');
     
-});  
+});
+
+Route::get('/inter', function () {
+
+    $pdf = Pdf::loadView('documents.referencia-especialista');
+    return $pdf->stream();
+
+});
+
+
+Route::get('/lab', function () {
+
+    $pdf = Pdf::loadView('documents.laboratorios');
+    return $pdf->stream();
+
+
+});
+
+
+Route::get('/imag', function () {
+
+    $pdf = Pdf::loadView('documents.imagenologia');
+    return $pdf->stream();
+
+
+});
+
+Route::get('/medi', function () {
+
+    $pdf = Pdf::loadView('documents.medicamentos');
+    return $pdf->stream();
+});

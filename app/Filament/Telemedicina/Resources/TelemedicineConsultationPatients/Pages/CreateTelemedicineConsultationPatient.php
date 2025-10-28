@@ -5,15 +5,24 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\P
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use App\Models\TelemedicineCase;
+use App\Models\TelemedicineDoctor;
 use Illuminate\Support\HtmlString;
 use App\Models\TelemedicinePatient;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use App\Jobs\GeneratePdfLaboratorio;
+use App\Models\TelemedicineDocument;
 use App\Models\TelemedicineFollowUp;
 use Illuminate\Support\Facades\Auth;
+use App\Jobs\GeneratePdfEspecialista;
+use App\Jobs\GeneratePdfImagenologia;
+use App\Jobs\GeneratePdfMedicamentos;
 use App\Models\TelemedicineListStudy;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Cache;
+use App\Jobs\SendTelemedicinaDocument;
 use App\Models\TelemedicinePatientLab;
 use Filament\Forms\Components\Checkbox;
 use App\Models\TelemedicinePatientStudy;
@@ -29,6 +38,7 @@ use App\Models\TelemedicinePatientSpecialty;
 use Filament\Infolists\Components\TextEntry;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicineConsultationPatient;
+use App\Services\NotificationTelemedicinaService;
 use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 
@@ -344,6 +354,12 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         try {
 
             $record = $this->getRecord()->toArray();
+            // dd($record, $this->data);
+
+            $doctor = TelemedicineDoctor::where('id', $record['telemedicine_doctor_id'])->first()->toArray();
+
+            $patient = TelemedicinePatient::where('id', $record['telemedicine_patient_id'])->first()->toArray();
+            // dd($patient);
 
             $feedbackOne = session()->get('feedbackOne');
 
@@ -382,6 +398,35 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $medications->assigned_by                           = Auth::user()->id;
                     $medications->save();
                 }
+
+                /**
+                 * Informacion para el pdf
+                 * -------------------------------------------------------------------------------------------
+                 * 
+                 * @typeDoc = Tipo de documento a generar
+                 * @doctor = Informacion del doctor
+                 * @recod = Informacion de la consulta
+                 * 
+                 */
+                $typeDoc = 'medicamentos';
+
+                $data = [
+                    'fecha'                         => now()->format('d/m/Y'),
+                    'code_reference'                => $record['code_reference'],
+                    'name_patiente'                 => $record['full_name'],
+                    'ci_patiente'                   => $record['nro_identificacion'],
+                    'age_patiente'                  => $patient['age'],
+                    'medicationsArr'                => $medicationsArr,
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'signature'                     => $doctor['signature'],
+                ];
+
+                GeneratePdfMedicamentos::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
             }
 
             //Arreglo de Laboratorios
@@ -398,6 +443,35 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $labs->assigned_by                           = Auth::user()->id;
                     $labs->save();
                 }
+
+                /**
+                 * Informacion para el pdf
+                 * -------------------------------------------------------------------------------------------
+                 * 
+                 * @typeDoc = Tipo de documento a generar
+                 * @doctor = Informacion del doctor
+                 * @recod = Informacion de la consulta
+                 * 
+                 */
+                $typeDoc = 'laboratorios';
+
+                $data = [
+                    'fecha'                         => now()->format('d/m/Y'),
+                    'code_reference'                => $record['code_reference'],
+                    'name_patiente'                 => $record['full_name'],
+                    'ci_patiente'                   => $record['nro_identificacion'],
+                    'age_patiente'                  => $patient['age'],
+                    'labs'                          => $record['labs'],
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'signature'                     => $doctor['signature'],
+                ]; 
+
+                GeneratePdfLaboratorio::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
             }
 
             //Arreglo de Estudios
@@ -414,6 +488,45 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $study->type                                  = TelemedicineListStudy::where('name', $finalArrStudies[$i])->first()->type;
                     $study->save();
                 }
+
+                /**
+                 * Informacion para el pdf
+                 * -------------------------------------------------------------------------------------------
+                 * 
+                 * @typeDoc = Tipo de documento a generar
+                 * @doctor = Informacion del doctor
+                 * @recod = Informacion de la consulta
+                 * 
+                 */
+                $typeDoc = 'imagenologia';
+
+                $data = [
+                    'fecha'                         => now()->format('d/m/Y'),
+                    'code_reference'                => $record['code_reference'],
+                    'name_patiente'                 => $record['full_name'],
+                    'ci_patiente'                   => $record['nro_identificacion'],
+                    'age_patiente'                  => $patient['age'],
+                    'studies'                       => $record['studies'],
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'phone'                         => $patient['phone'],
+                    'signature'                     => $doctor['signature'],
+                ];
+
+                // Bus::chain([
+
+                //     new GeneratePdfImagenologia($data, Auth::user(), $typeDoc),
+
+                //     new SendTelemedicinaDocument($data['telemedicine_patient_id'], $data['telemedicine_case_id'], Auth::user(), $patient['phone'], $typeDoc),
+
+                // ])->onQueue('telemedicina')->dispatch();
+
+                GeneratePdfImagenologia::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
+
             }
 
             //Arreglo Especialistas
@@ -425,11 +538,41 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $specialist->telemedicine_patient_id               = $record['telemedicine_patient_id'];
                     $specialist->telemedicine_case_id                  = $record['telemedicine_case_id'];
                     $specialist->telemedicine_doctor_id                = $record['telemedicine_doctor_id'];
-                    $specialist->specialty                            = $finalArrSpecialist[$i];
+                    $specialist->specialty                             = $finalArrSpecialist[$i];
                     $specialist->assigned_by                           = Auth::user()->id;
                     $specialist->type                                  = TelemedicineListSpecialist::where('name', $finalArrSpecialist[$i])->first()->type;
                     $specialist->save();
                 }
+
+                /**
+                 * Informacion para el pdf
+                 * -------------------------------------------------------------------------------------------
+                 * 
+                 * @typeDoc = Tipo de documento a generar
+                 * @doctor = Informacion del doctor
+                 * @recod = Informacion de la consulta
+                 * 
+                 */
+                $typeDoc = 'especialista';
+
+                $data = [
+                    'fecha'                         => now()->format('d/m/Y'),
+                    'code_reference'                => $record['code_reference'],
+                    'name_patiente'                 => $record['full_name'],
+                    'ci_patiente'                   => $record['nro_identificacion'],
+                    'age_patiente'                  => $patient['age'],
+                    'consultSpecialistArr'          => $consultSpecialistArr,
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'signature'                     => $doctor['signature'],
+                ];
+                // dd($data);
+
+                GeneratePdfEspecialista::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
             }
 
             //...Limpio la variable de sesion
@@ -479,6 +622,15 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 $case->save();
             }
 
+            //Si el servicio es una telemedicina estandar enviamos la notificacion y el documento
+            if($this->data['telemedicine_service_list_id'] == 1){
+                
+                $this->sendNotifications($record);
+    
+                SendTelemedicinaDocument::dispatch($data['telemedicine_patient_id'], $data['telemedicine_case_id'], Auth::user(), $patient['phone'], $typeDoc)->onQueue('telemedicina');
+            }
+
+
             
             //code...
         } catch (\Throwable $th) {
@@ -486,6 +638,16 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         }
         
 
+    }
+
+    private function sendNotifications()
+    {
+        $record = $this->getRecord()->toArray();
+
+        $patient = TelemedicinePatient::where('id', $record['telemedicine_patient_id'])->first()->toArray();
+        
+        $masiveNotification = new NotificationTelemedicinaService();
+        $masiveNotification->sendPreviewNotification($patient['phone']);
     }
 
     public function getRedirectUrl(): string

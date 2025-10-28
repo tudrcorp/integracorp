@@ -670,4 +670,5 @@ class NotificationMasiveService
         }
         
     }
+
 }
