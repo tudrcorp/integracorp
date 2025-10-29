@@ -25,6 +25,7 @@ use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use App\Http\Controllers\UtilsController;
+use Filament\Schemas\Components\Fieldset;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
@@ -124,16 +125,29 @@ class CorporateQuoteForm
                                                 ])
                                                 ->maxLength(255),
                                         ])->columnSpanFull(),
-                                    Grid::make(1)
-                                        ->schema([
-                                            Textarea::make('observation_dress_tailor')
-                                                ->label('Especificaciones de la cotización')
-                                                ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
-                                                ->required()
-                                                ->autosize()
-                                                ->hidden(fn(Get $get) => $get('type') == 'BASICO')
-
-                                        ])->columnSpanFull(),
+                                        
+                                    Fieldset::make('Asociar Agencia y/o Agente')
+                                    ->schema([
+                                        Select::make('code_agency')
+                                            ->label('Lista de Agencias')
+                                            ->options(Agency::all()->pluck('name_corporative', 'code'))
+                                            ->searchable()
+                                            ->live()
+                                            ->prefixIcon('heroicon-c-building-library')
+                                            ->preload(),
+                                        Select::make('agent_id')
+                                            ->label('Agentes')
+                                            ->options(function (Get $get) {
+                                                if ($get('code_agency') == null) {
+                                                    return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
+                                                }
+                                                return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                            })
+                                            ->searchable()
+                                            ->prefixIcon('fontisto-person')
+                                            ->preload(),
+                                    ])->columnSpanFull(),
+                                    
                                     Hidden::make('created_by')->default(Auth::user()->name),
                                     Hidden::make('code_agency')->default('TDG-100'),
                                     Hidden::make('owner_code')->default('TDG-100'),

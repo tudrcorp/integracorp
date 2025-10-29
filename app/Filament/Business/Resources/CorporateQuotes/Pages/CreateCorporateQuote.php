@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\CorporateQuotes\Pages;
 
 use App\Models\Fee;
 use App\Models\User;
+use App\Models\Agency;
 use App\Models\AgeRange;
 use Filament\Actions\Action;
 use Illuminate\Support\Facades\DB;
@@ -67,9 +68,33 @@ class CreateCorporateQuote extends CreateRecord
                 session()->put('details_quote', $data['details_quote']);
             }
 
+            $data['code_agency']    = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
+            $data['agent_id']       = $data['agent_id'] == null ? null : $data['agent_id'];
+
+            $data['code_agency']    = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
+            $data['agent_id']       = $data['agent_id'] == null ? null : $data['agent_id'];
+
+            if (Agency::where('code', $data['code_agency'])->exists()) {
+                $data['owner_code'] = Agency::where('code', $data['code_agency'])->first()->owner_code;
+            } else {
+                $data['owner_code'] = 'TDG-100';
+            }
+
             return $data;
         } else {
 
+            $data['code_agency']    = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
+            $data['agent_id']       = $data['agent_id'] == null ? null : $data['agent_id'];
+
+            $data['code_agency']    = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
+            $data['agent_id']       = $data['agent_id'] == null ? null : $data['agent_id'];
+
+            if (Agency::where('code', $data['code_agency'])->exists()) {
+                $data['owner_code'] = Agency::where('code', $data['code_agency'])->first()->owner_code;
+            } else {
+                $data['owner_code'] = 'TDG-100';
+            }
+            
             return $data;
         }
     }
