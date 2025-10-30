@@ -333,19 +333,13 @@ class AgentForm
                             TextInput::make('local_beneficiary_rif')
                                 ->label('CI/RIF del Beneficiario')
                                 ->prefixIcon('heroicon-s-identification')
-                                ->numeric()
                                 ->validationMessages([
                                     'numeric'  => 'Campo tipo numerico',
                                 ])
                                 ->maxLength(255),
                             TextInput::make('local_beneficiary_account_number')
                                 ->label('Número de Cuenta del Beneficiario')
-                                ->prefixIcon('heroicon-s-identification')
-                                ->numeric()
-                                ->validationMessages([
-                                    'numeric'  => 'Campo tipo numerico',
-                                ])
-                                ->maxLength(255),
+                                ->prefixIcon('heroicon-s-identification'),
 
                             Select::make('local_beneficiary_account_bank')
                                 ->label('Banco del Beneficiario')
