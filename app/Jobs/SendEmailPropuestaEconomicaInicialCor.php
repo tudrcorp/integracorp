@@ -55,7 +55,7 @@ class SendEmailPropuestaEconomicaInicialCor implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->generatePDF($this->details, $this->collect);
+        $this->generatePDF($this->details, $this->collect, $this->user);
 
         Notification::make()
             ->title('¡TAREA COMPLETADA!')
@@ -69,11 +69,12 @@ class SendEmailPropuestaEconomicaInicialCor implements ShouldQueue
             ->sendToDatabase($this->user);
     }
 
-    private function generatePDF($details, $collect)
+    private function generatePDF($details, $collect, $user)
     {
         ini_set('memory_limit', '2048M');
 
-        $pdf = Pdf::loadView('documents.propuesta-economica-cor', compact('details', 'collect'));
+        $name_user = $user->name;
+        $pdf = Pdf::loadView('documents.propuesta-economica-cor', compact('details', 'collect', 'name_user'));
         $name_pdf = $details['code'] . '.pdf';
         $pdf->save(public_path('storage/quotes/' . $name_pdf));
 

@@ -55,7 +55,7 @@ class SendEmailPropuestaEconomicaPlanEspecial implements ShouldQueue
     public function handle(): void
     {
 
-        $this->generatePDF($this->details, $this->group_collect);
+        $this->generatePDF($this->details, $this->group_collect, $this->user);
 
         Notification::make()
             ->title('¡TAREA COMPLETADA!')
@@ -69,7 +69,7 @@ class SendEmailPropuestaEconomicaPlanEspecial implements ShouldQueue
             ->sendToDatabase($this->user);
     }
 
-    private function generatePDF($details, $group_collect)
+    private function generatePDF($details, $group_collect, $user)
     {
         ini_set('memory_limit', '2048M');
 
@@ -77,7 +77,8 @@ class SendEmailPropuestaEconomicaPlanEspecial implements ShouldQueue
          * Logica para generar el pdf
          * ----------------------------------------------------------------------------------------------------
          */
-        $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect'));
+        $name_user = $user->name;
+        $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect', 'name_user'));
         $name_pdf = $details['code'] . '.pdf';
         $pdf->save(public_path('storage/quotes/' . $name_pdf));
 

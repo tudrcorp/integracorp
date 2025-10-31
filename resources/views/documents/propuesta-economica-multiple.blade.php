@@ -89,7 +89,9 @@
         @livewire('planes-cotizacion-individual', 
             [
                 'data' => $data_inicial,
-                'name' => $details_generals['name']
+                'name' => $details_generals['name'],
+                'name_user' => $name_user
+
             ])
 
     @endif
@@ -100,7 +102,9 @@
 
             [
                 'data' => $data_ideal,
-                'name' => $details_generals['name']
+                'name' => $details_generals['name'],
+                'name_user' => $name_user
+
             ])
 
     @endif
@@ -111,7 +115,9 @@
 
             [
                 'data' => $data_especial,
-                'name' => $details_generals['name']
+                'name' => $details_generals['name'],
+                'name_user' => $name_user
+
             ])
 
     @endif

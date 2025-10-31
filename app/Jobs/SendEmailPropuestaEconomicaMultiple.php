@@ -118,7 +118,8 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
              * Logica para generar el pdf
              * ----------------------------------------------------------------------------------------------------
              */
-            $pdf = Pdf::loadView('documents.propuesta-economica-multiple', compact('data_inicial', 'data_ideal', 'data_especial', 'details_generals'));
+            $name_user = $this->user->name;
+            $pdf = Pdf::loadView('documents.propuesta-economica-multiple', compact('data_inicial', 'data_ideal', 'data_especial', 'details_generals', 'name_user'));
             $name_pdf = $details_generals['code'] . '.pdf';
             $pdf->save(public_path('storage/quotes/' . $name_pdf));
 

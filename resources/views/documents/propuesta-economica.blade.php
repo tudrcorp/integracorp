@@ -86,25 +86,30 @@
     {{-- @livewire('propuesta-economica.propuesta-economica-page-2') --}}
 
     @if($details['plan'] == 1)
-        @livewire('planes-cotizacion-individual', ['data' => $collect, 'name' => $details['name']])
+        @livewire('planes-cotizacion-individual', 
+            [
+                'data' => $collect, 
+                'name' => $details['name'], 
+                'name_user' => $name_user
+            ])
     @endif
 
     @if($details['plan'] == 2)
         @livewire('planes-cotizacion-individual-ideal', 
-        [
-            'data' => $group_collect,
-            'name' => $details['name']
-
-        ])
+            [
+                'data' => $group_collect,
+                'name' => $details['name'],
+                'name_user' => $name_user
+            ])
     @endif
 
     @if($details['plan'] == 3)
         @livewire('planes-cotizacion-individual-especial', 
-        [
-            'data' => $group_collect, 
-            'name' => $details['name']
-
-        ])
+            [
+                'data' => $group_collect, 
+                'name' => $details['name'],
+                'name_user' => $name_user
+            ])
     @endif
 
 

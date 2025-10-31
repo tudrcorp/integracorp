@@ -8,11 +8,13 @@ class PlanesCotizacionIndividualIdeal extends Component
 {
     public $data = [];
     public $name;
+    public $name_user;
 
-    public function mount($data, $name)
+    public function mount($data, $name, $name_user)
     {
         $this->data = $data;
         $this->name = $name;
+        $this->name_user = $name_user;
     }
     
     public function render()
