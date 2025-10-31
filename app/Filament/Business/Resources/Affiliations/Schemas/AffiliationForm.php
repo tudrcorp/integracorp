@@ -3,10 +3,11 @@
 namespace App\Filament\Business\Resources\Affiliations\Schemas;
 
 use App\Models\City;
+use App\Models\Plan;
 use App\Models\Agent;
 use App\Models\State;
-use App\Models\Agency;
 
+use App\Models\Agency;
 use App\Models\Region;
 use App\Models\Country;
 use App\Models\Coverage;
@@ -44,6 +45,8 @@ class AffiliationForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $data_records = session()->get('data_records');
+        
         return $schema
             ->components([
                 Wizard::make([
@@ -70,54 +73,34 @@ class AffiliationForm
                             Grid::make(3)->schema([
                                 Select::make('individual_quote_id')
                                     ->label('Nombre del cliente')
-                                    ->live()
-                                    ->disabled()
-                                    ->dehydrated()
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
                                     ->options(IndividualQuote::all()->pluck('full_name', 'id'))
+                                    ->default(function () {
+                                        if(isset($data_records)) {
+                                            return $data_records[0]['individual_quote_id'];
+                                        }
+                                        return null;
+                                    })
                                     ->searchable()
                                     ->preload()
-                                    ->afterStateUpdated(function (Set $set, $state) {
-                                        $code = IndividualQuote::select('code', 'id')->where('id', $state)->first()->code;
-                                        $set('code_individual_quote', $code);
-                                    })
                                     ->required()
                                     ->validationMessages([
                                         'required'  => 'Campo Requerido',
                                     ]),
 
                                 Select::make('plan_id')
+                                    ->options(Plan::all()->pluck('description', 'id'))
                                     ->default(function () {
-                                        $plan_id = request()->query('plan_id');
-                                        if (isset($plan_id)) {
-                                            return $plan_id;
+                                        if(isset($data_records)) {
+                                            return $data_records[0]['plan_id'];
                                         }
                                         return null;
                                     })
                                     ->label('Plan')
                                     ->live()
-                                    ->disabled(function () {
-                                        $plan_id = request()->query('plan_id');
-                                        if (isset($plan_id) && $plan_id != null) {
-                                            return true;
-                                        }
-                                        return false;
-                                    })
-                                    ->dehydrated()
                                     ->searchable()
                                     ->preload()
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
-                                    ->options(function (Get $get) {
-                                        $plans = DetailIndividualQuote::join('plans', 'detail_individual_quotes.plan_id', '=', 'plans.id')
-                                            ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
-                                            ->where('individual_quotes.id', $get('individual_quote_id'))
-                                            ->select('plans.id as plan_id', 'plans.description as description')
-                                            ->distinct() // Asegurarse de que no haya duplicados
-                                            ->get()
-                                            ->pluck('description', 'plan_id');
-
-                                        return $plans;
-                                    })
                                     ->required()
                                     ->validationMessages([
                                         'required'  => 'Campo Requerido',
@@ -126,23 +109,13 @@ class AffiliationForm
                                     ->helperText('Punto(.) para separar miles.')
                                     ->label('Cobertura')
                                     ->live()
-                                    ->options(function (Get $get) {
-                                        $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
-                                            ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
-                                            ->where('individual_quotes.id', $get('individual_quote_id'))
-                                            ->where('detail_individual_quotes.plan_id', $get('plan_id'))
-                                            ->select('coverages.id as coverage_id', 'coverages.price as description')
-                                            ->distinct() // Asegurarse de que no haya duplicados
-                                            ->get()
-                                            ->pluck('description', 'coverage_id');
-
-                                        return $coverages;
+                                    ->options(Coverage::all()->pluck('price', 'id'))
+                                    ->default(function () {
+                                        if(isset($data_records)) {
+                                            return $data_records[0]['coverage_id'];
+                                        }
+                                        return null;
                                     })
-                                    ->relationship(
-                                        name: 'coverage',
-                                        modifyQueryUsing: fn(Builder $query, Get $get) => $query->where('plan_id', $get('plan_id'))->orderBy('price', 'asc'),
-                                    )
-                                    ->getOptionLabelFromRecordUsing(fn(Coverage $record) => number_format($record->price, 0, '', '.'))
                                     ->searchable()
                                     ->required()
                                     ->validationMessages([
@@ -167,54 +140,27 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ])
                                     ->preload()
-                                    ->afterStateUpdated(function ($state, $set, Get $get) {
+                                    ->afterStateUpdated(function ($state, $set, Get $get) use ($data_records) {
+                                        
+                                        $set('fee_anual', $data_records[0]['subtotal_anual']);
+                                        
                                         if ($get('payment_frequency') == 'ANUAL') {
-                                            //busco el valor de la cotizacion de acuerdo al plan y a la covertura
-                                            $data_quote = DetailIndividualQuote::select('individual_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
-                                                ->where('individual_quote_id', $get('individual_quote_id'))
-                                                ->where('plan_id', $get('plan_id'))
-                                                ->when($get('plan_id') != 1, function ($query) use ($get) {
-                                                    return $query->where('coverage_id', $get('coverage_id'));
-                                                })
-                                                ->get();
-
-                                            $set('total_amount', $data_quote->sum('subtotal_anual'));
+                                            $set('total_amount', $data_records[0]['subtotal_anual']);
                                         }
                                         if ($get('payment_frequency') == 'TRIMESTRAL') {
-
-                                            $data_quote = DetailIndividualQuote::select('individual_quote_id', 'plan_id', 'coverage_id', 'subtotal_quarterly')
-                                                ->where('individual_quote_id', $get('individual_quote_id'))
-                                                ->where('plan_id', $get('plan_id'))
-                                                ->when($get('plan_id') != 1, function ($query) use ($get) {
-                                                    return $query->where('coverage_id', $get('coverage_id'));
-                                                })
-                                                ->get();
-
-                                            $set('total_amount', $data_quote->sum('subtotal_quarterly'));
+                                            $set('total_amount', $data_records[0]['subtotal_quarterly']);
                                         }
                                         if ($get('payment_frequency') == 'SEMESTRAL') {
-
-                                            $data_quote = DetailIndividualQuote::select('individual_quote_id', 'plan_id', 'coverage_id', 'subtotal_biannual')
-                                                ->where('individual_quote_id', $get('individual_quote_id'))
-                                                ->where('plan_id', $get('plan_id'))
-                                                ->when($get('plan_id') != 1, function ($query) use ($get) {
-                                                    return $query->where('coverage_id', $get('coverage_id'));
-                                                })
-                                                ->get();
-
-                                            $set('total_amount', $data_quote->sum('subtotal_biannual'));
+                                            $set('total_amount', $data_records[0]['subtotal_biannual']);                                      
                                         }
-
-                                        $fee_anual = DetailIndividualQuote::select('individual_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
-                                            ->where('individual_quote_id', $get('individual_quote_id'))
-                                            ->where('plan_id', $get('plan_id'))
-                                            ->when($get('plan_id') != 1, function ($query) use ($get) {
-                                                return $query->where('coverage_id', $get('coverage_id'));
-                                            })
-                                            ->get();
-
-                                        $set('fee_anual', $fee_anual->sum('subtotal_anual'));
+                                        
                                     }),
+                                TextInput::make('payment_frequency')
+                                    ->visibleOn('edit')
+                                    ->label('Frecuencia de pago')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->live(),
                                 TextInput::make('fee_anual')
                                     ->label('Tarifa anual')
                                     ->prefix('US$')
@@ -288,8 +234,6 @@ class AffiliationForm
                                             ->preload(),
                                     ])->columnSpanFull()->columns(3),
                                 Hidden::make('created_by')->default(Auth::user()->name),
-                                Hidden::make('code_agency')->default('TDG-100'),
-                                Hidden::make('owner_code')->default('TDG-100'),
                                 Hidden::make('status')->default('PRE-APROBADA'),
                             ])
                         ]),
@@ -351,21 +295,14 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ]),
                                 TextInput::make('email_ti')
-                                    ->label('Email')
-                                    ->prefixIcon('heroicon-s-at-symbol')
+                                    ->label('Correo Electrónico')
                                     ->email()
-                                    ->required()
-                                    ->unique(
-                                        ignoreRecord: true,
-                                        table: 'affiliations',
-                                        column: 'email_ti',
-                                    )
+                                    ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
                                     ->validationMessages([
-                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
-                                        'required'  => 'Campo requerido',
-                                        'email'     => 'El campo es un email',
-                                    ])
-                                    ->maxLength(255),
+                                        'required' => 'Campo requerido',
+                                        'email' => 'El correo no es valido',
+                                        'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                    ]),
                                 TextInput::make('adress_ti')
                                     ->label('Dirección')
                                     ->afterStateUpdatedJs(<<<'JS'
@@ -465,7 +402,7 @@ class AffiliationForm
                             ])
                         ]),
                     Step::make('Afiliados')
-                        ->hidden(fn(Get $get) => !$get('feedback'))
+                        ->hidden(fn(Get $get, string $operation) => !$get('feedback') || $operation == 'edit')
                         ->description('Data de afiliados')
                         ->schema([
                             Repeater::make('affiliates')
@@ -551,9 +488,9 @@ class AffiliationForm
                                         ])->columnSpanFull()->columns(2),
                                 ])
                                 ->columnSpanFull()
-                                ->defaultItems(function (Get $get, Set $set) {
+                                ->defaultItems(function (Get $get, Set $set) use ($data_records) {
                                     //Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
-                                    return session()->get('persons') - 1;
+                                    return $data_records[0]['total_persons'] == 1 ? 1 : $data_records[0]['total_persons'] - 1;
                                 })
                                 ->addActionLabel('Agregar afiliado')
                         ]),
@@ -789,21 +726,14 @@ class AffiliationForm
                                             }
                                         }),
                                     TextInput::make('email_payer')
-                                        ->label('Email')
-                                        ->prefixIcon('heroicon-s-at-symbol')
+                                        ->label('Correo Electrónico')
                                         ->email()
-                                        ->required()
-                                        ->unique(
-                                            ignoreRecord: true,
-                                            table: 'affiliations',
-                                            column: 'email_payer',
-                                        )
+                                        ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
                                         ->validationMessages([
-                                            'unique'    => 'El Correo electrónico ya se encuentra registrado.',
-                                            'required'  => 'Campo requerido',
-                                            'email'     => 'El campo es un email',
-                                        ])
-                                        ->maxLength(255),
+                                            'required' => 'Campo requerido',
+                                            'email' => 'El correo no es valido',
+                                            'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                        ]),
                                     Select::make('relationship_payer')
                                         ->label('Parentesco')
                                         ->options([

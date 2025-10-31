@@ -37,6 +37,7 @@ use Filament\Support\Enums\GridDirection;
 use App\Models\TelemedicineListLaboratory;
 use App\Models\TelemedicineListSpecialist;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -149,9 +150,16 @@ class TelemedicineConsultationPatientForm
                     
                     Step::make('Motivo de la Consulta')
                     ->hidden(function () use ($countCase) {
-                        if($countCase < 1){
+                        
+                        $action = session()->get('action') ?? null;
+                        
+                        if($countCase < 1) {
                             return false;
                         }
+                        if(isset($action) && $action == 'edit' && session()->get('status') == 'CONSULTA INICIAL') {
+                            return false;
+                        }
+
                         return true;
                     })
                     ->schema([
@@ -387,9 +395,17 @@ class TelemedicineConsultationPatientForm
                     
                     Step::make('Cuestionario de Seguimiento')
                     ->hidden(function () use ($countCase) {
+
+                        $action = session()->get('action') ?? null;
+                        
                         if($countCase < 1){
                             return true;
                         }
+
+                        if (isset($action) && $action == 'edit' && session()->get('status') == 'CONSULTA INICIAL') {
+                            return true;
+                        }
+                        
                         return false;
                     })
                     ->schema([
@@ -437,18 +453,19 @@ class TelemedicineConsultationPatientForm
                         //...Estatus de caso
                         Fieldset::make('Estatus del Caso')
                         ->schema([
-                            Radio::make('feedbackOne')
+                            ToggleButtons::make('feedbackOne')
                                 ->label('El paciente ya se encuentra de ALTA?')
+                                ->boolean(trueLabel: 'Si')
                                 ->boolean(falseLabel: 'No, asignar un nuevo servicio!')
                                 ->default(false)
-                                ->inline()
+                                ->grouped()
                                 ->live(),
                         ])->columnSpanFull(),
 
                         //...Asignación de Servicio
                         Fieldset::make('Asignación de Servicio y Actualización de Prioridad')
-                        ->hidden(function (Get $get) {
-                            if ($get('feedbackOne') == false) {
+                        ->visible(function (Get $get) {
+                            if ($get('feedbackOne') == true) {
                                 return false;
                             }
                             return true;
@@ -494,9 +511,15 @@ class TelemedicineConsultationPatientForm
                                     2 => 'Indicacion de Laboratorios o Estudios de Imagenologia',
                                     3 => 'Consulta con Especialista',
                                 ])
-                        ])->columnSpanFull()->columns(3),
+                        ])->columnSpanFull()->columns(3)->hiddenOn('edit'),
 
                         Fieldset::make('Observaciones')
+                        ->visible(function (Get $get) {
+                            if ($get('feedbackOne') == true) {
+                                return false;
+                            }
+                            return true;
+                        })
                         ->schema([
                             Grid::make(4)
                                 ->schema([

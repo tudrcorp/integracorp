@@ -103,11 +103,13 @@ class IndividualQuoteForm
                                                 }),
                                             TextInput::make('email')
                                                 ->label('Correo Electrónico')
-                                                ->prefixIcon('heroicon-m-user')
+                                                ->email()
+                                                ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
+                                                    'email' => 'El correo no es valido',
+                                                    'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
                                                 ])
-                                                ->maxLength(255),
                                         ])->columnSpanFull(),
                                         
                                     Fieldset::make('Asociar Agencia y/o Agente')

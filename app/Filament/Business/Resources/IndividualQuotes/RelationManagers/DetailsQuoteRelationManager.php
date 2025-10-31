@@ -2,18 +2,19 @@
 
 namespace App\Filament\Business\Resources\IndividualQuotes\RelationManagers;
 
-use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
+use Filament\Actions\CreateAction;
 use Illuminate\Support\Collection;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
 
 class DetailsQuoteRelationManager extends RelationManager
 {
@@ -87,49 +88,54 @@ class DetailsQuoteRelationManager extends RelationManager
                 // CreateAction::make(),
             ])
             ->toolbarActions([
-                // BulkActionGroup::make([
-                // BulkAction::make('quote_multiple')
-                //     ->label('Preparar afiliación')
-                //     ->color('success')
-                //     ->icon('heroicon-c-receipt-percent')
-                //     ->requiresConfirmation()
-                //     ->deselectRecordsAfterCompletion()
-                //     ->action(function (Collection $records, RelationManager $livewire) {
-                //         // dd($records);
-                //         try {
+                BulkActionGroup::make([
+                    BulkAction::make('quote_multiple')
+                        ->label('Preparar afiliación')
+                        ->color('success')
+                        ->icon('heroicon-c-receipt-percent')
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, RelationManager $livewire) {
+                            
+                            try {
 
-                //             //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+                                //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
 
-                //             session()->get('data_records', []);
+                                session()->forget('data_records');
 
-                //             session()->put('data_records', $records->toArray());
+                                session()->get('data_records', []);
 
-                //             $data_records = session()->get('data_records');
+                                session()->put('data_records', $records->toArray());
 
-                //             /**
-                //              * Actualizo el status a APROBADA
-                //              */
-                //             $record = $records->first();
+                                $data_records = session()->get('data_records');
+                                // dd($data_records);
 
-                //             $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
-                //             $individual_quote->status = 'APROBADA';
-                //             $individual_quote->save();
+                                /**
+                                 * Actualizo el status a APROBADA
+                                 */
+                                $record = $records->first();
 
-                //         if ($records->count() == 1) {
-                //                 return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => $record->plan_id, 'individual_quote_id' => $livewire->ownerRecord->id]);
-                //             }
+                                $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
+                                $individual_quote->status = 'APROBADA';
+                                $individual_quote->save();
 
-                //             if ($records->count() > 1) {
-                //                 return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => null, 'individual_quote_id' => $livewire->ownerRecord->id]);
-                //             }
-                //         } catch (\Throwable $th) {
-                //             dd($th);
-                //             // $parte_entera = 0;
-                //         }
-                //     }),
+                            if ($records->count() == 1) {
+                                    return redirect()->route('filament.business.resources.affiliations.create', ['plan_id' => $record->plan_id, 'individual_quote_id' => $livewire->ownerRecord->id]);
+                                }
 
-                // DeleteBulkAction::make(),
-                // ]),
+                                if ($records->count() > 1) {
+                                    Notification::make()
+                                        ->title('Acción no permitida')
+                                        ->body('Solo se puede procesar una cotización a la vez para generar la afiliación.')
+                                        ->danger()
+                                        ->send();
+                                }
+                            } catch (\Throwable $th) {
+                                dd($th);
+                                // $parte_entera = 0;
+                            }
+                        }),
+                ]),
             ]);
     }
 }

@@ -2,12 +2,34 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
-use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Models\User;
+use App\Models\Agency;
+use App\Models\DetailCorporateQuote;
+use Illuminate\Support\Facades\Auth;
+use App\Models\AfilliationCorporatePlan;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 
 class CreateAffiliationCorporate extends CreateRecord
 {
     protected static string $resource = AffiliationCorporateResource::class;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+
+        $data['code_agency']    = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
+        $data['agent_id']       = $data['agent_id'] == null ? null : $data['agent_id'];
+
+        if ($data['code_agency'] != 'TDG-100') {
+            $data['owner_code'] = Agency::where('code', $data['code_agency'])->first()->owner_code;
+        } else {
+            $data['owner_code'] = 'TDG-100';
+        }
+
+
+        return $data;
+    }
 
     protected function afterCreate(): void
     {

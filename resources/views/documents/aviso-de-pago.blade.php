@@ -179,11 +179,11 @@
 <body>
 
     <div style="position: absolute; top: 0px; left: 10px; padding: 10px;">
-        <img src="{{ public_path('storage/logo1-pdf.png') }}" style="width: 250px; height: auto;" alt="">
+        <img src="{{ public_path('storage/administracion/logoNewPdfTDEC.png') }}" style="width: 250px; height: auto;" alt="">
     </div>
-    <div style="position: absolute; top: 320px; opacity: 0.2;">
+    {{-- <div style="position: absolute; top: 320px; opacity: 0.2;">
         <img src="{{ public_path('storage/logo-marca-agua.png') }}" style="width: 700px; height: auto;" alt="">
-    </div>
+    </div> --}}
 
     <div style="position: absolute; top: 56px; right: 0px; padding: 10px;">
         <p class="sin-margen" style="font-size: 14px; text-align: right; text-transform: uppercase;">

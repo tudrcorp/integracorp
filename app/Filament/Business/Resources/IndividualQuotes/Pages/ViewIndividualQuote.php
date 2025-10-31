@@ -14,6 +14,7 @@ class ViewIndividualQuote extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            EditAction::make(),
             Action::make('back')
                 ->label('Regresar')
                 ->button()

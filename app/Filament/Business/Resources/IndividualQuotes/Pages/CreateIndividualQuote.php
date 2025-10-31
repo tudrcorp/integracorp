@@ -55,10 +55,10 @@ class CreateIndividualQuote extends CreateRecord
 
         $data['code_agency']    = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
         $data['agent_id']       = $data['agent_id'] == null ? null : $data['agent_id'];
-        
-        if(Agency::where('code', $data['code_agency'])->exists()){
+
+        if ($data['code_agency'] != 'TDG-100') {
             $data['owner_code'] = Agency::where('code', $data['code_agency'])->first()->owner_code;
-        }else{
+        } else {
             $data['owner_code'] = 'TDG-100';
         }
 

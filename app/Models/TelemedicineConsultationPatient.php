@@ -50,6 +50,8 @@ class TelemedicineConsultationPatient extends Model
         'peso',         //peso
         'estatura',     //estatura
         'imc',          //indice de masa corporal
+
+        'feedbackOne',
     ];
 
     protected $casts = [

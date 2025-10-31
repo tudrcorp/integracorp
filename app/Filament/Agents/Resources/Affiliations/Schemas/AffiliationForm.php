@@ -342,21 +342,14 @@ class AffiliationForm
                                         'required'  => 'Campo Requerido',
                                     ]),
                                 TextInput::make('email_ti')
-                                    ->label('Email')
-                                    ->prefixIcon('heroicon-s-at-symbol')
+                                    ->label('Correo Electrónico')
                                     ->email()
-                                    ->required()
-                                    ->unique(
-                                        ignoreRecord: true,
-                                        table: 'affiliations',
-                                        column: 'email_ti',
-                                    )
+                                    ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
                                     ->validationMessages([
-                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
-                                        'required'  => 'Campo requerido',
-                                        'email'     => 'El campo es un email',
-                                    ])
-                                    ->maxLength(255),
+                                        'required' => 'Campo requerido',
+                                        'email' => 'El correo no es valido',
+                                        'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                    ]),
                                 TextInput::make('adress_ti')
                                     ->label('Dirección')
                                     ->afterStateUpdatedJs(<<<'JS'
@@ -780,21 +773,14 @@ class AffiliationForm
                                             }
                                         }),
                                     TextInput::make('email_payer')
-                                        ->label('Email')
-                                        ->prefixIcon('heroicon-s-at-symbol')
+                                        ->label('Correo Electrónico')
                                         ->email()
-                                        ->required()
-                                        ->unique(
-                                            ignoreRecord: true,
-                                            table: 'affiliations',
-                                            column: 'email_payer',
-                                        )
+                                        ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
                                         ->validationMessages([
-                                            'unique'    => 'El Correo electrónico ya se encuentra registrado.',
-                                            'required'  => 'Campo requerido',
-                                            'email'     => 'El campo es un email',
-                                        ])
-                                        ->maxLength(255),
+                                            'required' => 'Campo requerido',
+                                            'email' => 'El correo no es valido',
+                                            'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                        ]),
                                     Select::make('relationship_payer')
                                         ->label('Parentesco')
                                         ->options([

@@ -102,12 +102,14 @@ class CorporateQuoteRequestForm
                                                     }
                                                 }),
                                             TextInput::make('email')
-                                                ->label('Correo electrónico')
-                                                ->prefixIcon('heroicon-m-user')
+                                                ->label('Correo Electrónico')
+                                                ->email()
+                                                ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
-                                                ])
-                                                ->maxLength(255),
+                                                    'email' => 'El correo no es valido',
+                                                    'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                                ]),
                                         ])->columnSpanFull(),
                                     Grid::make(1)
                                         ->schema([

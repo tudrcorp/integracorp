@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\Affiliations\Pages;
 
 use Carbon\Carbon;
 use App\Models\User;
+use App\Models\Agency;
 use App\Models\Affiliate;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
@@ -48,6 +49,15 @@ class CreateAffiliation extends CreateRecord
             $data['nro_identificacion_payer'] = $data['nro_identificacion_ti'];
             $data['email_payer'] = $data['email_ti'];
             $data['phone_payer'] = $data['phone_ti'];
+        }
+
+        $data['code_agency']    = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
+        $data['agent_id']       = $data['agent_id'] == null ? null : $data['agent_id'];
+
+        if ($data['code_agency'] != 'TDG-100') {
+            $data['owner_code'] = Agency::where('code', $data['code_agency'])->first()->owner_code;
+        } else {
+            $data['owner_code'] = 'TDG-100';
         }
 
         return $data;

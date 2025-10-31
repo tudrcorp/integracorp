@@ -427,10 +427,13 @@ class AffiliationCorporateForm
                                     }),
                                 TextInput::make('email')
                                     ->label('Correo Electrónico')
-                                    ->prefixIcon('heroicon-s-at-symbol')
                                     ->email()
-                                    ->required()
-                                    ->maxLength(255),
+                                    ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
+                                    ->validationMessages([
+                                        'required' => 'Campo requerido',
+                                        'email' => 'El correo no es valido',
+                                        'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                    ]),
                                 TextInput::make('address')
                                     ->label('Dirección')
                                     ->afterStateUpdated(function (Set $set, $state) {
@@ -623,11 +626,14 @@ class AffiliationCorporateForm
                                             }
                                         }),
                                     TextInput::make('email_contact')
-                                        ->label('Email')
-                                        ->prefixIcon('heroicon-s-at-symbol')
+                                        ->label('Correo Electrónico')
                                         ->email()
-                                        ->required()
-                                        ->maxLength(255),
+                                        ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
+                                        ->validationMessages([
+                                            'required' => 'Campo requerido',
+                                            'email' => 'El correo no es valido',
+                                            'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                        ]),
                                 ])->columns(3)->hidden(fn(Get $get) => $get('feedback_dos')),
                         ]),
                     Step::make('Acuerdo y condiciones')
