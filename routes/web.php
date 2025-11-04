@@ -313,7 +313,7 @@ Route::get('/rp', function () {
 
     // }
 
-    $pdf = Pdf::loadView('documents.informe-medico-general');
+    $pdf = Pdf::loadView('documents.certificate');
     return $pdf->stream();
 
     // return view ('pr');

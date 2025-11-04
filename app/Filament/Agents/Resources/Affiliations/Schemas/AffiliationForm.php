@@ -462,7 +462,7 @@ class AffiliationForm
                                                     TextInput::make('full_name')
                                                         ->label('Nombre y Apellido')
                                                         ->afterStateUpdatedJs(<<<'JS'
-                                                            $set('adress_ti', $state.toUpperCase());
+                                                            $set('full_name', $state.toUpperCase());
                                                         JS)
                                                         ->required()
                                                         ->validationMessages([
@@ -472,7 +472,6 @@ class AffiliationForm
                                                         ->maxLength(255),
                                                     TextInput::make('nro_identificacion')
                                                         ->label('Número de Identificación')
-                                                        ->numeric()
                                                         ->unique(
                                                             ignoreRecord: true,
                                                             table: 'affiliates',
@@ -671,9 +670,6 @@ class AffiliationForm
                                         ->mask('999999999')
                                         ->rules([
                                             'regex:/^[0-9]+$/' // Acepta de 1 a 6 dígitos
-                                        ])
-                                        ->validationMessages([
-                                            'numeric'   => 'El campo es numerico',
                                         ])
                                         ->required(),
                                     Select::make('country_code_payer')

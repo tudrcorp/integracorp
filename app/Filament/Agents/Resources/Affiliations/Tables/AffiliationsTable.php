@@ -215,7 +215,6 @@ class AffiliationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    /**EDIT */
 
                     /**UPLOAD */
                     Action::make('upload')
@@ -750,7 +749,7 @@ class AffiliationsTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/certificates/CER-' . $record->code . '.pdf');
+                                $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
                                 return response()->download($path);
                                 /**
                                  * LOG
@@ -767,6 +766,14 @@ class AffiliationsTable
                                     ->danger()
                                     ->send();
                             }
+                        })
+                        ->hidden(function (Affiliation $record) {
+                            $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
+                            if (file_exists($path)) {
+                                return false;
+                            }
+                            return true;
+                            
                         }),
 
                     /**REENVIAR PROPUESTA */
@@ -941,6 +948,13 @@ class AffiliationsTable
                                     ->danger()
                                     ->send();
                             }
+                        })
+                        ->hidden(function (Affiliation $record) {
+                            $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
+                            if (file_exists($path)) {
+                                return false;
+                            }
+                            return true;
                         }),
 
 
