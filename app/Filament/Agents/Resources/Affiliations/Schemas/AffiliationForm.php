@@ -460,7 +460,7 @@ class AffiliationForm
                                             Fieldset::make('Información personal del afiliado')
                                                 ->schema([
                                                     TextInput::make('full_name')
-                                                        ->label('Nombre y Apellido')
+                                                            ->label('Nombre y Apellido')
                                                         ->afterStateUpdatedJs(<<<'JS'
                                                             $set('full_name', $state.toUpperCase());
                                                         JS)
