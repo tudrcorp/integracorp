@@ -5,9 +5,11 @@ namespace App\Models;
 use App\Mail\CertificateEmail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Jobs\SendTarjetaAfiliado;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Notifications\Notification;
 use App\Jobs\SendNotificacionAfiliacionIndividual;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -184,68 +186,6 @@ class Affiliation extends Model
         return $this->hasMany(StatusLogAffiliation::class);
     }
 
-    public function sendCertificate($record, $titular, $afiliates)
-    {
-        // dd($record, $titular, $afiliates);
-        try {
-
-            $data = $record->toArray();
-
-            $name_pdf = 'CER-' . $record->code . '.pdf';
-
-            if (isset($record->agent)) {
-                $name_agent = $record->agent->name;
-            } else {
-                $name_agent = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
-            }
-
-            $plan = $record->plan->description;
-
-            if (isset($record->coverage_id)) {
-                $coverage   = $record->coverage->price;
-            } else {
-                $coverage   = 0;
-            }
-
-            /**
-             * Agregamos la informacion al array principal que viaja a la vista del certificado
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $data['name_agent']  = $name_agent;
-            $data['plan']        = $plan;
-            $data['coverage']    = $coverage;
-
-            if ($plan == 'PLAN INICIAL') {
-                $colorTitle      = '#305B93';
-                $titleBeneficios = 'beneficios del plan inicial';
-                $imageBeneficios = 'beneficiosInicial.png';
-            }
-            if ($plan == 'PLAN IDEAL') {
-                $colorTitle      = '#052F60';
-                $titleBeneficios = 'beneficios del plan ideal';
-                $imageBeneficios = 'beneficiosIdeal.png';
-            }
-            if ($plan == 'PLAN ESPECIAL') {
-                $colorTitle      = '#529471';
-                $titleBeneficios = 'beneficios del plan emergencias medicas';
-                $imageBeneficios = 'beneficiosEspecial.png';
-            }
-
-            $data['colorTitle']      = $colorTitle;
-            $data['titleBeneficios'] = $titleBeneficios;
-            $data['imageBeneficios'] = $imageBeneficios;
-
-            SendNotificacionAfiliacionIndividual::dispatch($titular['full_name'], Auth::user()->email, $name_pdf, $data, $afiliates);
-            //code...
-            
-        } catch (\Throwable $th) {
-            dd($th);
-            //throw $th;
-        }
-        
-
-    }
-
     public function documents()
     {
         return $this->hasMany(AffiliationIndividualDocument::class);
@@ -257,65 +197,6 @@ class Affiliation extends Model
          * JOB
          */
         SendTarjetaAfiliado::dispatch($details);
-    }
-
-    public function sendCertificateOnlyHolder($record, $afiliates)
-    {
-
-        try {
-
-            $data = $record->toArray();
-
-            $name_pdf = 'CER-' . $record->code . '.pdf';
-
-            if (isset($record->agent)) {
-                $name_agent = $record->agent->name;
-            } else {
-                $name_agent = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
-            }
-
-            $plan = $record->plan->description;
-
-            if (isset($record->coverage_id)) {
-                $coverage   = $record->coverage->price;
-            } else {
-                $coverage   = 0;
-            }
-
-            /**
-             * Agregamos la informacion al array principal que viaja a la vista del certificado
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $data['name_agent']  = $name_agent;
-            $data['plan']        = $plan;
-            $data['coverage']    = $coverage;
-
-            if ($plan == 'PLAN INICIAL') {
-                $colorTitle      = '#305B93';
-                $titleBeneficios = 'beneficios del plan inicial';
-                $imageBeneficios = 'beneficiosInicial.png';
-            }
-            if ($plan == 'PLAN IDEAL') {
-                $colorTitle      = '#052F60';
-                $titleBeneficios = 'beneficios del plan ideal';
-                $imageBeneficios = 'beneficiosIdeal.png';
-            }
-            if ($plan == 'PLAN ESPECIAL') {
-                $colorTitle      = '#529471';
-                $titleBeneficios = 'beneficios del plan emergencias medicas';
-                $imageBeneficios = 'beneficiosEspecial.png';
-            }
-
-            $data['colorTitle']      = $colorTitle;
-            $data['titleBeneficios'] = $titleBeneficios;
-            $data['imageBeneficios'] = $imageBeneficios;
-            // dd(count($afiliates), $afiliates);
-            SendNotificacionAfiliacionIndividual::dispatch($afiliates[0]['full_name'], Auth::user()->email, $name_pdf, $data, $afiliates);
-            //code...
-        } catch (\Throwable $th) {
-            dd($th);
-            //throw $th;
-        }
     }
 
     public function affiliationIndividualPlans(): HasMany
@@ -331,6 +212,117 @@ class Affiliation extends Model
     public function businessLine(): HasOne
     {
         return $this->hasOne(BusinessLine::class, 'id', 'business_line_id');
+    }
+
+    /**
+     * Funcion para enviar el certificado de afiliacion
+     * cuando se registra mas de un afiliado
+     * 
+     * @param [type] $record
+     * @return void 
+     * @version 1.0
+     */
+    public function sendCertificate($record, $afiliates)
+    {
+        // dd($record, $record->plan->benefitPlans->toArray());
+        try {
+
+            $pagador = [
+                'name'                  => $record->full_name_payer,
+                'code'                  => $record->code,
+                'tarifa_anual'          => $record->fee_anual,
+                'plan'                  => $record->plan->description,
+                'plan_id'               => $record->plan_id,
+                'frecuencia_pago'       => $record->payment_frequency,
+                'cobertura'            => isset($record->coverage_id) ? $record->coverage->price : 0,
+                'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
+                'tarifa_periodo'        => $record->total_amount,
+            ];
+
+            //Validamos si la afiliacionn la realizo un agente o una agencia
+            if (isset($record->agent)) {
+                $pagador['agente_agencia'] = $record->agent->name;
+            }else{
+                $pagador['agente_agencia'] = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
+            }
+
+            
+            //Nombre del PDF
+            $name_pdf = 'CER-' . $record->code . '.pdf';
+            
+            //Beneficios asociados al plan
+            $beneficios = $record->plan->benefitPlans->toArray();
+            $beneficios_table = [];
+            for ($i = 0; $i < count($beneficios); $i++) {
+                $beneficios_table[$i] = $beneficios[$i]['description'];
+            }
+            // dd($beneficios_table, $pagador,$afiliates);
+
+            SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user())->onQueue('certificates');
+            //code...
+
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+            Notification::make()
+                ->title('Falla al enviar el certificado')
+                ->danger();
+                
+            //throw $th;
+        }
+    }
+
+    /**
+     * Funcion para enviar el certificado de afiliacion
+     * cuando se registra un afiliado
+     * 
+     * @param [type] $record
+     * @return void 
+     * @version 1.0
+     */
+    public function sendCertificateOnlyHolder($record, $afiliates)
+    {
+
+        try {
+
+            $pagador = [
+                'name'                  => $record->full_name_payer,
+                'code'                  => $record->code,
+                'tarifa_anual'          => $record->fee_anual,
+                'plan'                  => $record->plan->description,
+                'plan_id'               => $record->plan_id,
+                'frecuencia_pago'       => $record->payment_frequency,
+                'cobertura'            => isset($record->coverage_id) ? $record->coverage->price : 0,
+                'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
+                'tarifa_periodo'        => $record->total_amount,
+            ];
+
+            //Validamos si la afiliacionn la realizo un agente o una agencia
+            if (isset($record->agent)) {
+                $pagador['agente_agencia'] = $record->agent->name;
+            } else {
+                $pagador['agente_agencia'] = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
+            }
+
+
+            //Nombre del PDF
+            $name_pdf = 'CER-' . $record->code . '.pdf';
+
+            //Beneficios asociados al plan
+            $beneficios = $record->plan->benefitPlans->toArray();
+            $beneficios_table = [];
+            
+            for ($i = 0; $i < count($beneficios); $i++) {
+                $beneficios_table[$i] = $beneficios[$i]['description'];
+            }
+
+            // dd($beneficios_table, $pagador,$afiliates);
+
+            SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user())->onQueue('certificates');
+            //code...
+        } catch (\Throwable $th) {
+            dd($th);
+            //throw $th;
+        }
     }
 
     

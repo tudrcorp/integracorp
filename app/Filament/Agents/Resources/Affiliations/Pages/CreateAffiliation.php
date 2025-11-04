@@ -193,7 +193,7 @@ class CreateAffiliation extends CreateRecord
                      */
                     $data_titular = Affiliate::where('affiliation_id', $record->id)->where('relationship', 'TITULAR')->firstOrFail()->toArray();
                     
-                    $this->getRecord()->sendCertificate($record, $data_titular, $affiliates);
+                    $this->getRecord()->sendCertificate($record, $affiliates);
 
 
                     /** 

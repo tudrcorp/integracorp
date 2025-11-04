@@ -101,15 +101,6 @@ class BenefitForm
                                             ->maxLength(255),
                                     ])->columnSpanFull()->columns(3),
                             ]),
-                        TextInput::make('limit_coverage')
-                            ->label('Límite de Consumo por Cobertura')
-                            ->prefixIcon('heroicon-m-pencil')
-                            ->afterStateUpdated(function (Set $set, $state) {
-                                $set('description', strtoupper($state));
-                            })
-                            ->live(onBlur: true)
-                            ->required()
-                            ->maxLength(255),
                         TextInput::make('price')
                             ->label('Precio US$')
                             ->prefixIcon('heroicon-m-shield-check')
