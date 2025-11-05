@@ -313,7 +313,7 @@ Route::get('/rp', function () {
 
     // }
 
-    $pdf = Pdf::loadView('documents.certificate');
+    $pdf = Pdf::loadView('documents.aviso-de-pago');
     return $pdf->stream();
 
     // return view ('pr');
