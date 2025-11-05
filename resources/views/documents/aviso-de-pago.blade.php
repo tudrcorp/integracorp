@@ -181,9 +181,6 @@
     <div style="position: absolute; top: 0px; left: 10px; padding: 10px;">
         <img src="{{ public_path('storage/administracion/logoNewPdfTDEC.png') }}" style="width: 250px; height: auto;" alt="">
     </div>
-    {{-- <div style="position: absolute; top: 320px; opacity: 0.2;">
-        <img src="{{ public_path('storage/logo-marca-agua.png') }}" style="width: 700px; height: auto;" alt="">
-    </div> --}}
 
     <div style="position: absolute; top: 56px; right: 0px; padding: 10px;">
         <p class="sin-margen" style="font-size: 14px; text-align: right; text-transform: uppercase;">
@@ -201,22 +198,90 @@
         </p>
     </div>
 
-    <div style="position: absolute; top: 200px; left: 15px; padding: 10px; width: 100%;">
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; ">A Nombre de: {{ $data['full_name_ti'] }}</span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Documento: V-{{ $data['ci_rif_ti'] }}</span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Dirección: {{ $data['address_ti'] }} </span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Teléfono: {{ $data['phone_ti'] }}</span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Correo: {{ $data['email_ti'] }}</span>
-        </p>
+    <div style="position: absolute; top: 200px; left: 15px; padding: 5px; width: 100%;">
+        <table style="width: 100%;
+        border-collapse: collapse;
+        border-spacing: 0;">
+
+            <tbody>
+                <tr>
+                    <td style="padding: 2 !important;
+                        margin: 0 !important;
+                        line-height: 1;">
+
+                        <span style="font-size: 14px;
+                                text-transform: uppercase;
+                                font-weight: bold;
+                                color: #000000;
+                                display: block;
+                                margin: 0;
+                                padding: 0;
+                        ">
+                        A Nombre de: {{ $data['full_name_ti'] }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 2 !important;
+                        margin: 0 !important;
+                        line-height: 1;">
+                        <span style="font-size: 14px;
+                                text-transform: uppercase;
+                                font-weight: bold;
+                                color: #000000;
+                                display: block;
+                                margin: 0;
+                                padding: 0;
+                        ">
+                        Documento: V-{{ $data['ci_rif_ti'] }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 2 !important;
+                        margin: 0 !important;
+                        line-height: 1;">
+                        <span style="font-size: 14px;
+                                text-transform: uppercase;
+                                font-weight: bold;
+                                color: #000000;
+                                display: block;
+                                margin: 0;
+                                padding: 0;
+                        ">Dirección: {{ $data['address_ti'] }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 2 !important;
+                        margin: 0 !important;
+                        line-height: 1;">
+                        <span style="font-size: 14px;
+                                text-transform: uppercase;
+                                font-weight: bold;
+                                color: #000000;
+                                display: block;
+                                margin: 0;
+                                padding: 0;
+                        ">
+                        Teléfono: {{ $data['phone_ti'] }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 2 !important;
+                        margin: 0 !important;
+                        line-height: 1;">
+                        <span style="font-size: 14px;
+                                text-transform: uppercase;
+                                font-weight: bold;
+                                color: #000000;
+                                display: block;
+                                margin: 0;
+                                padding: 0;
+                        ">
+                        Correo: {{ $data['email_ti'] }}</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
     </div>
 
     <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 370px; padding: 20px">
@@ -232,22 +297,36 @@
                     <td style="font-weight: bold; padding: 5px">
                         <p style="text-transform: uppercase; line-height: 1.2;">
                             @if($data['plan'] == 'PLAN ESPECIAL')
-                                {{ $data['plan'] }} 
+                                {{ $data['plan'] }} - AFILIACION {{ $data['frequency'] }}
                                 <br> ASISTENCIA MEDICA POR PATOLOGIAS LISTADAS
-                                <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA <br>
-
+                                <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA US$ {{ number_format($data['coverage'], 2) }} <br>
                             @endif
                             @if($data['plan'] == 'PLAN IDEAL')
                                 {{ $data['plan'] }} 
                                 <br> ASISTENCIA MEDICA POR ACCIDENTES PERSONALES
-                                <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA <br>
+                                <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA US$ {{ number_format($data['coverage'], 2) }} <br>
                             @endif
                             @if($data['plan'] == 'PLAN INICIAL')
                                 {{ $data['plan'] }} 
                                 <br> ASISTENCIA MEDICA <br>
                             @endif
-                            @if ($data['coverage'] != null) COBERTURA: {{ number_format($data['coverage'], 2) }}US$<br>@endif
-                            FRECUENCIA DE PAGO: {{ $data['frequency'] }}
+                            {{-- @if ($data['coverage'] != null) COBERTURA: {{ number_format($data['coverage'], 2) }}US$<br>@endif --}}
+                            @php
+                                if($data['frequency'] == 'MENSUAL'){
+                                    $fechaHasta = date('d/m/Y', strtotime('+1 months'));
+                                }
+                                if($data['frequency'] == 'TRIMESTRAL'){
+                                    $fechaHasta = date('d/m/Y', strtotime('+3 months'));
+                                }
+                                if($data['frequency'] == 'SEMESTRAL'){
+                                    $fechaHasta = date('d/m/Y', strtotime('+6 months'));
+                                }
+                                if($data['frequency'] == 'ANUAL'){
+                                    $fechaHasta = date('d/m/Y', strtotime('+1 years'));
+                                }
+                            @endphp
+
+                            PERÍODO DE VIGENCIA DESDE EL {{ now()->format('d/m/Y') }} HASTA EL {{ $fechaHasta }}
                         </p>
                     </td>
                     <td style="font-weight: bold; text-align: right;">{{ number_format($data['total_amount'], 2) }}US$</td>
