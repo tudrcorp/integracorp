@@ -3,32 +3,38 @@
 namespace App\Filament\Business\Resources\Agents\Tables;
 
 
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Agent;
 use App\Models\Agency;
+use App\Models\AgencyType;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
+use Filament\Support\Enums\Width;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\Crypt;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Filament\Schemas\Components\Utilities\Get;
 use App\Http\Controllers\NotificationController;
 
 class AgentsTable
@@ -316,6 +322,89 @@ class AgentsTable
                         ->icon('heroicon-s-check-circle')
                         ->color('success')
                         ->requiresConfirmation(),
+                Action::make('edit_jerarquia')
+                    ->label('Editar Jerarquía')
+                    ->icon('heroicon-s-cog')
+                    ->color('warning')
+                    ->modalWidth(Width::ThreeExtraLarge)
+                    ->form([
+                        Fieldset::make('Tipo Agencia')->schema([
+                            Select::make('type_agency')
+                                ->label('Tipo de agencia')
+                                ->options(AgencyType::all()->pluck('definition', 'id'))
+                                ->required()
+                                ->searchable()
+                                ->live()
+                                ->preload(),
+                        ])->columnSpanFull(),
+                        Fieldset::make('Jerarquía')->schema([
+                            Select::make('owner_code')
+                                ->label('Agencia Master')
+                                ->helperText('Si la agencia pertenece a TuDrEnCasa(TDEC) debe dejar este campo en blanco. De lo contrario, debe seleccionar la agencia master.')
+                                ->options(Agency::where('agency_type_id', 1)->where('status', 'ACTIVO')->get()->pluck('name_corporative', 'code'))
+                                ->searchable()
+                                ->preload(),
+                        ])->columnSpanFull()->hidden(fn (Get $get) => $get('type_agency') == 3  ? false : true),
+                        Fieldset::make('Razón Social')->schema([
+                            TextInput::make('name_corporative')
+                                ->label('Razon social')
+                                ->required()
+                                ->afterStateUpdatedJs(<<<'JS'
+                                    $set('name_corporative', $state.toUpperCase());
+                                JS),
+                        ])->columnSpanFull(),
+                        Fieldset::make('Comisiones')->schema([
+                            TextInput::make('commission_tdec')
+                                ->label('Comisión TDEC US$')
+                                ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                ->prefix('%')
+                                ->numeric()
+                                ->validationMessages([
+                                    'numeric'   => 'Campo tipo numerico.',
+                                ]),
+                            TextInput::make('commission_tdec_renewal')
+                                ->label('Comisión Renovacion TDEC US$')
+                                ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                ->prefix('%')
+                                ->numeric()
+                                ->validationMessages([
+                                    'numeric'   => 'Campo tipo numerico.',
+                                ]),
+                            TextInput::make('commission_tdev')
+                                ->label('Comisión TDEV US$')
+                                ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                ->prefix('%')
+                                ->numeric()
+                                ->validationMessages([
+                                    'numeric'   => 'Campo tipo numerico.',
+                                ]),
+                            TextInput::make('commission_tdev_renewal')
+                                ->label('Comisión Renovacion TDEV US$')
+                                ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                ->prefix('%')
+                                ->numeric()
+                                ->validationMessages([
+                                    'numeric'   => 'Campo tipo numerico.',
+                                ]),
+                        ])->columnSpanFull(),
+
+                    ])
+                    ->action(function (Agent $record, array $data) {
+                        dd($data);
+                        try {
+
+                            
+                        } catch (\Throwable $th) {
+                            Notification::make()
+                                ->title('EXCEPCION')
+                                ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
+                                ->icon('heroicon-s-x-circle')
+                                ->iconColor('error')
+                                ->color('error')
+                                ->send();
+                        }
+                    })
+                    ->requiresConfirmation(),
                     Action::make('Inactivate')
                         ->action(fn(Agent $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')

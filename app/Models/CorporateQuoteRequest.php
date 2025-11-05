@@ -22,13 +22,16 @@ class CorporateQuoteRequest extends Model
         'rif',
         'email',
         'phone',
+        'country_id',
+        'city_id',
         'state_id',
         'region',
         'status',
         'created_by',
         'observations',
         'poblation',
-        'ownerAccountManagers'
+        'ownerAccountManagers',
+        'document_file',
     ];
 
     /**
@@ -62,10 +65,26 @@ class CorporateQuoteRequest extends Model
         return $this->belongsTo(State::class);
     }
 
+    public function country()
+    {
+        return $this->belongsTo(Country::class);
+    }
+
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
+
+    public function region()
+    {
+        return $this->belongsTo(Region::class);
+    }
+
     public function detailsData()
     {
         return $this->hasMany(CorporateQuoteRequestData::class);
     }
+
 
     /**
      * JOB
