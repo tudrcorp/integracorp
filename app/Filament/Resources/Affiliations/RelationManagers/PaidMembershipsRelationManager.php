@@ -29,11 +29,11 @@ class PaidMembershipsRelationManager extends RelationManager
     protected static ?string $title = 'PAGOS REGISTRADOS';
 
     protected static string|BackedEnum|null $icon = 'heroicon-m-document-currency-dollar';
-    
+
     public function table(Table $table): Table
     {
         return $table
-        ->heading('PAGOS REGISTRADOS')
+            ->heading('PAGOS REGISTRADOS')
             ->description('Relacion de pago de la afiliacion')
             ->recordTitleAttribute('affiliation_id')
             ->columns([
@@ -73,7 +73,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->description(function ($record) {
                         return $record->bank_ves != 'N/A' ? $record->bank_ves : 'N/A';
                     }),
-                TextColumn::make('reference_payment_zelle')
+                TextColumn::make('reference_payment_usd')
                     ->label('Referencia de pago')
                     ->prefix('Ref(Zelle): ')
                     ->description(function ($record) {
