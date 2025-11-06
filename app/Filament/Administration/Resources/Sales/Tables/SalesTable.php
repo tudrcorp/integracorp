@@ -2,30 +2,33 @@
 
 namespace App\Filament\Administration\Resources\Sales\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-
 use Carbon\Carbon;
 use App\Models\Sale;
 use App\Models\Collection;
+use Filament\Tables\Table;
+use App\Models\Affiliation;
+
 use Filament\Actions\Action;
+use App\Jobs\SendAvisoDePago;
+use App\Jobs\CreateAvisoDeCobro;
 use Filament\Actions\BulkAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Tables\Filters\Filter;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
+use Filament\Tables\Columns\TextColumn;
 use App\Http\Controllers\SaleController;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
+
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Sum;
-
 use App\Filament\Resources\Commissions\CommissionResource;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
@@ -239,6 +242,59 @@ class SalesTable
                                  * LOG
                                  */
                                 LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                            } catch (\Throwable $th) {
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                    Action::make('regenate_pdf')
+                        ->label('Regenerar PDF')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('verde')
+                        ->requiresConfirmation()
+                        ->action(function (Sale $record) {
+                            try {
+
+                                //Consultamo la collection
+                                $sale = Sale::where('id', $record->id)->first();
+                                // dd($sale, $sale->created_at->format('d/m/Y'));
+
+                                $afiliacion = Affiliation::where('code', $sale->affiliation_code)->with('paid_memberships')->first();
+                                // dd($sale, $afiliacion->toArray());
+                                
+                                /**Ejecutamos el Job para crea el aviso de cobro */
+                                $array_data = [
+                                    'invoice_number' => $sale->invoice_number,
+                                    'emission_date'  => $sale->created_at->format('d/m/Y'),
+                                    'payment_method' => $sale->payment_method,
+                                    'reference'      => $record->reference_payment,
+                                    'full_name_ti'   => $sale->affiliate_full_name,
+                                    'ci_rif_ti'      => $sale->affiliate_ci_rif,
+                                    'address_ti'     => $afiliacion['adress_ti'],
+                                    'phone_ti'       => $afiliacion['phone_ti'],
+                                    'email_ti'       => $afiliacion['email_ti'],
+                                    'total_amount'   => $sale->total_amount,
+                                    'plan'           => $sale->plan->description,
+                                    'coverage'       => $sale->coverage->price ?? null,
+                                    'reference'      => $record->reference_payment,
+                                    'frequency'      => $sale->payment_frequency,
+                                ];
+
+                                /** Ejecutamos el job */
+                                dispatch(new SendAvisoDePago($array_data));
+
+                                Notification::make()
+                                    ->title('¡REGENERADO CON EXITO!')
+                                    ->body('El recibo de pago se ha regenerado exitosamente.')
+                                    ->success()
+                                    ->send();
+                                
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()

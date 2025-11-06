@@ -710,37 +710,52 @@ class AffiliationCorporatesTable
                         ])
                         ->action(function (AffiliationCorporate $record, array $data): void {
                             // dd($data, $record);
-                            $upload = AffiliationCorporateController::uploadPayment($record, $data, 'AGENTE');
+                            try {
 
-                            if ($upload) {
-                                Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('El comprobante de pago se ha registrado con exito')
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->seconds(5)
-                                    ->send();
+                                $upload = AffiliationCorporateController::uploadPayment($record, $data, 'AGENTE');
 
-                                //Notificacion para Admin
-                                $recipient = User::where('is_admin', 1)->get();
-                                foreach ($recipient as $user) {
-                                    $recipient_for_user = User::find($user->id);
+                                if ($upload) {
                                     Notification::make()
-                                        ->title('REGISTRO DE COMPROBANTE')
-                                        ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                        ->title('NOTIFICACION')
+                                        ->body('El comprobante de pago se ha registrado con exito')
                                         ->icon('heroicon-m-user-plus')
                                         ->iconColor('success')
                                         ->success()
-                                        ->actions([
-                                            Action::make('view')
-                                                ->label('Ver detalle de pago')
-                                                ->button()
-                                                ->url(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                        ])
-                                        ->sendToDatabase($recipient_for_user);
+                                        ->seconds(5)
+                                        ->send();
+
+                                    //Notificacion para Admin
+                                    $recipient = User::where('is_admin', 1)->get();
+                                    foreach ($recipient as $user) {
+                                        $recipient_for_user = User::find($user->id);
+                                        Notification::make()
+                                            ->title('REGISTRO DE COMPROBANTE')
+                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                            ->icon('heroicon-m-user-plus')
+                                            ->iconColor('success')
+                                            ->success()
+                                            ->actions([
+                                                Action::make('view')
+                                                    ->label('Ver detalle de pago')
+                                                    ->button()
+                                                    ->url(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
+                                            ])
+                                            ->sendToDatabase($recipient_for_user);
+                                    }
                                 }
+                                
+                            } catch (\Throwable $th) {
+                                dd($th);
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-m-user-plus')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->seconds(5)
+                                    ->send();  
                             }
+                            
                         })
                         ->hidden(function (AffiliationCorporate $record) {
 

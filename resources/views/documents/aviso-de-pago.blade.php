@@ -338,10 +338,11 @@
 
     <div style="position: absolute; top: 580px; left: 15px; padding: 10px; width: 100%;">
         <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; ">Ref. de Pago:</span>
+            <span style="font-weight: bold; ">Ref. de Pago: {{ $data['reference'] }}</span>
+
         </p>
         <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; ">{{ $data['payment_method'] }} - {{ $data['reference'] }}</span>
+            <span style="font-weight: bold; ">{{ $data['payment_method'] }}</span>
         </p>
         <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
             <span style="font-weight: bold; ">Validado: Dpto. Finanzas: {{ $data['emission_date'] }}</span>

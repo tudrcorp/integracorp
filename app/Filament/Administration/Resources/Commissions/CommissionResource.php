@@ -19,7 +19,7 @@ class CommissionResource extends Resource
 {
     protected static ?string $model = Commission::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartPie;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-pie';
 
     protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
 

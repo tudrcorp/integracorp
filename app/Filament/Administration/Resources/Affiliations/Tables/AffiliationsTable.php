@@ -467,7 +467,6 @@ class AffiliationsTable
                                                     'MULTIPLE'          => 'MULTIPLE',
                                                     'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
                                                     'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
-
                                                 ])
                                                 ->live()
                                                 ->required()
@@ -475,7 +474,7 @@ class AffiliationsTable
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
                                             TextInput::make('tasa_bcv')
-                                                ->live()
+                                                ->live(onBlur: true)
                                                 ->label('Tasa BCV')
                                                 ->helperText('Punto(.) para separar decimales. Ejemplo: 123.45')
                                                 ->prefix('VES')
@@ -511,7 +510,7 @@ class AffiliationsTable
                                                 ->validationMessages([
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
-                                            TextInput::make('reference_payment_zelle')
+                                            TextInput::make('reference_payment_usd')
                                                 ->label('Nro. de Referencia')
                                                 ->helperText('Debe colocar el número de referencia completo')
                                                 ->prefix('#')
@@ -750,7 +749,7 @@ class AffiliationsTable
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                        TextInput::make('reference_payment_zelle')
+                                                        TextInput::make('reference_payment_usd')
                                                             ->label('Nro. de Referencia')
                                                             ->helperText('Debe colocar el número de referencia completo')
                                                             ->prefix('#')
@@ -863,38 +862,52 @@ class AffiliationsTable
                             ]),
                         ])
                         ->action(function (Affiliation $record, array $data): void {
-                            // dd($data, $record);
-                            $upload = AffiliationController::uploadPayment($record, $data, 'AGENTE');
 
-                            if ($upload) {
-                                Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('El comprobante de pago se ha registrado con exito')
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->seconds(5)
-                                    ->send();
+                            try {
 
-                                //Notificacion para Admin
-                                $recipient = User::where('is_admin', 1)->get();
-                                foreach ($recipient as $user) {
-                                    $recipient_for_user = User::find($user->id);
+                                $upload = AffiliationController::uploadPayment($record, $data, 'AGENTE');
+
+                                if ($upload) {
                                     Notification::make()
-                                        ->title('REGISTRO DE COMPROBANTE')
-                                        ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                        ->title('NOTIFICACION')
+                                        ->body('El comprobante de pago se ha registrado con exito')
                                         ->icon('heroicon-m-user-plus')
                                         ->iconColor('success')
                                         ->success()
-                                        ->actions([
-                                            Action::make('view')
-                                                ->label('Ver detalle de pago')
-                                                ->button()
-                                                ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                        ])
-                                        ->sendToDatabase($recipient_for_user);
+                                        ->seconds(5)
+                                        ->send();
+
+                                    //Notificacion para Admin
+                                    $recipient = User::where('is_admin', 1)->get();
+                                    foreach ($recipient as $user) {
+                                        $recipient_for_user = User::find($user->id);
+                                        Notification::make()
+                                            ->title('REGISTRO DE COMPROBANTE')
+                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                            ->icon('heroicon-m-user-plus')
+                                            ->iconColor('success')
+                                            ->success()
+                                            ->actions([
+                                                Action::make('view')
+                                                    ->label('Ver detalle de pago')
+                                                    ->button()
+                                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
+                                            ])
+                                            ->sendToDatabase($recipient_for_user);
+                                    }
                                 }
+                                
+                            } catch (\Throwable $th) {
+                                Notification::make()
+                                    ->title('ERROR') 
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-m-user-plus')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                                return;
                             }
+                            
                         })
                         ->hidden(function (Affiliation $record) {
 
@@ -1102,7 +1115,7 @@ class AffiliationsTable
                                                         'required'  => 'Seleccione un tipo de pago',
                                                     ]),
                                                 TextInput::make('tasa_bcv')
-                                                    ->live()
+                                                    ->live(onBlur: true)
                                                     ->label('Tasa BCV')
                                                     ->helperText('Punto(.) para separar decimales. Ejemplo: 123.45')
                                                     ->prefix('VES')
@@ -1138,7 +1151,7 @@ class AffiliationsTable
                                                     ->validationMessages([
                                                         'required'  => 'Seleccione un tipo de pago',
                                                     ]),
-                                                TextInput::make('reference_payment_zelle')
+                                                TextInput::make('reference_payment_usd')
                                                     ->label('Nro. de Referencia')
                                                     ->helperText('Debe colocar el número de referencia completo')
                                                     ->prefix('#')
@@ -1377,7 +1390,7 @@ class AffiliationsTable
                                                                 ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                            TextInput::make('reference_payment_zelle')
+                                                            TextInput::make('reference_payment_usd')
                                                                 ->label('Nro. de Referencia')
                                                                 ->helperText('Debe colocar el número de referencia completo')
                                                                 ->prefix('#')

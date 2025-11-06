@@ -17,8 +17,15 @@ class PaidMembershipController extends Controller
 {
     public static function approvePayment($record, $data)
     {
-        // DD($data, $record);
+
         try {
+
+            if($record->reference_payment_ves != 'N/A'){
+                $reference_payment = $record->reference_payment_ves;
+            }
+            if ($record->reference_payment_usd != 'N/A') {
+                $reference_payment = $record->reference_payment_usd;
+            }
 
             if (!isset($data['collections'])) {
 
@@ -81,6 +88,7 @@ class PaidMembershipController extends Controller
                 $sales->bank_ves                = $record->bank_ves;
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
+                $sales->reference_payment       = $reference_payment;
                 $sales->save();
 
                 /**
@@ -122,7 +130,7 @@ class PaidMembershipController extends Controller
 
 
                     $collections->payment_frequency       = $record->affiliation->payment_frequency;
-                    $collections->reference               = $record->reference_payment;
+                    $collections->reference               = $reference_payment;
                     $collections->created_by              = Auth::user()->name;
                     $collections->next_payment_date       = $record->prox_payment_date;
                     $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days'));
@@ -257,7 +265,7 @@ class PaidMembershipController extends Controller
 
 
                     $collections->payment_frequency       = $record->affiliation->payment_frequency;
-                    $collections->reference               = $record->reference_payment;
+                    $collections->reference               = $reference_payment;
                     $collections->created_by              = Auth::user()->name;
                     $collections->next_payment_date       = $record->prox_payment_date;
                     $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
@@ -320,7 +328,7 @@ class PaidMembershipController extends Controller
 
 
                         $collections->payment_frequency       = $record->affiliation->payment_frequency;
-                        $collections->reference               = $record->reference_payment;
+                        $collections->reference               = $reference_payment;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = $record->prox_payment_date;
                         $collections->expiration_date         = date($collections->next_payment_date, strtotime('+30 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
@@ -352,7 +360,7 @@ class PaidMembershipController extends Controller
                     'invoice_number'    => $sales->invoice_number,
                     'emission_date'     => now()->format('d/m/Y'),
                     'payment_method'    => $sales->payment_method,
-                    'reference'         => $record->reference_payment,
+                    'reference'         => $reference_payment,
                     'full_name_ti'      => $sales->affiliate_full_name,
                     'ci_rif_ti'         => $sales->affiliate_ci_rif,
                     'address_ti'        => $record->affiliation->adress_ti,
@@ -417,6 +425,7 @@ class PaidMembershipController extends Controller
                 $sales->bank_ves                = $record->bank_ves;
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
+                $sales->reference_payment       = $reference_payment;
                 $sales->save();
 
                 /**ACTUALIZO EL ESTATUS DE LOS AVISOS DE COBROS */
@@ -434,7 +443,7 @@ class PaidMembershipController extends Controller
                     'invoice_number'    => $sales->invoice_number,
                     'emission_date'     => now()->format('d/m/Y'),
                     'payment_method'    => $sales->payment_method,
-                    'reference'         => $record->reference_payment,
+                    'reference'         => $reference_payment,
                     'full_name_ti'      => $sales->affiliate_full_name,
                     'ci_rif_ti'         => $sales->affiliate_ci_rif,
                     'address_ti'        => $record->affiliation->adress_ti,

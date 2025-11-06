@@ -19,7 +19,7 @@ class SaleResource extends Resource
 {
     protected static ?string $model = Sale::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::Scale;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
     protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
 
