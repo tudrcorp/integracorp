@@ -72,7 +72,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->description(function ($record) {
                         return $record->bank_ves != 'N/A' ? $record->bank_ves : 'N/A';
                     }),
-                TextColumn::make('reference_payment_zelle')
+                TextColumn::make('reference_payment_usd')
                     ->label('Referencia de pago')
                     ->prefix('Ref(Zelle): ')
                     ->description(function ($record) {

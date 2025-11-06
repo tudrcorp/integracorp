@@ -18,7 +18,7 @@ class PaidMembership extends Model
         'pay_amount_usd',
         'total_amount',
         'currency',
-        'reference_payment_zelle',
+        'reference_payment_usd',
         'reference_payment_ves',
         'payment_date',
         'prox_payment_date',
@@ -36,6 +36,7 @@ class PaidMembership extends Model
         'type_roll',
         'tasa_bcv',
         'created_by',
+        'aproved_by',
 
         //Agregado
         'name_ti_usd',

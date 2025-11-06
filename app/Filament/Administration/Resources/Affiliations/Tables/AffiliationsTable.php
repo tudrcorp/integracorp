@@ -62,17 +62,20 @@ class AffiliationsTable
                     ->icon('heroicon-s-user-group')
                     ->badge()
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('individual_quote.code')
                     ->label('Nro. de cotización')
                     ->badge()
                     ->color('verde')
                     ->icon('heroicon-m-tag')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('accountManager.name')
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
+                    ->sortable()
                     ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
                     ->color(function (string $state): string {
                         return match ($state) {
@@ -85,12 +88,14 @@ class AffiliationsTable
                     ->badge()
                     ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('agent.name')
                     ->label('Nombre del agente')
                     ->badge()
                     ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
                     ->color('azulOscuro')
+                    ->sortable()
                     ->icon('heroicon-m-user')
                     ->searchable(),
 
@@ -101,6 +106,7 @@ class AffiliationsTable
                         ->alignCenter()
                         ->badge()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('coverage.price')
                         ->label('Covertura')
@@ -109,18 +115,21 @@ class AffiliationsTable
                         ->badge()
                         ->color('success')
                         ->suffix(' US$')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('payment_frequency')
                         ->label('Frecuencia de pago')
                         ->alignCenter()
                         ->badge()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('family_members')
                         ->label('Poblacion')
                         ->alignCenter()
                         ->suffix(' persona(s)')
                         ->badge()
+                        ->sortable()
                         ->color(function (mixed $state): string {
                             if ($state > 0) {
                                 return 'warning';
@@ -133,6 +142,7 @@ class AffiliationsTable
                         ->alignCenter()
                         ->money()
                         ->badge()
+                        ->sortable()
                         ->color(function (mixed $state): string {
                             if ($state > 0) {
                                 return 'warning';
@@ -146,6 +156,7 @@ class AffiliationsTable
                         ->alignCenter()
                         ->money()
                         ->badge()
+                        ->sortable()
                         ->color(function (mixed $state): string {
                             if ($state > 0) {
                                 return 'warning';
@@ -156,16 +167,19 @@ class AffiliationsTable
                 TextColumn::make('businessUnit.definition')
                         ->label('Unidad de Negocio')
                         ->badge()
+                        ->sortable()
                         ->color('success')
                         ->searchable(),
                     TextColumn::make('businessLine.definition')
                         ->label('Linea de Servicio')
                         ->badge()
+                        ->sortable()
                         ->color('success')
                         ->searchable(),
                     TextColumn::make('service_providers')
                         ->label('Proveedor(es) de Servicio')
                         ->badge()
+                        ->sortable()
                         ->color('success')
                         ->searchable(),
                 ]),
@@ -175,41 +189,52 @@ class AffiliationsTable
                     TextColumn::make('full_name_ti')
                         ->label('Nombre titular')
                         ->badge()
+                        ->sortable()
                         ->color('azulOscuro')
                         ->searchable(),
                     TextColumn::make('nro_identificacion_ti')
                         ->label('CI. titular')
                         ->badge()
+                        ->sortable()
                         ->color('azulOscuro')
                         ->searchable(),
                     TextColumn::make('sex_ti')
                         ->label('Sexo')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('birth_date_ti')
                         ->label('Fecha de nacimiento')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('phone_ti')
                         ->label('Telefono titular')
+                        ->sortable()
                         ->icon('heroicon-m-phone')
                         ->searchable(),
                     TextColumn::make('email_ti')
                         ->label('Email titular')
+                        ->sortable()
                         ->icon('fontisto-email')
                         ->searchable(),
                     TextColumn::make('adress_ti')
                         ->label('Direccion')
                         ->icon('fontisto-map-marker-alt')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('city.definition')
+                        ->sortable()
                         ->label('Ciudad')
                         ->searchable(),
                     TextColumn::make('state.definition')
+                        ->sortable()
                         ->label('Estado')
                         ->searchable(),
                     TextColumn::make('region_ti')
+                        ->sortable()
                         ->label('Region')
                         ->searchable(),
                     TextColumn::make('country.name')
+                        ->sortable()
                         ->label('Pais')
                         ->searchable(),
                 ]),
@@ -221,11 +246,13 @@ class AffiliationsTable
                         ->badge()
                         ->alignCenter()
                         ->color('azulOscuro')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('nro_identificacion_payer')
                         ->label('Numero de Identificación')
                         ->badge()
                         ->alignCenter()
+                        ->sortable()
                         ->color('azulOscuro')
                         ->searchable(),
                 ]),
@@ -236,18 +263,21 @@ class AffiliationsTable
                         ->label('Voucher ILS')
                         ->badge()
                         ->alignCenter()
+                        ->sortable()
                         ->color('success')
                         ->searchable(),
                     TextColumn::make('date_payment_initial_ils')
                         ->label('ago ILS Desde')
                         ->badge()
                         ->alignCenter()
+                        ->sortable()
                         ->color('success')
                         ->searchable(),
                     TextColumn::make('date_payment_final_ils')
                         ->label('Pago ILS Hasta')
                         ->badge()
                         ->alignCenter()
+                        ->sortable()
                         ->color('success')
                         ->searchable(),
                 ]),
@@ -255,9 +285,11 @@ class AffiliationsTable
 
                 TextColumn::make('created_by')
                     ->label('Creado por')
+                    ->sortable()
                     ->searchable(),
 
                 TextColumn::make('activated_at')
+                ->sortable()
                     ->label('Fecha de Emisión')
                     ->color('warning')
                     ->icon('heroicon-s-calendar')
@@ -265,6 +297,7 @@ class AffiliationsTable
                     ->searchable(),
 
                 TextColumn::make('effective_date')
+                ->sortable()
                     ->label('Vigencia')
                     ->color('success')
                     ->icon('heroicon-s-calendar')
@@ -272,6 +305,7 @@ class AffiliationsTable
                     ->searchable(),
 
                 TextColumn::make('status')
+                ->sortable()
                     ->label('Estatus')
 
                     ->badge()
@@ -467,7 +501,6 @@ class AffiliationsTable
                                                     'MULTIPLE'          => 'MULTIPLE',
                                                     'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
                                                     'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
-
                                                 ])
                                                 ->live()
                                                 ->required()
@@ -475,7 +508,7 @@ class AffiliationsTable
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
                                             TextInput::make('tasa_bcv')
-                                                ->live()
+                                                ->live(onBlur: true)
                                                 ->label('Tasa BCV')
                                                 ->helperText('Punto(.) para separar decimales. Ejemplo: 123.45')
                                                 ->prefix('VES')
@@ -511,7 +544,7 @@ class AffiliationsTable
                                                 ->validationMessages([
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
-                                            TextInput::make('reference_payment_zelle')
+                                            TextInput::make('reference_payment_usd')
                                                 ->label('Nro. de Referencia')
                                                 ->helperText('Debe colocar el número de referencia completo')
                                                 ->prefix('#')
@@ -750,7 +783,7 @@ class AffiliationsTable
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                        TextInput::make('reference_payment_zelle')
+                                                        TextInput::make('reference_payment_usd')
                                                             ->label('Nro. de Referencia')
                                                             ->helperText('Debe colocar el número de referencia completo')
                                                             ->prefix('#')
@@ -863,38 +896,52 @@ class AffiliationsTable
                             ]),
                         ])
                         ->action(function (Affiliation $record, array $data): void {
-                            // dd($data, $record);
-                            $upload = AffiliationController::uploadPayment($record, $data, 'AGENTE');
 
-                            if ($upload) {
-                                Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('El comprobante de pago se ha registrado con exito')
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->seconds(5)
-                                    ->send();
+                            try {
 
-                                //Notificacion para Admin
-                                $recipient = User::where('is_admin', 1)->get();
-                                foreach ($recipient as $user) {
-                                    $recipient_for_user = User::find($user->id);
+                                $upload = AffiliationController::uploadPayment($record, $data, 'AGENTE');
+
+                                if ($upload) {
                                     Notification::make()
-                                        ->title('REGISTRO DE COMPROBANTE')
-                                        ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                        ->title('NOTIFICACION')
+                                        ->body('El comprobante de pago se ha registrado con exito')
                                         ->icon('heroicon-m-user-plus')
                                         ->iconColor('success')
                                         ->success()
-                                        ->actions([
-                                            Action::make('view')
-                                                ->label('Ver detalle de pago')
-                                                ->button()
-                                                ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                        ])
-                                        ->sendToDatabase($recipient_for_user);
+                                        ->seconds(5)
+                                        ->send();
+
+                                    //Notificacion para Admin
+                                    $recipient = User::where('is_admin', 1)->get();
+                                    foreach ($recipient as $user) {
+                                        $recipient_for_user = User::find($user->id);
+                                        Notification::make()
+                                            ->title('REGISTRO DE COMPROBANTE')
+                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                            ->icon('heroicon-m-user-plus')
+                                            ->iconColor('success')
+                                            ->success()
+                                            ->actions([
+                                                Action::make('view')
+                                                    ->label('Ver detalle de pago')
+                                                    ->button()
+                                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
+                                            ])
+                                            ->sendToDatabase($recipient_for_user);
+                                    }
                                 }
+                                
+                            } catch (\Throwable $th) {
+                                Notification::make()
+                                    ->title('ERROR') 
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-m-user-plus')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                                return;
                             }
+                            
                         })
                         ->hidden(function (Affiliation $record) {
 
@@ -1102,7 +1149,7 @@ class AffiliationsTable
                                                         'required'  => 'Seleccione un tipo de pago',
                                                     ]),
                                                 TextInput::make('tasa_bcv')
-                                                    ->live()
+                                                    ->live(onBlur: true)
                                                     ->label('Tasa BCV')
                                                     ->helperText('Punto(.) para separar decimales. Ejemplo: 123.45')
                                                     ->prefix('VES')
@@ -1138,7 +1185,7 @@ class AffiliationsTable
                                                     ->validationMessages([
                                                         'required'  => 'Seleccione un tipo de pago',
                                                     ]),
-                                                TextInput::make('reference_payment_zelle')
+                                                TextInput::make('reference_payment_usd')
                                                     ->label('Nro. de Referencia')
                                                     ->helperText('Debe colocar el número de referencia completo')
                                                     ->prefix('#')
@@ -1377,7 +1424,7 @@ class AffiliationsTable
                                                                 ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                            TextInput::make('reference_payment_zelle')
+                                                            TextInput::make('reference_payment_usd')
                                                                 ->label('Nro. de Referencia')
                                                                 ->helperText('Debe colocar el número de referencia completo')
                                                                 ->prefix('#')

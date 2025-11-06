@@ -39,7 +39,8 @@ class Sale extends Model
         "bank_usd",
         "bank_ves",
         "payment_date",
-        "observations"
+        "observations",
+        'reference_payment',
     ];
 
     public function affiliation()
