@@ -36,6 +36,7 @@ class PaidMembership extends Model
         'type_roll',
         'tasa_bcv',
         'created_by',
+        'aproved_by',
 
         //Agregado
         'name_ti_usd',

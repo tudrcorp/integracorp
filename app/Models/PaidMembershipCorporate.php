@@ -37,6 +37,7 @@ class PaidMembershipCorporate extends Model
         'tasa_bcv',
         'created_by',
         'date_payment_voucher',
+        'aproved_by',
     ];
 
     public function affiliation_corporate()

@@ -10,6 +10,7 @@ use App\Models\Affiliation;
 
 use Filament\Actions\Action;
 use App\Jobs\SendAvisoDePago;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Jobs\CreateAvisoDeCobro;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
@@ -24,8 +25,9 @@ use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\TextColumn;
 use App\Http\Controllers\SaleController;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
 
+use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -42,6 +44,7 @@ class SalesTable
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('created_at')
+                    ->sortable()
                     ->label('Fecha')
                     ->dateTime()
                     ->badge()
@@ -49,28 +52,33 @@ class SalesTable
                     ->icon('heroicon-s-calendar-days')
                     ->searchable(),
                 TextColumn::make('invoice_number')
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-s-document-text')
                     ->label('Nro. Recibo de Pago')
                     ->searchable(),
                 TextColumn::make('affiliation_code')
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-s-user-group')
                     ->label('Afiliación')
                     ->searchable(),
                 TextColumn::make('agency.name_corporative')
+                    ->sortable()
                     ->label('Agencia')
                     ->badge()
                     ->color('verde')
                     ->icon('heroicon-s-building-library')
                     ->searchable(),
                 TextColumn::make('agent.name')
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-m-user')
                     ->label('Agente')
                     ->numeric()
                     ->searchable(),
                 TextColumn::make('plan.description')
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-s-cube')
                     ->color('verde')
@@ -78,6 +86,7 @@ class SalesTable
                     ->numeric()
                     ->searchable(),
                 TextColumn::make('coverage.price')
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-s-cube')
                     ->color('verde')
@@ -86,37 +95,44 @@ class SalesTable
                     ->numeric()
                     ->searchable(),
                 TextColumn::make('affiliate_full_name')
+                    ->sortable()
                     ->label('Afiliado')
                     ->searchable(),
                 TextColumn::make('affiliate_contact')
+                    ->sortable()
                     ->label('Contacto')
                     ->searchable(),
                 TextColumn::make('affiliate_ci_rif')
+                    ->sortable()
                     ->label('CI/RIF')
                     ->searchable(),
                 TextColumn::make('affiliate_phone')
+                    ->sortable()
                     ->label('Telefono')
                     ->searchable(),
                 TextColumn::make('affiliate_email')
+                    ->sortable()
                     ->label('Email')
                     ->searchable(),
-
-                // TextColumn::make('service')
-                //     ->searchable(),
                 TextColumn::make('persons')
+                    ->sortable()
                     ->label('Población')
                     ->searchable(),
                 TextColumn::make('created_by')
+                    ->sortable()
                     ->label('Aprobado por')
                     ->searchable(),
                 TextColumn::make('type')
+                    ->sortable()
                     ->label('Tipo')
                     ->searchable(),
                 TextColumn::make('payment_frequency')
+                    ->sortable()
                     ->label('Frecuencia')
                     ->badge()
                     ->searchable(),
                 TextColumn::make('payment_method')
+                    ->sortable()
                     ->label('Forma de pago')
                     ->badge()
                     // ->description(function (Sale $record) {
@@ -124,6 +140,7 @@ class SalesTable
                     // })
                     ->searchable(),
                 TextColumn::make('payment_method_usd')
+                ->sortable()
                     ->label('Pago multiple')
                     ->prefix('US$: ')
                     ->description(function ($record) {
@@ -133,12 +150,14 @@ class SalesTable
 
                 TextColumn::make('pay_amount_usd')
                     ->label('Pago registrado')
+                    ->sortable()
                     ->suffix(' US$')
                     ->description(function ($record) {
                         return $record->pay_amount_ves != 'N/A' ? number_format($record->pay_amount_ves, 2, ',', '.') . ' VES' : 'N/A';
                     }),
 
                 TextColumn::make('bank_usd')
+                ->sortable()
                     ->searchable()
                     ->label('Banco')
                     ->prefix('US$: ')
@@ -146,6 +165,7 @@ class SalesTable
                         return $record->bank_ves != 'N/A' ? 'VES: ' . $record->bank_ves : 'VES: N/A';
                     }),
                 TextColumn::make('status_payment_commission')
+                ->sortable()
                     ->label('Comision de venta')
                     ->badge()
                     ->color(function (Sale $record) {
@@ -153,6 +173,7 @@ class SalesTable
                     })
                     ->searchable(),
                 TextColumn::make('total_amount')
+                ->sortable()
                     ->label('Monto Total')
                     ->money('USD')
                     ->summarize(Sum::make()
@@ -255,12 +276,18 @@ class SalesTable
                         }),
                     Action::make('regenate_pdf')
                         ->label('Regenerar PDF')
-                        ->icon('heroicon-s-arrow-down-on-square-stack')
-                        ->color('verde')
+                        ->icon('heroicon-o-wrench-screwdriver')
+                        ->color('warning')
                         ->requiresConfirmation()
-                        ->action(function (Sale $record) {
+                        ->form([
+                            Fieldset::make('Periodo de Vigencia')->schema([
+                                DatePicker::make('desde')->required()->format('d/m/Y'),
+                                DatePicker::make('hasta')->required()->format('d/m/Y'),
+                            ])->columnSpanFull()->columns(2),                 
+                        ])
+                        ->action(function (Sale $record, array $data) {
                             try {
-
+                                
                                 //Consultamo la collection
                                 $sale = Sale::where('id', $record->id)->first();
                                 // dd($sale, $sale->created_at->format('d/m/Y'));
@@ -269,7 +296,7 @@ class SalesTable
                                 // dd($sale, $afiliacion->toArray());
                                 
                                 /**Ejecutamos el Job para crea el aviso de cobro */
-                                $array_data = [
+                                $data = [
                                     'invoice_number' => $sale->invoice_number,
                                     'emission_date'  => $sale->created_at->format('d/m/Y'),
                                     'payment_method' => $sale->payment_method,
@@ -284,10 +311,16 @@ class SalesTable
                                     'coverage'       => $sale->coverage->price ?? null,
                                     'reference'      => $record->reference_payment,
                                     'frequency'      => $sale->payment_frequency,
+                                    'desde'          => $data['desde'],
+                                    'hasta'          => $data['hasta'],
                                 ];
 
-                                /** Ejecutamos el job */
-                                dispatch(new SendAvisoDePago($array_data));
+                                ini_set('memory_limit', '2048M');
+
+                                $name_pdf = 'RDP-' . $data['invoice_number'] . '.pdf';
+
+                                $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago', compact('data'));
+                                $pdf->save(public_path('storage/reciboDePago/' . $name_pdf));
 
                                 Notification::make()
                                     ->title('¡REGENERADO CON EXITO!')

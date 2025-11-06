@@ -29,16 +29,6 @@ class PaidMembershipController extends Controller
 
             if (!isset($data['collections'])) {
 
-                $record->status = 'APROBADO';
-                $record->save();
-
-                /**
-                 *  Notificacion
-                 * 
-                 * 
-                 *  ----------------------------------------------------------------------------------------------------
-                 */
-
                 /**
                  * Actualizamos el registro en la tabla de afiliaciones
                  * cambiamos el estatus y cargamos la fecha de aceptacion
@@ -373,6 +363,11 @@ class PaidMembershipController extends Controller
                     'frequency'         => $record->affiliation->payment_frequency,
                 ];
 
+                /**ACTUALIZO EL ESTATUS DEL COMPROBANTE */
+                $record->status = 'APROBADO';
+                $record->aproved_by = Auth::user()->name;
+                $record->save();
+
                 dispatch(new SendAvisoDePago($array_data));
 
                 return [
@@ -382,10 +377,6 @@ class PaidMembershipController extends Controller
             }
 
             if (isset($data['collections']) && count($data['collections']) > 0) {
-
-                /**ACTUALIZO EL ESTATUS DEL COMPROBANTE */
-                $record->status = 'APROBADO';
-                $record->save();
 
                 /**
                  * Creamos el registro en la tabla de sales
@@ -455,6 +446,11 @@ class PaidMembershipController extends Controller
                     'coverage'          => $record->coverage->price ?? null,
                     'frequency'         => $record->affiliation->payment_frequency,
                 ];
+
+                /**ACTUALIZO EL ESTATUS DEL COMPROBANTE */
+                $record->status = 'APROBADO';
+                $record->aproved_by = Auth::user()->name;
+                $record->save();
 
                 SendAvisoDePago::dispatch($array_data);
 

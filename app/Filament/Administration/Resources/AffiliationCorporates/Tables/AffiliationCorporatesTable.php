@@ -57,22 +57,27 @@ class AffiliationCorporatesTable
                     ->label('Codigo')
                     ->badge()
                     ->color('azulOscuro')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable()
+                    ->sortable(),
                 TextColumn::make('name_corporate')
                     ->label('Cliente Corporativo')
                     ->badge()
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('agency.name_corporative')
                     ->label('Agencia')
                     ->badge()
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('agent.name')
                     // ->prefix('AGT-000')
                     ->label('Agente')
                     ->badge()
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
 
                 //...  
@@ -82,6 +87,7 @@ class AffiliationCorporatesTable
                         ->alignCenter()
                         ->badge()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('poblation')
                         ->label('Población')
@@ -94,6 +100,7 @@ class AffiliationCorporatesTable
                             }
                             return 'danger';
                         })
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('fee_anual')
                         ->label('Tarifa Anual')
@@ -106,6 +113,7 @@ class AffiliationCorporatesTable
                             }
                             return 'danger';
                         })
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('total_amount')
                         ->label('Total a Pagar')
@@ -118,6 +126,7 @@ class AffiliationCorporatesTable
                             }
                             return 'danger';
                         })
+                        ->sortable()
                         ->searchable(),
                 ]),
 
@@ -126,20 +135,27 @@ class AffiliationCorporatesTable
                     ->prefix('J-')
                     ->badge()
                     ->color('verde')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Email contratante')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('phone')
                     ->label('Telefono contratante')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('address')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('city.definition')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('state.definition')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('country.name')
+                    ->sortable()
                     ->searchable(),
                 //...
                 ColumnGroup::make('Información ILS', [
@@ -148,22 +164,26 @@ class AffiliationCorporatesTable
                         ->badge()
                         ->alignCenter()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('date_payment_initial_ils')
                         ->label('ago ILS Desde')
                         ->badge()
                         ->alignCenter()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('date_payment_final_ils')
                         ->label('Pago ILS Hasta')
                         ->badge()
                         ->alignCenter()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                 ]),
                 TextColumn::make('created_by')
                     ->label('Creado por')
+                ->sortable()
                     ->searchable(),
 
                 TextColumn::make('activated_at')
@@ -171,6 +191,7 @@ class AffiliationCorporatesTable
                     ->color('warning')
                     ->icon('heroicon-s-calendar')
                     ->badge()
+                ->sortable()
                     ->searchable(),
 
                 TextColumn::make('effective_date')
@@ -178,11 +199,11 @@ class AffiliationCorporatesTable
                     ->color('success')
                     ->icon('heroicon-s-calendar')
                     ->badge()
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
 
                 TextColumn::make('status')
                     ->label('Estatus')
-
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
@@ -193,6 +214,7 @@ class AffiliationCorporatesTable
                         };
                     })
                     ->searchable()
+                    ->sortable()
                     ->icon(function (mixed $state): ?string {
                         return match ($state) {
                             'PRE-APROBADA'          => 'heroicon-c-information-circle',
