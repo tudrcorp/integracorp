@@ -32,7 +32,7 @@ class PaidMembershipCorporatesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        ->heading('PAGOS REGISTRADOS')
+            ->heading('PAGOS REGISTRADOS')
             ->description('Relacion de pago de la afiliacion')
             ->recordTitleAttribute('affiliation_id')
             ->columns([
@@ -72,7 +72,7 @@ class PaidMembershipCorporatesRelationManager extends RelationManager
                     ->description(function ($record) {
                         return $record->bank_ves != 'N/A' ? $record->bank_ves : 'N/A';
                     }),
-                TextColumn::make('reference_payment_zelle')
+                TextColumn::make('reference_payment_usd')
                     ->label('Referencia de pago')
                     ->prefix('Ref(Zelle): ')
                     ->description(function ($record) {

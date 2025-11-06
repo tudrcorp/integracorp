@@ -183,7 +183,7 @@ class AffiliationCorporatesTable
                 ]),
                 TextColumn::make('created_by')
                     ->label('Creado por')
-                ->sortable()
+                    ->sortable()
                     ->searchable(),
 
                 TextColumn::make('activated_at')
@@ -191,7 +191,7 @@ class AffiliationCorporatesTable
                     ->color('warning')
                     ->icon('heroicon-s-calendar')
                     ->badge()
-                ->sortable()
+                    ->sortable()
                     ->searchable(),
 
                 TextColumn::make('effective_date')
@@ -306,7 +306,7 @@ class AffiliationCorporatesTable
                                             ->label('Total a pagar')
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, AffiliationCorporate $record) {
-                                                
+
                                                 $amount = $record->total_amount;
 
                                                 return $amount;
@@ -382,7 +382,7 @@ class AffiliationCorporatesTable
                                                 ->validationMessages([
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
-                                            TextInput::make('reference_payment_zelle')
+                                            TextInput::make('reference_payment_usd')
                                                 ->label('Nro. de Referencia')
                                                 ->helperText('Debe colocar el número de referencia completo')
                                                 ->prefix('#')
@@ -618,7 +618,7 @@ class AffiliationCorporatesTable
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                        TextInput::make('reference_payment_zelle')
+                                                        TextInput::make('reference_payment_usd')
                                                             ->label('Nro. de Referencia')
                                                             ->helperText('Debe colocar el número de referencia completo')
                                                             ->prefix('#')
@@ -765,7 +765,6 @@ class AffiliationCorporatesTable
                                             ->sendToDatabase($recipient_for_user);
                                     }
                                 }
-                                
                             } catch (\Throwable $th) {
                                 dd($th);
                                 Notification::make()
@@ -775,9 +774,8 @@ class AffiliationCorporatesTable
                                     ->iconColor('danger')
                                     ->danger()
                                     ->seconds(5)
-                                    ->send();  
+                                    ->send();
                             }
-                            
                         })
                         ->hidden(function (AffiliationCorporate $record) {
 
@@ -795,7 +793,7 @@ class AffiliationCorporatesTable
 
                             return false;
                         }),
-                            
+
                     Action::make('change_status')
                         ->label('Actualizar estatus')
                         ->color('azulOscuro')
@@ -922,7 +920,7 @@ class AffiliationCorporatesTable
                                 ->success()
                                 ->send();
                         }),
-                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
