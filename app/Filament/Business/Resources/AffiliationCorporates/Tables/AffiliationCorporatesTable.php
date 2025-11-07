@@ -5,16 +5,19 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 use Carbon\Carbon;
 use App\Models\User;
 use Filament\Tables\Table;
+use App\Mail\UploadPayment;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use App\Models\AffiliateCorporate;
+use Illuminate\Support\Facades\Log;
 use App\Models\AffiliationCorporate;
 use App\Models\DetailCorporateQuote;
 use Filament\Forms\Components\Radio;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
@@ -283,7 +286,7 @@ class AffiliationCorporatesTable
                                             ->label('Total a pagar')
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, AffiliationCorporate $record) {
-                                                
+
                                                 $amount = $record->total_amount;
 
                                                 return $amount;
@@ -359,7 +362,7 @@ class AffiliationCorporatesTable
                                                 ->validationMessages([
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
-                                            TextInput::make('reference_payment_zelle')
+                                            TextInput::make('reference_payment_usd')
                                                 ->label('Nro. de Referencia')
                                                 ->helperText('Debe colocar el número de referencia completo')
                                                 ->prefix('#')
@@ -595,7 +598,7 @@ class AffiliationCorporatesTable
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                        TextInput::make('reference_payment_zelle')
+                                                        TextInput::make('reference_payment_usd')
                                                             ->label('Nro. de Referencia')
                                                             ->helperText('Debe colocar el número de referencia completo')
                                                             ->prefix('#')
@@ -708,38 +711,62 @@ class AffiliationCorporatesTable
                             ]),
                         ])
                         ->action(function (AffiliationCorporate $record, array $data): void {
-                            // dd($data, $record);
-                            $upload = AffiliationCorporateController::uploadPayment($record, $data, 'AGENTE');
+                            
+                            try {
 
-                            if ($upload) {
-                                Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('El comprobante de pago se ha registrado con exito')
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->seconds(5)
-                                    ->send();
+                                $upload = AffiliationCorporateController::uploadPayment($record, $data, 'AGENTE');
 
-                                //Notificacion para Admin
-                                $recipient = User::where('is_admin', 1)->get();
-                                foreach ($recipient as $user) {
-                                    $recipient_for_user = User::find($user->id);
+                                if ($upload) {
                                     Notification::make()
-                                        ->title('REGISTRO DE COMPROBANTE')
-                                        ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                        ->title('NOTIFICACION')
+                                        ->body('El comprobante de pago se ha registrado con exito')
                                         ->icon('heroicon-m-user-plus')
                                         ->iconColor('success')
                                         ->success()
-                                        ->actions([
-                                            Action::make('view')
-                                                ->label('Ver detalle de pago')
-                                                ->button()
-                                                ->url(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                        ])
-                                        ->sendToDatabase($recipient_for_user);
+                                        ->seconds(5)
+                                        ->send();
+
+                                    //Notificacion para Admin
+                                    $recipient = User::where('is_admin', 1)->get();
+                                    foreach ($recipient as $user) {
+                                        $recipient_for_user = User::find($user->id);
+                                        Notification::make()
+                                            ->title('REGISTRO DE COMPROBANTE')
+                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                            ->icon('heroicon-m-user-plus')
+                                            ->iconColor('success')
+                                            ->success()
+                                            ->actions([
+                                                Action::make('view')
+                                                    ->label('Ver detalle de pago')
+                                                    ->button()
+                                                    ->url(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
+                                            ])
+                                            ->sendToDatabase($recipient_for_user);
+                                    }
                                 }
+
+                                /**
+                                 * Ejecutamos el Jobs para enviar la notificacion al 
+                                 * correo de administracion
+                                 * ----------------------------------------------------------------------------------
+                                 */
+                                $info = [
+                                    'code' => $record->code,
+                                    'email' => config('parameters.EMAIL_ADMINISTRACION'),
+                                ];
+                                // dd($info);
+                                Mail::to($info['email'])->send(new UploadPayment($info));
+                                
+                            } catch (\Throwable $th) {
+                                Log::error($th);
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body('Ocurrio un error al registrar el comprobante de pago')
+                                    ->danger()
+                                    ->send();
                             }
+                            
                         })
                         ->hidden(function (AffiliationCorporate $record) {
 
@@ -757,7 +784,7 @@ class AffiliationCorporatesTable
 
                             return false;
                         }),
-                            
+
                     Action::make('change_status')
                         ->label('Actualizar estatus')
                         ->color('azulOscuro')
@@ -884,7 +911,7 @@ class AffiliationCorporatesTable
                                 ->success()
                                 ->send();
                         }),
-                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

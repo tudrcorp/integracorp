@@ -57,22 +57,27 @@ class AffiliationCorporatesTable
                     ->label('Codigo')
                     ->badge()
                     ->color('azulOscuro')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable()
+                    ->sortable(),
                 TextColumn::make('name_corporate')
                     ->label('Cliente Corporativo')
                     ->badge()
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('agency.name_corporative')
                     ->label('Agencia')
                     ->badge()
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('agent.name')
                     // ->prefix('AGT-000')
                     ->label('Agente')
                     ->badge()
                     ->color('azulOscuro')
+                    ->sortable()
                     ->searchable(),
 
                 //...  
@@ -82,6 +87,7 @@ class AffiliationCorporatesTable
                         ->alignCenter()
                         ->badge()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('poblation')
                         ->label('Población')
@@ -94,6 +100,7 @@ class AffiliationCorporatesTable
                             }
                             return 'danger';
                         })
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('fee_anual')
                         ->label('Tarifa Anual')
@@ -106,6 +113,7 @@ class AffiliationCorporatesTable
                             }
                             return 'danger';
                         })
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('total_amount')
                         ->label('Total a Pagar')
@@ -118,6 +126,7 @@ class AffiliationCorporatesTable
                             }
                             return 'danger';
                         })
+                        ->sortable()
                         ->searchable(),
                 ]),
 
@@ -126,20 +135,27 @@ class AffiliationCorporatesTable
                     ->prefix('J-')
                     ->badge()
                     ->color('verde')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Email contratante')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('phone')
                     ->label('Telefono contratante')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('address')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('city.definition')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('state.definition')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('country.name')
+                    ->sortable()
                     ->searchable(),
                 //...
                 ColumnGroup::make('Información ILS', [
@@ -148,22 +164,26 @@ class AffiliationCorporatesTable
                         ->badge()
                         ->alignCenter()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('date_payment_initial_ils')
                         ->label('ago ILS Desde')
                         ->badge()
                         ->alignCenter()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('date_payment_final_ils')
                         ->label('Pago ILS Hasta')
                         ->badge()
                         ->alignCenter()
                         ->color('success')
+                        ->sortable()
                         ->searchable(),
                 ]),
                 TextColumn::make('created_by')
                     ->label('Creado por')
+                    ->sortable()
                     ->searchable(),
 
                 TextColumn::make('activated_at')
@@ -171,6 +191,7 @@ class AffiliationCorporatesTable
                     ->color('warning')
                     ->icon('heroicon-s-calendar')
                     ->badge()
+                    ->sortable()
                     ->searchable(),
 
                 TextColumn::make('effective_date')
@@ -178,11 +199,11 @@ class AffiliationCorporatesTable
                     ->color('success')
                     ->icon('heroicon-s-calendar')
                     ->badge()
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
 
                 TextColumn::make('status')
                     ->label('Estatus')
-
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
@@ -193,6 +214,7 @@ class AffiliationCorporatesTable
                         };
                     })
                     ->searchable()
+                    ->sortable()
                     ->icon(function (mixed $state): ?string {
                         return match ($state) {
                             'PRE-APROBADA'          => 'heroicon-c-information-circle',
@@ -284,7 +306,7 @@ class AffiliationCorporatesTable
                                             ->label('Total a pagar')
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, AffiliationCorporate $record) {
-                                                
+
                                                 $amount = $record->total_amount;
 
                                                 return $amount;
@@ -360,7 +382,7 @@ class AffiliationCorporatesTable
                                                 ->validationMessages([
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
-                                            TextInput::make('reference_payment_zelle')
+                                            TextInput::make('reference_payment_usd')
                                                 ->label('Nro. de Referencia')
                                                 ->helperText('Debe colocar el número de referencia completo')
                                                 ->prefix('#')
@@ -596,7 +618,7 @@ class AffiliationCorporatesTable
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                        TextInput::make('reference_payment_zelle')
+                                                        TextInput::make('reference_payment_usd')
                                                             ->label('Nro. de Referencia')
                                                             ->helperText('Debe colocar el número de referencia completo')
                                                             ->prefix('#')
@@ -710,36 +732,49 @@ class AffiliationCorporatesTable
                         ])
                         ->action(function (AffiliationCorporate $record, array $data): void {
                             // dd($data, $record);
-                            $upload = AffiliationCorporateController::uploadPayment($record, $data, 'AGENTE');
+                            try {
 
-                            if ($upload) {
-                                Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('El comprobante de pago se ha registrado con exito')
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->seconds(5)
-                                    ->send();
+                                $upload = AffiliationCorporateController::uploadPayment($record, $data, 'AGENTE');
 
-                                //Notificacion para Admin
-                                $recipient = User::where('is_admin', 1)->get();
-                                foreach ($recipient as $user) {
-                                    $recipient_for_user = User::find($user->id);
+                                if ($upload) {
                                     Notification::make()
-                                        ->title('REGISTRO DE COMPROBANTE')
-                                        ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                        ->title('NOTIFICACION')
+                                        ->body('El comprobante de pago se ha registrado con exito')
                                         ->icon('heroicon-m-user-plus')
                                         ->iconColor('success')
                                         ->success()
-                                        ->actions([
-                                            Action::make('view')
-                                                ->label('Ver detalle de pago')
-                                                ->button()
-                                                ->url(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                        ])
-                                        ->sendToDatabase($recipient_for_user);
+                                        ->seconds(5)
+                                        ->send();
+
+                                    //Notificacion para Admin
+                                    $recipient = User::where('is_admin', 1)->get();
+                                    foreach ($recipient as $user) {
+                                        $recipient_for_user = User::find($user->id);
+                                        Notification::make()
+                                            ->title('REGISTRO DE COMPROBANTE')
+                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                            ->icon('heroicon-m-user-plus')
+                                            ->iconColor('success')
+                                            ->success()
+                                            ->actions([
+                                                Action::make('view')
+                                                    ->label('Ver detalle de pago')
+                                                    ->button()
+                                                    ->url(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
+                                            ])
+                                            ->sendToDatabase($recipient_for_user);
+                                    }
                                 }
+                            } catch (\Throwable $th) {
+                                dd($th);
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-m-user-plus')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->seconds(5)
+                                    ->send();
                             }
                         })
                         ->hidden(function (AffiliationCorporate $record) {
@@ -758,7 +793,7 @@ class AffiliationCorporatesTable
 
                             return false;
                         }),
-                            
+
                     Action::make('change_status')
                         ->label('Actualizar estatus')
                         ->color('azulOscuro')
@@ -885,7 +920,7 @@ class AffiliationCorporatesTable
                                 ->success()
                                 ->send();
                         }),
-                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -65,7 +65,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->description(function ($record) {
                         return $record->bank_ves != 'N/A' ? $record->bank_ves : 'N/A';
                     }),
-                TextColumn::make('reference_payment_zelle')
+                TextColumn::make('reference_payment_usd')
                     ->label('Referencia de pago')
                     ->prefix('Ref(Zelle): ')
                     ->description(function ($record) {
@@ -145,23 +145,23 @@ class PaidMembershipsRelationManager extends RelationManager
                 //
             ])
             ->recordActions([
-            Action::make('details')
-                ->label('Ver Observaciones')
-                ->icon('fontisto-info')
-                ->color('primary')
-                ->modalHeading('Observaciones del pago')
-                ->modalIcon('fontisto-info')
-                ->modalWidth(Width::ExtraLarge)
-                ->modalSubmitAction(false)
-                ->button()
-                ->form([
-                    Textarea::make('observations_payment')
-                        ->label('Observaciones')
-                        ->disabled()
-                        ->autoSize()
-                        ->default(fn($record) => $record->observations_payment)
-                        ->required(),
-                ]),
+                Action::make('details')
+                    ->label('Ver Observaciones')
+                    ->icon('fontisto-info')
+                    ->color('primary')
+                    ->modalHeading('Observaciones del pago')
+                    ->modalIcon('fontisto-info')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->button()
+                    ->form([
+                        Textarea::make('observations_payment')
+                            ->label('Observaciones')
+                            ->disabled()
+                            ->autoSize()
+                            ->default(fn($record) => $record->observations_payment)
+                            ->required(),
+                    ]),
             ])
             ->headerActions([
                 // CreateAction::make(),

@@ -38,52 +38,64 @@ class CollectionsTable
                 TextColumn::make('include_date')
                     ->label('Fecha')
                     ->badge()
+                    ->sortable()
                     ->icon('heroicon-s-calendar-days')
                     ->searchable(),
 
                 TextColumn::make('collection_invoice_number')
+                ->sortable()
                     ->badge()
                     ->icon('heroicon-s-document-text')
                     ->label('Nro. de Aviso')
                     ->searchable(),
                 TextColumn::make('quote_number')
+                ->sortable()
                     ->badge()
                     ->icon('heroicon-m-tag')
                     ->label('Cotización')
                     ->searchable(),
                 TextColumn::make('affiliation_code')
+                ->sortable()
                     ->badge()
                     ->icon('heroicon-s-user-group')
                     ->label('Afiliación')
                     ->searchable(),
 
                 TextColumn::make('code_agency')
+                ->sortable()
                     ->badge()
                     ->icon('heroicon-s-building-library')
                     ->label('Agencia')
                     ->searchable(),
                 TextColumn::make('agent.name')
+                ->sortable()
                     ->badge()
                     ->icon('heroicon-m-user')
                     ->label('Agente')
                     ->numeric()
                     ->searchable(),
                 TextColumn::make('affiliate_full_name')
+                ->sortable()
                     ->label('Afiliado')
                     ->searchable(),
                 TextColumn::make('affiliate_contact')
+                ->sortable()
                     ->label('Contacto')
                     ->searchable(),
                 TextColumn::make('affiliate_ci_rif')
+                ->sortable()
                     ->label('C.I./R.I.F.')
                     ->searchable(),
                 TextColumn::make('affiliate_phone')
+                ->sortable()
                     ->label('Número de teléfono')
                     ->searchable(),
                 TextColumn::make('affiliate_email')
+                ->sortable()
                     ->label('Correo')
                     ->searchable(),
                 TextColumn::make('affiliate_status')
+                ->sortable()
                     ->label('Estatus afiliación')
                     ->badge()
                     ->color(function (string $state): string {
@@ -95,6 +107,7 @@ class CollectionsTable
                     })
                     ->searchable(),
                 TextColumn::make('plan.description')
+                ->sortable()
                     ->label('Plan')
                     ->badge()
                     ->color(function ($state) {
@@ -107,15 +120,18 @@ class CollectionsTable
                     })
                     ->searchable(),
                 TextColumn::make('coverage.price')
+                ->sortable()
                     ->suffix('US$')
                     ->numeric()
                     ->sortable(),
                 // TextColumn::make('service')
                 //     ->searchable(),
                 TextColumn::make('persons')
+                ->sortable()
                     ->label('Población')
                     ->searchable(),
                 TextColumn::make('type')
+                ->sortable()
                     ->label('Tipo')
                     ->badge()
                     ->color(function (string $state): string {
@@ -126,23 +142,29 @@ class CollectionsTable
                     })
                     ->searchable(),
                 TextColumn::make('reference')
+                ->sortable()
                     ->label('Referencia')
                     ->searchable(),
                 TextColumn::make('payment_method')
+                ->sortable()
                     ->label('Metodo de pago')
                     ->searchable(),
                 TextColumn::make('payment_frequency')
+                ->sortable()
                     ->label('Frecuencia de pago')
                     ->searchable(),
                 TextInputColumn::make('next_payment_date')
+                ->sortable()
                     ->label('Proximo pago')
                     ->searchable(),
                 TextColumn::make('total_amount')
+                ->sortable()
                     ->label('Monto total')
                     ->numeric()
                     ->suffix('US$')
                     ->sortable(),
                 TextColumn::make('status')
+                ->sortable()
                     ->badge()
                     ->label('Estado')
                     ->color(function (string $state): string {
@@ -154,18 +176,16 @@ class CollectionsTable
                         };
                     })
                     ->searchable(),
-                TextColumn::make('days')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('created_by')
-                    ->searchable(),
-                TextColumn::make('bank')
+                ->sortable()
                     ->searchable(),
                 TextColumn::make('created_at')
+                ->sortable()
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                ->sortable()
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -372,7 +392,7 @@ class CollectionsTable
                                     'frequency'         => $record->payment_frequency,
                                 ];
                                 // dd($array_data);
-                                dispatch(new CreateAvisoDeCobro($array_data));
+                                dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
 
                                 Notification::make()
                                     ->title('REGENERADO CON EXITO')

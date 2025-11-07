@@ -217,7 +217,7 @@
                                 margin: 0;
                                 padding: 0;
                         ">
-                        A Nombre de: {{ $data['full_name_ti'] }}</span>
+                            A Nombre de: {{ $data['full_name_ti'] }}</span>
                     </td>
                 </tr>
                 <tr>
@@ -232,7 +232,7 @@
                                 margin: 0;
                                 padding: 0;
                         ">
-                        Documento: V-{{ $data['ci_rif_ti'] }}</span>
+                            Documento: V-{{ $data['ci_rif_ti'] }}</span>
                     </td>
                 </tr>
                 <tr>
@@ -261,7 +261,7 @@
                                 margin: 0;
                                 padding: 0;
                         ">
-                        Teléfono: {{ $data['phone_ti'] }}</span>
+                            Teléfono: {{ $data['phone_ti'] }}</span>
                     </td>
                 </tr>
                 <tr>
@@ -276,7 +276,7 @@
                                 margin: 0;
                                 padding: 0;
                         ">
-                        Correo: {{ $data['email_ti'] }}</span>
+                            Correo: {{ $data['email_ti'] }}</span>
                     </td>
                 </tr>
             </tbody>
@@ -297,36 +297,20 @@
                     <td style="font-weight: bold; padding: 5px">
                         <p style="text-transform: uppercase; line-height: 1.2;">
                             @if($data['plan'] == 'PLAN ESPECIAL')
-                                {{ $data['plan'] }} - AFILIACION {{ $data['frequency'] }}
-                                <br> ASISTENCIA MEDICA POR PATOLOGIAS LISTADAS
-                                <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA US$ {{ number_format($data['coverage'], 2) }} <br>
+                            {{ $data['plan'] }} - AFILIACION {{ $data['frequency'] }}
+                            <br> ASISTENCIA MEDICA POR PATOLOGIAS LISTADAS
+                            <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA US$ {{ number_format($data['coverage'], 2) }} <br>
                             @endif
                             @if($data['plan'] == 'PLAN IDEAL')
-                                {{ $data['plan'] }} 
-                                <br> ASISTENCIA MEDICA POR ACCIDENTES PERSONALES
-                                <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA US$ {{ number_format($data['coverage'], 2) }} <br>
+                            {{ $data['plan'] }}
+                            <br> ASISTENCIA MEDICA POR ACCIDENTES PERSONALES
+                            <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA US$ {{ number_format($data['coverage'], 2) }} <br>
                             @endif
                             @if($data['plan'] == 'PLAN INICIAL')
-                                {{ $data['plan'] }} 
-                                <br> ASISTENCIA MEDICA <br>
+                            {{ $data['plan'] }}
+                            <br> ASISTENCIA MEDICA <br>
                             @endif
-                            {{-- @if ($data['coverage'] != null) COBERTURA: {{ number_format($data['coverage'], 2) }}US$<br>@endif --}}
-                            @php
-                                if($data['frequency'] == 'MENSUAL'){
-                                    $fechaHasta = date('d/m/Y', strtotime('+1 months'));
-                                }
-                                if($data['frequency'] == 'TRIMESTRAL'){
-                                    $fechaHasta = date('d/m/Y', strtotime('+3 months'));
-                                }
-                                if($data['frequency'] == 'SEMESTRAL'){
-                                    $fechaHasta = date('d/m/Y', strtotime('+6 months'));
-                                }
-                                if($data['frequency'] == 'ANUAL'){
-                                    $fechaHasta = date('d/m/Y', strtotime('+1 years'));
-                                }
-                            @endphp
-
-                            PERÍODO DE VIGENCIA DESDE EL {{ now()->format('d/m/Y') }} HASTA EL {{ $fechaHasta }}
+                            PERÍODO DE VIGENCIA DESDE EL {{ $data['desde'] }} HASTA EL {{ $data['hasta'] }}
                         </p>
                     </td>
                     <td style="font-weight: bold; text-align: right;">{{ number_format($data['total_amount'], 2) }}US$</td>

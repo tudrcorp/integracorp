@@ -19,7 +19,7 @@ class CommissionPayrollResource extends Resource
 {
     protected static ?string $model = CommissionPayroll::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::RectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
 

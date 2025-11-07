@@ -18,6 +18,13 @@ class PaidMembershipCorporateController extends Controller
         // dd($data, $record->affiliation_corporate);
         try {
 
+            if ($record->reference_payment_ves != 'N/A') {
+                $reference_payment = $record->reference_payment_ves;
+            }
+            if ($record->reference_payment_usd != 'N/A') {
+                $reference_payment = $record->reference_payment_usd;
+            }
+
             if (!isset($data['collections'])) {
 
                 $record->status = 'APROBADO';
@@ -75,7 +82,7 @@ class PaidMembershipCorporateController extends Controller
                 $sales->bank_ves                = $record->bank_ves;
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
-
+                $sales->reference_payment       = $reference_payment;
                 $sales->save();
 
                 /**
@@ -335,6 +342,7 @@ class PaidMembershipCorporateController extends Controller
                     'email_ti'          => $sales->affiliate_email,
                     'total_amount'      => $record->total_amount,
                     'currency'          => $record->currency,
+                    'reference'         => $record->reference_payment,
                     // 'plan'              => $record->plan->description,
                     // 'coverage'          => $record->coverage->price ?? null,
                     'frequency'         => $record->affiliation_corporate->payment_frequency,
@@ -388,6 +396,7 @@ class PaidMembershipCorporateController extends Controller
                 $sales->bank_ves                = $record->bank_ves;
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
+                $sales->reference_payment       = $reference_payment;
                 $sales->save();
 
                 /**ACTUALIZO EL ESTATUS DE LOS AVISOS DE COBROS */
@@ -413,6 +422,7 @@ class PaidMembershipCorporateController extends Controller
                     'email_ti'          => $sales->affiliate_email,
                     'total_amount'      => $record->total_amount,
                     'currency'          => $record->currency,
+                    'reference'         => $record->reference_payment,
                     // 'plan'              => $record->plan->description,
                     // 'coverage'          => $record->coverage->price ?? null,
                     'frequency'         => $record->affiliation_corporate->payment_frequency,

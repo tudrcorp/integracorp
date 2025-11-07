@@ -18,7 +18,7 @@ class PaidMembershipCorporate extends Model
         'pay_amount_usd',
         'total_amount',
         'currency',
-        'reference_payment_zelle',
+        'reference_payment_usd',
         'reference_payment_ves',
         'payment_date',
         'prox_payment_date',
@@ -37,6 +37,7 @@ class PaidMembershipCorporate extends Model
         'tasa_bcv',
         'created_by',
         'date_payment_voucher',
+        'aproved_by',
     ];
 
     public function affiliation_corporate()

@@ -332,8 +332,8 @@ class AffiliationsTable
                                                     ->where('plan_id', $record->plan_id)
                                                     ->where('coverage_id', $record->coverage_id)
                                                     ->first();
-                                                Log::info('Detalle: '. $amount);
-                                                Log::info('Afiliacion: '. $record);
+                                                Log::info('Detalle: ' . $amount);
+                                                Log::info('Afiliacion: ' . $record);
 
 
                                                 if ($record->payment_frequency == 'ANUAL') {
@@ -420,7 +420,7 @@ class AffiliationsTable
                                                 ->validationMessages([
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
-                                            TextInput::make('reference_payment_zelle')
+                                            TextInput::make('reference_payment_usd')
                                                 ->label('Nro. de Referencia')
                                                 ->helperText('Debe colocar el número de referencia completo')
                                                 ->prefix('#')
@@ -659,7 +659,7 @@ class AffiliationsTable
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                        TextInput::make('reference_payment_zelle')
+                                                        TextInput::make('reference_payment_usd')
                                                             ->label('Nro. de Referencia')
                                                             ->helperText('Debe colocar el número de referencia completo')
                                                             ->prefix('#')
@@ -1040,7 +1040,7 @@ class AffiliationsTable
                                                     ->validationMessages([
                                                         'required'  => 'Seleccione un tipo de pago',
                                                     ]),
-                                                TextInput::make('reference_payment_zelle')
+                                                TextInput::make('reference_payment_usd')
                                                     ->label('Nro. de Referencia')
                                                     ->helperText('Debe colocar el número de referencia completo')
                                                     ->prefix('#')
@@ -1279,7 +1279,7 @@ class AffiliationsTable
                                                                 ->prefixIcon('heroicon-s-globe-europe-africa'),
 
 
-                                                            TextInput::make('reference_payment_zelle')
+                                                            TextInput::make('reference_payment_usd')
                                                                 ->label('Nro. de Referencia')
                                                                 ->helperText('Debe colocar el número de referencia completo')
                                                                 ->prefix('#')
