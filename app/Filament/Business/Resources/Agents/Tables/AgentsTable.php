@@ -9,7 +9,10 @@ use App\Models\Agent;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use Filament\Tables\Table;
+use App\Models\Affiliation;
 use Filament\Actions\Action;
+use App\Models\CorporateQuote;
+use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -17,6 +20,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Filters\Filter;
+use App\Models\AffiliationCorporate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
@@ -33,6 +37,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use App\Http\Controllers\AgencyController;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Schemas\Components\Utilities\Get;
 use App\Http\Controllers\NotificationController;
@@ -390,11 +395,242 @@ class AgentsTable
 
                     ])
                     ->action(function (Agent $record, array $data) {
-                        dd($data);
+                        // dd($data, $record, env('APP_URL'));
                         try {
+
+                            //Si el agente asiende a agencia master
+                            if ($data['type_agency'] == 1) {
+                                
+                                //1. Busco la informacion del agente en la tabla de usuario para actualizar la informacion
+                                // para que el agente acceda con el mismo usuario como agencia master
+                                $user = User::where('email', $record->email)->first();
+                                if ($user != null) {
+                                    $user->name         = $data['name_corporative'] != null ? $data['name_corporative'] : $record->name;
+                                    $user->agent_id     = NULL;
+                                    $user->code_agency  = AgencyController::generate_code_agency();
+                                    $user->agency_type  = 'MASTER';
+                                    //Bloqueo la entrada al modulo del agente
+                                    $user->is_agent     = false;
+                                    //permito la entrada al modulo de agencia master
+                                    $user->is_agency    = true;
+                                    //Asigno el link de acceso para que la agencia master cree su estructura (agencias generales y agentes)
+                                    $user->link_agency  = env('APP_URL') . '/m/o/c/' . Crypt::encryptString($user->code_agency);
+                                    $user->status       = 'ACTIVO';
+                                    $user->save();
+
+                                    //CREO LA INFORMACON DE LA NUEVA AGENCIA EN LA TABLA DE AGENCIAS
+                                    $agency = new Agency();
+                                    $agency->code               = $user->code_agency;
+                                    $agency->name_corporative   = $data['name_corporative'] != null ? $data['name_corporative'] : $record->name;
+                                    $agency->owner_code         = $user->code_agency;
+                                    $agency->agency_type_id     = $data['type_agency'];
+                                    $agency->email              = $user->email;
+                                    $agency->status             = 'ACTIVO';
+                                    
+                                    //Informacion de moneda local
+                                    $agency->local_beneficiary_name                     = $record->local_beneficiary_name != null ? $record->local_beneficiary_name : NULL;
+                                    $agency->local_beneficiary_rif                      = $record->local_beneficiary_rif != null ? $record->local_beneficiary_rif : NULL;
+                                    $agency->local_beneficiary_account_number           = $record->local_beneficiary_account_number != null ? $record->local_beneficiary_account_number : NULL;
+                                    $agency->local_beneficiary_account_bank             = $record->local_beneficiary_account_bank != null ? $record->local_beneficiary_account_bank : NULL;
+                                    $agency->local_beneficiary_account_type             = $record->local_beneficiary_account_type != null ? $record->local_beneficiary_account_type : NULL;
+                                    $agency->local_beneficiary_phone_pm                 = $record->local_beneficiary_phone_pm != null ? $record->local_beneficiary_phone_pm : NULL;
+                                    $agency->local_beneficiary_account_number_mon_inter = $record->local_beneficiary_account_number_mon_inter != null ? $record->local_beneficiary_account_number_mon_inter : NULL;
+                                    $agency->local_beneficiary_account_bank_mon_inter   = $record->local_beneficiary_account_bank_mon_inter != null ? $record->local_beneficiary_account_bank_mon_inter : NULL;
+                                    $agency->local_beneficiary_account_type_mon_inter   = $record->local_beneficiary_account_type_mon_inter != null ? $record->local_beneficiary_account_type_mon_inter : NULL;
+                                    
+                                    //Informacion de moneda internacional
+                                    $agency->extra_beneficiary_name                     = $record->extra_beneficiary_name != null ? $record->extra_beneficiary_name : NULL;
+                                    $agency->extra_beneficiary_ci_rif                   = $record->extra_beneficiary_ci_rif != null ? $record->extra_beneficiary_ci_rif : NULL;
+                                    $agency->extra_beneficiary_account_number           = $record->extra_beneficiary_account_number != null ? $record->extra_beneficiary_account_number : NULL;
+                                    $agency->extra_beneficiary_account_bank             = $record->extra_beneficiary_account_bank != null ? $record->extra_beneficiary_account_bank : NULL;
+                                    $agency->extra_beneficiary_account_type             = $record->extra_beneficiary_account_type != null ? $record->extra_beneficiary_account_type : NULL;
+                                    $agency->extra_beneficiary_route                    = $record->extra_beneficiary_route != null ? $record->extra_beneficiary_route : NULL;
+                                    $agency->extra_beneficiary_zelle                    = $record->extra_beneficiary_zelle != null ? $record->extra_beneficiary_zelle : NULL;
+                                    $agency->extra_beneficiary_ach                      = $record->extra_beneficiary_ach != null ? $record->extra_beneficiary_ach : NULL;
+                                    $agency->extra_beneficiary_swift                    = $record->extra_beneficiary_swift != null ? $record->extra_beneficiary_swift : NULL;
+                                    $agency->extra_beneficiary_aba                      = $record->extra_beneficiary_aba != null ? $record->extra_beneficiary_aba : NULL;
+                                    $agency->extra_beneficiary_address                  = $record->extra_beneficiary_address != null ? $record->extra_beneficiary_address : NULL;
+                                    $agency->save();
+
+                                    //2. Busco en la tabla de COTIZACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $individualQuote = IndividualQuote::where('agent_id', $record->id)->get();
+                                    foreach ($individualQuote as $quote) {
+                                        $quote->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $quote->owner_code  = $user->code_agency;
+                                        $quote->code_agency = $user->code_agency;
+                                        $quote->save();
+                                    }
+
+                                    //3. Busco en la tabla de COTIZACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $corporateQuote = CorporateQuote::where('agent_id', $record->id)->get();
+                                    foreach ($corporateQuote as $corpquote) {
+                                        $corpquote->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $corpquote->owner_code  = $user->code_agency;
+                                        $corpquote->code_agency = $user->code_agency;
+                                        $corpquote->save();
+                                    }
+
+                                    //4. Busco en la tabla de AFILIACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $afiliacionIndividual = Affiliation::where('agent_id', $record->id)->get();
+                                    foreach ($afiliacionIndividual as $afiInvidual) {
+                                        $afiInvidual->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $afiInvidual->owner_code  = $user->code_agency;
+                                        $afiInvidual->code_agency = $user->code_agency;
+                                        $afiInvidual->save();
+                                    }
+
+                                    //5. Busco en la tabla de AFILIACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $afiliacionCorporativa = AffiliationCorporate::where('agent_id', $record->id)->get();
+                                    foreach ($afiliacionCorporativa as $corp) {
+                                        $corp->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $corp->owner_code  = $user->code_agency;
+                                        $corp->code_agency = $user->code_agency;
+                                        $corp->save();
+                                    }
+                                    
+                                }else{
+                                    Notification::make()
+                                        ->title('EXCEPCION')
+                                        ->body('El correo del agente es diferente al correo del usuario. Por favor comuníquese con el administrador.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('error')
+                                        ->color('error')
+                                        ->send();
+                                    
+                                    return;
+                                }
+                            }
+
+                            //Si el agente asiende a agencia master
+                            if ($data['type_agency'] == 3) {
+
+                                //1. Busco la informacion del agente en la tabla de usuario para actualizar la informacion
+                                // para que el agente acceda con el mismo usuario como agencia master
+                                $user = User::where('email', $record->email)->first();
+                                if ($user != null) {
+                                    $user->name         = $data['name_corporative'] != null ? $data['name_corporative'] : $record->name;
+                                    $user->agent_id     = NULL;
+                                    $user->code_agency  = AgencyController::generate_code_agency();
+                                    $user->agency_type  = 'GENERAL';
+                                    //Bloqueo la entrada al modulo del agente
+                                    $user->is_agent     = false;
+                                    //permito la entrada al modulo de agencia master
+                                    $user->is_agency    = true;
+                                    //Asigno el link de acceso para que la agencia master cree su estructura (agencias generales y agentes)
+                                    $user->link_agency  = env('APP_URL') . '/agent/c/' . Crypt::encryptString($user->code_agency);
+                                    $user->status       = 'ACTIVO';
+                                    $user->save();
+
+                                    //CREO LA INFORMACON DE LA NUEVA AGENCIA EN LA TABLA DE AGENCIAS
+                                    $agency = new Agency();
+                                    $agency->code               = $user->code_agency;
+                                    $agency->name_corporative   = $data['name_corporative'] != null ? $data['name_corporative'] : $record->name;
+                                    $agency->code_agency        = $user->code_agency;
+                                    $agency->owner_code         = $data['owner_code'];
+                                    $agency->agency_type_id     = $data['type_agency'];
+                                    $agency->email              = $user->email;
+                                    $agency->status             = 'ACTIVO';
+
+                                    //Informacion de moneda local
+                                    $agency->local_beneficiary_name                     = $record->local_beneficiary_name != null ? $record->local_beneficiary_name : NULL;
+                                    $agency->local_beneficiary_rif                      = $record->local_beneficiary_rif != null ? $record->local_beneficiary_rif : NULL;
+                                    $agency->local_beneficiary_account_number           = $record->local_beneficiary_account_number != null ? $record->local_beneficiary_account_number : NULL;
+                                    $agency->local_beneficiary_account_bank             = $record->local_beneficiary_account_bank != null ? $record->local_beneficiary_account_bank : NULL;
+                                    $agency->local_beneficiary_account_type             = $record->local_beneficiary_account_type != null ? $record->local_beneficiary_account_type : NULL;
+                                    $agency->local_beneficiary_phone_pm                 = $record->local_beneficiary_phone_pm != null ? $record->local_beneficiary_phone_pm : NULL;
+                                    $agency->local_beneficiary_account_number_mon_inter = $record->local_beneficiary_account_number_mon_inter != null ? $record->local_beneficiary_account_number_mon_inter : NULL;
+                                    $agency->local_beneficiary_account_bank_mon_inter   = $record->local_beneficiary_account_bank_mon_inter != null ? $record->local_beneficiary_account_bank_mon_inter : NULL;
+                                    $agency->local_beneficiary_account_type_mon_inter   = $record->local_beneficiary_account_type_mon_inter != null ? $record->local_beneficiary_account_type_mon_inter : NULL;
+
+                                    //Informacion de moneda internacional
+                                    $agency->extra_beneficiary_name                     = $record->extra_beneficiary_name != null ? $record->extra_beneficiary_name : NULL;
+                                    $agency->extra_beneficiary_ci_rif                   = $record->extra_beneficiary_ci_rif != null ? $record->extra_beneficiary_ci_rif : NULL;
+                                    $agency->extra_beneficiary_account_number           = $record->extra_beneficiary_account_number != null ? $record->extra_beneficiary_account_number : NULL;
+                                    $agency->extra_beneficiary_account_bank             = $record->extra_beneficiary_account_bank != null ? $record->extra_beneficiary_account_bank : NULL;
+                                    $agency->extra_beneficiary_account_type             = $record->extra_beneficiary_account_type != null ? $record->extra_beneficiary_account_type : NULL;
+                                    $agency->extra_beneficiary_route                    = $record->extra_beneficiary_route != null ? $record->extra_beneficiary_route : NULL;
+                                    $agency->extra_beneficiary_zelle                    = $record->extra_beneficiary_zelle != null ? $record->extra_beneficiary_zelle : NULL;
+                                    $agency->extra_beneficiary_ach                      = $record->extra_beneficiary_ach != null ? $record->extra_beneficiary_ach : NULL;
+                                    $agency->extra_beneficiary_swift                     = $record->extra_beneficiary_swift != null ? $record->extra_beneficiary_swift : NULL;
+                                    $agency->extra_beneficiary_aba                      = $record->extra_beneficiary_aba != null ? $record->extra_beneficiary_aba : NULL;
+                                    $agency->extra_beneficiary_address                  = $record->extra_beneficiary_address != null ? $record->extra_beneficiary_address : NULL;
+                                    $agency->save();
+
+                                    //2. Busco en la tabla de COTIZACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $individualQuote = IndividualQuote::where('agent_id', $record->id)->get();
+                                    foreach ($individualQuote as $quote) {
+                                        $quote->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $quote->owner_code  = $data['owner_code'];
+                                        $quote->code_agency = $user->code_agency;
+                                        $quote->save();
+                                    }
+
+                                    //3. Busco en la tabla de COTIZACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $corporateQuote = CorporateQuote::where('agent_id', $record->id)->get();
+                                    foreach ($corporateQuote as $corpquote) {
+                                        $corpquote->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $corpquote->owner_code  = $data['owner_code'];
+                                        $corpquote->code_agency = $user->code_agency;
+                                        $corpquote->save();
+                                    }
+
+                                    //4. Busco en la tabla de AFILIACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $afiliacionIndividual = Affiliation::where('agent_id', $record->id)->get();
+                                    foreach ($afiliacionIndividual as $afiInvidual) {
+                                        $afiInvidual->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $afiInvidual->owner_code  = $data['owner_code'];
+                                        $afiInvidual->code_agency = $user->code_agency;
+                                        $afiInvidual->save();
+                                    }
+
+                                    //5. Busco en la tabla de AFILIACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                    // para migrar la informacion del agente a la agencia master
+                                    $afiliacionCorporativa = AffiliationCorporate::where('agent_id', $record->id)->get();
+                                    foreach ($afiliacionCorporativa as $corp) {
+                                        $corp->agent_id    = NULL;
+                                        //Si la gencia es master el code_agency == owner_code
+                                        $corp->owner_code  = $data['owner_code'];
+                                        $corp->code_agency = $user->code_agency;
+                                        $corp->save();
+                                    }
+                                } else {
+                                    Notification::make()
+                                        ->title('EXCEPCION')
+                                        ->body('El correo del agente es diferente al correo del usuario. Por favor comuníquese con el administrador.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('error')
+                                        ->color('error')
+                                        ->send();
+
+                                    return;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title('ASCENSO EXITOSO')
+                                ->body('El agente acaba de ser ascendido al rol de agencias de forma exitosa.')
+                                ->icon('heroicon-s-check-circle')
+                                ->iconColor('success')
+                                ->color('success')
+                                ->send();
 
                             
                         } catch (\Throwable $th) {
+                            dd($th);
                             Notification::make()
                                 ->title('EXCEPCION')
                                 ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
