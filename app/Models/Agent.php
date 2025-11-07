@@ -45,6 +45,9 @@ class Agent extends Model
         'local_beneficiary_account_bank',
         'local_beneficiary_account_type',
         'local_beneficiary_phone_pm',
+        'local_beneficiary_account_number_mon_inter',
+        'local_beneficiary_account_bank_mon_inter',
+        'local_beneficiary_account_type_mon_inter',
 
 
         //datos bancarios moneda extrangera

@@ -21,6 +21,7 @@ use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -187,8 +188,6 @@ class AgentForm
                                 ->tel()
                                 ->label('Número de teléfono')
                                 ->required()
-                                ->disabled()
-                                ->dehydrated()
                                 ->validationMessages([
                                     'required'  => 'Campo Requerido',
                                 ])
@@ -206,6 +205,8 @@ class AgentForm
                                 ->prefixIcon('heroicon-s-at-symbol')
                                 ->email()
                                 ->required()
+                                ->disabled()
+                                ->dehydrated()
                                 ->validationMessages([
                                     'required'  => 'Campo requerido',
                                     'email'     => 'El campo es un email',
@@ -281,43 +282,43 @@ class AgentForm
                                 ->prefixIcon('heroicon-s-user')
                                 ->maxLength(255),
                         ])->columns(4),
-                Step::make('Comisiones')
-                    ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                TextInput::make('commission_tdec')
-                                    ->label('Comisión TDEC US$')
-                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                    ->prefix('%')
-                                    ->disabled()
-                                    ->dehydrated(),
-                                    
-                                TextInput::make('commission_tdec_renewal')
-                                    ->label('Comisión Renovacion TDEC US$')
-                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                    ->prefix('%')
-                                    ->disabled()
-                                    ->dehydrated(),
+                    Step::make('Comisiones')
+                        ->schema([
+                            Grid::make(2)
+                                ->schema([
+                                    TextInput::make('commission_tdec')
+                                        ->label('Comisión TDEC US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->disabled()
+                                        ->dehydrated(),
+                                        
+                                    TextInput::make('commission_tdec_renewal')
+                                        ->label('Comisión Renovacion TDEC US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->disabled()
+                                        ->dehydrated(),
 
-                            ])->columnSpanFull(),
-                        Grid::make(2)
-                            ->schema([
-                                TextInput::make('commission_tdev')
-                                    ->label('Comisión TDEV US$')
-                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                    ->prefix('%')
-                                    ->disabled()
-                                    ->dehydrated(),
-                                    
-                                TextInput::make('commission_tdev_renewal')
-                                    ->label('Comisión Renovacion TDEV US$')
-                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                    ->prefix('%')
-                                    ->disabled()
-                                    ->dehydrated(),
-                                    
-                            ])->columnSpanFull()
-                    ]),
+                                ])->columnSpanFull(),
+                            Grid::make(2)
+                                ->schema([
+                                    TextInput::make('commission_tdev')
+                                        ->label('Comisión TDEV US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->disabled()
+                                        ->dehydrated(),
+                                        
+                                    TextInput::make('commission_tdev_renewal')
+                                        ->label('Comisión Renovacion TDEV US$')
+                                        ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
+                                        ->prefix('%')
+                                        ->disabled()
+                                        ->dehydrated(),
+                                        
+                                ])->columnSpanFull()
+                        ]),
                     Step::make('Información Bancaria Local(VES)')
                         ->description('Datos bancarios para recibir pagos en moneda nacional')
                         ->completedIcon(Heroicon::Check)
@@ -337,55 +338,90 @@ class AgentForm
                                     'numeric'  => 'Campo tipo numerico',
                                 ])
                                 ->maxLength(255),
-                            TextInput::make('local_beneficiary_account_number')
-                                ->label('Número de Cuenta del Beneficiario')
-                                ->prefixIcon('heroicon-s-identification'),
-
-                            Select::make('local_beneficiary_account_bank')
-                                ->label('Banco del Beneficiario')
-                                ->prefixIcon('heroicon-s-identification')
-                                ->options([
-                                    'BANCO DE VENEZUELA'            => 'BANCO DE VENEZUELA',
-                                    'BANCO BICENTENARIO'            => 'BANCO BICENTENARIO',
-                                    'BANCO MERCANTIL'               => 'BANCO MERCANTIL',
-                                    'BANCO PROVINCIAL'              => 'BANCO PROVINCIAL',
-                                    'BANCO CARONI'                  => 'BANCO CARONI',
-                                    'BANCO DEL CARIBE'              => 'BANCO DEL CARIBE',
-                                    'BANCO DEL TESORO'              => 'BANCO DEL TESORO',
-                                    'BANCO NACIONAL DE CREDITO'     => 'BANCO NACIONAL DE CREDITO',
-                                    'BANESCO'                       => 'BANESCO',
-                                    'BANCO CARONI'                  => 'BANCO CARONI',
-                                    'FONDO COMUN'                   => 'FONDO COMUN',
-                                    'BANCO CANARIAS'                => 'BANCO CANARIAS',
-                                    'BANCO DEL SUR'                 => 'BANCO DEL SUR',
-                                    'BANCO AGRICOLA DE VENEZUELA'   => 'BANCO AGRICOLA DE VENEZUELA',
-                                    'BANPLUS'                       => 'BANPLUS',
-                                    'MI BANCO'                      => 'MI BANCO',
-                                    'BANCAMIGA'                     => 'BANCAMIGA',
-                                    'BANFANB'                       => 'BANFANB',
-                                    'BANCARIBE'                     => 'BANCARIBE',
-                                    'BANCO ACTIVO'                  => 'BANCO ACTIVO',
-                                ]),
-                            Select::make('local_beneficiary_account_type')
-                                ->label('Tipo de Cuenta del Beneficiario')
-                                ->prefixIcon('heroicon-s-identification')
-                                ->options([
-                                    'AHORRO'      => 'AHORRO',
-                                    'CORRIENTE'   => 'CORRIENTE',
-                                ]),
                             TextInput::make('local_beneficiary_phone_pm')
                                 ->label('Teléfono Pago Movil del Beneficiario')
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                    $countryCode = '+58';
+                                ->helperText('Formato: 04121234567, 04241869168')
+                                ->mask('09999999999'),
 
-                                    if ($countryCode) {
-                                        $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                        $set('local_beneficiary_phone_pm', $countryCode . $cleanNumber);
-                                    }
-                                }),
+                            Fieldset::make('Cuenta Nacional, Moneda Nacional(Bs.)')->schema([
+                                TextInput::make('local_beneficiary_account_number')
+                                    ->label('Número de Cuenta del Beneficiario')
+                                    ->prefixIcon('heroicon-s-identification'),
+                                Select::make('local_beneficiary_account_bank')
+                                    ->label('Banco del Beneficiario')
+                                    ->prefixIcon('heroicon-s-identification')
+                                    ->options([
+                                        'BANCO DE VENEZUELA'            => 'BANCO DE VENEZUELA',
+                                        'BANCO BICENTENARIO'            => 'BANCO BICENTENARIO',
+                                        'BANCO MERCANTIL'               => 'BANCO MERCANTIL',
+                                        'BANCO PROVINCIAL'              => 'BANCO PROVINCIAL',
+                                        'BANCO CARONI'                  => 'BANCO CARONI',
+                                        'BANCO DEL CARIBE'              => 'BANCO DEL CARIBE',
+                                        'BANCO DEL TESORO'              => 'BANCO DEL TESORO',
+                                        'BANCO NACIONAL DE CREDITO'     => 'BANCO NACIONAL DE CREDITO',
+                                        'BANESCO'                       => 'BANESCO',
+                                        'BANCO CARONI'                  => 'BANCO CARONI',
+                                        'FONDO COMUN'                   => 'FONDO COMUN',
+                                        'BANCO CANARIAS'                => 'BANCO CANARIAS',
+                                        'BANCO DEL SUR'                 => 'BANCO DEL SUR',
+                                        'BANCO AGRICOLA DE VENEZUELA'   => 'BANCO AGRICOLA DE VENEZUELA',
+                                        'BANPLUS'                       => 'BANPLUS',
+                                        'MI BANCO'                      => 'MI BANCO',
+                                        'BANCAMIGA'                     => 'BANCAMIGA',
+                                        'BANFANB'                       => 'BANFANB',
+                                        'BANCARIBE'                     => 'BANCARIBE',
+                                        'BANCO ACTIVO'                  => 'BANCO ACTIVO',
+                                    ]),
+                                Select::make('local_beneficiary_account_type')
+                                    ->label('Tipo de Cuenta del Beneficiario')
+                                    ->prefixIcon('heroicon-s-identification')
+                                    ->options([
+                                        'AHORRO'      => 'AHORRO',
+                                        'CORRIENTE'   => 'CORRIENTE',
+                                    ]),
+                            ])->columnSpanFull()->columns(3),
+
+                            Fieldset::make('Cuenta Nacional, Moneda Intenacional(US$, EUR)')->schema([
+                                TextInput::make('local_beneficiary_account_number_mon_inter')
+                                    ->label('Número de Cuenta del Beneficiario')
+                                    ->prefixIcon('heroicon-s-identification'),
+                                Select::make('local_beneficiary_account_bank_mon_inter')
+                                    ->label('Banco del Beneficiario')
+                                    ->prefixIcon('heroicon-s-identification')
+                                    ->options([
+                                        'BANCO DE VENEZUELA'            => 'BANCO DE VENEZUELA',
+                                        'BANCO BICENTENARIO'            => 'BANCO BICENTENARIO',
+                                        'BANCO MERCANTIL'               => 'BANCO MERCANTIL',
+                                        'BANCO PROVINCIAL'              => 'BANCO PROVINCIAL',
+                                        'BANCO CARONI'                  => 'BANCO CARONI',
+                                        'BANCO DEL CARIBE'              => 'BANCO DEL CARIBE',
+                                        'BANCO DEL TESORO'              => 'BANCO DEL TESORO',
+                                        'BANCO NACIONAL DE CREDITO'     => 'BANCO NACIONAL DE CREDITO',
+                                        'BANESCO'                       => 'BANESCO',
+                                        'BANCO CARONI'                  => 'BANCO CARONI',
+                                        'FONDO COMUN'                   => 'FONDO COMUN',
+                                        'BANCO CANARIAS'                => 'BANCO CANARIAS',
+                                        'BANCO DEL SUR'                 => 'BANCO DEL SUR',
+                                        'BANCO AGRICOLA DE VENEZUELA'   => 'BANCO AGRICOLA DE VENEZUELA',
+                                        'BANPLUS'                       => 'BANPLUS',
+                                        'MI BANCO'                      => 'MI BANCO',
+                                        'BANCAMIGA'                     => 'BANCAMIGA',
+                                        'BANFANB'                       => 'BANFANB',
+                                        'BANCARIBE'                     => 'BANCARIBE',
+                                        'BANCO ACTIVO'                  => 'BANCO ACTIVO',
+                                    ]),
+                                Select::make('local_beneficiary_account_type_mon_inter')
+                                    ->label('Tipo de Cuenta del Beneficiario')
+                                    ->prefixIcon('heroicon-s-identification')
+                                    ->options([
+                                        'AHORRO'      => 'AHORRO',
+                                        'CORRIENTE'   => 'CORRIENTE',
+                                    ]),
+                            ])->columnSpanFull()->columns(3),
+                            
+                            
                         ])->columnSpanFull()->columns(3),
                     Step::make('Información Bancaria Extra(US$)')
                         ->description('Datos bancarios para recibir pagos en moneda extranjera')
@@ -541,7 +577,7 @@ class AgentForm
                         type="submit"
                         size="sm"
                     >
-                        Actualizar información
+                        Actualizar Información
                     </x-filament::button>
                 BLADE)))
                     ->columnSpanFull(),
