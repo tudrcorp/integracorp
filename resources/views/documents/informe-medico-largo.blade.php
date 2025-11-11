@@ -146,6 +146,61 @@
             /* pre-wrap respeta saltos de línea y ajusta el texto automáticamente */
             white-space: pre-wrap;
         }
+
+        .tabla-contenedor {
+        width: 600px; /* Ancho fijo solicitado */
+        margin: 0 auto; /* Centrar la tabla */
+        border-collapse: collapse; /* Asegura bordes limpios */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        border-radius: 0.5rem; /* Bordes redondeados */
+        overflow: hidden;
+        }
+
+        .tabla-contenedor table {
+        width: 100%;
+        }
+
+        /* Aplica bordes grises a toda la tabla */
+        /* .tabla-contenedor table, */
+        .tabla-contenedor th,
+        .tabla-contenedor td {
+        border: 0.5px solid #d1d5db; /* Gris claro */
+        }
+
+        /* Estilo para las celdas de encabezado */
+        .tabla-contenedor th {
+        background-color: #a1a1a1; /* Gris oscuro para encabezado */
+
+        color: white;
+        padding: 3px;
+        text-transform: uppercase;
+        font-size: 0.58rem;
+        font-family: 'Helvetica', Century, sans-serif;
+
+        text-align: left; /* Alineación a la izquierda */
+        }
+
+        /* Estilo para las celdas de datos */
+        .tabla-contenedor td {
+        padding: 2px;
+        color: #a1a1a1; /* Texto gris oscuro */
+
+        background-color: white;
+        text-align: left; /* Alineación a la izquierda */
+        }
+
+        /* Estilo para la fila de datos */
+        .tabla-contenedor tr:hover {
+        background-color: #f3f4f6; /* Efecto hover sutil */
+        }
+
+        /* Estilo para la fila del encabezado */
+        .tabla-contenedor thead tr {
+        border-bottom: 1px solid #6b7280;
+        }
+
+
+
     </style>
 
 
@@ -153,45 +208,32 @@
 
 <body>
     @php
-        $movitoConsulta = "El paciente presenta un historial médico complejo.";
-        $movitoConsultaDos = "El paciente presenta un historial médico complejo. Si la variable viene de la base de datos, debería estar disponible aquí. El paciente presenta un historial médico complejo. Si la variable viene de la base de datos, debería estar disponible aquí. El paciente presenta un historial médico complejo. Si la variable viene de la base de datos, debería estar disponible aquí.";
-        $impresionDiagnostica = "El paciente presenta un historial médico complejo. Si la variable viene de la base de datos, debería estar disponible aquí. El paciente presenta un historial médico complejo. Si la variable viene de la base de datos, debería estar disponible aquí. El paciente presenta un historial médico complejo. Si la variable viene de la base de datos, debería estar disponible aquí.";
 
-        $datosFila = [
-            'Peso(Kg): 56.5',
-            'Estatura(Mts): 1.70',
-            'IMC: 23.5',
-        ];
-        $datosPersonales = [
-            'NOMBRE Y APELLIDO: Gustavo Alberto Pereira',
-            'EDAD: 45 anos',
-        ];
-        $datosPersonalesDos = [
-            'CEDULA: 16007868',
-            'TIPO DE SERVICIO: TELEMEDICINA',
-        ];
+    $movitoConsulta = $data['reason'];
+    $enfermedadActual = $data['actual_phatology'];
+    $antecedentes = $data['background'];
+    $impresionDiagnostica = $data['diagnostic_impression'];
+
+
+    $medidas = [
+        'Peso(Kg): '.$data['peso'],
+        'Estatura(Mts): '.$data['estatura'],
+        'IMC: '.$data['imc'],
+    ];
+
+    $datosPersonales = [
+        'NOMBRE Y APELLIDO: '.$data['name_patient'],
+        'EDAD: '.$data['age_patient'],
+    ];
+    $datosPersonalesDos = [
+        'CEDULA: '.$data['ci_patient'],
+        'TIPO DE SERVICIO: TELEMEDICINA',
+    ];
 
     @endphp
 
     <!-- Primera página: Imagen de fondo -->
     <div class="cover" style="background-image: url('{{ public_path('storage/telemedicina/informeMedicoTLM.png') }}');">
-
-
-        <!-- Titulo -->
-        {{-- <div style="position: absolute; top: 32px; left: 540px; margin-top: 0px; padding: 0px; margin-left: 0px">
-            <p class="sin-margen" style="font-size: 30px;">
-                <span style="
-                        font-weight: bold;
-                        color: #26b2ca;
-                        font-size: 20px; 
-                        font-style: sans-serif; 
-                        font-family: 'Helvetica', Century, sans-serif; 
-                        text-transform: uppercase;
-                    ">
-                    Informe Médico
-                </span>
-            </p>
-        </div> --}}
 
         <!-- Fecha -->
         <div style="position: absolute; top: 32px; left: 265px; margin-top: 0px; padding: 0px; margin-left: 0px">
@@ -220,7 +262,8 @@
                         font-family: 'Helvetica', Century, sans-serif; 
                         text-transform: uppercase;
                     ">
-                    CLAVE DEL SERVICIO: 76543-098
+                    CLAVE DEL SERVICIO: {{ $data['code_reference'] }}
+
                 </span>
             </p>
         </div>
@@ -251,7 +294,7 @@
                         white-space: nowrap; / Fuerza el contenido a una sola línea y ajusta el ancho de la celda */
 
                         ">
-                         <span style="font-weight: bold; color: #000000; text-transform: uppercase;">{{ $dato }}</span>
+                        <span style="font-weight: bold; color: #000000; text-transform: uppercase;">{{ $dato }}</span>
 
                     </td>
                     @endforeach
@@ -334,7 +377,7 @@
                             text-align: justify; / Justificación del texto /
                             white-space: pre-wrap;
                         ">
-                            {{ $movitoConsultaDos }}
+                            {{ $movitoConsulta }}
                         </td>
                     </tr>
 
@@ -380,7 +423,7 @@
                             text-align: justify; / Justificación del texto /
                             white-space: pre-wrap;
                         ">
-                            {{ $movitoConsulta }}
+                            {{ $enfermedadActual }}
                         </td>
                     </tr>
 
@@ -425,13 +468,44 @@
                             text-align: justify; / Justificación del texto /
                             white-space: pre-wrap;
                         ">
-                            {{ $movitoConsulta }}
+                            {{ $antecedentes }}
                         </td>
                     </tr>
 
                 </table>
 
             </div>
+
+            <div style="width: 600px; max-width: 600px; margin: 20px auto;">
+                <div class="tabla-contenedor">
+                    <table>
+                        <!-- Fila de Encabezados -->
+                        <thead>
+                            <tr>
+                                <th colspan="5" style="border: none; background-color: #ffffff; color: #000000; font-size: 12px; font-family: 'Helvetica', Century, sans-serif;">signos vitales</th>
+                            </tr>
+                            <tr>
+                                <th>Presión Arterial(mmHg)</th>
+                                <th>Frecuencia Cardíaca(lpm)</th>
+                                <th>Frecuencia Respiratoria(rpm)</th>
+                                <th>Temperatura(°C)</th>
+                                <th>Saturación</th>
+                            </tr>
+                        </thead>
+                        <!-- Fila de Datos -->
+                        <tbody>
+                            <tr>
+                                <td style="font-size: 12px;">{{ $data['pa'] }}</td>
+                                <td style="font-size: 12px;">{{ $data['fc'] }}</td>
+                                <td style="font-size: 12px;">{{ $data['fr'] }}</td>
+                                <td style="font-size: 12px;">{{ $data['temp'] }}</td>
+                                <td style="font-size: 12px;">{{ $data['saturacion'] }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
 
             <!-- Medidas Anteropométricas -->
             <div style="width: 600px; max-width: 600px; margin: 20px auto;">
@@ -459,7 +533,7 @@
                     ">
                         {{-- Única Fila con Seis Columnas --}}
                         <tr style="border: 1px solid #000000;">
-                            @foreach ($datosFila as $indice => $dato)
+                            @foreach ($medidas as $indice => $item)
                             <td style="
                                 / El ancho se divide entre las 6 columnas (aprox. 16.66%) /
                                 width: 16.66%;
@@ -475,7 +549,7 @@
                                 white-space: nowrap;
     
                                 ">
-                                {{ $dato }}
+                                {{ $item }}
                             </td>
                             @endforeach
                         </tr>
@@ -485,7 +559,7 @@
             </div>
 
             <!-- Impresion Diagnostica -->
-            <div style="width: 600px; max-width: 600px; margin: 40px auto; margin-bottom: 20px;">
+            <div style="width: 600px; max-width: 600px; margin: 40px auto; margin-bottom: 30px;">
                 <table style="
                     width: 600px; /* Ancho fijo de 650px solicitado /
                     border-collapse: collapse;
@@ -531,8 +605,9 @@
             </div>
 
             <!-- Plan Terapeutico -->
-            <div style="position: absolute; top: 440px; left: 0px; width: 600px; margin: 0 auto;">
-    
+            <div style="width: 600px; max-width: 600px; margin: 40px auto; margin-bottom: 20px;">
+
+
                 <!-- Contenedor principal para definir el ancho total (600px) -->
                 <table style="width: 600px;">
                     <tbody style="
@@ -558,7 +633,7 @@
                                 ">
                                 MEDICAMENTOS
                             </td>
-    
+
                             <td style="
                                 padding: 5px;
                                 color: #ffffff;
@@ -573,30 +648,36 @@
                         <tr>
                             <td>
                                 <ul style="margin: 0; padding-left: 20px;">
-                                    <li>Paracetamol 500mg (dosis única)</li>
-                                    <li>Loratadina 10mg (alergias)</li>
-                                
-
+                                    @if($data['medicationsArr'] != [])
+                                    @foreach ($data['medicationsArr'] as $item)
+                                    <li>
+                                        {{ $item['medicines'] }}
+                                    </li>
+                                    @endforeach
+                                    @endif
                                 </ul>
                             </td>
                             <td>
                                 <ul style="margin: 0; padding-left: 20px;">
-                                    <li>Paracetamol 500mg (dosis única)</li>
-                                    <li>Loratadina 10mg (alergias)</li>
-                                    
-
+                                    @if($data['medicationsArr'] != [])
+                                    @foreach ($data['medicationsArr'] as $item)
+                                    <li>
+                                        {{ $item['indications'] }}
+                                    </li>
+                                    @endforeach
+                                    @endif
                                 </ul>
                             </td>
                         </tr>
 
-                        
-                            <tr>
-                                <td colspan="2" style=" padding-top: 30px; padding-bottom: 10px; font-weight: bold;">
-                                    PARACLINICOS:
-                                </td>
-                            </tr>
 
-    
+                        <tr>
+                            <td colspan="2" style=" padding-top: 30px; padding-bottom: 10px; font-weight: bold;">
+                                PARACLINICOS:
+                            </td>
+                        </tr>
+
+
                         </tr>
                         <tr>
                             <td style="
@@ -627,9 +708,9 @@
                                 ">
                                 <!-- La lista de medicamentos crecerá con respecto a la cantidad de líneas -->
                                 <ul style="margin: 0; padding-left: 20px;">
-                                    <li>Paracetamol 500mg (dosis única)</li>
-                                    <li>Loratadina 10mg (alergias)</li>
-                                    <li>Suero Oral (hidratación)</li>
+                                    @foreach ($data['labsArr'] as $lab)
+                                    <li>{{ $lab }}</li>
+                                    @endforeach
                                 </ul>
 
                             </td>
@@ -638,9 +719,9 @@
                                 
                                 ">
                                 <ul style="margin: 0; padding-left: 20px;">
-                                    <li>Paracetamol 500mg (dosis única)</li>
-                                    <li>Loratadina 10mg (alergias)</li>
-                                    <li>Suero Oral (hidratación)</li>
+                                    @foreach ($data['studiesArr'] as $study)
+                                    <li>{{ $study }}</li>
+                                    @endforeach
                                 </ul>
 
                             </td>
@@ -648,8 +729,8 @@
 
                     </tbody>
                 </table>
-    
-    
+
+
             </div>
 
         </div>

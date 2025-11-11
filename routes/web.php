@@ -345,8 +345,8 @@ Route::get('/imag', function () {
 
 });
 
-Route::get('/medi', function () {
+Route::get('/largo', function () {
 
-    $pdf = Pdf::loadView('documents.medicamentos');
+    $pdf = Pdf::loadView('documents.informe-medico-largo');
     return $pdf->stream();
 });
