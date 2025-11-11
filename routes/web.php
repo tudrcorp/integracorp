@@ -18,14 +18,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\BirthdayNotification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use App\Models\DetailIndividualQuote;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\UtilsController;
+use App\Mail\NotificationRenewAffiliationMail;
 use App\Models\TelemedicinePatientMedications;
 use App\Http\Controllers\NotificationController;
+use Fidry\CpuCoreCounter\Finder\NullCpuCoreFinder;
 
 Route::get('/', function () {
     return view('welcome');
@@ -347,6 +350,101 @@ Route::get('/imag', function () {
 
 Route::get('/medi', function () {
 
-    $pdf = Pdf::loadView('documents.medicamentos');
-    return $pdf->stream();
+    $dates = DB::table('affiliations')
+        ->select('id', 'code', 'agent_id', 'code_agency', 'effective_date')
+        ->get()
+        ->toArray();
+    // dd($dates);
+    $today = Carbon::createFromFormat('d/m/Y', now()->format('d/m/Y'))->format('Y-m-d');
+    // dd($today);
+
+    for ($i = 0; $i < count($dates); $i++) {
+
+        $effectiveDate = Carbon::createFromFormat('d/m/Y', $dates[$i]->effective_date)->format('Y-m-d');
+        // dd($effectiveDate, $today);
+        if($effectiveDate == null){
+            continue; 
+        }
+        if($effectiveDate > $today){
+            //1. Calculo los dias faltantes para lleguar al vencimiento
+            $diasFaltantes = Carbon::parse($today)->diffInDays($effectiveDate);
+            // dd($diasFaltantes);
+            //Faltan 30 dias?
+            if($diasFaltantes == 30){
+                
+                //Si la afiliacion pertenece a un agente
+                if($dates[$i]->agent_id != null){
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 30))->onQueue('renew'));
+                    dd('aqui');
+                }
+                
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                }
+                
+            }
+
+            //Faltan 20 dias?
+            if($diasFaltantes == 20){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 15 dias?
+            if ($diasFaltantes == 15) {
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 10 dias?
+            if($diasFaltantes == 10){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 7 dias?
+            if($diasFaltantes == 7){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 5 dias?
+            if($diasFaltantes == 5){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 4 dias?
+            if($diasFaltantes == 4){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 3 dias?
+            if($diasFaltantes == 3){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 2 dias?
+            if($diasFaltantes == 2){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            //Faltan 1 dias?
+            if($diasFaltantes == 1){
+                $pdf = Pdf::loadView('documents.aviso-de-pago');
+                return $pdf->stream();
+            }
+
+            dd($effectiveDate, $today, $diasFaltantes);
+
+        }
+    }
+
 });
