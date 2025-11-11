@@ -348,7 +348,7 @@ Route::get('/imag', function () {
 
 });
 
-Route::get('/medi', function () {
+Route::get('/largo', function () {
 
     $dates = DB::table('affiliations')
         ->select('id', 'code', 'agent_id', 'code_agency', 'effective_date')
