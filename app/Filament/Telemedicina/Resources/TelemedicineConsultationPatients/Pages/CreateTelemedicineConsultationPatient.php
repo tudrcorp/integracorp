@@ -35,6 +35,7 @@ use App\Models\TelemedicineListSpecialist;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use App\Jobs\GeneratePdfInformeMedicoCorto;
+use App\Jobs\GeneratePdfInformeMedicoLargo;
 use App\Models\TelemedicinePatientSpecialty;
 use Filament\Infolists\Components\TextEntry;
 use App\Models\TelemedicinePatientMedications;
@@ -356,7 +357,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
             $record = $this->getRecord()->toArray();
 
-            // dd($this->data);
 
             $doctor = TelemedicineDoctor::where('id', $record['telemedicine_doctor_id'])->first()->toArray();
 
@@ -631,44 +631,91 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             //Notificion al usuario de que los documentos estan siendo generados y qye luego los recibira via WP
             $this->sendNotifications($record);
 
-            $dataInformeCorteo = [
-                'fecha'                         => now()->format('d/m/Y'),
-                'code_reference'                => $this->data['code_reference'],
-                'name_patient'                  => $this->data['full_name'],
-                'ci_patient'                    => $this->data['nro_identificacion'],
-                'age_patient'                   => $this->data['age'],
-                'reason'                        => $this->data['reason_consultation'],
-                'actual_phatology'              => $this->data['actual_phatology'],
-                'background'                    => $this->data['background'],
-                'diagnostic_impression'         => $this->data['diagnostic_impression'],
-                'peso'                          => $this->data['peso'],
-                'estatura'                      => $this->data['estatura'],
-                'imc'                           => $this->data['imc'],
-                'phone'                         => $this->data['phone_ppal'],
-                'consultSpecialistArr'          => $consultSpecialistArr,
-                'medicationsArr'                => $medicationsArr ?? [],
-                'labsArr'                       => $labsArr ?? [],
-                'otherLabsArr'                  => $otherLabsArr ?? [],
-                'studiesArr'                    => $studiesArr ?? [],
-                'otherStudiesArr'               => $otherStudiesArr ?? [],
-                'consultSpecialistArr'          => $consultSpecialistArr ?? [],
-                'otherSpecialistArr'            => $otherSpecialistArr ?? [],
-                'code_cm'                       => $doctor['code_cm'],
-                'code_mpps'                     => $doctor['code_mpps'],
-                'signature'                     => $doctor['signature'],
-                'telemedicine_case_id'          => $record['telemedicine_case_id'],
-                'telemedicine_consultation_id'  => $record['id'],
-                'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
-                'code_cm'                       => $doctor['code_cm'],
-                'code_mpps'                     => $doctor['code_mpps'],
-                'signature'                     => $doctor['signature'],
-                'telemedicine_case_id'          => $record['telemedicine_case_id'],
-                'telemedicine_consultation_id'  => $record['id'],
-                'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
-                'signature'                     => $doctor['signature'],
-            ];
+            if($record['status'] == 'CONSULTA INICIAL'){
+                $dataInformeCorteo = [
+                    'fecha'                         => now()->format('d/m/Y'),
+                    'code_reference'                => $this->data['code_reference'],
+                    'name_patient'                  => $this->data['full_name'],
+                    'ci_patient'                    => $this->data['nro_identificacion'],
+                    'age_patient'                   => $this->data['age'],
+                    'reason'                        => $this->data['reason_consultation'],
+                    'actual_phatology'              => $this->data['actual_phatology'],
+                    'background'                    => $this->data['background'],
+                    'diagnostic_impression'         => $this->data['diagnostic_impression'],
+                    'peso'                          => $this->data['peso'],
+                    'estatura'                      => $this->data['estatura'],
+                    'imc'                           => $this->data['imc'],
+                    'phone'                         => $this->data['phone_ppal'],
+                    'consultSpecialistArr'          => $consultSpecialistArr,
+                    'medicationsArr'                => $medicationsArr ?? [],
+                    'labsArr'                       => $labsArr ?? [],
+                    'otherLabsArr'                  => $otherLabsArr ?? [],
+                    'studiesArr'                    => $studiesArr ?? [],
+                    'otherStudiesArr'               => $otherStudiesArr ?? [],
+                    'consultSpecialistArr'          => $consultSpecialistArr ?? [],
+                    'otherSpecialistArr'            => $otherSpecialistArr ?? [],
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'signature'                     => $doctor['signature'],
+                ];
+    
+                GeneratePdfInformeMedicoCorto::dispatch($dataInformeCorteo, Auth::user(), 'informe-corto')->onQueue('telemedicina');
+    
+                $dataInformeLargo = [
+                    'fecha'                         => now()->format('d/m/Y'),
+                    'code_reference'                => $this->data['code_reference'],
+                    'name_patient'                  => $this->data['full_name'],
+                    'ci_patient'                    => $this->data['nro_identificacion'],
+                    'age_patient'                   => $this->data['age'],
+                    'reason'                        => $this->data['reason_consultation'],
+                    'actual_phatology'              => $this->data['actual_phatology'],
+                    'background'                    => $this->data['background'],
+                    'diagnostic_impression'         => $this->data['diagnostic_impression'],
+                    'peso'                          => $this->data['peso'],
+                    'estatura'                      => $this->data['estatura'],
+                    'imc'                           => $this->data['imc'],
+                    'phone'                         => $this->data['phone_ppal'],
+                    'consultSpecialistArr'          => $consultSpecialistArr,
+                    'medicationsArr'                => $medicationsArr ?? [],
+                    'labsArr'                       => $labsArr ?? [],
+                    'otherLabsArr'                  => $otherLabsArr ?? [],
+                    'studiesArr'                    => $studiesArr ?? [],
+                    'otherStudiesArr'               => $otherStudiesArr ?? [],
+                    'consultSpecialistArr'          => $consultSpecialistArr ?? [],
+                    'otherSpecialistArr'            => $otherSpecialistArr ?? [],
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'code_cm'                       => $doctor['code_cm'],
+                    'code_mpps'                     => $doctor['code_mpps'],
+                    'signature'                     => $doctor['signature'],
+                    'telemedicine_case_id'          => $record['telemedicine_case_id'],
+                    'telemedicine_consultation_id'  => $record['id'],
+                    'telemedicine_patient_id'       => $record['telemedicine_patient_id'],
+                    'signature'                     => $doctor['signature'],
+                    'pa'                            => $this->data['pa'],
+                    'fc'                            => $this->data['fc'],
+                    'fr'                            => $this->data['fr'],
+                    'temp'                          => $this->data['temp'],
+                    'saturacion'                    => $this->data['saturacion'],
+                ];
+    
+                GeneratePdfInformeMedicoLargo::dispatch($dataInformeLargo, Auth::user(), 'informe-largo')->onQueue('telemedicina');
+            }
 
-            GeneratePdfInformeMedicoCorto::dispatch($dataInformeCorteo, Auth::user(), 'informe-corto')->onQueue('telemedicina');
             
 
             /**
