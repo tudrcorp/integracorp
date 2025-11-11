@@ -87,7 +87,8 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
                 ->seconds(5)
                 ->send();
 
-            $this->redirect(route('filament.telemedicina.auth.login'));
+                $this->redirect(route('filament.telemedicina.auth.login'));
+
             //code...
             //code...
         } catch (\Throwable $th) {

@@ -327,14 +327,16 @@ class TelemedicinePatientsTable
                                     ->mask(fn(Get $get) => $get('country_id') == 189 ? '99999999999' : '')
                                     ->helperText('Ejemplo: 04161234567'),
                                 Select::make('relationship')
-                                ->options([
-                                    'MADRE'     => 'MADRE',
-                                    'PADRE'     => 'PADRE',
-                                    'HIJO(A)'   => 'HIJO(A)',
-                                    'ABUELO(A)' => 'ABUELO(A)',
-                                    'AMIGO(A)'  => 'AMIGO(A)',
-                                    'OTRO'      => 'OTRO',
-                                ]),
+                                    ->label('Parentesco')
+                                    ->options([
+                                        'TITULAR'   => 'TITULAR',
+                                        'MADRE'     => 'MADRE',
+                                        'PADRE'     => 'PADRE',
+                                        'HIJO(A)'   => 'HIJO(A)',
+                                        'ABUELO(A)' => 'ABUELO(A)',
+                                        'AMIGO(A)'  => 'AMIGO(A)',
+                                        'OTRO'      => 'OTRO',
+                                    ]),
 
                                 Grid::make()
                                     ->schema([

@@ -3,12 +3,19 @@
 namespace App\Filament\Resources\TelemedicineCases\Tables;
 
 use Filament\Tables\Table;
+use Filament\Actions\Action;
 use App\Models\TelemedicineCase;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use App\Models\TelemedicineDoctor;
+use Illuminate\Support\Collection;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Fieldset;
 
 class TelemedicineCasesTable
 {
@@ -106,6 +113,43 @@ class TelemedicineCasesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('reasignar_caso')
+                        ->label('Reasignar Caso')
+                        ->color('success')
+                        ->icon('heroicon-s-check-circle')
+                        ->requiresConfirmation()
+                        ->form([
+                            Fieldset::make('Reasignar Caso')->schema([
+                                Select::make('doctor_id')
+                                    ->label('Seleccione el Doctor')
+                                    ->required()
+                                    ->options(TelemedicineDoctor::all()->pluck('full_name', 'id')),
+                                
+                            ])->columnSpanFull()->columns(1),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+
+                            try {
+                                $records->each(function (TelemedicineCase $record) use ($data) {
+                                    $record->update([
+                                        'telemedicine_doctor_id' => $data['doctor_id']
+                                    ]);
+                                });
+
+                                Notification::make()
+                                    ->title('Caso reasignado exitosamente')
+                                    ->success() 
+                                    ->send();
+                                    
+                            } catch (\Throwable $th) {
+                                throw $th;
+                                Notification::make()
+                                    ->title('Error al reasignar el caso')
+                                    ->danger()
+                                    ->send();
+                            }
+                           
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ]);
