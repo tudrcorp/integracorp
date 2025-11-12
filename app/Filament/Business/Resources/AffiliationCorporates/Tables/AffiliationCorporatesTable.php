@@ -209,67 +209,6 @@ class AffiliationCorporatesTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    Action::make('upload_info_ils')
-                        ->label('Vaucher ILS')
-                        ->color('warning')
-                        ->icon('heroicon-o-paper-clip')
-                        ->requiresConfirmation()
-                        ->modalWidth(Width::ExtraLarge)
-                        ->modalHeading('Activar afiliacion')
-                        ->form([
-                            Section::make('ACTIVAR AFILIACIÓN')
-                                ->description('Formulario de activación de afiliación. Campo Requerido(*)')
-                                ->icon('heroicon-s-check-circle')
-                                ->schema([
-                                    Grid::make(2)->schema([
-                                        TextInput::make('vaucher_ils')
-                                            ->label('Vaucher ILS')
-                                            ->required(),
-                                    ]),
-                                    Grid::make(2)->schema([
-                                        DatePicker::make('date_payment_initial_ils')
-                                            ->label('Desde')
-                                            ->format('d-m-Y')
-                                            ->required(),
-                                        DatePicker::make('date_payment_final_ils')
-                                            ->label('Hasta')
-                                            ->format('d-m-Y')
-                                            ->required(),
-
-                                    ]),
-                                    Grid::make(1)->schema([
-                                        FileUpload::make('document_ils')
-                                            ->label('Documento/Comprobante ILS')
-                                            ->required(),
-                                    ])
-                                ])
-                        ])
-                        ->action(function (AffiliationCorporate $record, array $data): void {
-                            $record->update([
-                                'vaucher_ils'               => $data['vaucher_ils'],
-                                'date_payment_initial_ils'  => $data['date_payment_initial_ils'],
-                                'date_payment_final_ils'    => $data['date_payment_final_ils'],
-                                'document_ils'              => $data['document_ils'],
-                            ]);
-
-                            $record->status_log_corporate_affiliations()->create([
-                                'affiliation_corporate_id'  => $record->id,
-                                'action'                    => 'ACTIVACIÓN',
-                                'observation'               => 'AFILIACIÓN ACTIVADA. FECHA: ' . now()->format('d-m-Y'),
-                                'updated_by'                => Auth::user()->name
-                            ]);
-
-                            Notification::make()
-                                ->success()
-                                ->title('AFILIACIÓN ACTIVADA')
-                                ->send();
-                        })
-                        ->hidden(function (AffiliationCorporate $record): bool {
-                            if ($record->vaucher_ils != null) {
-                                return true;
-                            }
-                            return false;
-                        }),
 
                     Action::make('upload')
                         ->label('Comprobante de Pago')
@@ -910,7 +849,8 @@ class AffiliationCorporatesTable
                                 ->title('AFILIACION ACTUALIZADA')
                                 ->success()
                                 ->send();
-                        }),
+                        })
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
                 ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([

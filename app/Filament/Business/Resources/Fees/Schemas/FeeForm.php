@@ -19,8 +19,8 @@ class FeeForm
     {
         return $schema
         ->components([
-                Section::make('TARIFAS')
-                    ->description('Formulario para el registro de tarifas . Campo Requerido(*)')
+                Section::make('ESTRUCTURA DE PLANES, EDADES Y COBERTURAS')
+                    ->description('Este formulario funciona como un configurar de planes. Puede Crear Rango de edades y Coberturas asociadas a un plan creado previamente. Campo Requerido(*)')
                     ->icon('heroicon-m-book-open')
                     ->schema([
                         Grid::make()->schema([

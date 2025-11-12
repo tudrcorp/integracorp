@@ -155,7 +155,7 @@ class IndividualQuoteForm
                                         ->live()
                                         ->options(function () {
 
-                                            $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
+                                            $planesConBeneficios = Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->get()->pluck('description', 'id');
 
                                             //agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
@@ -347,7 +347,7 @@ class IndividualQuoteForm
                                                 ->inLine()
                                                 ->live()
                                                 ->options(function (Get $get) {
-                                                    return Plan::where('type', 'BASICO')->pluck('description', 'id');
+                                                    return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
                                                 })->columnSpan(3),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')

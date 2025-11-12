@@ -174,6 +174,20 @@ class PlanForm
                             ->getOptionLabelFromRecordUsing(fn(Fee $record) => "{$record->range}años - Covertura: {$record->coverage} US$ - Tarifa: {$record->price} US$")
                             ->searchable(),
                     ])->columnSpanFull()->columns(1),
+
+                Section::make('ASOCIACION DE TARIFAS POR RANGO DE EDADES')
+                    ->collapsible()
+                    ->description('Seleccion multiple de coberturas')
+                    ->icon('heroicon-s-share')
+                    ->schema([
+                        Select::make('tarifas')
+                            ->label('Tarifas asociadas')
+                            ->relationship(name: 'feePlans', titleAttribute: 'range')
+                            ->multiple()
+                            ->preload()
+                            ->getOptionLabelFromRecordUsing(fn(Fee $record) => "{$record->range}años - Covertura: {$record->coverage} US$ - Tarifa: {$record->price} US$")
+                            ->searchable(),
+                    ])->columnSpanFull()->columns(1),
             ]);
     }
 }

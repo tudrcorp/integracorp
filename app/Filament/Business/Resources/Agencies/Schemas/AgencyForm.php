@@ -80,17 +80,21 @@ class AgencyForm
                             ->searchable()
                             ->live()
                             ->preload(),
-                        Hidden::make('owner_code')
-                            ->live()
-                            ->default('TDG-100'),
+                        Hidden::make('owner_code')->default(fn (Get $get) => $get('code')),
                         Hidden::make('created_by')->default(Auth::user()->name),
+                        
+                        //La seleccion el account manager solo la puede ver el administrador del modulo de negocios
                         Select::make('ownerAccountManagers')
+                        
+                            //condicion para ocultar el campo   
+                            ->hidden(fn() => !Auth::user()->is_business_admin)
+                            
                             ->label('Acount Manager')
                             ->options(function (Get $get) {
                                 return User::where('is_accountManagers', true)->get()->pluck('name', 'id');
                             })
                             ->searchable()
-                            ->preload(),
+                            ->preload()
 
                     ])->columnSpanFull()->columns(4),
                 Section::make('INFORMACION PRINCIPAL')

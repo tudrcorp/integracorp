@@ -54,7 +54,8 @@ class AgentForm
                             ->preload()
                             ->helperText('Esta lista despliega solo los agentes activos'),
                         Select::make('owner_code')
-                            ->label('Jerarquia')
+                            ->label('Pertenece a una Agencia?')
+                            ->helperText('Si el agente pertenece a nuestra estructura, debes dejar el campo vacio')
                             ->options(function (Get $get) {
                                 return Agency::select('code', 'id', 'agency_type_id', 'status')
                                     ->where('status', 'ACTIVO')
@@ -66,14 +67,18 @@ class AgentForm
                             })
                             ->searchable()
                             ->preload(),
+                        //La seleccion el account manager solo la puede ver el administrador del modulo de negocios
                         Select::make('ownerAccountManagers')
+
+                            //condicion para ocultar el campo   
+                            ->hidden(fn() => !Auth::user()->is_business_admin)
+
                             ->label('Acount Manager')
                             ->options(function (Get $get) {
                                 return User::where('is_accountManagers', true)->get()->pluck('name', 'id');
                             })
                             ->searchable()
-                            ->preload()
-                            ->hidden(fn(Get $get) => Auth::user()->is_accountManagers == true),
+                            ->preload(),
                     ])->columnSpanFull()->columns(4),
                 Section::make('INFORMACION PRINCIPAL')
                     ->description('Fomulario. Campo Requerido(*)')

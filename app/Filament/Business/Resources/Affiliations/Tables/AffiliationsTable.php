@@ -37,6 +37,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Columns\TextInputColumn;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\AffiliationController;
@@ -265,16 +266,13 @@ class AffiliationsTable
                     ->badge()
                     ->searchable(),
 
-                TextColumn::make('effective_date')
+                TextInputColumn::make('effective_date')
                     ->label('Vigencia')
-                    ->color('success')
-                    ->icon('heroicon-s-calendar')
-                    ->badge()
+                    ->prefixIcon('heroicon-s-calendar')
                     ->searchable(),
 
                 TextColumn::make('status')
                     ->label('Estatus')
-
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
@@ -346,71 +344,6 @@ class AffiliationsTable
                         ->label('Editar')
                         ->color('warning')
                         ->icon('heroicon-o-pencil-square'),
-
-                    Action::make('upload_info_ils')
-                        ->label('Vaucher ILS')
-                        ->color('warning')
-                        ->icon('heroicon-o-paper-clip')
-                        ->requiresConfirmation()
-                        ->modalWidth(Width::ExtraLarge)
-                        ->modalHeading('Activar afiliacion')
-                        ->form([
-                            Section::make('ACTIVAR AFILIACION')
-                                ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
-                                ->icon('heroicon-s-check-circle')
-                                ->schema([
-                                    Grid::make(2)->schema([
-                                        TextInput::make('vaucher_ils')
-                                            ->label('Vaucher ILS')
-                                            ->required(),
-                                    ]),
-                                    Grid::make(2)->schema([
-                                        DatePicker::make('date_payment_initial_ils')
-                                            ->label('Desde')
-                                            ->format('d-m-Y')
-                                            ->required(),
-                                        DatePicker::make('date_payment_final_ils')
-                                            ->label('Hasta')
-                                            ->format('d-m-Y')
-                                            ->required(),
-
-                                    ]),
-                                    Grid::make(1)->schema([
-                                        FileUpload::make('document_ils')
-                                            ->label('Documento/Comprobante ILS')
-                                            ->required(),
-                                    ])
-                                ])
-                        ])
-                        ->action(function (Affiliation $record, array $data): void {
-
-                            $record->update([
-                                'vaucher_ils' => $data['vaucher_ils'],
-                                'date_payment_initial_ils' => $data['date_payment_initial_ils'],
-                                'date_payment_final_ils' => $data['date_payment_final_ils'],
-                                'document_ils' => $data['document_ils'],
-                            ]);
-
-                            $record->status_log_affiliations()->create([
-                                'affiliation_id'  => $record->id,
-                                'action'          => 'ACTIVACIÓN',
-                                'observation'     => 'AFILIACIÓN ACTIVADA. FECHA: ' . now()->format('d-m-Y'),
-                                'updated_by'      => Auth::user()->name
-                            ]);
-
-                            $record->sendTarjetaAfiliacion($record);
-
-                            Notification::make()
-                                ->success()
-                                ->title('Afiliacion activada')
-                                ->send();
-                        })
-                        ->hidden(function (Affiliation $record): bool {
-                            if ($record->vaucher_ils != null) {
-                                return true;
-                            }
-                            return false;
-                        }),
 
                     Action::make('upload')
                         ->label('Comprobante de Pago')
@@ -1063,6 +996,7 @@ class AffiliationsTable
                                 ->success()
                                 ->send();
                         }),
+                        
                 ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([

@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ValidateDateToRenew;
 use App\Jobs\DocumentUploadReminder;
 use Illuminate\Foundation\Inspiring;
 use App\Jobs\SendNotificationBirthday;
@@ -24,4 +25,12 @@ use App\Jobs\SendNotificationRemenberMedication;
  * Se ejecutara todos los dias cada 6 horas
  * Hora de inicio = 8:00am
  */
-Schedule::job(new SendNotificationRemenberMedication, 'system')->everySixHours();
+// Schedule::job(new SendNotificationRemenberMedication, 'system')->everySixHours();
+
+/**
+ * Tarea que se ejecuta para validar las afiliacione que esta para renovar
+ * 
+ * Se ejecutara todos los dias cada 6 horas
+ * Hora de inicio = 8:00am
+ */
+Schedule::job(new ValidateDateToRenew, 'renew')->everyFiveMinutes();

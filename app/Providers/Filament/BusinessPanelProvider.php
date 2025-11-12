@@ -10,20 +10,25 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
+use Filament\Navigation\NavigationItem;
 use Filament\Navigation\NavigationGroup;
 use Filament\Widgets\FilamentInfoWidget;
 use Filament\Http\Middleware\Authenticate;
+use Filament\Navigation\NavigationBuilder;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
+use App\Filament\Business\Resources\Plans\PlanResource;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+
+use function Filament\Support\original_request;
 
 class BusinessPanelProvider extends PanelProvider
 {
@@ -56,7 +61,7 @@ class BusinessPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('AFILIACIONES')
                     ->icon('heroicon-o-identification'),
-                
+
             ])
             ->sidebarCollapsibleOnDesktop()
             ->brandLogo(asset('image/logoNewTDG.png'))

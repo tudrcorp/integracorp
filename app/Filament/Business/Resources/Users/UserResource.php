@@ -2,20 +2,21 @@
 
 namespace App\Filament\Business\Resources\Users;
 
-use App\Filament\Business\Resources\Users\Pages\CreateUser;
-use App\Filament\Business\Resources\Users\Pages\EditUser;
-use App\Filament\Business\Resources\Users\Pages\ListUsers;
-use App\Filament\Business\Resources\Users\Pages\ViewUser;
-use App\Filament\Business\Resources\Users\Schemas\UserForm;
-use App\Filament\Business\Resources\Users\Schemas\UserInfolist;
-use App\Filament\Business\Resources\Users\Tables\UsersTable;
-use App\Models\User;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use App\Models\User;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use App\Filament\Business\Resources\Users\Pages\EditUser;
+use App\Filament\Business\Resources\Users\Pages\ViewUser;
+use App\Filament\Business\Resources\Users\Pages\ListUsers;
+use App\Filament\Business\Resources\Users\Pages\CreateUser;
+use App\Filament\Business\Resources\Users\Schemas\UserForm;
+use App\Filament\Business\Resources\Users\Tables\UsersTable;
+use App\Filament\Business\Resources\Users\Schemas\UserInfolist;
 
 class UserResource extends Resource
 {
@@ -55,5 +56,14 @@ class UserResource extends Resource
             'view' => ViewUser::route('/{record}'),
             'edit' => EditUser::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
+        if (Auth::user()->is_business_admin) {
+            return true;
+        }
+        return false;
     }
 }

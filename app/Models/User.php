@@ -95,6 +95,7 @@ class User extends Authenticatable implements FilamentUser
         if ($panel->getId() === 'admin') {
             return str_ends_with($this->email, '@tudrencasa.com') && $this->is_admin || $this->departament === 'OPERACIONES';
         }
+        
         if ($panel->getId() === 'agents') {
             return $this->is_agent;
         }
@@ -120,11 +121,11 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($panel->getId() === 'business') {
-            return str_ends_with($this->email, '@tudrencasa.com') && $this->is_business_admin;
+            return str_ends_with($this->email, '@tudrencasa.com') && $this->departament === 'NEGOCIOS';
         }
 
         if ($panel->getId() === 'administration') {
-            return str_ends_with($this->email, '@tudrencasa.com') && $this->departament === 'ADMINISTRACION' || $this->is_admin;
+            return str_ends_with($this->email, '@tudrencasa.com') || $this->departament === 'ADMINISTRACION';
         }
 
         return true;

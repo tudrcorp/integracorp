@@ -390,7 +390,7 @@ class AffiliatesRelationManager extends RelationManager
                                 ->send();
                         })
                 ])->hidden(function ($record): bool {
-                    if ($this->getOwnerRecord()->status == 'EXCLUIDO') {
+                    if ($this->getOwnerRecord()->status == 'EXCLUIDO' || Auth::user()->is_business_admin != 1) {
                         return true;
                     }
                     return false;
@@ -409,7 +409,8 @@ class AffiliatesRelationManager extends RelationManager
                         $record->family_members = $record->family_members + 1;
                         $record->save();
                         return;
-                    }),
+                    })
+                    ->hidden(fn() => Auth::user()->is_business_admin != 1),
             ]);
     }
 }
