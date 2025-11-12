@@ -33,7 +33,9 @@ class NotificationController extends Controller
 
             Usuario: {$email}
             Clave: 12345678
-            Enlace: {$path} 
+            URL: https://tudrencasa.com
+            
+            ¡INGRESE EN LA OPCIÓN DEL MENU ASOCIADO A SU ROL DENTRO DE NUESTRO PORTAL!
 
             Contáctanos para mayor información. 
 

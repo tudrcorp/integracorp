@@ -2,20 +2,21 @@
 
 namespace App\Filament\Business\Resources\Cities;
 
-use App\Filament\Business\Resources\Cities\Pages\CreateCity;
-use App\Filament\Business\Resources\Cities\Pages\EditCity;
-use App\Filament\Business\Resources\Cities\Pages\ListCities;
-use App\Filament\Business\Resources\Cities\Pages\ViewCity;
-use App\Filament\Business\Resources\Cities\Schemas\CityForm;
-use App\Filament\Business\Resources\Cities\Schemas\CityInfolist;
-use App\Filament\Business\Resources\Cities\Tables\CitiesTable;
-use App\Models\City;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use App\Models\City;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use App\Filament\Business\Resources\Cities\Pages\EditCity;
+use App\Filament\Business\Resources\Cities\Pages\ViewCity;
+use App\Filament\Business\Resources\Cities\Pages\CreateCity;
+use App\Filament\Business\Resources\Cities\Pages\ListCities;
+use App\Filament\Business\Resources\Cities\Schemas\CityForm;
+use App\Filament\Business\Resources\Cities\Tables\CitiesTable;
+use App\Filament\Business\Resources\Cities\Schemas\CityInfolist;
 
 class CityResource extends Resource
 {
@@ -57,5 +58,14 @@ class CityResource extends Resource
             'view' => ViewCity::route('/{record}'),
             'edit' => EditCity::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
+        if (Auth::user()->is_business_admin) {
+            return true;
+        }
+        return false;
     }
 }

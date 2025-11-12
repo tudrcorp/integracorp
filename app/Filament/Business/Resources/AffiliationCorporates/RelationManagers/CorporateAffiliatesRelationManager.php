@@ -335,7 +335,9 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 ->send();
                         }
 
-                    }),
+                    })
+                    ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                    
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -420,7 +422,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 ->title('Afiliacion de Baja')
                                 ->send();
                         })
-                ])->hidden(fn ($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO'),
+                ])->hidden(fn ($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO' || Auth::user()->is_business_admin != 1),
                 
 
         ])

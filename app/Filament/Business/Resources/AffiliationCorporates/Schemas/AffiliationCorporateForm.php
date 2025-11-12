@@ -53,10 +53,12 @@ class AffiliationCorporateForm
                 Wizard::make([
                     Step::make('Información principal')
                         ->description('Datos para la afiliación')
-                        // ->icon(Heroicon::ClipboardDocumentList)
-                        // ->completedIcon(Heroicon::Check)
                         ->schema([
-                            Grid::make()->schema([
+                            
+                            Fieldset::make('Información de la afiliación')
+                            //Esta seccion solo puede ser vista por el administrador general del mudilo de negocios
+                            ->hidden(fn($operation) => Auth::user()->is_business_admin != 1 && $operation === 'edit')
+                            ->schema([
                                 TextInput::make('code')
                                     ->label('Código de afiliación')
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
@@ -72,9 +74,6 @@ class AffiliationCorporateForm
                                         return 'TDEC-COR-000' . $parte_entera + 1;
                                     })
                                     ->required(),
-
-                            ])->columns(3),
-                            Grid::make(4)->schema([
                                 TextInput::make('name_corporate')
                                     ->label('Nombre de Empresa')
                                     ->live()
@@ -236,72 +235,75 @@ class AffiliationCorporateForm
                                     ->dehydrated()
                                     ->live(),
 
-                                Fieldset::make('Asociar Agencia y/o Agente')
-                                    ->schema([
-                                        Select::make('code_agency')
-                                            ->hidden(fn($state) => $state == 'TDG-100')
-                                            ->label('Lista de Agencias')
-                                            ->options(function (Get $get) {
-                                                return Agency::all()->pluck('name_corporative', 'code');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('heroicon-c-building-library')
-                                            ->preload(),
-                                        Select::make('agent_id')
-                                            ->label('Agentes')
-                                            ->options(function (Get $get) {
-                                                if ($get('code_agency') == null) {
-                                                    return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
-                                                }
-                                                return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('fontisto-person')
-                                            ->preload(),
-                                    ])->columnSpanFull(),
-
-                                Fieldset::make('Información adicional de la Afiliación')
-                                    ->schema([
-                                        Select::make('business_unit_id')
-                                            ->label('Unidad de Negocio')
-                                            ->options(function (Get $get) {
-                                                return BusinessUnit::all()->pluck('definition', 'id');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('heroicon-c-building-library')
-                                            ->preload(),
-                                        Select::make('business_line_id')
-                                            ->label('Lineas de Servicio')
-                                            ->options(function (Get $get) {
-                                                if ($get('business_unit_id') == null) {
-                                                    return [];
-                                                }
-                                                return BusinessLine::where('business_unit_id', $get('business_unit_id'))->pluck('definition', 'id'); //Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('fontisto-person')
-                                            ->preload(),
-                                        Select::make('service_providers')
-                                            ->label('Provvedor(es) de Servicios')
-                                            ->multiple()
-                                            ->options(ServiceProvider::all()->pluck('name', 'name'))
-                                            ->searchable()
-                                            ->prefixIcon('fontisto-person')
-                                            ->preload(),
-                                    ])->columnSpanFull()->columns(3),
-
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('status')->default('PRE-APROBADA'),
                                 //Jerarquia
                                 Hidden::make('code_agency'),
                                 Hidden::make('agent_id'),
                                 Hidden::make('owner_code'),
-                            ])
-                        ]),
+                            ])->columnSpanFull(),
+                            
+                            Fieldset::make('Asociar Agencia y/o Agente')
+                            //Esta seccion solo puede ser vista por el administrador general del mudilo de negocios
+                            ->hidden(fn($operation) => Auth::user()->is_business_admin != 1 && $operation === 'edit')
+                            ->schema([
+                                Select::make('code_agency')
+                                    ->hidden(fn($state) => $state == 'TDG-100')
+                                    ->label('Lista de Agencias')
+                                    ->options(function (Get $get) {
+                                        return Agency::all()->pluck('name_corporative', 'code');
+                                    })
+                                    ->live()
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-c-building-library')
+                                    ->preload(),
+                                Select::make('agent_id')
+                                    ->label('Agentes')
+                                    ->options(function (Get $get) {
+                                        if ($get('code_agency') == null) {
+                                            return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
+                                        }
+                                        return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                    })
+                                    ->live()
+                                    ->searchable()
+                                    ->prefixIcon('fontisto-person')
+                                    ->preload(),
+                            ])->columnSpanFull(),
+
+                            Fieldset::make('Información adicional de la Afiliación')
+                            ->schema([
+                                Select::make('business_unit_id')
+                                    ->label('Unidad de Negocio')
+                                    ->options(function (Get $get) {
+                                        return BusinessUnit::all()->pluck('definition', 'id');
+                                    })
+                                    ->live()
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-c-building-library')
+                                    ->preload(),
+                                Select::make('business_line_id')
+                                    ->label('Lineas de Servicio')
+                                    ->options(function (Get $get) {
+                                        if ($get('business_unit_id') == null) {
+                                            return [];
+                                        }
+                                        return BusinessLine::where('business_unit_id', $get('business_unit_id'))->pluck('definition', 'id'); //Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                    })
+                                    ->live()
+                                    ->searchable()
+                                    ->prefixIcon('fontisto-person')
+                                    ->preload(),
+                                Select::make('service_providers')
+                                    ->label('Provvedor(es) de Servicios')
+                                    ->multiple()
+                                    ->options(ServiceProvider::all()->pluck('name', 'name'))
+                                    ->searchable()
+                                    ->prefixIcon('fontisto-person')
+                                    ->preload(),
+                            ])->columnSpanFull()->columns(3),
+
+                ]),
                     Step::make('Titular')
                         ->description('Información del titular')
                         ->schema([

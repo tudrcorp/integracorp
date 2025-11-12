@@ -31,7 +31,7 @@ class CreateCorporateQuote extends CreateRecord
                 ->label('Regresar')
                 ->button()
                 ->icon('heroicon-s-arrow-left')
-                ->color('gray')
+                ->color('warning')
                 ->url(CorporateQuoteResource::getUrl('index')),
         ];
     }

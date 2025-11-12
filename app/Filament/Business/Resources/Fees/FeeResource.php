@@ -2,26 +2,27 @@
 
 namespace App\Filament\Business\Resources\Fees;
 
-use App\Filament\Business\Resources\Fees\Pages\CreateFee;
-use App\Filament\Business\Resources\Fees\Pages\EditFee;
-use App\Filament\Business\Resources\Fees\Pages\ListFees;
-use App\Filament\Business\Resources\Fees\Pages\ViewFee;
-use App\Filament\Business\Resources\Fees\Schemas\FeeForm;
-use App\Filament\Business\Resources\Fees\Schemas\FeeInfolist;
-use App\Filament\Business\Resources\Fees\Tables\FeesTable;
-use App\Models\Fee;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use App\Models\Fee;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use App\Filament\Business\Resources\Fees\Pages\EditFee;
+use App\Filament\Business\Resources\Fees\Pages\ViewFee;
+use App\Filament\Business\Resources\Fees\Pages\ListFees;
+use App\Filament\Business\Resources\Fees\Pages\CreateFee;
+use App\Filament\Business\Resources\Fees\Schemas\FeeForm;
+use App\Filament\Business\Resources\Fees\Tables\FeesTable;
+use App\Filament\Business\Resources\Fees\Schemas\FeeInfolist;
 
 class FeeResource extends Resource
 {
     protected static ?string $model = Fee::class;
 
-    protected static ?string $navigationLabel = 'Tarifas';
+    protected static ?string $navigationLabel = 'Estructura de Planes';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
@@ -57,5 +58,14 @@ class FeeResource extends Resource
             'view' => ViewFee::route('/{record}'),
             'edit' => EditFee::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
+        if (Auth::user()->is_business_admin) {
+            return true;
+        }
+        return false;
     }
 }

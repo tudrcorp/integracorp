@@ -172,7 +172,7 @@ class CorporateQuoteForm
                                         ->required()
                                         ->live()
                                         ->options(function () {
-                                            $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
+                                            $planesConBeneficios = Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->get()->pluck('description', 'id');
 
                                             //agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
@@ -328,15 +328,14 @@ class CorporateQuoteForm
                                             return true;
                                         })
                                         ->schema([
-                                            Radio::make('plan_id')
-                                                ->label('Seleccione una opción y añadir plan:')
-
-                                                ->inLine()
+                                            Select::make('plan_id')
+                                                ->label('Seleccione el plan:')
+                                                // ->inLine()
                                                 ->live()
                                                 ->options(function (Get $get) {
                                                     Log::info($get('plan'));
-                                                    return Plan::where('type', 'BASICO')->pluck('description', 'id');
-                                                })->columnSpan(3),
+                                                    return Plan::where('status', 'ACTIVO')->get()->pluck('description', 'id');
+                                                }),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')
                                                 ->placeholder('Rango de edad')
@@ -360,7 +359,7 @@ class CorporateQuoteForm
                                                 ->label('Cantidad de personas')
                                                 ->placeholder('Cantidad de personas')
                                                 ->numeric(),
-                                        ])->columns(2),
+                                        ])->columns(3),
                                 ])
                         ])
                 ])

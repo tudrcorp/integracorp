@@ -13,13 +13,6 @@ class ListAffiliations extends ListRecords
 
     protected static ?string $title = 'Afiliaciones Individuales';
 
-    protected function getActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
-    } 
-
     protected function getHeaderWidgets(): array
     {
         return [

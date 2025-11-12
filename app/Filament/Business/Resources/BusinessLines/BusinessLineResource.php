@@ -2,20 +2,21 @@
 
 namespace App\Filament\Business\Resources\BusinessLines;
 
-use App\Filament\Business\Resources\BusinessLines\Pages\CreateBusinessLine;
-use App\Filament\Business\Resources\BusinessLines\Pages\EditBusinessLine;
-use App\Filament\Business\Resources\BusinessLines\Pages\ListBusinessLines;
-use App\Filament\Business\Resources\BusinessLines\Pages\ViewBusinessLine;
-use App\Filament\Business\Resources\BusinessLines\Schemas\BusinessLineForm;
-use App\Filament\Business\Resources\BusinessLines\Schemas\BusinessLineInfolist;
-use App\Filament\Business\Resources\BusinessLines\Tables\BusinessLinesTable;
-use App\Models\BusinessLine;
-use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Table;
 use UnitEnum;
+use BackedEnum;
+use Filament\Tables\Table;
+use App\Models\BusinessLine;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use App\Filament\Business\Resources\BusinessLines\Pages\EditBusinessLine;
+use App\Filament\Business\Resources\BusinessLines\Pages\ViewBusinessLine;
+use App\Filament\Business\Resources\BusinessLines\Pages\ListBusinessLines;
+use App\Filament\Business\Resources\BusinessLines\Pages\CreateBusinessLine;
+use App\Filament\Business\Resources\BusinessLines\Schemas\BusinessLineForm;
+use App\Filament\Business\Resources\BusinessLines\Tables\BusinessLinesTable;
+use App\Filament\Business\Resources\BusinessLines\Schemas\BusinessLineInfolist;
 
 class BusinessLineResource extends Resource
 {
@@ -57,5 +58,14 @@ class BusinessLineResource extends Resource
             'view' => ViewBusinessLine::route('/{record}'),
             'edit' => EditBusinessLine::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
+        if (Auth::user()->is_business_admin) {
+            return true;
+        }
+        return false;
     }
 }

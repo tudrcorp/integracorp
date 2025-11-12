@@ -15,7 +15,7 @@ use App\Jobs\SendNotificationRemenberMedication;
 // Schedule::job(new DocumentUploadReminder, 'system')->everyFiveMinutes();
 // Schedule::job(new SendNotificationBirthday, 'system')->everyFiveMinutes();
 
-Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
+// Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
 
 
 /**
@@ -25,7 +25,7 @@ Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
  * Se ejecutara todos los dias cada 6 horas
  * Hora de inicio = 8:00am
  */
-Schedule::job(new SendNotificationRemenberMedication, 'system')->everySixHours();
+// Schedule::job(new SendNotificationRemenberMedication, 'system')->everySixHours();
 
 /**
  * Tarea que se ejecuta para validar las afiliacione que esta para renovar
@@ -33,4 +33,4 @@ Schedule::job(new SendNotificationRemenberMedication, 'system')->everySixHours()
  * Se ejecutara todos los dias cada 6 horas
  * Hora de inicio = 8:00am
  */
-Schedule::job(new ValidateDateToRenew, 'renew')->everySixHours();
+Schedule::job(new ValidateDateToRenew, 'renew')->everyFiveMinutes();

@@ -140,7 +140,7 @@ class CorporateQuoteForm
                                         ->required()
                                         ->live()
                                         ->options(function () {
-                                            $planesConBeneficios = Plan::where('type', 'BASICO')->get()->pluck('description', 'id');
+                                            $planesConBeneficios = Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->get()->pluck('description', 'id');
 
                                             //agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
@@ -302,7 +302,7 @@ class CorporateQuoteForm
                                                 ->live()
                                                 ->options(function (Get $get) {
                                                     Log::info($get('plan'));
-                                                    return Plan::where('type', 'BASICO')->pluck('description', 'id');
+                                                    return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
                                                 })->columnSpan(3),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')

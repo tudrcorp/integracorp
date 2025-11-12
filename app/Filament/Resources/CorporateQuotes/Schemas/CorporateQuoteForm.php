@@ -381,15 +381,22 @@ class CorporateQuoteForm
                                         return true;
                                     })
                                     ->schema([
-                                        Radio::make('plan_id')
+                                        // Radio::make('plan_id')
+                                        //     ->label('Seleccione una opción y añadir plan:')
+                                        //     ->inLine()
+                                        //     ->live()
+                                        //     ->options(function (Get $get) {
+                                        //         Log::info($get('plan'));
+                                        //         return Plan::all()->pluck('description', 'id');
+                                        //     })->columnSpan(3),
+                                        Select::make('plan_id')
                                             ->label('Seleccione una opción y añadir plan:')
-
-                                            ->inLine()
+                                            // ->inLine()
                                             ->live()
                                             ->options(function (Get $get) {
                                                 Log::info($get('plan'));
                                                 return Plan::all()->pluck('description', 'id');
-                                            })->columnSpan(3),
+                                            }),
                                         Select::make('age_range_id')
                                             ->label('Rango de edad')
                                             ->placeholder('Rango de edad')
@@ -413,7 +420,7 @@ class CorporateQuoteForm
                                             ->label('Cantidad de personas')
                                             ->placeholder('Cantidad de personas')
                                             ->numeric(),
-                                    ])->columns(2),
+                                    ])->columns(3),
                             ])
                     ])
                     

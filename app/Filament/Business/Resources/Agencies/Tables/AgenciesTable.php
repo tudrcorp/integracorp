@@ -4,17 +4,23 @@ namespace App\Filament\Business\Resources\Agencies\Tables;
 
 use Carbon\Carbon;
 use App\Models\User;
+use App\Models\Agent;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
+use Filament\Support\Enums\Width;
+use Illuminate\Support\Collection;
 use Filament\Tables\Filters\Filter;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\Crypt;
 use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
@@ -22,6 +28,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Fieldset;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Controllers\AgencyController;
 use App\Http\Controllers\NotificationController;
@@ -230,92 +237,50 @@ class AgenciesTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    EditAction::make()
-                        ->color('warning'),
                     Action::make('Activate')
+                        ->label('ACTIVAR AGENCIA')
                         ->action(function (Agency $record) {
 
                             try {
 
-                                if ($record->status == 'ACTIVO') {
-                                    Notification::make()
-                                        ->title('AGENTE YA ACTIVADO')
-                                        ->body('El agente ya se encuentra activo.')
-                                        ->color('danger')
-                                        ->icon('heroicon-o-x-circle')
-                                        ->iconColor('danger')
-                                        ->send();
+                                //1. creamos el usuario en la tabla users para la agencia tipo master o general
+                                $user = new User();
+                                $user->name = $record->name_corporative;
+                                $user->email = $record->email;
+                                $user->password = Hash::make('12345678');
+                                $user->is_agency = true;
+                                $user->code_agency = $record->code;
+                                $user->agency_type = $record->agency_type_id == 1 ? 'MASTER' : 'GENERAL';
+                                $user->link_agency = env('APP_URL') . '/ay/lk/' . Crypt::encryptString($record->code);
+                                $user->status = 'ACTIVO';
+                                $user->save();
 
-                                    return true;
+                                if ($user->save()) {
+                                    $record->update(['status' => 'ACTIVO']);
                                 }
-
-                                if (Agency::where('email', $record->email)->exists()) {
-                                    Notification::make()
-                                        ->title('AGENTE YA REGISTRADO')
-                                        ->body('El correo electronico del agente ya se encuentra registrado.')
-                                        ->color('danger')
-                                        ->send();
-
-                                    return true;
-                                }
-
-                                // //1. Generamos el codigo y la activamos, cambiado el estatus
-                                // $code = AgencyController::generate_code_agency();
-
-                                // //2. Guardamos los cambios en la tabla agencies
-                                // $record->code = $code;
-                                // $record->status = 'ACTIVO';
-                                // $record->save();
-
-                                // //3. Guardamos los cambios en la tabla logs
-                                // LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgencyResource:Action:Activate()', $record->save());
-
-                                // //4. creamos el usuario en la tabla users para la agencia tipo master o general
-                                // $user = new User();
-                                // $user->name = $record->name_corporative;
-                                // $user->email = $record->email;
-                                // $user->password = Hash::make('12345678');
-                                // $user->is_agency = true;
-                                // $user->code_agency = $record->code;
-                                // $user->agency_type = $record->agency_type_id == 1 ? 'MASTER' : 'GENERAL';
-                                // $user->link_agency = env('APP_URL') . '/ay/lk/' . Crypt::encryptString($record->code);
-                                // $user->status = 'ACTIVO';
-                                // $user->save();
-
-                                // /**
-                                //  * Notificacion por whatsapp
-                                //  * @param Agency $record
-                                //  */
-                                // $phone = $record->phone;
-                                // $email = $record->email;
-                                // $nofitication = NotificationController::agency_activated($record->code, $phone, $email, $record->agency_type_id == 1 ? config('parameters.PATH_MASTER') : config('parameters.PATH_GENERAL'));
 
                                 /**
-                                 * Notificacion por correo electronico
-                                 * CARTA DE BIENVENIDA
+                                 * Notificacion por whatsapp
                                  * @param Agency $record
                                  */
-                                // $record->sendCartaBienvenida($record->code, $record->name, $record->email);
+                                $phone = $record->phone;
+                                $email = $record->email;
+                                $nofitication = NotificationController::agency_activated($record->code, $phone, $email, $record->agency_type_id == 1 ? config('parameters.PATH_MASTER') : config('parameters.PATH_GENERAL'));
 
-                                // if ($nofitication['success'] == true) {
-                                //     Notification::make()
-                                //         ->title('AGENTE ACTIVADO')
-                                //         ->body('Notificacion de activacion enviada con exito.')
-                                //         ->icon('heroicon-s-check-circle')
-                                //         ->iconColor('success')
-                                //         ->color('success')
-                                //         ->send();
-                                // } else {
-                                //     Notification::make()
-                                //         ->title('AGENTE ACTIVADO')
-                                //         ->body('La notificacion de activacion no pudo ser enviada.')
-                                //         ->icon('heroicon-s-x-circle')
-                                //         ->iconColor('warning')
-                                //         ->color('warning')
-                                //         ->send();
-                                // }
+                                if ($nofitication) {
+
+                                    Notification::make()
+                                        ->title('ACTIVACION DE AGENCIA')
+                                        ->body('Se ha activado la agencia correctamente.')
+                                        ->icon('heroicon-s-check-circle')
+                                        ->iconColor('success')
+                                        ->color('success')
+                                        ->send();
+                                    
+                                }
+
                             } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPCION', 'AgencyResource:Tables\Actions\Action::make(Activate)', $th->getMessage());
+                                Log::error($th->getMessage());
                                 Notification::make()
                                     ->title('EXCEPCION')
                                     ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
@@ -331,14 +296,157 @@ class AgenciesTable
                     Action::make('Inactivate')
                         ->action(fn(Agency $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
-                        ->color('danger'),
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
                     ->color('azulOscuro')
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    BulkAction::make('assignAccountManager')
+                        ->label('Asignar Coordinador')
+                        ->icon('heroicon-s-user')
+                        ->color('success')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Fieldset::make('Asignación masiva de coordinadores')
+                                ->schema([
+                                    Select::make('ownerAccountManagers')
+                                        ->options(User::where('is_accountManagers', true)->where('status', 'ACTIVO')->pluck('name', 'id'))
+                                        ->searchable()
+                                        ->preload()
+                                        ->required(),
+                                ])->columnSpanFull()->columns(1),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            
+                            $records = $records->toArray();
+                            // dd($records);
+                            try {
+
+                                for ($i = 0; $i < count($records); $i++) {
+                                    
+                                    //Agencias Tipo Master
+                                    if ($records[$i]['agency_type_id'] == 1) {
+
+                                        //actualizo la agencia master
+                                        Agency::where('status', 'ACTIVO')
+                                        ->where('id', $records[$i]['id'])
+                                        ->where('code', $records[$i]['code'])
+                                        ->update([
+                                            'ownerAccountManagers' => $data['ownerAccountManagers']
+                                        ]);
+                                        
+                                        //Busco la agencia y validamos la estructura de la agebcia
+                                        //varificamos las agencias generales y los agentes asociados a ella
+                                        $agencyGenerals = Agency::where('status', 'ACTIVO')
+                                        ->where('agency_type_id', 3)
+                                        ->where('owner_code', $records[0]['owner_code'])
+                                        ->get();
+
+                                        //Si la agencia master tiene agencias generales activas
+                                        if (count($agencyGenerals) > 0) {
+                                            
+                                            for ($j = 0; $j < count($agencyGenerals); $j++) {
+                                                //actualizo el valor del coordinador
+                                                $agencyGenerals[$j]->ownerAccountManagers = $data['ownerAccountManagers'];
+                                                $agencyGenerals[$j]->save();
+
+                                            }
+            
+                                        }
+
+                                        //Busco los agentes que pertenecen a la agencia master
+                                        $agentes = Agent::where('status', 'ACTIVO')
+                                        ->where('owner_code', $records[0]['owner_code'])
+                                        ->get();
+
+                                        //Si la agencia master tiene agentes activos
+                                        if (count($agentes) > 0) {
+
+                                            for ($k = 0; $k < count($agentes); $k++) {
+                                                //actualizo el valor del coordinador
+                                                $agentes[$k]->ownerAccountManagers = $data['ownerAccountManagers'];
+                                                $agentes[$k]->save();
+
+                                                //Busco si el agente tiene subagente asignados a el
+                                                //varificamos las agencias generales y los agentes asociados a ella
+                                                $subAgents = Agent::where('status', 'ACTIVO')
+                                                    ->where('agent_type_id', 3)
+                                                    ->where('owner_agent', $agentes[$k]['id'])
+                                                    ->get();
+
+                                                //Si la agencia master tiene agencias generales activas
+                                                if (count($subAgents) > 0) {
+
+                                                    for ($l = 0; $l < count($subAgents); $l++) {
+                                                        //actualizo el valor del coordinador
+                                                        $subAgents[$l]->ownerAccountManagers = $data['ownerAccountManagers'];
+                                                        $subAgents[$l]->save();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                    }
+
+                                    //Agencias Tipo General
+                                    if ($records[$i]['agency_type_id'] == 3) {
+                                        //Busco los agentes que pertenecen a la agencia master
+                                        $agentes = Agent::where('status', 'ACTIVO')
+                                        ->where('owner_code', $records[0]['owner_code'])
+                                        ->get();
+
+                                        //Si la agencia master tiene agentes activos
+                                        if (count($agentes) > 0) {
+
+                                            for ($k = 0; $k < count($agentes); $k++) {
+                                                //actualizo el valor del coordinador
+                                                $agentes[$k]->update([
+                                                    'ownerAccountManagers' => $data['ownerAccountManagers']
+                                                ]);
+
+                                                //Busco si el agente tiene subagente asignados a el
+                                                //varificamos las agencias generales y los agentes asociados a ella
+                                                $subAgents = Agent::where('status', 'ACTIVO')
+                                                    ->where('agent_type_id', 3)
+                                                    ->where('owner_agent', $agentes[$k]['id'])
+                                                    ->get();
+
+                                                //Si la agencia master tiene agencias generales activas
+                                                if (count($subAgents) > 0) {
+
+                                                    for ($l = 0; $l < count($subAgents); $l++) {
+                                                        //actualizo el valor del coordinador
+                                                        $subAgents[$l]->ownerAccountManagers = $data['ownerAccountManagers'];
+                                                        $subAgents[$l]->save();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                }
+
+                            } catch (\Throwable $th) {
+                                dd($th);
+                                LogController::log(Auth::user()->id, 'EXCEPCION', 'AgencyResource:Tables\Actions\Action::make(Activate)', $th->getMessage());
+                                Notification::make()
+                                    ->title('EXCEPCION')
+                                    ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('error')
+                                    ->color('error')
+                                    ->send();
+                            }
+                        })
+                        ->requiresConfirmation()
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                    DeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
                 ]),
             ]);
     }

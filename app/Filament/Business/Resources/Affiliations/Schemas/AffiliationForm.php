@@ -36,6 +36,7 @@ use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Livewire;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
@@ -53,189 +54,195 @@ class AffiliationForm
                     Step::make('Información principal')
                         ->description('Datos para la afiliación')
                         ->schema([
-                            Grid::make()->schema([
-                                TextInput::make('code')
-                                    ->label('Código de afiliación')
-                                    ->prefixIcon('heroicon-m-clipboard-document-check')
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->maxLength(255)
-                                    ->default(function () {
-                                        if (Affiliation::max('id') == null) {
-                                            $parte_entera = 0;
-                                        } else {
-                                            $parte_entera = Affiliation::max('id');
-                                        }
-                                        return 'TDEC-IND-000' . $parte_entera + 1;
+                            
+                            Fieldset::make('Plan/Cobertura/Frecuencia de Pago/Monto a Pagar')
+                            //Esta seccion solo puede ser vista por el administrador general del mudilo de negocios
+                            ->hidden(fn($operation) => Auth::user()->is_business_admin != 1 && $operation === 'edit')
+                            ->schema([
+                                    TextInput::make('code')
+                                        ->label('Código de afiliación')
+                                        ->prefixIcon('heroicon-m-clipboard-document-check')
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->maxLength(255)
+                                        ->default(function () {
+                                            if (Affiliation::max('id') == null) {
+                                                $parte_entera = 0;
+                                            } else {
+                                                $parte_entera = Affiliation::max('id');
+                                            }
+                                            return 'TDEC-IND-000' . $parte_entera + 1;
+                                        })
+                                        ->required(),
+                                    Select::make('individual_quote_id')
+                                        ->label('Nombre del cliente')
+                                        ->prefixIcon('heroicon-m-clipboard-document-check')
+                                        ->options(IndividualQuote::all()->pluck('full_name', 'id'))
+                                        ->default(function () {
+                                            if(isset($data_records)) {
+                                                return $data_records[0]['individual_quote_id'];
+                                            }
+                                            return null;
+                                        })
+                                        ->searchable()
+                                        ->preload()
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido',
+                                        ]),
+    
+                                    Select::make('plan_id')
+                                        ->options(Plan::all()->pluck('description', 'id'))
+                                        ->default(function () {
+                                            if(isset($data_records)) {
+                                                return $data_records[0]['plan_id'];
+                                            }
+                                            return null;
+                                        })
+                                        ->label('Plan')
+                                        ->live()
+                                        ->searchable()
+                                        ->preload()
+                                        ->prefixIcon('heroicon-m-clipboard-document-check')
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido',
+                                        ]),
+                                    Select::make('coverage_id')
+                                        ->helperText('Punto(.) para separar miles.')
+                                        ->label('Cobertura')
+                                        ->live()
+                                        ->options(Coverage::all()->pluck('price', 'id'))
+                                        ->default(function () {
+                                            if(isset($data_records)) {
+                                                return $data_records[0]['coverage_id'];
+                                            }
+                                            return null;
+                                        })
+                                        ->searchable()
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido',
+                                        ])
+                                        ->prefixIcon('heroicon-s-globe-europe-africa')
+                                        ->hidden(fn(Get $get) => $get('plan_id') == 1 || $get('plan_id') == null)
+                                        ->preload(),
+                                    Select::make('payment_frequency')
+                                        ->label('Frecuencia de pago')
+                                        ->live()
+                                        ->options([
+                                            'ANUAL'      => 'ANUAL',
+                                            'SEMESTRAL'  => 'SEMESTRAL',
+                                            'TRIMESTRAL' => 'TRIMESTRAL',
+                                        ])
+                                        ->searchable()
+                                        ->live()
+                                        ->prefixIcon('heroicon-s-globe-europe-africa')
+                                        ->required()
+                                        ->validationMessages([
+                                            'required'  => 'Campo Requerido',
+                                        ])
+                                        ->preload()
+                                        ->afterStateUpdated(function ($state, $set, Get $get) use ($data_records) {
+                                            
+                                            $set('fee_anual', $data_records[0]['subtotal_anual']);
+                                            
+                                            if ($get('payment_frequency') == 'ANUAL') {
+                                                $set('total_amount', $data_records[0]['subtotal_anual']);
+                                            }
+                                            if ($get('payment_frequency') == 'TRIMESTRAL') {
+                                                $set('total_amount', $data_records[0]['subtotal_quarterly']);
+                                            }
+                                            if ($get('payment_frequency') == 'SEMESTRAL') {
+                                                $set('total_amount', $data_records[0]['subtotal_biannual']);                                      
+                                            }
+                                            
+                                        }),
+                                    TextInput::make('payment_frequency')
+                                        ->visibleOn('edit')
+                                        ->label('Frecuencia de pago')
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->live(),
+                                    TextInput::make('fee_anual')
+                                        ->label('Tarifa anual')
+                                        ->prefix('US$')
+                                        ->numeric()
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->live(),
+                                    TextInput::make('total_amount')
+                                        ->label('Total a pagar')
+                                        ->helperText('Punto(.) para separar decimales')
+                                        ->prefix('US$')
+                                        ->numeric()
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->live(),
+                                    Hidden::make('created_by')->default(Auth::user()->name),
+                                    Hidden::make('status')->default('PRE-APROBADA'),
+                            ])->columnSpanFull()->columns(3),
+                            
+                            Fieldset::make('Asociar Agencia y/o Agente')
+                            //Esta seccion solo puede ser vista por el administrador general del mudilo de negocios
+                            ->hidden(fn($operation) => Auth::user()->is_business_admin != 1 && $operation === 'edit')
+                            ->schema([
+                                Select::make('code_agency')
+                                    ->hidden(fn($state) => $state == 'TDG-100')
+                                    ->label('Lista de Agencias')
+                                    ->options(function (Get $get) {
+                                        return Agency::all()->pluck('name_corporative', 'code');
                                     })
-                                    ->required(),
-                            ])->columns(3),
-                            Grid::make(3)->schema([
-                                Select::make('individual_quote_id')
-                                    ->label('Nombre del cliente')
-                                    ->prefixIcon('heroicon-m-clipboard-document-check')
-                                    ->options(IndividualQuote::all()->pluck('full_name', 'id'))
-                                    ->default(function () {
-                                        if(isset($data_records)) {
-                                            return $data_records[0]['individual_quote_id'];
-                                        }
-                                        return null;
-                                    })
-                                    ->searchable()
-                                    ->preload()
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Requerido',
-                                    ]),
-
-                                Select::make('plan_id')
-                                    ->options(Plan::all()->pluck('description', 'id'))
-                                    ->default(function () {
-                                        if(isset($data_records)) {
-                                            return $data_records[0]['plan_id'];
-                                        }
-                                        return null;
-                                    })
-                                    ->label('Plan')
                                     ->live()
                                     ->searchable()
-                                    ->preload()
-                                    ->prefixIcon('heroicon-m-clipboard-document-check')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Requerido',
-                                    ]),
-                                Select::make('coverage_id')
-                                    ->helperText('Punto(.) para separar miles.')
-                                    ->label('Cobertura')
-                                    ->live()
-                                    ->options(Coverage::all()->pluck('price', 'id'))
-                                    ->default(function () {
-                                        if(isset($data_records)) {
-                                            return $data_records[0]['coverage_id'];
-                                        }
-                                        return null;
-                                    })
-                                    ->searchable()
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Requerido',
-                                    ])
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->hidden(fn(Get $get) => $get('plan_id') == 1 || $get('plan_id') == null)
+                                    ->prefixIcon('heroicon-c-building-library')
                                     ->preload(),
-                                Select::make('payment_frequency')
-                                    ->label('Frecuencia de pago')
+                                Select::make('agent_id')
+                                    ->label('Agentes')
+                                    ->options(function (Get $get) {
+                                        if ($get('code_agency') == null) {
+                                            return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
+                                        }
+                                        return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                    })
                                     ->live()
-                                    ->options([
-                                        'ANUAL'      => 'ANUAL',
-                                        'SEMESTRAL'  => 'SEMESTRAL',
-                                        'TRIMESTRAL' => 'TRIMESTRAL',
-                                    ])
                                     ->searchable()
-                                    ->live()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Requerido',
-                                    ])
-                                    ->preload()
-                                    ->afterStateUpdated(function ($state, $set, Get $get) use ($data_records) {
-                                        
-                                        $set('fee_anual', $data_records[0]['subtotal_anual']);
-                                        
-                                        if ($get('payment_frequency') == 'ANUAL') {
-                                            $set('total_amount', $data_records[0]['subtotal_anual']);
-                                        }
-                                        if ($get('payment_frequency') == 'TRIMESTRAL') {
-                                            $set('total_amount', $data_records[0]['subtotal_quarterly']);
-                                        }
-                                        if ($get('payment_frequency') == 'SEMESTRAL') {
-                                            $set('total_amount', $data_records[0]['subtotal_biannual']);                                      
-                                        }
-                                        
-                                    }),
-                                TextInput::make('payment_frequency')
-                                    ->visibleOn('edit')
-                                    ->label('Frecuencia de pago')
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-                                TextInput::make('fee_anual')
-                                    ->label('Tarifa anual')
-                                    ->prefix('US$')
-                                    ->numeric()
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-                                TextInput::make('total_amount')
-                                    ->label('Total a pagar')
-                                    ->helperText('Punto(.) para separar decimales')
-                                    ->prefix('US$')
-                                    ->numeric()
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-                                Fieldset::make('Asociar Agencia y/o Agente')
-                                    ->schema([
-                                        Select::make('code_agency')
-                                            ->hidden(fn($state) => $state == 'TDG-100')
-                                            ->label('Lista de Agencias')
-                                            ->options(function (Get $get) {
-                                                return Agency::all()->pluck('name_corporative', 'code');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('heroicon-c-building-library')
-                                            ->preload(),
-                                        Select::make('agent_id')
-                                            ->label('Agentes')
-                                            ->options(function (Get $get) {
-                                                if ($get('code_agency') == null) {
-                                                    return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
-                                                }
-                                                return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('fontisto-person')
-                                            ->preload(),
-                                    ])->columnSpanFull(),
+                                    ->prefixIcon('fontisto-person')
+                                    ->preload(),
+                            ])->columnSpanFull(),
 
-                                Fieldset::make('Información adicional de la Afiliación')
-                                    ->schema([
-                                        Select::make('business_unit_id')
-                                            ->label('Unidad de Negocio')
-                                            ->options(function (Get $get) {
-                                                return BusinessUnit::all()->pluck('definition', 'id');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('heroicon-c-building-library')
-                                            ->preload(),
-                                        Select::make('business_line_id')
-                                            ->label('Lineas de Servicio')
-                                            ->options(function (Get $get) {
-                                                if ($get('business_unit_id') == null) {
-                                                    return [];
-                                                }
-                                                return BusinessLine::where('business_unit_id', $get('business_unit_id'))->pluck('definition', 'id'); //Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('fontisto-person')
-                                            ->preload(),
-                                        Select::make('service_providers')
-                                            ->label('Provvedor(es) de Servicios')
-                                            ->multiple()
-                                            ->options(ServiceProvider::all()->pluck('name', 'name'))
-                                            ->searchable()
-                                            ->prefixIcon('fontisto-person')
-                                            ->preload(),
-                                    ])->columnSpanFull()->columns(3),
-                                Hidden::make('created_by')->default(Auth::user()->name),
-                                Hidden::make('status')->default('PRE-APROBADA'),
-                            ])
+                            Fieldset::make('Información adicional de la Afiliación')
+                            ->schema([
+                                Select::make('business_unit_id')
+                                    ->label('Unidad de Negocio')
+                                    ->options(function (Get $get) {
+                                        return BusinessUnit::all()->pluck('definition', 'id');
+                                    })
+                                    ->live()
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-c-building-library')
+                                    ->preload(),
+                                Select::make('business_line_id')
+                                    ->label('Lineas de Servicio')
+                                    ->options(function (Get $get) {
+                                        if ($get('business_unit_id') == null) {
+                                            return [];
+                                        }
+                                        return BusinessLine::where('business_unit_id', $get('business_unit_id'))->pluck('definition', 'id'); //Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                    })
+                                    ->live()
+                                    ->searchable()
+                                    ->prefixIcon('fontisto-person')
+                                    ->preload(),
+                                Select::make('service_providers')
+                                    ->label('Provvedor(es) de Servicios')
+                                    ->multiple()
+                                    ->options(ServiceProvider::all()->pluck('name', 'name'))
+                                    ->searchable()
+                                    ->prefixIcon('fontisto-person')
+                                    ->preload(),
+                            ])->columnSpanFull()->columns(3),
+                            
                         ]),
                     Step::make('Titular')
                         ->description('Información del titular')

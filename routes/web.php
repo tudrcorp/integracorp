@@ -365,6 +365,7 @@ Route::get('/largo', function () {
         if($effectiveDate == null){
             continue; 
         }
+        
         if($effectiveDate > $today){
             //1. Calculo los dias faltantes para lleguar al vencimiento
             $diasFaltantes = Carbon::parse($today)->diffInDays($effectiveDate);
@@ -377,73 +378,180 @@ Route::get('/largo', function () {
                     //Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 30))->onQueue('renew'));
-                    dd('aqui');
                 }
                 
                 //si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
                     //Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 30))->onQueue('renew'));
                 }
                 
             }
 
             //Faltan 20 dias?
             if($diasFaltantes == 20){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 20))->onQueue('renew'));
+                }
+
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 20))->onQueue('renew'));
+                }
             }
 
             //Faltan 15 dias?
             if ($diasFaltantes == 15) {
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 15))->onQueue('renew'));
+                }
+
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 15))->onQueue('renew'));
+                }
             }
 
             //Faltan 10 dias?
             if($diasFaltantes == 10){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 10))->onQueue('renew'));
+                }
+
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 10))->onQueue('renew'));
+                }
             }
 
             //Faltan 7 dias?
             if($diasFaltantes == 7){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 7))->onQueue('renew'));
+                }
+
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 7))->onQueue('renew'));
+                }
             }
 
             //Faltan 5 dias?
             if($diasFaltantes == 5){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 5))->onQueue('renew'));
+                }
+
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 5))->onQueue('renew'));
+                }
             }
 
             //Faltan 4 dias?
             if($diasFaltantes == 4){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 4))->onQueue('renew'));
+                }
+
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 4))->onQueue('renew'));
+                }
             }
 
             //Faltan 3 dias?
             if($diasFaltantes == 3){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if($dates[$i]->agent_id != null){
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 3))->onQueue('renew'));
+                }
+                
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 3))->onQueue('renew'));
+                }
             }
 
             //Faltan 2 dias?
             if($diasFaltantes == 2){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if($dates[$i]->agent_id != null){
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 2))->onQueue('renew'));
+                }
+                
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 2))->onQueue('renew'));
+                }
             }
 
             //Faltan 1 dias?
             if($diasFaltantes == 1){
-                $pdf = Pdf::loadView('documents.aviso-de-pago');
-                return $pdf->stream();
+                //Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    //Si pertenece a un agente
+                    $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
+                    Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 1))->onQueue('renew'));
+                }
+
+                //si la afiliacion pertenece a una agencia
+                if ($dates[$i]->agent_id == null) {
+                    //Si pertenece a un agente
+                    $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
+                    Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 1))->onQueue('renew'));
+                }
             }
 
             dd($effectiveDate, $today, $diasFaltantes);
 
+        }
+        
+        if ($effectiveDate < $today) {
+            // dd('es menor');
+            //Actualizo el estatus
+            DB::table('affiliations')->where('code', $dates[$i]->code)->update([
+                'status' => 'VENCIDA-POR-RENOVAR',
+            ]);
         }
     }
 
