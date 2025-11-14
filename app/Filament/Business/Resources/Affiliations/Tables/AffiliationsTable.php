@@ -280,6 +280,7 @@ class AffiliationsTable
                             'ACTIVA'                => 'success',
                             'PENDIENTE'             => 'warning',
                             'EXCLUIDO'              => 'danger',
+                            'VENCIDA-POR-RENOVAR'   => 'danger',
                         };
                     })
                     ->searchable()
@@ -289,6 +290,7 @@ class AffiliationsTable
                             'ACTIVA'                => 'heroicon-s-check-circle',
                             'PENDIENTE'             => 'heroicon-s-exclamation-circle',
                             'EXCLUIDO'              => 'heroicon-c-x-circle',
+                            'VENCIDA-POR-RENOVAR'   => 'heroicon-c-x-circle',
                         };
                     }),
             ])
@@ -1462,27 +1464,6 @@ class AffiliationsTable
                                     ->success()
                                     ->seconds(5)
                                     ->send();
-
-                                //Notificacion para Admin
-                                foreach ($records as $record) {
-                                    $recipient = User::where('is_admin', 1)->get();
-                                    foreach ($recipient as $user) {
-                                        $recipient_for_user = User::find($user->id);
-                                        Notification::make()
-                                            ->title('REGISTRO DE COMPROBANTE')
-                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
-                                            ->icon('heroicon-m-user-plus')
-                                            ->iconColor('success')
-                                            ->success()
-                                            ->actions([
-                                                Action::make('view')
-                                                    ->label('Ver detalle de pago')
-                                                    ->button()
-                                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                            ])
-                                            ->sendToDatabase($recipient_for_user);
-                                    }
-                                }
                             }
                         })
                 ]),

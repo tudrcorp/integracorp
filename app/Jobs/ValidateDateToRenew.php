@@ -41,7 +41,7 @@ class ValidateDateToRenew implements ShouldQueue
             ->select('id', 'code', 'agent_id', 'code_agency', 'effective_date')
             ->get()
             ->toArray();
-        // dd($dates);
+     
         $today = Carbon::createFromFormat('d/m/Y', now()->format('d/m/Y'))->format('Y-m-d');
 
         for ($i = 0; $i < count($dates); $i++) {
@@ -237,6 +237,16 @@ class ValidateDateToRenew implements ShouldQueue
                     DB::table('affiliations')->where('code', $dates[$i]->code)->update([
                         'status' => 'VENCIDA-POR-RENOVAR',
                     ]);
+
+                    //Busco los afiliados de la afiliacion
+                    $affiliates = DB::table('affiliates')->where('affiliation_id', $dates[$i]->id)->get();
+
+                    //Actualizo el estatus de los afiliados
+                    foreach ($affiliates as $key => $affiliate) {
+                        DB::table('affiliates')->where('id', $affiliate->id)->update([
+                            'status' => 'VENCIDA-POR-RENOVAR',
+                        ]);
+                    }
                 }
             }
 

@@ -184,7 +184,6 @@ class AffiliationCorporatesTable
 
                 TextColumn::make('status')
                     ->label('Estatus')
-
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
@@ -192,6 +191,7 @@ class AffiliationCorporatesTable
                             'ACTIVA'                => 'success',
                             'PENDIENTE'             => 'warning',
                             'EXCLUIDO'              => 'danger',
+                            'VENCIDA-POR-RENOVAR'   => 'danger',
                         };
                     })
                     ->searchable()
@@ -201,6 +201,7 @@ class AffiliationCorporatesTable
                             'ACTIVA'                => 'heroicon-s-check-circle',
                             'PENDIENTE'             => 'heroicon-s-exclamation-circle',
                             'EXCLUIDO'              => 'heroicon-c-x-circle',
+                            'VENCIDA-POR-RENOVAR'   => 'heroicon-c-x-circle',
                         };
                     }),
             ])
