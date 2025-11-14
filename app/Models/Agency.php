@@ -86,6 +86,8 @@ class Agency extends Model
         'user_tdev',
         'brithday_date',
 
+        'activate_monthly_frequency',
+
 
     ];
 

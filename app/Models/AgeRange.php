@@ -17,7 +17,9 @@ class AgeRange extends Model
         'code',
         'range',
         'status',
-        'created_by'
+        'created_by',
+        'age_init',
+        'age_end',
     ];
 
     public function plan(): BelongsTo

@@ -4,11 +4,14 @@ namespace App\Filament\Business\Resources\Plans\Tables;
 
 
 use Carbon\Carbon;
+use App\Models\Plan;
 use Filament\Tables\Table;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Filters\Filter;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\DatePicker;
@@ -45,7 +48,12 @@ class PlansTable
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color('success')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'ACTIVO' => 'success',
+                            'INACTIVO' => 'danger',
+                        };
+                    })
                     ->searchable(),
                 TextColumn::make('created_by')
                     ->searchable(),
@@ -89,6 +97,23 @@ class PlansTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('update_status')
+                        ->label('Actualizar Estatus')
+                        ->icon('heroicon-s-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->form([
+                            Select::make('status')
+                                ->options([
+                                    'ACTIVO' => 'ACTIVO',
+                                    'INACTIVO' => 'INACTIVO',
+                                ])
+                                ->required(),
+                        ])
+                        ->action(function (Plan $record, array $data): void {
+                            $record->update($data);
+                        }),
+                        
                     DeleteAction::make()
                         ->label('Eliminar')
                         ->icon('heroicon-o-trash')

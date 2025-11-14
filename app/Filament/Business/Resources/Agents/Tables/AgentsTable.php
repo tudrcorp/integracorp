@@ -35,6 +35,7 @@ use Filament\Notifications\Notification;
 use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Controllers\AgencyController;
@@ -204,7 +205,10 @@ class AgentsTable
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-            ])
+                ToggleColumn::make('activate_monthly_frequency')
+                    ->label('Frecuencia Mensual')
+
+        ])
             ->filters([
                 Filter::make('created_at')
                     ->form([

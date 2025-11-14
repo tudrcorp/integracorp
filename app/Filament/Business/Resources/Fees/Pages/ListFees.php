@@ -12,13 +12,4 @@ class ListFees extends ListRecords
 
     protected static ?string $title = 'Listado de Tarifas';
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Crear Tarifa')
-                ->icon('heroicon-m-book-open')
-                ->color('primary'),    
-        ];
-    }
 }

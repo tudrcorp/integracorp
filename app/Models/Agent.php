@@ -90,7 +90,9 @@ class Agent extends Model
 
         'conf_position_menu',
         'ownerAccountManagers',
-        'user_tdev'
+        'user_tdev',
+
+        'activate_monthly_frequency',
 
     ];
 

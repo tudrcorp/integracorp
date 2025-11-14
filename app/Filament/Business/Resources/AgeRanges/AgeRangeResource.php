@@ -62,11 +62,6 @@ class AgeRangeResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if(Auth::user()->is_business_admin){
-            return true;
-        }
         return false;
-        
     }
 }

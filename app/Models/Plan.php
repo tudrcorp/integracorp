@@ -17,6 +17,7 @@ class Plan extends Model
         'status',
         'created_by',
         'type',
+        'agencies',
     ];
 
     /**
@@ -27,6 +28,18 @@ class Plan extends Model
     public function benefits(): HasMany
     {
         return $this->hasMany(Benefit::class, 'plan_id', 'id');
+    }
+
+    /**
+     * The servicios that belong to the User
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function agencyPlans(): BelongsToMany
+    {
+        return $this->belongsToMany(Agency::class, 'agency_plans')
+            ->using(AgencyPlan::class)
+            ->withPivot(['description']);
     }
 
     /**

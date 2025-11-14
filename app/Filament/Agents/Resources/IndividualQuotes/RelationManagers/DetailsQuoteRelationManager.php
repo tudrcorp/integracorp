@@ -2,12 +2,14 @@
 
 namespace App\Filament\Agents\Resources\IndividualQuotes\RelationManagers;
 
+use App\Models\Agent;
 use Filament\Tables\Table;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
@@ -63,6 +65,13 @@ class DetailsQuoteRelationManager extends RelationManager
                     ->description(fn($record): string => $record->total_persons . ' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
+                TextColumn::make('subtotal_monthly')
+                    ->label('Total Mensual')
+                    ->alignCenter()
+                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->numeric(decimalPlaces: 0)
+                    ->suffix(' UD$')
+                    ->hidden(fn (): bool => Agent::where('id', Auth::user()->agent_id)->first()->activate_monthly_frequency == 0),
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()

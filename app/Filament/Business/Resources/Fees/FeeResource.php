@@ -22,7 +22,7 @@ class FeeResource extends Resource
 {
     protected static ?string $model = Fee::class;
 
-    protected static ?string $navigationLabel = 'Estructura de Planes';
+    protected static ?string $navigationLabel = 'Tarifas y Costos';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 

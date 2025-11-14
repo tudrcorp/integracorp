@@ -530,52 +530,79 @@ class UtilsController extends Controller
 
                         array_push($group_details, $details_inicial);
                     }
-                    if ($details[$i]['plan_id'] == 2) {
-                        $detalle_2 = DB::table('detail_corporate_quotes')
+
+                    //prueba
+                    if ($details[$i]['plan_id'] != 1) {
+                        $detalle = DB::table('detail_corporate_quotes')
                             ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
                             ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
                             ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
                             ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
                             ->where('corporate_quote_id', $corporate_quote->id)
-                            ->where('detail_corporate_quotes.plan_id', 2)
+                            ->where('detail_corporate_quotes.plan_id', $details[$i]['plan_id'])
                             ->get()
                             ->toArray();
 
-                        $details_ideal = [
-                            'plan' => 2,
+                        $details = [
+                            'plan' => $details[$i]['plan_id'],
                             'code' => $corporate_quote->code,
                             'name' => $corporate_quote->full_name,
                             'email' => $corporate_quote->email,
                             'phone' => $corporate_quote->phone,
                             'date' => $corporate_quote->created_at->format('d-m-Y'),
-                            'data' => $detalle_2
+                            'data' => $detalle
                         ];
                         // dd($details_ideal);
-                        array_push($group_details, $details_ideal);
+                        array_push($group_details, $details);
                     }
-                    if ($details[$i]['plan_id'] == 3) {
-                        $detalle_3 = DB::table('detail_corporate_quotes')
-                            ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
-                            ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
-                            ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
-                            ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
-                            ->where('corporate_quote_id', $corporate_quote->id)
-                            ->where('detail_corporate_quotes.plan_id', 3)
-                            ->get()
-                            ->toArray();
+                    
+                    // if ($details[$i]['plan_id'] == 2) {
+                    //     $detalle_2 = DB::table('detail_corporate_quotes')
+                    //         ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                    //         ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                    //         ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
+                    //         ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
+                    //         ->where('corporate_quote_id', $corporate_quote->id)
+                    //         ->where('detail_corporate_quotes.plan_id', 2)
+                    //         ->get()
+                    //         ->toArray();
 
-                        $details_especial = [
-                            'plan' => 3,
-                            'code' => $corporate_quote->code,
-                            'name' => $corporate_quote->full_name,
-                            'email' => $corporate_quote->email,
-                            'phone' => $corporate_quote->phone,
-                            'date' => $corporate_quote->created_at->format('d-m-Y'),
-                            'data' => $detalle_3
-                        ];
-                        // dd($details_especial);
-                        array_push($group_details, $details_especial);
-                    }
+                    //     $details_ideal = [
+                    //         'plan' => 2,
+                    //         'code' => $corporate_quote->code,
+                    //         'name' => $corporate_quote->full_name,
+                    //         'email' => $corporate_quote->email,
+                    //         'phone' => $corporate_quote->phone,
+                    //         'date' => $corporate_quote->created_at->format('d-m-Y'),
+                    //         'data' => $detalle_2
+                    //     ];
+                    //     // dd($details_ideal);
+                    //     array_push($group_details, $details_ideal);
+                    // }
+                    // if ($details[$i]['plan_id'] == 3) {
+                    //     $detalle_3 = DB::table('detail_corporate_quotes')
+                    //         ->join('plans', 'detail_corporate_quotes.plan_id', '=', 'plans.id')
+                    //         ->join('age_ranges', 'detail_corporate_quotes.age_range_id', '=', 'age_ranges.id')
+                    //         ->join('coverages', 'detail_corporate_quotes.coverage_id', '=', 'coverages.id')
+                    //         ->select('detail_corporate_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
+                    //         ->where('corporate_quote_id', $corporate_quote->id)
+                    //         ->where('detail_corporate_quotes.plan_id', 3)
+                    //         ->get()
+                    //         ->toArray();
+
+                    //     $details_especial = [
+                    //         'plan' => 3,
+                    //         'code' => $corporate_quote->code,
+                    //         'name' => $corporate_quote->full_name,
+                    //         'email' => $corporate_quote->email,
+                    //         'phone' => $corporate_quote->phone,
+                    //         'date' => $corporate_quote->created_at->format('d-m-Y'),
+                    //         'data' => $detalle_3
+                    //     ];
+                    //     // dd($details_especial);
+                    //     array_push($group_details, $details_especial);
+                    // }
+                    
                 }
 
                 usort($group_details, function ($a, $b) {
@@ -587,12 +614,15 @@ class UtilsController extends Controller
                     if ($group_details[$i]['plan'] == 1) {
                         array_push($collect_final, $group_details[$i]);
                     }
-                    if ($group_details[$i]['plan'] == 2) {
+                    if ($group_details[$i]['plan'] != 1) {
                         array_push($collect_final, $group_details[$i]);
                     }
-                    if ($group_details[$i]['plan'] == 3) {
-                        array_push($collect_final, $group_details[$i]);
-                    }
+                    // if ($group_details[$i]['plan'] == 2) {
+                    //     array_push($collect_final, $group_details[$i]);
+                    // }
+                    // if ($group_details[$i]['plan'] == 3) {
+                    //     array_push($collect_final, $group_details[$i]);
+                    // }
                 }
                 // dd($collect_final);
                 $corporate_quote->sendPropuestaEconomicaMultiple($collect_final);

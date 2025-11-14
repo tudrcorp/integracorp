@@ -8,6 +8,7 @@ use App\Models\State;
 use App\Models\Agency;
 use App\Models\Region;
 use App\Models\AgeRange;
+use App\Models\AgencyPlan;
 use Filament\Schemas\Schema;
 use App\Models\CorporateQuote;
 use Illuminate\Support\HtmlString;
@@ -118,6 +119,10 @@ class CorporateQuoteForm
                                                 }),
                                         ])->columnSpanFull()->columns(2),
 
+                                    Hidden::make('ownerAccountManagers')->default(function () {
+                                        $agency = Auth::user()->code_agency;
+                                        return Agency::where('code', $agency)->first()->ownerAccountManagers;
+                                    }),
                                     Hidden::make('status')->default('ACTIVA-PENDIENTE'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
                                     Hidden::make('code_agency')->default(Auth::user()->code_agency),
@@ -296,14 +301,22 @@ class CorporateQuoteForm
                                             return true;
                                         })
                                         ->schema([
-                                            Radio::make('plan_id')
+                                            Select::make('plan_id')
                                                 ->label('Seleccione una opción y añadir plan:')
-                                                ->inLine()
+                                                // ->inLine()
                                                 ->live()
                                                 ->options(function (Get $get) {
-                                                    Log::info($get('plan'));
-                                                    return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
-                                                })->columnSpan(3),
+
+                                                    $planes = Plan::where('status', 'ACTIVO')->where('type', 'BASICO')->get()->pluck('description', 'id')->toArray();
+                                                    $agenciaId = Agency::where('code', Auth::user()->code_agency)->first()->id;
+                                                    $planesAsignados = AgencyPlan::where('agency_id', $agenciaId)->get()->pluck('description', 'plan_id')->toArray();
+
+                                                    $planesUnidos = $planes + $planesAsignados;
+                                                    // Log::info($planesUnidos);
+
+                                                    return $planesUnidos;
+                                                    // return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
+                                                }),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')
                                                 ->placeholder('Rango de edad')

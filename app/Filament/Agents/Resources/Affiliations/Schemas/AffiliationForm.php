@@ -161,11 +161,28 @@ class AffiliationForm
                                 Select::make('payment_frequency')
                                     ->label('Frecuencia de pago')
                                     ->live()
-                                    ->options([
-                                        'ANUAL'      => 'ANUAL',
-                                        'SEMESTRAL'  => 'SEMESTRAL',
-                                        'TRIMESTRAL' => 'TRIMESTRAL',
-                                    ])
+                                    // ->options([
+                                    //     'ANUAL'      => 'ANUAL',
+                                    //     'SEMESTRAL'  => 'SEMESTRAL',
+                                    //     'TRIMESTRAL' => 'TRIMESTRAL',
+                                    // ])
+                                    ->options(function (Get $get) {
+                                        $simpleArray = [
+                                            'ANUAL'      => 'ANUAL',
+                                            'SEMESTRAL'  => 'SEMESTRAL',
+                                            'TRIMESTRAL' => 'TRIMESTRAL',
+                                        ];
+                                        $simpleArrayMonth = [
+                                            'ANUAL'      => 'ANUAL',
+                                            'SEMESTRAL'  => 'SEMESTRAL',
+                                            'TRIMESTRAL' => 'TRIMESTRAL',
+                                            'MENSUAL'    => 'MENSUAL',
+                                        ];
+                                        if(Agent::where('id', Auth::user()->agent_id)->first()->activate_monthly_frequency == 1){
+                                            return $simpleArrayMonth;
+                                        }
+                                        return $simpleArray;
+                                    })
                                     ->searchable()
                                     ->live()
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
@@ -210,6 +227,18 @@ class AffiliationForm
                                                 ->get();
 
                                             $set('total_amount', $data_quote->sum('subtotal_biannual'));
+                                        }
+                                        if ($get('payment_frequency') == 'MENSUAL') {
+
+                                            $data_quote = DetailIndividualQuote::select('individual_quote_id', 'plan_id', 'coverage_id', 'subtotal_monthly')
+                                                ->where('individual_quote_id', $get('individual_quote_id'))
+                                                ->where('plan_id', $get('plan_id'))
+                                                ->when($get('plan_id') != 1, function ($query) use ($get) {
+                                                    return $query->where('coverage_id', $get('coverage_id'));
+                                                })
+                                                ->get();
+
+                                            $set('total_amount', $data_quote->sum('subtotal_monthly'));
                                         }
 
                                         $fee_anual = DetailIndividualQuote::select('individual_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
