@@ -26,16 +26,21 @@ class FeesTable
             ->heading('TARIFAS')
             ->description('Lista de tarifas calculadas registradas en el sistema')
             ->columns([
-                TextColumn::make('code')
-                    ->label('Código')
+                TextColumn::make('id')
+                    ->label('ID')
                     ->badge()
                     ->searchable(),
                 TextColumn::make('ageRange.range')
                     ->label('Rango de Edad')
+                    ->suffix(' años')
+                    ->color('primary')
+                    ->badge()
                     ->numeric()
                     ->searchable(),
-                TextColumn::make('coverage.price')
+                TextColumn::make('coverage')
                     ->label('Cobertura')
+                    ->color('primary')
+                    ->badge()
                     ->suffix(' UD$')
                     ->numeric()
                     ->sortable()
@@ -45,14 +50,17 @@ class FeesTable
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('status')
+                    ->color('success')
+                    ->badge()
+                    ->label('Estado')
                     ->searchable(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable(),
                 TextColumn::make('created_at')
+                    ->label('Fecha de Creación')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()

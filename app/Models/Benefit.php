@@ -31,7 +31,7 @@ class Benefit extends Model
     /**
      * Get all of the comments for the Benefit
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function plan(): BelongsTo
     {

@@ -8,6 +8,7 @@ use App\Models\CorporateQuote;
 use Flowframe\Trend\TrendValue;
 use Filament\Widgets\ChartWidget;
 use App\Models\AffiliationCorporate;
+use Illuminate\Support\Facades\Auth;
 
 class AffiliationCorporateChart extends ChartWidget
 {
@@ -52,13 +53,26 @@ class AffiliationCorporateChart extends ChartWidget
             $rangeEndDate       = now()->endOfYear();
         }
 
-        $data = Trend::model(AffiliationCorporate::class)
-            ->between(
-                start: $rangeStartDate,
-                end: $rangeEndDate,
-            )
-            ->perDay()
-            ->count();
+        //Si el usuario es admin 
+        if (Auth::user()->is_accountManagers == 1) {
+            $data = Trend::query(AffiliationCorporate::where('ownerAccountManagers', Auth::user()->id))
+                ->between(
+                    start: $rangeStartDate,
+                    end: $rangeEndDate,
+                )
+                ->perDay()
+                ->count();
+            
+        } else {
+            //Si el usuario no es admin de cuentas t es un super admin
+            $data = Trend::model(AffiliationCorporate::class)
+                ->between(
+                    start: $rangeStartDate,
+                    end: $rangeEndDate,
+                )
+                ->perDay()
+                ->count();
+        }
 
         return [
             'datasets' => [

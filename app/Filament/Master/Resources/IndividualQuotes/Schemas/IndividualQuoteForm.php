@@ -132,6 +132,10 @@ class IndividualQuoteForm
                                     /**                                    * Campos referenciales para jerarquía
                                      * -----------------------------------------------------------------
                                      */
+                                    Hidden::make('ownerAccountManagers')->default(function () {
+                                        $agency = Auth::user()->code_agency;
+                                        return Agency::where('code', $agency)->first()->ownerAccountManagers;
+                                    }),
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                     Hidden::make('created_by')->default(Auth::user()->name),
                                     Hidden::make('code_agency')->default(function (Get $get) {

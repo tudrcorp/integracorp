@@ -40,9 +40,12 @@ class UserForm
                                 ->displayFormat('d/m/Y'),
                             TextInput::make('email')
                                 ->label('Correo Electrónico')
-                                ->email(),
+                                ->required()
+                                ->email()
+                                ->hiddenOn('edit'),
                             Select::make('departament')
                                 ->label('Departamento')
+                                ->required()
                                 ->helperText('El usuario solo recibirá las notificaciones asociadas al departamento.')
                                 ->options([
                                     'COMERCIAL'     => 'COMERCIAL',
@@ -67,13 +70,15 @@ class UserForm
                         ->schema([
                             TextInput::make('password')
                                 ->label('Contraseño')
+                                ->required()
                                 ->password()
                                 ->revealable(),
                             TextInput::make('password_confirmation')
                                 ->label('Confirmar Contraseño')
                                 ->password()
+                                ->required()
                                 ->revealable(),
-                        ])->columnSpanFull()->columns(2),
+                        ])->columnSpanFull()->columns(2)->hiddenOn('edit'),
                     ])->columnSpanFull()->columns(3),
 
                 Section::make('Roles del Usuario')

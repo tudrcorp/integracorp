@@ -125,7 +125,7 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($panel->getId() === 'administration') {
-            return str_ends_with($this->email, '@tudrencasa.com') || $this->departament === 'ADMINISTRACION';
+            return str_ends_with($this->email, '@tudrencasa.com') && $this->departament === 'ADMINISTRACION';
         }
 
         return true;

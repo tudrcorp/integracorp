@@ -101,11 +101,13 @@ class BenefitForm
                                             ->maxLength(255),
                                     ])->columnSpanFull()->columns(3),
                             ]),
+                            
                         TextInput::make('price')
                             ->label('Precio US$')
                             ->prefixIcon('heroicon-m-shield-check')
                             ->numeric()
                             ->placeholder('0,00 US$'),
+                            
                         TextInput::make('status')
                             ->label('Estatus')
                             ->prefixIcon('heroicon-m-shield-check')

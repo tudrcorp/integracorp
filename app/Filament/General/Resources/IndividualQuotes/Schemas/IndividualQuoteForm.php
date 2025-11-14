@@ -119,9 +119,13 @@ class IndividualQuoteForm
                                                         return Agent::where('owner_code', Auth::user()->code_agency)->pluck('name', 'id');
                                                     }),
                                             ])->columnSpanFull()->columns(2),
-                                        
+
                                         //...
                                         //Jerarquia
+                                        Hidden::make('ownerAccountManagers')->default(function () {
+                                            $agency = Auth::user()->code_agency;
+                                            return Agency::where('code', $agency)->first()->ownerAccountManagers;
+                                        }),
                                         Hidden::make('status')->default('PRE-APROBADA'),
                                         Hidden::make('created_by')->default(Auth::user()->name),
                                         Hidden::make('code_agency')->default(Auth::user()->code_agency),
