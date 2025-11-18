@@ -58,7 +58,10 @@ class SendEmailPropuestaEconomicaPlanIdeal implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->generatePDF($this->details, $this->group_collect, $this->user);
+        // ✅ Reconstruye el usuario dentro del job
+        $user = User::findOrFail($this->user);
+        
+        $this->generatePDF($this->details, $this->group_collect, $user);
 
         Notification::make()
             ->title('¡TAREA COMPLETADA!')
@@ -69,7 +72,7 @@ class SendEmailPropuestaEconomicaPlanIdeal implements ShouldQueue
                     ->label('Descargar archivo')
                     ->url('/storage/quotes/' . $this->details['code'] . '.pdf')
             ])
-            ->sendToDatabase($this->user);
+            ->sendToDatabase($user);
     }
 
     private function generatePDF($details, $group_collect, $user)

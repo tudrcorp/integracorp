@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use Throwable;
+use App\Models\User;
 use Filament\Actions\Action;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
@@ -55,6 +56,9 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
     public function handle(): void
     {
         $this->generatePDF();
+
+        // ✅ Reconstruye el usuario dentro del job
+        $user = User::findOrFail($this->user);
             
         Notification::make()
             ->title('¡TAREA COMPLETADA!')
@@ -65,7 +69,7 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
                     ->label('Descargar archivo')
                     ->url('/storage/quotes/' . $this->details_generals['code'] . '.pdf')
             ])
-            ->sendToDatabase($this->user);
+            ->sendToDatabase($user);
         
     }
 
@@ -118,7 +122,9 @@ class SendEmailPropuestaEconomicaMultiple implements ShouldQueue
              * Logica para generar el pdf
              * ----------------------------------------------------------------------------------------------------
              */
-            $name_user = $this->user->name;
+            // ✅ Reconstruye el usuario dentro del job
+            $user = User::findOrFail($this->user);
+            $name_user = $user->name;
             $pdf = Pdf::loadView('documents.propuesta-economica-multiple', compact('data_inicial', 'data_ideal', 'data_especial', 'details_generals', 'name_user'));
             $name_pdf = $details_generals['code'] . '.pdf';
             $pdf->save(public_path('storage/quotes/' . $name_pdf));
