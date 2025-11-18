@@ -332,35 +332,6 @@ class CreateIndividualQuote extends CreateRecord
                 $this->getRecord()->sendPropuestaEconomicaMultiple($collect_final);
             }
 
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
-            foreach ($recipient as $user) {
-                $recipient_for_user = User::find($user->id);
-                Notification::make()
-                    ->title('NUEVA COTIZACIÓN INDIVIDUAL')
-                    ->body('Se ha registrado una nueva cotización individual de forma exitosa. Código: ' . $record->code)
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('success')
-                    ->success()
-                    ->actions([
-                        Action::make('view')
-                            ->label('Ver cotización individual')
-                            ->button()
-                            ->color('primary')
-                            ->url(IndividualQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                        Action::make('link')
-                            ->label('Link Interactivo')
-                            ->button()
-                            ->color('success')
-                            ->url(route('volt.home', ['quote' => Crypt::encryptString($record->id)]), shouldOpenInNewTab: true),
-                    ])
-                    ->sendToDatabase($recipient_for_user);
-            }
-
             //Notificacion por whatsapp al telefono de cotizaciones
             $sendNotificationWp = NotificationController::createdIndividualQuote($record->code, Auth::user()->name);
         } catch (\Throwable $th) {
