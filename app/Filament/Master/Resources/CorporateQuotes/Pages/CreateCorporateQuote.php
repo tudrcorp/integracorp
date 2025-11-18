@@ -126,35 +126,6 @@ class CreateCorporateQuote extends CreateRecord
                 UtilsController::createCorporateQuoteEspecific($record, $array_form, $array_details, $details_quote);
             }
 
-            /**
-             * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
-             * ----------------------------------------------------------------------------------------------------
-             * $record [Data de la cotizacion guardada en la base de dastos]
-             */
-            $recipient = User::where('is_admin', 1)->where('departament', 'COTIZACIONES')->get();
-            foreach ($recipient as $user) {
-                $recipient_for_user = User::find($user->id);
-                Notification::make()
-                    ->title('NUEVA COTIZACIÓN CORPORATOVA')
-                    ->body('Se ha registrado una nueva cotización corporativa de forma exitosa. Código: ' . $record->code)
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('success')
-                    ->success()
-                    ->actions([
-                        Action::make('view')
-                            ->label('Ver Cotización Corporativa')
-                            ->button()
-                            ->color('primary')
-                            ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                        Action::make('link')
-                            ->label('Link Interactivo')
-                            ->button()
-                            ->color('success')
-                            ->url(route('volt.cor.home', ['quote' => Crypt::encryptString($record->id)]), shouldOpenInNewTab: true),
-                    ])
-                    ->sendToDatabase($recipient_for_user);
-            }
-
             //Notificacion por whatsapp al telefono de cotizaciones
             $sendNotificationWp = NotificationController::createdCorporateQuote($record->code, Auth::user()->name);
         } catch (\Throwable $th) {
