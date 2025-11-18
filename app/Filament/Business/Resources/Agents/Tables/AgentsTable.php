@@ -521,7 +521,6 @@ class AgentsTable
                                         $agency = new Agency();
                                         $agency->code               = $user->code_agency;
                                         $agency->name_corporative   = $data['name_corporative'] != null ? $data['name_corporative'] : $record->name;
-                                        $agency->code_agency        = $user->code_agency;
                                         $agency->owner_code         = $data['owner_code'];
                                         $agency->agency_type_id     = $data['type_agency'];
                                         $agency->email              = $user->email;
