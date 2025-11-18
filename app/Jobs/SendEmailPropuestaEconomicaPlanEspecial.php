@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use Throwable;
+use App\Models\User;
 use Filament\Actions\Action;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
