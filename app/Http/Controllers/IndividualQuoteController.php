@@ -22,6 +22,7 @@ class IndividualQuoteController extends Controller
             $collect = collect($details['data'][0]);
 
             ini_set('memory_limit', '2048M');
+            set_time_limit(120);
             
             
             $name_user = $user->name;
@@ -64,6 +65,7 @@ class IndividualQuoteController extends Controller
             $group_collect = $collect->groupBy('age_range');
 
             ini_set('memory_limit', '2048M');
+            set_time_limit(120);
 
             $name_user = $user->name;
             $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect', 'name_user'));
@@ -106,6 +108,7 @@ class IndividualQuoteController extends Controller
             $group_collect = $collect->groupBy('age_range');
 
             ini_set('memory_limit', '2048M');
+            set_time_limit(120);
 
             /**
              * Logica para generar el pdf
@@ -161,6 +164,7 @@ class IndividualQuoteController extends Controller
             }
 
             ini_set('memory_limit', '2048M');
+            set_time_limit(120);
 
             /**
              * Datos de la propuesta economica
