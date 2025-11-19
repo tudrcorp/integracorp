@@ -659,7 +659,7 @@ class AgentsTable
                     ->action(function (Collection $records, array $data) {
 
                         $records = $records->toArray();
-                        dd($records);
+
                         try {
 
                             for ($i = 0; $i < count($records); $i++) {
@@ -667,12 +667,15 @@ class AgentsTable
                                 //Agencias Tipo Master
                                 if ($records[$i]['agent_type_id'] == 2) {
 
+                                    if($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION'){
+                                        Throw new \Exception('No se puede asignar un coordinador a un agente "INACTIVO" o en estatus "POR REVISION"');
+                                    }
+
                                     //actualizo la ionformacion del agente y le asigno al administrador de negocios
-                                    Agent::where('status', 'ACTIVO')
-                                        ->where('id', $records[$i]['id'])
-                                        ->update([
-                                            'ownerAccountManagers' => $data['ownerAccountManagers']
-                                        ]);
+                                    Agent::where('status', 'ACTIVO')->where('id', $records[$i]['id'])->first()
+                                    ->update([
+                                        'ownerAccountManagers' => $data['ownerAccountManagers']
+                                    ]);
 
                                     //Busco si el agente tiene subagente asignados a el
                                     //varificamos las agencias generales y los agentes asociados a ella
@@ -694,11 +697,14 @@ class AgentsTable
                                 }
 
                                 //Agencias Tipo General
-                                if ($records[$i]['agency_type_id'] == 3) {
+                                if ($records[$i]['agent_type_id'] == 3) {
+
+                                    if ($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION') {
+                                        throw new \Exception('No se puede asignar un coordinador a un agente "INACTIVO" o en estatus "POR REVISION"');
+                                    }
+
                                     //Busco los agentes que pertenecen a la agencia master
-                                    $agentes = Agent::where('status', 'ACTIVO')
-                                        ->where('owner_code', $records[0]['owner_code'])
-                                        ->get();
+                                    $agentes = Agent::where('status', 'ACTIVO')->where('owner_code', $records[0]['owner_code'])->get();
 
                                     //Si la agencia master tiene agentes activos
                                     if (count($agentes) > 0) {
@@ -713,14 +719,12 @@ class AgentsTable
                                 }
                             }
                         } catch (\Throwable $th) {
-                            dd($th);
-                            LogController::log(Auth::user()->id, 'EXCEPCION', 'AgencyResource:Tables\Actions\Action::make(Activate)', $th->getMessage());
                             Notification::make()
                                 ->title('EXCEPCION')
-                                ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
+                                ->body($th->getMessage())
                                 ->icon('heroicon-s-x-circle')
-                                ->iconColor('error')
-                                ->color('error')
+                                ->iconColor('danger')
+                                ->color('danger')
                                 ->send();
                         }
                     })

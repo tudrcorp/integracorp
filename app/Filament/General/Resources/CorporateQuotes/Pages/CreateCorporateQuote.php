@@ -112,6 +112,7 @@ class CreateCorporateQuote extends CreateRecord
             }
 
             if ($count_ageRange == 1) {
+
                 $details = [];
                 for ($i = 0; $i < count($array_details); $i++) {
                     if ($array_details[$i]['age_range_id'] != null && $array_details[$i]['total_persons'] != null) {
@@ -123,14 +124,13 @@ class CreateCorporateQuote extends CreateRecord
             }
 
             if ($count_ageRange > 1) {
+
                 UtilsController::createCorporateQuoteEspecific($record, $array_form, $array_details, $details_quote);
             }
-
 
             //Notificacion por whatsapp al telefono de cotizaciones
             $sendNotificationWp = NotificationController::createdCorporateQuote($record->code, Auth::user()->name);
         } catch (\Throwable $th) {
-            dd($th);
             Notification::make()
                 ->title('ERROR')
                 ->body($th->getMessage())

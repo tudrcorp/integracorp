@@ -333,11 +333,16 @@ class AgenciesTable
                                     
                                     //Agencias Tipo Master
                                     if ($records[$i]['agency_type_id'] == 1) {
+                                        
+                                        if ($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION') {
+                                            throw new \Exception('No se puede asignar un coordinador a un agencia  en estatus"INACTIVO" o "POR REVISION"');
+                                        }
 
                                         //actualizo la agencia master
                                         Agency::where('status', 'ACTIVO')
                                         ->where('id', $records[$i]['id'])
                                         ->where('code', $records[$i]['code'])
+                                        ->first()
                                         ->update([
                                             'ownerAccountManagers' => $data['ownerAccountManagers']
                                         ]);
@@ -397,6 +402,20 @@ class AgenciesTable
 
                                     //Agencias Tipo General
                                     if ($records[$i]['agency_type_id'] == 3) {
+
+                                        if ($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION') {
+                                            throw new \Exception('No se puede asignar un coordinador a un agencia  en estatus"INACTIVO" o "POR REVISION"');
+                                        }
+
+                                        //actualizo la agencia general
+                                        Agency::where('status', 'ACTIVO')
+                                            ->where('id', $records[$i]['id'])
+                                            ->where('code', $records[$i]['code'])
+                                            ->first()
+                                            ->update([
+                                                'ownerAccountManagers' => $data['ownerAccountManagers']
+                                            ]);
+                                        
                                         //Busco los agentes que pertenecen a la agencia master
                                         $agentes = Agent::where('status', 'ACTIVO')
                                         ->where('owner_code', $records[0]['owner_code'])
@@ -434,14 +453,12 @@ class AgenciesTable
                                 }
 
                             } catch (\Throwable $th) {
-                                dd($th);
-                                LogController::log(Auth::user()->id, 'EXCEPCION', 'AgencyResource:Tables\Actions\Action::make(Activate)', $th->getMessage());
                                 Notification::make()
                                     ->title('EXCEPCION')
-                                    ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
+                                    ->body($th->getMessage())
                                     ->icon('heroicon-s-x-circle')
-                                    ->iconColor('error')
-                                    ->color('error')
+                                    ->iconColor('danger')
+                                    ->color('danger')
                                     ->send();
                             }
                         })
