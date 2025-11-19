@@ -109,27 +109,27 @@ class IndividualQuoteForm
                                                 ->maxLength(255),
                                         ])->columnSpanFull(),
 
-                                        Fieldset::make('Asignación de Cotización')
-                                            ->schema([
-                                                Select::make('agent_id')
-                                                    ->label('Agente')
-                                                    ->helperText('Si desea asignar la cotización a un agente que pertenezca a su estructura, seleccione la agente. Si el agente pertenece a una agencia general debe seleccionar la agencia y el agente')
-                                                    ->searchable()
-                                                    ->options(function () {
-                                                        return Agent::where('owner_code', Auth::user()->code_agency)->pluck('name', 'id');
-                                                    }),
-                                            ])->columnSpanFull()->columns(2),
+                                    Fieldset::make('Asignación de Cotización')
+                                        ->schema([
+                                            Select::make('agent_id')
+                                                ->label('Agente')
+                                                ->helperText('Si desea asignar la cotización a un agente que pertenezca a su estructura, seleccione la agente. Si el agente pertenece a una agencia general debe seleccionar la agencia y el agente')
+                                                ->searchable()
+                                                ->options(function () {
+                                                    return Agent::where('owner_code', Auth::user()->code_agency)->pluck('name', 'id');
+                                                }),
+                                        ])->columnSpanFull()->columns(2),
 
-                                        //...
-                                        //Jerarquia
-                                        Hidden::make('ownerAccountManagers')->default(function () {
-                                            $agency = Auth::user()->code_agency;
-                                            return Agency::where('code', $agency)->first()->ownerAccountManagers;
-                                        }),
-                                        Hidden::make('status')->default('PRE-APROBADA'),
-                                        Hidden::make('created_by')->default(Auth::user()->name),
-                                        Hidden::make('code_agency')->default(Auth::user()->code_agency),
-                                        Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
+                                    //...
+                                    //Jerarquia
+                                    Hidden::make('ownerAccountManagers')->default(function () {
+                                        $agency = Auth::user()->code_agency;
+                                        return Agency::where('code', $agency)->first()->ownerAccountManagers;
+                                    }),
+                                    Hidden::make('status')->default('PRE-APROBADA'),
+                                    Hidden::make('created_by')->default(Auth::user()->name),
+                                    Hidden::make('code_agency')->default(Auth::user()->code_agency),
+                                    Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
 
                                 ])
                                 ->columns(3)
@@ -376,8 +376,20 @@ class IndividualQuoteForm
                     <x-filament::button
                         type="submit"
                         size="sm"
+                        wire:target="create" 
+                        wire:loading.attr="disabled"
+                        wire:loading.class="opacity-70 pointer-events-none"
+                        class="min-w-28 justify-center bg-indigo-600 hover:bg-indigo-700 text-white" 
                     >
-                        Crear cotización
+                        {{-- Contenido NORMAL: Visible solo cuando NO está cargando --}}
+                        <span wire:loading.remove wire:target="create">
+                            Guardar y Finalizar
+                        </span>
+
+                        {{-- Contenido CARGANDO: Visible solo mientras está cargando --}}
+                        <span wire:loading wire:target="create"class="flex items-center space-x-2">
+                            <span>Calculando Cotización y Generando PDF...</span>
+                        </span>
                     </x-filament::button>
                 BLADE)))
                     ->columnSpanFull(),

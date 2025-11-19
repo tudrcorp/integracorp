@@ -24,7 +24,7 @@ class SendEmailPropuestaEconomica implements ShouldQueue
 
     protected $details = [];
     protected $collect = [];
-    protected $user;
+    protected $user; // ← ahora es un ID
 
     /**
      * Número máximo de intentos.
@@ -47,7 +47,7 @@ class SendEmailPropuestaEconomica implements ShouldQueue
     {
         $this->details = $details;
         $this->collect = $collect;
-        $this->user = $user;
+        $this->user = $user; // ← ahora es un ID
     }
 
     /**
@@ -55,7 +55,10 @@ class SendEmailPropuestaEconomica implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->generatePDF($this->details, $this->collect, $this->user);
+        // ✅ Reconstruye el usuario dentro del job
+        $user = User::findOrFail($this->user);
+        
+        $this->generatePDF($this->details, $this->collect, $user);
 
         Notification::make()
             ->title('¡TAREA COMPLETADA!')
@@ -66,7 +69,7 @@ class SendEmailPropuestaEconomica implements ShouldQueue
                     ->label('Descargar archivo')
                     ->url('/storage/quotes/' . $this->details['code'] . '.pdf')
             ])
-            ->sendToDatabase($this->user);
+            ->sendToDatabase($user);
 
     }
 
@@ -74,6 +77,7 @@ class SendEmailPropuestaEconomica implements ShouldQueue
     {
         ini_set('memory_limit', '2048M');
 
+        
         $name_user = $user->name;
         $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'collect', 'name_user'));
         $name_pdf = $details['code'] . '.pdf';
