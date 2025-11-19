@@ -570,3 +570,130 @@ Route::get('/generar-qr', function () {
     // 3. Pasar el código QR (formato SVG) a la vista
     return view('qr_display', compact('qrCode', 'url'));
 });
+
+Route::get('/r4', function () {
+
+    $cuenta = '01080249150100092535';
+
+    //Logica para restriccion de 20 caracteres para el numero de cuenta
+    $longitud = strlen($cuenta);
+    // dd($longitud);
+    $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
+    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
+    // Generar el Token de Autorización
+    // $stringACifrar = $banco . $cedula . $telefono . $monto . $otp;
+    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
+    // dd($tokenAuthorization);
+
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: ' . $tokenAuthorization,
+        'Commerce: ' . $commerceToken,
+    ];
+
+    $postData = [
+        "docId"     => "V16007868",
+        "nombre"    => "Gustavo Camacho",
+        "cuenta"    => "01080249150100092535",
+        "monto"     => "2.00",
+        "concepto"  => "Pago"
+    ];
+
+    // dd(json_encode($postData));
+
+    $curl = curl_init($url);
+
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($postData),
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+    ]);
+
+    $response = curl_exec($curl);
+
+    if (curl_errno($curl)) {
+        throw new \Exception('Error en cURL: ' . curl_error($curl));
+    }
+
+    $result = json_decode($response, true);
+
+    if ($result === null) {
+        throw new \Exception('Respuesta de la API inválida');
+    }
+
+    curl_close($curl);
+
+    //escribo el response en la tabla de log
+    // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
+
+    // Logging de la respuesta de la API
+    Log::info('Respuesta de la API de Domiciliaciones', $result);
+
+    dd($result);
+});
+
+Route::get('/tel/r4', function () {
+
+    $cuenta = '01080249150100092535';
+
+    //Logica para restriccion de 20 caracteres para el numero de cuenta
+    $longitud = strlen($cuenta);
+    // dd($longitud);
+    $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
+    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCELE';
+    // Generar el Token de Autorización
+    // $stringACifrar = $banco . $cedula . $telefono . $monto . $otp;
+    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
+
+
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: ' . $tokenAuthorization,
+        'Commerce: ' . $commerceToken,
+    ];
+
+    $postData = [
+        "docId"     => "V16007868",
+        "telefono"  => "04127018390",
+        "nombre"    => "Gustavo Camacho",
+        "banco"     => "0108",
+        "monto"     => "1.20",
+        "concepto"  => "Pago"
+    ];
+
+    // dd(json_encode($postData));
+
+    $curl = curl_init($url);
+
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($postData),
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+    ]);
+
+    $response = curl_exec($curl);
+
+    if (curl_errno($curl)) {
+        throw new \Exception('Error en cURL: ' . curl_error($curl));
+    }
+
+    $result = json_decode($response, true);
+
+    if ($result === null) {
+        throw new \Exception('Respuesta de la API inválida');
+    }
+
+    curl_close($curl);
+
+    //escribo el response en la tabla de log
+    // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
+
+    // Logging de la respuesta de la API
+    Log::info('Respuesta de la API de Domiciliaciones', $result);
+});
