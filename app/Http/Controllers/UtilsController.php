@@ -434,7 +434,7 @@ class UtilsController extends Controller
                 ];
 
 
-                $corporate_quote->sendPropuestaEconomicaPlanInicial($details);
+                CorporateQuoteController::generatePdfPlanIncial($details, Auth::id());
             }
 
             if ($corporate_quote->plan == 2) {
@@ -463,7 +463,7 @@ class UtilsController extends Controller
                 ];
 
 
-                $corporate_quote->sendPropuestaEconomicaPlanIdeal($details);
+                CorporateQuoteController::generatePdfPlanIdeal($details, Auth::id());
             }
 
             if ($corporate_quote->plan == 3) {
@@ -492,7 +492,7 @@ class UtilsController extends Controller
                 ];
 
                 // dd($details);
-                $corporate_quote->sendPropuestaEconomicaPlanEspecial($details);
+                CorporateQuoteController::generatePdfPlanEspecial($details, Auth::id());
             }
 
             /**
@@ -624,8 +624,8 @@ class UtilsController extends Controller
                     //     array_push($collect_final, $group_details[$i]);
                     // }
                 }
-                // dd($collect_final);
-                $corporate_quote->sendPropuestaEconomicaMultiple($collect_final);
+
+                CorporateQuoteController::generatePdfMultiple($collect_final, Auth::id());
             }
 
             //Actualizamos la solicitud de cotizacion
@@ -728,7 +728,7 @@ class UtilsController extends Controller
                     'data' => $detalle
                 ];
 
-                $record->sendPropuestaEconomicaPlanInicial($details);
+                CorporateQuoteController::generatePdfPlanIncial($details, Auth::id());
             }
 
             if ($record->plan == 2) {
@@ -756,7 +756,7 @@ class UtilsController extends Controller
                     'data' => $detalle
                 ];
 
-                $record->sendPropuestaEconomicaPlanIdeal($details);
+                CorporateQuoteController::generatePdfPlanIdeal($details, Auth::id());
             }
 
             if ($record->plan == 3) {
@@ -783,7 +783,8 @@ class UtilsController extends Controller
                     'data' => $detalle
                 ];
 
-                $record->sendPropuestaEconomicaPlanEspecial($details);
+                // $record->sendPropuestaEconomicaPlanEspecial($details);
+                CorporateQuoteController::generatePdfPlanEspecial($details, Auth::id());
             }
 
             /**
@@ -886,11 +887,13 @@ class UtilsController extends Controller
                     }
                 }
 
-                $record->sendPropuestaEconomicaMultiple($collect_final);
+                // $record->sendPropuestaEconomicaMultiple($collect_final);
+                CorporateQuoteController::generatePdfMultiple($collect_final, Auth::id());
             }
 
             
         } catch (\Throwable $th) {
+            dd($th);
             Log::error('Error al calcular edades: ' . $th->getMessage());
             return false;
         }
@@ -1374,7 +1377,7 @@ class UtilsController extends Controller
                     'data' => $detalle
                 ];
 
-                $record->sendPropuestaEconomicaPlanInicial($details);
+                IndividualQuoteController::generatePdfPlanIncial($details, Auth::id());
             }
 
             if ($record->plan == 2) {
@@ -1402,7 +1405,7 @@ class UtilsController extends Controller
                     'data' => $detalle
                 ];
 
-                $record->sendPropuestaEconomicaPlanIdeal($details);
+                IndividualQuoteController::generatePdfPlanIdeal($details, Auth::id());
             }
 
             if ($record->plan == 3) {
@@ -1429,7 +1432,7 @@ class UtilsController extends Controller
                     'data' => $detalle
                 ];
 
-                $record->sendPropuestaEconomicaPlanEspecial($details);
+                IndividualQuoteController::generatePdfPlanEspecial($details, Auth::id());
             }
 
             /**
@@ -1532,7 +1535,9 @@ class UtilsController extends Controller
                     }
                 }
 
-                $record->sendPropuestaEconomicaMultiple($collect_final);
+                // $record->sendPropuestaEconomicaMultiple($collect_final);
+
+                IndividualQuoteController::generatePdfMultiple($collect_final, Auth::id());
             }
 
             return true;

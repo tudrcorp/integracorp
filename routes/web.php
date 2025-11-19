@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\UtilsController;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Mail\NotificationRenewAffiliationMail;
 use App\Models\TelemedicinePatientMedications;
 use App\Http\Controllers\NotificationController;
@@ -555,4 +556,17 @@ Route::get('/largo', function () {
         }
     }
 
+});
+
+Route::get('/generar-qr', function () {
+    // 1. URL que queremos codificar en el QR
+    $url = 'https://tudrgroup.com';
+
+    // 2. Generar la imagen QR en formato SVG
+    // Usamos el método 'size' para definir el tamaño de la imagen (ej: 300px)
+    // El método 'generate' crea la imagen SVG del código QR
+    $qrCode = QrCode::size(300)->generate($url);
+
+    // 3. Pasar el código QR (formato SVG) a la vista
+    return view('qr_display', compact('qrCode', 'url'));
 });
