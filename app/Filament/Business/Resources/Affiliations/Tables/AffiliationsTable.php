@@ -996,8 +996,76 @@ class AffiliationsTable
                                 ->success()
                                 ->send();
                         }),
-                        
-                ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
+
+                        /**DESCARGAR CERTIFICADO PDF */
+                        Action::make('download')
+                            ->label('Descargar Certificado')
+                            ->icon('heroicon-s-arrow-down-on-square-stack')
+                            ->color('verde')
+                            ->requiresConfirmation()
+                            ->modalHeading('DESCARGAR CERTIFICADO')
+                            ->modalWidth(Width::ExtraLarge)
+                            ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                            ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                            ->action(function (Affiliation $record, array $data) {
+
+                                try {
+
+                                    /**
+                                     * Descargar el documento asociado a la cotizacion
+                                     * ruta: storage/
+                                     */
+                                    $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
+                                    return response()->download($path);
+
+                                } catch (\Throwable $th) {
+                                    Notification::make()
+                                        ->title('ERROR EN LA DESCARGA')
+                                        ->body($th->getMessage())
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('danger')
+                                        ->danger()
+                                        ->send();
+                                }
+                            })
+                            ->hidden(fn() => Auth::user()->is_business_admin != 1),
+
+                        /**REGENERAR CERTIFICADO PDF */
+                        Action::make('regenerate')
+                            ->label('Regenerar Certificado')
+                            ->icon('heroicon-s-arrow-down-on-square-stack')
+                            ->color('warning')
+                            ->requiresConfirmation()
+                            ->modalHeading('REGENERAR CERTIFICADO')
+                            ->modalWidth(Width::ExtraLarge)
+                            ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                            ->modalDescription('Se realizara la creacion del certificado de forma automatica al hacer clic en confirmar!.')
+                            ->action(function (Affiliation $record, array $data) {
+
+                                try {
+
+                                    AffiliationController::generateCertificateIndividual($record, $record->affiliates, Auth::id());
+                                    
+                                    Notification::make()
+                                        ->title('CERTIFICADO REGENERADO CON EXITO')
+                                        ->body('El certificado se ha regenerado con exito. Puedes descargarlo.')
+                                        ->icon('heroicon-s-check-circle')
+                                        ->success()
+                                        ->send();
+                                    
+                                } catch (\Throwable $th) {
+                                    Notification::make()
+                                        ->title('ERROR EN LA DESCARGA')
+                                        ->body($th->getMessage())
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('danger')
+                                        ->danger()
+                                        ->send();
+                                }
+                            })
+                            ->hidden(fn() => Auth::user()->is_business_admin != 1),
+
+            ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -1462,27 +1530,6 @@ class AffiliationsTable
                                     ->success()
                                     ->seconds(5)
                                     ->send();
-
-                                //Notificacion para Admin
-                                foreach ($records as $record) {
-                                    $recipient = User::where('is_admin', 1)->get();
-                                    foreach ($recipient as $user) {
-                                        $recipient_for_user = User::find($user->id);
-                                        Notification::make()
-                                            ->title('REGISTRO DE COMPROBANTE')
-                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
-                                            ->icon('heroicon-m-user-plus')
-                                            ->iconColor('success')
-                                            ->success()
-                                            ->actions([
-                                                Action::make('view')
-                                                    ->label('Ver detalle de pago')
-                                                    ->button()
-                                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
-                                            ])
-                                            ->sendToDatabase($recipient_for_user);
-                                    }
-                                }
                             }
                         })
                 ]),

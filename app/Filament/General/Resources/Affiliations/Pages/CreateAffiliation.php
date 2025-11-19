@@ -7,10 +7,12 @@ use App\Models\User;
 use App\Models\Affiliate;
 use Filament\Actions\Action;
 use App\Models\IndividualQuote;
+use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
 use App\Http\Controllers\PdfController;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use App\Http\Controllers\AffiliationController;
 use App\Filament\General\Resources\Affiliations\AffiliationResource;
 
 class CreateAffiliation extends CreateRecord
@@ -205,7 +207,8 @@ class CreateAffiliation extends CreateRecord
                  */
                 $data_titular = Affiliate::where('affiliation_id', $record->id)->where('relationship', 'TITULAR')->firstOrFail()->toArray();
 
-                $this->getRecord()->sendCertificate($record, $data_titular, $affiliates);
+                // $this->getRecord()->sendCertificate($record, $data_titular, $affiliates);
+                AffiliationController::generateCertificateIndividual($record, $affiliates, Auth::id());
 
 
                 /** 
@@ -312,6 +315,7 @@ class CreateAffiliation extends CreateRecord
                 $affiliate = Affiliate::where('affiliation_id', $record->id)->get()->toArray();
                 // dd($data_titular, $affiliate);
                 $this->getRecord()->sendCertificateOnlyHolder($record, $affiliate);
+                AffiliationController::generateCertificateIndividual($record, $affiliates, Auth::id());
 
                 /**
                  * Actualizo el numero de afiliados (poblacion)
