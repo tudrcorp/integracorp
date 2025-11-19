@@ -571,7 +571,6 @@ Route::get('/r4', function () {
     // Generar el Token de Autorización
     // $stringACifrar = $banco . $cedula . $telefono . $monto . $otp;
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
-    dd($tokenAuthorization);  
     // dd($tokenAuthorization);
 
     $headers = [
@@ -584,7 +583,7 @@ Route::get('/r4', function () {
         "docId"     => "V16007868",
         "nombre"    => "Gustavo Camacho",
         "cuenta"    => "01080249150100092535",
-        "monto"     => "1.33",
+        "monto"     => "2.00",
         "concepto"  => "Pago"
     ];
 
@@ -685,8 +684,8 @@ Route::get('/tel/r4', function () {
 
     // Logging de la respuesta de la API
     Log::info('Respuesta de la API de Domiciliaciones', $result);
+});
 
-    dd($result);
 Route::get('/generar-qr', function () {
     // 1. URL que queremos codificar en el QR
     $url = 'https://tudrgroup.com';
