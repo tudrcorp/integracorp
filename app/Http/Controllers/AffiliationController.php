@@ -5,12 +5,13 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Affiliate;
+use Filament\Actions\Action;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
 use Filament\Notifications\Notification;
-use Filament\Notifications\Actions\Action;
 use App\Filament\Agents\Resources\AffiliationResource;
 
 class AffiliationController extends Controller
@@ -849,6 +850,70 @@ class AffiliationController extends Controller
                 ->danger()
                 ->send();
             //throw $th;
+        }
+    }
+
+    public static function generateCertificateIndividual($record, $afiliates, $user)
+    {
+        try {
+
+            // ✅ Reconstruye el usuario dentro del job
+            $user = User::findOrFail($user);
+
+            $pagador = [
+                'name'                  => $record->full_name_payer,
+                'code'                  => $record->code,
+                'tarifa_anual'          => $record->fee_anual,
+                'plan'                  => $record->plan->description,
+                'plan_id'               => $record->plan_id,
+                'frecuencia_pago'       => $record->payment_frequency,
+                'cobertura'            => isset($record->coverage_id) ? $record->coverage->price : 0,
+                'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
+                'tarifa_periodo'        => $record->total_amount,
+            ];
+
+            //Validamos si la afiliacionn la realizo un agente o una agencia
+            if (isset($record->agent)) {
+                $pagador['agente_agencia'] = $record->agent->name;
+            } else {
+                $pagador['agente_agencia'] = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
+            }
+
+
+            //Nombre del PDF
+            $name_pdf = 'CER-' . $record->code . '.pdf';
+
+            //Beneficios asociados al plan
+            $beneficios = $record->plan->benefitPlans->toArray();
+            $beneficios_table = [];
+            for ($i = 0; $i < count($beneficios); $i++) {
+                $beneficios_table[$i] = $beneficios[$i]['description'];
+            }
+
+            ini_set('memory_limit', '2048M');
+            set_time_limit(120);
+
+            $pdf = Pdf::loadView('documents.certificate', compact('pagador', 'beneficios_table', 'afiliates'));
+            $pdf->save(public_path('storage/certificados-doc/' . $name_pdf));
+
+            Notification::make()
+                ->title('¡TAREA COMPLETADA!')
+                ->body('📎 ' . $name_pdf . ' ya se encuentra disponible para su descarga.')
+                ->success()
+                ->actions([
+                    Action::make('download')
+                        ->label('Descargar archivo')
+                        ->url('/storage/certificados-doc/' . $name_pdf)
+                ])
+                ->sendToDatabase($user);
+
+        } catch (\Throwable $th) {
+            dd($th);
+            Notification::make()
+                ->title('EXCEPTION')
+                ->body($th->getMessage())
+                ->danger()
+                ->send();
         }
     }
 }

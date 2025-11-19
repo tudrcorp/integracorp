@@ -317,7 +317,8 @@ Route::get('/rp', function () {
 
     // }
 
-    $pdf = Pdf::loadView('documents.aviso-de-pago');
+    $pdf = Pdf::loadView('pr');
+    // return view('pr');
     return $pdf->stream();
 
     // return view ('pr');
