@@ -11,11 +11,6 @@ class EditAgency extends EditRecord
 {
     protected static string $resource = AgencyResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+    protected static ?string $title = 'Formularios de edición de agencias';
+
 }
