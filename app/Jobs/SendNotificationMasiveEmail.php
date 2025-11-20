@@ -24,7 +24,6 @@ class SendNotificationMasiveEmail implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $record;
-    protected $user;
 
     /**
      * Número máximo de intentos.
@@ -43,10 +42,9 @@ class SendNotificationMasiveEmail implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($record, $user)
+    public function __construct($record)
     {
         $this->record = $record;
-        $this->user = $user;
         //
     }
 
@@ -56,18 +54,6 @@ class SendNotificationMasiveEmail implements ShouldQueue
     public function handle(): void
     {
         $this->sendNotifications();
-
-        $recipient = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
-        foreach ($recipient as $user) {
-            $recipient_for_user = User::find($user->id);
-            Notification::make()
-                ->title('¡TAREA COMPLETADA!')
-                ->body('La notificación masiva via email ha sido enviada correctamente.')
-                ->icon('heroicon-m-tag')
-                ->iconColor('success')
-                ->success()
-                ->sendToDatabase($recipient_for_user);
-        }
     }
 
     private function sendNotifications()
@@ -84,11 +70,5 @@ class SendNotificationMasiveEmail implements ShouldQueue
     {
         Log::info("SendEmailPropuestaEconomicaMultiple: FAILED");
         Log::error($exception->getMessage());
-
-        Notification::make()
-            ->title('¡TAREA NO COMPLETADA!')
-            ->body('Hubo un error enviando la notificación masiva. Por favor, intente nuevamente.')
-            ->danger()
-            ->sendToDatabase($this->user);
     }
 }

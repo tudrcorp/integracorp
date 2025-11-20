@@ -23,17 +23,17 @@ class SendNotificationMasive implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $record;
-    protected $user;
 
     public $tries = 1;
+
+    public int $timeout = 600;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($record, $user) 
+    public function __construct($record) 
     {
         $this->record = $record;
-        $this->user = $user;
         //
     }
 
@@ -44,18 +44,6 @@ class SendNotificationMasive implements ShouldQueue
     public function handle(): void
     {
         $this->sendNotifications();
-
-        $recipient = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
-        foreach ($recipient as $user) {
-            $recipient_for_user = User::find($user->id);
-            Notification::make()
-                ->title('¡TAREA COMPLETADA!')
-                ->body('La notificación masiva via WhatsApp ha sido enviada correctamente.')
-                ->icon('heroicon-m-tag')
-                ->iconColor('success')
-                ->success()
-                ->sendToDatabase($recipient_for_user);
-        }
     }
 
     private function sendNotifications()
@@ -72,11 +60,5 @@ class SendNotificationMasive implements ShouldQueue
     {
         Log::info("SendEmailPropuestaEconomicaMultiple: FAILED");
         Log::error($exception->getMessage());
-
-        Notification::make()
-            ->title('¡TAREA NO COMPLETADA!')
-            ->body('Hubo un error enviando la notificación masiva. Por favor, intente nuevamente.')
-            ->danger()
-            ->sendToDatabase($this->user);
     }
 }

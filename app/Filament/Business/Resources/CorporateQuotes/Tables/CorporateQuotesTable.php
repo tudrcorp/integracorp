@@ -73,7 +73,8 @@ class CorporateQuotesTable
                             '-----' => 'info',
                             default => 'success',
                         };
-                    }),
+                    })
+                    ->hidden(fn() => ! Auth::user()->is_business_admin),
                 TextColumn::make('agent.name')
                     ->label('Agente')
                     ->badge()

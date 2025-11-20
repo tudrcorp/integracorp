@@ -14,6 +14,7 @@ use App\Models\AgentDocument;
 use Filament\Facades\Filament;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\CheckAffiliation;
+use App\Models\DataNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\BirthdayNotification;
@@ -782,4 +783,4 @@ Route::get('/tel/r4', function () {
 
         Log::info($resultOperacion);
     }
-});
+})
