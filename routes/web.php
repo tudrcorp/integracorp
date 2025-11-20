@@ -637,9 +637,11 @@ Route::get('/r4', function () {
     Log::info($result['codigo']);
 
     if($result['codigo'] == '202'){
+        
         Log::info($result['codigo']);
+        
         $uuid = $result['uuid'];
-        $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
+        $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
 
         $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
 
