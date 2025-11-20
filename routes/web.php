@@ -635,7 +635,7 @@ Route::get('/r4', function () {
     // Logging de la respuesta de la API
     Log::info($cuenta);
     Log::info($commerceToken);
-    Log::info($result);
+    Log::info($url);
     Log::info($tokenAuthorization);
     Log::info($headers);
     Log::info(json_encode($postData));
