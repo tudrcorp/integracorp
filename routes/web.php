@@ -580,15 +580,6 @@ Route::get('/r4', function () {
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
 
 
-    $longitud = strlen($cuenta);
-    // dd($longitud);
-    $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
-    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
-    // Generar el Token de Autorización
-    // $stringACifrar = $banco . $cedula . $telefono . $monto . $otp;
-    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
-
-
     $headers = [
         'Content-Type: application/json',
         'Authorization: ' . $tokenAuthorization,
@@ -621,6 +612,7 @@ Route::get('/r4', function () {
         throw new \Exception('Error en cURL: ' . curl_error($curl));
     }
 
+    //Convierto el JSON to Array
     $result = json_decode($response, true);
 
     if ($result === null) {
@@ -642,13 +634,11 @@ Route::get('/r4', function () {
 
     Log::info('Respuesta de la API de Domiciliaciones', $result);
 
-    $res = json_decode($result, true);
+    Log::info($result['codigo']);
 
-    Log::info($res['codigo']);
-
-    if($res['codigo'] == '202'){
+    if($result['codigo'] == '202'){
         Log::info('Respuesta de la API de Domiciliaciones', $result['codigo']);
-        $uuid = $res['uuid'];
+        $uuid = $result['uuid'];
         $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
 
         $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
@@ -674,13 +664,13 @@ Route::get('/r4', function () {
             CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
         ]);
 
-        $response = curl_exec($curl);
+        $responseOperacion = curl_exec($curl);
 
         if (curl_errno($curl)) {
             throw new \Exception('Error en cURL: ' . curl_error($curl));
         }
 
-        $resultOperacion = json_decode($response, true);
+        $resultOperacion = json_decode($responseOperacion, true);
 
         if ($result === null) {
             throw new \Exception('Respuesta de la API inválida');
