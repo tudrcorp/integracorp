@@ -633,6 +633,13 @@ Route::get('/r4', function () {
     // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
 
     // Logging de la respuesta de la API
+    Log::info('Cuenta: ', $cuenta);
+    Log::info('commerceToken: ', $commerceToken);
+    Log::info('URL: ', $result);
+    Log::info('tokenAuthorization:', $$tokenAuthorization);
+    Log::info('Headers: ', $headers);
+    Log::info('PostData: ', json_encode($postData));
+
     Log::info('Respuesta de la API de Domiciliaciones', $result);
 
 });
