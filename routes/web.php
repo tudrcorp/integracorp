@@ -575,9 +575,10 @@ Route::get('/generar-qr', function () {
 Route::get('/r4', function () {
 
     $cuenta = '01080249150100092535';
+    $cuentaVZLA = '01020401130000350268';
     $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
-    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
+    $tokenAuthorization = hash_hmac('sha256', $cuentaVZLA, $commerceToken);
 
 
     $headers = [
@@ -587,9 +588,9 @@ Route::get('/r4', function () {
     ];
 
     $postData = [
-        "docId"     => "V16007868",
-        "nombre"    => "Gustavo Camacho",
-        "cuenta"    => "01080249150100092535",
+        "docId"     => "V29949869",
+        "nombre"    => "Anthony Aular",
+        "cuenta"    => "01020401130000350268",
         "monto"     => "2.00",
         "concepto"  => "Pago"
     ];
