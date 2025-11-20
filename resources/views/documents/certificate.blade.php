@@ -418,12 +418,12 @@
 
 
         <div style="position: absolute; top: 930px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
-            <img src="{{ public_path('storage/certificados/firma-Hsanchez.png') }}" style="width: 150px; height: 70px;" alt="">
+            <img src="{{ public_path('storage/certificados/firmaHC-Certificados.png') }}" style="width: 180px; height: 70px;" alt="">
         </div>
 
 
         <!-- Firma Humberto Sanchez -->
-        <div style="position: absolute; top: 970px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
+        {{-- <div style="position: absolute; top: 970px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
             <div style="text-align: center;">
                 <p class="sin-margen" style="font-size: 30px; line-height: 12px;">
                     <span style="
@@ -437,7 +437,7 @@
                     </span>
                 </p>
 
-            </div>
+            </div> --}}
         </div>
 
 
