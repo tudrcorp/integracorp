@@ -642,6 +642,55 @@ Route::get('/r4', function () {
 
     Log::info('Respuesta de la API de Domiciliaciones', $result);
 
+    $res = json_decode($result, true);
+
+    Log::info($res['codigo']);
+
+    if($res['codigo'] == '202'){
+        Log::info('Respuesta de la API de Domiciliaciones', $result['codigo']);
+        $uuid = $res['uuid'];
+        $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
+
+        $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
+
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: ' . $tokenAuthorization,
+            'Commerce: ' . $commerceToken,
+        ];
+
+        $id = [
+            "id"     => $uuid,
+        ];
+
+        $curl = curl_init($url);
+
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => json_encode($id),
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+        ]);
+
+        $response = curl_exec($curl);
+
+        if (curl_errno($curl)) {
+            throw new \Exception('Error en cURL: ' . curl_error($curl));
+        }
+
+        $resultOperacion = json_decode($response, true);
+
+        if ($result === null) {
+            throw new \Exception('Respuesta de la API inválida');
+        }
+
+        curl_close($curl);
+
+        Log::info('Respuesta de la Consulta de Operaciones', $resultOperacion);
+    }
+
 });
 
 Route::get('/tel/r4', function () {
