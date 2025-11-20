@@ -579,9 +579,7 @@ Route::get('/r4', function () {
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
 
-    $res = 'ee4e397a502c5e1a4927c056c4e08a7be63c246a7e87352290f06fc99799ae66';
 
-    //Logica para restriccion de 20 caracteres para el numero de cuenta
     $longitud = strlen($cuenta);
     // dd($longitud);
     $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
@@ -589,7 +587,7 @@ Route::get('/r4', function () {
     // Generar el Token de Autorización
     // $stringACifrar = $banco . $cedula . $telefono . $monto . $otp;
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
-    dd($tokenAuthorization);
+
 
     $headers = [
         'Content-Type: application/json',
@@ -604,8 +602,7 @@ Route::get('/r4', function () {
         "monto"     => "2.00",
         "concepto"  => "Pago"
     ];
-    dd(json_encode($postData));
-    // dd(json_encode($postData));
+
 
     $curl = curl_init($url);
 
@@ -638,7 +635,6 @@ Route::get('/r4', function () {
     // Logging de la respuesta de la API
     Log::info('Respuesta de la API de Domiciliaciones', $result);
 
-    dd($result);
 });
 
 Route::get('/tel/r4', function () {
@@ -651,7 +647,7 @@ Route::get('/tel/r4', function () {
     // Generar el Token de Autorización
     // $stringACifrar = $banco . $cedula . $telefono . $monto . $otp;
     $tokenAuthorization = hash_hmac('sha256', $telefono, $commerceToken);
-
+    dd($tokenAuthorization);
 
     $headers = [
         'Content-Type: application/json',
