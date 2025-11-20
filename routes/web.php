@@ -688,14 +688,10 @@ Route::get('/r4', function () {
 Route::get('/tel/r4', function () {
 
     $telefono = '04127018390';
-
-    // dd($longitud);
     $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
-    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCELE';
-    // Generar el Token de Autorización
-    // $stringACifrar = $banco . $cedula . $telefono . $monto . $otp;
+    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $telefono, $commerceToken);
-    dd($tokenAuthorization);
+
 
     $headers = [
         'Content-Type: application/json',
@@ -737,5 +733,52 @@ Route::get('/tel/r4', function () {
 
     curl_close($curl);
 
-    Log::info('Respuesta de la API de Domiciliaciones', $result);
+    Log::info($result);
+
+    if ($result['codigo'] == '202') {
+
+        Log::info($result['codigo']);
+
+        $uuid = $result['uuid'];
+        $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
+
+        $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
+
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: ' . $tokenAuthorization,
+            'Commerce: ' . $commerceToken,
+        ];
+
+        $id = [
+            "id"     => $uuid,
+        ];
+
+        $curl = curl_init($url);
+
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => json_encode($id),
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+        ]);
+
+        $responseOperacion = curl_exec($curl);
+
+        if (curl_errno($curl)) {
+            throw new \Exception('Error en cURL: ' . curl_error($curl));
+        }
+
+        $resultOperacion = json_decode($responseOperacion, true);
+
+        if ($result === null) {
+            throw new \Exception('Respuesta de la API inválida');
+        }
+
+        curl_close($curl);
+
+        Log::info($resultOperacion);
+    }
 });
