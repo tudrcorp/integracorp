@@ -341,7 +341,7 @@
                     font-family: 'Helvetica', Century, sans-serif; 
                     text-transform: uppercase;
                 ">
-                    BENEFICIARIOS DEL PLAN SELECCIONADO
+                    BENEFICIOS DEL PLAN SELECCIONADO
                 </span>
             </p>
 
@@ -360,7 +360,7 @@
                 <table style="
                             width: 600px;
                             border-collapse: collapse;
-                            font-size: 10px;
+                            font-size: 9px;
                             font-style: sans-serif;
                             font-family: 'Helvetica', Century, sans-serif;
                         ">
@@ -384,7 +384,7 @@
                                         padding: 8px;
                                         text-align: right; 
                                         /* Aplicamos el color y tamaño de fuente para simular el ícono */
-                                        font-size: 10px; 
+                                        font-size: 9px; 
                                         font-weight: bold;
                                     ">
                                 @if($fila == "EMERGENCIAS MÉDICAS POR PATOLOGIAS LISTADAS")
@@ -399,7 +399,7 @@
                         @endforeach
                         @if($pagador['plan_id'] == 3)
                             <tr>
-                                <td colspan="2" style="font-size: 9px;
+                                <td colspan="2" style="font-size: 8px;
                                                     text-align: justify; 
                                                     padding: 2px; 
                                                     font-style: sans-serif;
