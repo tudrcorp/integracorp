@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use Filament\Panel;
+use App\Models\Agency;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
@@ -46,6 +47,10 @@ class GeneralPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
+            ->sidebarCollapsibleOnDesktop()
+            ->topNavigation(function () {
+                return Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu;
+            })
             ->colors([
                 'primary' => '#063467',
                 'info' => '#58C0DB',

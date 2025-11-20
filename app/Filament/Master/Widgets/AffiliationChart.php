@@ -3,6 +3,7 @@
 namespace App\Filament\Master\Widgets;
 
 use Carbon\Carbon;
+use App\Models\Agency;
 use Flowframe\Trend\Trend;
 use App\Models\Affiliation;
 use Flowframe\Trend\TrendValue;
@@ -129,6 +130,6 @@ class AffiliationChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'bar';
+        return Agency::where('code', Auth::user()->code_agency)->first()->type_chart;
     }
 }

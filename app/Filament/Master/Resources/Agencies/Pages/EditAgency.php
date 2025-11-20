@@ -10,6 +10,7 @@ use Filament\Support\Enums\Width;
 use Filament\Actions\DeleteAction;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -21,11 +22,44 @@ class EditAgency extends EditRecord
 {
     protected static string $resource = AgencyResource::class;
 
-    protected static ?string $title = 'Perfil de Agencia';
+    protected static ?string $title = 'Perfil de la Agencia';
 
     protected function getHeaderActions(): array
     {
         return [
+
+            Action::make('preferences_grafic')
+                ->label('Preferencias de Gráficos')
+                ->icon('fontisto-bar-chart')
+                ->color('verde')
+                ->modalHeading('Preferencias de Gráficos')
+                ->modalIcon('fontisto-bar-chart')
+                ->modalWidth(Width::ExtraLarge)
+                ->form([
+                    Fieldset::make('Tipo de Gráficos')
+                        ->schema([
+                            Select::make('value')
+                                ->label('Selecciona el tipo de Gráfico')
+                                ->helperText('Por default se muestran los gráficos tipo barras.')
+                                ->options([
+                                    'bar'   => 'Barras',
+                                    'line'  => 'Lineas',
+                                ])
+                                ->default(fn() => Agency::where('code', Auth::user()->code_agency)->first()->type_chart),
+
+                        ])->columns(1),
+                ])
+                ->action(function (array $data, Component $livewire) {
+
+                    $user = Agency::where('code', Auth::user()->code_agency)->first();
+
+                    if (isset($user)) {
+                        $user->type_chart = $data['value'];
+                        $user->save();
+
+                        return redirect()->route('filament.master.pages.dashboard');
+                    }
+                }),
             
             Action::make('preferences_menu')
                 ->label('Preferencias de Menú')
@@ -60,12 +94,7 @@ class EditAgency extends EditRecord
                         return redirect('/master');
                     }
                 }),
-            // Action::make('regresar')
-            //     ->label('Regresar')
-            //     ->button()
-            //     ->icon('heroicon-s-arrow-left')
-            //     ->color('gray')
-            //     ->url(IndividualQuoteResource::getUrl('index')),
+                
             Action::make('back')
                 ->label('Dashboard')
                 ->icon(Heroicon::Home)

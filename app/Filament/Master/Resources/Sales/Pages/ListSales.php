@@ -12,10 +12,4 @@ class ListSales extends ListRecords
 
     protected static ?string $title = 'Ventas';
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            // CreateAction::make(),
-        ];
-    }
 }
