@@ -632,12 +632,12 @@ Route::get('/r4', function () {
     Log::info($headers);
     Log::info(json_encode($postData));
 
-    Log::info('Respuesta de la API de Domiciliaciones', $result);
+    Log::info($result);
 
     Log::info($result['codigo']);
 
     if($result['codigo'] == '202'){
-        Log::info('Respuesta de la API de Domiciliaciones', $result['codigo']);
+        Log::info($result['codigo']);
         $uuid = $result['uuid'];
         $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
 
@@ -678,7 +678,7 @@ Route::get('/r4', function () {
 
         curl_close($curl);
 
-        Log::info('Respuesta de la Consulta de Operaciones', $resultOperacion);
+        Log::info($resultOperacion);
     }
 
 });
