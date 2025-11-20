@@ -11,11 +11,6 @@ class EditAgent extends EditRecord
 {
     protected static string $resource = AgentResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+    protected static ?string $title = 'Formularios de edición de agentes';
+
 }

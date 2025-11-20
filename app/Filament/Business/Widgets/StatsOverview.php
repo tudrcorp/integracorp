@@ -13,9 +13,9 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 class StatsOverview extends StatsOverviewWidget
 {
 
-    protected ?string $heading = 'Totales de Ejecución de Serviciossssss';
+    protected ?string $heading = 'Totales de Ejecución de Servicios';
 
-    protected ?string $description = 'Totales de cotizaciones y afiliaciones en tiempo real.';
+    protected ?string $description = 'Vista consolidada del desempeño estratégico.';
 
     
     protected function getStats(): array
