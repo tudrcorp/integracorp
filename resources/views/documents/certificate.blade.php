@@ -259,7 +259,7 @@
                             width: 600px;
                             border-collapse: collapse;
                             font-family: Arial, sans-serif;
-                            font-size: 12PX;
+                            font-size: 12px;
                             margin: -20px auto;
                         ">
 
