@@ -14,7 +14,7 @@ class CreateCorporateQuoteRequest extends CreateRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'Cotización Corporativa DRESS-TAYLOR';
+    protected static ?string $title = 'Cotización Corporativa DRESS-TAYLOR (a la medida)';
 
     protected function getFormActions(): array
     {

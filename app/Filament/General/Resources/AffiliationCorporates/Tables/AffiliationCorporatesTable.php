@@ -98,31 +98,6 @@ class AffiliationCorporatesTable
                         ->searchable(),
                 ]),
 
-                TextColumn::make('rif')
-                    ->label('Rif')
-                    ->prefix('J-')
-                    ->badge()
-                    ->color('verde')
-                    ->searchable(),
-                TextColumn::make('email')
-                    ->label('Email contratante')
-                    ->searchable(),
-                TextColumn::make('phone')
-                    ->label('Telefono contratante')
-                    ->searchable(),
-                TextColumn::make('address')
-                    ->searchable(),
-                TextColumn::make('city.definition')
-                    ->searchable(),
-                TextColumn::make('state.definition')
-                    ->searchable(),
-                TextColumn::make('country.name')
-                    ->searchable(),
-                //...
-                TextColumn::make('created_by')
-                    ->label('Creado por')
-                    ->searchable(),
-
                 TextColumn::make('activated_at')
                     ->label('Fecha de Emisión')
                     ->color('warning')

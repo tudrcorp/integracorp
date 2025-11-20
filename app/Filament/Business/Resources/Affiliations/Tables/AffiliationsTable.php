@@ -1027,8 +1027,7 @@ class AffiliationsTable
                                         ->danger()
                                         ->send();
                                 }
-                            })
-                            ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                            }),
 
                         /**REGENERAR CERTIFICADO PDF */
                         Action::make('regenerate')

@@ -22,7 +22,7 @@ class ListAgents extends ListRecords
 {
     protected static string $resource = AgentResource::class;
 
-    protected static ?string $title = 'Table de cotizaciones individuales';
+    protected static ?string $title = 'Estructura Comercial';
 
     protected function getHeaderActions(): array
     {

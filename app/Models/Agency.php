@@ -87,6 +87,7 @@ class Agency extends Model
         'brithday_date',
 
         'activate_monthly_frequency',
+        'type_chart',
 
 
     ];

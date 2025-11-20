@@ -57,14 +57,18 @@ class BusinessPanelProvider extends PanelProvider
                     ->label('ESTRUCTURA COMERCIAL')
                     ->icon('heroicon-o-building-office-2'),
                 NavigationGroup::make()
-                    ->label('SOLICITUDES')
-                    ->icon('heroicon-o-square-3-stack-3d'),
-                NavigationGroup::make()
                     ->label('COTIZACIONES')
                     ->icon('heroicon-o-currency-dollar'),
                 NavigationGroup::make()
                     ->label('AFILIACIONES')
                     ->icon('heroicon-o-identification'),
+                NavigationGroup::make()
+                    ->label('SOLICITUDES')
+                    ->icon('heroicon-o-square-3-stack-3d'),
+                NavigationGroup::make()
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-o-cloud-arrow-down'),
+                
 
             ])
             ->sidebarCollapsibleOnDesktop()

@@ -13,7 +13,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 class StatsOverview extends StatsOverviewWidget
 {
 
-    protected ?string $heading = 'Totales de Ejecución de Servicios';
+    protected ?string $heading = 'Dashboard de Indicadores de gestión';
 
     protected ?string $description = 'Vista consolidada del desempeño estratégico.';
 

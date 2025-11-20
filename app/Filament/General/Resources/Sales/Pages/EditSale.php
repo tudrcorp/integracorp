@@ -11,11 +11,4 @@ class EditSale extends EditRecord
 {
     protected static string $resource = SaleResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
 }
