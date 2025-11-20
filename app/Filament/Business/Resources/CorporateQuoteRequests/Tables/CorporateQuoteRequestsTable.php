@@ -59,7 +59,14 @@ class CorporateQuoteRequestsTable
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
-                    ->color('warning'),
+                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            '-----' => 'info',
+                            default => 'success',
+                        };
+                    })
+                    ->hidden(fn() => ! Auth::user()->is_business_admin),
                 TextColumn::make('agent_id')
                     ->label('Registrado por:')
                     ->prefix('AGT-000')

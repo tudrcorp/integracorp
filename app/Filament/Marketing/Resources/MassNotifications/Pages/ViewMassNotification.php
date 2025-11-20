@@ -119,19 +119,17 @@ class ViewMassNotification extends ViewRecord
                     return $record->status == 'POR-APROBAR';
                 })
                 ->action(function ($record) {
-
+                    
                     try {
-
-                        $users = User::where('is_designer', 1)->where('departament', 'MARKETING')->get();
 
                         $array_channels = $record->channels;
 
                         for ($i = 0; $i < count($array_channels); $i++) {
                             if ($array_channels[$i] == 'whatsapp') {
-                                SendNotificationMasive::dispatch($record, $users)->onQueue('system');
+                                SendNotificationMasive::dispatch($record)->onQueue('system');
                             }
                             if ($array_channels[$i] == 'email') {
-                                SendNotificationMasiveEmail::dispatch($record, $users)->onQueue('system');
+                                SendNotificationMasiveEmail::dispatch($record)->onQueue('system');
                             }
                         }
 
@@ -139,6 +137,7 @@ class ViewMassNotification extends ViewRecord
                             ->body('La notificación fue enviada exitosamente. Integracorp le notificara cuando el proceso finalice.')
                             ->success()
                             ->send();
+                            
                     } catch (\Throwable $th) {
                         Log::error($th);
                     }

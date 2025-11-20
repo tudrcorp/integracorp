@@ -81,7 +81,8 @@ class AffiliationsTable
                             '-----' => 'info',
                             default => 'success',
                         };
-                    }),
+                    })
+                    ->hidden(fn() => ! Auth::user()->is_business_admin),
                 TextColumn::make('agency.name_corporative')
                     ->label('CO-Agencia')
                     ->badge()

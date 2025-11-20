@@ -76,6 +76,18 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
+                TextColumn::make('accountManager.name')
+                    ->label('Account Manager')
+                    ->icon('heroicon-o-shield-check')
+                    ->badge()
+                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            '-----' => 'info',
+                            default => 'success',
+                        };
+                    })
+                    ->hidden(fn() => ! Auth::user()->is_business_admin),
 
                 //...  
                 ColumnGroup::make('Plan Afiliado', [
