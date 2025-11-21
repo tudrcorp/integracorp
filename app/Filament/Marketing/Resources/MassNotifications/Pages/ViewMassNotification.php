@@ -121,7 +121,7 @@ class ViewMassNotification extends ViewRecord
                 ->action(function ($record) {
                     
                     try {
-
+                        // dd($record);
                         $array_channels = $record->channels;
 
                         for ($i = 0; $i < count($array_channels); $i++) {

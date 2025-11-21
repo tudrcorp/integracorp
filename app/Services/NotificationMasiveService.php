@@ -27,7 +27,7 @@ class NotificationMasiveService
      */
     static function send($record)
     {
-
+        
         try {
 
             set_time_limit(0);
@@ -38,18 +38,10 @@ class NotificationMasiveService
             ->where('mass_notification_id', $record->id)
             ->chunk(50, function ($items, $record) {
                 foreach ($items as $item) {
-                    // Process each record in the chunk
-                    if ($record->header_title == null) {
-                        $header = '';
-                    }
-    
-                    if ($record->header_title != null) {
-                        $header = $record->header_title . ' ' . $item->fullName;
-                    }
     
                     $body = <<<HTML
         
-                    *{$header}* 
+                    *Apreciado/a* 
     
                     {$record->content}
     
