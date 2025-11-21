@@ -257,7 +257,7 @@ class AgentsTable
             ->recordActions([
                 ActionGroup::make([
                     Action::make('Activate')
-                        ->label('ACTIVAR AGENTE')
+                        ->label('Activar')
                         ->action(function (Agent $record) {
 
                             try {
@@ -313,7 +313,8 @@ class AgentsTable
                         })
                         ->icon('heroicon-s-check-circle')
                         ->color('success')
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->hidden(fn (Agent $record): bool => $record->status == 'ACTIVO'),
                     Action::make('edit_jerarquia')
                         ->requiresConfirmation()
                         ->label('Editar Jerarquía')
@@ -629,6 +630,7 @@ class AgentsTable
                         })
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
                     Action::make('Inactivate')
+                        ->label('Inactivar')
                         ->requiresConfirmation()
                         ->action(fn(Agent $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
@@ -636,6 +638,7 @@ class AgentsTable
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
                     DeleteAction::make()
                         ->color('danger')
+                        ->label('Eliminar')
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
             ])

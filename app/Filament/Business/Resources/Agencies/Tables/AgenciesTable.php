@@ -8,15 +8,20 @@ use App\Models\Agent;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use Filament\Tables\Table;
+use App\Models\Affiliation;
 use Filament\Actions\Action;
+use App\Models\CorporateQuote;
+use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
 use Filament\Support\Enums\Width;
+use Filament\Actions\DeleteAction;
 use Illuminate\Support\Collection;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Support\Facades\Log;
+use App\Models\AffiliationCorporate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
@@ -26,6 +31,7 @@ use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
@@ -241,7 +247,7 @@ class AgenciesTable
             ->recordActions([
                 ActionGroup::make([
                     Action::make('Activate')
-                        ->label('ACTIVAR AGENCIA')
+                        ->label('Activar')
                         ->action(function (Agency $record) {
 
                             try {
@@ -295,12 +301,86 @@ class AgenciesTable
                         })
                         ->icon('heroicon-s-check-circle')
                         ->color('success')
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->hidden(fn(Agency $record) => $record->status == 'ACTIVO'),
+                Action::make('edit_jerarquia')
+                    ->requiresConfirmation()
+                    ->label('Editar Jerarquía')
+                    ->icon('heroicon-s-cog')
+                    ->color('warning')
+                    ->modalWidth(Width::ThreeExtraLarge)
+                    ->action(function (Agency $record) {
+                        
+                        try {
+
+                            //1. Busco la informacion del agente en la tabla de usuario para actualizar la informacion
+                            // para que el agente acceda con el mismo usuario como agencia master
+                            $user = User::where('email', $record->email)->first()->update([
+                                'agency_type' => 'MASTER',
+                            ]);
+
+                            //2. Busco en la tabla de COTIZACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                            // para migrar la informacion del agente a la agencia master
+                            $individualQuote = IndividualQuote::where('code_agency', $record->code)->get();
+                            foreach ($individualQuote as $quote) {
+                                $quote->owner_code  = $record->code;
+                                $quote->save();
+                            }
+
+                            //3. Busco en la tabla de COTIZACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                            // para migrar la informacion del agente a la agencia master
+                            $corporateQuote = CorporateQuote::where('code_agency', $record->code)->get();
+                            foreach ($corporateQuote as $corpquote) {
+                                $corpquote->owner_code  = $record->code;
+                                $corpquote->save();
+                            }
+
+                            //4. Busco en la tabla de AFILIACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                            // para migrar la informacion del agente a la agencia master
+                            $afiliacionIndividual = Affiliation::where('code_agency', $record->code)->get();
+                            foreach ($afiliacionIndividual as $afiInvidual) {
+                                $afiInvidual->owner_code  = $record->code;
+                                $afiInvidual->save();
+                            }
+
+                            //5. Busco en la tabla de AFILIACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                            // para migrar la informacion del agente a la agencia master
+                            $afiliacionCorporativa = AffiliationCorporate::where('code_agency', $record->code)->get();
+                            foreach ($afiliacionCorporativa as $corp) {
+                                $corp->owner_code  = $record->code;
+                                $corp->save();
+                            }
+
+
+                            Notification::make()
+                                ->title('ASCENSO EXITOSO')
+                                ->icon('heroicon-s-check-circle')
+                                ->iconColor('success')
+                                ->color('success')
+                                ->send();
+                                
+                        } catch (\Throwable $th) {
+
+                            Notification::make()
+                                ->title('EXCEPCION')
+                                ->body($th->getMessage())
+                                ->icon('heroicon-s-x-circle')
+                                ->iconColor('error')
+                                ->color('error')
+                                ->send();
+                        }
+                    })
+                    ->hidden(fn() => Auth::user()->is_business_admin != 1),
                     Action::make('Inactivate')
+                        ->label('Inactivar')
                         ->action(fn(Agency $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                    DeleteAction::make()
+                        ->color('danger')
+                        ->label('Eliminar')
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
