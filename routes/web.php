@@ -783,4 +783,4 @@ Route::get('/tel/r4', function () {
 
         Log::info($resultOperacion);
     }
-})
+});
