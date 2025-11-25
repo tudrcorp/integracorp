@@ -119,14 +119,14 @@ class ViewMassNotification extends ViewRecord
                     return $record->status == 'POR-APROBAR';
                 })
                 ->action(function ($record) {
-                    
+
                     try {
-                        // dd($record);
+                        $recordID = $record->id;
                         $array_channels = $record->channels;
 
                         for ($i = 0; $i < count($array_channels); $i++) {
                             if ($array_channels[$i] == 'whatsapp') {
-                                SendNotificationMasive::dispatch($record)->onQueue('system');
+                                SendNotificationMasive::dispatch($recordID)->onQueue('system');
                             }
                             if ($array_channels[$i] == 'email') {
                                 SendNotificationMasiveEmail::dispatch($record)->onQueue('system');

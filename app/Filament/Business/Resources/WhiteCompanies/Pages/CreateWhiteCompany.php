@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Business\Resources\WhiteCompanies\WhiteCompanyResource;
+use App\Models\Configuration;
 
 class CreateWhiteCompany extends CreateRecord
 {
@@ -52,7 +53,17 @@ class CreateWhiteCompany extends CreateRecord
             $user->code_agency           = $this->data['code_agency'];
             $user->agency_type           = $this->data['agency_type'];
             $user->is_whiteCompanyAdmin  = $this->data['is_whiteCompanyAdmin'];
+            $user->white_company_id      = $this->getRecord()->id;
+            $user->status                = 'ACTIVO';
             $user->save();
+
+            //3.- Registro la configuracion predefinida para la nueva empresa blanca
+            $new_white_company_config = new Configuration();
+            $new_white_company_config->white_company_id     = $this->getRecord()->id;
+            $new_white_company_config->white_company_name   = $this->data['name'];
+            $new_white_company_config->email                = $this->data['email'];
+            $new_white_company_config->rif                  = $this->data['rif'];
+            $new_white_company_config->save();
 
             
         } catch (\Throwable $th) {
