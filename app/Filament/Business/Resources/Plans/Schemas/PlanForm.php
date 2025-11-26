@@ -166,9 +166,7 @@ class PlanForm
                                 TableColumn::make('Tarifa Anual'),
                             ])
                             ->schema([
-                                TextInput::make('price_coverages')
-                                    ->numeric()
-                                    ->required(),
+                                TextInput::make('price_coverages'),
                                 TextInput::make('price_fees')
                                     ->numeric()
                                     ->required(),

@@ -6,6 +6,7 @@ use Throwable;
 use App\Models\User;
 use Filament\Actions\Action;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\MassNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Queue\SerializesModels;
@@ -22,18 +23,18 @@ class SendNotificationMasive implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $record;
+    protected $recordID;
 
-    public $tries = 1;
+    public $tries = 5;
 
-    public int $timeout = 600;
+    public int $timeout = 960; // 16 minutes
 
     /**
      * Create a new job instance.
      */
-    public function __construct($record) 
+    public function __construct($recordID) 
     {
-        $this->record = $record;
+        $this->recordID = $recordID;
         //
     }
 
@@ -43,13 +44,28 @@ class SendNotificationMasive implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->sendNotifications();
+        try {
+            
+            $this->sendNotifications($this->recordID);
+            
+        } catch (Throwable $e) {
+            Log::error($e->getMessage());
+        }
     }
 
-    private function sendNotifications()
+    private function sendNotifications($id)
     {
-        $masiveNotification = new NotificationMasiveService();
-        $masiveNotification->send($this->record);
+        try {
+
+            $record = MassNotification::findOrFail($id);
+            
+            $masiveNotification = new NotificationMasiveService();
+            $masiveNotification->send($record);
+            
+        } catch (Throwable $e) {
+            Log::error($e->getMessage());
+        }
+
     }
 
     /**
@@ -58,7 +74,7 @@ class SendNotificationMasive implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info("SendEmailPropuestaEconomicaMultiple: FAILED");
+        Log::info("SendNotificationMasive: FAILED");
         Log::error($exception->getMessage());
     }
 }
