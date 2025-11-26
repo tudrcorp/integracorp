@@ -2,11 +2,12 @@
 
 namespace App\Filament\Business\Resources\WhiteCompanies\Tables;
 
+use Filament\Tables\Table;
+use Filament\Actions\EditAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
+use Filament\Tables\Columns\ImageColumn;
 
 class WhiteCompaniesTable
 {
@@ -14,33 +15,28 @@ class WhiteCompaniesTable
     {
         return $table
             ->columns([
-                TextColumn::make('name')
+                ImageColumn::make('logo')
+                    ->imageWidth(100)
+                    ->imageHeight('auto')
+                    ->label('Logotipo')
                     ->searchable(),
-                TextColumn::make('logo')
+                TextColumn::make('name')
+                    ->label('Nombre/Razón Social')
                     ->searchable(),
                 TextColumn::make('rif')
+                    ->label('RIF')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
+                    ->sortable()
+                    ->label('Correo Electrónico')
                     ->searchable(),
                 TextColumn::make('phone')
+                    ->label('Teléfono')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('address')
+                    ->label('Dirección')
                     ->searchable(),
-                TextColumn::make('city_id')
-                    ->searchable(),
-                TextColumn::make('state_id')
-                    ->searchable(),
-                TextColumn::make('country_id')
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //

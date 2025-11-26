@@ -27,6 +27,8 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\Crypt;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportBulkAction;
+use App\Filament\Exports\AgentExporter;
 use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -643,100 +645,101 @@ class AgentsTable
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
             ])
             ->toolbarActions([
-            BulkActionGroup::make([
-                BulkAction::make('assignAccountManager')
-                    ->label('Asignar Coordinador')
-                    ->icon('heroicon-s-user')
-                    ->color('success')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->form([
-                        Fieldset::make('Asignación masiva de coordinadores')
-                            ->schema([
-                                Select::make('ownerAccountManagers')
-                                    ->options(User::where('is_accountManagers', true)->where('status', 'ACTIVO')->pluck('name', 'id'))
-                                    ->searchable()
-                                    ->preload()
-                                    ->required(),
-                            ])->columnSpanFull()->columns(1),
-                    ])
-                    ->action(function (Collection $records, array $data) {
+                BulkActionGroup::make([
+                    BulkAction::make('assignAccountManager')
+                        ->label('Asignar Coordinador')
+                        ->icon('heroicon-s-user')
+                        ->color('success')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Fieldset::make('Asignación masiva de coordinadores')
+                                ->schema([
+                                    Select::make('ownerAccountManagers')
+                                        ->options(User::where('is_accountManagers', true)->where('status', 'ACTIVO')->pluck('name', 'id'))
+                                        ->searchable()
+                                        ->preload()
+                                        ->required(),
+                                ])->columnSpanFull()->columns(1),
+                        ])
+                        ->action(function (Collection $records, array $data) {
 
-                        $records = $records->toArray();
+                            $records = $records->toArray();
 
-                        try {
+                            try {
 
-                            for ($i = 0; $i < count($records); $i++) {
+                                for ($i = 0; $i < count($records); $i++) {
 
-                                //Agencias Tipo Master
-                                if ($records[$i]['agent_type_id'] == 2) {
+                                    //Agencias Tipo Master
+                                    if ($records[$i]['agent_type_id'] == 2) {
 
-                                    if($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION'){
-                                        Throw new \Exception('No se puede asignar un coordinador a un agente "INACTIVO" o en estatus "POR REVISION"');
+                                        if($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION'){
+                                            Throw new \Exception('No se puede asignar un coordinador a un agente "INACTIVO" o en estatus "POR REVISION"');
+                                        }
+
+                                        //actualizo la ionformacion del agente y le asigno al administrador de negocios
+                                        Agent::where('status', 'ACTIVO')->where('id', $records[$i]['id'])->first()
+                                        ->update([
+                                            'ownerAccountManagers' => $data['ownerAccountManagers']
+                                        ]);
+
+                                        //Busco si el agente tiene subagente asignados a el
+                                        //varificamos las agencias generales y los agentes asociados a ella
+                                        $subAgents = Agent::where('status', 'ACTIVO')
+                                            ->where('agent_type_id', 3)
+                                            ->where('owner_agent', $records[$i]['id'])
+                                            ->get();
+
+                                        //Si la agencia master tiene agencias generales activas
+                                        if (count($subAgents) > 0) {
+
+                                            for ($j = 0; $j < count($subAgents); $j++) {
+                                                //actualizo el valor del coordinador
+                                                $subAgents[$j]->ownerAccountManagers = $data['ownerAccountManagers'];
+                                                $subAgents[$j]->save();
+                                            }
+                                        }
+
                                     }
 
-                                    //actualizo la ionformacion del agente y le asigno al administrador de negocios
-                                    Agent::where('status', 'ACTIVO')->where('id', $records[$i]['id'])->first()
-                                    ->update([
-                                        'ownerAccountManagers' => $data['ownerAccountManagers']
-                                    ]);
+                                    //Agencias Tipo General
+                                    if ($records[$i]['agent_type_id'] == 3) {
 
-                                    //Busco si el agente tiene subagente asignados a el
-                                    //varificamos las agencias generales y los agentes asociados a ella
-                                    $subAgents = Agent::where('status', 'ACTIVO')
-                                        ->where('agent_type_id', 3)
-                                        ->where('owner_agent', $records[$i]['id'])
-                                        ->get();
+                                        if ($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION') {
+                                            throw new \Exception('No se puede asignar un coordinador a un agente "INACTIVO" o en estatus "POR REVISION"');
+                                        }
 
-                                    //Si la agencia master tiene agencias generales activas
-                                    if (count($subAgents) > 0) {
+                                        //Busco los agentes que pertenecen a la agencia master
+                                        $agentes = Agent::where('status', 'ACTIVO')->where('owner_code', $records[0]['owner_code'])->get();
 
-                                        for ($j = 0; $j < count($subAgents); $j++) {
-                                            //actualizo el valor del coordinador
-                                            $subAgents[$j]->ownerAccountManagers = $data['ownerAccountManagers'];
-                                            $subAgents[$j]->save();
+                                        //Si la agencia master tiene agentes activos
+                                        if (count($agentes) > 0) {
+
+                                            for ($k = 0; $k < count($agentes); $k++) {
+                                                //actualizo el valor del coordinador
+                                                $agentes[$k]->update([
+                                                    'ownerAccountManagers' => $data['ownerAccountManagers']
+                                                ]);
+                                            }
                                         }
                                     }
-
                                 }
-
-                                //Agencias Tipo General
-                                if ($records[$i]['agent_type_id'] == 3) {
-
-                                    if ($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION') {
-                                        throw new \Exception('No se puede asignar un coordinador a un agente "INACTIVO" o en estatus "POR REVISION"');
-                                    }
-
-                                    //Busco los agentes que pertenecen a la agencia master
-                                    $agentes = Agent::where('status', 'ACTIVO')->where('owner_code', $records[0]['owner_code'])->get();
-
-                                    //Si la agencia master tiene agentes activos
-                                    if (count($agentes) > 0) {
-
-                                        for ($k = 0; $k < count($agentes); $k++) {
-                                            //actualizo el valor del coordinador
-                                            $agentes[$k]->update([
-                                                'ownerAccountManagers' => $data['ownerAccountManagers']
-                                            ]);
-                                        }
-                                    }
-                                }
+                            } catch (\Throwable $th) {
+                                Notification::make()
+                                    ->title('EXCEPCION')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->color('danger')
+                                    ->send();
                             }
-                        } catch (\Throwable $th) {
-                            Notification::make()
-                                ->title('EXCEPCION')
-                                ->body($th->getMessage())
-                                ->icon('heroicon-s-x-circle')
-                                ->iconColor('danger')
-                                ->color('danger')
-                                ->send();
-                        }
-                    })
-                    ->requiresConfirmation()
-                    ->hidden(fn() => Auth::user()->is_business_admin != 1),
-                DeleteBulkAction::make()
-                    ->requiresConfirmation()
-                    ->hidden(fn() => Auth::user()->is_business_admin != 1),
-            ]),
-            ]);
+                        })
+                        ->requiresConfirmation()
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                    DeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                    ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning'),
+                ]),
+            ])->striped();
     }
 }

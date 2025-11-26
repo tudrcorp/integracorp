@@ -18,6 +18,8 @@ class WhiteCompany extends Model
         'city_id',
         'state_id',
         'country_id',
+        'updated_by',
+        'created_by',
     ];
 
     public function country()

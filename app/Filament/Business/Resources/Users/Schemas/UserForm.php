@@ -3,6 +3,9 @@
 namespace App\Filament\Business\Resources\Users\Schemas;
 
 use Filament\Schemas\Schema;
+use Filament\Forms\Components\Field;
+use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -12,7 +15,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Field;
 
 class UserForm
 {
@@ -108,6 +110,9 @@ class UserForm
                                     ->label('Administrador de Negocios'),
                             ])->columnSpanFull(),
                     ])->columnSpanFull(),
+
+                Hidden::make('created_by')->default(fn () => Auth::user()->name),
+                Hidden::make('updated_by'),
             ]);
     }
 }

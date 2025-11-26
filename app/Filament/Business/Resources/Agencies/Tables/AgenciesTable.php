@@ -28,9 +28,11 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\Crypt;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use App\Filament\Exports\AgencyExporter;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
@@ -547,6 +549,7 @@ class AgenciesTable
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                    ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning'),
                 ]),
             ]);
     }

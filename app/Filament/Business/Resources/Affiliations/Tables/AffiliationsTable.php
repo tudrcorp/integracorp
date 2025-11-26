@@ -25,6 +25,7 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\Alignment;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -38,6 +39,7 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\TextInputColumn;
+use App\Filament\Exports\AffiliationExporter;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use App\Http\Controllers\AffiliationController;
@@ -1531,7 +1533,8 @@ class AffiliationsTable
                                     ->seconds(5)
                                     ->send();
                             }
-                        })
+                        }),
+                    ExportBulkAction::make()->exporter(AffiliationExporter::class)->label('Exportar XLS')->color('warning'),
                 ]),
             ]);
     }

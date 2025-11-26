@@ -290,7 +290,6 @@ class PlanForm
 
                 //.. Asociacion de Beneficios y Coberturas
                 Section::make('ASIGNACIÓN DE PLANES PARA AGENCIAS')
-                    ->hidden(fn(Get $get) => $get('type') != 'DRESS-TAILOR')
                     ->collapsible()
                     ->description('Seleccion multiple de agencias, estas agencia son las que podrán cotizar el plan')
                     ->icon('heroicon-s-shopping-cart')

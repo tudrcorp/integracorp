@@ -11,6 +11,7 @@ use App\Models\Country;
 use App\Models\WhiteCompany;
 use Filament\Schemas\Schema;
 use App\Models\Configuration;
+use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -301,6 +302,9 @@ class WhiteCompanyForm
                             ]),
                         Hidden::make('is_whiteCompanyAdmin')->default(true),
                     ])->columnSpanFull()->columns(4),
+
+                Hidden::make('created_by')->default(fn () => Auth::user()->name),
+                Hidden::make('updated_by'),
             ]);
     }
 }
