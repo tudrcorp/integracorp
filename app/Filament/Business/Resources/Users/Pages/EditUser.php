@@ -2,10 +2,11 @@
 
 namespace App\Filament\Business\Resources\Users\Pages;
 
-use App\Filament\Business\Resources\Users\UserResource;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
+use Illuminate\Support\Facades\Auth;
 use Filament\Resources\Pages\EditRecord;
+use App\Filament\Business\Resources\Users\UserResource;
 
 class EditUser extends EditRecord
 {
@@ -13,11 +14,11 @@ class EditUser extends EditRecord
 
     protected static ?string $title = 'Editar Usuario';
 
-    protected function getHeaderActions(): array
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
+
+        $data['updated_by'] = Auth::user()->name;
+        
+        return $data;
     }
 }

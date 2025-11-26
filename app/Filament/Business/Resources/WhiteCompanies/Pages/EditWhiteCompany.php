@@ -2,18 +2,20 @@
 
 namespace App\Filament\Business\Resources\WhiteCompanies\Pages;
 
-use App\Filament\Business\Resources\WhiteCompanies\WhiteCompanyResource;
 use Filament\Actions\DeleteAction;
+use Illuminate\Support\Facades\Auth;
 use Filament\Resources\Pages\EditRecord;
+use App\Filament\Business\Resources\WhiteCompanies\WhiteCompanyResource;
 
 class EditWhiteCompany extends EditRecord
 {
     protected static string $resource = WhiteCompanyResource::class;
 
-    protected function getHeaderActions(): array
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return [
-            DeleteAction::make(),
-        ];
+
+        $data['updated_by'] = Auth::user()->name;
+
+        return $data;
     }
 }

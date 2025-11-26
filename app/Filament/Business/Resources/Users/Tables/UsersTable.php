@@ -5,6 +5,8 @@ namespace App\Filament\Business\Resources\Users\Tables;
 use Filament\Tables\Table;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
@@ -20,16 +22,40 @@ class UsersTable
             ->columns([
                 TextInputColumn::make('name')
                     ->label('Nombre y Apellido')
-                    ->searchable(),
+                    ->searchable()
+                    ->afterStateUpdated(function ($record, $state) {
+                        // Runs after the state is saved to the database.
+                        Log::info("Usuario: ID {$record->id} name changed to: {$state}");
+                        $record->updated_by = Auth::user()->name;
+                        $record->save();
+                    }),
                 TextInputColumn::make('phone')
-                    ->label('Telefono')
-                    ->searchable(),
+                        ->label('Telefono')
+                        ->searchable()
+                        ->afterStateUpdated(function ($record, $state) {
+                            // Runs after the state is saved to the database.
+                            Log::info("Usuario: ID {$record->id} phone changed to: {$state}");
+                            $record->updated_by = Auth::user()->name;
+                            $record->save();
+                        }),
                 TextInputColumn::make('birth_date')
                     ->label('Fecha de Nacimiento')
-                    ->searchable(),
+                    ->searchable()
+                    ->afterStateUpdated(function ($record, $state) {
+                        // Runs after the state is saved to the database.
+                        Log::info("Usuario: ID {$record->id} birth_date changed to: {$state}");
+                        $record->updated_by = Auth::user()->name;
+                        $record->save();
+                    }),
                 TextInputColumn::make('email')
                     ->label('Correo Electronico')
-                    ->searchable(),
+                    ->searchable()
+                    ->afterStateUpdated(function ($record, $state) {
+                        // Runs after the state is saved to the database.
+                        Log::info("Usuario: ID {$record->id} email changed to: {$state}");
+                        $record->updated_by = Auth::user()->name;
+                        $record->save();
+                    }),
                     
                 TextColumn::make('code_agency')
                     ->label('UID Agencia')

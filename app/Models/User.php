@@ -44,6 +44,9 @@ class User extends Authenticatable implements FilamentUser
         'agency_type',
         'departament',
         'birthday_date',
+        'status',
+        'updated_by',
+        'created_by',
         
     ];
 
