@@ -315,7 +315,7 @@ class CreateAffiliation extends CreateRecord
                 $affiliate = Affiliate::where('affiliation_id', $record->id)->get()->toArray();
                 // dd($data_titular, $affiliate);
                 // $this->getRecord()->sendCertificateOnlyHolder($record, $affiliate);
-                AffiliationController::generateCertificateIndividual($record, $affiliates, Auth::id());
+                AffiliationController::generateCertificateIndividual($record, $affiliate, Auth::id());
 
                 /**
                  * Actualizo el numero de afiliados (poblacion)
