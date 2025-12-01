@@ -88,6 +88,7 @@ class Agency extends Model
 
         'activate_monthly_frequency',
         'type_chart',
+        'account_manager_id',
 
 
     ];
@@ -190,13 +191,9 @@ class Agency extends Model
         SendCartaBienvenidaAgenteAgenciaTwo::dispatch($code, $name, $email);
     }
 
-    /**
-     * Get the user that owns the Agent
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
     public function accountManager()
     {
-        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
+        return $this->belongsTo(AccountManager::class, 'ownerAccountManagers', 'user_id');
     }
+
 }

@@ -117,16 +117,6 @@ class Agent extends Model
     }
 
     /**
-     * Get the user that owns the Agent
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function accountManager()
-    {
-        return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
-    }
-
-    /**
      * Get all of the comments for the Agency
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
@@ -206,5 +196,10 @@ class Agent extends Model
          * JOB
          */
         SendCartaBienvenidaAgenteAgencia::dispatch($id, $name, $email);
+    }
+
+    public function accountManager()
+    {
+        return $this->belongsTo(AccountManager::class, 'ownerAccountManagers', 'user_id');
     }
 }

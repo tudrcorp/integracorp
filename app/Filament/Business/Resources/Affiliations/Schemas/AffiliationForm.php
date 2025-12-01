@@ -754,6 +754,7 @@ class AffiliationForm
                                 ])->columns(3)->hidden(fn(Get $get) => $get('feedback_dos')),
                         ]),
                     Step::make('Acuerdo y condiciones')
+                        ->hiddenOn('edit')
                         ->description('Leer y aceptar las condiciones')
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')

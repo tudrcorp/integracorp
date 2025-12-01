@@ -273,12 +273,19 @@ class AffiliationForm
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('status')->default('PRE-APROBADA'),
                                 Hidden::make('agent_id')->default(Auth::user()->agent_id),
+                                
+                                //Calculo del codigo de la agencia a la que pertenece el agente
                                 Hidden::make('code_agency')->default(function () {
+                                    //....
+                                    //El owner_code del agente logueado es el codigo de la agencia a la que pertenece   
                                     $code_agency = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
                                     return $code_agency;
+                                    
                                 }),
+                                
+                                //Calculo de codigo del propietario final de la agencia a la que pertenece el agente
                                 Hidden::make('owner_code')->default(function () {
-                                    $owner      = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
+                                    $owner = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
 
                                     if ($owner == 'TDG-100') {
                                         /**

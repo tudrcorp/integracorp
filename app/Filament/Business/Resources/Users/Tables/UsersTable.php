@@ -3,14 +3,18 @@
 namespace App\Filament\Business\Resources\Users\Tables;
 
 use Filament\Tables\Table;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextInputColumn;
 
@@ -137,6 +141,25 @@ class UsersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('resetPassword')
+                        ->label('Resetear Contraseña')
+                        ->icon('heroicon-s-key')
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion()
+                        ->color('warning')
+                        ->action(function (Collection $records) {
+                            foreach ($records as $record) {
+                                $record->password = Hash::make('12345678');
+                                $record->updated_by = Auth::user()->name;
+                                $record->save();
+
+                                Log::info("Usuario: ID {$record->id} contraseña reseteada");
+                            }
+                            Notification::make()
+                                ->success()
+                                ->title('Contraseña reseteada')
+                                ->send();
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ]);

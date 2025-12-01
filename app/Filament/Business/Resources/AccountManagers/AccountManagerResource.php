@@ -15,6 +15,8 @@ use App\Filament\Business\Resources\AccountManagers\Pages\ListAccountManagers;
 use App\Filament\Business\Resources\AccountManagers\Pages\CreateAccountManager;
 use App\Filament\Business\Resources\AccountManagers\Schemas\AccountManagerForm;
 use App\Filament\Business\Resources\AccountManagers\Tables\AccountManagersTable;
+use App\Filament\Business\Resources\AccountManagers\RelationManagers\AgentsRelationManager;
+use App\Filament\Business\Resources\AccountManagers\RelationManagers\AgenciesRelationManager;
 
 class AccountManagerResource extends Resource
 {
@@ -39,7 +41,8 @@ class AccountManagerResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            AgenciesRelationManager::class,
+            AgentsRelationManager::class
         ];
     }
 

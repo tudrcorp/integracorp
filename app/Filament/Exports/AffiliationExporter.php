@@ -104,7 +104,7 @@ class AffiliationExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your affiliation export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Tu exportación de afiliaciones ha finalizado y ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' registros exportados.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
             $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';

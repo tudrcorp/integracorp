@@ -2,18 +2,22 @@
 
 namespace App\Filament\Business\Resources\AccountManagers\Pages;
 
-use App\Filament\Business\Resources\AccountManagers\AccountManagerResource;
 use Filament\Actions\DeleteAction;
+use Illuminate\Support\Facades\Auth;
 use Filament\Resources\Pages\EditRecord;
+use App\Filament\Business\Resources\AccountManagers\AccountManagerResource;
 
 class EditAccountManager extends EditRecord
 {
     protected static string $resource = AccountManagerResource::class;
 
-    protected function getHeaderActions(): array
+    protected static ?string $title = 'Editar Account Manager';
+
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return [
-            DeleteAction::make(),
-        ];
+
+        $data['updated_by'] = Auth::user()->name;
+
+        return $data;
     }
 }

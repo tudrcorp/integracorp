@@ -13,6 +13,11 @@ class EditAffiliation extends EditRecord
 
     protected static ?string $title = 'Editar Afiliación Individual';
 
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
