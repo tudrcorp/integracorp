@@ -202,19 +202,6 @@ class PaidMembershipsRelationManager extends RelationManager
                                 ->title('Operacion exitosa')
                                 ->success()
                                 ->send();
-
-                            //Notificacion para Admin
-                            $recipient = User::where('is_admin', 1)->get();
-                            foreach ($recipient as $user) {
-                                $recipient_for_user = User::find($user->id);
-                                Notification::make()
-                                    ->title('COMPROBANTE APROBADO')
-                                    ->body('El pago ha sido aprobado. Codigo de afiliacion: ' . $record->affiliation->code)
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->sendToDatabase($recipient_for_user);
-                            }
                         }
 
                         if (isset($approvePayment['nextRegister']) && $approvePayment['nextRegister'] == true) {

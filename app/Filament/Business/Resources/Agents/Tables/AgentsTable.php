@@ -61,7 +61,7 @@ class AgentsTable
             ->description('Lista de agentes registrados en el sistema')
             ->columns([
                 TextColumn::make('owner_code')
-                    ->label('Jerarquía')
+                    ->label('Pertenece a:')
                     ->prefix(function ($record) {
                         $agency_type = Agency::select('agency_type_id')
                             ->where('code', $record->owner_code)
@@ -75,7 +75,7 @@ class AgentsTable
                     ->color('success')
                     ->icon('heroicon-s-building-library')
                     ->searchable(),
-                TextColumn::make('accountManager.name')
+                TextColumn::make('accountManager.full_name')
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
@@ -210,7 +210,7 @@ class AgentsTable
                 ToggleColumn::make('activate_monthly_frequency')
                     ->label('Frecuencia Mensual')
 
-        ])
+            ])
             ->filters([
                 Filter::make('created_at')
                     ->form([
@@ -738,7 +738,7 @@ class AgentsTable
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
-                    ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning'),
+                    ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ])->striped();
     }

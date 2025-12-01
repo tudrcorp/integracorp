@@ -228,9 +228,6 @@ class PaidMembershipsRelationManager extends RelationManager
 
                         redirect()->route('filament.admin.resources.affiliations.index');
                     }),
-            ])
-            ->headerActions([
-                CreateAction::make(),
-            ]);
+                ]);
     }
 }

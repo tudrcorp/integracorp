@@ -15,6 +15,157 @@ use Illuminate\Support\Facades\Auth;
 
 class CommissionController extends Controller
 {
+    public static function calculateCommissionAgente($agent_id, $record)
+    {
+
+        try {
+
+            $porcentaje_agente = 0;
+
+            //Concultamos la tabla de agente para traernos el porcentaje de comision
+            $commission_tdec_agent = Agent::where('id', $agent_id)->first()->commission_tdec;
+
+            //Validamos el monto pagado por el cliente para calcular la comision
+            //Pago solo en USD
+            if($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0){
+                
+                $money = 'usd';
+                $porcentaje_agente = $record->pay_amount_usd * $commission_tdec_agent / 100;
+                
+            }
+
+            //Pago solo en BS
+            if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
+                
+                $money = 'ves';
+
+                //conversion de dolares a bolivares del monto a apagar
+                $ves = $record->total_amount * $record->tasa_bcv;
+                $porcentaje_agente = $ves * $commission_tdec_agent / 100;
+            }
+
+            //Pago Multiple en USD y BS
+            // if ($record->pay_amount_usd > 0 && $record->reference_payment_ves > 0) {
+            //     $porcentaje_agente = ($record->pay_amount_usd + $record->reference_payment_ves) * $commission_tdec_agent / 100;
+            // }
+ 
+            return $res = [
+                'porcentaje_agente' => $porcentaje_agente,
+                'money' => $money
+            ];
+
+            
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
+    }
+
+    public static function calculateCommissionMaster($code, $record)
+    {
+        try {
+
+            $porcentaje_agencia_master = 0;
+
+            //Concultamos la tabla de agente para traernos el porcentaje de comision
+            $commission_tdec_agency_master = Agency::where('code', $code)->first()->commission_tdec;
+            // dd($commission_tdec_agent, $record->pay_amount_usd, $record->reference_payment_ves);
+
+            //Validamos el monto pagado por el cliente para calcular la comision
+            //Pago solo en USD
+            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
+                // dd($record->pay_amount_usd);
+                $money = 'usd';
+                $porcentaje_agencia_master = $record->pay_amount_usd * $commission_tdec_agency_master / 100;
+                // dd($porcentaje_agente);
+            }
+
+            //Pago solo en BS
+            if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
+                
+                $money = 'ves';
+                //conversion de dolares a bolivares del monto a apagar
+                $ves = $record->total_amount * $record->tasa_bcv;
+                $porcentaje_agencia_master = $ves * $commission_tdec_agency_master / 100;
+            }
+
+            //Pago Multiple en USD y BS
+            // if ($record->pay_amount_usd > 0 && $record->reference_payment_ves > 0) {
+            //     $porcentaje_agente = ($record->pay_amount_usd + $record->reference_payment_ves) * $commission_tdec_agent / 100;
+            // }
+
+            return $res = [
+                'porcentaje_agencia_master' => $porcentaje_agencia_master,
+                'money' => $money
+            ];
+            
+            
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+            //throw $th;
+        }
+    }
+
+    public static function calculateCommissionGeneral($code, $record)
+    {
+        try {
+
+            $porcentaje_agencia_general = 0;
+            $porcentaje_agencia_master = 0;
+
+            //Concultamos la tabla de agente para traernos el porcentaje de comision
+            $data_agency_general = Agency::where('code', $code)->first();
+
+            //CALCULAMOS LA COMISION PARA LA AGENCIA GENERAL
+            //Validamos el monto pagado por el cliente para calcular la comision
+            //Pago solo en USD
+            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
+                $money = 'usd';
+                $porcentaje_agencia_general = $record->pay_amount_usd * $data_agency_general->commission_tdec / 100;
+            }
+
+            //Pago solo en BS
+            if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
+                $money = 'ves';
+                //conversion de dolares a bolivares del monto a apagar
+                $ves = $record->total_amount * $record->tasa_bcv;
+                $porcentaje_agencia_general = $ves * $data_agency_general->commission_tdec / 100;
+            }
+
+            //AHORA DETERMINAMOS SI LA AGENCIA GENERAL PERTENECE A UNA AGENCIA MASTER
+            if($data_agency_general->owner_code != 'TDG-100'){
+
+                //ESTA AGENCIA PERTENECE A UNA AGENCIA MASTER
+                $data_agency_master = Agency::where('code', $data_agency_general->owner_code)->first();
+
+                if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
+                    $money = 'usd';
+                    $porcentaje_agencia_master = $record->pay_amount_usd * $data_agency_master->commission_tdec / 100;
+                }
+
+                //Pago solo en BS
+                if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
+                    $money = 'ves';
+                    //conversion de dolares a bolivares del monto a apagar
+                    $ves = $record->total_amount * $record->tasa_bcv;
+                    $porcentaje_agencia_master = $ves * $data_agency_master->commission_tdec / 100;
+                }
+            }
+
+            return $res = [
+                'porcentaje_agencia_general' => $porcentaje_agencia_general,
+                'porcentaje_agencia_master' => $porcentaje_agencia_master,
+                'money' => $money
+            ];
+
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+            //throw $th;
+        }
+    }
+    
+    
+    
+    
     public static function calculateCommission($dataArray)
     {
         try {
@@ -104,7 +255,6 @@ class CommissionController extends Controller
             $date_ini   = $first_array->first()['date_ini'];
             $date_end   = $first_array->first()['date_end'];
 
-
             /** 1.- Creamos el asiento para las agencias master */
             for ($index = 0; $index < count($final_array['master']); $index++) {
 
@@ -144,7 +294,6 @@ class CommissionController extends Controller
                 $commission_payrolls->save();
             }
 
-
             /** 2.- Creamos el asiento para las agencias generales */
             for ($index = 0; $index < count($final_array['general']); $index++) {
 
@@ -183,9 +332,6 @@ class CommissionController extends Controller
                 $commission_payrolls->total_commission                      = $final_array['general'][$index]['total_commission_general'];
                 $commission_payrolls->save();
             }
-
-
-
 
             /** 3.- Creamos el asiento para las agentes */
             for ($index = 0; $index < count($final_array['agent']); $index++) {
@@ -228,6 +374,7 @@ class CommissionController extends Controller
             }
 
             return true;
+            
         } catch (\Throwable $th) {
             dd($th);
             Log::error($th->getMessage());

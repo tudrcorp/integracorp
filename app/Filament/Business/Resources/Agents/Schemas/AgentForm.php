@@ -11,6 +11,7 @@ use App\Models\Country;
 use App\Models\AgencyType;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -55,12 +56,20 @@ class AgentForm
                             ->preload()
                             ->helperText('Esta lista despliega solo los agentes activos'),
                         Select::make('owner_code')
+                            ->hidden(fn($record) => $record->owner_code == 'TDG-100')
                             ->label('Pertenece a una Agencia?')
                             ->helperText('Si el agente pertenece a nuestra estructura, debes dejar el campo vacio')
-                            ->options(function (Get $get) {
-                                return Agency::select('code', 'id', 'agency_type_id', 'status')
+                            ->options(function (Get $get, $record) {
+                                Log::info($record);
+                                // return Agency::select('code', 'id', 'agency_type_id', 'status')
+                                //     ->where('status', 'ACTIVO')
+                                //     ->get()
+                                //     ->mapWithKeys(function ($agency) {
+                                //         $type = AgencyType::find($agency->agency_type_id)->definition;
+                                //         return [$agency->code => "{$type} - {$agency->code}"];
+                                //     });
+                                return Agency::all()
                                     ->where('status', 'ACTIVO')
-                                    ->get()
                                     ->mapWithKeys(function ($agency) {
                                         $type = AgencyType::find($agency->agency_type_id)->definition;
                                         return [$agency->code => "{$type} - {$agency->code}"];

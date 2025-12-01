@@ -1534,7 +1534,73 @@ class AffiliationsTable
                                     ->send();
                             }
                         }),
-                    ExportBulkAction::make()->exporter(AffiliationExporter::class)->label('Exportar XLS')->color('warning'),
+                    BulkAction::make('edit_frequency_payment')
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1)
+                        ->label('Editar Frecuencia de Pago')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->color('warning')
+                        ->icon('heroicon-m-pencil')
+                        ->form([
+                            Select::make('frequency_payment')
+                                ->native(false)
+                                ->label('Frecuencia de pago')
+                                ->options([
+                                    'TRIMESTRAL' => 'TRIMESTRAL',
+                                    'SEMESTRAL'  => 'SEMESTRAL',
+                                    'MENSUAL'    => 'MENSUAL',
+                                    'ANUAL'      => 'ANUAL',
+                                ])
+                                ->required()
+                                ->validationMessages([
+                                    'required'  => 'Seleccione una frecuencia de pago',
+                                ]),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+
+                            try {
+
+                                //Actualizamos el registro para cambiar la frecuencia de pago
+                                foreach ($records as $record) {
+
+                                    $record->payment_frequency = $data['frequency_payment'];
+
+                                    if ($data['frequency_payment'] == 'TRIMESTRAL') {
+                                        $record->total_amount = $record->fee_anual / 4;
+                                    }
+                                    if ($data['frequency_payment'] == 'SEMESTRAL') {
+                                        $record->total_amount = $record->fee_anual / 2;
+                                    }
+                                    if ($data['frequency_payment'] == 'MENSUAL') {
+                                        $record->total_amount = $record->fee_anual / 12;
+                                    }
+                                    if ($data['frequency_payment'] == 'ANUAL') {
+                                        $record->total_amount = $record->fee_anual;
+                                    }
+
+                                    $record->save();
+                                }
+
+                                Log::info('Frecuencia de pago actualizada con exito. Usuario: '. Auth::user()->name);
+                                Notification::make()
+                                    ->title('NOTIFICACION')
+                                    ->body('La frecuencia de pago se ha actualizado con exito')
+                                    ->icon('heroicon-m-user-plus')
+                                    ->iconColor('success')
+                                    ->success()
+                                    ->send();
+                                
+                            } catch (\Throwable $th) {
+                                Log::error($th->getMessage());
+                                Notification::make()
+                                    ->title('¡ERROR!')
+                                    ->icon('heroicon-m-exclamation-triangle')
+                                    ->body('Hubo un error al actualizar la frecuencia de pago. Por favor, contacte con el administrador del Sistema.')
+                                    ->danger()
+                                    ->send();    
+                            }    
+                            
+                        }),
+                    ExportBulkAction::make()->exporter(AffiliationExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }

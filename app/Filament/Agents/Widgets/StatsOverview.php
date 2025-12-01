@@ -36,12 +36,12 @@ class StatsOverview extends StatsOverviewWidget
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
-            Stat::make('Acumulado de Comisiones', 'US$ ' . Commission::where('agent_id', Auth::user()->agent_id)->sum('total_payment_commission'))
-            // Stat::make('Acumulado de Comisiones', 'US$ 45,000')
-                ->icon('fontisto-shopping-pos-machine')
-                ->description('Incremento')
-                ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
+            // Stat::make('Acumulado de Comisiones', 'US$ ' . Commission::where('agent_id', Auth::user()->agent_id)->sum('total_payment_commission'))
+            // // Stat::make('Acumulado de Comisiones', 'US$ 45,000')
+            //     ->icon('fontisto-shopping-pos-machine')
+            //     ->description('Incremento')
+            //     ->descriptionIcon('heroicon-m-arrow-trending-up')
+            //     ->color('success'),
         ];
     }
 }

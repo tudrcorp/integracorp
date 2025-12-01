@@ -58,7 +58,7 @@ class AgenciesTable
             ->description('Lista de agencias registradas en el sistema')
             ->columns([
                 TextColumn::make('owner_code')
-                    ->label('De:')
+                    ->label('Pertenece a:')
                     ->badge()
                     ->color('success')
                     ->icon('heroicon-s-building-library')
@@ -79,7 +79,7 @@ class AgenciesTable
                     })
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('accountManager.name')
+                TextColumn::make('accountManager.full_name')
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
@@ -549,7 +549,7 @@ class AgenciesTable
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
-                    ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning'),
+                    ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }

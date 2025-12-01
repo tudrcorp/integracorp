@@ -13,6 +13,9 @@ class AccountManagersTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
+            ->heading('ACCOUNT MANAGERS')
+            ->description('Lista de account managers registrados en el Sistema')
             ->columns([
                 TextColumn::make('user_id')
                     ->numeric()

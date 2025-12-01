@@ -41,6 +41,7 @@ class Sale extends Model
         "payment_date",
         "observations",
         'reference_payment',
+        'date_payment_voucher',
     ];
 
     public function affiliation()
