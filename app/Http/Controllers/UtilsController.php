@@ -1670,6 +1670,17 @@ class UtilsController extends Controller
         // Obtenemos el mes y el número
         preg_match('/^(\d{2})-00(\d+)$/', $correlativo, $matches);
 
+        if (empty($matches)) {
+            // Obtener el mes actual con 2 dígitos (01, 02, ..., 12)
+            $mes = now()->format('m');
+
+            // Generar número aleatorio de 3 dígitos (100-999)
+            $aleatorio = rand(100, 999);
+
+            // Formato final: MM-00XXX
+            return "{$mes}-00{$aleatorio}";
+        }
+
         $numero = (int) $matches[2]; // Ej: 100
         $nuevoNumero = $numero + 1;   // Sumamos 1
 
@@ -1693,6 +1704,17 @@ class UtilsController extends Controller
 
         // Obtenemos el mes y el número
         preg_match('/^(\d{2})-00(\d+)$/', $correlativo, $matches);
+
+        if (empty($matches)) {
+            // Obtener el mes actual con 2 dígitos (01, 02, ..., 12)
+            $mes = now()->format('m');
+
+            // Generar número aleatorio de 3 dígitos (100-999)
+            $aleatorio = rand(100, 999);
+
+            // Formato final: MM-00XXX
+            return "{$mes}-00{$aleatorio}";
+        }
 
         $numero = (int) $matches[2]; // Ej: 100
 
