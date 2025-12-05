@@ -378,6 +378,12 @@ class SalesTable
 
                                 $afiliacion = Affiliation::where('code', $sale->affiliation_code)->with('paid_memberships')->first();
 
+                                if(isset($data['tasa_bcv'])){
+                                    $calculo = $data['tasa_bcv'] * $sale->pay_amount_usd;
+                                }else{
+                                    $calculo = $sale->pay_amount_ves;
+                                }
+
                                 /**Ejecutamos el Job para crea el aviso de cobro */
                                 $data_factura = [
                                     'invoice_number' => $data['invoice_number'],
@@ -389,7 +395,7 @@ class SalesTable
                                     'address_ti'     => $afiliacion['adress_ti'],
                                     'phone_ti'       => $afiliacion['phone_ti'],
                                     'email_ti'       => $afiliacion['email_ti'],
-                                    'total_amount'   => $sale->pay_amount_ves,
+                                    'total_amount'   => $calculo,
                                     'plan'           => $sale->plan->description,
                                     'coverage'       => $sale->coverage->price ?? null,
                                     'reference'      => $record->reference_payment,
