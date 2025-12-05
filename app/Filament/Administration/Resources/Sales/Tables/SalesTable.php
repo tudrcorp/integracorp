@@ -16,16 +16,23 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Filters\Filter;
+use Illuminate\Support\Facades\Log;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
+use App\Filament\Exports\SaleExporter;
 use Filament\Actions\DeleteBulkAction;
+
+use Filament\Actions\ExportBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\TextColumn;
 use App\Http\Controllers\SaleController;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Filters\SelectFilter;
@@ -98,10 +105,6 @@ class SalesTable
                     ->sortable()
                     ->label('Afiliado')
                     ->searchable(),
-                TextColumn::make('affiliate_contact')
-                    ->sortable()
-                    ->label('Contacto')
-                    ->searchable(),
                 TextColumn::make('affiliate_ci_rif')
                     ->sortable()
                     ->label('CI/RIF')
@@ -114,17 +117,9 @@ class SalesTable
                     ->sortable()
                     ->label('Email')
                     ->searchable(),
-                TextColumn::make('persons')
-                    ->sortable()
-                    ->label('Población')
-                    ->searchable(),
                 TextColumn::make('created_by')
                     ->sortable()
                     ->label('Aprobado por')
-                    ->searchable(),
-                TextColumn::make('type')
-                    ->sortable()
-                    ->label('Tipo')
                     ->searchable(),
                 TextColumn::make('payment_frequency')
                     ->sortable()
@@ -135,14 +130,15 @@ class SalesTable
                     ->sortable()
                     ->label('Forma de pago')
                     ->badge()
-                    // ->description(function (Sale $record) {
-                    //     return $record->total_amount_ves != null ? $record->total_amount_ves : 0.00 . ' VES';
-                    // })
+                    ->description(function (Sale $record) {
+                        return $record->reference_payment != null ? 'REF#: ' .$record->reference_payment : 'N/A';
+                    })
                     ->searchable(),
                 TextColumn::make('payment_method_usd')
-                ->sortable()
+                    ->sortable()
                     ->label('Pago multiple')
                     ->prefix('US$: ')
+                    ->searchable()
                     ->description(function ($record) {
                         return $record->payment_method_ves != 'N/A' ? 'VES: ' . $record->payment_method_ves : 'VES: N/A';
                     })
@@ -151,35 +147,33 @@ class SalesTable
                 TextColumn::make('pay_amount_usd')
                     ->label('Pago registrado')
                     ->sortable()
+                    ->searchable()
                     ->suffix(' US$')
                     ->description(function ($record) {
                         return $record->pay_amount_ves != 'N/A' ? number_format($record->pay_amount_ves, 2, ',', '.') . ' VES' : 'N/A';
                     }),
 
                 TextColumn::make('bank_usd')
-                ->sortable()
+                    ->sortable()
                     ->searchable()
                     ->label('Banco')
                     ->prefix('US$: ')
                     ->description(function ($record) {
                         return $record->bank_ves != 'N/A' ? 'VES: ' . $record->bank_ves : 'VES: N/A';
                     }),
-                TextColumn::make('status_payment_commission')
-                ->sortable()
-                    ->label('Comision de venta')
-                    ->badge()
-                    ->color(function (Sale $record) {
-                        return $record->status_payment_commission == 'COMISION PAGADA' ? 'success' : 'warning';
-                    })
-                    ->searchable(),
                 TextColumn::make('total_amount')
-                ->sortable()
+                    ->sortable()
                     ->label('Monto Total')
                     ->money('USD')
                     ->summarize(Sum::make()
                         ->label(('Total de Venta'))
                         ->money('USD'))
                     ->alignCenter()
+                    ->searchable(),
+                TextColumn::make('invoice_generated')
+                    ->label('Nro. de Factura')
+                    ->sortable()
+                    ->searchable(),
             ])
             ->filters([
                 Filter::make('created_at')
@@ -338,7 +332,102 @@ class SalesTable
                                     ->danger()
                                     ->send();
                             }
-                        })
+                        }),
+                    Action::make('print_invoice')
+                        ->label('Generar Factura')
+                        ->icon('heroicon-s-printer')
+                        ->color('info')
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->form(fn(Sale $record): array => $record->invoice_generated != null ? [] : [
+                            Section::make('Informacion de la Factura')
+                            ->schema([
+                                TextInput::make('invoice_number')
+                                    ->label('Nro. de Factura')
+                                    ->required(),
+                                DatePicker::make('date')
+                                    ->label('Fecha de Factura')
+                                    ->required()
+                                    ->format('d/m/Y'),
+                                TextInput::make('tasa_bcv')
+                                    ->label('Tasa BCV')
+                                    ->numeric()   
+                                    ->required()
+                                    ->hidden(fn(Sale $record) => $record->pay_amount_usd == 0.00),
+                                Fieldset::make('Periodo de Facturacion')->schema([
+                                    DatePicker::make('desde')->required()->format('d/m/Y'),
+                                    DatePicker::make('hasta')->required()->format('d/m/Y'),
+                                ])->columnSpanFull()->columns(2),      
+                            ])->columns(function (Sale $record) {
+                                if($record->pay_amount_usd == 0.00){
+                                    return 2;
+                                }
+                                return 3;
+                            }),
+                        ])
+                        ->action(function (Sale $record, array $data) {
+
+                            try {
+
+                                if($record->invoice_generated != null){
+                                    return response()->download(public_path('storage/facturas/FACT-' . $record->invoice_generated . '.pdf'));
+                                }
+                                
+                                //Consultamo la collection
+                                $sale = Sale::where('id', $record->id)->first();
+
+
+                                $afiliacion = Affiliation::where('code', $sale->affiliation_code)->with('paid_memberships')->first();
+
+                                /**Ejecutamos el Job para crea el aviso de cobro */
+                                $data_factura = [
+                                    'invoice_number' => $data['invoice_number'],
+                                    'emission_date'  => $data['date'],
+                                    'payment_method' => $sale->payment_method,
+                                    'reference'      => $record->reference_payment,
+                                    'full_name_ti'   => $sale->affiliate_full_name,
+                                    'ci_rif_ti'      => $sale->affiliate_ci_rif,
+                                    'address_ti'     => $afiliacion['adress_ti'],
+                                    'phone_ti'       => $afiliacion['phone_ti'],
+                                    'email_ti'       => $afiliacion['email_ti'],
+                                    'total_amount'   => $sale->pay_amount_ves,
+                                    'plan'           => $sale->plan->description,
+                                    'coverage'       => $sale->coverage->price ?? null,
+                                    'reference'      => $record->reference_payment,
+                                    'frequency'      => $sale->payment_frequency,
+                                    'desde'          => $data['desde'],
+                                    'hasta'          => $data['hasta'],
+                                ];
+
+                                ini_set('memory_limit', '2048M');
+
+                                //Nombre del pdf
+                                $name_pdf = 'FACT-' . $data['invoice_number'] . '.pdf';
+                                
+                                //Generamos el pdf
+                                $pdf = Pdf::loadView('documents.factura', compact('data_factura'));
+
+                                //Guardamos el pdf
+                                $pdf->save(public_path('storage/facturas/' . $name_pdf));
+
+                                //Actualizamos la factura
+                                $record->invoice_generated = $data['invoice_number'];
+                                $record->save();
+
+                                //Descargamos el pdf
+                                return response()->download(public_path('storage/facturas/' . $name_pdf));
+
+                                
+                            } catch (\Throwable $th) {
+                                Log::info($th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
             ])
             ->toolbarActions([
@@ -388,6 +477,7 @@ class SalesTable
                                     ->send();
                             }
                         }),
+                    ExportBulkAction::make()->exporter(SaleExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
