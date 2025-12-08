@@ -353,10 +353,6 @@ class SalesTable
                                     ->numeric()   
                                     ->required()
                                     ->hidden(fn(Sale $record) => $record->pay_amount_usd == 0.00),
-                                Fieldset::make('Periodo de Facturacion')->schema([
-                                    DatePicker::make('desde')->required()->format('d/m/Y'),
-                                    DatePicker::make('hasta')->required()->format('d/m/Y'),
-                                ])->columnSpanFull()->columns(2),      
                             ])->columns(function (Sale $record) {
                                 if($record->pay_amount_usd == 0.00){
                                     return 2;
@@ -400,8 +396,6 @@ class SalesTable
                                     'coverage'       => $sale->coverage->price ?? null,
                                     'reference'      => $record->reference_payment,
                                     'frequency'      => $sale->payment_frequency,
-                                    'desde'          => $data['desde'],
-                                    'hasta'          => $data['hasta'],
                                 ];
 
                                 ini_set('memory_limit', '2048M');

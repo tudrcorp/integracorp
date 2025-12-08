@@ -306,10 +306,13 @@
                             {{ $data_factura['plan'] }}
                             <br> ASISTENCIA MEDICA <br>
                             @endif
-                            PERÍODO DE VIGENCIA DESDE EL {{ $data_factura['desde'] }} HASTA EL {{ $data_factura['hasta'] }}
+                            {{-- PERÍODO DE VIGENCIA DESDE EL {{ $data_factura['desde'] }} HASTA EL {{ $data_factura['hasta'] }} number_format(Affiliation::where('status', 'ACTIVA')->sum('total_amount'), 2, ',', '.') --}}
+
                         </p>
                     </td>
-                    <td style="font-weight: bold; text-align: right;">{{ str_replace('.', ',', str_replace(',', '', $data_factura['total_amount'])) }}Bs.</td>
+                    <td style="font-weight: bold; text-align: right;">{{ number_format($data_factura['total_amount'], 2, ',', '.') }}Bs.</td>
+
+
                 </tr>
 
             </tbody>
@@ -331,7 +334,7 @@
 
     <div style="position: absolute; top: 617px; left: 503px; padding: 10px; width: 100%;">
         <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; ">Monto Total: {{ str_replace('.', ',', str_replace(',', '', $data_factura['total_amount'])) }}Bs.</span>
+            <span style="font-weight: bold; ">Monto Total: {{ number_format($data_factura['total_amount'], 2, ',', '.') }}Bs.</span>
         </p>
     </div>
 
