@@ -56,7 +56,7 @@ class AgentForm
                             ->preload()
                             ->helperText('Esta lista despliega solo los agentes activos'),
                         Select::make('owner_code')
-                            ->hidden(fn($record) => $record->owner_code == 'TDG-100')
+                            // ->hidden(fn($record) => $record->owner_code == 'TDG-100' && $record->owner_code != null)
                             ->label('Pertenece a una Agencia?')
                             ->helperText('Si el agente pertenece a nuestra estructura, debes dejar el campo vacio')
                             ->options(function (Get $get, $record) {
@@ -82,7 +82,6 @@ class AgentForm
 
                             //condicion para ocultar el campo   
                             ->hidden(fn() => !Auth::user()->is_business_admin)
-
                             ->label('Acount Manager')
                             ->options(function (Get $get) {
                                 return User::where('is_accountManagers', true)->get()->pluck('name', 'id');
