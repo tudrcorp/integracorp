@@ -30,21 +30,21 @@ class CreateUser extends CreateRecord
             "id" => 333
         ]
      */
-    protected function afterCreate(): void
-    {
-        try {
+    // protected function afterCreate(): void
+    // {
+    //     try {
 
-            dd($this->getRecord());
+    //         dd($this->getRecord());
 
             
-        } catch (\Throwable $th) {
-            Notification::make()
-                ->title('ERROR')
-                ->body($th->getMessage())
-                ->icon('heroicon-m-tag')
-                ->iconColor('danger')
-                ->danger()
-                ->send();
-        }
-    }
+    //     } catch (\Throwable $th) {
+    //         Notification::make()
+    //             ->title('ERROR')
+    //             ->body($th->getMessage())
+    //             ->icon('heroicon-m-tag')
+    //             ->iconColor('danger')
+    //             ->danger()
+    //             ->send();
+    //     }
+    // }
 }
