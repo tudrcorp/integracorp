@@ -10,7 +10,7 @@ class CommissionGeneral extends Column
 
     public function getNameCorporative(): string
     {
-        return isset($this->getRecord()->generalNameAgency->name_corporative) ? $this->getRecord()->generalNameAgency->name_corporative : '----';
-
+        $sum = $this->getRecord()->commission_agency_master_ves + $this->getRecord()->commission_agency_general_ves + $this->getRecord()->commission_agent_ves;
+        return $sum;
     }
 }

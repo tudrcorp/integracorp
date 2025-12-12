@@ -387,7 +387,7 @@ class TelemedicineConsultationPatientForm
                                 ]),    
                             ]),
                             Textarea::make('observations')
-                                ->label('Observaciones')
+                                ->label('Información Adicional')
                                 ->autosize()
                         ])->columnSpanFull()->columns(1),
 

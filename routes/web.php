@@ -351,6 +351,11 @@ Route::get('/imag', function () {
 
 });
 
+Route::get('/tarjeta', function () {
+    $pdf = Pdf::loadView('documents.tarjeta-afiliado');
+    return $pdf->stream();
+});
+
 Route::get('/largo', function () {
 
     $dates = DB::table('affiliations')

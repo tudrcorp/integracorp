@@ -143,7 +143,7 @@ class TelemedicineHistoryPatientForm
                     ->collapsible()
                     ->schema([
                         Section::make()
-                        ->description('Sección de selección multiple de antecedentes patológicos familiares mas un campo de observación para agregar información adicional.')
+                        ->description('Selección multiple de antecedentes patológicos familiares. Esta sección posee un campo de observación para agregar información adicional.')
                             ->schema([
                                 Fieldset::make('Seleccionar Antecedentes')
                                     ->schema([

@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
+use Filament\Enums\ThemeMode;
 use Filament\Pages\Dashboard;
 use Filament\Facades\Filament;
 use Filament\Support\Enums\Width;
@@ -26,13 +27,15 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-use App\Filament\Business\Resources\Plans\PlanResource;
 
+use App\Filament\Business\Resources\Plans\PlanResource;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use SolutionForest\FilamentHeaderSelect\HeaderSelectPlugin;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use SolutionForest\FilamentHeaderSelect\Components\HeaderSelect;
 
 class BusinessPanelProvider extends PanelProvider
 {
@@ -127,6 +130,11 @@ class BusinessPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::TOPBAR_END,
                 fn() => view('filament.name-user')
-            );
+            )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn() => view('filament.menu-user')
+            )
+            ->defaultThemeMode(ThemeMode::Light);
     }
 }

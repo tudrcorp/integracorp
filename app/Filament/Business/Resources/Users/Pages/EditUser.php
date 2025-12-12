@@ -14,7 +14,7 @@ class EditUser extends EditRecord
 
     protected static ?string $title = 'Editar Usuario';
 
-    protected function mutateFormDataBeforeCreate(array $data): array
+    protected function mutateFormDataBeforeUpdate(array $data): array
     {
 
         $data['updated_by'] = Auth::user()->name;

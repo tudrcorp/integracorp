@@ -69,7 +69,8 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
+            'departament'       => 'array',
         ];
     }
 
@@ -96,39 +97,55 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'admin') {
-            return str_ends_with($this->email, '@tudrencasa.com') && $this->is_admin || $this->departament === 'OPERACIONES';
+            return str_ends_with($this->email, '@tudrencasa.com') && $this->is_admin;
         }
         
         if ($panel->getId() === 'agents') {
-            return $this->is_agent;
+            return $this->is_agent &&
+                $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'master') {
-            return $this->is_agency && $this->agency_type === 'MASTER';
+            return $this->is_agency && $this->agency_type === 'MASTER' &&
+                $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'general') {
-            return $this->is_agency && $this->agency_type === 'GENERAL';
+            return $this->is_agency && $this->agency_type === 'GENERAL' &&
+                $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'subagents') {
-            return $this->is_subagent;
+            return $this->is_subagent &&
+                $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'telemedicina') {
-            return $this->is_doctor;
+            return  in_array('TELEMEDICINA', $this->departament) == 1 && 
+                    $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'marketing') {
-            return $this->is_designer;
+            return  in_array('MARKETING', $this->departament) == 1 && 
+                    $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'business') {
-            return str_ends_with($this->email, '@tudrencasa.com') && $this->departament === 'NEGOCIOS';
+            return   str_ends_with($this->email, '@tudrencasa.com') &&
+                     in_array('NEGOCIOS', $this->departament) == 1 && 
+                     $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'administration') {
-            return str_ends_with($this->email, '@tudrencasa.com') && $this->departament === 'ADMINISTRACION';
+            return  str_ends_with($this->email, '@tudrencasa.com') && 
+                    in_array('ADMINISTRACION', $this->departament) == 1 && 
+                    $this->status = 'ACTIVO';
+        }
+
+        if ($panel->getId() === 'operations') {
+            return  str_ends_with($this->email, '@tudrencasa.com') &&
+                in_array('OPERACIONES', $this->departament) == 1 &&
+                $this->status = 'ACTIVO';
         }
 
         return true;

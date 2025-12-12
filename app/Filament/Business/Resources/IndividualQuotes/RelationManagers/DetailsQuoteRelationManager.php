@@ -90,10 +90,13 @@ class DetailsQuoteRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('quote_multiple')
-                        ->label('Preparar afiliación')
-                        ->color('success')
-                        ->icon('heroicon-c-receipt-percent')
+                        ->label('Pre Afiliación')
+                        ->color('warning')
+                        ->icon('heroicon-o-pencil-square')
                         ->requiresConfirmation()
+                        ->modalHeading('PREAFILIACIÓN')
+                        ->modalDescription('El sistema te redirigirá a la pantalla donde se encuentra el formulario de pre-afiliación.')
+                        ->modalIcon('heroicon-o-pencil-square')
                         ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records, RelationManager $livewire) {
                             
@@ -108,12 +111,13 @@ class DetailsQuoteRelationManager extends RelationManager
                                 session()->put('data_records', $records->toArray());
 
                                 $data_records = session()->get('data_records');
-                                // dd($data_records);
+                                // dd($data_records, $livewire->ownerRecord->id);
 
                                 /**
                                  * Actualizo el status a APROBADA
                                  */
                                 $record = $records->first();
+                                // dd($record);
 
                                 $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
                                 $individual_quote->status = 'APROBADA';

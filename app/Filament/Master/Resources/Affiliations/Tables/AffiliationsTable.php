@@ -48,7 +48,7 @@ class AffiliationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            // ->query(Affiliation::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
+            // ->query(Affiliation::query()->where('owner_code', Auth::user()->code_agency)->where('code_agency', Auth::user()->code_agency))
             ->query(Affiliation::query()->where('owner_code', Auth::user()->code_agency))
             ->defaultSort('created_at', 'desc')
             ->heading('Lista de afiliaciones generadas por el agente')
@@ -66,17 +66,6 @@ class AffiliationsTable
                     ->color('verde')
                     ->icon('heroicon-m-tag')
                     ->searchable(),
-                TextColumn::make('accountManager.name')
-                    ->label('Account Manager')
-                    ->icon('heroicon-o-shield-check')
-                    ->badge()
-                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            '-----' => 'info',
-                            default => 'success',
-                        };
-                    }),
                 TextColumn::make('agency.name_corporative')
                     ->label('CO-Agencia')
                     ->badge()
@@ -328,7 +317,6 @@ class AffiliationsTable
                                                     'MULTIPLE'          => 'MULTIPLE',
                                                     'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
                                                     'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
-
                                                 ])
                                                 ->live()
                                                 ->required()
@@ -336,7 +324,7 @@ class AffiliationsTable
                                                     'required'  => 'Seleccione un tipo de pago',
                                                 ]),
                                             TextInput::make('tasa_bcv')
-                                                ->live()
+                                                ->live(onBlur: true)
                                                 ->label('Tasa BCV')
                                                 ->helperText('Punto(.) para separar decimales. Ejemplo: 123.45')
                                                 ->prefix('VES')
@@ -724,7 +712,7 @@ class AffiliationsTable
                             ]),
                         ])
                         ->action(function (Affiliation $record, array $data): void {
-                            
+
                             try {
 
                                 $upload = AffiliationController::uploadPayment($record, $data, 'AGENTE');
@@ -758,21 +746,7 @@ class AffiliationsTable
                                             ->sendToDatabase($recipient_for_user);
                                     }
                                 }
-
-                                /**
-                                 * Ejecutamos el Jobs para enviar la notificacion al 
-                                 * correo de administracion
-                                 * ----------------------------------------------------------------------------------
-                                 */
-                                $info = [
-                                    'code' => $record->code,
-                                    'email' => config('parameters.EMAIL_ADMINISTRACION'),
-                                ];
-                                // dd($info);
-                                Mail::to($info['email'])->send(new UploadPayment($info));
-                                
                             } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body($th->getMessage())
@@ -780,8 +754,8 @@ class AffiliationsTable
                                     ->iconColor('danger')
                                     ->danger()
                                     ->send();
+                                return;
                             }
-                            
                         })
                         ->hidden(function (Affiliation $record) {
 

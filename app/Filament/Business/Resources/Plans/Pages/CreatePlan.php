@@ -138,20 +138,37 @@ class CreatePlan extends CreateRecord
             $ageRange = $this->getRecord()->ageRanges()->get()->toArray();
             $coverages = $this->getRecord()->coverages()->get()->toArray();
 
+            // dd($ageRange, $coverages, count($ageRange), count($coverages));
+
+            for ($i = 0; $i < count($coverages); $i++) {
+
+                for ($j = 0; $j < count($ageRange); $j++) {
+                    $fee = new Fee();
+                    $fee->age_range_id  = $ageRange[$j]['id'];
+                    $fee->coverage_id   = $coverages[$i]['id'];
+                    $fee->price         = $coberturas[$i]['price_fees'];
+                    $fee->status        = 'ACTIVO';
+                    $fee->created_by    = auth()->user()->name;
+                    $fee->range         = $edades[$j]['range'];
+                    $fee->coverage      = $coberturas[$i]['price_coverages'];
+                    $fee->save();
+                }
+            }
+
             // dd($ageRange, $coverages);
             //..Cargamos la tabla de fees
-            for ($i = 0; $i < count($ageRange); $i++) {
+            // for ($i = 0; $i < count($ageRange); $i++) {
                 
-                $fee = new Fee();
-                $fee->age_range_id  = $ageRange[$i]['id'];
-                $fee->coverage_id   = isset($coverages[$i]['id']) ? $coverages[$i]['id'] : null;
-                $fee->price         = $coberturas[$i]['price_fees'];
-                $fee->status        = 'ACTIVO';
-                $fee->created_by    = auth()->user()->name;
-                $fee->range         = $edades[$i]['range'];
-                $fee->coverage      = $coberturas[$i]['price_coverages'];
-                $fee->save();
-            }
+            //     $fee = new Fee();
+            //     $fee->age_range_id  = $ageRange[$i]['id'];
+            //     $fee->coverage_id   = isset($coverages[$i]['id']) ? $coverages[$i]['id'] : null;
+            //     $fee->price         = $coberturas[$i]['price_fees'];
+            //     $fee->status        = 'ACTIVO';
+            //     $fee->created_by    = auth()->user()->name;
+            //     $fee->range         = $edades[$i]['range'];
+            //     $fee->coverage      = $coberturas[$i]['price_coverages'];
+            //     $fee->save();
+            // }
             
         } catch (\Throwable $th) {
             dd($th);

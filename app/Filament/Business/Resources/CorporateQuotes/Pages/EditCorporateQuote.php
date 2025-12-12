@@ -11,11 +11,18 @@ class EditCorporateQuote extends EditRecord
 {
     protected static string $resource = CorporateQuoteResource::class;
 
+    protected static ?string $title = 'Detalles de Cotización y Gestión de Población';
+
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
-            DeleteAction::make(),
+            // ViewAction::make(),
+            // DeleteAction::make(),
         ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
     }
 }

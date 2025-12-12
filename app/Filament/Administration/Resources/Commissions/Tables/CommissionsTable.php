@@ -3,19 +3,22 @@
 namespace App\Filament\Administration\Resources\Commissions\Tables;
 
 use Carbon\Carbon;
+use App\Models\Agency;
 use Filament\Tables\Table;
 use Filament\Actions\BulkAction;
 use Filament\Tables\Filters\Filter;
-
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use App\Tables\Columns\CommissionMaster;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ColumnGroup;
+use App\Tables\Columns\CommissionGeneral;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
+use App\Filament\Exports\CommissionExporter;
 use Filament\Tables\Columns\Summarizers\Sum;
-
 use App\Http\Controllers\CommissionController;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
@@ -28,26 +31,22 @@ class CommissionsTable
             ->description('Registro de pagos(ventas) de afiliaciones activas. Detallado por agencias y agentes')
             ->defaultSort('created_at', 'desc')
             ->columns([
-                // TextColumn::make('date_payment_affiliate')
-                //     ->label('Pago del afiliado')
-                //     ->badge()
-                //     ->icon('heroicon-s-calendar-days')
-                //     ->searchable(),
+                TextColumn::make('created_at')
+                    ->label('Fecha de calculo')
+                    ->date('d/m/Y')
+                    ->sortable(),
                 TextColumn::make('code')
                     ->badge()
                     ->icon('heroicon-s-document-text')
-                    ->label('Nro. Factura')
+                    ->label('Nro. Venta')
                     ->searchable(),
-                TextColumn::make('code_agency')
+                TextColumn::make('agency.name_corporative')
                     ->label('Agencia')
                     ->badge()
-                    ->icon('heroicon-s-user-group')
+                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
+                    ->color('success')
+                    ->sortable()
                     ->searchable(),
-                // Tables\Columns\TextColumn::make('owner_code')
-                //     ->label('Master')
-                //     ->badge()
-                //     ->icon('heroicon-s-building-library')
-                //     ->searchable(),
                 TextColumn::make('agent.name')
                     ->label('Agente')
                     ->badge()
@@ -86,115 +85,123 @@ class CommissionsTable
                     TextColumn::make('payment_frequency')
                         ->label('Frecuencia de pago')->badge()->color('info')
                         ->searchable(),
+                    TextColumn::make('payment_method')
+                        ->label('Metodo de pago')->badge()->color('info')
+                        ->searchable(),
                 ]),
                 
-                TextColumn::make('date_payment_commission')
-                    ->label('Pagado el:')
-                    ->badge()
-                    ->icon('heroicon-s-calendar-days')
-                    ->searchable(),
-
-                ColumnGroup::make('Estructura de Comisiones en Bolivares(VES)')->columns([
+                //ESTRUCTURA DE COMISIONES COMPLETA EN USD
+                ColumnGroup::make('COMISIONES MASTER USD - VES')->columns([
+                    TextColumn::make('porcent_agency_master')
+                        ->default(fn($record): string => $record->porcent_agency_master == 0 || $record->porcent_agency_master == NULL ? 0 : $record->porcent_agency_master)
+                        ->label('%')
+                        ->badge()
+                        ->color('info')
+                        ->suffix('%')
+                        ->numeric()
+                        ->sortable(),
                     TextColumn::make('commission_agency_master_usd')
-                        ->label('Pago Agencia Master')
+                        ->label('Pago USD')
+                        ->width('20%')
                         ->badge()
                         ->color('success')
                         ->suffix(' US$')
                         ->numeric()
                         ->sortable()
                         ->summarize(Sum::make()
-                            ->label(('Subtotal Agencia Master'))
+                            ->label(('Subtotal USD'))
                             ->suffix(' US$')
                             ->numeric()),
-                    TextColumn::make('commission_agency_general_usd')
-                        ->label('Pago Agencia General')
-                        ->badge()
-                        ->color('success')
-                        ->suffix(' US$')
-                        ->numeric()
-                        ->sortable()
-                        ->summarize(Sum::make()
-                            ->label(('Subtotal Agencia General'))
-                            ->suffix(' US$')
-                            ->numeric()),
-                    TextColumn::make('commission_agent_usd')
-                        ->label('Pago Agente')
-                        ->badge()
-                        ->color('success')
-                        ->suffix(' US$')
-                        ->numeric()
-                        ->sortable()
-                        ->summarize(Sum::make()
-                            ->label(('Subtotal Agentes'))
-                            ->suffix(' US$')
-                            ->numeric()),
-                ]),
-
-                ColumnGroup::make('Estructura de Comisiones en Dolares(US$)')->columns([
                     TextColumn::make('commission_agency_master_ves')
-                        ->label('Pago Agencia Master')
+                        ->label('Pago VES')
+                        ->width('20%')
                         ->badge()
                         ->suffix(' VES')
                         ->numeric()
                         ->sortable()
                         ->summarize(Sum::make()
-                            ->label(('Subtotal Agencia Master'))
+                            ->label(('Subtotal VES'))
                             ->suffix(' VES')
+                            ->numeric()),
+                ]),
+
+                ColumnGroup::make('COMISIONES GENERAL USD - VES')->columns([
+                    TextColumn::make('porcent_agency_general')
+                        ->default(fn($record): string => $record->porcent_agency_general == 0 || $record->porcent_agency_general == NULL ? 0 : $record->porcent_agency_general)
+                        ->label('%')
+                        ->badge()
+                        ->color('info')
+                        ->suffix('%')
+                        ->numeric()
+                        ->sortable(),
+                    TextColumn::make('commission_agency_general_usd')
+                        ->label('Pago USD')
+                        ->grow()
+                        ->badge()
+                        ->color('success')
+                        ->suffix(' US$')
+                        ->numeric()
+                        ->sortable()
+                        ->summarize(Sum::make()
+                            ->label(('Subtotal USD'))
+                            ->suffix(' US$')
                             ->numeric()),
                     TextColumn::make('commission_agency_general_ves')
-                        ->label('Pago Agencia General')
+                        ->label('Pago VES')
+                        ->grow()
                         ->badge()
                         ->suffix(' VES')
                         ->numeric()
                         ->sortable()
                         ->summarize(Sum::make()
-                            ->label(('Subtotal Agencia General'))
-                            ->suffix(' VES')
-                            ->numeric()),
-                    TextColumn::make('commission_agent_ves')
-                        ->label('Pago Agente')
-                        ->badge()
-                        ->suffix(' VES')
-                        ->numeric()
-                        ->sortable()
-                        ->summarize(Sum::make()
-                            ->label(('Subtotal Agentes'))
+                            ->label(('Subtotal VES'))
                             ->suffix(' VES')
                             ->numeric()),
                 ]),
 
-                TextColumn::make('created_at')
-                    ->label('Fecha de calculo')
-                    ->dateTime()
-                    ->sortable(),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                // CommissionMaster::make('commision_master')
-                //     ->label('Comisión agencia master')
-                //     ->alignCenter(),
-                // CommissionGeneral::make('commision_general')
-                //     ->label('Comisión agencia general')
-                //     ->alignCenter(),
-                // CommissionAgent::make('commision_agent')
-                //     ->label('Comisión Agente')
-                //     ->alignCenter(),
-                // PaymentInfo::make('payment_info')
-                //     ->label('Información de pago')
-                //     ->alignCenter(),
-                // AmountInfo::make('amount_info')
-                //     ->label('Información de importe')
-                //     ->alignCenter(),
-                // DetailCommissionMaster::make('detail_commission_master')
-                //     ->label('Detalle comisión agencia master')
-                //     ->alignCenter(),
-                // DetailCommissionGeneral::make('detail_commission_general')
-                //     ->label('Detalle comisión agencia general')
-                //     ->alignCenter(),
-                // DetailCommissionAgent::make('detail_commission_agent')
-                //     ->label('Detalle comisión agente')
-                //     ->alignCenter(),
+                ColumnGroup::make('COMISIONES AGENTE USD - VES')->columns([
+                    TextColumn::make('porcent_agente')
+                        ->default(fn($record): string => $record->porcent_agente == 0 || $record->porcent_agente == NULL ? 0 : $record->porcent_agente)
+                        ->label('%')
+                        ->badge()
+                        ->color('info')
+                        ->suffix('%')
+                        ->numeric()
+                        ->sortable(),
+                    TextColumn::make('commission_agent_usd')
+                        ->label('Pago USD')
+                        ->grow()
+                        ->badge()
+                        ->color('success')
+                        ->suffix(' US$')
+                        ->numeric()
+                        ->sortable()
+                        ->summarize(Sum::make()
+                            ->label(('Subtotal USD'))
+                            ->suffix(' US$')
+                            ->numeric()),
+                    TextColumn::make('commission_agent_ves')
+                        ->label('Pago VES')
+                        ->grow()
+                        ->badge()
+                        ->money('VES')
+                        // ->suffix(' VES')
+                        ->numeric()
+                        ->sortable()
+                        ->summarize(Sum::make()
+                            ->label(('Subtotal VES'))
+                            ->suffix(' VES')
+                            ->numeric()),
+                ]),
+
+                ColumnGroup::make('TOTAL COMISIONES USD - VES')->columns([
+                    CommissionMaster::make('commision_master')
+                        ->label('Total USD')
+                        ->alignCenter(),
+                    CommissionGeneral::make('commision_general')
+                        ->label('Total VES')
+                        ->alignCenter(),
+                ]),
 
             ])
             ->filters([
@@ -225,36 +232,6 @@ class CommissionsTable
 
                         return $indicators;
                     }),
-                // SelectFilter::make('payment_frequency')
-                //     ->options([
-                //         'ANUAL'      => 'ANUAL',
-                //         'SEMESTRAL'  => 'SEMESTRAL',
-                //         'TRIMESTRAL' => 'TRIMESTRAL',
-                //         'MENSUAL'    => 'MENSUAL',
-                //     ])
-                //     ->label('Frecuencia de Pago'),
-                // SelectFilter::make('plan_id')
-                //     ->relationship('plan', 'description')
-                //     ->label('Planes'),
-                // SelectFilter::make('payment_method')
-                //     ->options([
-                //         'EFECTIVO US$'      => 'EFECTIVO US$',
-                //         'ZELLE'             => 'ZELLE',
-                //         'PAGO MOVIL VES'    => 'PAGO MOVIL VES',
-                //         'TRANSFERENCIA VES' => 'TRANSFERENCIA VES'
-                //     ])
-                //     ->label('Metodo de Pago'),
-                // SelectFilter::make('bank')
-                //     ->options([
-                //         'CHASE BANK'                => 'CHASE BANK',
-                //         'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                //         'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                //         'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                //         'BANCAMIGA - VES'           => 'BANCAMIGA - VES',
-                //         'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
-                //         'BANCO DE VENEZUELA - VES'  => 'BANCO DE VENEZUELA - VES',
-                //     ])
-                //     ->label('Banco'),
 
             ])
             ->recordActions([
@@ -290,7 +267,7 @@ class CommissionsTable
                                     ->send();
                             }
                         }),
-                    DeleteBulkAction::make(),
+                    ExportBulkAction::make()->exporter(CommissionExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
