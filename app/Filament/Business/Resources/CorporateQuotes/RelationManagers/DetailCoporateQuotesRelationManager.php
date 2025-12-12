@@ -2,28 +2,34 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes\RelationManagers;
 
-use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Table;
 use App\Models\Agent;
 use App\Models\Agency;
+use Filament\Tables\Table;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use App\Models\CorporateQuoteData;
+use Filament\Actions\CreateAction;
 use App\Models\AffiliationCorporate;
 use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use App\Http\Controllers\UtilsController;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
 
 class DetailCoporateQuotesRelationManager extends RelationManager
 {
     protected static string $relationship = 'detailCoporateQuotes';
 
+    protected static ?string $title = 'COTIZACIÓN';
+    
     public function table(Table $table): Table
     {
         return $table
@@ -95,6 +101,38 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                     ->relationship('coverage', 'price')
                     ->attribute('coverage_id'),
             ])
+            // ->headerActions([
+            //     Action::make('update_quote')
+            //         ->label('Actualizar cotización')
+            //         ->icon('fluentui-document-sync-16')
+            //         ->color('success')
+            //         ->requiresConfirmation()
+            //         ->modalDescription('')
+            //         ->action(function (RelationManager $livewire) {
+            //             // dd($livewire->ownerRecord->id);
+            //             $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
+            //             if ($exit_request <= 0) {
+            //                 Notification::make()
+            //                     ->title('No exite cotización asociada a la solicitud')
+            //                     ->danger()
+            //                     ->send();
+            //                 return;
+            //             }
+            //             $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
+
+            //             if ($createCorporateQuote) {
+            //                 Notification::make()
+            //                     ->title('Cotización creada con éxito')
+            //                     ->success()
+            //                     ->send();
+            //             } else {
+            //                 Notification::make()
+            //                     ->title('Error al crear la cotización')
+            //                     ->danger()
+            //                     ->send();
+            //             }
+            //         })
+            // ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('pre_affiliation_multiple')
@@ -117,8 +155,6 @@ class DetailCoporateQuotesRelationManager extends RelationManager
 
                                 $data_records = session()->get('data_records');
 
-                                dd($data_records);
-
                                 /**
                                  * Actualizo el status a APROBADA
                                  */
@@ -129,11 +165,11 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                 $record = $records->first();
 
                                 if ($records->count() == 1) {
-                                    return redirect()->route('filament.agents.resources.affiliation-corporates.create', ['id' => $record->corporate_quote_id, 'plan_id' => $record->plan_id]);
+                                    return redirect()->route('filament.business.resources.affiliation-corporates.create', ['id' => $record->corporate_quote_id, 'plan_id' => $record->plan_id]);
                                 }
 
                                 if ($records->count() > 1) {
-                                    return redirect()->route('filament.agents.resources.affiliation-corporates.create', ['id' => $record->plan_id, 'plan_id' => null]);
+                                    return redirect()->route('filament.business.resources.affiliation-corporates.create', ['id' => $record->plan_id, 'plan_id' => null]);
                                 }
 
 

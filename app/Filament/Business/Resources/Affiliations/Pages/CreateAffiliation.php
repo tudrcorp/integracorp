@@ -33,7 +33,7 @@ class CreateAffiliation extends CreateRecord
                 ->label('Regresar')
                 ->button()
                 ->icon('heroicon-s-arrow-left')
-                ->color('gray')
+                ->color('warning')
                 ->url(AffiliationResource::getUrl('index')),
         ];
     }

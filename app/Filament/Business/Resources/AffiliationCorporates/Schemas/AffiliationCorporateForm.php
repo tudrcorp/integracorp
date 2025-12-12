@@ -234,6 +234,7 @@ class AffiliationCorporateForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->live(),
+                                Hidden::make('corporate_quote_id')->default(fn () => session()->get('data_records')[0]['corporate_quote_id']),
 
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('status')->default('PRE-APROBADA'),

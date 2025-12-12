@@ -60,6 +60,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
 
                     ]);
                 }
@@ -93,6 +94,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
 
@@ -126,6 +128,7 @@ class AffiliationController extends Controller
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
                         'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
             }
@@ -159,6 +162,7 @@ class AffiliationController extends Controller
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
                         'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
 
@@ -189,6 +193,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
 
@@ -222,6 +227,7 @@ class AffiliationController extends Controller
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
                         'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
             }
@@ -255,6 +261,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
 
@@ -286,6 +293,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
 
@@ -319,6 +327,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
             }
@@ -352,6 +361,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
 
@@ -383,6 +393,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
 
@@ -416,6 +427,7 @@ class AffiliationController extends Controller
                         'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by'                => Auth::user()->name,
                         'type_roll'                 => $type_roll,
+                        'date_payment_voucher'      => $data['date_payment_voucher']
                     ]);
                 }
             }
@@ -476,6 +488,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
 
                         ]);
                     }
@@ -509,6 +522,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
 
@@ -542,6 +556,7 @@ class AffiliationController extends Controller
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
                             'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
                 }
@@ -575,6 +590,7 @@ class AffiliationController extends Controller
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
                             'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
 
@@ -605,6 +621,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
 
@@ -638,6 +655,7 @@ class AffiliationController extends Controller
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
                             'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
                 }
@@ -671,6 +689,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
 
@@ -702,6 +721,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
 
@@ -735,6 +755,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
                 }
@@ -768,6 +789,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
 
@@ -799,6 +821,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
 
@@ -832,6 +855,7 @@ class AffiliationController extends Controller
                             'renewal_date'              => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                             'created_by'                => Auth::user()->name,
                             'type_roll'                 => $type_roll,
+                            'date_payment_voucher'      => $data['date_payment_voucher']
                         ]);
                     }
                 }

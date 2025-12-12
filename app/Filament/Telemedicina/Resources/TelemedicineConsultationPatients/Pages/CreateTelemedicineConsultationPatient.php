@@ -183,6 +183,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 '<span style="font-size: 1rem; color: #005ca9;">' . // Tono gris oscuro similar a gray-600
                     'Cédula: V-' . $patient->nro_identificacion .
                 '</span>' .
+                '<span style="font-size: 1rem; color: #005ca9;">' . // Tono gris oscuro similar a gray-600
+                    'Edad: ' . $patient->age .
+                '</span>' .
             '</div>'
         );
     }

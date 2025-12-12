@@ -56,9 +56,11 @@ class UserForm
                                     'OPERACIONES'   => 'OPERACIONES',
                                     'ADMINISTRACION'=> 'ADMINISTRACION',
                                     'MARKETING'     => 'MARKETING',
-                                    'TELEMEDICINA'  => 'TEEMEDICINA',
+                                    'TELEMEDICINA'  => 'TELEMEDICINA',
                                     'NEGOCIOS'      => 'NEGOCIOS',
-                                ]),
+                                    'PROVEEDORES'   => 'PROVEEDORES',
+                                    'SUPERADMIN'    => 'SUPERADMIN',
+                                ])->multiple(),
                             Select::make('status')
                                 ->label('Estado')
                                 ->options([

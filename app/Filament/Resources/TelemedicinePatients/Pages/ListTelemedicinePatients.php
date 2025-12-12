@@ -39,9 +39,9 @@ class ListTelemedicinePatients extends ListRecords
                 ->icon('heroicon-o-plus')
                 ->requiresConfirmation()
                 ->modalWidth(Width::ExtraLarge)
-                ->modalHeading('Asociar Afiliado')
-                ->modalDescription('Debe seleccionar el tipo de afiliación, luego seleccione el afiliado y presione el botón "Asociar"')
-                ->modalButton('Asociar')
+                ->modalHeading('Seleccionar Afiliado')
+                ->modalDescription('Debe seleccionar el tipo de afiliación, luego seleccione el afiliado y presione el botón "Aceptar"')
+                ->modalButton('Aceptar')
                 ->form([
                     Grid::make(1)
                     ->schema([

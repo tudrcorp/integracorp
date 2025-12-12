@@ -23,6 +23,7 @@
         "owenvoke/blade-fontawesome": "^2.9",
         "predis/predis": "^3.2",
         "simplesoftwareio/simple-qrcode": "^4.2",
+        "solution-forest/filament-header-select": "^0.0.1",
         "swisnl/filament-backgrounds": "^2.0",
         "troccoli/blade-health-icons": "^5.0"
     },

@@ -66,12 +66,13 @@ class AffiliationCorporatesTable
                     ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('agency.name_corporative')
+                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TuDrEnCasa' : $record->agency->name_corporative)
                     ->label('Agencia')
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('agent.name')
-                    // ->prefix('AGT-000')
+                    ->default(fn($record): string => $record->agent_id == null ? 'TuDrEnCasa' : $record->agent->name)
                     ->label('Agente')
                     ->badge()
                     ->color('azulOscuro')

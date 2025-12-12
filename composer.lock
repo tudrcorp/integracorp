@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "78ba24318d3f23eedc11fd05aa7b8031",
+    "content-hash": "02b16590ebcd4f8ab3796379df9b0bf0",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -6270,6 +6270,61 @@
                 "source": "https://github.com/SimpleSoftwareIO/simple-qrcode/tree/4.2.0"
             },
             "time": "2021-02-08T20:43:55+00:00"
+        },
+        {
+            "name": "solution-forest/filament-header-select",
+            "version": "v0.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/solutionforest/filament-header-select.git",
+                "reference": "200806f8ee061d9d0e155a8b142ef11069157dfb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/solutionforest/filament-header-select/zipball/200806f8ee061d9d0e155a8b142ef11069157dfb",
+                "reference": "200806f8ee061d9d0e155a8b142ef11069157dfb",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^3.0|^4.0",
+                "illuminate/contracts": "^10.0|^11.0|^12.0",
+                "livewire/livewire": "^3.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.24",
+                "orchestra/testbench": "^8.0|^9.0",
+                "pestphp/pest": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "SolutionForest\\FilamentHeaderSelect\\HeaderSelectServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "SolutionForest\\FilamentHeaderSelect\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Solution Forest",
+                    "email": "hello@solutionforest.com"
+                }
+            ],
+            "description": "A simple, powerful header select component for Filament admin panels",
+            "support": {
+                "issues": "https://github.com/solutionforest/filament-header-select/issues",
+                "source": "https://github.com/solutionforest/filament-header-select/tree/v0.0.1"
+            },
+            "time": "2025-09-04T15:47:09+00:00"
         },
         {
             "name": "spatie/invade",

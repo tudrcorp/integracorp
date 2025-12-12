@@ -972,7 +972,7 @@ class UtilsController extends Controller
                 })
                 ->values()
                 ->toArray();
-            // dd($resultado);
+
             /**
              * Verificamos si tenemos mas de un plan
              * ----------------------------------------------------------------------------------------------------

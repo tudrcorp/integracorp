@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Navigation\NavigationGroup;
 use Filament\Widgets\FilamentInfoWidget;
@@ -81,6 +82,10 @@ class MarketingPanelProvider extends PanelProvider
                     ->color('danger')
                     ->url(route('internal')),
             ])
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn() => view('filament.return-modulo-negocios')
+            )
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(

@@ -235,29 +235,6 @@ class AffiliationsTable
                         ->searchable(),
                 ]),
 
-                //...
-                ColumnGroup::make('Información ILS', [
-                    TextColumn::make('vaucher_ils')
-                        ->label('Voucher ILS')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('date_payment_initial_ils')
-                        ->label('ago ILS Desde')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('date_payment_final_ils')
-                        ->label('Pago ILS Hasta')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('success')
-                        ->searchable(),
-                ]),
-
-
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable(),
@@ -343,14 +320,9 @@ class AffiliationsTable
             ->recordActions([
                 ActionGroup::make([
 
-                    EditAction::make()
-                        ->label('Editar')
-                        ->color('warning')
-                        ->icon('heroicon-o-pencil-square'),
-
                     Action::make('upload')
                         ->label('Comprobante de Pago')
-                        ->color('azul')
+                        ->color('info')
                         ->icon('heroicon-s-cloud-arrow-up')
                         ->modalWidth(Width::FourExtraLarge)
                         ->form([
@@ -874,132 +846,6 @@ class AffiliationsTable
                             return false;
                         }),
 
-                    Action::make('change_status')
-                        ->label('Actualizar estatus')
-                        ->color('azulOscuro')
-                        ->icon('heroicon-s-check-circle')
-                        ->requiresConfirmation()
-                        ->modalWidth(Width::ExtraLarge)
-                        ->modalHeading('ACCIONES')
-                        ->form([
-                            Section::make()
-                                ->heading('ACCIONES')
-                                ->description('Seleccione la accion que desea realizar')
-                                ->icon('heroicon-s-check-circle')
-                                ->schema([
-                                    Grid::make(2)->schema([
-                                        Radio::make('action')
-                                            ->label('Que accion deseas realizar?')
-                                            ->options([
-                                                'observation' => 'Anadir observaciones',
-                                                'status'      => 'Actualizar estatus',
-                                                'exclude'     => 'Excluir Afiliación',
-                                            ])
-                                            ->live()
-                                            ->required()
-                                        // ->inline()
-                                    ]),
-
-                                    Grid::make(1)->schema([
-                                        Textarea::make('description')
-                                            ->label('Observaciones')
-                                            ->autosize()
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('description', strtoupper($state));
-                                            })
-                                    ])->hidden(fn(Get $get) => $get('action') != 'observation'),
-
-                                    Grid::make(1)->schema([
-                                        Select::make('status')
-                                            ->label('Estatus')
-                                            ->options([
-                                                'PENDIENTE' => 'PENDIENTE',
-                                            ])
-                                            ->searchable()
-                                            ->preload(),
-                                        Textarea::make('description')
-                                            ->autosize()
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('description', strtoupper($state));
-                                            })
-                                    ])->hidden(fn(Get $get) => $get('action') != 'status'),
-
-                                    Grid::make(1)->schema([
-                                        DatePicker::make('date_egress')
-                                            ->label('Fecha de egreso')
-                                            ->format('d-m-Y'),
-                                        Textarea::make('description')
-                                            ->label('Observaciones')
-                                            ->autosize()
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('description', strtoupper($state));
-                                            })
-                                    ])->hidden(fn(Get $get) => $get('action') != 'exclude'),
-                                ])
-                        ])
-                        ->action(function (Affiliation $record, array $data): void {
-                            if ($data['action'] == 'observation') {
-                                $record->status_log_affiliations()->create([
-                                    'affiliation_id'    => $record->id,
-                                    'action'            => 'AGREGO OBSERVACION',
-                                    'observation'       => $data['description'],
-                                    'updated_by'        => Auth::user()->name
-                                ]);
-                                Notification::make()
-                                    ->title('AFILIACION ACTUALIZADA')
-                                    ->success()
-                                    ->send();
-                                return;
-                            }
-
-                            if ($data['action'] == 'status') {
-                                $record->update([
-                                    'status' => $data['status'],
-                                ]);
-                                $record->status_log_affiliations()->create([
-                                    'affiliation_id'    => $record->id,
-                                    'action'            => 'CAMBIO ESTATUS A: ' . $data['status'],
-                                    'observation'       => $data['description'],
-                                    'updated_by'        => Auth::user()->name
-                                ]);
-                                Notification::make()
-                                    ->title('AFILIACION ACTUALIZADA')
-                                    ->success()
-                                    ->send();
-                                return;
-                            }
-
-                            if ($data['action'] == 'exclude') {
-                                $record->update([
-                                    'status'            => 'EXCLUIDO',
-                                    'fee_anual'         => 0.0,
-                                    'activated_at'      => null,
-                                    'total_amount'      => 0.0,
-                                    'family_members'    => 0
-                                ]);
-                                $record->affiliates()->update([
-                                    'status'  => 'EXCLUIDO',
-                                ]);
-                                $record->status_log_affiliations()->create([
-                                    'affiliation_id'    => $record->id,
-                                    'action'            => 'EXCLUYO AFILIACION, FECHA DE EGRESO: ' . $data['date_egress'],
-                                    'observation'       => $data['description'],
-                                    'updated_by'        => Auth::user()->name
-                                ]);
-                                Notification::make()
-                                    ->title('AFILIACION ACTUALIZADA')
-                                    ->success()
-                                    ->send();
-                                return;
-                            }
-
-
-                            Notification::make()
-                                ->title('AFILIACION ACTUALIZADA')
-                                ->success()
-                                ->send();
-                        }),
-
                         /**DESCARGAR CERTIFICADO PDF */
                         Action::make('download')
                             ->label('Descargar Certificado')
@@ -1035,12 +881,12 @@ class AffiliationsTable
                         /**REGENERAR CERTIFICADO PDF */
                         Action::make('regenerate')
                             ->label('Regenerar Certificado')
-                            ->icon('heroicon-s-arrow-down-on-square-stack')
-                            ->color('warning')
+                            ->icon('heroicon-o-arrow-path')
+                            ->color('info')
                             ->requiresConfirmation()
                             ->modalHeading('REGENERAR CERTIFICADO')
                             ->modalWidth(Width::ExtraLarge)
-                            ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                            ->modalIcon('heroicon-o-arrow-path')
                             ->modalDescription('Se realizara la creacion del certificado de forma automatica al hacer clic en confirmar!.')
                             ->action(function (Affiliation $record, array $data) {
 
@@ -1066,6 +912,201 @@ class AffiliationsTable
                                 }
                             })
                             ->hidden(fn() => Auth::user()->is_business_admin != 1),
+
+                        /**EDITAR FRECUENCIA DE PAGO */
+                        Action::make('edit_frequency')
+                            ->label('Editar Frecuencia de Pago')
+                            ->icon('heroicon-m-pencil')
+                            ->color('info')
+                            ->requiresConfirmation()
+                            ->modalHeading('EDITAR FRECUENCIA DE PAGO')
+                            ->modalWidth(Width::ExtraLarge)
+                            ->modalIcon('heroicon-m-pencil')
+                            ->modalDescription('Este procedimiento permitira editar la frecuencia de pago y posterior sera actualizado el monto a pagar de la afiliación!.')
+                            ->form([
+                                Fieldset::make('payment_frequency')
+                                ->label('Seleciona la Frecuencia de Pago')
+                                ->schema([
+                                    Select::make('payment_frequency')
+                                        ->label('Frecuencia de Pago')
+                                        ->options([
+                                            'MENSUAL'   => 'MENSUAL',
+                                            'TRIMESTRAL'=> 'TRIMESTRAL',
+                                            'SEMESTRAL' => 'SEMESTRAL',
+                                            'ANUAL'     => 'ANUAL',
+                                        ])
+                                    
+                                ])->columnSpanFull(),
+                            ])
+                            ->action(function (Affiliation $record, array $data) {
+
+                                try {
+
+                                    $record->payment_frequency = $data['payment_frequency'];
+                                    
+                                    if($data['payment_frequency'] == 'ANUAL') {
+                                        $record->total_amount = $record->fee_anual;
+                                    }
+
+                                    if($data['payment_frequency'] == 'SEMESTRAL') {
+                                        $record->total_amount = $record->fee_anual / 2;
+                                    }
+
+                                    if($data['payment_frequency'] == 'TRIMESTRAL') {
+                                        $record->total_amount = $record->fee_anual / 4;
+                                    }
+
+                                    if($data['payment_frequency'] == 'MENSUAL') {
+                                        $record->total_amount = $record->fee_anual / 12;
+                                    }
+                                    
+                                    $record->save();
+
+                                    Notification::make()
+                                        ->title('ACTUALIACION EXITOSA')
+                                        ->body('La frecuencia de pago se ha actualizado con exito.')
+                                        ->icon('heroicon-s-check-circle')
+                                        ->success()
+                                        ->send();
+                                        
+                                } catch (\Throwable $th) {
+                                    Log::error($th->getMessage());
+                                    Notification::make()
+                                        ->title('ERROR AL ACTUALIZAR FRECUENCIA DE PAGO')
+                                        ->body($th->getMessage())
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('danger')
+                                        ->danger()
+                                        ->send();
+                                }
+                            })
+                            ->hidden(fn() => Auth::user()->is_business_admin != 1),
+
+                        Action::make('change_status')
+                            ->label('Actualizar Estatus')
+                            ->color('info')
+                            ->icon('heroicon-s-check-circle')
+                            ->requiresConfirmation()
+                            ->modalWidth(Width::ExtraLarge)
+                            ->modalHeading('ACCIONES')
+                            ->form([
+                                Section::make()
+                                    ->heading('ACCIONES')
+                                    ->description('Seleccione la accion que desea realizar')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Radio::make('action')
+                                                ->label('Que accion deseas realizar?')
+                                                ->options([
+                                                    'observation' => 'Anadir observaciones',
+                                                    'status'      => 'Actualizar estatus',
+                                                    'exclude'     => 'Excluir Afiliación',
+                                                ])
+                                                ->live()
+                                                ->required()
+                                            // ->inline()
+                                        ]),
+
+                                        Grid::make(1)->schema([
+                                            Textarea::make('description')
+                                                ->label('Observaciones')
+                                                ->autosize()
+                                                ->afterStateUpdated(function (Set $set, $state) {
+                                                    $set('description', strtoupper($state));
+                                                })
+                                        ])->hidden(fn(Get $get) => $get('action') != 'observation'),
+
+                                        Grid::make(1)->schema([
+                                            Select::make('status')
+                                                ->label('Estatus')
+                                                ->options([
+                                                    'PENDIENTE' => 'PENDIENTE',
+                                                ])
+                                                ->searchable()
+                                                ->preload(),
+                                            Textarea::make('description')
+                                                ->autosize()
+                                                ->afterStateUpdated(function (Set $set, $state) {
+                                                    $set('description', strtoupper($state));
+                                                })
+                                        ])->hidden(fn(Get $get) => $get('action') != 'status'),
+
+                                        Grid::make(1)->schema([
+                                            DatePicker::make('date_egress')
+                                                ->label('Fecha de egreso')
+                                                ->format('d-m-Y'),
+                                            Textarea::make('description')
+                                                ->label('Observaciones')
+                                                ->autosize()
+                                                ->afterStateUpdated(function (Set $set, $state) {
+                                                    $set('description', strtoupper($state));
+                                                })
+                                        ])->hidden(fn(Get $get) => $get('action') != 'exclude'),
+                                    ])
+                            ])
+                            ->action(function (Affiliation $record, array $data): void {
+                                if ($data['action'] == 'observation') {
+                                    $record->status_log_affiliations()->create([
+                                        'affiliation_id'    => $record->id,
+                                        'action'            => 'AGREGO OBSERVACION',
+                                        'observation'       => $data['description'],
+                                        'updated_by'        => Auth::user()->name
+                                    ]);
+                                    Notification::make()
+                                        ->title('AFILIACION ACTUALIZADA')
+                                        ->success()
+                                        ->send();
+                                    return;
+                                }
+
+                                if ($data['action'] == 'status') {
+                                    $record->update([
+                                        'status' => $data['status'],
+                                    ]);
+                                    $record->status_log_affiliations()->create([
+                                        'affiliation_id'    => $record->id,
+                                        'action'            => 'CAMBIO ESTATUS A: ' . $data['status'],
+                                        'observation'       => $data['description'],
+                                        'updated_by'        => Auth::user()->name
+                                    ]);
+                                    Notification::make()
+                                        ->title('AFILIACION ACTUALIZADA')
+                                        ->success()
+                                        ->send();
+                                    return;
+                                }
+
+                                if ($data['action'] == 'exclude') {
+                                    $record->update([
+                                        'status'            => 'EXCLUIDO',
+                                        'fee_anual'         => 0.0,
+                                        'activated_at'      => null,
+                                        'total_amount'      => 0.0,
+                                        'family_members'    => 0
+                                    ]);
+                                    $record->affiliates()->update([
+                                        'status'  => 'EXCLUIDO',
+                                    ]);
+                                    $record->status_log_affiliations()->create([
+                                        'affiliation_id'    => $record->id,
+                                        'action'            => 'EXCLUYO AFILIACION, FECHA DE EGRESO: ' . $data['date_egress'],
+                                        'observation'       => $data['description'],
+                                        'updated_by'        => Auth::user()->name
+                                    ]);
+                                    Notification::make()
+                                        ->title('AFILIACION ACTUALIZADA')
+                                        ->success()
+                                        ->send();
+                                    return;
+                                }
+
+
+                                Notification::make()
+                                    ->title('AFILIACION ACTUALIZADA')
+                                    ->success()
+                                    ->send();
+                            }),
 
             ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])

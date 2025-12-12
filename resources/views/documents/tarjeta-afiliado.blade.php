@@ -1,203 +1,203 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarjeta de Afiliado</title>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tarjeta de Afiliado</title>
 
-    <style>
-        /* Estilos generales */
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            /* Centra horizontalmente */
-            align-items: center;
-            /* Centra verticalmente */
-            /* width: 100vw; */
-            min-height: 100vh;
-            /* Altura mínima de la ventana */
-            /* background-color: #f4f4f9; */
+        <style>
+            @page {
+                margin: 0px;
+            }
 
-        }
+            /* Estilos generales */
+            body {
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                /* Centra horizontalmente */
+                align-items: center;
+                /* Centra verticalmente */
+                /* width: 100vw; */
+                min-height: 100vh;
+                /* Altura mínima de la ventana */
+                /* background-color: #f4f4f9; */
 
-        /* Logos */
-        .logo-top-right {
-            width: 50px;
-            height: 50px;
-            float: right;
-        }
+            }
 
-        .logo-bottom-left {
-            width: 50px;
-            height: 50px;
-            float: left;
-        }
+            /* Contenedor padre */
+            .container {
+                width: 700px;
+                /* Ancho fijo del contenedor */
+                display: flex;
+                /* Activa Flexbox */
+                justify-content: space-between;
+                /* Espacio entre los divs */
+                border: 1px solid #ccc;
+                /* Borde para visualizar el contenedor */
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                /* Sombra suave */
+                border-radius: 8px;
+                /* Bordes redondeados */
+                overflow: hidden;
+                /* Asegura que los bordes redondeados se vean bien */
+            }
 
-        /* Contenedor padre */
-        .container {
-            width: 700px;
-            /* Ancho fijo del contenedor */
-            display: flex;
-            /* Activa Flexbox */
-            justify-content: space-between;
-            /* Espacio entre los divs */
-            border: 1px solid #ccc;
-            /* Borde para visualizar el contenedor */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            /* Sombra suave */
-            border-radius: 8px;
-            /* Bordes redondeados */
-            overflow: hidden;
-            /* Asegura que los bordes redondeados se vean bien */
-        }
+            .parent {
+                display: flex;
+                /* Activa Flexbox */
+                width: 100vw;
+                /* Ancho total de la ventana */
+                height: 155px;
+                /* Altura fija */
+                background-color: #f4f4f9;
+                /* Fondo claro */
+                border: 1px solid #ccc;
+                /* Borde para visualizar el contenedor */
+                box-sizing: border-box;
+                /* Incluye el borde en el cálculo del tamaño */
+            }
 
-        .parent {
-            display: flex;
-            /* Activa Flexbox */
-            width: 100vw;
-            /* Ancho total de la ventana */
-            height: 155px;
-            /* Altura fija */
-            background-color: #f4f4f9;
-            /* Fondo claro */
-            border: 1px solid #ccc;
-            /* Borde para visualizar el contenedor */
-            box-sizing: border-box;
-            /* Incluye el borde en el cálculo del tamaño */
-        }
+            /* Divs hijos */
+            .child {
+                flex: 1;
+                /* Cada div ocupa el mismo espacio (50% del ancho del padre) */
+                display: flex;
+                justify-content: center;
+                /* Centra horizontalmente */
+                align-items: center;
+                /* Centra verticalmente */
+                text-align: center;
+                /* Alinea el texto al centro */
+                font-size: 18px;
+                color: #ffffff;
+                /* Texto blanco */
+            }
 
-        /* Divs hijos */
-        .child {
-            flex: 1;
-            /* Cada div ocupa el mismo espacio (50% del ancho del padre) */
-            display: flex;
-            justify-content: center;
-            /* Centra horizontalmente */
-            align-items: center;
-            /* Centra verticalmente */
-            text-align: center;
-            /* Alinea el texto al centro */
-            font-size: 18px;
-            color: #ffffff;
-            /* Texto blanco */
-        }
-
-        /* Estilo específico para cada div */
-        .left {
-            background-color: #00539c;
-            /* Azul oscuro */
-        }
-
-        .right {
-            background-color: #333333;
-            /* Gris oscuro */
-        }
-
-    </style>
+            .cover {
+                position: relative;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                /* page-break-after: always; */
+            }
 
 
-</head>
-<body>
+            /* Estilos de la tabla */
+            table {
+                width: 100%;
+                /* Ancho total */
+                border-collapse: separate;
+                /* Necesario para bordes redondeados */
+                border-spacing: 0;
+                /* Elimina el espacio entre celdas */
+                margin: 0;
+                /* Centra la tabla */
+                max-width: 800px;
+                /* Ancho máximo */
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                /* Sombra suave */
+                font-size: 10px;
+            }
 
-    <div>
-        <!-- Content here -->
-        <div>
-            <img class="logo-top-right" src="{{ public_path('storage/logo2-pdf.png') }}" style="width: 150px; height: 70px;" alt="">
-            <img class="logo-bottom-left" src="{{ public_path('storage/logo1-pdf.png') }}" style="width: 150px; height: 70px;" alt="">
-        </div>
-    </div>
 
-    <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 150px">
-        <h1>TARJETA DE AFILIADO</h1>
-    </div>
+            /* Separación entre filas */
 
-    <div style="position: relative;">
-        <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 30px">
-            <img src="{{ public_path('storage/tarjetaAfiliacionBlanca.png') }}" style="width: 100%;" alt="">
 
-        </div>
+            /* Efecto hover en las filas */
+            tbody tr:hover {
+                background-color: #d9edff;
+                /* Cambia el color al pasar el cursor */
+            }
 
-        <!-- Parte Izquierda -->
-        <div style="position: absolute; top: 50px; left: 220px; color: #000000; font-weight: bold">
-            {{ $details['code'] }}
-        </div>
-        <div style="position: absolute; top: 100px; left: 50px; color: #000000; font-weight: bold">
-            {{ $details['full_name_con'] }}
-        </div>
-        <div style="position: absolute; top: 123px; left: 75px; color: #000000; font-weight: bold">
-            {{ $details['nro_identificacion_con'] }}
-        </div>
-        <div style="position: absolute; top: 151px; left: 85px; color: #000000; font-weight: bold">
-            {{ $plan }}
-        </div>
-        <div style="position: absolute; top: 175px; left: 183px; color: #000000; font-weight: bold">
-            {{ $details['payment_frequency'] }}
-        </div>
-        <div style="position: absolute; top: 202px; left: 120px; color: #000000; font-weight: bold">
-            @if($coverage == null)
-                N/A
-            @else
-                US$ {{ $coverage }}  
-            @endif
-        </div>
+            footer {
+                display: flex;
+                position: fixed;
+                bottom: 0px;
+                left: 0px;
+                right: 0px;
+                align-items: center;
+                text-align: center;
+            }
 
-        <!-- Parte Derecha -->
-        <div style="position: absolute; top: 149px; left: 425px; color: #000000; font-weight: bold">
-            {{ date('d-m-Y') }}
-        </div>
-        <div style="position: absolute; top: 174px; left: 425px; color: #000000; font-weight: bold">
-            @if($details['payment_frequency'] == 'MENSUAL')
-            {{ date('d-m-Y', strtotime('+1 month')) }}
-            @endif
-            @if($details['payment_frequency'] == 'TRIMESTRAL')
-            {{ date('d-m-Y', strtotime('+3 month')) }}
-            @endif
-            @if($details['payment_frequency'] == 'SEMESTRAL')
-            {{ date('d-m-Y', strtotime('+6 month')) }}
-            @endif
-            @if($details['payment_frequency'] == 'ANUAL')
-            {{ date('d-m-Y', strtotime('+1 year')) }}
-            @endif
-        </div>
+            .titulos_table_uno {
+                color: #575757;
+                font-size: 12px;
+                text-align: left;
+                font-weight: bold;
+                text-transform: uppercase;
+                font-style: sans-serif;
+                font-family: 'Helvetica', Century, sans-serif;
 
-    </div>
+            }
 
-    <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 10px">
-        <div style="width: 600px; display: block; margin: auto;">
-            <div style="margin-top: 80px; font-size: 0.9em; font-weight: bold; text-align: center;">
-                <p>1. Escanea el código QR para ampliar la información de contactos y paso a paso para la activación de los servicios médicos.</p>
-                <p>2. Conserve su Tarjeta de Afiliado cerca de sus documentos personales.</p>
-                <p>3. La Tarjeta de Afiliado no es un requisito obligatorio para solicitar el servicio, si usted presenta una eventualidad puede identificarse con su Nombre y Número de Cédula.</p>
+            .contenido_table_uno {
+                color: #000000;
+                font-size: 12px;
+                text-align: left;
+                text-transform: uppercase;
+                font-style: sans-serif;
+                font-family: 'Helvetica', Century, sans-serif;
+
+            }
+
+        </style>
+
+    </head>
+    <body>
+
+        <!-- Primera página: Imagen de fondo -->
+        <div class="cover" style="background-image: url('{{ public_path('storage/certificados/fondo-certificado.png') }}'); ">
+            <div style="position: absolute; top: 300px; right: 385px; margin-top: 0px; padding: 0px; margin-left: 0px">
+                <p><span style="font-weight: bold; color: #305B93; font-size: 25px; font-style: arial;">TARJETA DEL AFILIADO</span></p>
+            </div>
+            <div style="position: absolute; top: 10px; right: 75px; margin-top: 0px; padding: 0px; margin-left: 0px">
+                <img src="{{ public_path('storage/certificados/tarjeta-afiliado.png') }}" style="width: 100%;" alt="">
+            </div>
+            <div style="position: absolute; top: 423px; right: 458px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                {{ $data['code'] }}
+            </div>
+            <div style="position: absolute; top: 475px; right: 585px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                {{ $data['ci'] }}
+            </div>
+            <div style="position: absolute; top: 497px; right: 570px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                @if($data['plan'] == 'PLAN INICIAL')
+                    INICIAL  
+                @endif
+                @if($data['plan'] == 'PLAN IDEAL')
+                    IDEAL
+                @endif
+                @if($data['plan'] == 'PLAN ESPECIAL')
+                    ESPECIAL
+                @endif
+            </div>
+            <div style="position: absolute; top: 494px; right: 323px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                {{ $data['desde'] }}
+            </div>
+            <div style="position: absolute; top: 515px; right: 480px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                {{ $data['frecuencia'] }}
+            </div>
+            <div style="position: absolute; top: 511px; right: 323px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                {{ $data['hasta'] }}
+            </div>
+            <div style="position: absolute; top: 533px; right: 546px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                {{ number_format($data['cobertura'], 2, ',', '.') }} US$
             </div>
         </div>
-    </div>
-
-    {{-- <div style="page-break-after:always;"></div> --}}
-
-    <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 140px">
-        <img src="{{ public_path('storage/firma-pdf.png') }}" style="width: 35%;" alt="">
-
-    </div>
-
-    <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 25px">
-        <img src="{{ public_path('storage/bannerFooter.png') }}" style="width: 100%;" alt="">
-    </div>
-
-
-
-
-
-    <script type="text/php">
-        if ( isset($pdf) ) {
-            $pdf->page_script('
-                $font = $fontMetrics->get_font("Arial, Helvetica, sans-serif", "normal");
-                $pdf->text(500, 790, "Pag $PAGE_NUM/$PAGE_COUNT", $font, 10);
-            ');
-        }
-    </script>
-</body>
-
+        <script type="text/php">
+            if ( isset($pdf) ) {
+                $pdf->page_script('
+                    $font = $fontMetrics->get_font("Arial, Helvetica, sans-serif", "normal");
+                    $pdf->text(500, 790, "Pag $PAGE_NUM/$PAGE_COUNT", $font, 10);
+                ');
+            }
+        </script>
+    </body>
 </html>
 

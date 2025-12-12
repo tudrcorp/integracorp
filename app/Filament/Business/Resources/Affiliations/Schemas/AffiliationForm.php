@@ -78,52 +78,32 @@ class AffiliationForm
                                         ->label('Nombre del cliente')
                                         ->prefixIcon('heroicon-m-clipboard-document-check')
                                         ->options(IndividualQuote::all()->pluck('full_name', 'id'))
-                                        ->default(function () {
-                                            if(isset($data_records)) {
-                                                return $data_records[0]['individual_quote_id'];
-                                            }
-                                            return null;
-                                        })
+                                        ->default($data_records[0]['individual_quote_id'] ?? null)
                                         ->searchable()
-                                        ->preload()
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ]),
-    
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->preload(),
                                     Select::make('plan_id')
                                         ->options(Plan::all()->pluck('description', 'id'))
-                                        ->default(function () {
-                                            if(isset($data_records)) {
-                                                return $data_records[0]['plan_id'];
-                                            }
-                                            return null;
-                                        })
+                                        ->default($data_records[0]['plan_id'] ?? null)
                                         ->label('Plan')
                                         ->live()
                                         ->searchable()
                                         ->preload()
+                                        ->disabled()
+                                        ->dehydrated()
                                         ->prefixIcon('heroicon-m-clipboard-document-check')
-                                        ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ]),
+                                        ->required(),
                                     Select::make('coverage_id')
                                         ->helperText('Punto(.) para separar miles.')
                                         ->label('Cobertura')
                                         ->live()
                                         ->options(Coverage::all()->pluck('price', 'id'))
-                                        ->default(function () {
-                                            if(isset($data_records)) {
-                                                return $data_records[0]['coverage_id'];
-                                            }
-                                            return null;
-                                        })
+                                        ->default($data_records[0]['coverage_id'] ?? null)
                                         ->searchable()
                                         ->required()
-                                        ->validationMessages([
-                                            'required'  => 'Campo Requerido',
-                                        ])
+                                        ->disabled()
+                                        ->dehydrated()
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->hidden(fn(Get $get) => $get('plan_id') == 1 || $get('plan_id') == null)
                                         ->preload(),
@@ -136,7 +116,6 @@ class AffiliationForm
                                             'TRIMESTRAL' => 'TRIMESTRAL',
                                         ])
                                         ->searchable()
-                                        ->live()
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
@@ -158,12 +137,6 @@ class AffiliationForm
                                             }
                                             
                                         }),
-                                    TextInput::make('payment_frequency')
-                                        ->visibleOn('edit')
-                                        ->label('Frecuencia de pago')
-                                        ->disabled()
-                                        ->dehydrated()
-                                        ->live(),
                                     TextInput::make('fee_anual')
                                         ->label('Tarifa anual')
                                         ->prefix('US$')
@@ -185,10 +158,9 @@ class AffiliationForm
                             
                             Fieldset::make('Asociar Agencia y/o Agente')
                             //Esta seccion solo puede ser vista por el administrador general del mudilo de negocios
-                            ->hidden(fn($operation) => Auth::user()->is_business_admin != 1 && $operation === 'edit')
+                            ->hidden(fn($operation) => $operation === 'edit')
                             ->schema([
                                 Select::make('code_agency')
-                                    ->hidden(fn($state) => $state == 'TDG-100')
                                     ->label('Lista de Agencias')
                                     ->options(function (Get $get) {
                                         return Agency::all()->pluck('name_corporative', 'code');

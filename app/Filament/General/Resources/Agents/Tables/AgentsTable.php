@@ -29,7 +29,7 @@ class AgentsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(Agent::query()->where('code_agency', Auth::user()->code_agency))
+            ->query(Agent::query()->where('owner_code', Auth::user()->code_agency))
             ->defaultSort('id', 'desc')
             ->description('Lista de Agentes registrados en el sistema.')
             ->columns([

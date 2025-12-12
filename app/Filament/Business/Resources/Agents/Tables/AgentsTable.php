@@ -389,6 +389,17 @@ class AgentsTable
                             // dd($data, $record, env('APP_URL'));
                             try {
 
+                                if($record->status != 'ACTIVO') {
+                                    Notification::make()
+                                        ->title('EXCEPCIÓN DE ACTUALIZACIÓN')
+                                        ->body('El agente no se encuentra activo. Por favor debe activar el agente primero.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('danger')
+                                        ->color('danger')
+                                        ->send();
+                                    return;
+                                }
+
                                 //Si el agente asiende a agencia master
                                 if ($data['type_agency'] == 1) {
                                     
@@ -609,6 +620,9 @@ class AgentsTable
                                         return;
                                     }
                                 }
+
+                                //elimino al agente
+                                $record->delete();
 
                                 Notification::make()
                                     ->title('ASCENSO EXITOSO')
