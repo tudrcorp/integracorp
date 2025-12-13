@@ -107,7 +107,6 @@ class SupplierForm
                         TextInput::make('personal_phone')
                             ->label('Teléfono Celular')
                             ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
-                            ->numeric() // Sugerido: obliga al navegador a usar el teclado numérico en móviles
                             ->mask('99999999999') // Opcional: mejora la UX en el navegador
                             ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                             ->rules([
@@ -124,7 +123,6 @@ class SupplierForm
                         TextInput::make('local_phone')
                             ->label('Teléfono Local')
                             ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
-                            ->numeric() // Sugerido: obliga al navegador a usar el teclado numérico en móviles
                             ->mask('99999999999') // Opcional: mejora la UX en el navegador
                             ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                             ->rules([
