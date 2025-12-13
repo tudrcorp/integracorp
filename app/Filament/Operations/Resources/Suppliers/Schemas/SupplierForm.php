@@ -59,6 +59,11 @@ class SupplierForm
                                 'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
                                 'MULTI-ESTADO'      => 'MULTI-ESTADO',
                             ]),
+                        Select::make('state_services')
+                            ->label('Estado donde Presta Servicios')
+                            ->searchable()
+                            ->multiple()
+                            ->options(State::all()->pluck('definition', 'definition')),
                         Select::make('state_id')
                             ->options(State::all()->pluck('definition', 'id'))
                             ->label('Estado')
@@ -73,16 +78,41 @@ class SupplierForm
                             ->preload()
                             ->required(),
                         Select::make('clasificacion')
-                            ->label('Clasificación')
+                            ->label('Clasificación del Proveedor')
                             ->searchable()
                             ->options([
-                                'ACTIVO-AFILIADO'                       => 'ACTIVO-AFILIADO',
-                                'ACTIVO-EN-PROCESO'                     => 'ACTIVO-EN-PROCESO',
-                                'AFILIADO'                              => 'AFILIADO',
-                                'CONVENIO SUSPENDIDO POR EL PROVEEDOR'  => 'CONVENIO SUSPENDIDO POR EL PROVEEDOR',
-                                'CONVENIO SUSPENDIDO POR TDEC'          => 'CONVENIO SUSPENDIDO POR TDEC',
-                                'EN PROCESO'                            => 'EN PROCESO',
-                                'SIN RESPUESTA DE AFILIACION'           => 'SIN RESPUESTA DE AFILIACION',
+                                'AEROAMBULANCIA'                    => 'AEROAMBULANCIA',
+                                'AMBULANCIA'                        => 'AMBULANCIA',
+                                'AMD-REGIONAL'                      => 'AMD-REGIONAL',
+                                'APS-ATENCION-PRIMARIA-DE-SALUD'    => 'APS-ATENCIÓN-PRIMARIA-DE-SALUD',
+                                'CARDIOLOGIA'                       => 'CARDIOLOGÍA',
+                                'CLINICA'                           => 'CLÍNICA',
+                                'ENFERMERAS / HOME CARE'            => 'ENFERMERAS / HOME CARE',
+                                'FARMACIA'                          => 'FARMACIA',
+                                'GASTROENTEROLOGIA'                 => 'GASTROENTEROLOGÍA',
+                                'GINECOLOGIA'                       => 'GINECOLOGÍA',
+                                'IMAGENOLOGIA'                      => 'IMAGENOLOGIA',
+                                'INSUMOS Y EQUIPOS MEDICOS'         => 'INSUMOS Y EQUIPOS MEDICOS',
+                                'LABORATORIO'                       => 'LABORATORIO',
+                                'MEDICINA OCUPACIONAL'              => 'MEDICINA OCUPACIONAL',   
+                                'ODONTOLOGIA'                       => 'ODONTOLOGIA',
+                                'OFTALMOLOGIA'                      => 'OFTALMOLOGIA',
+                                'ONCOLOGIA'                         => 'ONCOLOGIA',
+                                'OPTICA'                            => 'OPTICA',
+                                'OZONOTERAPIA'                      => 'OZONOTERAPIA',
+                                'REHABILITACION'                    => 'REHABILITACION',
+                                'SERVICIOS DE DIALISIS'             => 'SERVICIOS DE DIALISIS',
+                                'UNIDAD QUIRURGICA AMBULATORIA'     => 'UNIDAD QUIRURGICA AMBULATORIA',
+                                'UNIDAD GINECOLOGICA'               => 'UNIDAD GINECOLOGICA',
+                                'UNIDAD ODONTOLOGICA'               => 'UNIDAD ODONTOLOGICA',
+                                'UNIDAD OFTALMOLOGICA'              => 'UNIDAD OFTALMOLOGICA',
+                                'UNIDAD PODOLOGIA'                  => 'UNIDAD PODOLOGIA',
+                                'UNIDAD TRAUMATOLOGICA'             => 'UNIDAD TRAUMATOLOGICA',
+                                'URGENT CARE'                       => 'URGENT CARE',
+                                'URGENT CARE AMD'                   => 'URGENT CARE AMD',
+                                'URGENT CARE APS'                   => 'URGENT CARE APS',
+                                'URGENT CARE CLINICA'               => 'URGENT CARE CLINICA',
+                                
                             ]),
                         Select::make('status_sistema')
                             ->label('Estado del Sistema')
@@ -145,11 +175,11 @@ class SupplierForm
                             ->afterStateUpdatedJs(<<<'JS'
                                 $set('afiliacion_proveedor', $state.toUpperCase()); 
                             JS),
-                        TextInput::make('promedio_costo_proveedor')
-                            ->label('Promedio Costo Proveedor')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                $set('promedio_costo_proveedor', $state.toUpperCase());
-                            JS),
+                        // TextInput::make('promedio_costo_proveedor')
+                        //     ->label('Promedio Costo Proveedor')
+                        //     ->afterStateUpdatedJs(<<<'JS'
+                        //         $set('promedio_costo_proveedor', $state.toUpperCase());
+                        //     JS),
                         TextInput::make('ubicacion_principal')
                             ->label('Ubicación Principal')
                             ->afterStateUpdatedJs(<<<'JS'
@@ -160,11 +190,22 @@ class SupplierForm
                             ->afterStateUpdatedJs(<<<'JS'
                                 $set('convenio_pago', $state.toUpperCase());    
                             JS),
-                        TextInput::make('tiempo_credito')
-                            ->label('Tiempo de Credito')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                $set('tiempo_credito', $state.toUpperCase());    
-                            JS),
+                        Select::make('tiempo_credito')
+                            ->label('Tiempo de Crédito')
+                            ->searchable()
+                            ->options([
+                                '3 DIAS'            => '3 DIAS',
+                                '5 DIAS'            => '5 DIAS',
+                                '7 DIAS'            => '7 DIAS',
+                                '10 DIAS'           => '10 DIAS',
+                                '15 DIAS'           => '15 DIAS',
+                                '20 DIAS'           => '20 DIAS',
+                                '25 DIAS'           => '25 DIAS',
+                                '30 DIAS'           => '30 DIAS',
+                                'CONTADO'           => 'CONTADO',
+                                'FONDO ANTICIPADO'  => 'FONDO ANTICIPADO',
+                                'PREPAGO'           => 'PREPAGO',
+                            ]),
                         TextInput::make('horario')
                             ->label('Horario')
                             ->afterStateUpdatedJs(<<<'JS'

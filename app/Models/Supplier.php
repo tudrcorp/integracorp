@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use PhpParser\Node\Expr\Cast;
 
 class Supplier extends Model
 {
@@ -59,9 +60,12 @@ class Supplier extends Model
             'otras_unidades_especiales',
             'otros_servicios',
             'created_by',
-            'updated_by'
+            'updated_by',
+            'state_services'
         
     ];
+
+    protected $casts = ['state_services' => 'array']; 
 
     public function city()
     {
