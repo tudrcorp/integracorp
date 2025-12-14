@@ -140,7 +140,6 @@ class SupplierForm
                             ->mask('99999999999') // Opcional: mejora la UX en el navegador
                             ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                             ->rules([
-                                'required', // Si el campo es obligatorio
                                 'regex:/^\d{11}$/',
                             ])
                             ->validationMessages([
@@ -156,7 +155,6 @@ class SupplierForm
                             ->mask('99999999999') // Opcional: mejora la UX en el navegador
                             ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                             ->rules([
-                                'required', // Si el campo es obligatorio
                                 'regex:/^\d{11}$/',
                             ])
                             ->validationMessages([
@@ -175,11 +173,6 @@ class SupplierForm
                             ->afterStateUpdatedJs(<<<'JS'
                                 $set('afiliacion_proveedor', $state.toUpperCase()); 
                             JS),
-                        // TextInput::make('promedio_costo_proveedor')
-                        //     ->label('Promedio Costo Proveedor')
-                        //     ->afterStateUpdatedJs(<<<'JS'
-                        //         $set('promedio_costo_proveedor', $state.toUpperCase());
-                        //     JS),
                         TextInput::make('ubicacion_principal')
                             ->label('Ubicación Principal')
                             ->afterStateUpdatedJs(<<<'JS'
@@ -313,11 +306,9 @@ class SupplierForm
                                 TextInput::make('personal_phone')
                                     ->label('Teléfono Celular')
                                     ->tel()
-                                    ->numeric() // Sugerido: obliga al navegador a usar el teclado numérico en móviles
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-                                        'required', // Si el campo es obligatorio
 
                                         // REGEX: ^\d{11}$
                                         // ^        -> Inicio de la cadena
@@ -332,11 +323,9 @@ class SupplierForm
                                 TextInput::make('local_phone')
                                     ->label('Teléfono Local')
                                     ->tel()
-                                    ->numeric() // Sugerido: obliga al navegador a usar el teclado numérico en móviles
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-                                        'required', // Si el campo es obligatorio
 
                                         // REGEX: ^\d{11}$
                                         // ^        -> Inicio de la cadena
@@ -402,11 +391,9 @@ class SupplierForm
                                     ->label('Teléfono Celular')
                                     ->required()
                                     ->tel()
-                                    ->numeric() // Sugerido: obliga al navegador a usar el teclado numérico en móviles
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-                                        'required', // Si el campo es obligatorio
 
                                         // REGEX: ^\d{11}$
                                         // ^        -> Inicio de la cadena
@@ -422,12 +409,9 @@ class SupplierForm
                                     ->label('Teléfono Local')
                                     ->required()
                                     ->tel()
-                                    ->numeric() // Sugerido: obliga al navegador a usar el teclado numérico en móviles
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-                                        'required', // Si el campo es obligatorio
-
                                         // REGEX: ^\d{11}$
                                         // ^        -> Inicio de la cadena
                                         // \d{11}   -> Exactamente 11 dígitos (0-9)
