@@ -432,7 +432,28 @@ class AffiliatesRelationManager extends RelationManager
                     EditAction::make()
                         ->label('Editar Afiliación')
                         ->icon('heroicon-s-pencil')
-                        ->color('warning'),
+                        ->color('warning')
+                        ->after(function (Affiliate $record, array $data) {
+                            //actualizo la afiliacion
+                            try {
+                                
+                                $owner = $this->getOwnerRecord();
+                                $owner->plan_id = $data['plan_id'];
+                                $owner->coverage_id = $data['coverage_id'];
+                                $owner->fee_anual = $data['fee'];
+                                $owner->total_amount = $data['total_amount'];
+                                $owner->payment_frequency = $data['payment_frequency'];
+                                $owner->save();
+                                
+                            } catch (\Throwable $th) {
+                                Log::error($th->getMessage());
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Error')
+                                    ->body('Hubo un error actualizando la afiliación. Por favor, intente nuevamente.')
+                                    ->send();
+                            }
+                        }),
                         
                     Action::make('changet_status')
                         ->label('Dar de Baja')
