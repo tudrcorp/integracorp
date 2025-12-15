@@ -309,11 +309,6 @@ class SupplierForm
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-
-                                        // REGEX: ^\d{11}$
-                                        // ^        -> Inicio de la cadena
-                                        // \d{11}   -> Exactamente 11 dígitos (0-9)
-                                        // $        -> Fin de la cadena
                                         'regex:/^\d{11}$/',
                                     ])
                                     ->validationMessages([
@@ -389,16 +384,10 @@ class SupplierForm
                                     ->maxLength(255),
                                 TextInput::make('personal_phone')
                                     ->label('Teléfono Celular')
-                                    ->required()
                                     ->tel()
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-
-                                        // REGEX: ^\d{11}$
-                                        // ^        -> Inicio de la cadena
-                                        // \d{11}   -> Exactamente 11 dígitos (0-9)
-                                        // $        -> Fin de la cadena
                                         'regex:/^\d{11}$/',
                                     ])
                                     ->validationMessages([
@@ -407,15 +396,10 @@ class SupplierForm
                                     ]),
                                 TextInput::make('local_phone')
                                     ->label('Teléfono Local')
-                                    ->required()
                                     ->tel()
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-                                        // REGEX: ^\d{11}$
-                                        // ^        -> Inicio de la cadena
-                                        // \d{11}   -> Exactamente 11 dígitos (0-9)
-                                        // $        -> Fin de la cadena
                                         'regex:/^\d{11}$/',
                                     ])
                                     ->validationMessages([
@@ -451,7 +435,7 @@ class SupplierForm
                                     ->afterStateUpdatedJs(<<<'JS'
                                         $set('observation', $state.toUpperCase());    
                                     JS),
-                    TextInput::make('created_by')
+                        TextInput::make('created_by')
                                     ->disabled()
                                     ->dehydrated()
                                     ->default(Auth::user()->name),
