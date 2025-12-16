@@ -17,6 +17,7 @@ use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
 use App\Filament\Operations\Resources\Suppliers\Schemas\SupplierInfolist;
 use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierRedGlobalsRelationManager;
 use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierObservacionsRelationManager;
+use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierZonaCoberturasRelationManager;
 use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierContactPrincipalsRelationManager;
 
 class SupplierResource extends Resource
@@ -48,7 +49,9 @@ class SupplierResource extends Resource
             //
             SupplierContactPrincipalsRelationManager::class,
             SupplierRedGlobalsRelationManager::class,
+            SupplierZonaCoberturasRelationManager::class,
             SupplierObservacionsRelationManager::class,
+            
         ];
     }
 

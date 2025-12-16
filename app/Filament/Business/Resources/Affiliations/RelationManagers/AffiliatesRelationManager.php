@@ -479,6 +479,7 @@ class AffiliatesRelationManager extends RelationManager
                                 ->title('Afiliacion de Baja')
                                 ->send();
                         }),
+                        
                     Action::make('asociated_amount_affiliation')
                         ->label('Asociar Monto Afiliación')
                         ->color('success')

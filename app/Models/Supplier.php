@@ -10,13 +10,13 @@ class Supplier extends Model
     protected $table = 'suppliers';
 
     protected $fillable = [
-        'name',
+            'name',
             'status_convenio',
             'tipo_clinica',
             'tipo_servicio',
             'city_id',
             'state_id',
-            'clasificacion',
+            
             'horario',
             'status_sistema',
             'rif',
@@ -32,40 +32,48 @@ class Supplier extends Model
             'auditado',
             'fecha_auditoria',
             'auditor',
-            'urgen_care',
-            'consulta_aps',
-            'amd',
-            'laboratorio_centro',
-            'laboratorio_domicilio',
-            'rx_centro',
-            'rx_domicilio',
-            'eco_abdominal_centro',
-            'eco_abdominal_domicilio',
-            'electrocardiograma_centro',
-            'electrocardiograma_domicilio',
-            'mamografia',
-            'tomografo',
-            'resonancia',
-            'encologogia',
-            'equipos_especiales_oftalmologia',
-            'radioterapia_intraoperatoria',
-            'quirofanos',
-            'uci_uten',
-            'neonatal',
-            'ambulancias',
-            'odontologia',
-            'oftalmologia',
             'densitometria_osea',
+            'descripcion_densitometria_osea',
             'dialisis',
+            'descripcion_dialisis',
+            'electrocardiograma_centro',
+            'descripcion_electrocardiograma_centro',
+            'equipos_especiales_oftalmologia',
+            'descripcion_equipos_especiales_oftalmologia',
+            'mamografia',
+            'descripcion_mamografia',
+            'quirofanos',
+            'descripcion_quirofanos',
+            'radioterapia_intraoperatoria',
+            'descripcion_radioterapia_intraoperatoria',
+            'resonancia',
+            'descripcion_resonancia',
+            'tomografo',
+            'descripcion_tomografo',
+            'uci_pediatrica',
+            'descripcion_uci_pediatrica',
+            'uci_adulto',
+            'descripcion_uci_adulto',
+            'estacionamiento_propio',
+            'descripcion_estacionamiento_propio',
+            'ascensor',
+            'descripcion_ascensor',
+            'robotica',
+            'descripcion_robotica',
             'otras_unidades_especiales',
             'otros_servicios',
             'created_by',
             'updated_by',
-            'state_services'
+            'state_services',
+            'clasificacion_id',
+        'type_service',
         
     ];
 
-    protected $casts = ['state_services' => 'array']; 
+    protected $casts = [
+        'state_services' => 'array', 
+        'type_service' => 'array'
+    ]; 
 
     public function city()
     {
@@ -91,4 +99,30 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierContactPrincipal::class);
     }
+
+    public function supplierEstatusSistemas()
+    {
+        return $this->hasMany(SupplierEstatusSistema::class);
+    }
+
+    public function supplierStatusConvenios()
+    {
+        return $this->hasMany(SupplierStatusConvenio::class);
+    }
+
+    public function supplierTipoClinicas()
+    {
+        return $this->hasMany(SupplierTipoClinica::class);
+    }
+
+    public function SupplierZonaCoberturas()
+    {
+        return $this->hasMany(SupplierZonaCobertura::class);
+    }
+
+    public function SupplierClasificacion()
+    {
+        return $this->belongsTo(SupplierTipoServicio::class, 'clasificacion_id', 'id');
+    }
+
 }
