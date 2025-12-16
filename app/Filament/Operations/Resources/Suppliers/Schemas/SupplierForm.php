@@ -190,7 +190,7 @@ class SupplierForm
                     ->collapsed()
                     ->schema([
 
-                    Fieldset::make('Seleccionar Antecedentes')
+                    Fieldset::make()
                         ->schema([
                             Section::make()
                                 ->inlineLabel()
