@@ -5,15 +5,21 @@ namespace App\Filament\Operations\Resources\Suppliers\Schemas;
 use App\Models\City;
 use App\Models\State;
 use Filament\Schemas\Schema;
+use App\Models\SupplierTipoClinica;
+use App\Models\SupplierTipoServicio;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use App\Models\SupplierClasificacion;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use App\Models\SupplierEstatusSistema;
+use App\Models\SupplierStatusConvenio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Forms\Components\Repeater\TableColumn;
 
@@ -33,37 +39,48 @@ class SupplierForm
                             ->afterStateUpdatedJs(<<<'JS'
                                 $set('name', $state.toUpperCase());
                             JS),
+                        TextInput::make('rif')
+                            ->label('RIF')
+                            ->mask('J999999999999'),
+                        TextInput::make('razon_social')
+                            ->label('Razón Social')
+                            ->afterStateUpdatedJs(<<<'JS'
+                                        $set('razon_social', $state.toUpperCase());
+                                    JS),
                         Select::make('status_convenio')
-                            ->label('Estado del Convenio')
+                            ->label('Tipo de Convenio')
                             ->required()
-                            ->options([
-                                'GENERAL'           => 'GENERAL',
-                                'PPP BAJO COSTO'    => 'PPP BAJO COSTO',
-                                'PPP GEOGRAFICO'    => 'PPP GEOGRAFICO',
-                            ]),
+                            ->options(SupplierStatusConvenio::all()->pluck('description', 'description'))
+                            ->preload()
+                            ->searchable(),
+                        Select::make('status_sistema')
+                            ->label('Estatus del Convenio')
+                            ->searchable()
+                            ->options(SupplierEstatusSistema::all()->pluck('description', 'description')),
+ 
+                        Select::make('clasificacion_id')
+                            ->label('Clasificación del Proveedor')
+                            ->searchable()
+                            ->live()
+                            ->options(SupplierClasificacion::orderBy('description', 'asc')->pluck('description', 'id'))
+                            ->preload()
+                            ->searchable(),
                         Select::make('tipo_clinica')
                             ->label('Tipo de Clinica')
                             ->searchable()
                             ->required()
-                            ->options([
-                                'A'                 => 'A',
-                                'B'                 => 'B',
-                                'C'                 => 'C',
-                                'NO APLICA'         => 'NO APLICA',
-                                'NO CLASIFICADO'    => 'NO CLASIFICADO'
-                            ]),
-                        Select::make('tipo_servicio')
-                            ->label('Tipo de Servicio')
+                            ->options(SupplierTipoClinica::all()->pluck('description', 'description'))
+                            ->preload()
                             ->searchable()
-                            ->options([
-                                'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
-                                'MULTI-ESTADO'      => 'MULTI-ESTADO',
-                            ]),
-                        Select::make('state_services')
-                            ->label('Estado donde Presta Servicios')
+                            ->hidden(fn (Get $get) => $get('clasificacion_id') != 3),
+                        Select::make('type_service')
+                            ->options(fn(Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
+                            ->label('Tipo de servicio')
                             ->searchable()
                             ->multiple()
-                            ->options(State::all()->pluck('definition', 'definition')),
+                            ->preload()
+                            ->required(),
+
                         Select::make('state_id')
                             ->options(State::all()->pluck('definition', 'id'))
                             ->label('Estado')
@@ -77,78 +94,20 @@ class SupplierForm
                             ->searchable()
                             ->preload()
                             ->required(),
-                        Select::make('clasificacion')
-                            ->label('Clasificación del Proveedor')
+                        Select::make('tipo_servicio')
+                            ->label('Zona de Cobertura')
                             ->searchable()
                             ->options([
-                                'AEROAMBULANCIA'                    => 'AEROAMBULANCIA',
-                                'AMBULANCIA'                        => 'AMBULANCIA',
-                                'AMD-REGIONAL'                      => 'AMD-REGIONAL',
-                                'APS-ATENCION-PRIMARIA-DE-SALUD'    => 'APS-ATENCIÓN-PRIMARIA-DE-SALUD',
-                                'CARDIOLOGIA'                       => 'CARDIOLOGÍA',
-                                'CLINICA'                           => 'CLÍNICA',
-                                'ENFERMERAS / HOME CARE'            => 'ENFERMERAS / HOME CARE',
-                                'FARMACIA'                          => 'FARMACIA',
-                                'GASTROENTEROLOGIA'                 => 'GASTROENTEROLOGÍA',
-                                'GINECOLOGIA'                       => 'GINECOLOGÍA',
-                                'IMAGENOLOGIA'                      => 'IMAGENOLOGIA',
-                                'INSUMOS Y EQUIPOS MEDICOS'         => 'INSUMOS Y EQUIPOS MEDICOS',
-                                'LABORATORIO'                       => 'LABORATORIO',
-                                'MEDICINA OCUPACIONAL'              => 'MEDICINA OCUPACIONAL',   
-                                'ODONTOLOGIA'                       => 'ODONTOLOGIA',
-                                'OFTALMOLOGIA'                      => 'OFTALMOLOGIA',
-                                'ONCOLOGIA'                         => 'ONCOLOGIA',
-                                'OPTICA'                            => 'OPTICA',
-                                'OZONOTERAPIA'                      => 'OZONOTERAPIA',
-                                'REHABILITACION'                    => 'REHABILITACION',
-                                'SERVICIOS DE DIALISIS'             => 'SERVICIOS DE DIALISIS',
-                                'UNIDAD QUIRURGICA AMBULATORIA'     => 'UNIDAD QUIRURGICA AMBULATORIA',
-                                'UNIDAD GINECOLOGICA'               => 'UNIDAD GINECOLOGICA',
-                                'UNIDAD ODONTOLOGICA'               => 'UNIDAD ODONTOLOGICA',
-                                'UNIDAD OFTALMOLOGICA'              => 'UNIDAD OFTALMOLOGICA',
-                                'UNIDAD PODOLOGIA'                  => 'UNIDAD PODOLOGIA',
-                                'UNIDAD TRAUMATOLOGICA'             => 'UNIDAD TRAUMATOLOGICA',
-                                'URGENT CARE'                       => 'URGENT CARE',
-                                'URGENT CARE AMD'                   => 'URGENT CARE AMD',
-                                'URGENT CARE APS'                   => 'URGENT CARE APS',
-                                'URGENT CARE CLINICA'               => 'URGENT CARE CLINICA',
-                                
+                                'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
+                                'MULTI-ESTADO'      => 'MULTI-ESTADO',
                             ]),
-                        Select::make('status_sistema')
-                            ->label('Estado del Sistema')
+                        Select::make('state_services')
+                            ->label('Desglose de Zona de Cobertura')
                             ->searchable()
-                            ->options([
-                                'ACTIVO-AFILIADO'                       => 'ACTIVO-AFILIADO',
-                                'ACTIVO-EN-PROCESO'                     => 'ACTIVO-EN-PROCESO',
-                                'AFILIADO'                              => 'AFILIADO',
-                                'CONVENIO SUSPENDIDO POR EL PROVEEDOR'  => 'CONVENIO SUSPENDIDO POR EL PROVEEDOR',
-                                'CONVENIO SUSPENDIDO POR TDEC'          => 'CONVENIO SUSPENDIDO POR TDEC',
-                                'EN PROCESO'                            => 'EN PROCESO',
-                                'SIN RESPUESTA DE AFILIACION'           => 'SIN RESPUESTA DE AFILIACION',
-                            ]),
-                        TextInput::make('rif')
-                            ->label('RIF')
-                            ->mask('J999999999999'),
-                        TextInput::make('razon_social')
-                            ->label('Razón Social')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                $set('razon_social', $state.toUpperCase());
-                            JS),
-                        TextInput::make('personal_phone')
-                            ->label('Teléfono Celular')
-                            ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
-                            ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                            ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
-                            ->rules([
-                                'regex:/^\d{11}$/',
-                            ])
-                            ->validationMessages([
-                                'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
-                                'length' => 'El número de teléfono debe tener 11 dígitos.',
-                            ])
-                            
-                            ->tel()
-                            ->maxLength(255),
+                            ->multiple()
+                            ->options(State::all()->pluck('definition', 'definition'))
+                            ->preload()
+                            ->searchable(),
                         TextInput::make('local_phone')
                             ->label('Teléfono Local')
                             ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
@@ -161,28 +120,39 @@ class SupplierForm
                                 'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
                                 'length' => 'El número de teléfono debe tener 11 dígitos.',
                             ])
-                            
+
                             ->tel()
                             ->maxLength(255),
+                        TextInput::make('personal_phone')
+                            ->label('Teléfono Celular')
+                            ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
+                            ->mask('99999999999') // Opcional: mejora la UX en el navegador
+                            ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
+                            ->rules([
+                                'regex:/^\d{11}$/',
+                            ])
+                            ->validationMessages([
+                                'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
+                                'length' => 'El número de teléfono debe tener 11 dígitos.',
+                            ])
+
+                            ->tel()
+                            ->maxLength(255),
+
                         TextInput::make('correo_principal')
                             ->label('Correo Electrónico')
                             ->email()
                             ->maxLength(255),
-                        TextInput::make('afiliacion_proveedor')
-                            ->label('Afiliación Proveedor')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                $set('afiliacion_proveedor', $state.toUpperCase()); 
-                            JS),
                         TextInput::make('ubicacion_principal')
                             ->label('Ubicación Principal')
                             ->afterStateUpdatedJs(<<<'JS'
-                                $set('ubicacion_principal', $state.toUpperCase());
-                            JS),
+                                        $set('ubicacion_principal', $state.toUpperCase());
+                                    JS),
                         TextInput::make('convenio_pago')
                             ->label('Convenio de Pago')
                             ->afterStateUpdatedJs(<<<'JS'
-                                $set('convenio_pago', $state.toUpperCase());    
-                            JS),
+                                        $set('convenio_pago', $state.toUpperCase());    
+                                    JS),
                         Select::make('tiempo_credito')
                             ->label('Tiempo de Crédito')
                             ->searchable()
@@ -200,76 +170,67 @@ class SupplierForm
                                 'PREPAGO'           => 'PREPAGO',
                             ]),
                         TextInput::make('horario')
-                            ->label('Horario')
+                            ->label('Horario de Atención')
                             ->afterStateUpdatedJs(<<<'JS'
-                                $set('horario', $state.toUpperCase());    
-                            JS),
+                                        $set('horario', $state.toUpperCase());    
+                                    JS),
+                        DatePicker::make('afiliacion_proveedor')
+                            ->format('d/m/Y')
+                            ->label('Fecha Afiliación Proveedor'),
                         Textarea::make('otros_servicios')
                             ->columnSpanFull()
                             ->afterStateUpdatedJs(<<<'JS'
-                                $set('otros_servicios', $state.toUpperCase());    
-                            JS),
+                                        $set('otros_servicios', $state.toUpperCase());    
+                                    JS),
+                        
                         Hidden::make('created_by')->default(Auth::user()->name),
                         Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
                     ])->columnSpanFull()->columns(4),
 
-                Section::make('Caracteristicas General')
-                    ->description('Información de la entidad.')
+                Section::make('Certificación de Infraestructura')
+                    ->description('Facilidades Adicionales que ofrece el Proveedor')
                     ->collapsed()
                     ->schema([
-                        Toggle::make('urgen_care')
-                            ->onIcon('heroicon-s-hand-thumb-up')
-                            ->onColor('success'),
-                        Toggle::make('consulta_aps')
+        
+                        Toggle::make('densitometria_osea')
+                            ->label('Densitómetro')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('amd')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('laboratorio_centro')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('laboratorio_domicilio')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('rx_centro')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('rx_domicilio')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('eco_abdominal_centro')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('eco_abdominal_domicilio')
+                        Toggle::make('dialisis')
+                            ->label('Equipo de Dialisis')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                         Toggle::make('electrocardiograma_centro')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('electrocardiograma_domicilio')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('mamografia')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('tomografo')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('resonancia')
-                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('encologogia')
+                            ->label('Electrocardiógrafo')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                         Toggle::make('equipos_especiales_oftalmologia')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('radioterapia_intraoperatoria')
+                        Toggle::make('mamografia')
+                            ->label('Mamógrafo')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                         Toggle::make('quirofanos')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('uci_uten')
+                        Toggle::make('radioterapia_intraoperatoria')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('neonatal')
+                        Toggle::make('resonancia')
+                            ->label('Resonador')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('ambulancias')
+                        Toggle::make('tomografo')
+                            ->label('Tomógrafo')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('odontologia')
+                        Toggle::make('uci_pediatrica')
+                            ->label('UCI Pediatrica(Unidad de Cuidados Intensivos)')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('oftalmologia')
+                        Toggle::make('uci_adulto')
+                            ->label('UCI Adulto(Unidad de Cuidados Intensivos)')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('densitometria_osea')
+                        Toggle::make('estacionamiento_propio')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('dialisis')
+                        Toggle::make('ascensor')
+                        ->label('Ascensor Operativo')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                        Toggle::make('otras_unidades_especiales')
+                        Toggle::make('robotica')
+                            ->label('Equipo de  Cirugía Robótica')
                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+               
                     ])->columnSpanFull()->columns(4),
 
                 Section::make('Contactos')
@@ -418,6 +379,56 @@ class SupplierForm
                             ->reorderable()
                     ])->columnSpanFull(),
 
+            Section::make('Zonas')
+                ->description('Zonas de cobertura del proveedor.')
+                ->collapsed()
+                ->schema([
+                    Repeater::make('SupplierZonaCoberturas')
+                        ->label('Tabla dinámica para incluir las Zonas de Cobertura')
+                        ->relationship()
+                        ->table([
+                            TableColumn::make('Clasificación del Proveedor'),
+                            TableColumn::make('Tipo de Servicio'),
+                            TableColumn::make('Estado'),
+                            TableColumn::make('Ciudad'),
+                        ])
+                        ->schema([
+                            Select::make('clasificacion_id')
+                                ->label('Clasificación del Proveedor')
+                                ->searchable()
+                                ->live()
+                                ->options(SupplierClasificacion::orderBy('description', 'asc')->pluck('description', 'id'))
+                                ->preload()
+                                ->searchable(),
+                            Select::make('type_service')
+                                ->options(fn(Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
+                                ->label('Tipo de servicio')
+                                ->searchable()
+                                ->multiple()
+                                ->preload()
+                                ->required(),
+                            Select::make('state_id')
+                                ->options(State::all()->pluck('definition', 'id'))
+                                // ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->label('Estado')
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                            Select::make('city_id')
+                                ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
+                                ->label('Ciudad')
+                                ->live()
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                            Hidden::make('created_by')->default(Auth::user()->name),
+                            Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
+                        ])
+                        ->addActionLabel('Añadir Sucursal')
+                        ->columnSpanFull()
+                        ->reorderable()
+                ])->columnSpanFull(),
+
                 Section::make('Notas y/o Observaciones')
                     ->description('Detalles adicionales del proveedor.')
                     ->collapsed()
@@ -435,7 +446,7 @@ class SupplierForm
                                     ->afterStateUpdatedJs(<<<'JS'
                                         $set('observation', $state.toUpperCase());    
                                     JS),
-                        TextInput::make('created_by')
+                                TextInput::make('created_by')
                                     ->disabled()
                                     ->dehydrated()
                                     ->default(Auth::user()->name),

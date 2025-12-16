@@ -57,6 +57,7 @@ class SupplierObservacionsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('observation')
                     ->label('Observaciones')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('created_by')
                     ->label('Creado Por')
