@@ -36,7 +36,6 @@ class SupplierForm
                     ->schema([
                         TextInput::make('name')
                             ->label('Nombre del Proveedor')
-                            ->required()
                             ->afterStateUpdatedJs(<<<'JS'
                                 $set('name', $state.toUpperCase());
                             JS),
@@ -50,7 +49,6 @@ class SupplierForm
                                     JS),
                         Select::make('status_convenio')
                             ->label('Tipo de Convenio')
-                            ->required()
                             ->options(SupplierStatusConvenio::all()->pluck('description', 'description'))
                             ->preload()
                             ->searchable(),
@@ -68,7 +66,6 @@ class SupplierForm
                         Select::make('tipo_clinica')
                             ->label('Tipo de Clinica')
                             ->searchable()
-                            ->required()
                             ->options(SupplierTipoClinica::all()->pluck('description', 'description'))
                             ->preload()
                             ->searchable()
@@ -78,21 +75,18 @@ class SupplierForm
                             ->label('Tipo de servicio')
                             ->searchable()
                             ->multiple()
-                            ->preload()
-                            ->required(),
+                            ->preload(),
                         Select::make('state_id')
                             ->options(State::all()->pluck('definition', 'id'))
                             ->label('Estado')
                             ->searchable()
-                            ->preload()
-                            ->required(),
+                            ->preload(),
                         Select::make('city_id')
                             ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                             ->label('Ciudad')
                             ->live()
                             ->searchable()
-                            ->preload()
-                            ->required(),
+                            ->preload(),
                         Select::make('tipo_servicio')
                             ->label('Zona de Cobertura')
                             ->searchable()
@@ -196,6 +190,7 @@ class SupplierForm
                                 ->inlineLabel()
                                 ->schema([
                                     Toggle::make('densitometria_osea')
+                                        ->inline(false)
                                         ->live()
                                         ->label('Densitómetro')
                                         ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
@@ -257,7 +252,7 @@ class SupplierForm
                                         ->label('Descripción (opcional):')
                                         ->disabled(fn($get) => !$get('radioterapia_intraoperatoria'))
                                         ->placeholder('----'),
-                                ]),
+                                ])->columns(2),
                             Section::make()
                                 ->inlineLabel()
                                 ->schema([
@@ -323,8 +318,8 @@ class SupplierForm
                                         ->label('Descripción (opcional):')
                                         ->disabled(fn($get) => !$get('robotica'))
                                         ->placeholder('----'),
-                                ]),
-                        ])->columnSpanFull()->columns(2),
+                                ])->columns(2),
+                        ])->columnSpanFull()->columns(1),
                
                     ])->columnSpanFull()->columns(4),
 
@@ -356,7 +351,7 @@ class SupplierForm
                                     ->afterStateUpdatedJs(<<<'JS'
                                         $set('name', $state.toUpperCase());    
                                     JS)
-                                    ->required(),
+    ,
                                 TextInput::make('email')
                                     ->email(),
                                 TextInput::make('personal_phone')
@@ -418,24 +413,24 @@ class SupplierForm
                                     ->label('Estado')
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+    ,
                                 Select::make('city_id')
                                     ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                                     ->label('Ciudad')
                                     ->live()
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+    ,
                                 TextInput::make('name')
                                     ->label('Nombre o Razón Social')
-                                    ->required()
+    
                                     ->maxLength(255)
                                     ->afterStateUpdatedJs(<<<'JS'
                                         $set('name', $state.toUpperCase());    
                                     JS),
                                 TextInput::make('email')
                                     ->label('Correo Electrónico')
-                                    ->required()
+    
                                     ->email()
                                     ->maxLength(255),
                                 TextInput::make('personal_phone')
@@ -501,21 +496,21 @@ class SupplierForm
                                     ->searchable()
                                     ->multiple()
                                     ->preload()
-                                    ->required(),
+    ,
                                 Select::make('state_id')
                                     ->options(State::all()->pluck('definition', 'id'))
                                     // ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->label('Estado')
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+    ,
                                 Select::make('city_id')
                                     ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                                     ->label('Ciudad')
                                     ->live()
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+    ,
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
                             ])
