@@ -197,8 +197,10 @@
                         <tr class="tr_table_info_ti">
                             <td class="titulos_table_uno" style="font-weight: bold">Vigencia:</td>
                             <td class="contenido_table_uno">
-                                <p class="contenido_table_uno">Desde: {{ date('d/m/Y') }}</p>
-                                <p class="contenido_table_uno">Hasta: {{ date('d/m/Y', strtotime('+1 years')); }}</p>
+                                <p class="contenido_table_uno">Desde: {{ $pagador['fecha_vigencia'] }}</p>
+                                <p class="contenido_table_uno">Hasta: {{ $pagador['fecha_vigencia_final'] }}</p>
+
+
                             </td>
                             <td class="titulos_table_uno">Periodo Facturado:</td>
                             <td class="contenido_table_uno">
