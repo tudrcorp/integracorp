@@ -77,24 +77,24 @@ class AffiliationsTable
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
-                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            '-----' => 'info',
-                            default => 'success',
-                        };
-                    })
+                    // ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    // ->color(function (string $state): string {
+                    //     return match ($state) {
+                    //         '-----' => 'info',
+                    //         default => 'success',
+                    //     };
+                    // })
                     ->hidden(fn() => ! Auth::user()->is_business_admin),
                 TextColumn::make('agency.name_corporative')
                     ->label('CO-Agencia')
                     ->badge()
-                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
+                    // ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
                     ->color('azulOscuro')
                     ->searchable(),
                 TextColumn::make('agent.name')
                     ->label('Nombre del agente')
                     ->badge()
-                    ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
+                    // ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
                     ->color('azulOscuro')
                     ->icon('heroicon-m-user')
                     ->searchable(),
