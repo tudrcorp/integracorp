@@ -891,9 +891,12 @@ class AffiliationController extends Controller
                 'plan'                  => $record->plan->description,
                 'plan_id'               => $record->plan_id,
                 'frecuencia_pago'       => $record->payment_frequency,
-                'cobertura'            => isset($record->coverage_id) ? $record->coverage->price : 0,
+                'cobertura'             => isset($record->coverage_id) ? $record->coverage->price : 0,
                 'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
                 'tarifa_periodo'        => $record->total_amount,
+                'fecha_vigencia'        => $record->effective_date,
+                'fecha_vigencia_final'  => Carbon::createFromFormat('d/m/Y', $record->effective_date)->addYear()->format('d/m/Y')
+                
             ];
 
             //Validamos si la afiliacionn la realizo un agente o una agencia
