@@ -204,22 +204,27 @@
                             </td>
                             <td class="titulos_table_uno">Periodo Facturado:</td>
                             <td class="contenido_table_uno">
-                                <p class="contenido_table_uno">Desde: {{ date('d/m/Y') }}</p>
+                                <p class="contenido_table_uno">Desde: {{ $pagador['fecha_vigencia'] }}</p>
                                 @php
+                                use Carbon\Carbon;
+
+                                    $fecha = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia']);
+
                                     if($pagador['frecuencia_pago'] == 'MENSUAL'){
-                                        $fechaHasta = date('d/m/Y', strtotime('+1 months'));
+                                        $fechaVigenciaNueva = $fecha->copy()->addMonths(1)->format('d/m/Y');
                                     }
                                     if($pagador['frecuencia_pago'] == 'TRIMESTRAL'){
-                                        $fechaHasta = date('d/m/Y', strtotime('+3 months'));
+                                        $fechaVigenciaNueva = $fecha->copy()->addMonths(3)->format('d/m/Y');
                                     }
                                     if($pagador['frecuencia_pago'] == 'SEMESTRAL'){
-                                        $fechaHasta = date('d/m/Y', strtotime('+6 months'));
+                                        $fechaVigenciaNueva = $fecha->copy()->addMonths(6)->format('d/m/Y');
                                     }
                                     if($pagador['frecuencia_pago'] == 'ANUAL'){
-                                        $fechaHasta = date('d/m/Y', strtotime('+1 years'));
+                                        $fechaVigenciaNueva = $pagador['fecha_vigencia_final'];
+
                                     }
                                 @endphp
-                                <p class="contenido_table_uno">Hasta: {{ $fechaHasta }}</p>
+                                <p class="contenido_table_uno">Hasta: {{ $fechaVigenciaNueva }}</p>
                             </td>
                         </tr>
                     </tbody>
