@@ -89,11 +89,21 @@ class SupplierForm
                             ->preload(),
                         Select::make('tipo_servicio')
                             ->label('Zona de Cobertura')
+                            ->live()
                             ->searchable()
                             ->options([
                                 'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
                                 'MULTI-ESTADO'      => 'MULTI-ESTADO',
-                            ]),
+                            ])
+                            ->afterStateUpdated(
+                                fn(callable $set, ?string $state) =>
+                                $set(
+                                    'state_services',
+                                    $state === 'A-NIVEL-NACIONAL'
+                                        ? State::pluck('definition')->all()
+                                        : null
+                                )
+                            ),
                         Select::make('state_services')
                             ->label('Desglose de Zona de Cobertura')
                             ->searchable()
