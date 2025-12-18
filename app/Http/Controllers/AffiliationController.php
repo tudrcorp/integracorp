@@ -892,9 +892,9 @@ class AffiliationController extends Controller
                 'plan_id'               => $record->plan_id,
                 'frecuencia_pago'       => $record->payment_frequency,
                 'cobertura'             => isset($record->coverage_id) ? $record->coverage->price : 0,
-                'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
+                'fecha_afiliacion'      => $record->effective_date == null ? '' : $record->created_at->format('d/m/Y'),
                 'tarifa_periodo'        => $record->total_amount,
-                'fecha_vigencia'        => $record->effective_date == null ? $record->created_at->format('d/m/Y') : $record->effective_date,
+                'fecha_vigencia'        => $record->effective_date == null ? '' : $record->effective_date,
                 'fecha_vigencia_final'  => $record->effective_date == null ? '' : Carbon::createFromFormat('d/m/Y', $record->effective_date)->addYear()->format('d/m/Y')
                 
             ];
@@ -935,7 +935,6 @@ class AffiliationController extends Controller
                 ->sendToDatabase($user);
 
         } catch (\Throwable $th) {
-            dd($th);
             Notification::make()
                 ->title('EXCEPTION')
                 ->body($th->getMessage())
