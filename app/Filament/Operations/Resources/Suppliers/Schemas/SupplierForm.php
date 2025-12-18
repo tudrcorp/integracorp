@@ -194,142 +194,142 @@ class SupplierForm
                     ->collapsed()
                     ->schema([
 
-                    Fieldset::make()
-                        ->schema([
-                            Section::make()
-                                ->inlineLabel()
-                                ->schema([
-                                    Toggle::make('densitometria_osea')
-                                        ->inline(false)
-                                        ->live()
-                                        ->label('Densitómetro')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_densitometria_osea')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('densitometria_osea'))
-                                        ->placeholder('----'),
-                                        
-                                    Toggle::make('dialisis')
-                                        ->live()
-                                        ->label('Equipo de Dialisis')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_dialisis')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('dialisis'))
-                                        ->placeholder('----'),
-                                        
-                                    Toggle::make('electrocardiograma_centro')
-                                        ->live()
-                                        ->label('Electrocardiógrafo')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_electrocardiograma_centro')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('electrocardiograma_centro'))
-                                        ->placeholder('----'),
-                                        
-                                    Toggle::make('equipos_especiales_oftalmologia')
-                                        ->live()
-                                        ->label('Equipos Especiales de Oftalmología')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_equipos_especiales_oftalmologia')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('equipos_especiales_oftalmologia'))
-                                        ->placeholder('----'),
-                                        
-                                    Toggle::make('mamografia')
-                                        ->live()
-                                        ->label('Mamógrafo')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_mamografia')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('mamografia'))
-                                        ->placeholder('----'),
-                                        
-                                    Toggle::make('quirofanos')
-                                        ->live()
-                                        ->label('Quirofanos')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_quirofanos')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('quirofanos'))
-                                        ->placeholder('----'),
-                                        
-                                    Toggle::make('radioterapia_intraoperatoria')
-                                        ->live()
-                                        ->label('Radioterapia Intraoperatoria')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_radioterapia_intraoperatoria')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('radioterapia_intraoperatoria'))
-                                        ->placeholder('----'),
-                                ])->columns(2),
-                            Section::make()
-                                ->inlineLabel()
-                                ->schema([
-                                    Toggle::make('resonancia')
-                                        ->live()
-                                        ->label('Resonador')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_resonancia')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('resonancia'))
-                                        ->placeholder('----'),
+                        Fieldset::make()
+                            ->schema([
+                                Section::make()
+                                    ->inlineLabel()
+                                    ->schema([
+                                        Toggle::make('densitometria_osea')
+                                            ->inline(false)
+                                            ->live()
+                                            ->label('Densitómetro')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_densitometria_osea')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('densitometria_osea'))
+                                            ->placeholder('----'),
+                                            
+                                        Toggle::make('dialisis')
+                                            ->live()
+                                            ->label('Equipo de Dialisis')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_dialisis')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('dialisis'))
+                                            ->placeholder('----'),
+                                            
+                                        Toggle::make('electrocardiograma_centro')
+                                            ->live()
+                                            ->label('Electrocardiógrafo')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_electrocardiograma_centro')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('electrocardiograma_centro'))
+                                            ->placeholder('----'),
+                                            
+                                        Toggle::make('equipos_especiales_oftalmologia')
+                                            ->live()
+                                            ->label('Equipos Especiales de Oftalmología')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_equipos_especiales_oftalmologia')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('equipos_especiales_oftalmologia'))
+                                            ->placeholder('----'),
+                                            
+                                        Toggle::make('mamografia')
+                                            ->live()
+                                            ->label('Mamógrafo')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_mamografia')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('mamografia'))
+                                            ->placeholder('----'),
+                                            
+                                        Toggle::make('quirofanos')
+                                            ->live()
+                                            ->label('Quirofanos')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_quirofanos')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('quirofanos'))
+                                            ->placeholder('----'),
+                                            
+                                        Toggle::make('radioterapia_intraoperatoria')
+                                            ->live()
+                                            ->label('Radioterapia Intraoperatoria')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_radioterapia_intraoperatoria')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('radioterapia_intraoperatoria'))
+                                            ->placeholder('----'),
+                                    ])->columns(2),
+                                Section::make()
+                                    ->inlineLabel()
+                                    ->schema([
+                                        Toggle::make('resonancia')
+                                            ->live()
+                                            ->label('Resonador')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_resonancia')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('resonancia'))
+                                            ->placeholder('----'),
 
-                                    Toggle::make('tomografo')
-                                        ->live()
-                                        ->label('Tomografo')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_tomografo')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('tomografo'))
-                                        ->placeholder('----'),
+                                        Toggle::make('tomografo')
+                                            ->live()
+                                            ->label('Tomografo')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_tomografo')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('tomografo'))
+                                            ->placeholder('----'),
 
-                                    Toggle::make('uci_pediatrica')
-                                        ->live()
-                                        ->label('UCI Pediatrica(Unidad de Cuidados Intensivos)')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_uci_pediatrica')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('uci_pediatrica'))
-                                        ->placeholder('----'),
+                                        Toggle::make('uci_pediatrica')
+                                            ->live()
+                                            ->label('UCI Pediatrica(Unidad de Cuidados Intensivos)')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_uci_pediatrica')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('uci_pediatrica'))
+                                            ->placeholder('----'),
 
-                                    Toggle::make('uci_adulto')
-                                        ->live()
-                                        ->label('UCI Adulto(Unidad de Cuidados Intensivos)')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_uci_adulto')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('uci_adulto'))
-                                        ->placeholder('----'),
+                                        Toggle::make('uci_adulto')
+                                            ->live()
+                                            ->label('UCI Adulto(Unidad de Cuidados Intensivos)')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_uci_adulto')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('uci_adulto'))
+                                            ->placeholder('----'),
 
-                                    Toggle::make('estacionamiento_propio')
-                                        ->live()
-                                        ->label('Estacionamiento Propio?')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_estacionamiento_propio')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('estacionamiento_propio'))
-                                        ->placeholder('----'),
+                                        Toggle::make('estacionamiento_propio')
+                                            ->live()
+                                            ->label('Estacionamiento Propio?')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_estacionamiento_propio')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('estacionamiento_propio'))
+                                            ->placeholder('----'),
 
-                                    Toggle::make('ascensor')
-                                        ->live()
-                                        ->label('Ascensor Operativo')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_ascensor')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('ascensor'))
-                                        ->placeholder('----'),
+                                        Toggle::make('ascensor')
+                                            ->live()
+                                            ->label('Ascensor Operativo')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_ascensor')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('ascensor'))
+                                            ->placeholder('----'),
 
-                                    Toggle::make('robotica')
-                                        ->live()
-                                        ->label('Equipo de  Cirugía Robótica')
-                                        ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                    TextInput::make('descripcion_robotica')
-                                        ->label('Descripción (opcional):')
-                                        ->disabled(fn($get) => !$get('robotica'))
-                                        ->placeholder('----'),
-                                ])->columns(2),
-                        ])->columnSpanFull()->columns(1),
+                                        Toggle::make('robotica')
+                                            ->live()
+                                            ->label('Equipo de  Cirugía Robótica')
+                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
+                                        TextInput::make('descripcion_robotica')
+                                            ->label('Descripción (opcional):')
+                                            ->disabled(fn($get) => !$get('robotica'))
+                                            ->placeholder('----'),
+                                    ])->columns(2),
+                            ])->columnSpanFull()->columns(1),
                
                     ])->columnSpanFull()->columns(4),
 
@@ -360,8 +360,7 @@ class SupplierForm
                                 TextInput::make('name')
                                     ->afterStateUpdatedJs(<<<'JS'
                                         $set('name', $state.toUpperCase());    
-                                    JS)
-    ,
+                                    JS),
                                 TextInput::make('email')
                                     ->email(),
                                 TextInput::make('personal_phone')
@@ -382,11 +381,6 @@ class SupplierForm
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
                                     ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
-
-                                        // REGEX: ^\d{11}$
-                                        // ^        -> Inicio de la cadena
-                                        // \d{11}   -> Exactamente 11 dígitos (0-9)
-                                        // $        -> Fin de la cadena
                                         'regex:/^\d{11}$/',
                                     ])
                                     ->validationMessages([
@@ -402,7 +396,7 @@ class SupplierForm
                     ])->columnSpanFull(),
 
                 Section::make('Sucursales')
-                    ->description('Información de sucursales acosiadas al proveedor.')
+                    ->description('Información de sucursales asosiadas al proveedor.')
                     ->collapsed()
                     ->schema([
                         Repeater::make('supplierRedGlobals')
@@ -422,25 +416,21 @@ class SupplierForm
                                     ->options(State::all()->pluck('definition', 'id'))
                                     ->label('Estado')
                                     ->searchable()
-                                    ->preload()
-    ,
+                                    ->preload(),
                                 Select::make('city_id')
                                     ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                                     ->label('Ciudad')
                                     ->live()
                                     ->searchable()
-                                    ->preload()
-    ,
+                                    ->preload(),
                                 TextInput::make('name')
                                     ->label('Nombre o Razón Social')
-    
                                     ->maxLength(255)
                                     ->afterStateUpdatedJs(<<<'JS'
                                         $set('name', $state.toUpperCase());    
                                     JS),
                                 TextInput::make('email')
                                     ->label('Correo Electrónico')
-    
                                     ->email()
                                     ->maxLength(255),
                                 TextInput::make('personal_phone')
@@ -505,22 +495,19 @@ class SupplierForm
                                     ->label('Tipo de servicio')
                                     ->searchable()
                                     ->multiple()
-                                    ->preload()
-    ,
+                                    ->preload(),
                                 Select::make('state_id')
                                     ->options(State::all()->pluck('definition', 'id'))
                                     // ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->label('Estado')
                                     ->searchable()
-                                    ->preload()
-    ,
+                                    ->preload(),
                                 Select::make('city_id')
                                     ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                                     ->label('Ciudad')
                                     ->live()
                                     ->searchable()
-                                    ->preload()
-    ,
+                                    ->preload(),
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
                             ])

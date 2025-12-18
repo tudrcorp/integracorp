@@ -10,6 +10,8 @@ class CreateSupplier extends CreateRecord
 {
     protected static string $resource = SupplierResource::class;
 
+    protected static ?string $title = 'Formulario de Creación del Proveedores';
+
     protected function getCreatedNotification(): ?Notification
     {
         return Notification::make()

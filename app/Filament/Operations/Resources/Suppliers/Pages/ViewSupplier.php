@@ -14,10 +14,19 @@ class ViewSupplier extends ViewRecord
 {
     protected static string $resource = SupplierResource::class;
 
+    protected static ?string $title = 'Ficha Técnica del Proveedor';
+
     protected function getHeaderActions(): array
     {
         return [
             EditAction::make(),
+        ];
+    }
+
+    public function getRelationManagers(): array
+    {
+        return [
+            
         ];
     }
 }
