@@ -81,7 +81,6 @@ class SuppliersTable
                     ->alignCenter()
                     ->wrap()
                     ->searchable(),
-
                 TextColumn::make('personal_phone')
                     ->label('Teléfono Celular')
                     ->searchable(),
@@ -146,8 +145,8 @@ class SuppliersTable
                 IconColumn::make('robotica')
                     ->boolean()
                     ->label('Equipo de  Cirugía Robótica'),
-
-            TextColumn::make('created_at')
+                    
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
