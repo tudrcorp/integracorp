@@ -894,8 +894,8 @@ class AffiliationController extends Controller
                 'cobertura'             => isset($record->coverage_id) ? $record->coverage->price : 0,
                 'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
                 'tarifa_periodo'        => $record->total_amount,
-                'fecha_vigencia'        => $record->effective_date,
-                'fecha_vigencia_final'  => Carbon::createFromFormat('d/m/Y', $record->effective_date)->addYear()->format('d/m/Y')
+                'fecha_vigencia'        => $record->effective_date == null ? $record->created_at->format('d/m/Y') : $record->effective_date,
+                'fecha_vigencia_final'  => $record->effective_date == null ? '' : Carbon::createFromFormat('d/m/Y', $record->effective_date)->addYear()->format('d/m/Y')
                 
             ];
 
