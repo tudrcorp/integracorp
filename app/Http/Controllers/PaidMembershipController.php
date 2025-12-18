@@ -558,7 +558,7 @@ class PaidMembershipController extends Controller
                     'code'      => $record->affiliation->code,
                     'plan'      => $record->affiliation->plan->description,
                     'frecuencia'=> $record->payment_frequency,
-                    'cobertura' => $record->affiliation->coverage->price,
+                    'cobertura' => $record->affiliation->coverage->price ?? '',
                     'desde'     => Carbon::now()->format('d/m/Y'),
                     'hasta'     => Carbon::now()->addYear()->format('d/m/Y'),
                 ];
