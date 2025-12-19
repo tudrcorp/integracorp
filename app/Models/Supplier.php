@@ -65,8 +65,8 @@ class Supplier extends Model
             'created_by',
             'updated_by',
             'state_services',
-            'clasificacion_id',
-        'type_service',
+            'supplier_clasificacion_id',
+            'type_service',
         
     ];
 
@@ -122,7 +122,7 @@ class Supplier extends Model
 
     public function SupplierClasificacion()
     {
-        return $this->belongsTo(SupplierTipoServicio::class, 'clasificacion_id', 'id');
+        return $this->belongsTo(SupplierClasificacion::class);
     }
 
 }
