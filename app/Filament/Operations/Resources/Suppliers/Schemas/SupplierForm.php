@@ -345,6 +345,7 @@ class SupplierForm
                                 TableColumn::make('Correo Electrónico'),
                                 TableColumn::make('Teléfono Celular'),
                                 TableColumn::make('Teléfono Local'),
+                                TableColumn::make('Extensión(es)'),
                             ])
                             ->schema([
                                 TextInput::make('departament')
@@ -383,6 +384,7 @@ class SupplierForm
                                         'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
                                         'length' => 'El número de teléfono debe tener 11 dígitos.',
                                     ]),
+                                TextInput::make('extensions'),
                                 Hidden::make('created_by')->default(Auth::user()->name),
                                 Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
                             ])
