@@ -173,6 +173,7 @@ class SupplierInfolist
                                 TableColumn::make('Correo Electrónico'),
                                 TableColumn::make('Teléfono Celular'),
                                 TableColumn::make('Teléfono Local'),
+                                TableColumn::make('Extension(es)'),
                             ])
                             ->schema([
                                 TextEntry::make('departament'),
@@ -181,6 +182,7 @@ class SupplierInfolist
                                 TextEntry::make('email'),
                                 TextEntry::make('personal_phone'),
                                 TextEntry::make('local_phone'),
+                                TextEntry::make('extensions'), 
 
                             ])->columnSpanFull(),
 
