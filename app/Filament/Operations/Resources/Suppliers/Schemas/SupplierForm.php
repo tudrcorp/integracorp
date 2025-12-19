@@ -114,8 +114,7 @@ class SupplierForm
                         TextInput::make('local_phone')
                             ->label('Teléfono Local')
                             ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
-                            ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                            ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
+                            ->mask('99999999999') // Opcional: mejora la UX en el navegad
                             ->rules([
                                 'regex:/^\d{11}$/',
                             ])
@@ -128,8 +127,7 @@ class SupplierForm
                         TextInput::make('personal_phone')
                             ->label('Teléfono Celular')
                             ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
-                            ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                            ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
+                            ->mask('99999999999') // Opcional: mejora la UX en el navegad
                             ->rules([
                                 'regex:/^\d{11}$/',
                             ])
@@ -367,7 +365,6 @@ class SupplierForm
                                     ->label('Teléfono Celular')
                                     ->tel()
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
                                         'regex:/^\d{11}$/',
                                     ])
@@ -379,7 +376,6 @@ class SupplierForm
                                     ->label('Teléfono Local')
                                     ->tel()
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
                                         'regex:/^\d{11}$/',
                                     ])
@@ -437,7 +433,6 @@ class SupplierForm
                                     ->label('Teléfono Celular')
                                     ->tel()
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
                                         'regex:/^\d{11}$/',
                                     ])
@@ -449,7 +444,6 @@ class SupplierForm
                                     ->label('Teléfono Local')
                                     ->tel()
                                     ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->length(11) // Asegura exactamente 11 caracteres (validación Laravel)
                                     ->rules([
                                         'regex:/^\d{11}$/',
                                     ])
