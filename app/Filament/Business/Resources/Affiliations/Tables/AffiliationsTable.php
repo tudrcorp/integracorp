@@ -241,7 +241,7 @@ class AffiliationsTable
 
                 TextColumn::make('activated_at')
                     ->label('Fecha de Emisión')
-                    ->color('warning')
+                    ->color('success')
                     ->icon('heroicon-s-calendar')
                     ->badge()
                     ->searchable(),
