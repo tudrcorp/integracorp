@@ -45,8 +45,8 @@ class SuppliersTable
                 TextColumn::make('status_sistema')
                     ->label('Estatus del Sistema')
                     ->searchable(),
-                TextColumn::make('supplierClasificacion.description')
-                    ->label('Clasificacion')
+                TextColumn::make('SupplierClasificacion.description')
+                    ->label('Clasificacion del Proveedor')
                     ->badge()
                     ->color('success')
                     ->searchable(),
