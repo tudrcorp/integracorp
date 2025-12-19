@@ -208,20 +208,26 @@
                                 @php
                                 use Carbon\Carbon;
 
-                                    $fecha = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia']);
+                                    if($pagador['fecha_vigencia'] != '') {
+                                        
+                                        $fecha = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia']);
+    
+                                        if($pagador['frecuencia_pago'] == 'MENSUAL'){
+                                            $fechaVigenciaNueva = $fecha->copy()->addMonths(1)->format('d/m/Y');
+                                        }
+                                        if($pagador['frecuencia_pago'] == 'TRIMESTRAL'){
+                                            $fechaVigenciaNueva = $fecha->copy()->addMonths(3)->format('d/m/Y');
+                                        }
+                                        if($pagador['frecuencia_pago'] == 'SEMESTRAL'){
+                                            $fechaVigenciaNueva = $fecha->copy()->addMonths(6)->format('d/m/Y');
+                                        }
+                                        if($pagador['frecuencia_pago'] == 'ANUAL'){
+                                            $fechaVigenciaNueva = $pagador['fecha_vigencia_final'];
+    
+                                        }
 
-                                    if($pagador['frecuencia_pago'] == 'MENSUAL'){
-                                        $fechaVigenciaNueva = $fecha->copy()->addMonths(1)->format('d/m/Y');
-                                    }
-                                    if($pagador['frecuencia_pago'] == 'TRIMESTRAL'){
-                                        $fechaVigenciaNueva = $fecha->copy()->addMonths(3)->format('d/m/Y');
-                                    }
-                                    if($pagador['frecuencia_pago'] == 'SEMESTRAL'){
-                                        $fechaVigenciaNueva = $fecha->copy()->addMonths(6)->format('d/m/Y');
-                                    }
-                                    if($pagador['frecuencia_pago'] == 'ANUAL'){
-                                        $fechaVigenciaNueva = $pagador['fecha_vigencia_final'];
-
+                                    }else{
+                                        $fechaVigenciaNueva = '';
                                     }
                                 @endphp
                                 <p class="contenido_table_uno">Hasta: {{ $fechaVigenciaNueva }}</p>
