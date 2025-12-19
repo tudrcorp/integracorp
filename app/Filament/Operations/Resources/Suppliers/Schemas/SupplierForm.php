@@ -56,7 +56,7 @@ class SupplierForm
                             ->label('Estatus del Convenio')
                             ->searchable()
                             ->options(SupplierEstatusSistema::all()->pluck('description', 'description')),
-                        Select::make('clasificacion_id')
+                        Select::make('supplier_clasificacion_id')
                             ->label('Clasificación del Proveedor')
                             ->searchable()
                             ->live()
@@ -71,7 +71,7 @@ class SupplierForm
                             ->searchable()
                             ->hidden(fn (Get $get) => $get('clasificacion_id') != 3),
                         Select::make('type_service')
-                            ->options(fn(Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
+                            ->options(fn(Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('supplier_clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
                             ->label('Tipo de servicio')
                             ->searchable()
                             ->multiple()
