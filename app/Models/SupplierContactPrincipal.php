@@ -19,6 +19,7 @@ class SupplierContactPrincipal extends Model
         'departament',
         'created_by',
         'updated_by',
+        'extensions'
     ];
 
     public function supplier()
