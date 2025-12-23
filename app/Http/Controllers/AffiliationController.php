@@ -457,7 +457,7 @@ class AffiliationController extends Controller
         try {
 
             foreach ($records as $record) {
-                dd($record);
+                // dd($record);
                 $record->update([
                     'family_members' => Affiliate::select('affiliation_id')->where('affiliation_id', $record->id)->count(),
                 ]);
@@ -903,7 +903,7 @@ class AffiliationController extends Controller
                 
             ];
 
-            dd($pagador, $record);
+            // dd($pagador, $record);
 
             //Validamos si la afiliacionn la realizo un agente o una agencia
             if (isset($record->agent)) {
@@ -1049,10 +1049,6 @@ class AffiliationController extends Controller
             }
             
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
-            Log::error($th->getLine());
-            Log::error($th->getFile());
-            Log::error($th->getTraceAsString());
             Notification::make()
                 ->title('EXCEPTION')
                 ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
