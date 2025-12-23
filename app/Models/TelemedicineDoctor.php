@@ -19,7 +19,10 @@ class TelemedicineDoctor extends Model
         'address',
         'image',
         'signature',
-        'code'
+        'code',
+        'status',
+        'created_by',
+        'updated_by'
     ];
 
     public function telemedicineConsultationPatients()

@@ -215,7 +215,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     }),
             ])
             ->headerActions([
-                CreateAction::make(),
+                // CreateAction::make(),
             ]);
     }
 }

@@ -13,7 +13,7 @@ use App\Jobs\SendNotificationRemenberMedication;
 // })->purpose('Display an inspiring quote');
 
 // Schedule::job(new DocumentUploadReminder, 'system')->everyFiveMinutes();
-// Schedule::job(new SendNotificationBirthday, 'system')->everyFiveMinutes();
+Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
 
 // Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
 
@@ -33,4 +33,4 @@ use App\Jobs\SendNotificationRemenberMedication;
  * Se ejecutara todos los dias cada 6 horas
  * Hora de inicio = 8:00am
  */
-Schedule::job(new ValidateDateToRenew, 'renew')->everyFiveMinutes();
+Schedule::job(new ValidateDateToRenew, 'renew')->dailyAt('00:00');

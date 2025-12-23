@@ -789,3 +789,9 @@ Route::get('/tel/r4', function () {
         Log::info($resultOperacion);
     }
 });
+
+Route::get('/maps', function () {
+
+    // dd(Carbon::parse('10/12/2025')->addMonth(4)->format('d/m/Y'));
+    return view('maps-tres');
+});

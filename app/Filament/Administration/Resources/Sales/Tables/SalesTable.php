@@ -4,10 +4,8 @@ namespace App\Filament\Administration\Resources\Sales\Tables;
 
 use Carbon\Carbon;
 use App\Models\Sale;
-use App\Models\Collection;
 use Filament\Tables\Table;
 use App\Models\Affiliation;
-
 use Filament\Actions\Action;
 use App\Jobs\SendAvisoDePago;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -25,7 +23,6 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use App\Filament\Exports\SaleExporter;
 use Filament\Actions\DeleteBulkAction;
-
 use Filament\Actions\ExportBulkAction;
 use App\Http\Controllers\LogController;
 use Filament\Tables\Columns\TextColumn;
@@ -39,7 +36,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Sum;
 use App\Filament\Resources\Commissions\CommissionResource;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 class SalesTable
 {
@@ -432,48 +429,46 @@ class SalesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    BulkAction::make('calculate_commission')
-                        ->label('Calcular Comisiones')
-                        ->color('verde')
-                        ->icon('heroicon-s-calculator')
-                        ->action(function (EloquentCollection $records, $livewire) {
-
-                            $desde = $livewire->getTableFilterState('created_at')['desde'];
-                            $hasta = $livewire->getTableFilterState('created_at')['hasta'];
-
-                            //El usuario debe seleccionar un periodo, de lo contrario no se realiza el calculo
-                            if(!$desde || !$hasta){
-                                Notification::make()
-                                    ->title('ERROR')
-                                    ->body('Debe seleccionar un periodo de fechas. Por favor intente nuevamente.')
-                                    ->icon(Heroicon::ShieldExclamation)
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
-
-                            $preCalculateCommissions = SaleController::preCalculateCommission($records, $desde, $hasta);
-
-                            if ($preCalculateCommissions) {
+                    DeleteBulkAction::make()
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation()
+                        ->color('danger')
+                        ->icon('heroicon-m-trash')
+                        ->label('Eliminar Registro(s)')
+                        ->modalHeading('ELIMINAR REGISTRO DE VENTA(S)')
+                        ->modalDescription('Esta accion eliminara los registros de venta seleccionados, asi como sus respectivas facturas y comisiones.')
+                        ->action(function (Collection $records) {
+                            
+                            try {
                                 
-                                /**Notificacion de proceso realizado con boton para redireccionar al resultado */
-                                $desde = $livewire->getTableFilterState('created_at')['desde'];
-                                $hasta = $livewire->getTableFilterState('created_at')['hasta'];
+                                foreach ($records as $record) {
+                                    
+                                    //Eliminamos el registro de la venta
+                                    $record->delete();
+                                    
+                                    //Elinimo el vaucher de pago cargado
+                                    $record->paidMembershipIndividual()->delete();
+                                    $record->paidMembershipCorporate()->delete();
+
+                                    //Elimino la comision de la venta
+                                    $record->commission()->delete();
+                                }
 
                                 Notification::make()
-                                    ->title('CALCULO DE COMISIONES')
-                                    ->body('El calculo de las comisiones del periodo: DESDE: ' . $desde . ' HASTA: ' . $hasta . ' se ha realizado con exito')
-                                    ->icon('heroicon-m-user-plus')
+                                    ->title('¡ELIMINADO CON EXITO!')
+                                    ->body('Los registros de venta se han eliminado exitosamente.')
+                                    ->icon('heroicon-s-check-circle')
                                     ->iconColor('success')
                                     ->success()
-                                    ->seconds(10)
-                                    ->actions([
-                                        Action::make('view')
-                                            ->label('Ver detalle de claculo')
-                                            ->button()
-                                            ->url(CommissionResource::getUrl(panel: 'admin') . '?tableFilters[created_at][desde]=' . $desde . '&tableFilters[created_at][hasta]=' . $hasta),
-                                    ])
+                                    ->send();
+
+                            } catch (\Throwable $th) {
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
                                     ->send();
                             }
                         }),

@@ -11,6 +11,8 @@ class EditWhiteCompany extends EditRecord
 {
     protected static string $resource = WhiteCompanyResource::class;
 
+    protected static ?string $title = 'Editar Información de Empresas Aliadas';
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
 

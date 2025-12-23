@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use ZipArchive;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Affiliate;
 use Filament\Actions\Action;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Mail\SendMailKitBienvenida;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use App\Models\DetailIndividualQuote;
+use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Filament\Agents\Resources\AffiliationResource;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AffiliationController extends Controller
 {
@@ -436,11 +441,10 @@ class AffiliationController extends Controller
 
             //code...
         } catch (\Throwable $th) {
-            dd($th);
             Log::error($th->getMessage());
             Notification::make()
                 ->title('EXCEPTION')
-                ->body($th->getMessage())
+                ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
                 ->danger()
                 ->send();
             //throw $th;
@@ -453,6 +457,7 @@ class AffiliationController extends Controller
         try {
 
             foreach ($records as $record) {
+                dd($record);
                 $record->update([
                     'family_members' => Affiliate::select('affiliation_id')->where('affiliation_id', $record->id)->count(),
                 ]);
@@ -470,7 +475,7 @@ class AffiliationController extends Controller
                             'coverage_id'               => $record->coverage_id,
                             'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $data['total_amount'],
-                            'pay_amount_usd'            => $data['total_amount'],
+                            'pay_amount_usd'            => $record['total_amount'],
                             'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
                             'document_usd'              => $data['document_usd'],
                             'document_ves'              => isset($data['document_ves']) ? $data['document_ves'] : 'N/A',
@@ -505,7 +510,7 @@ class AffiliationController extends Controller
                             'total_amount'              => $data['total_amount'],
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
-                            'pay_amount_ves'            => $data['pay_amount_ves'],
+                            'pay_amount_ves'            => $record['total_amount'] * $data['tasa_bcv'],
                             'document_ves'              => $data['document_ves'],
                             'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                             'payment_method'            => $data['payment_method'],
@@ -535,7 +540,7 @@ class AffiliationController extends Controller
                             'code_agency'               => $record->code_agency,
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
-                            'total_amount'              => $data['total_amount'],
+                            'total_amount'              => $record['total_amount'],
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => $data['pay_amount_usd'],
                             'pay_amount_ves'            => $data['pay_amount_ves'],
@@ -573,7 +578,7 @@ class AffiliationController extends Controller
                             'plan_id'                   => $record->plan_id,
                             'coverage_id'               => $record->coverage_id,
                             'total_amount'              => $record->total_amount,
-                            'pay_amount_usd'            => $data['total_amount'],
+                            'pay_amount_usd'            => $record->total_amount,
                             'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
                             'document_usd'              => $data['document_usd'],
                             'document_ves'              => isset($data['document_ves']) ? $data['document_ves'] : 'N/A',
@@ -606,7 +611,7 @@ class AffiliationController extends Controller
                             'total_amount'              => $record->total_amount,
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
-                            'pay_amount_ves'            => $data['pay_amount_ves'],
+                            'pay_amount_ves'            => $record->total_amount * $data['tasa_bcv'],
                             'document_ves'              => $data['document_ves'],
                             'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                             'payment_method'            => $data['payment_method'],
@@ -673,7 +678,7 @@ class AffiliationController extends Controller
                             'coverage_id'               => $record->coverage_id,
                             'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $record->total_amount,
-                            'pay_amount_usd'            => $data['total_amount'],
+                            'pay_amount_usd'            => $record->total_amount,
                             'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
                             'document_usd'              => $data['document_usd'],
                             'document_ves'              => isset($data['document_ves']) ? $data['document_ves'] : 'N/A',
@@ -706,7 +711,7 @@ class AffiliationController extends Controller
                             'total_amount'              => $record->total_amount,
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
-                            'pay_amount_ves'            => $data['pay_amount_ves'],
+                            'pay_amount_ves'            => $record->total_amount * $data['tasa_bcv'],
                             'document_ves'              => $data['document_ves'],
                             'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                             'payment_method'            => $data['payment_method'],
@@ -773,7 +778,7 @@ class AffiliationController extends Controller
                             'coverage_id'               => $record->coverage_id,
                             'name_ti_usd'               => array_key_exists('name_ti_usd', $data) ? $data['name_ti_usd'] : 'N/A',
                             'total_amount'              => $record->total_amount,
-                            'pay_amount_usd'            => $data['total_amount'],
+                            'pay_amount_usd'            => $record->total_amount,
                             'pay_amount_ves'            => isset($data['pay_amount_ves']) ? $data['pay_amount_ves'] : 0.00,
                             'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                             'document_ves'              => isset($data['document_ves']) ? $data['document_ves'] : 'N/A',
@@ -806,7 +811,7 @@ class AffiliationController extends Controller
                             'total_amount'              => $record->total_amount,
                             'tasa_bcv'                  => $data['tasa_bcv'],
                             'pay_amount_usd'            => isset($data['pay_amount_usd']) ? $data['pay_amount_usd'] : 0.00,
-                            'pay_amount_ves'            => $data['pay_amount_ves'],
+                            'pay_amount_ves'            => $record->total_amount * $data['tasa_bcv'],
                             'document_ves'              => $data['document_ves'],
                             'document_usd'              => isset($data['document_usd']) ? $data['document_usd'] : 'N/A',
                             'payment_method'            => $data['payment_method'],
@@ -866,11 +871,10 @@ class AffiliationController extends Controller
 
             //code...
         } catch (\Throwable $th) {
-            dd($th);
             Log::error($th->getMessage());
             Notification::make()
                 ->title('EXCEPTION')
-                ->body($th->getMessage())
+                ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
                 ->danger()
                 ->send();
             //throw $th;
@@ -937,12 +941,124 @@ class AffiliationController extends Controller
                 ->sendToDatabase($user);
 
         } catch (\Throwable $th) {
-            dd($th);
             Notification::make()
                 ->title('EXCEPTION')
-                ->body($th->getMessage())
+                ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
                 ->danger()
                 ->send();
+        }
+    }
+
+    /**
+     * Comprime y descarga múltiples archivos en un único archivo ZIP.
+     * * NOTA: Requiere que la extensión 'zip' de PHP esté habilitada.
+     */
+    public static function downloadResendKit($record, $data)
+    {
+        try {
+            
+            if ($data['option'] == 'DESCARGAR') {
+    
+                $certificado = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
+                $tarjeta     = public_path('storage/tarjeta-afiliacion/TAR-' . $record->code . '.pdf');
+    
+                if ($record->plan_id == 1) {
+    
+                    $condicionado = public_path('storage/condicionados/CondicionesINICIAL.pdf');
+                }
+    
+                if ($record->plan_id == 2) {
+    
+                    $condicionado = public_path('storage/condicionados/CondicionesIDEAL.pdf');
+                }
+    
+                if ($record->plan_id == 3) {
+    
+                    $condicionado = public_path('storage/condicionados/CondicionesESPECIAL.pdf');
+                }
+    
+                if (file_exists($certificado) && file_exists($tarjeta)) {
+    
+                    $files = [
+                        $certificado,
+                        $tarjeta,
+                        $condicionado
+                    ];
+    
+                    // 2. Configurar el archivo ZIP temporal de salida
+                    $zipFileName = 'Kit_Bienvenida_' . time() . '.zip';
+                    // Usamos el directorio temporal del sistema operativo
+                    $tempZipPath = sys_get_temp_dir() . '/' . $zipFileName;
+    
+                    // AffiliationController::downloadMultipleFilesAsZip($files);
+                    $zip = new ZipArchive;
+    
+                    // Abrir/Crear el archivo ZIP
+                    if ($zip->open($tempZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                        // Error en la creación del archivo ZIP
+                        return response('Error: No se pudo crear el archivo ZIP temporal.', 500);
+                    }
+    
+                    for ($i = 0; $i < count($files); $i++) {
+    
+                        $zip->addFile($files[$i], basename($files[$i]));
+                    }
+    
+                    $zip->close();
+    
+                    Notification::make()
+                        ->title('¡TAREA COMPLETADA!')
+                        ->body('El Kit de Bienvenida se ha descargado correctamente.')
+                        ->icon('heroicon-o-book-open')
+                        ->color('success')
+                        ->success()
+                        ->send();
+    
+                    return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
+                }
+            }
+    
+            if ($data['option'] == 'REENVIAR') {
+
+                $code = [
+                    'code' => $record->code
+                ];
+
+                if ($record->plan_id == 1) {
+                    $condicionado = 'CondicionesINICIAL.pdf';
+                }
+                if ($record->plan_id == 2) {
+                    $condicionado = 'CondicionesIDEAL.pdf';
+                }
+                if ($record->plan_id == 3) {
+                    $condicionado = 'CondicionesESPECIAL.pdf';
+                }
+
+                Mail::to($data['email'])->send(new SendMailKitBienvenida($code, $condicionado));
+
+                Notification::make()
+                    ->title('¡TAREA COMPLETADA!')
+                    ->body('El Kit de Bienvenida se ha reenviado correctamente.')
+                    ->icon('heroicon-o-book-open')
+                    ->color('success')
+                    ->success()
+                    ->send();
+
+                return true;
+    
+            }
+            
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+            Log::error($th->getLine());
+            Log::error($th->getFile());
+            Log::error($th->getTraceAsString());
+            Notification::make()
+                ->title('EXCEPTION')
+                ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
+                ->danger()
+                ->send();
+            
         }
     }
 }

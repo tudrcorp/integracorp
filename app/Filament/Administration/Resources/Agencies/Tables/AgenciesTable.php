@@ -64,12 +64,6 @@ class AgenciesTable
                     })
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('accountManager.name')
-                    ->label('Account Manager')
-                    ->icon('heroicon-o-shield-check')
-                    ->badge()
-                    ->searchable()
-                    ->color('warning'),
                 TextColumn::make('typeAgency.definition')
                     ->label('Tipo agencia')
                     ->searchable()
@@ -106,15 +100,6 @@ class AgenciesTable
                 TextColumn::make('phone')
                     ->label('Número de Teléfono')
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-
-                IconColumn::make('tdec')
-                    ->label('TDEC')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                IconColumn::make('tdev')
-                    ->label('TDEV')
-                    ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdec')
                     ->label('(%) TDEC')
