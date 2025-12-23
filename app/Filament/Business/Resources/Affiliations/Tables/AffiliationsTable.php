@@ -947,16 +947,8 @@ class AffiliationsTable
 
                             try {
 
-                                $action = AffiliationController::downloadResendKit($record, $data);
-
-                                if($action){
-                                    Notification::make()
-                                        ->title('KIT DESCARGADO CON EXITO')
-                                        ->body('El kit se ha descargado con exito.')
-                                        ->icon('heroicon-s-check-circle')
-                                        ->success()
-                                        ->send();
-                                }
+                                $path = AffiliationController::downloadResendKit($record, $data);
+                                return response()->download($path);
                                     
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
