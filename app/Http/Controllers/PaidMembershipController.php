@@ -566,6 +566,7 @@ class PaidMembershipController extends Controller
                 //Enviamos el correo con el kit de bienvenida al agente responsable de la afiliación
                 //...
                 $data_tarjeta_afiliado = [
+                    'name'      => $record->affiliation->full_name_ti,
                     'ci'        => $record->affiliation->nro_identificacion_ti,
                     'code'      => $record->affiliation->code,
                     'plan'      => $record->affiliation->plan->description,
