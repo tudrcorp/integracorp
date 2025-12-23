@@ -585,14 +585,17 @@ class PaidMembershipController extends Controller
                     $condicionado = 'CondicionesESPECIAL.pdf';
                 }
 
+                //Regeneramos el certificado del afiliado para actualizar las fechas
+                AffiliationController::generateCertificateIndividual($record->affiliation, $record->affiliation->affiliates, Auth::id());
+
                 //Creamos la tarjeta del afiliado
                 TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
 
                 // dd($data_tarjeta_afiliado
                 $array_correos = [
-                    'agente'        => 'gcamacho@tudrencasa.com',
-                    'afiliaciones'  => 'afiliaciones@tudrencasa.com',
-                    'SraSol'        => 'solrodruiguezso@tudrencasa.com',
+                    'agente'                    => 'gcamacho@tudrencasa.com',
+                    'afiliaciones'              => 'afiliaciones@tudrencasa.com',
+                    'Sra. Soleyda Rodriguez'    => 'solrodriguez@tudrencasa.com',
                 ];
 
                 foreach ($array_correos as $correo) {

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Affiliate;
 use Filament\Actions\Action;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Mail\SendMailKitBienvenida;
 use Illuminate\Support\Facades\Log;
@@ -955,67 +956,66 @@ class AffiliationController extends Controller
      */
     public static function downloadResendKit($record, $data)
     {
+
         try {
             
             if ($data['option'] == 'DESCARGAR') {
-    
-                $certificado = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
-                $tarjeta     = public_path('storage/tarjeta-afiliacion/TAR-' . $record->code . '.pdf');
-    
+
+                $certificado = storage_path('app/public/certificados-doc/CER-' . $record->code . '.pdf');
+                $tarjeta     = storage_path('app/public/tarjeta-afiliacion/TAR-' . $record->code . '.pdf');
+
                 if ($record->plan_id == 1) {
-    
-                    $condicionado = public_path('storage/condicionados/CondicionesINICIAL.pdf');
+                    $condicionado = storage_path('app/public/condicionados/CondicionesINICIAL.pdf');
+                } elseif ($record->plan_id == 2) {
+                    $condicionado = storage_path('app/public/condicionados/CondicionesIDEAL.pdf');
+                } elseif ($record->plan_id == 3) {
+                    $condicionado = storage_path('app/public/condicionados/CondicionesESPECIAL.pdf');
+                } else {
+                    throw new \Exception("Plan no soportado: {$record->plan_id}");
                 }
-    
-                if ($record->plan_id == 2) {
-    
-                    $condicionado = public_path('storage/condicionados/CondicionesIDEAL.pdf');
-                }
-    
-                if ($record->plan_id == 3) {
-    
-                    $condicionado = public_path('storage/condicionados/CondicionesESPECIAL.pdf');
-                }
-    
-                if (file_exists($certificado) && file_exists($tarjeta)) {
-    
-                    $files = [
-                        $certificado,
-                        $tarjeta,
-                        $condicionado
-                    ];
-    
-                    // 2. Configurar el archivo ZIP temporal de salida
-                    $zipFileName = 'Kit_Bienvenida_' . time() . '.zip';
-                    // Usamos el directorio temporal del sistema operativo
-                    $tempZipPath = sys_get_temp_dir() . '/' . $zipFileName;
-    
-                    // AffiliationController::downloadMultipleFilesAsZip($files);
-                    $zip = new ZipArchive;
-    
-                    // Abrir/Crear el archivo ZIP
-                    if ($zip->open($tempZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
-                        // Error en la creación del archivo ZIP
-                        return response('Error: No se pudo crear el archivo ZIP temporal.', 500);
-                    }
-    
-                    for ($i = 0; $i < count($files); $i++) {
-    
-                        $zip->addFile($files[$i], basename($files[$i]));
-                    }
-    
-                    $zip->close();
-    
+
+                if (!file_exists($certificado) || !file_exists($tarjeta) || !file_exists($condicionado)) {
                     Notification::make()
-                        ->title('¡TAREA COMPLETADA!')
-                        ->body('El Kit de Bienvenida se ha descargado correctamente.')
-                        ->icon('heroicon-o-book-open')
-                        ->color('success')
-                        ->success()
+                        ->title('Error')
+                        ->body('Uno o más archivos del kit no existen.')
+                        ->danger()
                         ->send();
-    
-                    return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
+
+                    return null;
                 }
+    
+                $files = [
+                    $certificado,
+                    $tarjeta,
+                    $condicionado
+                ];
+
+                // dd($files);
+
+                // 2. Configurar el archivo ZIP temporal de salida
+                $zipFileName = 'Kit_Bienvenida_' . time() . '.zip';
+                // Usamos el directorio temporal del sistema operativo
+                $tempZipPath = storage_path('app/public/kit-temp/') . $zipFileName;
+
+                // AffiliationController::downloadMultipleFilesAsZip($files);
+                $zip = new ZipArchive;
+
+                // Abrir/Crear el archivo ZIP
+                if ($zip->open($tempZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                    // Error en la creación del archivo ZIP
+                    return response('Error: No se pudo crear el archivo ZIP temporal.', 500);
+                }
+
+                for ($i = 0; $i < count($files); $i++) {
+
+                    $zip->addFile($files[$i], basename($files[$i]));
+                }
+
+                $zip->close();
+                Log::info('ZIP path', ['path' => $tempZipPath, 'exists' => file_exists($tempZipPath)]);
+                return $tempZipPath;
+                //return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
+
             }
     
             if ($data['option'] == 'REENVIAR') {
@@ -1035,20 +1035,11 @@ class AffiliationController extends Controller
                 }
 
                 Mail::to($data['email'])->send(new SendMailKitBienvenida($code, $condicionado));
-
-                Notification::make()
-                    ->title('¡TAREA COMPLETADA!')
-                    ->body('El Kit de Bienvenida se ha reenviado correctamente.')
-                    ->icon('heroicon-o-book-open')
-                    ->color('success')
-                    ->success()
-                    ->send();
-
-                return true;
     
             }
             
         } catch (\Throwable $th) {
+            dd($th);  
             Notification::make()
                 ->title('EXCEPTION')
                 ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
