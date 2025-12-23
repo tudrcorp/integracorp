@@ -59,11 +59,6 @@ class AgentsTable
                     ->color('success')
                     ->icon('heroicon-s-building-library')
                     ->searchable(),
-                TextColumn::make('accountManager.name')
-                    ->label('Account Manager')
-                    ->icon('heroicon-o-shield-check')
-                    ->badge()
-                    ->color('warning'),
                 TextColumn::make('id')
                     ->label('Código de agente')
                     ->prefix('AGT-000')
@@ -96,18 +91,6 @@ class AgentsTable
                 TextColumn::make('phone')
                     ->label('Número de Teléfono')
                     ->searchable(),
-                TextColumn::make('user_instagram')
-                    ->label('Usuario de Instagram')
-                    ->searchable(),
-
-                IconColumn::make('tdec')
-                    ->label('TDEC')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                IconColumn::make('tdev')
-                    ->label('TDEV')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdec')
                     ->label('(%) TDEC')
                     ->suffix('%')

@@ -122,15 +122,6 @@ class AgenciesTable
                     ->label('Número de Teléfono')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
-
-                IconColumn::make('tdec')
-                    ->label('TDEC')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                IconColumn::make('tdev')
-                    ->label('TDEV')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdec')
                     ->label('(%) TDEC')
                     ->suffix('%')

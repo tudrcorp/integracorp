@@ -38,6 +38,7 @@ class PaidMembershipCorporate extends Model
         'created_by',
         'date_payment_voucher',
         'aproved_by',
+        'invoice_number',
     ];
 
     public function affiliation_corporate()
@@ -58,6 +59,12 @@ class PaidMembershipCorporate extends Model
     public function agent()
     {
         return $this->belongsTo(Agent::class);
+    }
+
+    // Relación inversa 1:1 → un voucher pertenece a una venta
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     

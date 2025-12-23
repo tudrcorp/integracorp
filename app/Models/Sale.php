@@ -42,7 +42,7 @@ class Sale extends Model
         "observations",
         'reference_payment',
         'date_payment_voucher',
-        'invoice_generated'
+        'invoice_generated',
     ];
 
     public function affiliation()
@@ -78,6 +78,24 @@ class Sale extends Model
     public function agencyMasterName()
     {
         return $this->belongsTo(Agency::class, 'owner_code', 'code');
+    }
+
+    // Relación 1:1 → una venta tiene un voucher
+    public function paidMembershipIndividual()
+    {
+        return $this->hasOne(PaidMembership::class, 'invoice_number', 'invoice_number');
+    }
+
+    // Relación 1:1 → una venta tiene un voucher
+    public function paidMembershipCorporate()
+    {
+        return $this->hasOne(PaidMembershipCorporate::class, 'invoice_number', 'invoice_number');
+    }
+
+    // Relación 1:1 → una venta tiene un voucher
+    public function commission()
+    {
+        return $this->hasOne(Commission::class, 'code', 'invoice_number');
     }
 
     

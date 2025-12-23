@@ -93,7 +93,12 @@ class TelemedicinaPanelProvider extends PanelProvider
                 'profile' => fn(Action $action) => $action->label('Perfil del Doctor')
                     ->icon('healthicons-f-doctor-male')
                     ->color('no-urgente')
-                    ->url(TelemedicineDoctorResource::getUrl('view', ['record' => Auth::user()->doctor_id], panel: 'telemedicina')),
+                    ->url(function () {
+                        if(Auth::user()->doctor_id != NULL){
+                            return TelemedicineDoctorResource::getUrl('view', ['record' => Auth::user()->doctor_id], panel: 'telemedicina');
+                        }
+                        return TelemedicineDoctorResource::getUrl('create', panel: 'telemedicina');
+                    }),
                 'logout' => fn(Action $action) => $action
                     ->label('Cerrar Sesión')
                     ->color('critico')

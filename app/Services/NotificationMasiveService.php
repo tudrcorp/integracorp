@@ -266,7 +266,7 @@ class NotificationMasiveService
             return true;
             
         } catch (\Throwable $th) {
-            Log::error($th);
+            Log::error($th->getMessage(). 'Line: ' . $th->getLine(). ' File: ' . $th->getFile());
         }
     }
 
@@ -318,7 +318,7 @@ class NotificationMasiveService
             return true;
             
         } catch (\Throwable $th) {
-            Log::error($th);
+            Log::error($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile());
         }
     }
 
@@ -476,7 +476,7 @@ class NotificationMasiveService
             return true;
             
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            Log::error($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile());
         }
     }
 
@@ -492,6 +492,7 @@ class NotificationMasiveService
             set_time_limit(0);
 
             $rowsNotifications = BirthdayNotification::where('status', 'APROBADA')->get()->toArray();
+            
             if (count($rowsNotifications) == 0) {
                 return;
             }
@@ -638,7 +639,7 @@ class NotificationMasiveService
             return true;
             
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            Log::error($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile());
         }
     }
 

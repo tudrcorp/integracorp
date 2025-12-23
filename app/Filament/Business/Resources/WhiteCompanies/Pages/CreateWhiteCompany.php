@@ -14,7 +14,7 @@ class CreateWhiteCompany extends CreateRecord
 {
     protected static string $resource = WhiteCompanyResource::class;
 
-    protected static ?string $title = 'Formulario de registro de Empresas';
+    protected static ?string $title = 'Formulario de Registro de Empresas Aliadas';
 
     protected function afterCreate(): void
     {

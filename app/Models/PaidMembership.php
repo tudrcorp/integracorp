@@ -41,6 +41,7 @@ class PaidMembership extends Model
         //Agregado
         'name_ti_usd',
         'date_payment_voucher',
+        'invoice_number',
         
     ];
 
@@ -62,6 +63,12 @@ class PaidMembership extends Model
     public function coverage()
     {
         return $this->belongsTo(Coverage::class);
+    }
+
+    // Relación inversa 1:1 → un voucher pertenece a una venta
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     

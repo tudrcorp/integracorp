@@ -22,14 +22,19 @@ class PaidMembershipController extends Controller
 {
     public static function approvePayment($record, $data)
     {
-
         try {
 
-            if($record->reference_payment_ves != 'N/A'){
-                $reference_payment = $record->reference_payment_ves;
-            }
-            if ($record->reference_payment_usd != 'N/A') {
-                $reference_payment = $record->reference_payment_usd;
+            if($record->payment_method == 'MULTIPLE'){
+                $reference_payment = $record->reference_payment_ves .'-'. $record->reference_payment_usd;
+                
+            }else{
+                if($record->reference_payment_ves != 'N/A'){
+                    $reference_payment = $record->reference_payment_ves;
+                }
+                if ($record->reference_payment_usd != 'N/A') {
+                    $reference_payment = $record->reference_payment_usd;
+                }
+
             }
 
             //Primer pago cargado 
@@ -86,6 +91,13 @@ class PaidMembershipController extends Controller
                 $sales->payment_date            = $record->payment_date;
                 $sales->reference_payment       = isset($reference_payment) ? $reference_payment : null;
                 $sales->save();
+
+                /**
+                 * Actualizacion el registro de pago y le agregamos el nuemro de la factura generada
+                 * ----------------------------------------------------------------------------------------------------
+                 */
+                $record->invoice_number = $sales->invoice_number;
+                $record->save();
 
                 /**
                  * Creamos el registro en la tabla de cobros
@@ -580,6 +592,7 @@ class PaidMembershipController extends Controller
                 $array_correos = [
                     'agente'        => 'gcamacho@tudrencasa.com',
                     'afiliaciones'  => 'afiliaciones@tudrencasa.com',
+                    'SraSol'        => 'solrodruiguezso@tudrencasa.com',
                 ];
 
                 foreach ($array_correos as $correo) {
@@ -594,7 +607,7 @@ class PaidMembershipController extends Controller
 
             //Si ya se han cargado pagos
             if (isset($data['collections']) && count($data['collections']) > 0) {
-                // dd('aqui');
+
                 /**
                  * Creamos el registro en la tabla de sales
                  * ----------------------------------------------------------------------------------------------------
@@ -636,6 +649,13 @@ class PaidMembershipController extends Controller
                 $sales->payment_date            = $record->payment_date;
                 $sales->reference_payment       = isset($reference_payment) ? $reference_payment : null;
                 $sales->save();
+
+                /**
+                 * Actualizacion el registro de pago y le agregamos el nuemro de la factura generada
+                 * ----------------------------------------------------------------------------------------------------
+                 */
+                $record->invoice_number = $sales->invoice_number;
+                $record->save();
 
                 /**ACTUALIZO EL ESTATUS DE LOS AVISOS DE COBROS */
                 for ($i = 0; $i < count($data['collections']); $i++) {
@@ -850,13 +870,12 @@ class PaidMembershipController extends Controller
             }
 
             
-        } catch (\Throwable $th) {
-            Log::error('Error al aprobar el pago de la membresia pagada: ' . $th->getMessage());    
-            dd($th);
+        } catch (\Throwable $th) {   
             Notification::make()
                 ->title('EXCEPCION')
-                ->body($th->getMessage())
-                ->warning()
+                ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
+                ->icon('heroicon-m-tag')
+                ->danger()
                 ->send();
         }
     }

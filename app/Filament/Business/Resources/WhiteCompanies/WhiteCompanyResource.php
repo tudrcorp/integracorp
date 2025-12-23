@@ -20,7 +20,7 @@ class WhiteCompanyResource extends Resource
 {
     protected static ?string $model = WhiteCompany::class;
 
-    protected static ?string $navigationLabel = 'Empresas (White-Label)';
+    protected static ?string $navigationLabel = 'Empresas Aliadas';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-library';
 
