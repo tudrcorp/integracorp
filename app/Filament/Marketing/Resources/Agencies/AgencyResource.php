@@ -25,7 +25,7 @@ class AgencyResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'Estructura TDG';
 
-    protected static ?string $navigationLabel = 'Agencias';
+    protected static ?string $navigationLabel = 'Agencias De Corretaje';
 
     public static function form(Schema $schema): Schema
     {
