@@ -1870,7 +1870,7 @@ class NotificationController extends Controller
             
             $body = <<<HTML
     
-            *{$header}* 
+            {$header} 
 
             {$record->content}
 
