@@ -4,9 +4,11 @@ namespace App\Filament\Administration\Resources\Commissions\Tables;
 
 use Carbon\Carbon;
 use App\Models\Agency;
+use App\Models\Commission;
 use Filament\Tables\Table;
 use Filament\Actions\BulkAction;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Grouping\Group;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
@@ -204,6 +206,14 @@ class CommissionsTable
                 ]),
 
             ])
+            ->groups([
+                Group::make('agent.name')
+                    ->label('Agente'),
+                Group::make('agency.name_corporative')
+                    ->label('Agencia'),
+                Group::make('payment_method')
+                    ->label('Metodo de Pago'),
+            ])
             ->filters([
                 Filter::make('created_at')
                     ->form([
@@ -271,4 +281,5 @@ class CommissionsTable
                 ]),
             ]);
     }
+
 }
