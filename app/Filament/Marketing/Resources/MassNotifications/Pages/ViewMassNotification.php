@@ -2,18 +2,19 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\Pages;
 
+use App\Filament\Marketing\Resources\MassNotifications\MassNotificationResource;
+use App\Http\Controllers\NotificationController;
+use App\Jobs\SendNotificationMasive;
+use App\Jobs\SendNotificationMasiveEmail;
+use App\Models\DataNotification;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
-use Illuminate\Support\Facades\Log;
-use App\Jobs\SendNotificationMasive;
-use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use App\Jobs\SendNotificationMasiveEmail;
-use App\Http\Controllers\NotificationController;
-use App\Filament\Marketing\Resources\MassNotifications\MassNotificationResource;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ViewMassNotification extends ViewRecord
 {
@@ -129,7 +130,11 @@ class ViewMassNotification extends ViewRecord
                                 SendNotificationMasive::dispatch($recordID)->onQueue('system');
                             }
                             if ($array_channels[$i] == 'email') {
-                                SendNotificationMasiveEmail::dispatch($record)->onQueue('system');
+
+                                $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
+                                for ($j = 0; $j < count($array); $j++) {
+                                    SendNotificationMasiveEmail::dispatch($array[$j]['email'], $record)->onQueue('system');
+                                }
                             }
                         }
 
