@@ -24,6 +24,7 @@ class SendNotificationMasiveEmail implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $record;
+    protected $email;
 
     /**
      * Número máximo de intentos.
@@ -42,10 +43,10 @@ class SendNotificationMasiveEmail implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($record)
+    public function __construct($record, $email)
     {
         $this->record = $record;
-        //
+        $this->email = $email;
     }
 
     /**
@@ -59,7 +60,7 @@ class SendNotificationMasiveEmail implements ShouldQueue
     private function sendNotifications()
     {
         $masiveNotification = new NotificationMasiveService();
-        $masiveNotification->sendEmail($this->record);
+        $masiveNotification->sendEmail($this->record, $this->email);
     }
 
     /**
@@ -68,7 +69,9 @@ class SendNotificationMasiveEmail implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info("SendEmailPropuestaEconomicaMultiple: FAILED");
-        Log::error($exception->getMessage());
+        Log::info("SendNotificationMasiveEmail: FAILED", [
+            'exception' => $exception,
+        ]);
+
     }
 }
