@@ -125,9 +125,14 @@ class ViewMassNotification extends ViewRecord
                         $recordID = $record->id;
                         $array_channels = $record->channels;
 
+                        $infoNotificacionArray = $record->toArray();
+
                         for ($i = 0; $i < count($array_channels); $i++) {
                             if ($array_channels[$i] == 'whatsapp') {
-                                SendNotificationMasive::dispatch($recordID)->onQueue('system');
+                                $dataNotificationArray = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
+                                for ($j = 0; $j < count($dataNotificationArray); $j++) {
+                                    SendNotificationMasive::dispatch($dataNotificationArray[$j], $infoNotificacionArray)->onQueue('system');
+                                }
                             }
                             if ($array_channels[$i] == 'email') {
 

@@ -32,6 +32,7 @@ class CollectionsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->heading('Cobranza')
             ->description('Registro de indicadores de cobranza según frecuencia de cobro')
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -41,9 +42,8 @@ class CollectionsTable
                     ->sortable()
                     ->icon('heroicon-s-calendar-days')
                     ->searchable(),
-
                 TextColumn::make('collection_invoice_number')
-                ->sortable()
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-s-document-text')
                     ->label('Nro. de Aviso')
@@ -176,35 +176,24 @@ class CollectionsTable
                         };
                     })
                     ->searchable(),
-                TextColumn::make('created_by')
-                ->sortable()
-                    ->searchable(),
-                TextColumn::make('created_at')
-                ->sortable()
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                ->sortable()
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Filter::make('created_at')
+                Filter::make('filter_next_payment_date')
                     ->form([
-                        DatePicker::make('desde'),
-                        DatePicker::make('hasta'),
+                        DatePicker::make('desde')
+                        ->format('Y-m-d'),
+                        DatePicker::make('hasta')
+                        ->format('Y-m-d'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('filter_next_payment_date', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('filter_next_payment_date', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {

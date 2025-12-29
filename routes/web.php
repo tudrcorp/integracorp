@@ -1,36 +1,38 @@
 <?php
 
-use Carbon\Carbon;
-use App\Models\Fee;
-use App\Models\Sale;
-use App\Models\Agent;
-use App\Models\Guest;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PdfController;
+use App\Http\Controllers\UtilsController;
+use App\Mail\NotificationRenewAffiliationMail;
 use App\Models\Agency;
-use App\Models\Benefit;
-use Livewire\Volt\Volt;
-use App\Models\AgeRange;
-use App\Models\Coverage;
+use App\Models\Agent;
 use App\Models\AgentDocument;
-use Filament\Facades\Filament;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\AgeRange;
+use App\Models\Benefit;
+use App\Models\BirthdayNotification;
 use App\Models\CheckAffiliation;
+use App\Models\Collection;
+use App\Models\Coverage;
 use App\Models\DataNotification;
+use App\Models\DetailIndividualQuote;
+use App\Models\Fee;
+use App\Models\Guest;
+use App\Models\Sale;
+use App\Models\TelemedicinePatientMedications;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Fidry\CpuCoreCounter\Finder\NullCpuCoreFinder;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\BirthdayNotification;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use App\Models\DetailIndividualQuote;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\UtilsController;
+use Livewire\Volt\Volt;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use App\Mail\NotificationRenewAffiliationMail;
-use App\Models\TelemedicinePatientMedications;
-use App\Http\Controllers\NotificationController;
-use Fidry\CpuCoreCounter\Finder\NullCpuCoreFinder;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -269,54 +271,6 @@ Route::get('/truncate', function () {
 });
 
 Route::get('/rp', function () {
-
-    // $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
-    //     ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
-    //     ->where('individual_quotes.id', 86)
-    //     ->where('detail_individual_quotes.plan_id', 2)
-    //     ->select('coverages.id as coverage_id', 'coverages.price as description')
-    //     ->distinct() // Asegurarse de que no haya duplicados
-    //     ->get()
-    //     ->pluck('description', 'coverage_id');
-
-    // dd($coverages);
-
-    // Log::error('Job Fallido: ' . static::class, [
-    //     'mensaje' => 'hello world',
-    //     'archivo' => 'file.php',
-    //     'linea' => '123',
-    //     'pila' => 'trace',
-    // ]);
-
-    // $pdf = Pdf::loadView('documents.informe-medico-general');
-    // return $pdf->stream();
-
-    // $medications = TelemedicinePatientMedications::with('telemedicinePatient')->get()->toArray();
-
-    // for ($i = 0; $i < count($medications); $i++) {
-
-    //     //... Fecha de asignacion del tratamiento
-    //     $asignationDate = Carbon::parse($medications[$i]['created_at'])->format('Y-m-d');
-
-    //     //... Fecha de Hoy
-    //     $today = now()->format('Y-m-d');
-
-    //     //... Dias Trascurridos
-    //     $diasTranscurridos = Carbon::parse($asignationDate)->diffInDays($today);
-
-    //     if($diasTranscurridos <= $medications[$i]['duration']) {
-
-    //         $name = $medications[$i]['telemedicine_patient']['full_name'];
-    //         $phone = $medications[$i]['telemedicine_patient']['phone'];
-    //         $medicine = $medications[$i]['medicine'];
-    //         $indications = $medications[$i]['indications'];
-    //         $duration = $medications[$i]['duration'];
-
-    //         //... Disparo la notificacion
-    //         NotificationController::rememberMedication($name, $phone, $medicine, $indications, $duration);
-    //     }
-
-    // }
 
     $pdf = Pdf::loadView('pr');
     // return view('pr');
@@ -794,4 +748,25 @@ Route::get('/maps', function () {
 
     // dd(Carbon::parse('10/12/2025')->addMonth(4)->format('d/m/Y'));
     return view('maps-tres');
+});
+
+Route::get('/update', function () {
+
+    // DB::connection('mysql2')->beginTransaction();
+    // try {
+
+    set_time_limit(120);
+
+    $data = Collection::all();
+    for ($i = 0; $i < count($data); $i++) {
+        $data[$i]->update([
+            'filter_next_payment_date' => Carbon::createFromFormat('d/m/Y', $data[$i]->next_payment_date)->format('Y-m-d')
+        ]);
+    }
+    
+    // DB::connection('mysql2')->commit();
+    // } catch (\Exception $e) {
+    //     DB::connection('mysql2')->rollBack();
+    //     throw $e;
+    // }
 });

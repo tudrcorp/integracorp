@@ -23,7 +23,8 @@ class SendNotificationMasive implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $recordID;
+    protected $dataNotificationArray;
+    protected $infoNotificationArray;
 
     public $tries = 5;
 
@@ -32,9 +33,10 @@ class SendNotificationMasive implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($recordID) 
+    public function __construct($dataNotificationArray, $infoNotificationArray) 
     {
-        $this->recordID = $recordID;
+        $this->dataNotificationArray = $dataNotificationArray;
+        $this->infoNotificationArray = $infoNotificationArray;
         //
     }
 
@@ -46,21 +48,21 @@ class SendNotificationMasive implements ShouldQueue
     {
         try {
             
-            $this->sendNotifications($this->recordID);
+            $this->sendNotifications($this->dataNotificationArray, $this->infoNotificationArray);
             
         } catch (Throwable $e) {
             Log::error($e->getMessage());
         }
     }
 
-    private function sendNotifications($id)
+    private function sendNotifications($dataNotificationArray, $infoNotificationArray)
     {
         try {
 
-            $record = MassNotification::findOrFail($id);
+            // $record = MassNotification::findOrFail($infoNotificationArray['id']);
             
             $masiveNotification = new NotificationMasiveService();
-            $masiveNotification->send($record);
+            $masiveNotification->send($dataNotificationArray, $infoNotificationArray);
             
         } catch (Throwable $e) {
             Log::error($e->getMessage());

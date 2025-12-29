@@ -109,40 +109,41 @@ class PaidMembershipController extends Controller
                     $lastInvoiceNumberCollection = Collection::where('id', Collection::max('id'))->get()->toArray();
                     
                     $collections = new Collection();
-                    $collections->sale_id                 = $sales->id;
-                    $collections->include_date            = $record->affiliation->activated_at;
-                    $collections->owner_code              = $record->affiliation->owner_code;
-                    $collections->code_agency             = $record->affiliation->code_agency;
-                    $collections->plan_id                 = $record->affiliation->plan_id;
-                    $collections->coverage_id             = $record->affiliation->coverage_id ?? null;
-                    $collections->agent_id                = $record->affiliation->agent_id;
+                    $collections->sale_id                       = $sales->id;
+                    $collections->include_date                  = $record->affiliation->activated_at;
+                    $collections->owner_code                    = $record->affiliation->owner_code;
+                    $collections->code_agency                   = $record->affiliation->code_agency;
+                    $collections->plan_id                       = $record->affiliation->plan_id;
+                    $collections->coverage_id                   = $record->affiliation->coverage_id ?? null;
+                    $collections->agent_id                      = $record->affiliation->agent_id;
                     $collections->collection_invoice_number     = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
                     $collections->quote_number                  = $record->affiliation->individual_quote->code;
-                    $collections->affiliation_code        = $record->affiliation->code;
-                    $collections->affiliate_full_name     = $record->affiliation->full_name_ti;
-                    $collections->affiliate_contact       = $record->affiliation->full_name_con;
-                    $collections->affiliate_ci_rif        = $record->affiliation->nro_identificacion_ti;
-                    $collections->affiliate_phone         = $record->affiliation->phone_ti;
-                    $collections->affiliate_email         = $record->affiliation->email_ti;
-                    $collections->affiliate_status        = $record->affiliation->status;
-                    $collections->type                    = 'AFILIACION INDIVIDUAL';
-                    $collections->service                 = 'servicio';
-                    $collections->persons                 = $record->affiliation->family_members;
-                    $collections->total_amount            = $record->total_amount;
-                    $collections->payment_method          = $record->payment_method;
+                    $collections->affiliation_code              = $record->affiliation->code;
+                    $collections->affiliate_full_name           = $record->affiliation->full_name_ti;
+                    $collections->affiliate_contact             = $record->affiliation->full_name_con;
+                    $collections->affiliate_ci_rif              = $record->affiliation->nro_identificacion_ti;
+                    $collections->affiliate_phone               = $record->affiliation->phone_ti;
+                    $collections->affiliate_email               = $record->affiliation->email_ti;
+                    $collections->affiliate_status              = $record->affiliation->status;
+                    $collections->type                          = 'AFILIACION INDIVIDUAL';
+                    $collections->service                       = 'servicio';
+                    $collections->persons                       = $record->affiliation->family_members;
+                    $collections->total_amount                  = $record->total_amount;
+                    $collections->payment_method                = $record->payment_method;
+                    $collections->pay_amount_usd                = 0.00;
+                    $collections->pay_amount_ves                = 0.00;
+                    $collections->bank_usd                      = 'N/A';
+                    $collections->bank_ves                      = 'N/A';
+                    $collections->payment_frequency             = $record->affiliation->payment_frequency;
+                    $collections->reference                     = $reference_payment;
+                    $collections->created_by                    = Auth::user()->name;
+                    $collections->next_payment_date             = $record->prox_payment_date;
 
-                    $collections->pay_amount_usd          = 0.00;
-                    $collections->pay_amount_ves          = 0.00;
-                    $collections->bank_usd                = 'N/A';
-                    $collections->bank_ves                = 'N/A';
+                    //... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
+                    $collections->filter_next_payment_date      = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('Y-m-d');
 
-
-                    $collections->payment_frequency       = $record->affiliation->payment_frequency;
-                    $collections->reference               = $reference_payment;
-                    $collections->created_by              = Auth::user()->name;
-                    $collections->next_payment_date       = $record->prox_payment_date;
-                    $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days'));
-                    $collections->created_by              = Auth::user()->name;
+                    $collections->expiration_date               = date($collections->next_payment_date, strtotime('+5 days'));
+                    $collections->created_by                    = Auth::user()->name;
                     $collections->save();
 
                     /**Ejecutamos el Job para crea el aviso de cobro */
@@ -211,6 +212,10 @@ class PaidMembershipController extends Controller
                         $collections->reference               = $record->reference_payment;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
+                        
+                        //... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
+                        $collections->filter_next_payment_date      = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('Y-m-d');
+
                         $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days'));
                         $collections->created_by              = Auth::user()->name;
                         // dd($collections);
@@ -276,6 +281,10 @@ class PaidMembershipController extends Controller
                     $collections->reference               = $reference_payment;
                     $collections->created_by              = Auth::user()->name;
                     $collections->next_payment_date       = $record->prox_payment_date;
+                    
+                    //... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
+                    $collections->filter_next_payment_date      = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('Y-m-d');
+                    
                     $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                     $collections->created_by              = Auth::user()->name;
                     $collections->save();
@@ -339,6 +348,10 @@ class PaidMembershipController extends Controller
                         $collections->reference               = $reference_payment;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = $record->prox_payment_date;
+                        
+                        //... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
+                        $collections->filter_next_payment_date      = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('Y-m-d');
+                        
                         $collections->expiration_date         = date($collections->next_payment_date, strtotime('+30 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                         $collections->created_by              = Auth::user()->name;
                         $collections->save();

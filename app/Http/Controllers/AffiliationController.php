@@ -942,6 +942,7 @@ class AffiliationController extends Controller
                 ->sendToDatabase($user);
 
         } catch (\Throwable $th) {
+            
             Notification::make()
                 ->title('EXCEPTION')
                 ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())

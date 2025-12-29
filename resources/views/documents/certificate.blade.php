@@ -207,30 +207,32 @@
                                 <p class="contenido_table_uno">Desde: {{ $pagador['fecha_vigencia'] }}</p>
                                 @php
                                 use Carbon\Carbon;
+                                use Illuminate\Support\Facades\Log;
 
                                     if($pagador['fecha_vigencia'] != '') {
                                         
                                         $fecha = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia']);
     
                                         if($pagador['frecuencia_pago'] == 'MENSUAL'){
-                                            $fechaVigenciaNueva = $fecha->copy()->addMonths(1)->format('d/m/Y');
+                                            $fechaVigenciaHasta = $fecha->copy()->addMonths(1)->format('d/m/Y');
                                         }
                                         if($pagador['frecuencia_pago'] == 'TRIMESTRAL'){
-                                            $fechaVigenciaNueva = $fecha->copy()->addMonths(3)->format('d/m/Y');
+                                            $fechaVigenciaHasta = $fecha->copy()->addMonths(3)->format('d/m/Y');
                                         }
                                         if($pagador['frecuencia_pago'] == 'SEMESTRAL'){
-                                            $fechaVigenciaNueva = $fecha->copy()->addMonths(6)->format('d/m/Y');
+                                            $fechaVigenciaHasta = $fecha->copy()->addMonths(6)->format('d/m/Y');
                                         }
                                         if($pagador['frecuencia_pago'] == 'ANUAL'){
-                                            $fechaVigenciaNueva = $pagador['fecha_vigencia_final'];
+                                            $fechaVigenciaHasta = $pagador['fecha_vigencia_final'];
     
                                         }
 
                                     }else{
-                                        $fechaVigenciaNueva = '';
+                                        $fechaVigenciaHasta = '';
                                     }
+                                    Log::info($fechaVigenciaHasta);
                                 @endphp
-                                <p class="contenido_table_uno">Hasta: {{ $fechaVigenciaNueva }}</p>
+                                <p class="contenido_table_uno">Hasta: {{ $fechaVigenciaHasta }}</p>
                             </td>
                         </tr>
                     </tbody>
