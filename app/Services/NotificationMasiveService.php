@@ -25,132 +25,128 @@ class NotificationMasiveService
      *
      * @return \Illuminate\Http\Response
      */
-    static function send($record)
+    static function send($dataNotificationArray, $infoNotificationArray)
     {
         
         try {
 
             set_time_limit(0);
 
-            $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
-
-            for ($i = 0; $i < count($array); $i++) {
-
-                if ($record->header_title == null) {
-                    $header = '';
-                }
-
-                if ($record->header_title != null) {
-                    $header = $record->header_title . ' ' . $array[$i]['fullName'];
-                }
-
-                $body = <<<HTML
-    
-                {$header} 
-
-                {$record->content}
-
-                HTML;
-
-                $curl = curl_init();
-
-                if($record->type == 'image') {
-                    $params = array(
-                        'token'     => config('parameters.TOKEN'),
-                        'to'        => $array[$i]['phone'],
-                        'image'     => config('parameters.PUBLIC_URL') . '/' . $record->file,
-                        'caption'   => $body
-                    );
-
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => "",
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 30,
-                        CURLOPT_SSL_VERIFYHOST => 0,
-                        CURLOPT_SSL_VERIFYPEER => 0,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => "POST",
-                        CURLOPT_POSTFIELDS => http_build_query($params),
-                        CURLOPT_HTTPHEADER => array(
-                            "content-type: application/x-www-form-urlencoded"
-                        ),
-                    ));
-                    $response = curl_exec($curl);
-                    $err = curl_error($curl);
-
-                    Log::info($response);
-                    Log::error($err);
-
-                }
-                
-                if ($record->type == 'video') {
-                    $params = array(
-                        'token'     => config('parameters.TOKEN'),
-                        'to'        => $array[$i]['phone'],
-                        'video'     => config('parameters.PUBLIC_URL') . '/' . $record->file,
-                        'caption'   => $body
-                    );
-
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => config('parameters.CURLOPT_URL_VIDEO'),
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => "",
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 30,
-                        CURLOPT_SSL_VERIFYHOST => 0,
-                        CURLOPT_SSL_VERIFYPEER => 0,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => "POST",
-                        CURLOPT_POSTFIELDS => http_build_query($params),
-                        CURLOPT_HTTPHEADER => array(
-                            "content-type: application/x-www-form-urlencoded"
-                        ),
-                    ));
-                    $response = curl_exec($curl);
-                    $err = curl_error($curl);
-
-                    Log::info($response);
-                    Log::error($err);
-
-                }
-                
-                if ($record->type == 'url') {
-                    $params = array(
-                        'token'     => config('parameters.TOKEN'),
-                        'to'        => $array[$i]['phone'],
-                        'body'      => $body
-                    );
-
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => "",
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 30,
-                        CURLOPT_SSL_VERIFYHOST => 0,
-                        CURLOPT_SSL_VERIFYPEER => 0,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => "POST",
-                        CURLOPT_POSTFIELDS => http_build_query($params),
-                        CURLOPT_HTTPHEADER => array(
-                            "content-type: application/x-www-form-urlencoded"
-                        ),
-                    ));
-                    $response = curl_exec($curl);
-                    $err = curl_error($curl);
-
-                    Log::info($response);
-                    Log::error($err);
-
-                }
-
-                curl_close($curl);
-
-                sleep(30);
-                
+            if ($infoNotificationArray['header_title'] == null) {
+                $header = '';
             }
+
+            if ($infoNotificationArray['header_title'] != null) {
+                $header = $infoNotificationArray['header_title'] . ' ' . $dataNotificationArray['fullName'];
+            }
+
+            $body = <<<HTML
+
+            {$header} 
+
+            {$infoNotificationArray['content']}
+
+            HTML;
+
+            $curl = curl_init();
+
+            if($infoNotificationArray['type'] == 'image') {
+                $params = array(
+                    'token'     => config('parameters.TOKEN'),
+                    'to'        => $dataNotificationArray['phone'],
+                    'image'     => config('parameters.PUBLIC_URL') . '/' . $infoNotificationArray['file'],
+                    'caption'   => $body
+                );
+
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+
+                Log::info($response);
+                Log::error($err);
+
+            }
+            
+            if ($infoNotificationArray['type'] == 'video') {
+                $params = array(
+                    'token'     => config('parameters.TOKEN'),
+                    'to'        => $dataNotificationArray['phone'],
+                    'video'     => config('parameters.PUBLIC_URL') . '/' . $infoNotificationArray['file'],
+                    'caption'   => $body
+                );
+
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL_VIDEO'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+
+                Log::info($response);
+                Log::error($err);
+
+            }
+            
+            if ($infoNotificationArray['type'] == 'url') {
+                $params = array(
+                    'token'     => config('parameters.TOKEN'),
+                    'to'        => $dataNotificationArray['phone'],
+                    'body'      => $body
+                );
+
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+
+                Log::info($response);
+                Log::error($err);
+
+            }
+
+            curl_close($curl);
+
+            Log::info('Enviado a:' . $dataNotificationArray['phone']);
+
+            sleep(20);
 
             return true;
             

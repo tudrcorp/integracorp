@@ -235,7 +235,7 @@
                     <td class="td_table_info_ti" style="font-weight: bold">Vigencia:</td>
                     <td class="td_table_info_ti">
                         <p class="td_table_info_ti" style="font-weight: bold">Desde: {{ date('d-m-Y') }}</p>
-                        <p class="td_table_info_ti" style="font-weight: bold">Hasta: {{ date('d-m-Y', strtotime('+1 years')); }}</p>
+                        <p class="td_table_info_ti" style="font-weight: bold">Hasta: {{ date('d-m-Y', strtotime('+1 years')) }}</p>
                     </td>
 
                     <td class="td_table_info_ti" style="font-weight: bold">Periodo Facturado:</td>

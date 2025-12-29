@@ -38,6 +38,7 @@ class Collection extends Model
         'days',
         'created_by',
         'bank',
+        'filter_next_payment_date',
         
     ];
 
