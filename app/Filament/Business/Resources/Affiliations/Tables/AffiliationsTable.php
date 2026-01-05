@@ -1726,6 +1726,7 @@ class AffiliationsTable
                         }),
                     ExportBulkAction::make()->exporter(AffiliationExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

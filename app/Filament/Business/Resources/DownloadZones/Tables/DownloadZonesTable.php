@@ -43,6 +43,7 @@ class DownloadZonesTable
                     ->button()
                     ->openUrlInNewTab(),
             ])
-            ->toolbarActions([])->striped();
+            ->toolbarActions([])
+            ->striped();
     }
 }

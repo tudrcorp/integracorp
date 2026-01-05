@@ -124,6 +124,7 @@ class BenefitsTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

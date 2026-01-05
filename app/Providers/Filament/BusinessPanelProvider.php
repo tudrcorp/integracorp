@@ -135,6 +135,7 @@ class BusinessPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => view('filament.menu-user')
             )
-            ->defaultThemeMode(ThemeMode::Light);
+            ->viteTheme('resources/css/filament/admin/theme.css');
+            // ->defaultThemeMode(ThemeMode::Light);
     }
 }

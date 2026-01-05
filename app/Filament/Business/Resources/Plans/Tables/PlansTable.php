@@ -126,6 +126,7 @@ class PlansTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

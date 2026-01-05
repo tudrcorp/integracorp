@@ -745,6 +745,7 @@ class AgentsTable
                         ->hidden(fn() => Auth::user()->is_business_admin != 1),
                     ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
-            ])->striped();
+            ])
+            ->striped();
     }
 }

@@ -48,6 +48,7 @@ class AccountManagersTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

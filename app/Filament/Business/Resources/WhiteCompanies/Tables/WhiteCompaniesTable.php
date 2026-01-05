@@ -48,6 +48,7 @@ class WhiteCompaniesTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

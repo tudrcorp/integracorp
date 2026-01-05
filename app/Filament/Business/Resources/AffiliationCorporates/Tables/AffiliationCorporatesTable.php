@@ -870,6 +870,7 @@ class AffiliationCorporatesTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }
