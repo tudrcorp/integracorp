@@ -162,6 +162,7 @@ class UsersTable
                         }),
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->striped();
     }
 }

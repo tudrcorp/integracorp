@@ -5,8 +5,57 @@
 
 
 /* .fi-simple-main {
-    background-color: color-mix(in oklab,#ffffff5e 80%,transparent);
+    background-color: color-mix(in oklab,#ffffff47 20%,transparent);
   } */
 
+@layer components {
+  .fi-btn {
+    @apply rounded-3xl shadow-xl/20;
+  }
+}
+
+@layer components {
+  .fi-sidebar-item-btn {
+    @apply rounded-3xl;
+  }
+}
+
+@layer components {
+  .fi-input-wrp {
+    @apply rounded-3xl;
+    @apply shadow-xl;
+  }
+}
+
+@layer components {
+  .fi-pagination .fi-pagination-items {
+    @apply rounded-3xl;
+  }
+}
+
+@layer components {
+  .fi-badge {
+    @apply rounded-3xl shadow-xl;
+  }
+}
+
+/* @layer components {
+  .fi-page-header-main-ctn {
+    @apply rounded-l-3xl border-l-2 border-gray-200;
+
+  }
+} */
+
+@layer components {
+  .fi-wi-stats-overview-stat {
+    @apply rounded-3xl shadow-xl/20;
+  }
+}
+
+@layer components {
+  .fi-wi-chart {
+    @apply rounded-3xl shadow-xl/20;
+  }
+}
 
 

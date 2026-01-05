@@ -904,8 +904,6 @@ class AffiliationController extends Controller
                 
             ];
 
-            // dd($pagador, $record);
-
             //Validamos si la afiliacionn la realizo un agente o una agencia
             if (isset($record->agent)) {
                 $pagador['agente_agencia'] = $record->agent->name;

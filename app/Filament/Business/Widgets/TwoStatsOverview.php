@@ -43,34 +43,22 @@ class TwoStatsOverview extends StatsOverviewWidget
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success')
-                    ->extraAttributes([
-                        'class' => 'border-2 border-[#00a7d1] font-bold text-white',
-                    ]),
+                    ->color('success'),
                 Stat::make('AGENCIAS GENERALES', $agenciesGeneral)
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success')
-                    ->extraAttributes([
-                        'class' => 'border-2 border-[#00a7d1] font-bold text-white',
-                    ]),
+                    ->color('success'),
                 Stat::make('AGENTES', $agents)
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success')
-                    ->extraAttributes([
-                        'class' => 'border-2 border-[#00a7d1] font-bold text-white',
-                    ]),
+                    ->color('success'),
                 Stat::make('ACCOUNT MANAGERS', $accountManagers)
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success')
-                    ->extraAttributes([
-                        'class' => 'border-2 border-[#00a7d1] font-bold text-white',
-                    ]),
+                    ->color('success'),
             ];
             
         }
