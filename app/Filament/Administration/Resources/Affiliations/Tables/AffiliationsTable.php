@@ -76,7 +76,6 @@ class AffiliationsTable
                     ->icon('heroicon-o-shield-check')
                     ->badge()
                     ->sortable()
-                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
                     ->color(function (string $state): string {
                         return match ($state) {
                             '-----' => 'info',
@@ -86,14 +85,12 @@ class AffiliationsTable
                 TextColumn::make('agency.name_corporative')
                     ->label('CO-Agencia')
                     ->badge()
-                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
                     ->color('azulOscuro')
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('agent.name')
                     ->label('Nombre del agente')
                     ->badge()
-                    ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
                     ->color('azulOscuro')
                     ->sortable()
                     ->icon('heroicon-m-user')
@@ -837,7 +834,7 @@ class AffiliationsTable
                                                     ->button()
                                                     ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
                                             ])
-                                            ->sendToDatabase($recipient_for_user);
+                                            ->sendToDatabase($recipient);
                                     }
                                 }
                                 
