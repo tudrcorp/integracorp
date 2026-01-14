@@ -14,7 +14,6 @@ class AgeRange extends Model
         'plan_id',
         'coverage_id',
         'fee',
-        'code',
         'range',
         'status',
         'created_by',
