@@ -11,7 +11,6 @@ class Coverage extends Model
     protected $table = 'coverages';
 
     protected $fillable = [
-        'code',
         'price',
         'plan_id',
         'status',
