@@ -2,30 +2,32 @@
 
 namespace App\Filament\Administration\Resources\Agencies\Tables;
 
+use App\Filament\Exports\AgencyExporter;
+use App\Http\Controllers\AgencyController;
+use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Models\Agency;
+use App\Models\AgencyType;
+
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Agency;
-use App\Models\AgencyType;
-use Filament\Actions\Action;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
 use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Crypt;
-use App\Http\Controllers\LogController;
-use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Http\Controllers\AgencyController;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
 
 class AgenciesTable
 {
@@ -325,6 +327,7 @@ class AgenciesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+                    ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
