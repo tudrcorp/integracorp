@@ -2,28 +2,29 @@
 
 namespace App\Providers\Filament;
 
+use Filament\Actions\Action;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Http\Middleware\AuthenticateSession;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
+use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Actions\Action;
-use Filament\Pages\Dashboard;
-use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
-use Filament\Http\Middleware\Authenticate;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Filament\Http\Middleware\AuthenticateSession;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 
 class AdministrationPanelProvider extends PanelProvider
@@ -66,6 +67,25 @@ class AdministrationPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->navigationGroups([
+            NavigationGroup::make()
+                ->label('ESTRUCTURA COMERCIAL')
+                ->icon('heroicon-o-building-office-2'),
+            NavigationGroup::make()
+                ->label('AFILIACIONES')
+                ->icon('heroicon-o-identification'),
+            NavigationGroup::make()
+                ->label('ADMINISTRACIÓN')
+                ->icon('heroicon-o-calculator'),
+            NavigationGroup::make()
+                ->label('RRHH')
+                ->icon('heroicon-o-user-group')
+                ->collapsed(),
+            NavigationGroup::make()
+                ->label('NOMINA')
+                ->icon('heroicon-o-currency-dollar')
+                ->collapsed(),
+            ])
             ->databaseNotifications()
             ->databaseTransactions()
             ->breadcrumbs(false)
@@ -91,6 +111,7 @@ class AdministrationPanelProvider extends PanelProvider
             )
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->viteTheme('resources/css/filament/admin/theme.css');
     }
 }

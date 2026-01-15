@@ -82,6 +82,7 @@ class OperationsPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => view('filament.return-modulo-negocios')
             )
-            ->defaultThemeMode(ThemeMode::Light);
+            ->defaultThemeMode(ThemeMode::Light)
+            ->viteTheme('resources/css/filament/admin/theme.css');
     }
 }

@@ -50,22 +50,24 @@ class UserForm
                                 ->required()
                                 ->helperText('El usuario solo recibirá las notificaciones asociadas al departamento.')
                                 ->options([
-                                    'COMERCIAL'     => 'COMERCIAL',
-                                    'COTIZACIONES'  => 'COTIZACIONES',
-                                    'AFILIACIONES'  => 'AFILIACIONES',
-                                    'OPERACIONES'   => 'OPERACIONES',
-                                    'ADMINISTRACION'=> 'ADMINISTRACION',
-                                    'MARKETING'     => 'MARKETING',
-                                    'TELEMEDICINA'  => 'TELEMEDICINA',
-                                    'NEGOCIOS'      => 'NEGOCIOS',
-                                    'PROVEEDORES'   => 'PROVEEDORES',
-                                    'SUPERADMIN'    => 'SUPERADMIN',
+                                    'COMERCIAL'             => 'COMERCIAL',
+                                    'COTIZACIONES'          => 'COTIZACIONES',
+                                    'AFILIACIONES'          => 'AFILIACIONES',
+                                    'OPERACIONES'           => 'OPERACIONES',
+                                    'ADMINISTRACION'        => 'ADMINISTRACION',
+                                    'MARKETING'             => 'MARKETING',
+                                    'TELEMEDICINA'          => 'TELEMEDICINA',
+                                    'NEGOCIOS'              => 'NEGOCIOS',
+                                    'PROVEEDORES'           => 'PROVEEDORES',
+                                    'SUPERADMIN'            => 'SUPERADMIN',
+                                    'MODERADOR-INTRANET'    => 'MODERADOR-INTRANET',
                                 ])->multiple(),
                             Select::make('status')
                                 ->label('Estado')
+                                ->required()
                                 ->options([
-                                    'ACTIVO'    => 'ACTIVO',
-                                    'INACTIVO'  => 'INACTIVO',
+                                    'ACTIVO'                => 'ACTIVO',
+                                    'INACTIVO'              => 'INACTIVO',
                                 ]),  
                             
                         ])->columnSpanFull()->columns(3),

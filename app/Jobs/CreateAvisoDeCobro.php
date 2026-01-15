@@ -58,10 +58,11 @@ class CreateAvisoDeCobro implements ShouldQueue
         
         $name_pdf = 'ADP-' . $data['invoice_number'] . '.pdf';
 
-        $pdf = Pdf::loadView('documents.aviso-de-cobro', compact('data'));
+        $pdf = Pdf::loadView('documents.aviso-de-cobro-corporativo', compact('data'));
         $pdf->save(public_path('storage/avisoDeCobro/' . $name_pdf));
 
         Log::info('AVISO DE COBRO CREADO' . $name_pdf);
+        
         Notification::make()
             ->title('¡AVISOS DE COBRO GENERADOS!')
             ->body('Los avisos de cobro fueron generados con exito.')

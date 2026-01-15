@@ -2,30 +2,32 @@
 
 namespace App\Filament\Administration\Resources\Collections\Tables;
 
+use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\LogController;
+use App\Jobs\CreateAvisoDeCobro;
+use App\Mail\MailAvisoDeCobro;
+use App\Models\Affiliation;
+
+use App\Models\AffiliationCorporate;
+use App\Models\Collection;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-
-use Carbon\Carbon;
-use App\Models\Collection;
-use App\Models\Affiliation;
-use Filament\Actions\Action;
-use App\Mail\MailAvisoDeCobro;
-use App\Jobs\CreateAvisoDeCobro;
-use Filament\Actions\ActionGroup;
-use Filament\Tables\Filters\Filter;
-use App\Models\AffiliationCorporate;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Filament\Schemas\Components\Grid;
-use App\Http\Controllers\LogController;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Schemas\Components\Grid;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class CollectionsTable
 {
@@ -137,7 +139,7 @@ class CollectionsTable
                     ->color(function (string $state): string {
                         return match ($state) {
                             'AFILIACION INDIVIDUAL' => 'primary',
-                            'AFILIACIÓN CORPORATIVA' => 'verdeOpaco',
+                            'AFILIACION CORPORATIVA' => 'verdeOpaco',
                         };
                     })
                     ->searchable(),
@@ -358,41 +360,76 @@ class CollectionsTable
                         ->action(function (Collection $record) {
 
                             try {
-                                // dd($record->affiliation);
+                                
 
                                 if ($record->type == 'AFILIACION INDIVIDUAL') {
                                     $address = Affiliation::where('code', $record->affiliation_code)->first();
-                                } else {
+                                    /**Ejecutamos el Job para crea el aviso de cobro */
+                                    $array_data = [
+                                        'invoice_number'    => $record->collection_invoice_number,
+                                        'emission_date'     => $record->next_payment_date,
+                                        'full_name_ti'      => $record->affiliate_full_name,
+                                        'ci_rif_ti'         => $record->affiliate_ci_rif,
+                                        'address_ti'        => $address->adress_ti,
+                                        'phone_ti'          => $record->affiliate_phone,
+                                        'email_ti'          => $record->affiliate_email,
+                                        'total_amount'      => $record->total_amount,
+                                        'plan'              => $record->plan->description,
+                                        'coverage'          => $record->coverage->price ?? null,
+                                        'frequency'         => $record->payment_frequency,
+                                    ];
+
+                                    $regenerate = CollectionController::regenerateAvisoDeCobro($array_data);
+                                }
+                                if ($record->type == 'AFILIACION CORPORATIVA') {
+                                    // dd($record);
                                     $address = AffiliationCorporate::where('code', $record->affiliation_code)->first();
+                                    $planes = AffiliationCorporate::where('code', $record->affiliation_code)->with('affiliationCorporatePlans')->first()->toArray();
+
+                                    // dd($planes['affiliation_corporate_plans']);
+                                    $array_data = [
+                                        'invoice_number'    => $record->collection_invoice_number,
+                                        'emission_date'     => $record->next_payment_date,
+                                        'full_name_ti'      => $record->affiliate_full_name,
+                                        'ci_rif_ti'         => $record->affiliate_ci_rif,
+                                        'address_ti'        => $address->adress_ti,
+                                        'phone_ti'          => $record->affiliate_phone,
+                                        'email_ti'          => $record->affiliate_email,
+                                        'total_amount'      => $record->total_amount,
+                                        'plan'              => $planes['affiliation_corporate_plans'],
+                                        'coverage'          => $record->coverage->price ?? null,
+                                        'frequency'         => $record->payment_frequency,
+                                    ];
+
+                                    $regenerate = CollectionController::regenerateAvisoDeCobroCorporate($array_data);
                                 }
 
-                                /**Ejecutamos el Job para crea el aviso de cobro */
-                                $array_data = [
-                                    'invoice_number'    => $record->collection_invoice_number,
-                                    'emission_date'     => $record->next_payment_date,
-                                    'full_name_ti'      => $record->affiliate_full_name,
-                                    'ci_rif_ti'         => $record->affiliate_ci_rif,
-                                    'address_ti'        => $address->adress_ti,
-                                    'phone_ti'          => $record->affiliate_phone,
-                                    'email_ti'          => $record->affiliate_email,
-                                    'total_amount'      => $record->total_amount,
-                                    'plan'              => $record->plan->description,
-                                    'coverage'          => $record->coverage->price ?? null,
-                                    'frequency'         => $record->payment_frequency,
-                                ];
-                                // dd($array_data);
-                                dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
+                                if($regenerate){
+                                    Notification::make()
+                                        ->title('REGENERADO CON EXITO')
+                                        ->body('Aviso de cobro generado correctamente')
+                                        ->icon('heroicon-s-check-circle')
+                                        ->iconColor('success')
+                                        ->success()
+                                        ->send();
+                                }else{
+                                    Notification::make()
+                                        ->title('ERROR')
+                                        ->body('Aviso de cobro no generado')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('danger')
+                                        ->danger()
+                                        ->send();
+                                }
 
-                                Notification::make()
-                                    ->title('REGENERADO CON EXITO')
-                                    ->body('Aviso de cobro generado correctamente')
-                                    ->icon('heroicon-s-check-circle')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->send();
-                                
                             } catch (\Throwable $th) {
-                                dd($th);
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
                             }
                         }),
                         

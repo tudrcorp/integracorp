@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
 use App\Models\Commission;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
 
 class SaleController extends Controller
 {
@@ -162,6 +163,48 @@ class SaleController extends Controller
                 ->iconColor('danger')
                 ->danger()
                 ->send();
+        }
+    }
+
+    public static function regenerateAvisoDePago($data)
+    {
+
+        try {
+
+            ini_set('memory_limit', '2048M');
+
+            $name_pdf = 'RDP-' . $data['invoice_number'] . '.pdf';
+
+            $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago', compact('data'));
+            $pdf->save(public_path('storage/reciboDePago/' . $name_pdf));
+
+            return true;
+
+        } catch (\Throwable $th) {
+
+            Log::error('AVISO DE PAGO NO REGENERADO' . $name_pdf . ' ' . $th->getMessage());
+            return false;
+        }
+    }
+
+    public static function regenerateAvisoDePagoCorporate($data)
+    {
+
+        try {
+
+            ini_set('memory_limit', '2048M');
+
+            $name_pdf = 'RDP-' . $data['invoice_number'] . '.pdf';
+
+            $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago-corporativo', compact('data'));
+            $pdf->save(public_path('storage/reciboDePago/' . $name_pdf));
+
+            Log::info('AVISO DE PAGO CORPORATIVO REGENERADO' . $name_pdf);
+
+            return true;
+        } catch (\Throwable $th) {
+            Log::error('AVISO DE PAGO CORPORATIVO NO REGENERADO' . $name_pdf . ' ' . $th->getMessage());
+            return false;
         }
     }
 }

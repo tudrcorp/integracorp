@@ -326,7 +326,7 @@
                                 }
                             @endphp
 
-                            PERÍODO DE VIGENCIA DESDE EL {{ now()->format('d/m/Y') }} HASTA EL {{ $fechaHasta }}
+                            PERÍODO DE VIGENCIA DESDE EL {{ now()->format('d/m/Y') }} HASTA EL {{ $fechaHasta }} 
                         </p>
                     </td>
                     <td style="font-weight: bold; text-align: right;">{{ number_format($data['total_amount'], 2) }}US$</td>
