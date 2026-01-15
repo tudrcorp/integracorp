@@ -50,4 +50,10 @@ class TravelAgentResource extends Resource
             'edit' => EditTravelAgent::route('/{record}/edit'),
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        // Deshabilitado temporalmente por mantenimiento
+        return false;
+    }
 }
