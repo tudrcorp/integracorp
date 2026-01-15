@@ -8,53 +8,55 @@
     background-color: color-mix(in oklab,#ffffff47 20%,transparent);
   } */
 
+
 @layer components {
   .fi-btn {
-    @apply rounded-3xl shadow-xl/20;
+    @apply rounded-xl shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)];
   }
 }
 
 @layer components {
   .fi-sidebar-item-btn {
-    @apply rounded-3xl;
+    @apply rounded-xl;
+  }
+}
+
+/* Item del menu Active */
+@layer components {
+  .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    @apply shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)];
   }
 }
 
 @layer components {
   .fi-input-wrp {
-    @apply rounded-3xl;
-    @apply shadow-xl;
+    @apply rounded-xl;
+    @apply shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)];
   }
 }
 
 @layer components {
   .fi-pagination .fi-pagination-items {
-    @apply rounded-3xl;
+    @apply rounded-xl;
   }
 }
 
 @layer components {
   .fi-badge {
-    @apply rounded-3xl shadow-xl;
+    @apply rounded-md shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)];
   }
 }
 
-/* @layer components {
-  .fi-page-header-main-ctn {
-    @apply rounded-l-3xl border-l-2 border-gray-200;
-
-  }
-} */
 
 @layer components {
   .fi-wi-stats-overview-stat {
-    @apply rounded-3xl shadow-xl/20;
+    @apply rounded-xl shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)];
   }
 }
 
 @layer components {
   .fi-wi-chart {
-    @apply rounded-3xl shadow-xl/20;
+    @apply rounded-xl shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)];
   }
 }
 

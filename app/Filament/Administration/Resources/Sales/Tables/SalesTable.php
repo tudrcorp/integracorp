@@ -2,41 +2,42 @@
 
 namespace App\Filament\Administration\Resources\Sales\Tables;
 
-use Carbon\Carbon;
-use App\Models\Sale;
-use Filament\Tables\Table;
-use App\Models\Affiliation;
-use Filament\Actions\Action;
-use App\Jobs\SendAvisoDePago;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Jobs\CreateAvisoDeCobro;
-use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Log;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
 use App\Filament\Exports\SaleExporter;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ExportBulkAction;
+use App\Filament\Resources\Commissions\CommissionResource;
 use App\Http\Controllers\LogController;
-use Filament\Tables\Columns\TextColumn;
 use App\Http\Controllers\SaleController;
+use App\Jobs\CreateAvisoDeCobro;
+use App\Jobs\SendAvisoDePago;
+use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
+use App\Models\Sale;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
-use App\Filament\Resources\Commissions\CommissionResource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class SalesTable
 {
@@ -66,6 +67,17 @@ class SalesTable
                     ->badge()
                     ->icon('heroicon-s-user-group')
                     ->label('Afiliación')
+                    ->searchable(),
+                TextColumn::make('type')
+                    ->sortable()
+                    ->label('Tipo')
+                    ->badge()
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'AFILIACION INDIVIDUAL' => 'primary',
+                            'AFILIACION CORPORATIVA' => 'verdeOpaco',
+                        };
+                    })
                     ->searchable(),
                 TextColumn::make('agency.name_corporative')
                     ->sortable()
@@ -272,52 +284,87 @@ class SalesTable
                         ->requiresConfirmation()
                         ->form([
                             Fieldset::make('Periodo de Vigencia')->schema([
-                                DatePicker::make('desde')->required()->format('d/m/Y'),
-                                DatePicker::make('hasta')->required()->format('d/m/Y'),
+                                DatePicker::make('desde')->format('d/m/Y'),
+                                DatePicker::make('hasta')->format('d/m/Y'),
                             ])->columnSpanFull()->columns(2),                 
                         ])
                         ->action(function (Sale $record, array $data) {
                             try {
-                                
-                                //Consultamo la collection
-                                $sale = Sale::where('id', $record->id)->first();
-                                // dd($sale, $sale->created_at->format('d/m/Y'));
+                                // dd($record);
 
-                                $afiliacion = Affiliation::where('code', $sale->affiliation_code)->with('paid_memberships')->first();
-                                // dd($sale, $afiliacion->toArray());
-                                
-                                /**Ejecutamos el Job para crea el aviso de cobro */
-                                $data = [
-                                    'invoice_number' => $sale->invoice_number,
-                                    'emission_date'  => $sale->created_at->format('d/m/Y'),
-                                    'payment_method' => $sale->payment_method,
-                                    'reference'      => $record->reference_payment,
-                                    'full_name_ti'   => $sale->affiliate_full_name,
-                                    'ci_rif_ti'      => $sale->affiliate_ci_rif,
-                                    'address_ti'     => $afiliacion['adress_ti'],
-                                    'phone_ti'       => $afiliacion['phone_ti'],
-                                    'email_ti'       => $afiliacion['email_ti'],
-                                    'total_amount'   => $sale->total_amount,
-                                    'plan'           => $sale->plan->description,
-                                    'coverage'       => $sale->coverage->price ?? null,
-                                    'reference'      => $record->reference_payment,
-                                    'frequency'      => $sale->payment_frequency,
-                                    'desde'          => $data['desde'],
-                                    'hasta'          => $data['hasta'],
-                                ];
+                                if($record->type == 'AFILIACION INDIVIDUAL'){
+                                    //Consultamo la collection
+                                    $sale = Sale::where('id', $record->id)->first();
 
-                                ini_set('memory_limit', '2048M');
+                                    $afiliacion = Affiliation::where('code', $sale->affiliation_code)->with('paid_memberships')->first();
 
-                                $name_pdf = 'RDP-' . $data['invoice_number'] . '.pdf';
+                                    /**Ejecutamos el Job para crea el aviso de cobro */
+                                    $data = [
+                                        'invoice_number' => $sale->invoice_number,
+                                        'emission_date'  => $sale->created_at->format('d/m/Y'),
+                                        'payment_method' => $sale->payment_method,
+                                        'reference'      => $record->reference_payment,
+                                        'full_name_ti'   => $sale->affiliate_full_name,
+                                        'ci_rif_ti'      => $sale->affiliate_ci_rif,
+                                        'address_ti'     => $afiliacion['adress_ti'],
+                                        'phone_ti'       => $afiliacion['phone_ti'],
+                                        'email_ti'       => $afiliacion['email_ti'],
+                                        'total_amount'   => $sale->total_amount,
+                                        'plan'           => $sale->plan->description,
+                                        'coverage'       => $sale->coverage->price ?? null,
+                                        'reference'      => $record->reference_payment,
+                                        'frequency'      => $sale->payment_frequency,
+                                        'desde'          => $data['desde'],
+                                        'hasta'          => $data['hasta'],
+                                    ];
 
-                                $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago', compact('data'));
-                                $pdf->save(public_path('storage/reciboDePago/' . $name_pdf));
+                                    $regenerar = SaleController::regenerateAvisoDePago($data);
 
-                                Notification::make()
-                                    ->title('¡REGENERADO CON EXITO!')
-                                    ->body('El recibo de pago se ha regenerado exitosamente.')
-                                    ->success()
-                                    ->send();
+                                }
+
+                                if($record->type == 'AFILIACION CORPORATIVA'){
+
+                                    $sale = Sale::where('id', $record->id)->first();
+
+                                    $afiliacion = AffiliationCorporate::where('code', $sale->affiliation_code)->with('paid_membership_corporates', 'affiliationCorporatePlans')->first()->toArray();
+                                    // dd($afiliacion);
+                                    /**Ejecutamos el Job para crea el aviso de cobro */
+                                    $data = [
+                                        'invoice_number' => $sale->invoice_number,
+                                        'emission_date'  => $sale->created_at->format('d/m/Y'),
+                                        'payment_method' => $sale->payment_method,
+                                        'reference'      => $record->reference_payment,
+                                        'full_name_ti'   => $sale->affiliate_full_name,
+                                        'ci_rif_ti'      => $sale->affiliate_ci_rif,
+                                        'address_ti'     => $afiliacion['address'],
+                                        'phone_ti'       => $afiliacion['phone'],
+                                        'email_ti'       => $afiliacion['email'],
+                                        'total_amount'   => $sale->total_amount,
+                                        'plan'           => $afiliacion['affiliation_corporate_plans'],
+                                        'coverage'       => $sale->coverage->price ?? null,
+                                        'reference'      => $record->reference_payment,
+                                        'frequency'      => $sale->payment_frequency,
+                                        'desde'          => $data['desde'],
+                                        'hasta'          => $data['hasta'],
+                                    ];
+
+                                    $regenerar = SaleController::regenerateAvisoDePagoCorporate($data);
+                                    
+                                }
+
+                                if ($regenerar) {
+                                    Notification::make()
+                                        ->title('¡REGENERADO CON EXITO!')
+                                        ->body('El recibo de pago se ha regenerado exitosamente.')
+                                        ->success()
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->title('¡ERROR!')
+                                        ->body('El recibo de pago no se ha regenerado.')
+                                        ->danger()
+                                        ->send();
+                                }
                                 
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());

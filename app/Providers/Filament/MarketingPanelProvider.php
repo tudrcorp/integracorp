@@ -92,6 +92,7 @@ class MarketingPanelProvider extends PanelProvider
                         MyImages::make()
                             ->directory('backgroundMarketingPanelLogin')
                     ),
-                ]);
+                ])
+            ->viteTheme('resources/css/filament/admin/theme.css');
     }
 }

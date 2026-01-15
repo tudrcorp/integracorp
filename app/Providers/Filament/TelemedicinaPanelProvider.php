@@ -113,6 +113,6 @@ class TelemedicinaPanelProvider extends PanelProvider
             ])
             ->defaultThemeMode(ThemeMode::Light)
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
-            ->viteTheme('resources/css/filament/telemedicina/theme.css');
+            ->viteTheme('resources/css/filament/admin/theme.css');
     }
 }

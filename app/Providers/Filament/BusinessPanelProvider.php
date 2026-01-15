@@ -49,7 +49,7 @@ class BusinessPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->colors([
-                'primary'   => '#5196CE',
+                'primary'   => '#4c566a',
             ])
             ->navigationGroups([
                 NavigationGroup::make()
@@ -71,7 +71,6 @@ class BusinessPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('ZONA DE DESCARGA')
                     ->icon('heroicon-o-cloud-arrow-down'),
-                
 
             ])
             ->sidebarCollapsibleOnDesktop()

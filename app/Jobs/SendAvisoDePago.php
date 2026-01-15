@@ -48,7 +48,7 @@ class SendAvisoDePago implements ShouldQueue
         // dd($data);
         $name_pdf = 'RDP-' . $data['invoice_number'] . '.pdf';
 
-        $pdf = Pdf::loadView('documents.aviso-de-pago', compact('data'));
+        $pdf = Pdf::loadView('documents.aviso-de-pago-corporativo', compact('data'));
         $pdf->save(public_path('storage/reciboDePago/' . $name_pdf));
         /**
          * Despues de guardar el pdf lo enviamos por email

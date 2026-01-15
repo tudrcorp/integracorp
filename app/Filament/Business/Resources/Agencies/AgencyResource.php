@@ -21,7 +21,7 @@ class AgencyResource extends Resource
 {
     protected static ?string $model = Agency::class;
 
-    protected static ?string $navigationLabel = 'Agencias';
+    protected static ?string $navigationLabel = 'Agencias De Corretaje';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-library';
 
