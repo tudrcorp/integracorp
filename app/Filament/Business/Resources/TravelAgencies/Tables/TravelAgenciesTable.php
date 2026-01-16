@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\TravelAgencies\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -14,44 +15,69 @@ class TravelAgenciesTable
     {
         return $table
             ->columns([
+                ImageColumn::make('logo')
+                    ->disk('public')
+                    ->width(60),
                 TextColumn::make('status')
+                    ->label('Estado')
                     ->searchable(),
                 TextColumn::make('fechaIngreso')
-                    ->searchable(),
+                    ->label('Fecha de Ingreso')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('representante')
-                    ->searchable(),
+                    ->label('Representante')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('idRepresentante')
-                    ->searchable(),
+                    ->label('ID Representante')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('FechaNacimientoRepresentante')
-                    ->searchable(),
+                    ->label('Fecha de Nacimiento del Representante')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('name')
+                    ->label('Nombre')
                     ->searchable(),
                 TextColumn::make('typeIdentification')
+                    ->label('Tipo de Identificación')
                     ->searchable(),
                 TextColumn::make('numberIdentification')
+                    ->label('Número de Identificación')
                     ->searchable(),
                 TextColumn::make('userPortalWeb')
+                    ->label('Usuario Portal Web')
                     ->searchable(),
                 TextColumn::make('aniversary')
+                    ->label('Aniversario')
                     ->searchable(),
-                TextColumn::make('country')
+                TextColumn::make('country.name')
+                    ->label('País')
                     ->searchable(),
-                TextColumn::make('state')
+                TextColumn::make('state.definition')
+                    ->label('Estado')
                     ->searchable(),
-                TextColumn::make('city')
+                TextColumn::make('city.definition')
+                    ->label('Ciudad')
                     ->searchable(),
                 TextColumn::make('address')
+                    ->label('Dirección')
                     ->searchable(),
                 TextColumn::make('phone')
+                    ->label('Teléfono')
                     ->searchable(),
                 TextColumn::make('phoneAdditional')
+                    ->label('Teléfono Adicional')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
+                    ->label('Email')
                     ->searchable(),
                 TextColumn::make('userInstagram')
+                    ->label('Usuario Instagram')
                     ->searchable(),
                 TextColumn::make('classification')
+                    ->label('Clasificación')
                     ->searchable(),
                 TextColumn::make('comision')
                     ->numeric()
@@ -60,16 +86,22 @@ class TravelAgenciesTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('nivel')
+                    ->label('Nivel')
                     ->searchable(),
                 TextColumn::make('agenteSuperiorNivel3')
+                    ->label('Agente Superior Nivel 3')
                     ->searchable(),
                 TextColumn::make('agenciaSuperiorNivel2')
+                    ->label('Agencia Superior Nivel 2')
                     ->searchable(),
                 TextColumn::make('agenciaPpalNivel1')
+                    ->label('Agencia Principal Nivel 1')
                     ->searchable(),
                 TextColumn::make('createdBy')
+                    ->label('Creado por')
                     ->searchable(),
                 TextColumn::make('updatedBy')
+                    ->label('Actualizado por')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()
