@@ -8,4 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateTravelAgency extends CreateRecord
 {
     protected static string $resource = TravelAgencyResource::class;
+
+    protected static ?string $title = "Crear Agencia de Viajes";
 }

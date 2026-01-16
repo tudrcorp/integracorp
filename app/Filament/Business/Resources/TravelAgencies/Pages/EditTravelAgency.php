@@ -10,6 +10,8 @@ class EditTravelAgency extends EditRecord
 {
     protected static string $resource = TravelAgencyResource::class;
 
+    protected static ?string $title = "Editar Agencia de Viajes";
+
     protected function getHeaderActions(): array
     {
         return [

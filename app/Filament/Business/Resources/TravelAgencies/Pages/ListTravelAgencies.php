@@ -10,6 +10,8 @@ class ListTravelAgencies extends ListRecords
 {
     protected static string $resource = TravelAgencyResource::class;
 
+    protected static ?string $title = "Listado de Agencias de Viajes";
+
     protected function getHeaderActions(): array
     {
         return [
