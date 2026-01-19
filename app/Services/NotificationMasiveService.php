@@ -2,21 +2,22 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UtilsController;
+use App\Jobs\SendNotificationMasiveMailBirthday;
+use App\Mail\NotificationMasiveMail;
+use App\Mail\NotificationMasiveMailBirthday;
 use App\Models\AgentDocument;
+use App\Models\BirthdayNotification;
 use App\Models\DataNotification;
-use PhpParser\Node\Stmt\TryCatch;
+use App\Models\TelemedicinePatientMedications;
+use Barryvdh\Debugbar\Facades\Debugbar;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Mail\NotificationMasiveMail;
-use App\Models\BirthdayNotification;
 use Illuminate\Support\Facades\Mail;
-use Barryvdh\Debugbar\Facades\Debugbar;
-use App\Http\Controllers\UtilsController;
-use App\Mail\NotificationMasiveMailBirthday;
-use App\Models\TelemedicinePatientMedications;
-use App\Http\Controllers\NotificationController;
-use App\Jobs\SendNotificationMasiveMailBirthday;
+use PhpParser\Node\Stmt\TryCatch;
+use Throwable;
 
 class NotificationMasiveService
 {
@@ -178,27 +179,6 @@ class NotificationMasiveService
             
         } catch (\Throwable $th) {
             Log::error($th);
-        }
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    static function sendEmailBirthday($email, $name, $content, $file)
-    {
-
-        try {
-
-            set_time_limit(0);
-
-            SendNotificationMasiveMailBirthday::dispatch($email, $name, $content, $file)->onQueue('system');
-
-            return true;
-            
-        } catch (\Throwable $th) {
-            Log::error($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile());
         }
     }
 
@@ -473,9 +453,10 @@ class NotificationMasiveService
                                  * En caso de que la data venga NULL
                                  */
                                 if ($data[$k]->email != null) {
-                                    
+
                                     //Ejecuto el envio de la notificacion
-                                    self::sendEmailBirthday($data[$k]->email, $data[$k]->name, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                    set_time_limit(0);
+                                    Mail::to('gustavoalberto.camachop@gmail.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
                                     
                                 } else {
                                     continue;
@@ -484,29 +465,43 @@ class NotificationMasiveService
                             
                         }
 
-                        //AFFILIATIONS
+                        //AFFILIATIONS -- Logica Actualizada v2.1
                         if ($rowsNotifications[$i]['data_type'] == 'affiliations') {
+                            // dump($rowsNotifications[$i]['data_type'], $rowsNotifications[$i]['channels']);
                             $data = DB::table($rowsNotifications[$i]['data_type'])
                                 ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
-                                ->where('birth_date_ti', $now)
                                 ->get()
                                 ->toArray();
+                            // dump($data);
 
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
 
-                                /**
-                                 * En caso de que la data venga NULL
-                                 */
-                                if ($data[$k]->email_ti != null) {
+                                //Validamos si esta cumpliendo años
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date_ti);
+                                dump($isBirthdayToday);
+                                if ($isBirthdayToday) {
+                                // dd('cumple');
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->email_ti != null) {
 
-                                    //Ejecuto el envio de la notificacion
-                                    self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        Mail::to('gustavoalberto.camachop@gmail.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['file']));
+
+                                        // SendNotificationMasiveMailBirthday::dispatch($email, $name, $content, $file)->onQueue('system');
+
+                                    } else {
+                                        continue;
+                                    }
                                 } else {
                                     continue;
                                 }
                             }
-                            
                         }
                     }
                     
@@ -518,8 +513,19 @@ class NotificationMasiveService
 
             return true;
             
-        } catch (\Throwable $th) {
-            Log::error($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile());
+        } catch (Throwable $th) {
+            // OPTIMIZACIÓN 100% DEL CATCH PRINCIPAL
+            Log::emergency("FALLA CRÍTICA en el Servicio de Notificación de Cumpleaños", [
+                'message' => $th->getMessage(),
+                'file'    => $th->getFile(),
+                'line'    => $th->getLine(),
+            ]);
+
+            // Reportar a servicios de monitoreo (Sentry/Flare)
+            report($th);
+
+            // Podrías lanzar una excepción personalizada o retornar false
+            return false;
         }
     }
 
