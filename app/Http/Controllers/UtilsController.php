@@ -1768,5 +1768,37 @@ class UtilsController extends Controller
         return $businessLineId;
     }
 
+    /**
+     * Determina si hoy es el cumpleaños del cliente.
+     * * @param string $birthDateString Formato "27/04/1972"
+     * @return bool
+     */
+    public static function isBirthdayToday(string $birthDateString): bool
+    {
+        try {
+            // Parseamos la fecha usando el formato específico que tienes
+            $birthDate = Carbon::createFromFormat('d/m/Y', $birthDateString);
+            $today = Carbon::today();
+
+            // Comparamos mes y día únicamente
+            return $birthDate->isBirthday($today);
+
+            /* Nota: isBirthday() es un método de Carbon que internamente 
+               hace: $birthDate->format('m-d') === $today->format('m-d')
+            */
+        } catch (\Exception $e) {
+            // Si el formato es inválido, retornamos false
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene la edad actual del cliente.
+     */
+    public static function getAge(string $birthDateString): int
+    {
+        return Carbon::createFromFormat('d/m/Y', $birthDateString)->age;
+    }
+
     
 }
