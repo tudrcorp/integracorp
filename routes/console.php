@@ -12,8 +12,10 @@ use App\Jobs\SendNotificationRemenberMedication;
 //     $this->comment(Inspiring::quote());
 // })->purpose('Display an inspiring quote');
 
-// Schedule::job(new DocumentUploadReminder, 'system')->everyFiveMinutes();
-Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
+// Schedule::job(new DocumentUploadReminder, 'system')->everyFiveMinutes(); ->everyMinute();
+// Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
+Schedule::job(new SendNotificationBirthday, 'system')->everyMinute();
+
 
 // Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
 
