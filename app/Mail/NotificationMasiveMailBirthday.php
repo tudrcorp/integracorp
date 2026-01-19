@@ -7,6 +7,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -44,9 +45,14 @@ class NotificationMasiveMailBirthday extends Mailable implements ShouldQueue
     /**
      * Get the message envelope.
      */
+    /**
+     * Get the message envelope.
+     * Aquí definimos quién envía el correo y el asunto.
+     */
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address('afiliaciones@tudrencasa.com', 'Departamento de Afiliaciones'),
             subject: 'Feliz Cumpleaños Sr(a). ' . $this->name
         );
     }
