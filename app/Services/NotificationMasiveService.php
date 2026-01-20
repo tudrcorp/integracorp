@@ -480,9 +480,8 @@ class NotificationMasiveService
 
                                 //Validamos si esta cumpliendo años
                                 $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date_ti);
-                                dump($isBirthdayToday);
+                                
                                 if ($isBirthdayToday) {
-                                // dd('cumple');
                                     /**
                                      * En caso de que la data venga NULL
                                      */
@@ -492,10 +491,22 @@ class NotificationMasiveService
                                         // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
                                         set_time_limit(0);
 
-                                        // Mail::to('solrodriguez@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
-                                        Mail::to('gustavoalberto.camachop@gmail.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['file'], $data[$k]->email_ti));
+                                        //Envio Principal al Cliente
+                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->full_name_ti, 
+                                                $rowsNotifications[$i]['file'], 
+                                                $data[$k]->email_ti
+                                            ));
 
-                                        // SendNotificationMasiveMailBirthday::dispatch($email, $name, $content, $file)->onQueue('system');
+                                        //Envio de Copia al Equipo Responsable
+                                        Mail::to('gustavoalberto.camachop@gmail.com')
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->full_name_ti, 
+                                                $rowsNotifications[$i]['file'], 
+                                                $data[$k]->email_ti
+                                            ));
+
 
                                     } else {
                                         continue;
@@ -504,7 +515,7 @@ class NotificationMasiveService
                                     continue;
                                 }
                             }
-                        }
+                        }   
                     }
                     
                     //End...

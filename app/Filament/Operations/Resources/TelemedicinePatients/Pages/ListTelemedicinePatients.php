@@ -3,24 +3,25 @@
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
-
-use App\Models\Plan;
-use App\Models\Affiliate;
-use App\Models\BusinessLine;
-use Filament\Actions\Action;
-use Filament\Support\Enums\Width;
-use App\Models\AffiliateCorporate;
-use App\Models\TelemedicinePatient;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Filament\Forms\Components\Textarea;
 use App\Http\Controllers\UtilsController;
+use App\Models\Affiliate;
+
+use App\Models\AffiliateCorporate;
+use App\Models\BusinessLine;
+use App\Models\Plan;
+use App\Models\TelemedicinePatient;
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Enums\Width;
+use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class ListTelemedicinePatients extends ListRecords
 {
@@ -60,33 +61,69 @@ class ListTelemedicinePatients extends ListRecords
                                         ->schema([
                                             Select::make('affiliate_id')
                                                 ->label('Lista de Afiliados Individuales')
-                                                ->options(Affiliate::all()->where('status', 'ACTIVO')->pluck('full_name', 'id'))
+                                                ->options(Affiliate::all()->pluck('full_name', 'id')) // Cargamos todos para la validación, o filtramos en el query de búsqueda
                                                 ->searchable()
                                                 ->getSearchResultsUsing(
                                                     fn(string $search): array => Affiliate::query()
-                                                        ->where('full_name', 'like', "%{$search}%")
-                                                        ->orwhere('nro_identificacion', 'like', "%{$search}%")
+                                                        ->where(function ($query) use ($search) {
+                                                            $query->where('full_name', 'like', "%{$search}%")
+                                                                ->orWhere('nro_identificacion', 'like', "%{$search}%");
+                                                        })
                                                         ->limit(50)
                                                         ->pluck('full_name', 'id')
                                                         ->all()
                                                 )
+                                                /**
+                                                 * OPTIMIZACIÓN: Validación de estado ACTIVO
+                                                 * Esta regla verifica que el ID seleccionado pertenezca a un afiliado con estatus 'ACTIVO'
+                                                 */
+                                                ->rules([
+                                                    fn(): \Closure => function (string $attribute, $value, \Closure $fail) {
+                                                        $affiliate = Affiliate::find($value);
+
+                                                        if ($affiliate && $affiliate->status !== 'ACTIVO') {
+                                                            $fail("El afiliado seleccionado ({$affiliate->full_name}) no está activo.");
+                                                        }
+                                                    },
+                                                ])
+                                                ->validationMessages([
+                                                    'required' => 'Debe seleccionar un afiliado.',
+                                                ])
                                                 ->native(false)
                                                 ->live()
                                                 ->hidden(fn(Get $get) => $get('type_affiliate') == 'cor' || $get('type_affiliate') == null),
+
                                             Select::make('affiliate_corporate_id')
                                                 ->label('Lista de Afiliados Corporativos')
-                                                ->options(AffiliateCorporate::all()->where('status', 'ACTIVO')->pluck('first_name', 'id'))
+                                                ->options(AffiliateCorporate::all()->pluck('first_name', 'id'))
                                                 ->searchable()
                                                 ->getSearchResultsUsing(
                                                     fn(string $search): array => AffiliateCorporate::query()
-                                                        ->where('first_name', 'like', "%{$search}%")
-                                                        ->orwhere('last_name', 'like', "%{$search}%")
-                                                        ->orwhere('nro_identificacion', 'like', "%{$search}%")
+                                                        ->where(function ($query) use ($search) {
+                                                            $query->where('first_name', 'like', "%{$search}%")
+                                                                ->orWhere('last_name', 'like', "%{$search}%")
+                                                                ->orWhere('nro_identificacion', 'like', "%{$search}%");
+                                                        })
+                                                        ->limit(50)
                                                         ->pluck('first_name', 'id')
                                                         ->all()
                                                 )
+                                                /**
+                                                 * VALIDACIÓN DE ESTADO:
+                                                 * Permite buscar inactivos pero impide su selección final con un mensaje claro.
+                                                 */
+                                                ->rules([
+                                                    fn(): \Closure => function (string $attribute, $value, \Closure $fail) {
+                                                        $affiliate = AffiliateCorporate::find($value);
+
+                                                        if ($affiliate && $affiliate->status !== 'ACTIVO') {
+                                                            $fail("El afiliado corporativo seleccionado ({$affiliate->first_name}) no está activo.");
+                                                        }
+                                                    },
+                                                ])
                                                 ->preload()
                                                 ->live()
+                                                ->native(false)
                                                 ->hidden(fn(Get $get) => $get('type_affiliate') == 'inv' || $get('type_affiliate') == null),
                                         ])->columnSpanFull()
                                 ])
