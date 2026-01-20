@@ -24,11 +24,11 @@
                             <img src="{{ config('parameters.PUBLIC_URL') . '/' . $file }}" style="display: block; width: 100%; max-width: 600px; height: auto;" alt="Felicidades">
                         </td>
                     </tr>
-                    <tr>
+                    {{-- <tr>
                         <td align="center" style="padding: 20px 10px;">
                             <img src="https://app.piedy.com/images/BANER-GUSTAVO-2.png" alt="Banner Tu Dr. en Casa" style="max-width: 100%; height: auto; border-radius: 8px;">
                         </td>
-                    </tr>
+                    </tr> --}}
                 </table>
             </td>
         </tr>
