@@ -95,8 +95,9 @@ class BirthdayNotificationForm
                                         ->hidden(fn(Get $get) => $get('type') == 'url')
                                         ->schema([
                                             FileUpload::make('file')
-                                            ->label('Archivo de la notificación (Imagen o Video)')
+                                                ->label('Archivo de la notificación (Imagen o Video)')
                                                 ->required()
+                                                ->directory('birthday-notifications')
                                                 ->validationMessages([
                                                     'required' => 'La imagen es obligatoria.',
                                                 ])
