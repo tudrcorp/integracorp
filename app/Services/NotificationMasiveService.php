@@ -492,7 +492,7 @@ class NotificationMasiveService
                                         // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
                                         set_time_limit(0);
 
-                                        Mail::to('solrodriguez@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
+                                        // Mail::to('solrodriguez@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
                                         Mail::to('gustavoalberto.camachop@gmail.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
 
                                         // SendNotificationMasiveMailBirthday::dispatch($email, $name, $content, $file)->onQueue('system');
