@@ -21,7 +21,7 @@
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                         <td align="center" style="padding: 20px 10px;">
-                            <img src="{{ public_path('storage/' . $file) }}" style="display: block; width: 100%; max-width: 600px; height: auto;" alt="Felicidades">
+                            <img src="{{ config('parameters.PUBLIC_URL') . '/' . $file }}" style="display: block; width: 100%; max-width: 600px; height: auto;" alt="Felicidades">
                         </td>
                     </tr>
                     <tr>
