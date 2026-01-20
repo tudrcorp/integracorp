@@ -12,7 +12,7 @@
     <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
         <tr>
             <td style="
-                    padding: 5px; 
+                    padding: 0px; 
                     background-color: #ffffff; 
                     border: 1px solid #e7e7e7; 
                     border-radius: 8px;
@@ -20,7 +20,7 @@
                 <!-- Contenido interno con padding de 5px -->
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
-                        <td align="center" style="padding: 20px 10px;">
+                        <td align="center" style="padding: 0px;">
                             <img src="{{ config('parameters.PUBLIC_URL') . '/' . $file }}" style="display: block; width: 100%; max-width: 600px; height: auto;" alt="Felicidades">
                         </td>
                     </tr>
