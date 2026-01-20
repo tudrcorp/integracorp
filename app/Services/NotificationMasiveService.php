@@ -456,8 +456,8 @@ class NotificationMasiveService
 
                                     //Ejecuto el envio de la notificacion
                                     set_time_limit(0);
-                                    Mail::to($data[$k]->email)->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
-                                    Mail::to('afiliaciones@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
+                                    Mail::to('solrodriguez@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
+                                    Mail::to('gcamacho@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
                                     
                                 } else {
                                     continue;
