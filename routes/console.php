@@ -14,7 +14,7 @@ use App\Jobs\SendNotificationRemenberMedication;
 
 // Schedule::job(new DocumentUploadReminder, 'system')->everyFiveMinutes(); ->everyMinute();
 // Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
-Schedule::job(new SendNotificationBirthday, 'system')->everyTwoMinutes();
+// Schedule::job(new SendNotificationBirthday, 'system')->everyTwoMinutes();
 
 
 // Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
