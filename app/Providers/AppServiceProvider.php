@@ -33,11 +33,16 @@ class AppServiceProvider extends ServiceProvider
             'verde'         => Color::hex('#529471'),
             'gris'          => Color::hex('#E8EBEA'),
 
-            'no-urgente'    => '#005ca9',
-            'estandar'      => '#02976d',
-            'urgencia'      => '#eab527',
-            'emergencia'    => '#f17f29',
-            'critico'       => '#e4003b',
+            'no-urgente'    => Color::hex('#005ca9'),
+            'estandar'      => Color::hex('#02976d'),
+            'urgencia'      => Color::hex('#eab527'),
+            'emergencia'    => Color::hex('#f17f29'),
+            'critico'       => Color::hex('#e4003b'),
+
+            'planIncial'    => Color::hex('#9ce1ff'),
+            'planIdeal'     => Color::hex('#25b4e7'),
+            'planEspecial'  => Color::hex('#2d89ca'),
+            'planCorp'      => Color::hex('#3b82f6'),
         ]);
     }
 
