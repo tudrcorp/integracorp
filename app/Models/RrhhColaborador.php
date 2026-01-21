@@ -37,11 +37,11 @@ class RrhhColaborador extends Model
 
     public function departamento()
     {
-        return $this->belongsTo(RrhhDepartamento::class);
+        return $this->belongsTo(RrhhDepartamento::class, 'departmento_id');
     }
 
     public function cargo()
     {
-        return $this->belongsTo(RrhhCargo::class);
+        return $this->belongsTo(RrhhCargo::class, 'cargo_id');
     }
 }

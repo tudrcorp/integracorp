@@ -22,11 +22,11 @@ class MassNotificationResource extends Resource
 {
     protected static ?string $model = MassNotification::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'fontisto-navigate';
+    // protected static string|BackedEnum|null $navigationIcon = 'fontisto-navigate';
 
     protected static ?string $navigationLabel = 'Notificaciones Masivas';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Marketing';
+    protected static string | UnitEnum | null $navigationGroup = 'MARKETING';
 
     public static function form(Schema $schema): Schema
     {

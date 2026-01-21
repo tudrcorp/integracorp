@@ -20,7 +20,7 @@ class CapemiacResource extends Resource
 {
     protected static ?string $model = Capemiac::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'fontisto-shopping-store';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
 
     protected static ?string $navigationLabel = 'CAPEMIAC';
 
