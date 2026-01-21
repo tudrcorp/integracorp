@@ -51,7 +51,7 @@ class MarketingPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Marketing/Widgets'), for: 'App\Filament\Marketing\Widgets')
             ->widgets([
                 AccountWidget::class,
-                FilamentInfoWidget::class,
+                // FilamentInfoWidget::class,
             ])
             ->databaseNotifications()
             ->databaseTransactions()
@@ -93,6 +93,19 @@ class MarketingPanelProvider extends PanelProvider
                             ->directory('backgroundMarketingPanelLogin')
                     ),
                 ])
-            ->viteTheme('resources/css/filament/admin/theme.css');
+            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->navigationGroups([
+                NavigationGroup::make()
+                    ->label('AFILIACIONES')
+                    ->icon('heroicon-o-user-group')
+                    ->collapsed(),
+                NavigationGroup::make()
+                    ->label('ESTRUCTURA COMERCIAL')
+                    ->icon('heroicon-o-building-office-2'),
+                NavigationGroup::make()
+                    ->label('MARKETING')
+                    ->icon('heroicon-m-cursor-arrow-rays'),
+
+            ]);
     }
 }

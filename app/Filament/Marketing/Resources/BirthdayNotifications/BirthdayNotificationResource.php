@@ -21,11 +21,11 @@ class BirthdayNotificationResource extends Resource
 {
     protected static ?string $model = BirthdayNotification::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-cake';
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-cake';
 
     protected static ?string $navigationLabel = 'Notificaciones Cumpleaños';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Marketing';
+    protected static string | UnitEnum | null $navigationGroup = 'MARKETING';
     
     public static function form(Schema $schema): Schema
     {

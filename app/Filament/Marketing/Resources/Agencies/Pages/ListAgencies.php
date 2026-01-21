@@ -10,6 +10,8 @@ class ListAgencies extends ListRecords
 {
     protected static string $resource = AgencyResource::class;
 
+    protected static ?string $title = 'Lista de Agencias de Corretaje';
+
     protected function getHeaderActions(): array
     {
         return [

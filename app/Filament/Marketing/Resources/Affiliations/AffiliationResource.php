@@ -21,11 +21,13 @@ class AffiliationResource extends Resource
 {
     protected static ?string $model = Affiliation::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user-plus';
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-user-plus';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Afiliaciones';
+    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
 
     protected static ?string $navigationLabel = 'Individuales';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

@@ -90,44 +90,44 @@ class AgentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    BulkAction::make('associateInfo')
-                        ->label('Asociar informacion')
-                        ->icon('heroicon-s-link')
-                        ->form([
-                            Fieldset::make('Asociar Información')
-                                ->columns(1)
-                                ->schema([
-                                    Select::make('mass_notification_id')
-                                        ->label('Asociar Notificación')
-                                        ->options(MassNotification::all()->pluck('title', 'id'))
-                                        ->required(),
-                                ])
-                        ])
-                        ->action(function (Collection $records, $data) {
+                    // BulkAction::make('associateInfo')
+                    //     ->label('Asociar informacion')
+                    //     ->icon('heroicon-s-link')
+                    //     ->form([
+                    //         Fieldset::make('Asociar Información')
+                    //             ->columns(1)
+                    //             ->schema([
+                    //                 Select::make('mass_notification_id')
+                    //                     ->label('Asociar Notificación')
+                    //                     ->options(MassNotification::all()->pluck('title', 'id'))
+                    //                     ->required(),
+                    //             ])
+                    //     ])
+                    //     ->action(function (Collection $records, $data) {
 
-                            $info = $records->toArray();
+                    //         $info = $records->toArray();
 
-                            for ($i = 0; $i < count($info); $i++) {
-                                $dataInfo = new DataNotification();
-                                $dataInfo->mass_notification_id = $data['mass_notification_id'];
-                                $dataInfo->fullName             = $info[$i]['name'];
-                                $dataInfo->email                = $info[$i]['email'];
-                                $dataInfo->phone                = $info[$i]['phone'];
-                                $dataInfo->save();
-                            }
+                    //         for ($i = 0; $i < count($info); $i++) {
+                    //             $dataInfo = new DataNotification();
+                    //             $dataInfo->mass_notification_id = $data['mass_notification_id'];
+                    //             $dataInfo->fullName             = $info[$i]['name'];
+                    //             $dataInfo->email                = $info[$i]['email'];
+                    //             $dataInfo->phone                = $info[$i]['phone'];
+                    //             $dataInfo->save();
+                    //         }
 
-                            Notification::make()
-                                ->title('Información asociada')
-                                ->body(count($info) . ' agencias asociados correctamente.')
-                                ->success()
-                                ->send();
+                    //         Notification::make()
+                    //             ->title('Información asociada')
+                    //             ->body(count($info) . ' agencias asociados correctamente.')
+                    //             ->success()
+                    //             ->send();
 
-                            $id = $data['mass_notification_id'];
+                    //         $id = $data['mass_notification_id'];
 
-                            return redirect()->route('filament.marketing.resources.mass-notifications.view', ['record' => $id]);
-                        })
-                        ->requiresConfirmation()
-                        ->color('primary'),
+                    //         return redirect()->route('filament.marketing.resources.mass-notifications.view', ['record' => $id]);
+                    //     })
+                    //     ->requiresConfirmation()
+                    //     ->color('primary'),
                 ]),
             ]);
     }

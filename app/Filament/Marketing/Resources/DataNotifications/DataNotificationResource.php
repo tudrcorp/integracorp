@@ -21,11 +21,11 @@ class DataNotificationResource extends Resource
 {
     protected static ?string $model = DataNotification::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-squares-plus';
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-squares-plus';
 
     protected static ?string $navigationLabel = 'Destinatarios';
     
-    protected static string | UnitEnum | null $navigationGroup = 'Marketing';
+    protected static string | UnitEnum | null $navigationGroup = 'MARKETING';
 
     public static function form(Schema $schema): Schema
     {

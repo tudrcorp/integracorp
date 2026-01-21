@@ -21,11 +21,13 @@ class AgentResource extends Resource
 {
     protected static ?string $model = Agent::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-c-academic-cap';
+    // protected static string|BackedEnum|null $navigationIcon = 'heroicon-c-academic-cap';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Estructura TDG';
+    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
     protected static ?string $navigationLabel = 'Agentes De Corretaje';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {
