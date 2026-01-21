@@ -2,6 +2,7 @@
 
 namespace App\Filament\Administration\Resources\Sales\Widgets;
 
+use App\Filament\Administration\Resources\Sales\Pages\ListSales;
 use App\Models\Sale;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
@@ -19,6 +20,7 @@ class SalePlanChart extends ChartWidget
             Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'),
         ]);
     }
+
     protected ?string $heading = 'DISTRIBUCIÓN DE VENTAS POR PLAN';
 
     protected ?string $description = 'Análisis porcentual y cuantitativo de planes vendidos en el mes actual.';

@@ -2,25 +2,28 @@
 
 namespace App\Filament\Operations\Resources\Suppliers\Tables;
 
-use Carbon\Carbon;
+use App\Filament\Exports\SupplierExporter;
 use App\Models\City;
 use App\Models\State;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Tables\Filters\Filter;
+use App\Models\Supplier;
 use App\Models\SupplierClasificacion;
-use Filament\Actions\BulkActionGroup;
 use App\Models\SupplierEstatusSistema;
 use App\Models\SupplierStatusConvenio;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Schemas\Components\Utilities\Get;
 
 class SuppliersTable
 {
@@ -198,8 +201,6 @@ class SuppliersTable
                 //     }),
                 
 
-                    
-
         ])
             ->filtersTriggerAction(
                 fn(Action $action) => $action
@@ -213,6 +214,18 @@ class SuppliersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+                    ExportBulkAction::make()
+                        ->modalHeading('Exportar Lista de Proveedores')
+                        ->modalDescription(function () {
+                            $total = Supplier::count();
+                            return 'Se realizara la exportacion de los registros seleccionados! 
+                                    Si deseas seleccionar todos los registros de la tabla debes hacer click en "Seleccionar todos '.$total.'", 
+                                    debajo de el buscador de la tabla!, De lo contrario solo exportaras los registros seleccionados!';
+                        })
+                        ->exporter(SupplierExporter::class)
+                        ->label('Exportar XLS')
+                        ->color('warning')
+                        ->columnMapping(false),
                 ]),
             ]);
     }

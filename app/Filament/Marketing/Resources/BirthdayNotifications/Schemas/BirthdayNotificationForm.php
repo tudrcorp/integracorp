@@ -32,7 +32,7 @@ class BirthdayNotificationForm
                                     TextInput::make('title')
                                         ->label('Titulo de la notificación')
                                         ->helperText('Este campo es necesario para identificar la notificación y ser visible para asociarla a los destinatarios.')
-                                        ->required()
+                                        
                                         ->validationMessages([
                                             'required' => 'El titulo de la notificación es obligatorio.',
                                         ])
@@ -45,8 +45,8 @@ class BirthdayNotificationForm
                                             'email' => 'CORREO ELECTRÓNICO',
                                             'sms' => 'SMS',
                                         ])
-                                        ->helperText('Selecciona el canal de notificación. Este campo es de selección multiple, puedes seleccionar mas de un canal.')
                                         ->required()
+                                        ->helperText('Selecciona el canal de notificación. Este campo es de selección multiple, puedes seleccionar mas de un canal.')
                                         ->validationMessages([
                                             'required' => 'Debe seleccionar al menos un canal.',
                                         ])
@@ -68,6 +68,7 @@ class BirthdayNotificationForm
                                         ->schema([
                                             Radio::make('type')
                                                 ->label('Tipo de archivo:')
+                                                ->required()
                                                 ->options([
                                                     'image' => 'IMAGEN',
                                                     'video' => 'VIDEO',
@@ -78,14 +79,13 @@ class BirthdayNotificationForm
                                                     'video' => 'El video debe ser de 32MB de tamaño. Formatos permitidos: mp4, 3gp , mov. Si el video es mayor a 32MB no sera cargado correctamente.',
                                                     'url' => 'El URL debe tener como prefijo http:// ó https://. Ejemplo: http://www.pagina.com, https://www.pagina.com, etc. El URL debe ser colocado en el contidenido de la notificación(copy).',
                                                 ])
-                                                ->required()
+                                                
                                                 ->live(),
                                         ])->columnSpanFull(),
                                     Fieldset::make('Encabezado de la notificación')
                                         ->schema([
                                             TextInput::make('header_title')
                                                 ->label('Titulo de la notificación')
-                                                ->required()
                                                 ->validationMessages([
                                                     'required' => 'El titulo de la notificación es obligatorio.',
                                                 ])
@@ -111,7 +111,6 @@ class BirthdayNotificationForm
                                                 ->minLength(2)
                                                 ->maxLength(1024)
                                                 ->helperText('Aquí puedes escribir el contenido de la notificación que se enviará a los usuarios. Puedes incluir texto y emojis, enlaces y otros elementos según sea necesario. MÁXIMO 1024 CARACTERES')
-                                                ->required()
                                                 ->validationMessages([
                                                     'required' => 'El contenido de la notificación es obligatorio.',
                                                     'max' => 'El contenido de la notificación no puede exceder los 1024 caracteres.',
