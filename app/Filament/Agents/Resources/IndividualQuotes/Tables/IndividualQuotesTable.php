@@ -293,12 +293,12 @@ class IndividualQuotesTable
                             }
                             return false;
                         })
-                        ->label('Emitir')
-                        ->icon('heroicon-m-shield-check')
+                        ->label('Comprar Plan')
+                        ->icon('heroicon-s-shopping-cart')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('EMITIR COTIZACIÓN')
-                        ->modalIcon('heroicon-m-shield-check')
+                        ->modalHeading('COMPRAR PLAN')
+                        ->modalIcon('heroicon-s-shopping-cart')
                         ->modalWidth(Width::ExtraLarge)
                         ->modalDescription(new HtmlString(Blade::render(<<<BLADE
                                     <div class="fi-section-header-description mt-5 mb-5">
