@@ -153,14 +153,14 @@ class SalesTable
                     })
                     ->searchable(),
 
-                TextColumn::make('pay_amount_usd')
-                    ->label('Pago registrado')
-                    ->sortable()
-                    ->searchable()
-                    ->suffix(' US$')
-                    ->description(function ($record) {
-                        return $record->pay_amount_ves != 'N/A' ? number_format($record->pay_amount_ves, 2, ',', '.') . ' VES' : 'N/A';
-                    }),
+                // TextColumn::make('pay_amount_usd')
+                //     ->label('Pago registrado')
+                //     ->sortable()
+                //     ->searchable()
+                //     ->suffix(' US$')
+                //     ->description(function ($record) {
+                //         return $record->pay_amount_ves != 'N/A' ? number_format($record->pay_amount_ves, 2, ',', '.') . ' VES' : 'N/A';
+                //     }),
 
                 TextColumn::make('bank_usd')
                     ->sortable()
@@ -170,6 +170,13 @@ class SalesTable
                     ->description(function ($record) {
                         return $record->bank_ves != 'N/A' ? 'VES: ' . $record->bank_ves : 'VES: N/A';
                     }),
+                TextColumn::make('invoice_generated')
+                    ->label('Nro. de Factura')
+                    ->prefix('#')
+                    ->sortable()
+                    ->badge()
+                    ->alignCenter()
+                    ->searchable(),
                 TextColumn::make('total_amount')
                     ->sortable()
                     ->label('Monto Total')
@@ -179,10 +186,25 @@ class SalesTable
                         ->money('USD'))
                     ->alignCenter()
                     ->searchable(),
-                TextColumn::make('invoice_generated')
-                    ->label('Nro. de Factura')
+                TextColumn::make('pay_amount_usd')
                     ->sortable()
+                    ->label('Pagos(US$)')
+                    ->money('USD')
+                    ->summarize(Sum::make()
+                        ->label(('Total Pagos (US$)'))
+                        ->money('USD'))
+                    ->alignCenter()
                     ->searchable(),
+                TextColumn::make('pay_amount_ves')
+                    ->sortable()
+                    ->label('Pagos(VES)')
+                    ->money('VES')
+                    ->summarize(Sum::make()
+                        ->label(('Total Pagos (VES)'))
+                        ->money('VES'))
+                    ->alignCenter()
+                    ->searchable(),
+                
             ])
             ->filters([
                 Filter::make('created_at')
