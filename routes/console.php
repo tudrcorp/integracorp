@@ -19,7 +19,7 @@ use App\Jobs\SendNotificationRemenberMedication;
  * Tarea que se ejecuta para enviar las tarjetas de cumpleaños
  * Se ejecutara todos los dias a las 8:00am
  */
-Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
+Schedule::job(new SendNotificationBirthday, 'system')->everyFiveMinutes();
 
 
 /**
