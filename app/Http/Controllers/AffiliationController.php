@@ -958,6 +958,10 @@ class AffiliationController extends Controller
 
         try {
             
+            /**
+             * DESCARGAR KIT BIENVENIDA
+             * @version 2.0
+             */
             if ($data['option'] == 'DESCARGAR') {
 
                 $certificado = storage_path('app/public/certificados-doc/CER-' . $record->code . '.pdf');
@@ -1012,11 +1016,19 @@ class AffiliationController extends Controller
 
                 $zip->close();
                 Log::info('ZIP path', ['path' => $tempZipPath, 'exists' => file_exists($tempZipPath)]);
+                Log::info("DESCARGA COMPLETADA: Kit enviado correctamente.", [
+                    'to' => $data['email'],
+                    'user' => $record->full_name_payer,
+                ]);
                 return $tempZipPath;
                 //return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
 
             }
-    
+
+            /**
+             * REENVIAR KIT BIENVENIDA
+             * @version 2.0
+             */
             if ($data['option'] == 'REENVIAR') {
 
                 $code = [
@@ -1034,11 +1046,29 @@ class AffiliationController extends Controller
                 }
 
                 Mail::to($data['email'])->send(new SendMailKitBienvenida($code, $condicionado));
+
+                Log::info("ENVIO COMPLETADO: Kit enviado correctamente.", [
+                    'to' => $data['email'],
+                    'user' => $record->full_name_payer,
+                ]);
+
+                Notification::make()
+                ->title('¡TAREA COMPLETADA!')
+                ->body('✅ Kit reenviado correctamente.')
+                ->success()
+                ->send();
     
             }
             
         } catch (\Throwable $th) {
-            dd($th);  
+
+            Log::error("FALLA DE ENVIO: No se pudo enviar el kit.", [
+                'to' => $data['email'],
+                'user' => $record->full_name_payer,
+                'error' => $th->getMessage(),
+                'trace' => $th->getTraceAsString()
+            ]);
+
             Notification::make()
                 ->title('EXCEPTION')
                 ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
