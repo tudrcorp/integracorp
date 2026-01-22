@@ -43,22 +43,34 @@ class TwoStatsOverview extends StatsOverviewWidget
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success'),
+                    ->color('planIncial')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer hover:scale-[1.02] transition-all duration-300 rounded-xl border-b-4 border-[#25b4e7] dark:border-[#25b4e7]',
+                    ]),
                 Stat::make('AGENCIAS GENERALES', $agenciesGeneral)
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success'),
+                    ->color('planIdeal')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer hover:scale-[1.02] transition-all duration-300 rounded-xl border-b-4 border-[#25b4e7] dark:border-[#25b4e7]',
+                    ]),
                 Stat::make('AGENTES', $agents)
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success'),
+                    ->color('planEspecial')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer hover:scale-[1.02] transition-all duration-300 rounded-xl border-b-4 border-[#25b4e7] dark:border-[#25b4e7]',
+                    ]),
                 Stat::make('ACCOUNT MANAGERS', $accountManagers)
                     ->icon('fontisto-person')
                     ->description('Incremento')
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
-                    ->color('success'),
+                    ->color('planCorp')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer hover:scale-[1.02] transition-all duration-300 rounded-xl border-b-4 border-[#25b4e7] dark:border-[#25b4e7]',
+                    ]),
             ];
             
         }
@@ -69,25 +81,25 @@ class TwoStatsOverview extends StatsOverviewWidget
                 ->icon('fontisto-person')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success')
+                ->color('planIncial')
                 ->extraAttributes([
-                    'class' => 'border-2 border-[#00a7d1] font-bold text-white',
+                    'class' => 'cursor-pointer hover:scale-[1.02] transition-all duration-300 rounded-xl border-b-4 border-[#25b4e7] dark:border-[#25b4e7]',
                 ]),
             Stat::make('AGENCIAS GENERALES', $agenciesGeneral)
                 ->icon('fontisto-person')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success')
+                ->color('planIdeal')
                 ->extraAttributes([
-                    'class' => 'border-2 border-[#00a7d1] font-bold text-white',
+                    'class' => 'cursor-pointer hover:scale-[1.02] transition-all duration-300 rounded-xl border-b-4 border-[#25b4e7] dark:border-[#25b4e7]',
                 ]),
             Stat::make('AGENTES', $agents)
                 ->icon('fontisto-person')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success')
+                ->color('planEspecial')
                 ->extraAttributes([
-                    'class' => 'border-2 border-[#00a7d1] font-bold text-white',
+                    'class' => 'cursor-pointer hover:scale-[1.02] transition-all duration-300 rounded-xl border-b-4 border-[#25b4e7] dark:border-[#25b4e7]',
                 ]),
         ];
     }
