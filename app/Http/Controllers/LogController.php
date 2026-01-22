@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class LogController extends Controller
 {
@@ -65,5 +66,19 @@ class LogController extends Controller
     static function getLogsByUser($user_id)
     {
         return \App\Models\Log::where('user_id', $user_id)->orderBy('created_at', 'desc')->get();
+    }
+
+    /**
+     * Acciones cuando el correo se envía correctamente.
+     */
+    static function logSuccess($email): void
+    {
+        Log::info("Email de cumpleaños enviado con éxito a: {$email}", [
+            'user_name' => $email,
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+
+        // OPCIONAL: Si usas una tabla de seguimiento de envíos
+        // NotificationLog::where('email', $this->email)->update(['status' => 'sent']);
     }
 }

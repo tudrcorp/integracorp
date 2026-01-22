@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\SendNotificationMasiveMailBirthday;
@@ -365,7 +366,14 @@ class NotificationMasiveService
                 //For para recorrer los canales de envio
                 for ($j = 0; $j < count($rowsNotifications[$i]['channels']); $j++) {
 
-                    //Canal Whatsapp
+                    /**
+                     * CANAL DE ENVIO WHATSAPP
+                     * --------------------------------------------------------------------------
+                     * Notificacion masivas de forma automatica
+                     * para envio de tarjeta de cumpleaños
+                     * 
+                     * @version 2.1
+                     */
                     if($rowsNotifications[$i]['channels'][$j] == 'whatsapp') {
                         
                         //AGENTS, USERS, SUPPLIERS  
@@ -433,89 +441,329 @@ class NotificationMasiveService
                         
                     }
 
-                    //Canal Email
-                    //sendEmailBirthday($email, $name, $content, $file)
+                    /**
+                     * CANAL DE ENVIO EMAIL
+                     * --------------------------------------------------------------------------
+                     * Notificacion masivas de forma automatica
+                     * para envio de tarjeta de cumpleaños
+                     * 
+                     * @version 2.1
+                     */
                     if ($rowsNotifications[$i]['channels'][$j] == 'email') {
-                        
-                        //AGENTS, USERS, SUPPLIERS
-                        if ($rowsNotifications[$i]['data_type'] == 'agents' || $rowsNotifications[$i]['data_type'] == 'users' || $rowsNotifications[$i]['data_type'] == 'suppliers') {
 
-                            //Selecciono la data que voy a utilizar segun la notificacion
+                        // AGENTES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'agents') {
                             $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name', 'email', 'phone', 'birth_date')
+                                ->select('name', 'email', 'birth_date')
                                 ->get()
                                 ->toArray();
 
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
-
-                                /**
-                                 * En caso de que la data venga NULL
-                                 */
-                                if ($data[$k]->email != null) {
-
-                                    //Ejecuto el envio de la notificacion
-                                    set_time_limit(0);
-                                    Mail::to('solrodriguez@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
-                                    Mail::to('gcamacho@tudrencasa.com')->send(new NotificationMasiveMailBirthday($data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']));
-                                    
-                                } else {
-                                    continue;
-                                }
-                            }
-                            
-                        }
-
-                        //AFFILIATIONS -- Logica Actualizada v2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'affiliations') {
-                            // dump($rowsNotifications[$i]['data_type'], $rowsNotifications[$i]['channels']);
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
-                                ->get()
-                                ->toArray();
-                            // dump($data);
-
-                            //for para recorrer la data, tomar la fecha y enviar la notificacion
-                            for ($k = 0; $k < count($data); $k++) {
-
                                 //Validamos si esta cumpliendo años
-                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date_ti);
-                                
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
+
                                 if ($isBirthdayToday) {
                                     /**
                                      * En caso de que la data venga NULL
                                      */
-                                    if ($data[$k]->email_ti != null) {
+                                    if ($data[$k]->email != null) {
 
                                         //Ejecuto el envio de la notificacion
                                         // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
                                         set_time_limit(0);
 
                                         //Envio Principal al Cliente
-                                        Mail::to('solrodriguez@tudrencasa.com')
+                                        Mail::to($data[$k]->email)
                                             ->send(new NotificationMasiveMailBirthday(
-                                                $data[$k]->full_name_ti, 
-                                                $rowsNotifications[$i]['file'], 
-                                                $data[$k]->email_ti
+                                                $data[$k]->name,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->email
                                             ));
 
                                         //Envio de Copia al Equipo Responsable
-                                        Mail::to('gustavoalberto.camachop@gmail.com')
+                                        Mail::to('solrodriguez@tudrencasa.com')
                                             ->send(new NotificationMasiveMailBirthday(
-                                                $data[$k]->full_name_ti, 
-                                                $rowsNotifications[$i]['file'], 
-                                                $data[$k]->email_ti
+                                                $data[$k]->name,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->email
                                             ));
 
+                                        LogController::logSuccess($data[$k]->email);
 
                                     } else {
                                         continue;
                                     }
                                 } else {
+                                    Log::info("No se envio el correo de cumpleaños para agentes");
+                                    continue;
+                                }
+
+                            }
+                        }
+
+                        // AGENCIAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'agencies') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('name_corporative', 'email', 'brithday_date')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->brithday_date);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->email != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        //Envio Principal al Cliente
+                                        Mail::to($data[$k]->email)
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->name_corporative,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->email
+                                            ));
+
+                                        //Envio de Copia al Equipo Responsable
+                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->name_corporative,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->email
+                                            ));
+
+                                        LogController::logSuccess($data[$k]->email);
+
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info("No se envio el correo de cumpleaños para agentes");
                                     continue;
                                 }
                             }
-                        }   
+                        }
+
+                        // AFILIACIONES INDIVIDUALES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'affiliates') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('full_name', 'email', 'birth_date')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
+                                if ($data[$k]->email != null) {
+                                    if ($isBirthdayToday) {
+                                        /**
+                                         * En caso de que la data venga NULL
+                                         */
+                                        if ($data[$k]->email != null) {
+
+                                            //Ejecuto el envio de la notificacion
+                                            // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                            set_time_limit(0);
+
+                                            //Envio Principal al Cliente
+                                            Mail::to($data[$k]->email)
+                                                ->send(new NotificationMasiveMailBirthday(
+                                                    $data[$k]->full_name, 
+                                                    $rowsNotifications[$i]['file'], 
+                                                    $data[$k]->email
+                                                ));
+
+                                            //Envio de Copia al Equipo Responsable
+                                            Mail::to('solrodriguez@tudrencasa.com')
+                                                ->send(new NotificationMasiveMailBirthday(
+                                                    $data[$k]->full_name, 
+                                                    $rowsNotifications[$i]['file'], 
+                                                    $data[$k]->email
+                                                ));
+
+                                            LogController::logSuccess($data[$k]->email);
+
+
+                                        } else {
+                                            continue;
+                                        }
+                                    } else {
+                                        Log::info("No se envio el correo de cumpleaños para afiliados");
+                                        continue;
+                                    }
+                                }
+
+                            }
+                        }
+
+                        // AFILIACIONES CORPORATIVAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'affiliate_corporates') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('first_name', 'email', 'birth_date')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->email != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        //Envio Principal al Cliente
+                                        Mail::to($data[$k]->email)
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->first_name,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->email
+                                            ));
+
+                                        //Envio de Copia al Equipo Responsable
+                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->first_name,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->email
+                                            ));
+
+                                        LogController::logSuccess($data[$k]->email);
+                                        
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info("No se envio el correo de cumpleaños para afiliados");
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // COLABORADORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'rrhh_colaboradors') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('fullName', 'emailCorporativo', 'fechaNacimiento')
+                                ->get()
+                                ->toArray();
+
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->fechaNacimiento);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->emailCorporativo != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        //Envio Principal al Cliente
+                                        Mail::to($data[$k]->emailCorporativo)
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->fullName,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->emailCorporativo
+                                            ));
+
+                                        //Envio de Copia al Equipo Responsable
+                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->fullName,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->emailCorporativo
+                                            ));
+
+                                        LogController::logSuccess($data[$k]->emailCorporativo);
+
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info('No se envio el correo de cumpleaños para colaboradores');
+                                    continue;
+                                }
+
+                            }
+                        }
+
+                        // PROVEEDORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'suppliers') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('name', 'correo_principal', 'afiliacion_proveedor')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->afiliacion_proveedor);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->correo_principal != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        //Envio Principal al Cliente
+                                        Mail::to($data[$k]->correo_principal)
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->name,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->correo_principal
+                                            ));
+
+                                        //Envio de Copia al Equipo Responsable
+                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->send(new NotificationMasiveMailBirthday(
+                                                $data[$k]->name,
+                                                $rowsNotifications[$i]['file'],
+                                                $data[$k]->correo_principal
+                                            ));
+
+                                        LogController::logSuccess($data[$k]->correo_principal);
+
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info('No se envio el correo de cumpleaños para proveedores');
+                                    continue;
+                                }
+
+                            }
+                        }
+
                     }
                     
                     //End...

@@ -54,11 +54,13 @@ class BirthdayNotificationForm
                                         ->multiple(),
                                     Select::make('data_type')
                                         ->options([
-                                            'users'         => 'COLABORADORES/EMPLEADOS',
-                                            'suppliers'     => 'PROVEEDORES',
-                                            'affiliations'  => 'AFILIADOS/CLIENTES',
-                                            'capemiacs'     => 'CAPEMIAC',
-                                            'agents'        => 'AGENTES',
+                                            'rrhh_colaboradors'    => 'COLABORADORES/EMPLEADOS',
+                                            'suppliers'            => 'PROVEEDORES',
+                                            'affiliates'           => 'AFILIADOS INDIVIDUALES',
+                                            'affiliate_corporates' => 'AFILIADOS CORPORATIVOS',
+                                            'users'                => 'USUARIOS',
+                                            'capemiacs'            => 'CAPEMIAC',
+                                            'agents'               => 'AGENTES',
                                         ])
                                         ->required()
                                         ->searchable()
