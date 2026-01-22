@@ -163,7 +163,7 @@
             <div style="position: absolute; top: 423px; right: 458px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['code'] }}
             </div>
-            <div style="position: absolute; top: 455px; right: 530px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div style="position: absolute; top: 455px; left: 138px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['name'] }}
             </div>
             <div style="position: absolute; top: 475px; right: 585px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
@@ -190,7 +190,9 @@
                 {{ $data['hasta'] }}
             </div>
             <div style="position: absolute; top: 533px; right: 530px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
-                {{ number_format($data['cobertura'], 2, ',', '.') }} US$
+                @if($data['cobertura'] != null || $data['cobertura'] != '')
+                    {{ number_format($data['cobertura'], 2, ',', '.') }} US$
+                @endif 
             </div>
         </div>
         <script type="text/php">
