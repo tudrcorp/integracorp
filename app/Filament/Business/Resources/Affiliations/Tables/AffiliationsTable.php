@@ -966,8 +966,15 @@ class AffiliationsTable
 
                             try {
 
-                                $path = AffiliationController::downloadResendKit($record, $data);
-                                return response()->download($path);
+                                if ($data['option'] == 'DESCARGAR') {
+                                    $path = AffiliationController::downloadResendKit($record, $data);
+                                    return response()->download($path);
+                                    
+                                }else{
+                                    AffiliationController::downloadResendKit($record, $data);
+                                    
+                                }
+
                                     
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
