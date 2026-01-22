@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Sale;
-use App\Models\User;
+use App\Jobs\CreateAvisoDeCobro;
+use App\Jobs\SendAvisoDePago;
+use App\Mail\SendMailKitBienvenida;
 use App\Models\Agency;
+use App\Models\Agent;
 use App\Models\Collection;
 use App\Models\Commission;
-use Termwind\Components\Li;
-use Illuminate\Http\Request;
-use App\Jobs\SendAvisoDePago;
-use App\Jobs\CreateAvisoDeCobro;
-use App\Mail\SendMailKitBienvenida;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
+use App\Models\Sale;
+use App\Models\User;
+use Carbon\Carbon;
 use Filament\Notifications\Notification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Termwind\Components\Li;
 
 class PaidMembershipController extends Controller
 {
@@ -37,7 +38,10 @@ class PaidMembershipController extends Controller
 
             }
 
-            //Primer pago cargado 
+            /**
+             * LOGICA PARA LA CARGA Y GESTION DEL PRIMER PAGO O LA PRIMERA CUOTA
+             * @version 2.0
+             */
             if (!isset($data['collections'])) {
                 /**
                  * Actualizamos el registro en la tabla de afiliaciones
@@ -403,6 +407,8 @@ class PaidMembershipController extends Controller
 
                 /**
                  * CALCULO DE LA COMISION DIRECTA POR LA VENTA
+                 * @version 2.0
+                 * $var $data_afiliaciones Array con los datos de la afiliacion y con la informacion del agente
                  */
                 $data_afiliaciones = $record->affiliation->toArray();
 
@@ -588,7 +594,6 @@ class PaidMembershipController extends Controller
                     'desde'     => Carbon::now()->format('d/m/Y'),
                     'hasta'     => Carbon::now()->addYear()->format('d/m/Y'),
                 ];
-                // dd($data_tarjeta_afiliado);
 
                 if($record->affiliation->plan_id == 1){
                     $condicionado = 'CondicionesINICIAL.pdf';
@@ -606,16 +611,23 @@ class PaidMembershipController extends Controller
                 //Creamos la tarjeta del afiliado
                 TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
 
-                // dd($data_tarjeta_afiliado
                 $array_correos = [
-                    'agente'                    => 'gcamacho@tudrencasa.com',
-                    'afiliaciones'              => 'afiliaciones@tudrencasa.com',
-                    'Sra. Soleyda Rodriguez'    => 'solrodriguez@tudrencasa.com',
+                    'agente'       => $data_afiliaciones['agent_id'] != null ? Agent::where('id', $data_afiliaciones['agent_id'])->first()->email : Agency::where('code', $data_afiliaciones['code_agency'])->first()->email,
+                    'afiliaciones' => 'afiliaciones@tudrencasa.com',
                 ];
 
-                foreach ($array_correos as $correo) {
-                    Mail::to($correo)->send(new SendMailKitBienvenida($data_tarjeta_afiliado, $condicionado));
-                }
+                $code = [
+                    'code' => $data_afiliaciones['code']
+                ];
+
+                // Mail::to($array_correos['agente'])->send(new SendMailKitBienvenida($record->code, $condicionado));
+                Mail::to($array_correos['agente'])->cc($array_correos['afiliaciones'])->send(new SendMailKitBienvenida($code, $condicionado));
+
+                Log::info("ENVIO COMPLETADO: Kit enviado correctamente.", [
+                    'to' => $array_correos['agente'],
+                    'Cc' => $array_correos['afiliaciones'],
+                    'user' => $data_afiliaciones['full_name_payer'],
+                ]);
 
                 return [
                     'firstRegister' => true
