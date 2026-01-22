@@ -966,6 +966,10 @@ class AffiliationsTable
 
                             try {
 
+                                /**
+                                 * LIGICA DE DESCARGA O REENVIO DEL KIT DE BIENVENIDA VIA EMAIL
+                                 * @version 2.0
+                                 */
                                 if ($data['option'] == 'DESCARGAR') {
                                     $path = AffiliationController::downloadResendKit($record, $data);
                                     return response()->download($path);
@@ -974,13 +978,14 @@ class AffiliationsTable
                                     AffiliationController::downloadResendKit($record, $data);
                                     
                                 }
-
                                     
                             } catch (\Throwable $th) {
+
                                 Log::error($th->getMessage());
                                 Log::error($th->getLine());
                                 Log::error($th->getFile());
                                 Log::error($th->getTraceAsString());
+                                
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA O ENVIO DEL KIT')
                                     ->body($th->getMessage())

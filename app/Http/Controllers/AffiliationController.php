@@ -958,6 +958,10 @@ class AffiliationController extends Controller
 
         try {
             
+            /**
+             * DESCARGAR KIT BIENVENIDA
+             * @version 2.0
+             */
             if ($data['option'] == 'DESCARGAR') {
 
                 $certificado = storage_path('app/public/certificados-doc/CER-' . $record->code . '.pdf');
@@ -1020,7 +1024,11 @@ class AffiliationController extends Controller
                 //return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
 
             }
-    
+
+            /**
+             * REENVIAR KIT BIENVENIDA
+             * @version 2.0
+             */
             if ($data['option'] == 'REENVIAR') {
 
                 $code = [
