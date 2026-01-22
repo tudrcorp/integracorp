@@ -2,49 +2,50 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
-use ZipArchive;
-use Carbon\Carbon;
-use App\Models\User;
-use Filament\Tables\Table;
+use App\Filament\Exports\AffiliationExporter;
+use App\Filament\Resources\Affiliations\AffiliationResource;
+use App\Http\Controllers\AffiliationController;
+use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Mail\UploadPayment;
 use App\Models\Affiliation;
-use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Illuminate\Support\Collection;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Log;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 use App\Models\DetailIndividualQuote;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Filament\Support\Enums\Alignment;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\ColumnGroup;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Tables\Columns\TextInputColumn;
-use App\Filament\Exports\AffiliationExporter;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use App\Http\Controllers\AffiliationController;
-use App\Filament\Resources\Affiliations\AffiliationResource;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use ZipArchive;
 
 class AffiliationsTable
 {
@@ -892,14 +893,33 @@ class AffiliationsTable
                             try {
 
                                 AffiliationController::generateCertificateIndividual($record, $record->affiliates, Auth::id());
+
+
+                                /**
+                                 * Regeneramos la tarjeta del afiliado
+                                 * @var array $data_tarjeta_afiliado
+                                 * @version 1.0
+                                 */
+                                $data_tarjeta_afiliado = [
+                                    'name'          => $record->full_name_ti,
+                                    'ci'            => $record->nro_identificacion_ti,
+                                    'code'          => $record->code,
+                                    'plan'          => $record->plan->description,
+                                    'frecuencia'    => $record->payment_frequency,
+                                    'cobertura'     => $record->coverage->price ?? '',
+                                    'desde'         => $record->effective_date == null ? '' : $record->effective_date,
+                                    'hasta'         => $record->effective_date == null ? '' : Carbon::createFromFormat('d/m/Y', $record->effective_date)->addYear()->format('d/m/Y')
+                                ];
+                                //Creamos la tarjeta del afiliado
+                                TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
                                 
                                 Notification::make()
-                                    ->title('CERTIFICADO REGENERADO CON EXITO')
-                                    ->body('El certificado se ha regenerado con exito. Puedes descargarlo.')
+                                    ->title('ACCION EXITOSA')
+                                    ->body('Se ha regenerado el certificado del afiliado y la tarjeta de afiliacion con exito.')
                                     ->icon('heroicon-s-check-circle')
                                     ->success()
                                     ->send();
-                                
+        
                             } catch (\Throwable $th) {
                                 dd($th);
                                 Notification::make()

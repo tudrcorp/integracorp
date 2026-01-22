@@ -588,6 +588,7 @@ class PaidMembershipController extends Controller
                     'desde'     => Carbon::now()->format('d/m/Y'),
                     'hasta'     => Carbon::now()->addYear()->format('d/m/Y'),
                 ];
+                // dd($data_tarjeta_afiliado);
 
                 if($record->affiliation->plan_id == 1){
                     $condicionado = 'CondicionesINICIAL.pdf';
