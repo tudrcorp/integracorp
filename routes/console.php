@@ -14,10 +14,12 @@ use App\Jobs\SendNotificationRemenberMedication;
 
 // Schedule::job(new DocumentUploadReminder, 'system')->everyFiveMinutes(); ->everyMinute();
 // Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
-// Schedule::job(new SendNotificationBirthday, 'system')->everyTwoMinutes();
 
-
-// Schedule::command('reminder:uploaddoc')->everyFiveMinutes()->runInBackground();
+/**
+ * Tarea que se ejecuta para enviar las tarjetas de cumpleaños
+ * Se ejecutara todos los dias a las 8:00am
+ */
+Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
 
 
 /**
