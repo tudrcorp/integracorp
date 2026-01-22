@@ -130,6 +130,161 @@ class IndividualQuotesTable
             ->recordActions([
                 ActionGroup::make([
 
+                    /* DESCARGAR DOCUMENTO */
+                    Action::make('download')
+                        ->label('Descargar Cotización')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('verde')
+                        ->requiresConfirmation()
+                        ->modalHeading('DESCARGAR COTIZACION')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                        ->action(function (IndividualQuote $record, array $data) {
+
+                            try {
+
+                                if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
+
+                                    Notification::make()
+                                        ->title('NOTIFICACIÓN')
+                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('warning')
+                                        ->warning()
+                                        ->send();
+
+                                    return;
+                                }
+                                /**
+                                 * Descargar el documento asociado a la cotizacion
+                                 * ruta: storage/
+                                 */
+                                $path = public_path('storage/quotes/' . $record->code . '.pdf');
+                                return response()->download($path);
+
+                                /**
+                                 * LOG
+                                 */
+                                LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                            } catch (\Throwable $th) {
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
+                    /**FORWARD */
+                    Action::make('forward')
+                        ->label('Reenviar')
+                        ->icon('fluentui-document-arrow-right-20')
+                        ->color('primary')
+                        ->requiresConfirmation()
+                        ->modalIcon('fluentui-document-arrow-right-20')
+                        ->modalHeading('Reenvío de Cotización')
+                        ->modalDescription('La propuesta será enviada por email y/o teléfono!')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Section::make()
+                                ->schema([
+                                    TextInput::make('email')
+                                        ->label('Email')
+                                        ->email(),
+                                    Grid::make(2)->schema([
+                                        Select::make('country_code')
+                                            ->label('Código de país')
+                                            ->options(fn() => UtilsController::getCountries())
+                                            ->searchable()
+                                            ->default('+58')
+                                            ->live(onBlur: true),
+                                        TextInput::make('phone')
+                                            ->prefixIcon('heroicon-s-phone')
+                                            ->tel()
+                                            ->label('Número de teléfono')
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                $countryCode = $get('country_code');
+                                                if ($countryCode) {
+                                                    $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
+                                                    $set('phone', $countryCode . $cleanNumber);
+                                                }
+                                            }),
+                                    ])
+                                ])
+                        ])
+                        ->action(function (IndividualQuote $record, array $data) {
+
+                            try {
+
+                                // dd($record);
+
+                                $email = null;
+                                $phone = null;
+
+                                if (isset($data['email'])) {
+
+                                    $email = $data['email'];
+                                    $doc = $record->code . '.pdf';
+
+                                    if ($record->plan == 1) {
+                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 2) {
+                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 3) {
+                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 'CM') {
+                                        Mail::to($data['email'])->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
+                                    }
+                                }
+
+                                if (isset($data['phone'])) {
+
+                                    $phone = $data['phone'];
+                                    $nameDoc = $record->code . '.pdf';
+
+                                    $res = NotificationController::sendQuote($phone, $nameDoc);
+
+                                    if (!$res) {
+                                        Notification::make()
+                                            ->title('ERROR')
+                                            ->body('La cotización no pudo ser enviada por whatsapp. Por favor, contacte con el administrador del Sistema.')
+                                            ->icon('heroicon-s-x-circle')
+                                            ->iconColor('danger')
+                                            ->danger()
+                                            ->send();
+                                    }
+                                }
+
+                                Notification::make()
+                                    ->title('ENVÍO EXITOSO')
+                                    ->body('La cotización fue reenviada exitosamente.')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->iconColor('verde')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $th) {
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
                     /**EMIT */
                     Action::make('emit')
                         ->hidden(function (IndividualQuote $record) {
@@ -138,11 +293,11 @@ class IndividualQuotesTable
                             }
                             return false;
                         })
-                        ->label('Aprobar')
+                        ->label('Emitir')
                         ->icon('heroicon-m-shield-check')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
+                        ->modalHeading('EMITIR COTIZACIÓN')
                         ->modalIcon('heroicon-m-shield-check')
                         ->modalWidth(Width::ExtraLarge)
                         ->modalDescription(new HtmlString(Blade::render(<<<BLADE
@@ -214,113 +369,7 @@ class IndividualQuotesTable
                             return false;
                         }),
 
-                    /**FORWARD */
-                    Action::make('forward')
-                        ->label('Reenviar')
-                        ->icon('fluentui-document-arrow-right-20')
-                        ->color('primary')
-                        ->requiresConfirmation()
-                        ->modalIcon('fluentui-document-arrow-right-20')
-                        ->modalHeading('Reenvío de Cotización')
-                        ->modalDescription('La propuesta será enviada por email y/o teléfono!')
-                        ->modalWidth(Width::ExtraLarge)
-                        ->form([
-                            Section::make()
-                                ->schema([
-                                    TextInput::make('email')
-                                        ->label('Email')
-                                        ->email(),
-                                    Grid::make(2)->schema([
-                                        Select::make('country_code')
-                                            ->label('Código de país')
-                                            ->options(fn () => UtilsController::getCountries())
-                                            ->searchable()
-                                            ->default('+58')
-                                            ->live(onBlur: true),
-                                        TextInput::make('phone')
-                                            ->prefixIcon('heroicon-s-phone')
-                                            ->tel()
-                                            ->label('Número de teléfono')
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                $countryCode = $get('country_code');
-                                                if ($countryCode) {
-                                                    $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
-                                                }
-                                            }),
-                                    ])
-                                ])
-                        ])
-                        ->action(function (IndividualQuote $record, array $data) {
-
-                            try {
-
-                                // dd($record);
-
-                                $email = null;
-                                $phone = null;
-
-                                if (isset($data['email'])) {
-                                    
-                                    $email = $data['email'];
-                                    $doc = $record->code . '.pdf';
-                                    
-                                    if($record->plan == 1){
-                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
-                                    }
-                                    
-                                    if($record->plan == 2){
-                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
-                                    }
-                                    
-                                    if ($record->plan == 3) {
-                                        Mail::to($data['email'])->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
-                                    }
-
-                                    if ($record->plan == 'CM') {
-                                        Mail::to($data['email'])->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
-                                    }
-
-                                }
-
-                                if (isset($data['phone'])) {
-                                    
-                                    $phone = $data['phone'];
-                                    $nameDoc = $record->code . '.pdf';
-                                    
-                                    $res = NotificationController::sendQuote($phone, $nameDoc);
-
-                                    if (!$res) {
-                                        Notification::make()
-                                            ->title('ERROR')    
-                                            ->body('La cotización no pudo ser enviada por whatsapp. Por favor, contacte con el administrador del Sistema.')
-                                            ->icon('heroicon-s-x-circle')
-                                            ->iconColor('danger')
-                                            ->danger()
-                                            ->send();
-                                    }
-                                }
-
-                                Notification::make()
-                                    ->title('ENVÍO EXITOSO')
-                                    ->body('La cotización fue reenviada exitosamente.')
-                                    ->icon('heroicon-s-check-circle')
-                                    ->iconColor('verde')
-                                    ->success()
-                                    ->send();
-                                
-                            } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
-                                Notification::make()
-                                    ->title('ERROR')
-                                    ->body($th->getMessage())
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
+                    
 
                     /**FORWARD */
                     Action::make('link')
@@ -434,54 +483,7 @@ class IndividualQuotesTable
                             }
                         }),
 
-                    /* DESCARGAR DOCUMENTO */
-                    Action::make('download')
-                            ->label('Descargar Cotización')
-                            ->icon('heroicon-s-arrow-down-on-square-stack')
-                            ->color('verde')
-                            ->requiresConfirmation()
-                            ->modalHeading('DESCARGAR COTIZACION')
-                            ->modalWidth(Width::ExtraLarge)
-                            ->modalIcon('heroicon-s-arrow-down-on-square-stack')
-                            ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
-                            ->action(function (IndividualQuote $record, array $data) {
-
-                                try {
-
-                                    if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
-
-                                        Notification::make()
-                                            ->title('NOTIFICACIÓN')
-                                            ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
-                                            ->icon('heroicon-s-x-circle')
-                                            ->iconColor('warning')
-                                            ->warning()
-                                            ->send();
-
-                                        return;
-                                    }
-                                    /**
-                                     * Descargar el documento asociado a la cotizacion
-                                     * ruta: storage/
-                                     */
-                                    $path = public_path('storage/quotes/' . $record->code . '.pdf');
-                                    return response()->download($path);
-
-                                    /**
-                                     * LOG
-                                     */
-                                    LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
-                                } catch (\Throwable $th) {
-                                    LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
-                                    Notification::make()
-                                        ->title('ERROR')
-                                        ->body($th->getMessage())
-                                        ->icon('heroicon-s-x-circle')
-                                        ->iconColor('danger')
-                                        ->danger()
-                                        ->send();
-                                }
-                            }),
+                    
 
                     Action::make('add_observations')
                         ->label('Agregar Observaciones')
