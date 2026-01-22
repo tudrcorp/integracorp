@@ -100,10 +100,19 @@ class MarketingPanelProvider extends PanelProvider
                     ->icon('heroicon-o-user-group')
                     ->collapsed(),
                 NavigationGroup::make()
-                    ->label('ESTRUCTURA COMERCIAL')
+                    ->label('ESTRUCTURA DE CORRETAJES')
                     ->icon('heroicon-o-building-office-2'),
                 NavigationGroup::make()
+                    ->label('ESTRUCTURA DE VIAJES')
+                    ->icon('heroicon-o-paper-airplane'),
+                NavigationGroup::make()
+                    ->label('ADMINISTRACION/RRHH')
+                    ->icon('heroicon-o-users'),
+                NavigationGroup::make()
                     ->label('MARKETING')
+                    ->icon('heroicon-m-cursor-arrow-rays'),
+                NavigationGroup::make()
+                    ->label('VENTAS DIRECTAS')
                     ->icon('heroicon-m-cursor-arrow-rays'),
 
             ]);
