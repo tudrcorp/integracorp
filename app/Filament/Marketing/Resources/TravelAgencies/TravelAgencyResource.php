@@ -23,11 +23,11 @@ class TravelAgencyResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
+    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA DE VIAJES';
 
     protected static ?string $navigationLabel = 'Agencias De Viajes';
 
-    protected static ?int $navigationSort = 3;
+    // protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {

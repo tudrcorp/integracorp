@@ -219,11 +219,59 @@ class AffiliationsTable
             ->recordActions([
                 ActionGroup::make([
 
+                    /**DESCARGAR */
+                    Action::make('download')
+                        ->label('Descargar Certificado')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('azul')
+                        ->requiresConfirmation()
+                        ->modalHeading('DESCARGAR CERTIFICADO')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                        ->action(function (Affiliation $record, array $data) {
+
+                            try {
+
+                                /**
+                                 * Descargar el documento asociado a la cotizacion
+                                 * ruta: storage/
+                                 */
+                                $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
+                                return response()->download($path);
+                                /**
+                                 * LOG
+                                 */
+                                LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
+                            } catch (\Throwable $th) {
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->hidden(function (Affiliation $record) {
+                            $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
+                            if (file_exists($path)) {
+                                return false;
+                            }
+                            return true;
+                        }),
+
                     /**UPLOAD */
                     Action::make('upload')
-                        ->label('Comprobante de Pago')
-                        ->color('azul')
-                        ->icon('heroicon-s-cloud-arrow-up')
+                        ->label(function (Affiliation $record) {
+                            if($record->status == 'ACTIVA'){
+                                return 'Pago de cuota ';
+                            }
+                            return 'Comprobante de Pago';
+                        })
+                        ->color('success')
+                        ->icon('heroicon-m-currency-dollar')
                         ->modalWidth(Width::FourExtraLarge)
                         ->form([
 
@@ -759,54 +807,12 @@ class AffiliationsTable
                             
                         }),
 
-                    /**DESCARGAR */
-                    Action::make('download')
-                        ->label('Descargar Certificado')
-                        ->icon('heroicon-s-arrow-down-on-square-stack')
-                        ->color('verde')
-                        ->requiresConfirmation()
-                        ->modalHeading('DESCARGAR CERTIFICADO')
-                        ->modalWidth(Width::ExtraLarge)
-                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
-                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
-                        ->action(function (Affiliation $record, array $data) {
-
-                            try {
-
-                                /**
-                                 * Descargar el documento asociado a la cotizacion
-                                 * ruta: storage/
-                                 */
-                                $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
-                                return response()->download($path);
-                                /**
-                                 * LOG
-                                 */
-                                LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
-                            } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
-                                Notification::make()
-                                    ->title('ERROR')
-                                    ->body($th->getMessage())
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                            }
-                        })
-                        ->hidden(function (Affiliation $record) {
-                            $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
-                            if (file_exists($path)) {
-                                return false;
-                            }
-                            return true;
-                        }),
 
                     /**REENVIAR PROPUESTA */
                     Action::make('forward')
                         ->label('Reenviar Certificado')
                         ->icon('fluentui-document-arrow-right-20')
-                        ->color('primary')
+                        ->color('azul')
                         ->requiresConfirmation()
                         ->modalIcon('fluentui-document-arrow-right-20')
                         ->modalHeading('Reenvío de Certificado')

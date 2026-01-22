@@ -23,11 +23,11 @@ class AgencyResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-c-building-library';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
+    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA DE CORRETAJES';
 
-    protected static ?string $navigationLabel = 'Agencias De Corretaje';
+    protected static ?string $navigationLabel = 'Agencias De Corretajes';
 
-    protected static ?int $navigationSort = 1;
+    // protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {
