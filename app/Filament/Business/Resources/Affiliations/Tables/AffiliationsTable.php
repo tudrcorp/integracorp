@@ -240,15 +240,13 @@ class AffiliationsTable
                     ->label('Creado por')
                     ->searchable(),
 
-                TextColumn::make('activated_at')
+                TextInputColumn::make('activated_at')
                     ->label('Fecha de Emisión')
-                    ->color('success')
-                    ->icon('heroicon-s-calendar')
-                    ->badge()
+                    ->prefixIcon('heroicon-s-calendar')
                     ->searchable(),
 
                 TextInputColumn::make('effective_date')
-                    ->label('Vigencia')
+                    ->label('Fecha de Vigencia')
                     ->prefixIcon('heroicon-s-calendar')
                     ->searchable(),
 
@@ -903,6 +901,7 @@ class AffiliationsTable
                                     ->send();
                                 
                             } catch (\Throwable $th) {
+                                dd($th);
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA')
                                     ->body($th->getMessage())

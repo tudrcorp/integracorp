@@ -206,31 +206,38 @@
                             <td class="contenido_table_uno">
                                 <p class="contenido_table_uno">Desde: {{ $pagador['fecha_vigencia'] }}</p>
                                 @php
-                                use Carbon\Carbon;
-                                use Illuminate\Support\Facades\Log;
+                                    use Carbon\Carbon;
+                                    use Illuminate\Support\Facades\Log;
 
-                                    if($pagador['fecha_vigencia'] != '') {
-                                        
-                                        $fecha = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia']);
-    
-                                        if($pagador['frecuencia_pago'] == 'MENSUAL'){
-                                            $fechaVigenciaHasta = $fecha->copy()->addMonths(1)->format('d/m/Y');
-                                        }
-                                        if($pagador['frecuencia_pago'] == 'TRIMESTRAL'){
-                                            $fechaVigenciaHasta = $fecha->copy()->addMonths(3)->format('d/m/Y');
-                                        }
-                                        if($pagador['frecuencia_pago'] == 'SEMESTRAL'){
-                                            $fechaVigenciaHasta = $fecha->copy()->addMonths(6)->format('d/m/Y');
-                                        }
-                                        if($pagador['frecuencia_pago'] == 'ANUAL'){
-                                            $fechaVigenciaHasta = $pagador['fecha_vigencia_final'];
-    
-                                        }
+                                        if($pagador['fecha_vigencia'] != '') {
 
-                                    }else{
-                                        $fechaVigenciaHasta = '';
-                                    }
-                                    Log::info($fechaVigenciaHasta);
+                                            $fecha = $pagador['fecha_vigencia'];
+
+                                            Log::info('fecha_vigencia: ' . $pagador['fecha_vigencia']);
+                                            Log::info('fecha_vigencia_final: ' . $pagador['fecha_vigencia_final']);
+
+                                            if($pagador['frecuencia_pago'] == 'MENSUAL'){
+                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
+                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addMonths(1)->format('d/m/Y');
+                                            }
+                                            if($pagador['frecuencia_pago'] == 'TRIMESTRAL'){
+                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
+                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addMonths(3)->format('d/m/Y');
+                                            }
+                                            if($pagador['frecuencia_pago'] == 'SEMESTRAL'){
+                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
+                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addMonths(6)->format('d/m/Y');
+                                            }
+                                            if($pagador['frecuencia_pago'] == 'ANUAL'){
+                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
+                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addYear()->format('d/m/Y');
+
+                                            }
+
+                                        }else{
+                                            $fechaVigenciaHasta = '';
+                                        }
+                                        Log::info('fecha_vigencia_hasta: ' . $fechaVigenciaHasta);
                                 @endphp
                                 <p class="contenido_table_uno">Hasta: {{ $fechaVigenciaHasta }}</p>
                             </td>
