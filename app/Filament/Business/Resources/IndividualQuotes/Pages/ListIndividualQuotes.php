@@ -3,6 +3,9 @@
 namespace App\Filament\Business\Resources\IndividualQuotes\Pages;
 
 use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
+use App\Filament\Business\Resources\IndividualQuotes\Widgets\StatsOverviewIndividualQuote;
+use App\Filament\Business\Resources\IndividualQuotes\Widgets\StatsOverviewIndividualQuoteAprobada;
+use App\Filament\Business\Resources\IndividualQuotes\Widgets\TotalIndividualQuoteChart;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -20,6 +23,15 @@ class ListIndividualQuotes extends ListRecords
                 ->icon('heroicon-s-plus')
                 ->color('success'),
                 
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            StatsOverviewIndividualQuote::class,
+            StatsOverviewIndividualQuoteAprobada::class,
+            TotalIndividualQuoteChart::class,
         ];
     }
 }
