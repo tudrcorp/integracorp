@@ -2,27 +2,29 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\DuplicatedSession;
+use Filament\Actions\Action;
+use Filament\Enums\ThemeMode;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Http\Middleware\AuthenticateSession;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Enums\ThemeMode;
-use Filament\Pages\Dashboard;
-use Filament\Support\Enums\Width;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
-use Filament\Http\Middleware\Authenticate;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Filament\Http\Middleware\AuthenticateSession;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class OperationsPanelProvider extends PanelProvider
 {
@@ -70,6 +72,7 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                DuplicatedSession::class,
             ])
             ->plugins([
                 FilamentBackgroundsPlugin::make()
@@ -78,10 +81,28 @@ class OperationsPanelProvider extends PanelProvider
                             ->directory('backgroundBusenissPanelLogin')
                     ),
             ])
-            ->renderHook(
-                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn() => view('filament.return-modulo-negocios')
-            )
+            // ->renderHook(
+            //     PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+            //     fn() => view('filament.return-modulo-negocios')
+            // )
+            ->userMenuItems([
+                'logout' => fn(Action $action) => $action
+                    ->label('Cerrar Sesión')
+                    ->color('danger')
+                    ->url(route('internal')),
+                Action::make('business')
+                    ->label('NEGOCIOS')
+                    ->icon('heroicon-o-building-office-2')
+                    ->color('warning')
+                    ->hidden(function () {
+                        $user = auth()->user()->departament;
+                        if (in_array('SUPERADMIN', $user)) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    ->action(fn() => redirect(route('filament.business.pages.dashboard'))),
+            ])
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');
     }
