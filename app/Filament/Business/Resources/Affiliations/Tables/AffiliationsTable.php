@@ -1212,9 +1212,15 @@ class AffiliationsTable
                                     
                                     //Elimina la afiliacion
                                     $record->delete();
+                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la afiliacion: '.$record->id);
 
                                     //Elimina la Cotizacion individual
                                     $record->individual_quote()->delete();
+                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la cotizacion individual: '.$record->individual_quote->id);
+
+                                    //Eliminamos los afiliados
+                                    $record->affiliates()->delete();
+                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino el afiliado: '.$record->affiliates()->first()->id);
                                 }
                                     
                             } catch (\Throwable $th) {
