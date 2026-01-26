@@ -2,19 +2,20 @@
 
 namespace App\Filament\Marketing\Resources\AffiliationCorporates\Tables;
 
-use Filament\Tables\Table;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
 use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\ColumnGroup;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
 class AffiliationCorporatesTable
@@ -28,65 +29,24 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
-                //...  
-                ColumnGroup::make('Plan Afiliado', [
-                    TextColumn::make('payment_frequency')
-                        ->label('Frecuencia de pago')
-                        ->alignCenter()
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('poblation')
-                        ->label('Población')
-                        ->alignCenter()
-                        ->suffix(' persona(s)')
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                ]),
                 TextColumn::make('rif')
                     ->label('Rif')
                     ->prefix('J-')
                     ->badge()
                     ->color('verde')
                     ->searchable(),
-                TextColumn::make('email')
+                TextInputColumn::make('activated_at')
+                    ->label('Fecha de nacimiento')
+                    ->prefixIcon('heroicon-m-calendar')
+                    ->searchable(),
+                TextInputColumn::make('email')
                     ->label('Email contratante')
+                    ->prefixIcon('fontisto-email')
                     ->searchable(),
-                TextColumn::make('phone')
+                TextInputColumn::make('phone')
                     ->label('Telefono contratante')
+                    ->prefixIcon('heroicon-m-phone')
                     ->searchable(),
-                TextColumn::make('address')
-                    ->searchable(),
-                TextColumn::make('city.definition')
-                    ->searchable(),
-                TextColumn::make('state.definition')
-                    ->searchable(),
-                TextColumn::make('country.name')
-                    ->searchable(),
-                TextColumn::make('region_con')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('status')
-                    ->label('Estatus')
-                    ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'PRE-APROBADA'          => 'success',
-                            'ACTIVA'                => 'success',
-                            'PENDIENTE'             => 'warning',
-                            'EXCLUIDO'              => 'danger',
-                        };
-                    })
-                    ->searchable()
-                    ->icon(function (mixed $state): ?string {
-                        return match ($state) {
-                            'PRE-APROBADA'          => 'heroicon-c-information-circle',
-                            'ACTIVA'                => 'heroicon-s-check-circle',
-                            'PENDIENTE'             => 'heroicon-s-exclamation-circle',
-                            'EXCLUIDO'              => 'heroicon-c-x-circle',
-                        };
-                    }),
             ])
             ->filters([
                 //

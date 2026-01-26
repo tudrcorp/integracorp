@@ -156,17 +156,17 @@ class PaidMembershipCorporateController extends Controller
 
                     /**Ejecutamos el Job para crea el aviso de cobro */
                     $array_data = [
-                        'invoice_number'    => $collections->collection_invoice_number,
-                        'emission_date'     => $record->prox_payment_date,
-                        'full_name_ti'      => $sales->affiliate_full_name,
-                        'ci_rif_ti'         => $sales->affiliate_ci_rif,
-                        'address_ti'        => $record->affiliation_corporate->adress_ti,
-                        'phone_ti'          => $sales->affiliate_phone,
-                        'email_ti'          => $sales->affiliate_email,
-                        'total_amount'      => $record->total_amount,
-                        'plan'              => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
-                        'coverage'          => $record->coverage->price ?? null,
-                        'frequency'         => $record->affiliation_corporate->payment_frequency,
+                        'invoice_number' => $collections->collection_invoice_number,
+                        'emission_date'  => $record->prox_payment_date,
+                        'full_name_ti'   => $sales->affiliate_full_name,
+                        'ci_rif_ti'      => $sales->affiliate_ci_rif,
+                        'address_ti'     => $record->affiliation_corporate->adress_ti,
+                        'phone_ti'       => $sales->affiliate_phone,
+                        'email_ti'       => $sales->affiliate_email,
+                        'total_amount'   => $record->total_amount,
+                        'plan'           => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
+                        'coverage'       => $record->coverage->price ?? null,
+                        'frequency'      => $record->affiliation_corporate->payment_frequency,
                     ];
 
                     dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));

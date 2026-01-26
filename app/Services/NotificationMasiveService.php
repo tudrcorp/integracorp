@@ -11,6 +11,7 @@ use App\Mail\NotificationMasiveMailBirthday;
 use App\Models\AgentDocument;
 use App\Models\BirthdayNotification;
 use App\Models\DataNotification;
+use App\Models\NotificationFailed;
 use App\Models\TelemedicinePatientMedications;
 use Barryvdh\Debugbar\Facades\Debugbar;
 use Carbon\Carbon;
@@ -372,68 +373,508 @@ class NotificationMasiveService
                      * Notificacion masivas de forma automatica
                      * para envio de tarjeta de cumpleaños
                      * 
-                     * @version 2.1
+                     * @version 3.0
                      */
                     if($rowsNotifications[$i]['channels'][$j] == 'whatsapp') {
-                        
-                        //AGENTS, USERS, SUPPLIERS  
-                        if($rowsNotifications[$i]['data_type'] == 'agents' || $rowsNotifications[$i]['data_type'] == 'users' || $rowsNotifications[$i]['data_type'] == 'suppliers' ) {
-                            
-                            //Selecciono la data que voy a utilizar segun la notificacion
+
+                        // AGENTES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'agents') {
+
                             $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name', 'email', 'phone', 'birth_date')
+                                ->select('name', 'phone', 'birth_date')
                                 ->get()
                                 ->toArray();
-                            
+
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
-
-                                /**
-                                 * En caso de que la data venga NULL
-                                 */
-                                if ($data[$k]->phone != null && $data[$k]->birth_date != null) {
-                                    //Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
-                                    $conversionDate = UtilsController::converterDate($data[$k]->birth_date);
-    
-                                    //comparamos la fecha de nacimiento con la fecha actual
-                                    if($conversionDate == $now){
-                                        //Ejecuto el envio de la notificacion
-                                        NotificationController::notificationBirthday($data[$k]->name, $data[$k]->phone, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file'], $rowsNotifications[$i]['type']);
-    
-                                    }
-                                }else{
+                                //Validamos si esta cumpliendo años
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'agentes'
+                                    );
                                     continue;
                                 }
-                                
+
+                                if (!UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'agentes'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->phone == null || $data[$k]->phone == '') {
+                                    Log::warning("Numero de telefono es nulo o vacio para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Numero de telefono es nulo o vacio',
+                                        'agentes'
+                                    );
+                                    continue;
+                                }
+
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->phone != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        set_time_limit(0);
+
+                                        NotificationController::notificationBirthday(
+                                            $data[$k]->name,
+                                            $data[$k]->phone,
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        );
+
+                                        // LogController::logSuccessWp($data[$k]->phone);
+
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info("No se envio el WhatsApp de cumpleaños para agentes");
+                                    continue;
+
+                                }
                             }
-                            
                         }
 
-                        //AFFILIATIONS
-                        if ($rowsNotifications[$i]['data_type'] == 'affiliations') {
+                        // AGENCIAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'agencies') {
                             $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
-                                ->where('birth_date_ti', $now)
+                                ->select('name_corporative', 'phone', 'brithday_date')
                                 ->get()
                                 ->toArray();
 
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                if ($data[$k]->brithday_date == null || $data[$k]->brithday_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->name_corporative ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name_corporative,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'agencias'
+                                    );
+                                    continue;
+                                }
 
-                                /**
-                                 * En caso de que la data venga NULL
-                                 */
-                                if ($data[$k]->phone_ti != null && $data[$k]->birth_date_ti != null) {
-                                    //Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
-                                    $conversionDate = UtilsController::converterDate($data[$k]->birth_date_ti);
+                                if (!UtilsController::validateDateFormat($data[$k]->brithday_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->name_corporative ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name_corporative,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'agencias'
+                                    );
+                                    continue;
+                                }
 
-                                    //comparamos la fecha de nacimiento con la fecha actual
-                                    if ($conversionDate == $now) {
+                                if ($data[$k]->phone == null || $data[$k]->phone == '') {
+                                    Log::warning("Numero de telefono es nulo o vacio para el usuario: " . ($data[$k]->name_corporative ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name_corporative,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Numero de telefono es nulo o vacio',
+                                        'agencias'
+                                    );
+                                    continue;
+                                }
+
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->brithday_date);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->phone != null) {
+
                                         //Ejecuto el envio de la notificacion
-                                        NotificationController::notificationBirthday($data[$k]->full_name_ti, $data[$k]->phone_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file'], $rowsNotifications[$i]['type']);
+                                        set_time_limit(0);
+
+                                        NotificationController::notificationBirthday(
+                                            $data[$k]->name_corporative,
+                                            $data[$k]->phone,
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        );
+
+                                        // LogController::logSuccessWp($data[$k]->phone);
+
+                                    } else {
+                                        continue;
                                     }
-                                    
                                 } else {
+                                    Log::info("No se envio el WhatsApp de cumpleaños para agentes");
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // AFILIACIONES INDIVIDUALES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'affiliates') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('full_name', 'phone', 'birth_date')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->full_name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'afiliaciones'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->full_name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'afiliaciones'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->phone == null || $data[$k]->phone == '') {
+                                    Log::warning("Numero de telefono es nulo o vacio para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->full_name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Numero de telefono es nulo o vacio',
+                                        'afiliaciones'
+                                    );
+                                    continue;
+                                }
+
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
+
+                                if ($data[$k]->phone != null) {
+                                    if ($isBirthdayToday) {
+                                        /**
+                                         * En caso de que la data venga NULL
+                                         */
+                                        if ($data[$k]->phone != null) {
+
+                                            //Ejecuto el envio de la notificacion
+                                            // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                            set_time_limit(0);
+
+                                            //Envio Principal al Cliente
+                                            NotificationController::notificationBirthday(
+                                                $data[$k]->full_name,
+                                                $data[$k]->phone,
+                                                $rowsNotifications[$i]['content'],
+                                                $rowsNotifications[$i]['file'],
+                                                $rowsNotifications[$i]['type']
+                                            );
+
+                                            // LogController::logSuccess($data[$k]->email);
+
+                                        } else {
+                                            continue;
+                                        }
+                                    } else {
+                                        Log::info("No se envio el correo de cumpleaños para afiliados");
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+
+                        // AFILIACIONES CORPORATIVAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'affiliate_corporates') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('first_name', 'phone', 'birth_date')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->first_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->first_name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'afiliaciones corporativas'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->first_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->first_name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'afiliaciones corporativas'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->phone == null || $data[$k]->phone == '') {
+                                    Log::warning("Numero de telefono es nulo o vacio para el usuario: " . ($data[$k]->first_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->first_name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Numero de telefono es nulo o vacio',
+                                        'afiliaciones corporativas'
+                                    );
+                                    continue;
+                                }
+
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->phone != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        //Envio Principal al Cliente
+                                        NotificationController::notificationBirthday(
+                                            $data[$k]->first_name,
+                                            $data[$k]->phone,
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        );
+
+                                        // LogController::logSuccess($data[$k]->email);
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info("No se envio el correo de cumpleaños para afiliados");
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // COLABORADORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'rrhh_colaboradors') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('fullName', 'telefono', 'fechaNacimiento')
+                                ->get()
+                                ->toArray();
+
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                if ($data[$k]->fechaNacimiento == null || $data[$k]->fechaNacimiento == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->fullName ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->fullName,
+                                        null,
+                                        $data[$k]->telefono,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'colaboradores'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->fechaNacimiento)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->fullName ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->fullName,
+                                        null,
+                                        $data[$k]->telefono,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'colaboradores'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->telefono == null || $data[$k]->telefono == '') {
+                                    Log::warning("Numero de telefono es nulo o vacio para el usuario: " . ($data[$k]->fullName ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->fullName,
+                                        null,
+                                        $data[$k]->telefono,
+                                        'Numero de telefono es nulo o vacio',
+                                        'colaboradores'
+                                    );
+                                    continue;
+                                }
+
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->fechaNacimiento);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->telefono != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        //Envio Principal al Cliente
+                                        NotificationController::notificationBirthday(
+                                            $data[$k]->fullName,
+                                            $data[$k]->telefono,
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        );
+
+                                        LogController::logSuccess($data[$k]->emailCorporativo);
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info('No se envio el correo de cumpleaños para colaboradores');
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // PROVEEDORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
+                        // @version 2.1
+                        if ($rowsNotifications[$i]['data_type'] == 'suppliers') {
+                            $data = DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('name', 'personal_phone', 'afiliacion_proveedor')
+                                ->get()
+                                ->toArray();
+
+                            //for para recorrer la data, tomar la fecha y enviar la notificacion
+                            for ($k = 0; $k < count($data); $k++) {
+                                //Validamos si esta cumpliendo años
+                                //Validamos si esta cumpliendo años
+                                if ($data[$k]->afiliacion_proveedor == null || $data[$k]->afiliacion_proveedor == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->personal_phone,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'proveedores'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->afiliacion_proveedor)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->personal_phone,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'proveedores'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->personal_phone == null || $data[$k]->personal_phone == '') {
+                                    Log::warning("Numero de telefono es nulo o vacio para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->personal_phone,
+                                        'Numero de telefono es nulo o vacio',
+                                        'proveedores'
+                                    );
+                                    continue;
+                                }
+
+                                $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->afiliacion_proveedor);
+
+                                if ($isBirthdayToday) {
+                                    /**
+                                     * En caso de que la data venga NULL
+                                     */
+                                    if ($data[$k]->personal_phone != null) {
+
+                                        //Ejecuto el envio de la notificacion
+                                        // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
+                                        set_time_limit(0);
+
+                                        //Envio Principal al Cliente
+                                        NotificationController::notificationBirthday(
+                                            $data[$k]->name,
+                                            $data[$k]->personal_phone,
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        );
+
+                                        // LogController::logSuccess($data[$k]->personal_phone);
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    Log::info('No se envio el correo de cumpleaños para proveedores');
                                     continue;
                                 }
                             }
@@ -447,7 +888,7 @@ class NotificationMasiveService
                      * Notificacion masivas de forma automatica
                      * para envio de tarjeta de cumpleaños
                      * 
-                     * @version 2.1
+                     * @version 3.0
                      */
                     if ($rowsNotifications[$i]['channels'][$j] == 'email') {
 
@@ -462,6 +903,46 @@ class NotificationMasiveService
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 //Validamos si esta cumpliendo años
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'agentes'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'agentes'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->email == null || $data[$k]->email == '') {
+                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'agentes'
+                                    );
+                                    continue;
+                                }
+
                                 $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
 
                                 if ($isBirthdayToday) {
@@ -476,14 +957,7 @@ class NotificationMasiveService
 
                                         //Envio Principal al Cliente
                                         Mail::to($data[$k]->email)
-                                            ->send(new NotificationMasiveMailBirthday(
-                                                $data[$k]->name,
-                                                $rowsNotifications[$i]['file'],
-                                                $data[$k]->email
-                                            ));
-
-                                        //Envio de Copia al Equipo Responsable
-                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->cc('solrodriguez@tudrencasa.com')
                                             ->send(new NotificationMasiveMailBirthday(
                                                 $data[$k]->name,
                                                 $rowsNotifications[$i]['file'],
@@ -514,6 +988,46 @@ class NotificationMasiveService
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 //Validamos si esta cumpliendo años
+                                if ($data[$k]->brithday_date == null || $data[$k]->brithday_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->name_corporative ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name_corporative,
+                                        $data[$k]->email,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'agencias'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->brithday_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->name_corporative ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name_corporative,
+                                        $data[$k]->email,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'agencias'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->email == null || $data[$k]->email == '') {
+                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->name_corporative ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name_corporative,
+                                        $data[$k]->email,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'agencias'
+                                    );
+                                    continue;
+                                }
+
                                 $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->brithday_date);
 
                                 if ($isBirthdayToday) {
@@ -528,14 +1042,7 @@ class NotificationMasiveService
 
                                         //Envio Principal al Cliente
                                         Mail::to($data[$k]->email)
-                                            ->send(new NotificationMasiveMailBirthday(
-                                                $data[$k]->name_corporative,
-                                                $rowsNotifications[$i]['file'],
-                                                $data[$k]->email
-                                            ));
-
-                                        //Envio de Copia al Equipo Responsable
-                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->cc('solrodriguez@tudrencasa.com')
                                             ->send(new NotificationMasiveMailBirthday(
                                                 $data[$k]->name_corporative,
                                                 $rowsNotifications[$i]['file'],
@@ -565,6 +1072,46 @@ class NotificationMasiveService
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 //Validamos si esta cumpliendo años
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->full_name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'afiliaciones'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->full_name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'afiliaciones'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->email == null || $data[$k]->email == '') {
+                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->full_name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'afiliaciones'
+                                    );
+                                    continue;
+                                }
+                                
                                 $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
                                 if ($data[$k]->email != null) {
                                     if ($isBirthdayToday) {
@@ -579,14 +1126,7 @@ class NotificationMasiveService
 
                                             //Envio Principal al Cliente
                                             Mail::to($data[$k]->email)
-                                                ->send(new NotificationMasiveMailBirthday(
-                                                    $data[$k]->full_name, 
-                                                    $rowsNotifications[$i]['file'], 
-                                                    $data[$k]->email
-                                                ));
-
-                                            //Envio de Copia al Equipo Responsable
-                                            Mail::to('solrodriguez@tudrencasa.com')
+                                                ->cc('solrodriguez@tudrencasa.com')
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->full_name, 
                                                     $rowsNotifications[$i]['file'], 
@@ -619,6 +1159,46 @@ class NotificationMasiveService
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 //Validamos si esta cumpliendo años
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->full_name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'afiliaciones_corporativas'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->full_name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'afiliaciones_corporativas'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->email == null || $data[$k]->email == '') {
+                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->full_name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'afiliaciones_corporativas'
+                                    );
+                                    continue;
+                                }
+                                
                                 $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date);
 
                                 if ($isBirthdayToday) {
@@ -633,14 +1213,7 @@ class NotificationMasiveService
 
                                         //Envio Principal al Cliente
                                         Mail::to($data[$k]->email)
-                                            ->send(new NotificationMasiveMailBirthday(
-                                                $data[$k]->first_name,
-                                                $rowsNotifications[$i]['file'],
-                                                $data[$k]->email
-                                            ));
-
-                                        //Envio de Copia al Equipo Responsable
-                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->cc('solrodriguez@tudrencasa.com')
                                             ->send(new NotificationMasiveMailBirthday(
                                                 $data[$k]->first_name,
                                                 $rowsNotifications[$i]['file'],
@@ -671,6 +1244,46 @@ class NotificationMasiveService
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 //Validamos si esta cumpliendo años
+                                if ($data[$k]->fechaNacimiento == null || $data[$k]->fechaNacimiento == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->fullName ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->fullName,
+                                        $data[$k]->emailCorporativo,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'colaboradores'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->fechaNacimiento)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->fullName ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->fullName,
+                                        $data[$k]->emailCorporativo,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'colaboradores'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->emailCorporativo == null || $data[$k]->emailCorporativo == '') {
+                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->fullName ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->fullName,
+                                        $data[$k]->emailCorporativo,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'colaboradores'
+                                    );
+                                    continue;
+                                }
+                                
                                 $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->fechaNacimiento);
 
                                 if ($isBirthdayToday) {
@@ -685,14 +1298,7 @@ class NotificationMasiveService
 
                                         //Envio Principal al Cliente
                                         Mail::to($data[$k]->emailCorporativo)
-                                            ->send(new NotificationMasiveMailBirthday(
-                                                $data[$k]->fullName,
-                                                $rowsNotifications[$i]['file'],
-                                                $data[$k]->emailCorporativo
-                                            ));
-
-                                        //Envio de Copia al Equipo Responsable
-                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->cc('solrodriguez@tudrencasa.com')
                                             ->send(new NotificationMasiveMailBirthday(
                                                 $data[$k]->fullName,
                                                 $rowsNotifications[$i]['file'],
@@ -723,6 +1329,46 @@ class NotificationMasiveService
                             //for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 //Validamos si esta cumpliendo años
+                                if ($data[$k]->afiliacion_proveedor == null || $data[$k]->afiliacion_proveedor == '') {
+                                    // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->correo_principal,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'proveedores'
+                                    );
+                                    continue;
+                                }
+
+                                if (!UtilsController::validateDateFormat($data[$k]->afiliacion_proveedor)) {
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->correo_principal,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'proveedores'
+                                    );
+                                    continue;
+                                }
+
+                                if ($data[$k]->correo_principal == null || $data[$k]->correo_principal == '') {
+                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->name ?? 'Desconocido'));
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->correo_principal,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'proveedores'
+                                    );
+                                    continue;
+                                }
+                                
                                 $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->afiliacion_proveedor);
 
                                 if ($isBirthdayToday) {
@@ -737,14 +1383,7 @@ class NotificationMasiveService
 
                                         //Envio Principal al Cliente
                                         Mail::to($data[$k]->correo_principal)
-                                            ->send(new NotificationMasiveMailBirthday(
-                                                $data[$k]->name,
-                                                $rowsNotifications[$i]['file'],
-                                                $data[$k]->correo_principal
-                                            ));
-
-                                        //Envio de Copia al Equipo Responsable
-                                        Mail::to('solrodriguez@tudrencasa.com')
+                                            ->cc('solrodriguez@tudrencasa.com')
                                             ->send(new NotificationMasiveMailBirthday(
                                                 $data[$k]->name,
                                                 $rowsNotifications[$i]['file'],
