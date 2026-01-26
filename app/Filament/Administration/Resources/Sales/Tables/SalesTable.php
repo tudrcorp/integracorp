@@ -348,7 +348,10 @@ class SalesTable
 
                                     $sale = Sale::where('id', $record->id)->first();
 
-                                    $afiliacion = AffiliationCorporate::where('code', $sale->affiliation_code)->with('paid_membership_corporates', 'affiliationCorporatePlans')->first()->toArray();
+                                    $afiliacion = AffiliationCorporate::where('code', $sale->affiliation_code)
+                                    ->with('paid_membership_corporates', 'affiliationCorporatePlans')
+                                    ->first()
+                                    ->toArray();
                                     // dd($afiliacion);
                                     /**Ejecutamos el Job para crea el aviso de cobro */
                                     $data = [
@@ -357,7 +360,7 @@ class SalesTable
                                         'payment_method' => $sale->payment_method,
                                         'reference'      => $record->reference_payment,
                                         'full_name_ti'   => $sale->affiliate_full_name,
-                                        'ci_rif_ti'      => $sale->affiliate_ci_rif,
+                                        'ci_rif_ti'      => $afiliacion['rif'],
                                         'address_ti'     => $afiliacion['address'],
                                         'phone_ti'       => $afiliacion['phone'],
                                         'email_ti'       => $afiliacion['email'],
