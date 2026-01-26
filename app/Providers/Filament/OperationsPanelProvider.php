@@ -36,7 +36,7 @@ class OperationsPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->colors([
-                'primary' => Color::Indigo,
+                'primary' => '#2d89ca',
             ])
             ->sidebarCollapsibleOnDesktop()
             ->brandLogo(asset('image/logoNewTDG.png'))

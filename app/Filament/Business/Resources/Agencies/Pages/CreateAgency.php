@@ -24,7 +24,7 @@ class CreateAgency extends CreateRecord
      */
     protected function beforeCreate(): void
     {
-        try {
+
             $rif = $this->data['rif'];
             $email = $this->data['email'];
 
@@ -83,16 +83,7 @@ class CreateAgency extends CreateRecord
 
                 $this->halt();
             }
-        } catch (\Throwable $th) {
-            Log::error('Error al registrar una agencia: ' . $th->getMessage());
-            Notification::make()
-                ->title('ERROR')
-                ->body($th->getMessage())
-                ->icon('heroicon-m-tag')
-                ->iconColor('danger')
-                ->danger()
-                ->send();   
-        }
+            
     }
 
     protected function afterCreate(): void

@@ -24,23 +24,23 @@ class CreateAgent extends CreateRecord
      */
     protected function beforeCreate(): void
     {
-        try {
+
             $ci = $this->data['ci'];
             $rif = $this->data['rif'];
             $email = $this->data['email'];
 
             if (Agent::where('ci', $ci)->exists() || Agent::where('rif', $rif)->exists()) {
-            Notification::make()
-                ->title('ERROR')
-                ->body('El RIF o la CI ya se encuentra registrado en la tabla de agentes.')
-                ->icon('heroicon-m-tag')
-                ->iconColor('danger')
-                ->danger()
-                ->send();
+                Notification::make()
+                    ->title('ERROR')
+                    ->body('El RIF o la CI ya se encuentra registrado en la tabla de agentes.')
+                    ->icon('heroicon-m-tag')
+                    ->iconColor('danger')
+                    ->danger()
+                    ->send();
 
-            Log::warning('El Usuario ' . Auth::user()->name . ' intento registrar un agente con un RIF ya existente.');
+                Log::warning('El Usuario ' . Auth::user()->name . ' intento registrar un agente con un RIF ya existente.');
 
-            $this->halt();
+                $this->halt();
             }
 
             if (Agent::where('email', $email)->exists()) {
@@ -84,16 +84,7 @@ class CreateAgent extends CreateRecord
 
                 $this->halt();
             }
-        } catch (\Throwable $th) {
-            Log::error('Error al registrar un agente: ' . $th->getMessage());
-            Notification::make()
-                ->title('ERROR')
-                ->body($th->getMessage())
-                ->icon('heroicon-m-tag')
-                ->iconColor('danger')
-                ->danger()
-                ->send();
-        }
+
     }
 
     protected function afterCreate(): void
