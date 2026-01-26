@@ -63,6 +63,7 @@ class TelemedicineHistoryPatient extends Model
             'observations_diagnosis' ,
             'observations_not_pathological' ,
             'created_by' ,
+            'updated_by' ,
             'created_at' ,
             'updated_at' ,
             'observations_pathological' ,

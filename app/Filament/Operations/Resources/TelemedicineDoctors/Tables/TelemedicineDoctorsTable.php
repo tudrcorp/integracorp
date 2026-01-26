@@ -2,12 +2,17 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineDoctors\Tables;
 
+
+use App\Models\User;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class TelemedicineDoctorsTable
 {
@@ -53,7 +58,22 @@ class TelemedicineDoctorsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                    ->label('Eliminar Registro(s)')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirmar Eliminación')
+                    ->modalDescription('¿Está seguro de que desea eliminar el/los registro(s) seleccionado(s)?. Esta accion eliminara el registro en la tabla de usuarios de sistema. ESTA OPERACION NO PODRA SER REVERSADA')
+                    ->modalSubmitActionLabel('Eliminar Registro(s)')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->action(function (Collection $records) {
+                        foreach($records as $record){
+                            Log::info('OPERACIONES: El usuario ' . Auth::user()->name . ' elimino al doctor: ' . $record->full_name);
+                            Log::info('OPERACIONES: El usuario ' . Auth::user()->name . 'elimino registro en la tabla de usuarios de sistema: ' . $record->email);
+                            User::where('email', $record->email)->delete();
+                            $record->delete();
+                        }
+                    })
+
                 ]),
             ]);
     }

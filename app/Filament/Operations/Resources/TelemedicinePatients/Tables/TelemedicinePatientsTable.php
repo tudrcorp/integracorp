@@ -2,53 +2,54 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Tables;
 
+use App\Filament\Resources\Plans\Tables\PlansTable;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UtilsController;
+use App\Jobs\AssignedCase;
+use App\Mail\MailAssignedCase;
+use App\Models\AnotherAddress;
+
+use App\Models\City;
+use App\Models\Country;
+use App\Models\Plan;
+use App\Models\Region;
+use App\Models\State;
+use App\Models\TelemedicineCase;
+use App\Models\TelemedicineDoctor;
+use App\Models\TelemedicinePatient;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-
-use Carbon\Carbon;
-use App\Models\City;
-use App\Models\Plan;
-use App\Models\State;
-use App\Models\Region;
-use App\Models\Country;
-use App\Jobs\AssignedCase;
-use Filament\Support\RawJs;
-use Filament\Actions\Action;
-use App\Mail\MailAssignedCase;
-use App\Models\AnotherAddress;
-use App\Models\TelemedicineCase;
-use Filament\Actions\BulkAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use App\Models\TelemedicineDoctor;
-use App\Models\TelemedicinePatient;
-use Filament\Tables\Filters\Filter;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\ColumnGroup;
-use App\Http\Controllers\UtilsController;
-use Filament\Forms\Components\DatePicker;
-use Filament\Schemas\Components\Fieldset;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
-use Illuminate\Database\Eloquent\Collection;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use App\Http\Controllers\NotificationController;
-use App\Filament\Resources\Plans\Tables\PlansTable;
+use Filament\Support\Enums\Width;
+use Filament\Support\RawJs;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class TelemedicinePatientsTable
 {
@@ -61,6 +62,46 @@ class TelemedicinePatientsTable
             ->columns([
                 TextColumn::make('full_name')
                     ->label('Paciente')
+                    ->icon('heroicon-o-user')
+                    ->formatStateUsing(fn(string $state): string => strtoupper($state))
+                    ->extraAttributes(function ($record) {
+                        /**
+                     * Generamos un color único basado en el valor del código para evitar repeticiones aleatorias.
+                     * Usamos crc32 para obtener un número entero a partir del string del código.
+                     */
+                    $codeValue = $record->id ?? 'default';
+                    $hash = crc32($codeValue);
+
+                    // El tono (Hue) se deriva del hash (0-360)
+                    $h = abs($hash % 360);
+
+                    // Saturación y Luminosidad fijas para mantener el efecto pastel
+                    $s = 70;
+                    $l = 85;
+
+                    $backgroundColor = "hsl({$h}, {$s}%, {$l}%)";
+                    $textColor = "hsl({$h}, {$s}%, 25%)";
+
+                    return [
+                        'style' => "
+                                --c-50: {$backgroundColor};
+                                --c-400: {$textColor};
+                                --c-600: {$textColor};
+                                background-color: {$backgroundColor} !important;
+                                color: {$textColor} !important;
+                                // border: 0.5px solid rgba(0,0,0,0.1);
+                                border-radius: 9999px;
+                                padding: 0.1rem 0.6rem;
+                                font-weight: 600;
+                                box-shadow: 0px 0px 0px 1px rgb(0 0 0 / 0.06),
+                                0px 1px 1px -0.5px rgb(0 0 0 / 0.06),
+                                0px 3px 3px -1.5px rgb(0 0 0 / 0.06), 
+                                0px 6px 6px -3px rgb(0 0 0 / 0.06),
+                                0px 12px 12px -6px rgb(0 0 0 / 0.06),
+                                0px 24px 24px -12px rgb(0 0 0 / 0.06);
+                            ",
+                    ];
+                })
                     ->searchable(),
                 TextColumn::make('businessUnit.definition')
                     ->label('Unidad de Negocios')
@@ -156,9 +197,13 @@ class TelemedicinePatientsTable
                         ->color('success')
                         ->searchable(),
                 ]),
+                TextColumn::make('created_by')
+                    ->label('Asociado Por:')
+                    ->searchable(),
                 TextColumn::make('created_at')
-                    ->label('Creado')
+                    ->label('Fecha de Asociación:')
                     ->dateTime()
+                    ->description(fn ($record) => $record->created_at->diffForHumans())
                     ->sortable(),
             ])
             ->filters([
@@ -516,6 +561,25 @@ class TelemedicinePatientsTable
                             }
                         })
                 ])
-            ]);
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                    ->label('Eliminar Paciente')
+                    ->color('danger')
+                    ->icon('heroicon-o-trash')
+                    ->requiresConfirmation()
+                    ->modalHeading('Eliminar Paciente')
+                    ->modalDescription('¿Estas seguro de eliminar el paciente?. Esta accion elimina la acosiacion del paciente en la tabla. Si desea reversar la opracion debera asociar nuevamente al afiliado.')
+                    ->modalIcon('heroicon-o-trash')
+                    ->action(function (Collection $records) {
+                        foreach ($records as $record) {
+                            Log::info('OPERACIONES: El usuario '.Auth::user()->name.' elimino el paciente: ' . $record->full_name);
+                            $record->delete();
+                        }
+                    })
+                ]),
+            ])
+            ->striped();
     }
 }

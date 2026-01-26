@@ -2,16 +2,18 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineDoctors\Schemas;
 
-use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\UtilsController;
+use App\Models\TelemedicineDoctor;
+use App\Models\User;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use App\Http\Controllers\UtilsController;
-use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class TelemedicineDoctorForm
 {
@@ -27,7 +29,16 @@ class TelemedicineDoctorForm
                             ->required(),
                         TextInput::make('nro_identificacion')
                             ->label('Numero de Identificación')
-                            ->required(),
+                            ->unique(
+                                table: TelemedicineDoctor::class,
+                                column: 'nro_identificacion',
+                            )
+                            ->required()
+                            ->numeric()
+                            ->validationMessages([
+                                'required'  => 'Campo Requerido',
+                                'unique' => 'El número de identificación ya existe',
+                            ]),
                         Select::make('country_code')
                             ->label('Código de país')
                             ->options(fn() => UtilsController::getCountries())
@@ -56,7 +67,12 @@ class TelemedicineDoctorForm
                         TextInput::make('email')
                             ->label('Correo Electronico')
                             ->email()
-                            ->required(),
+                            ->unique(table: TelemedicineDoctor::class, column: 'email')
+                            ->required()
+                            ->validationMessages([
+                                'required'  => 'Campo Requerido',
+                                'unique' => 'El correo electrónico ya existe',
+                            ]),
                         TextInput::make('address')
                             ->label('Direccion'),
                         TextInput::make('code_cm')
@@ -66,7 +82,17 @@ class TelemedicineDoctorForm
                                 'required'  => 'Campo Requerido',
                             ])
                             ->label('Codigo CM')
-                            ->required(),
+                            ->unique(
+                                table: TelemedicineDoctor::class,
+                                column: 'code_cm',
+                            )
+                            ->required()
+                            ->numeric()
+                            ->validationMessages([
+                                'required'  => 'Campo Requerido',
+                                'unique' => 'El código CM ya existe',
+                                'numeric' => 'El campo solo debe contener números',
+                            ]),
                         TextInput::make('code_mpps')
                             ->regex('/^[0-9]+$/')
                             ->validationMessages([
@@ -74,7 +100,17 @@ class TelemedicineDoctorForm
                                 'required'  => 'Campo Requerido',
                             ])
                             ->label('Codigo MPPS')
-                            ->required(),
+                            ->unique(
+                                table: TelemedicineDoctor::class,
+                                column: 'code_mpps',
+                            )
+                            ->required()
+                            ->numeric()
+                            ->validationMessages([
+                                'required'  => 'Campo Requerido',
+                                'unique' => 'El código MPPS ya existe',
+                                'numeric' => 'El campo solo debe contener números',
+                            ]),
                         TextInput::make('specialty')
                             ->required()
                             ->default('MÉDICO GENERAL'),

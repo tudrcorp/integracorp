@@ -16,9 +16,56 @@ class CreateTelemedicineDoctor extends CreateRecord
 
     protected static ?string $title = 'Formulario de Registro de Médicos';
 
+    /**
+     * 
+     * Metodo que se ejecuta antes de crear un registro
+     * Valida que el RIF y el correo electrónico no se encuentren registrados en la base de datos.
+     * 
+     * @return void
+     */
+    protected function beforeCreate(): void
+    {
+        
+            $email = $this->data['email'];
+
+            if (User::where('email', $email)->exists()) {
+                // dd('El Correo electrónico ya se encuentra registrado en la tabla de usuarios.');
+                Notification::make()
+                    ->title('ERROR')
+                    ->body('El Correo electrónico ya se encuentra registrado en la tabla de usuarios. Por favor intente con otro correo electrónico.')
+                    ->icon('heroicon-m-tag')
+                    ->iconColor('danger')
+                    ->danger()
+                    ->send();
+
+                Log::warning('El Usuario ' . Auth::user()->name . ' intento registrar un doctor con un correo electrónico ya existente en la tabla de usuarios.');
+
+                $this->halt();
+            }
+
+    }
+
+
     protected function afterCreate(): void
     {
         try {
+
+            $email = $this->data['email'];
+
+            if (User::where('email', $email)->exists()) {
+                // dd('El Correo electrónico ya se encuentra registrado en la tabla de usuarios.');
+                Notification::make()
+                    ->title('ERROR')
+                    ->body('El Correo electrónico ya se encuentra registrado en la tabla de usuarios.')
+                    ->icon('heroicon-m-tag')
+                    ->iconColor('danger')
+                    ->danger()
+                    ->send();
+
+                Log::warning('El Usuario ' . Auth::user()->name . ' intento registrar un doctor con un correo electrónico ya existente.');
+
+                $this->halt();
+            }
             
             $record = $this->getRecord();
 
