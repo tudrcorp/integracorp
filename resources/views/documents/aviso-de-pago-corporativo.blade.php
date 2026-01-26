@@ -234,7 +234,7 @@
                                 margin: 0;
                                 padding: 0;
                         ">
-                            Documento: V-{{ $data['ci_rif_ti'] }}</span>
+                            Documento: J-{{ $data['ci_rif_ti'] }}</span>
                     </td>
                 </tr>
                 <tr>

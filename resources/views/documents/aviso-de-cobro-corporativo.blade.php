@@ -209,7 +209,7 @@
             <span style="font-weight: bold; ">A Nombre de: {{ $data['full_name_ti'] }}</span>
         </p>
         <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Documento: V-{{ $data['ci_rif_ti'] }}</span>
+            <span style="font-weight: bold; color: #000000;">Documento: J-{{ $data['ci_rif_ti'] }}</span>
         </p>
         <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
             <span style="font-weight: bold; color: #000000;">Dirección: {{ $data['address_ti'] }} </span>
