@@ -297,8 +297,7 @@ class AffiliationForm
                                     ->label('Nro. de Identificación')
                                     ->prefixIcon('heroicon-s-identification')
                                     ->unique(
-                                        ignoreRecord: true,
-                                        table: 'affiliations',
+                                        table: Affiliation::class,
                                         column: 'nro_identificacion_ti',
                                     )
                                     ->mask('999999999')
@@ -307,6 +306,7 @@ class AffiliationForm
                                     ])
                                     ->validationMessages([
                                         'numeric'   => 'El campo es numérico',
+                                        'unique'    => 'La cedula del titular ya se encuentra registrada'
                                     ])
                                     ->required(),
 
