@@ -81,4 +81,18 @@ class LogController extends Controller
         // OPCIONAL: Si usas una tabla de seguimiento de envíos
         // NotificationLog::where('email', $this->email)->update(['status' => 'sent']);
     }
+
+    /**
+     * Acciones cuando el correo se envía correctamente.
+     */
+    static function logSuccessWp($phone): void
+    {
+        Log::info("WhatsApp de cumpleaños enviado con éxito a: {$phone}", [
+            'user_name' => $phone,
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+
+        // OPCIONAL: Si usas una tabla de seguimiento de envíos
+        // NotificationLog::where('email', $this->email)->update(['status' => 'sent']);
+    }
 }

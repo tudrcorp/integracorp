@@ -49,38 +49,17 @@ class AgentsTable
                     ->badge()
                     ->color('verde')
                     ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('address')
-                    ->label('Direccion')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-
                 TextInputColumn::make('email')
                     ->label('Correo electrónico')
+                    ->prefixIcon('fontisto-email')
                     ->searchable(),
                 TextInputColumn::make('phone')
                     ->label('Número de Teléfono')
+                    ->prefixIcon('heroicon-m-phone')
                     ->searchable(),
-                    
-                TextColumn::make('user_instagram')
+                TextInputColumn::make('user_instagram')
                     ->label('Usuario de Instagram')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('country.name')
-                    ->label('País')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('state.definition')
-                    ->label('Estado')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('city.definition')
-                    ->label('Ciudad')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('region')
-                    ->label('Región')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->prefixIcon('fontisto-instagram'),
             ])
             ->filters([
                 //

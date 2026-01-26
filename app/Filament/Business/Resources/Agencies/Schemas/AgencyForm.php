@@ -129,14 +129,8 @@ class AgencyForm
                             ->label('Rif')
                             ->prefix('J-')
                             ->numeric()
-                            ->unique(
-                                ignoreRecord: true,
-                                table: 'agencies',
-                                column: 'rif',
-                            )
                             ->required()
                             ->validationMessages([
-                                'unique'    => 'El RIF ya se encuentra registrado.',
                                 'required'  => 'Campo requerido',
                                 'numeric'   => 'El campo es numerico',
                             ])
@@ -146,13 +140,7 @@ class AgencyForm
                             ->prefixIcon('heroicon-s-at-symbol')
                             ->email()
                             ->required()
-                            ->unique(
-                                ignoreRecord: true,
-                                table: 'agencies',
-                                column: 'email',
-                            )
                             ->validationMessages([
-                                'unique'    => 'El Correo electrónico ya se encuentra registrado.',
                                 'required'  => 'Campo requerido',
                                 'email'     => 'El campo es un email',
                             ])

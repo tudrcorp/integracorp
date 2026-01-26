@@ -1761,9 +1761,11 @@ class NotificationController extends Controller
             HTML;
 
             if ($type == 'image') {
+                Log::info("es imagen");
                 $params = array(
                     'token' => config('parameters.TOKEN'),
-                    'to' => $phone,
+                    // 'to' => $phone,
+                    'to' => '04127018390',
                     // 'image' => config('parameters.PUBLIC_URL') . '/' . $file,
                     'image' => 'https://tudrgroup.com/images/nuevaInvitacion.jpg',
                     'caption' => $body
@@ -1787,6 +1789,7 @@ class NotificationController extends Controller
             }
 
             if ($type == 'video') {
+                Log::info("es video");
                 $params = array(
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
@@ -1812,6 +1815,7 @@ class NotificationController extends Controller
             }
 
             if ($type == 'url') {
+                Log::info("es url");
                 $params = array(
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
@@ -1837,15 +1841,38 @@ class NotificationController extends Controller
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
             
             curl_close($curl);
 
-            Log::info($response);
-            Log::error($err);
-            
-            Log::info('Tipo: '. $type);
-            Log::info($name);
-            Log::info($phone);
+            // --- Manejo de Errores y Logs ---
+
+            if ($err) {
+                // Error de conexión cURL
+                Log::error("API ENVÍO FALLIDO: Error de conexión cURL.", [
+                    'telefono' => $phone,
+                    'error'    => $err,
+                ]);
+
+                return ['status' => 'error', 'message' => "Error de conexión: $err"];
+            }
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                // Envío satisfactorio (Código HTTP 2xx)
+                Log::info("API ENVÍO EXITOSO: Mensaje entregado correctamente.", [
+                    'telefono' => $phone,
+                    'respuesta' => json_decode($response, true) ?? $response
+                ]);
+
+                return ['status' => 'success', 'data' => $response];
+            }
+
+            // Error devuelto por la API (Código HTTP != 2xx)
+            Log::warning("API ENVÍO FALLIDO: La API devolvió un error.", [
+                'telefono'  => $phone,
+                'http_code' => $httpCode,
+                'respuesta' => $response
+            ]);
 
         
             //code...

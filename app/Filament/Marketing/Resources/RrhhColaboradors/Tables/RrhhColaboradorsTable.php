@@ -25,10 +25,6 @@ class RrhhColaboradorsTable
                     ->options(RrhhDepartamento::all()->pluck('description', 'id')->toArray()),
                 SelectColumn::make('cargo_id')
                     ->options(RrhhCargo::all()->pluck('description', 'id')->toArray()),
-                TextColumn::make('cedula')
-                    ->searchable(),
-                TextColumn::make('sexo')
-                    ->searchable(),
                 TextInputColumn::make('fechaNacimiento')
                     ->searchable(),
                 TextInputColumn::make('fechaIngreso')
@@ -38,12 +34,6 @@ class RrhhColaboradorsTable
                 TextInputColumn::make('telefonoCorporativo')
                     ->searchable(),
                 TextInputColumn::make('emailCorporativo')
-                    ->searchable(),
-                TextInputColumn::make('emailAlternativo')
-                    ->searchable(),
-                TextInputColumn::make('emailPersonal')
-                    ->searchable(),
-                TextColumn::make('tallaCamisa')
                     ->searchable(),
             ])
             ->filters([

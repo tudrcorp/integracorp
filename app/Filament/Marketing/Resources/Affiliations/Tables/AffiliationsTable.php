@@ -2,25 +2,26 @@
 
 namespace App\Filament\Marketing\Resources\Affiliations\Tables;
 
-use Closure;
-use App\Models\Event;
-use Filament\Tables\Table;
 use App\Models\DataNotification;
+use App\Models\Event;
 use App\Models\MassNotification;
+use Closure;
 use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Radio;
-use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use Filament\Tables\Columns\ColumnGroup;
-use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
-use Filament\Schemas\Components\Utilities\Get;
 
 class AffiliationsTable
 {
@@ -34,37 +35,6 @@ class AffiliationsTable
                     ->color('azulOscuro')
                     ->searchable(),
 
-                //...  
-                ColumnGroup::make('Plan Afiliado', [
-                    TextColumn::make('plan.description')
-                        ->label('Plan')
-                        ->alignCenter()
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('coverage.price')
-                        ->label('Covertura')
-                        ->alignCenter()
-                        ->numeric()
-                        ->badge()
-                        ->color('success')
-                        ->suffix(' US$')
-                        ->searchable(),
-                    TextColumn::make('payment_frequency')
-                        ->label('Frecuencia de pago')
-                        ->alignCenter()
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('family_members')
-                        ->label('Poblacion')
-                        ->alignCenter()
-                        ->suffix(' persona(s)')
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                ]),
-
                 //...
                 ColumnGroup::make('Información del Titular', [
                     TextColumn::make('full_name_ti')
@@ -72,63 +42,19 @@ class AffiliationsTable
                         ->badge()
                         ->color('azulOscuro')
                         ->searchable(),
-                    TextColumn::make('nro_identificacion_ti')
-                        ->label('CI. titular')
-                        ->badge()
-                        ->color('azulOscuro')
-                        ->searchable(),
-                    TextColumn::make('sex_ti')
-                        ->label('Sexo')
-                        ->searchable(),
-                    TextColumn::make('birth_date_ti')
+                    TextInputColumn::make('birth_date_ti')
                         ->label('Fecha de nacimiento')
+                        ->prefixIcon('heroicon-m-calendar')
                         ->searchable(),
-                    TextColumn::make('phone_ti')
+                    TextInputColumn::make('phone_ti')
                         ->label('Telefono titular')
-                        ->icon('heroicon-m-phone')
+                        ->prefixIcon('heroicon-m-phone')
                         ->searchable(),
-                    TextColumn::make('email_ti')
+                    TextInputColumn::make('email_ti')
                         ->label('Email titular')
-                        ->icon('fontisto-email')
-                        ->searchable(),
-                    TextColumn::make('adress_ti')
-                        ->label('Direccion')
-                        ->icon('fontisto-map-marker-alt')
-                        ->searchable(),
-                    TextColumn::make('city.definition')
-                        ->label('Ciudad')
-                        ->searchable(),
-                    TextColumn::make('state.definition')
-                        ->label('Estado')
-                        ->searchable(),
-                    TextColumn::make('region_ti')
-                        ->label('Region')
-                        ->searchable(),
-                    TextColumn::make('country.name')
-                        ->label('Pais')
+                        ->prefixIcon('fontisto-email')
                         ->searchable(),
                 ]),
-
-                TextColumn::make('status')
-                    ->label('Estatus')
-                    ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'PRE-APROBADA'          => 'success',
-                            'ACTIVA'                => 'success',
-                            'PENDIENTE'             => 'warning',
-                            'EXCLUIDO'              => 'danger',
-                        };
-                    })
-                    ->searchable()
-                    ->icon(function (mixed $state): ?string {
-                        return match ($state) {
-                            'PRE-APROBADA'          => 'heroicon-c-information-circle',
-                            'ACTIVA'                => 'heroicon-s-check-circle',
-                            'PENDIENTE'             => 'heroicon-s-exclamation-circle',
-                            'EXCLUIDO'              => 'heroicon-c-x-circle',
-                        };
-                    }),
             ])
             ->filters([
                 //

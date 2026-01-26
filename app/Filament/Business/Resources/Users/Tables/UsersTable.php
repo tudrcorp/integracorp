@@ -2,21 +2,24 @@
 
 namespace App\Filament\Business\Resources\Users\Tables;
 
-use Filament\Tables\Table;
+use App\Http\Controllers\UtilsController;
+use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class UsersTable
 {
@@ -136,8 +139,16 @@ class UsersTable
                 //
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                Action::make('logoutUser')
+                    ->label('Forzar Logout')
+                    ->icon('heroicon-s-key')
+                    ->requiresConfirmation()
+                    ->color('warning')
+                    ->action(function (User $record) {
+                        UtilsController::logoutUser($record);
+                    })
+                    ->successNotificationTitle('Sesión cerrada correctamente. Favor comuniquese con el Usuario y solicite que ingrese nuevamente')
+                    ->failureNotificationTitle('Error al cerrar sesión'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -2,32 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Fee;
-use App\Models\City;
-use App\Models\Plan;
-use App\Models\State;
+use App\Jobs\GenerateCertificateCorporate;
 use App\Models\Agency;
-use App\Models\Region;
 use App\Models\AgeRange;
 use App\Models\BusinessLine;
-use Illuminate\Http\Request;
+use App\Models\City;
 use App\Models\CorporateQuote;
-use App\Models\IndividualQuote;
-use App\Models\DataNotification;
-use App\Models\TelemedicineCase;
 use App\Models\CorporateQuoteData;
+use App\Models\CorporateQuoteRequest;
+use App\Models\CorporateQuoteRequestData;
+use App\Models\DataNotification;
+use App\Models\DetailCorporateQuote;
+use App\Models\DetailIndividualQuote;
+use App\Models\DetailsCorporateQuoteRequest;
+use App\Models\Fee;
+use App\Models\IndividualQuote;
+use App\Models\NotificationFailed;
+use App\Models\Plan;
+use App\Models\Region;
+use App\Models\State;
+use App\Models\TelemedicineCase;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Notifications\Notification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\DetailCorporateQuote;
-use Illuminate\Support\Facades\Auth;
-use App\Models\CorporateQuoteRequest;
-use App\Models\DetailIndividualQuote;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Notifications\Notification;
-use App\Models\CorporateQuoteRequestData;
-use App\Jobs\GenerateCertificateCorporate;
-use App\Models\DetailsCorporateQuoteRequest;
 
 class UtilsController extends Controller
 {
@@ -1798,6 +1800,68 @@ class UtilsController extends Controller
     public static function getAge(string $birthDateString): int
     {
         return Carbon::createFromFormat('d/m/Y', $birthDateString)->age;
+    }
+
+    /**
+     * Cierra la sesión de un usuario específico de forma manual.
+     * * @param User $user El modelo del usuario al que se le cerrará la sesión.
+     * @return bool Retorna verdadero si se procesó la solicitud.
+     */
+    public static function logoutUser(User $user): bool
+    {
+        try {
+            // Opción 1: Si usas el driver de base de datos para sesiones (Recomendado para control manual)
+            // Esto elimina los registros de la tabla 'sessions' vinculados al ID del usuario.
+            DB::table('sessions')
+                ->where('user_id', $user->id)
+                ->delete();
+
+            Log::info("Sesión cerrada para el usuario: {$user->name}");
+
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error("Error al cerrar sesión del usuario {$user->id}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Valida si una fecha tiene el formato dd/mm/yyyy.
+     * * @param string $date
+     * @return bool
+     */
+    public static function validateDateFormat(string $date): bool
+    {
+        // Verifica el formato básico con Regex (dd/mm/yyyy)
+        if (!preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date)) {
+            return false;
+        }
+
+        // Verifica si la fecha es válida (ej. que no sea 31/02/2024)
+        try {
+            Carbon::createFromFormat('d/m/Y', $date);
+            return true;
+
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public static function notificationFailed($type, $name, $email = null, $phone = null, $message, $group): void
+    {
+        try {
+            NotificationFailed::create([
+                'type'      => $type,
+                'name'      => $name,
+                'email'     => $email ?? null,
+                'phone'     => $phone ?? null,
+                'message'   => $message,
+                'group'     => $group,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al crear notificación fallida: " . $e->getMessage());
+        }
     }
 
     
