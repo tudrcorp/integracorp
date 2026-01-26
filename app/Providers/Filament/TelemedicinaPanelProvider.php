@@ -2,39 +2,40 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Panel;
-use App\Models\User;
+use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Telemedicina\Pages\EjecutarAccionUsuario;
+use App\Filament\Telemedicina\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
+use App\Http\Middleware\DuplicatedSession;
 use App\Models\Agent;
-use Livewire\Component;
-use Filament\PanelProvider;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
-use Filament\Pages\Dashboard;
-use Filament\Resources\Resource;
-use Filament\Support\Enums\Width;
-use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
-use Filament\Navigation\NavigationItem;
-use Filament\Navigation\NavigationGroup;
-use Filament\Widgets\FilamentInfoWidget;
-use Filament\Schemas\Components\Fieldset;
 use Filament\Http\Middleware\Authenticate;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Cookie\Middleware\EncryptCookies;
 use Filament\Http\Middleware\AuthenticateSession;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use Filament\Http\Middleware\DisableBladeIconComponents;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
-use App\Filament\Telemedicina\Pages\EjecutarAccionUsuario;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
+use Filament\Pages\Dashboard;
+use Filament\Panel;
+use Filament\PanelProvider;
+use Filament\Resources\Resource;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
+use Filament\Widgets\AccountWidget;
+use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use App\Filament\Telemedicina\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Livewire\Component;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class TelemedicinaPanelProvider extends PanelProvider
 {
@@ -83,6 +84,7 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->authMiddleware([
                 Authenticate::class,
+            DuplicatedSession::class,
             ])
             ->registerErrorNotification(
                 title: 'ERROR DE EJECUCIÓN',
@@ -90,7 +92,7 @@ class TelemedicinaPanelProvider extends PanelProvider
                 statusCode: 404,
             )
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('Perfil del Doctor')
+                'profile' => fn(Action $action) => $action->label('PERFIL DEL DOCTOR')
                     ->icon('healthicons-f-doctor-male')
                     ->color('no-urgente')
                     ->url(function () {
@@ -100,7 +102,7 @@ class TelemedicinaPanelProvider extends PanelProvider
                         return TelemedicineDoctorResource::getUrl('create', panel: 'telemedicina');
                     }),
                 'logout' => fn(Action $action) => $action
-                    ->label('Cerrar Sesión')
+                    ->label('CERRAR SESIÓN')
                     ->color('critico')
                     ->url(route('internal')),
             ])

@@ -1864,5 +1864,104 @@ class UtilsController extends Controller
         }
     }
 
+    public static function apiWhatsAppStatus(): bool
+    {
+        try {
+
+            $params = array(
+                'token' => config('parameters.TOKEN')
+            );
+            $curl = curl_init();
+
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => "https://api.ultramsg.com/instance117518/instance/status?" . http_build_query($params),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "GET",
+                CURLOPT_HTTPHEADER => array(
+                    "content-type: application/x-www-form-urlencoded"
+                ),
+            ));
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error("INTEGRACORP: Error al obtener el estado de la API de WhatsApp: " . $err);
+                return false;
+            } else {
+                $data = json_decode($response);
+                if($data->status->accountStatus->status == 'authenticated'){
+                    Log::info('INTEGRACORP: La API de WhatsApp se encuentra autenticada');
+                    return true;
+                }else{
+                    return false;
+                }
+            }
+            //code...
+        } catch (\Throwable $th) {
+            Log::error("INTEGRACORP: Error al obtener el estado de la API de WhatsApp: " . $th->getMessage());
+            return false;
+        }
+        
+    }
+
+    public static function notificacionSesionDuplicada($user_id)
+    {
+        try {
+
+            $user = User::findOrFail($user_id);
+
+            if($user->phone == NULL){
+                $phone = '04127018390';
+                $body = 'Se detecto un inicio de sesión en otro dispositivo para el usuario: '.$user->name.', por razones de seguridad fueron cerradas ambas sesiones. Si estaba ejecutando alguna accion dentro del sistema no te preocupes, solo debe volver a Loguearse. Si esto persiste por favor comunicarse con el administrador del Sistema.';
+            }else{
+                $phone = $user->phone;
+                $body = 'Se detecto un inicio de sesión en otro dispositivo para el usuario: '.$user->name.', por razones de seguridad fueron cerradas ambas sesiones. Si estaba ejecutando alguna accion dentro del sistema no te preocupes, solo debe volver a Loguearse. Si esto persiste por favor comunicarse con el administrador del Sistema.';
+            }
+
+            if(self::apiWhatsAppStatus()){
+                $params = array(
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $phone,
+                    'body' => $body
+                );
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => array(
+                        "content-type: application/x-www-form-urlencoded"
+                    ),
+                ));
+
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+                Log::info("INTEGRACORP: " . $response);
+
+                curl_close($curl);
+            }else{
+                Log::warning("INTEGRACORP: Falla presentada en la autenticacion de la Instancia de WhatsApp");
+            }
+
+            
+        } catch (\Throwable $th) {
+            Log::error("INTEGRACORP: " . $th->getMessage());
+        }
+    }
+
     
 }

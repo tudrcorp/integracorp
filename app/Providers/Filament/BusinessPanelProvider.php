@@ -2,40 +2,41 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Panel;
-use Filament\PanelProvider;
+use App\Filament\Business\Resources\Plans\PlanResource;
+use App\Filament\Pages\AccountManagerDash;
+use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
-use Filament\Pages\Dashboard;
 use Filament\Facades\Filament;
-use Filament\Support\Enums\Width;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Http\Middleware\AuthenticateSession;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationBuilder;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
+use Filament\Pages\Dashboard;
+use Filament\Panel;
+use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Illuminate\Support\HtmlString;
+use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
-use Illuminate\Support\Facades\Auth;
-use Filament\Navigation\NavigationItem;
-use Filament\Navigation\NavigationGroup;
 use Filament\Widgets\FilamentInfoWidget;
-use App\Filament\Pages\AccountManagerDash;
-use Filament\Http\Middleware\Authenticate;
-use Filament\Navigation\NavigationBuilder;
 use function Filament\Support\original_request;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Filament\Http\Middleware\AuthenticateSession;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-
-use App\Filament\Business\Resources\Plans\PlanResource;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use SolutionForest\FilamentHeaderSelect\HeaderSelectPlugin;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 use SolutionForest\FilamentHeaderSelect\Components\HeaderSelect;
+use SolutionForest\FilamentHeaderSelect\HeaderSelectPlugin;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class BusinessPanelProvider extends PanelProvider
 {
@@ -93,12 +94,48 @@ class BusinessPanelProvider extends PanelProvider
                 // FilamentInfoWidget::class,
             ])
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('Profile'),
+                'profile' => fn(Action $action) => $action->label('PERFIL DE USUARIO'),
                 // ...
                 'logout' => fn(Action $action) => $action
-                    ->label('Cerrar Sesión')
+                    ->label('CERRAR SESIÓN')
                     ->color('danger')
                     ->url(route('internal')),
+                Action::make('Administracion')
+                    ->label('ADMINISTRACIÓN')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->color('warning')
+                    ->hidden(function () {
+                        $user = auth()->user()->departament;
+                        if (in_array('SUPERADMIN', $user)) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    ->action(fn () => redirect(route('filament.administration.pages.dashboard'))),
+                Action::make('Operaciones')
+                    ->label('OPERACIONES')
+                    ->icon('heroicon-c-server-stack')
+                    ->color('success')
+                    ->hidden(function () {
+                        $user = auth()->user()->departament;
+                        if (in_array('SUPERADMIN', $user)) {
+                            return false;
+                        }
+                        return true;
+                })
+                    ->action(fn () => redirect(route('filament.operations.pages.dashboard'))),
+                Action::make('Marketing')
+                    ->label('MARKETING')
+                    ->icon('heroicon-o-cursor-arrow-rays')
+                    ->color('info')
+                    ->hidden(function () {
+                        $user = auth()->user()->departament;
+                        if (in_array('SUPERADMIN', $user)) {
+                            return false;
+                        }
+                        return true;
+                })
+                    ->action(fn () => redirect(route('filament.marketing.pages.dashboard'))),
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -113,6 +150,7 @@ class BusinessPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                DuplicatedSession::class,
             ])
             ->registerErrorNotification(
                 title: 'ERROR DE EJECUCIÓN',
@@ -130,10 +168,10 @@ class BusinessPanelProvider extends PanelProvider
                 PanelsRenderHook::TOPBAR_END,
                 fn() => view('filament.name-user')
             )
-            ->renderHook(
-                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn() => view('filament.menu-user')
-            )
+            // ->renderHook(
+            //     PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+            //     fn() => view('filament.menu-user')
+            // )
             ->viteTheme('resources/css/filament/admin/theme.css');
             // ->defaultThemeMode(ThemeMode::Light);
     }
