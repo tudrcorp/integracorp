@@ -1161,10 +1161,10 @@ class NotificationMasiveService
                                 //Validamos si esta cumpliendo años
                                 if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
                                     // Si el formato es inválido, registramos el nombre y saltamos a la siguiente persona
-                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    Log::warning("Fecha de cumpleaños es nula o vacia para el usuario: " . ($data[$k]->first_name ?? 'Desconocido'));
                                     UtilsController::notificationFailed(
                                         'email',
-                                        $data[$k]->full_name,
+                                        $data[$k]->first_name,
                                         $data[$k]->email,
                                         null,
                                         'Fecha de cumpleaños es nula o vacia',
@@ -1174,10 +1174,10 @@ class NotificationMasiveService
                                 }
 
                                 if (!UtilsController::validateDateFormat($data[$k]->birth_date)) {
-                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    Log::warning("Formato de fecha inválido para el usuario: " . ($data[$k]->first_name ?? 'Desconocido'));
                                     UtilsController::notificationFailed(
                                         'email',
-                                        $data[$k]->full_name,
+                                        $data[$k]->first_name,
                                         $data[$k]->email,
                                         null,
                                         'Formato de fecha de cumpleaños inválido',
@@ -1187,10 +1187,10 @@ class NotificationMasiveService
                                 }
 
                                 if ($data[$k]->email == null || $data[$k]->email == '') {
-                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->full_name ?? 'Desconocido'));
+                                    Log::warning("Email es nulo o vacio para el usuario: " . ($data[$k]->first_name ?? 'Desconocido'));
                                     UtilsController::notificationFailed(
                                         'email',
-                                        $data[$k]->full_name,
+                                        $data[$k]->first_name,
                                         $data[$k]->email,
                                         null,
                                         'Email es nulo o vacio',

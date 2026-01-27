@@ -2,28 +2,30 @@
 
 namespace App\Filament\Business\Resources\Agents\Schemas;
 
-use App\Models\City;
-use App\Models\User;
-use App\Models\State;
 use App\Models\Agency;
-use App\Models\Region;
-use App\Models\Country;
 use App\Models\AgencyType;
-use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
+use App\Models\City;
+use App\Models\Country;
+use App\Models\Region;
+use App\Models\State;
+use App\Models\User;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AgentForm
 {
@@ -325,7 +327,8 @@ class AgentForm
                             ->label('Usuario de Instagram')
                             ->prefixIcon('heroicon-s-user')
                             ->maxLength(255),
-                        Hidden::make('created_by')->default(Auth::user()->name),
+                        Hidden::make('created_by')->default(Auth::user()->name)->hiddenOn('edit'),
+                        Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
                     ])->columnSpanFull()->columns(4),
                 Section::make('DATOS BANCARIOS MONEDA NACIONAL')
                     ->description('Fomulario. Campo Requerido(*)')
@@ -595,12 +598,41 @@ class AgentForm
                                 'numeric'   => 'Campo tipo numerico.',
                             ]),
                     ])->columnSpanFull()->columns(2),
-                Section::make('COMENTARIOS')
-                    ->collapsed()
+                Section::make('OBSERVACIONES')
+                    ->description('Seccion para que el analista documente todo lo relacionado a reunion y contactos con el/los agente(s)')
                     ->icon('heroicon-m-folder-plus')
                     ->schema([
-                        Textarea::make('comments')
-                            ->label('Comentarios')
+                        Repeater::make('observationCommercialStructures')
+                            ->label('Observaciones')
+                            ->relationship()
+                            ->table([
+                                TableColumn::make('Observacion/Notas'),
+                                TableColumn::make('Responsable del Registro'),
+                                TableColumn::make('Fecha del Registro'),
+                            ])
+                            ->schema([
+                                Textarea::make('observation')
+                                    ->label('Observacion')
+                                    ->autosize(),
+                                TextInput::make('created_by')
+                                    ->label('Responsable')
+                                    ->default(Auth::user()->name)
+                                    ->disabled()
+                                    ->dehydrated(),
+                                TextInput::make('date')
+                                    ->default(now()->format('d/m/Y H:i:s'))
+                                    ->disabled()
+                                    ->dehydrated(),
+                            ])
+                            ->deletable(function () {
+                                $user = auth()->user()->departament;
+                                if (in_array('SUPERADMIN', $user)) {
+                                    return true;
+                                }
+                                return false;
+                            })
+                            ->columns(2)
+                            ->columnSpanFull(),
                     ])->columnSpanFull(),
             ]);
     }

@@ -13,6 +13,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
@@ -47,15 +48,8 @@ class TravelAgencyForm
                             ->label('Nombre de la Agencia')
                             ->required()
                             ->maxLength(255),
-                        Select::make('typeIdentification')
-                            ->label('Tipo de identificacion')
-                            ->options([
-                                'V' => 'V',
-                                'E' => 'E',
-                                'J' => 'J',
-                            ])
-                            ->required(),
                         TextInput::make('numberIdentification')
+                    ->prefix('J/V/E-')
                             ->label('Numero de identificacion')
                             ->numeric()
                             ->required(),
@@ -166,9 +160,9 @@ class TravelAgencyForm
 
                     ])->columnSpanFull()->columns(4),
 
-                Section::make("Contacto Secundario")
+                Section::make("Contacto del Area Administrativa")
                     ->collapsed()
-                    ->description("Informacion de Contacto Secundario de la Agencia")
+                    ->description("Informacion de Contacto del Area Administrativa de la Agencia")
                     ->icon('heroicon-o-phone-arrow-up-right')
                     ->schema([
                         TextInput::make('nameSecundario')
@@ -257,7 +251,7 @@ class TravelAgencyForm
                         Select::make('classification')
                             ->label('Clasificación')
                             ->options([
-                                'AGENCIA DE VIEAJES'  => 'AGENCIA DE VIEAJES',
+                                'AGENCIA DE VIAJES'   => 'AGENCIA DE VIAJES',
                                 'MAYORISTA'           => 'MAYORISTA',
                                 'CONSOLIDADOR'        => 'CONSOLIDADOR',
                                 'FREELANCE'           => 'FREELANCE',
@@ -403,6 +397,7 @@ class TravelAgencyForm
                         ])->columnSpanFull()->columns(3),
 
                     ])->columnSpanFull()->columns(3),
+
                 Section::make('DATOS BANCARIOS MONEDA EXTRANJERA')
                     ->description('Fomulario. Campo Requerido(*)')
                     ->collapsed()
@@ -526,6 +521,43 @@ class TravelAgencyForm
 
 
                     ])->columnSpanFull()->columns(4),
+
+                Section::make('OBSERVACIONES')
+                    ->description('Seccion para que el analista documente todo lo relacionado a reunion y contactos con la Agencia de Viajes')
+                    ->icon('heroicon-m-folder-plus')
+                    ->schema([
+                        Repeater::make('observationCommercialStructures')
+                            ->label('Observaciones')
+                            ->relationship()
+                            ->table([
+                                TableColumn::make('Observacion/Notas'),
+                                TableColumn::make('Responsable del Registro'),
+                                TableColumn::make('Fecha del Registro'),
+                            ])
+                            ->schema([
+                                Textarea::make('observation')
+                                    ->label('Observacion')
+                                    ->autosize(),
+                                TextInput::make('created_by')
+                                    ->label('Responsable')
+                                    ->default(Auth::user()->name)
+                                    ->disabled()
+                                    ->dehydrated(),
+                                TextInput::make('date')
+                                    ->default(now()->format('d/m/Y H:i:s'))
+                                    ->disabled()
+                                    ->dehydrated(),
+                            ])
+                            ->deletable(function () {
+                                $user = auth()->user()->departament;
+                                if (in_array('SUPERADMIN', $user)) {
+                                    return true;
+                                }
+                                return false;
+                            })
+                            ->columns(2)
+                            ->columnSpanFull(),
+                    ])->columnSpanFull(),
 
                 
             ]);

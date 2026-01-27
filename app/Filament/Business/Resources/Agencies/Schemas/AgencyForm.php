@@ -2,35 +2,37 @@
 
 namespace App\Filament\Business\Resources\Agencies\Schemas;
 
-use App\Models\City;
-use App\Models\User;
-use App\Models\State;
-use App\Models\Agency;
-use App\Models\Region;
-use App\Models\Country;
-use App\Models\AgencyType;
-use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
 use App\Http\Controllers\UtilsController;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use Illuminate\Support\HtmlString;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Blade;
+use App\Models\Agency;
+use App\Models\AgencyType;
+use App\Models\City;
+use App\Models\Country;
+use App\Models\Region;
+use App\Models\State;
+use App\Models\User;
 use Filament\Forms\Components\Checkbox;
-use Filament\Schemas\Components\Wizard;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 
 class AgencyForm
 {
@@ -105,7 +107,8 @@ class AgencyForm
                         Hidden::make('owner_code')
                             ->live()
                             ->default('TDG-100'),
-                        Hidden::make('created_by')->default(Auth::user()->name),
+                        Hidden::make('created_by')->default(Auth::user()->name)->hiddenOn('edit'),
+                        Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
 
                     ])->columnSpanFull()->columns(4),
                 Section::make('INFORMACION PRINCIPAL')
@@ -145,21 +148,20 @@ class AgencyForm
                                 'email'     => 'El campo es un email',
                             ])
                             ->maxLength(255),
-                        TextInput::make('address')
-                            ->label('Dirección')
-                            ->afterStateUpdated(function (Set $set, $state) {
-                                $set('address', strtoupper($state));
-                            })
-                            ->live(onBlur: true)
+                        TextInput::make('name_representative')
+                            ->label('Nombre del Representante')
                             ->prefixIcon('heroicon-s-identification')
                             ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->afterStateUpdatedJs(<<<'JS'
+                                            $set('name_representative', $state.toUpperCase());
+                                        JS),
                         TextInput::make('ci_responsable')
-                            ->label('Cedula del responsable')
-                            ->prefix('J-')
+                            ->label('Cédula del Representante')
+                            ->prefix('V-')
                             ->numeric()
                             ->unique(
                                 ignoreRecord: true,
@@ -173,6 +175,32 @@ class AgencyForm
                                 'numeric'   => 'El campo es numerico',
                             ])
                             ->required(),
+                        DatePicker::make('brithday_date')
+                            ->label('Fecha de Nacimiento del Representante')
+                            ->format('d/m/Y')
+                            ->required()
+                            ->validationMessages([
+                                'required'  => 'Campo Requerido',
+                            ]),
+                        DatePicker::make('anniversary_date')
+                            ->label('Fecha de Aniversario de la Agencia')
+                            ->format('d/m/Y')
+                            ->required()
+                            ->validationMessages([
+                                'required'  => 'Campo Requerido',
+                            ]),
+                        TextInput::make('address')
+                            ->label('Dirección')
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                $set('address', strtoupper($state));
+                            })
+                            ->live(onBlur: true)
+                            ->prefixIcon('heroicon-s-identification')
+                            ->required()
+                            ->validationMessages([
+                                'required'  => 'Campo Requerido',
+                            ])
+                            ->maxLength(255),
                         Select::make('country_code')
                             ->label('Código de país')
                             ->options([
@@ -713,13 +741,49 @@ class AgencyForm
                                 'numeric'   => 'Campo tipo numerico.',
                             ]),
                     ])->columnSpanFull()->columns(2),
-                Section::make('COMENTARIOS')
-                    ->collapsed()
+                // Section::make('COMENTARIOS')
+                //     ->collapsed()
+                //     ->icon('heroicon-m-folder-plus')
+                //     ->schema([
+                //         Textarea::make('comments')
+                //             ->label('Comentarios')
+                //     ])->columnSpanFull(),
+                Section::make('OBSERVACIONES')
+                    ->description('Seccion para que el analista documente todo lo relacionado a reunion y contactos con la agencia')
                     ->icon('heroicon-m-folder-plus')
                     ->schema([
-                        Textarea::make('comments')
-                            ->label('Comentarios')
+                        Repeater::make('observationCommercialStructures')
+                            ->label('Observaciones')
+                            ->relationship()
+                            ->table([
+                                TableColumn::make('Observacion/Notas'),
+                                TableColumn::make('Responsable del Registro'),
+                                TableColumn::make('Fecha del Registro'),
+                            ])
+                            ->schema([
+                                Textarea::make('observation')
+                                    ->label('Observacion')
+                                    ->autosize(),
+                                TextInput::make('created_by')
+                                    ->label('Responsable')
+                                    ->default(Auth::user()->name)
+                                    ->disabled()
+                                    ->dehydrated(),
+                                TextInput::make('date')
+                                    ->default(now()->format('d/m/Y H:i:s'))
+                                    ->disabled()
+                                    ->dehydrated(),
+                            ])
+                            ->deletable(function () {
+                                $user = auth()->user()->departament;
+                                if (in_array('SUPERADMIN', $user)) {
+                                    return true;
+                                }
+                                return false;
+                            })
+                            ->columns(2)
+                            ->columnSpanFull(),
                     ])->columnSpanFull(),
-            ]);
+        ]);
     }
 }

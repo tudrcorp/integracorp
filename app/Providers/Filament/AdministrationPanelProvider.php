@@ -118,10 +118,6 @@ class AdministrationPanelProvider extends PanelProvider
                             ->directory('backgroundAgentPanelLogin')
                     ),
             ])
-            ->renderHook(
-                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn() => view('filament.return-modulo-negocios')
-            )
             ->authMiddleware([
                 Authenticate::class,
             DuplicatedSession::class,
