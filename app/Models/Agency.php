@@ -34,6 +34,7 @@ class Agency extends Model
         'name_contact_2',
         'email_contact_2',
         'phone_contact_2',
+        
 
         //datos bancarios moneda local
         'local_beneficiary_name',
@@ -73,6 +74,7 @@ class Agency extends Model
         'is_accepted_conditions',
         'status',
         'created_by',
+        'updated_by',
         'comments',
 
         /*Docuemntos*/
@@ -85,7 +87,7 @@ class Agency extends Model
         'name_representative',
         'user_tdev',
         'brithday_date',
-
+        'anniversary_date',
         'activate_monthly_frequency',
         'type_chart',
         'account_manager_id',
@@ -194,6 +196,11 @@ class Agency extends Model
     public function accountManager()
     {
         return $this->belongsTo(AccountManager::class, 'ownerAccountManagers', 'user_id');
+    }
+
+    public function observationCommercialStructures()
+    {
+        return $this->hasMany(ObservationCommercialStructure::class);
     }
 
 }

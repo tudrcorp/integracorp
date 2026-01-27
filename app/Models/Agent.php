@@ -78,6 +78,7 @@ class Agent extends Model
         'is_accepted_conditions',
         'status',
         'created_by',
+        'updated_by',
         'file_coord_bancarias',
         'fir_dig_agent',
         'fir_dig_agency',
@@ -201,5 +202,10 @@ class Agent extends Model
     public function accountManager()
     {
         return $this->belongsTo(AccountManager::class, 'ownerAccountManagers', 'user_id');
+    }
+
+    public function observationCommercialStructures()
+    {
+        return $this->hasMany(ObservationCommercialStructure::class);
     }
 }

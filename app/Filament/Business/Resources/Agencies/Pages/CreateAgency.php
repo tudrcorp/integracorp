@@ -37,7 +37,7 @@ class CreateAgency extends CreateRecord
                 ->danger()
                 ->send();
             
-                Log::warning('El Usuario '.Auth::user()->name.' intento registrar una agencia con un RIF ya existente.');
+                Log::warning('NEGOCIOS: El Usuario '.Auth::user()->name.' intento registrar una agencia con un RIF ya existente.');
                 
                 $this->halt();
             }   
@@ -51,7 +51,7 @@ class CreateAgency extends CreateRecord
                     ->danger()
                     ->send();
                 
-                Log::warning('El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente.');
+                Log::warning('NEGOCIOS: El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente.');
 
                 $this->halt();
             }
@@ -65,7 +65,7 @@ class CreateAgency extends CreateRecord
                     ->danger()
                     ->send();
                 
-                Log::warning('El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente.');
+                Log::warning('NEGOCIOS: El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente.');
 
                 $this->halt();
             }
@@ -79,7 +79,7 @@ class CreateAgency extends CreateRecord
                     ->danger()
                     ->send();
                 
-                Log::warning('El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente.');
+                Log::warning('NEGOCIOS: El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente.');
 
                 $this->halt();
             }

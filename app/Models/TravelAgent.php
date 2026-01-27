@@ -24,4 +24,9 @@ class TravelAgent extends Model
     {
         return $this->belongsTo(TravelAgency::class);
     }
+
+    public function observationCommercialStructures()
+    {
+        return $this->hasMany(ObservationCommercialStructure::class);
+    }
 }
