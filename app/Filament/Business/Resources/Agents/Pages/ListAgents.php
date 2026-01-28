@@ -72,7 +72,7 @@ class ListAgents extends ListRecords
 
                         if ($data['email'] != null) {
 
-                            $link = config('parameters.REGISTER_AGENT');
+                            $link = config('parameters.register_agent');
                             $sendEmail  = NotificationController::send_email_agent_register($link, $data['email']);
                             if ($sendEmail == true) {
 
@@ -95,7 +95,7 @@ class ListAgents extends ListRecords
 
                         if ($data['phone'] != null) {
 
-                            $link = config('parameters.REGISTER_AGENT');
+                            $link = config('parameters.register_agent');
                             $response = NotificationController::send_link_agent_register_wp($link, $data['phone']);
                             if ($response) {
                                 Notification::make()
