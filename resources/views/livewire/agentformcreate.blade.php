@@ -35,7 +35,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
     public function mount($code = null)
     {
-        $code_decrypted = isset($this->code) ? Crypt::decryptString($this->code) : 'TDG-100';
+        $code_decrypted = isset($code) ? Crypt::decryptString($code) : 'TDG-100';
         $this->owner_code = $code_decrypted;
     }
 
@@ -62,21 +62,22 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             $create_agent->agent_type_id    = 2;
             $create_agent->name             = $this->name;
             $create_agent->email            = $this->email;
+            $create_agent->status           = 'ACTIVO';
             $create_agent->save();
 
             /**
              * Creamos el registro en la tabla de usuarios
              */
             $create_user = new User();
-            $create_user->code_agent = 'AGT-000' . $create_agent->id;
+            $create_user->code_agent        = 'AGT-000' . $create_agent->id;
             $create_user->agent_id          = $create_agent->id;
             $create_user->code_agency       = $create_agent->owner_code;
             $create_user->is_agent          = true;
             $create_user->name              = strtoupper($this->name);
             $create_user->email             = $this->email;
             $create_user->password          = $validated['password'];
-            $create_user->link_agent = env('APP_URL') . '/agent/c/' . Crypt::encryptString($create_agent->id);
-            $create_user->status = 'ACTIVO';
+            $create_user->link_agent        = env('APP_URL') . '/agent/c/' . Crypt::encryptString($create_agent->id);
+            $create_user->status            = 'ACTIVO';
             $create_user->save();
 
         /**
