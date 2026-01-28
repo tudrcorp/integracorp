@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\AccountManagers\RelationManagers;
 
 use App\Models\AgencyType;
+use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use Filament\Actions\EditAction;
@@ -21,13 +22,17 @@ class AgenciesRelationManager extends RelationManager
 {
     protected static string $relationship = 'agencies';
 
+    protected static ?string $title = 'AGENCIAS DE CORRETAJE';
+
+    protected static string|BackedEnum|null $icon = 'heroicon-c-building-library';
+
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('ownerAccountManagers')
             ->defaultSort('created_at', 'desc')
             ->heading('AGENCIAS')
-            ->description('Lista de agencias registradas en el sistema')
+            ->description('Lista de Agencias Master y General asignadas a esta estrucutra de negocios')
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')
@@ -88,6 +93,6 @@ class AgenciesRelationManager extends RelationManager
                     })
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                ]);
+            ]);
     }
 }
