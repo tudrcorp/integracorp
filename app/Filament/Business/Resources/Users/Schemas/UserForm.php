@@ -94,18 +94,12 @@ class UserForm
                     ->schema([
                         Fieldset::make('Roles')
                             ->schema([
-                                Toggle::make('is_admin')
-                                    ->label('Administrador'),
                                 Toggle::make('is_agent')
                                     ->label('Agente'),
                                 Toggle::make('is_subagent')
                                     ->label('Subagente'),
                                 Toggle::make('is_agency')
                                     ->label('Agencia'),
-                                Toggle::make('is_doctor')
-                                    ->label('Doctor'),
-                                Toggle::make('is_designer')
-                                    ->label('Diseñador y Marketing'),
                                 Toggle::make('is_accountManagers')
                                     ->label('Administrador de Cuentas'),
                                 Toggle::make('is_superAdmin')

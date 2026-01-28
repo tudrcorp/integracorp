@@ -12,6 +12,7 @@ class StatsOverviewPlan extends StatsOverviewWidget
     protected ?string $heading = 'ANÁLISIS DE AFILIACIONES POR PLAN';
 
     protected ?string $description = 'Distribución de afiliaciones mensuales según el tipo de suscripción.';
+    
     protected function getStats(): array
     {
         // dd($this->getPageTableQuery()->where('plan_id', 1)->sum('total_amount'));

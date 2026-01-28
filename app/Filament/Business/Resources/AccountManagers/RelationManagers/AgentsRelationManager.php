@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\AccountManagers\RelationManagers;
 
 use App\Models\Agency;
+use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use Filament\Actions\EditAction;
@@ -21,6 +22,10 @@ class AgentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'agents';
 
+    protected static ?string $title = 'AGENTES DE CORRETAJE';
+
+    protected static string|BackedEnum|null $icon = 'heroicon-s-user-group';
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -37,7 +42,7 @@ class AgentsRelationManager extends RelationManager
             ->recordTitleAttribute('ownerAccountManagers')
             ->defaultSort('created_at', 'desc')
             ->heading('AGENTES')
-            ->description('Lista de agentes registrados en el sistema')
+            ->description('Lista de Agentes asignados a esta estrucutra de negocios')
             ->columns([
                 TextColumn::make('id')
                     ->label('Código de agente')

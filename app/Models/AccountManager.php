@@ -12,10 +12,13 @@ class AccountManager extends Model
     protected $fillable = [
         'user_id',
         'full_name',
+        'ci',
+        'birth_date',
         'phone',
         'address',
         'email',
         'created_by',
+        'updated_by',
     ];
 
     public function user()

@@ -48,6 +48,7 @@ class User extends Authenticatable implements FilamentUser
         'updated_by',
         'created_by',
         'doctor_id',
+        'phone',
         
     ];
 

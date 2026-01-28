@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\AccountManagers\Tables;
 
+use App\Models\AccountManager;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -18,22 +19,31 @@ class AccountManagersTable
             ->description('Lista de account managers registrados en el Sistema')
             ->columns([
                 TextColumn::make('user_id')
+                    ->label('INTEGRACORP ID')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('full_name')
+                    ->label('Nombre y Apellido')
                     ->searchable(),
                 TextColumn::make('phone')
+                    ->label('Telefono')
                     ->searchable(),
                 TextColumn::make('address')
+                    ->label('Direccion')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
+                    ->label('Correo Electronico')
                     ->searchable(),
                 TextColumn::make('created_at')
+                    ->label('Fecha de Creacion')
+                    ->description(fn (AccountManager $record) => $record->created_at->diffForHumans())
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
+                TextColumn::make('created_by')
+                    ->label('Creado por')
+                    ->searchable(),
                 TextColumn::make('updated_at')
+                    ->label('Fecha de Actualizacion')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
