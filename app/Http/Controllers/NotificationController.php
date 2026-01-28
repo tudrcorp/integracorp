@@ -414,6 +414,7 @@ class NotificationController extends Controller
      */
     static function send_link_agent_register_wp($link, $phone)
     {
+
         try {
 
             // 1. Sanitización del teléfono para asegurar compatibilidad
@@ -559,6 +560,21 @@ class NotificationController extends Controller
 
         try {
 
+            // 1. Limpieza de entrada
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+            $filePath = public_path('storage/quotes/' . $nameDoc);
+
+            // 2. Verificación específica de existencia del documento (Requerimiento)
+            if (!file_exists($filePath)) {
+                Log::error("AGENTE: WhatsApp Doc Error: El archivo no existe en la ruta especificada.", [
+                    'path' => $filePath,
+                    'file' => $nameDoc,
+                    'phone' => $cleanPhone
+                ]);
+                return false;
+            }
+
+
             $body = <<<HTML
 
             *Estimado(a)*.
@@ -580,11 +596,11 @@ class NotificationController extends Controller
             HTML;
             
             $params = array(
-                'token' => config('parameters.TOKEN'),
-                'to' => $phone,
-                'filename' => $nameDoc,
-                'document' => config('parameters.PUBLIC_URL').'/quotes/'.$nameDoc,
-                'caption' => $body
+                'token'     => config('parameters.TOKEN'),
+                'to'        => $phone,
+                'filename'  => $nameDoc,
+                'document'  => public_path('storage/quotes/' . $nameDoc),
+                'caption'   => $body
             );
             $curl = curl_init();
             curl_setopt_array($curl, array(
@@ -604,20 +620,46 @@ class NotificationController extends Controller
             ));
 
             $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            Log::info($response);
-            Log::info($phone);
-            Log::info('Document: ' .config('parameters.PUBLIC_URL') . '/quotes/' . $nameDoc);
-            
-            Log::error($err);
+            $err      = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
-            return true;
+            // 6. Manejo de Errores de Conexión o Respuesta
+            if ($err) {
+                Log::error("AGENTE: Error de conexión cURL al enviar cotización", [
+                    'error' => $err,
+                    'to'    => $cleanPhone
+                ]);
+                return false;
+            }
+
+            // Registro de éxito o advertencia según código HTTP
+            if ($httpCode >= 200 && $httpCode < 300) {
+                Log::info("AGENTE: Cotización enviada con éxito.", [
+                    'phone' => $cleanPhone,
+                    'doc'   => $nameDoc,
+                    'api_response' => $response
+                ]);
+                return true;
+            }
+
+            Log::warning("AGENTE: API respondió con error al enviar documento", [
+                'http_code' => $httpCode,
+                'response'  => $response,
+                'phone'     => $cleanPhone
+            ]);
+
+            return false;
 
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            
+            // Manejo de excepciones inesperadas
+            Log::critical("AGENTE: Fallo crítico en el proceso de envío de cotización", [
+                'message' => $th->getMessage(),
+                'trace'   => $th->getTraceAsString()
+            ]);
+
             return false;
         }
     }

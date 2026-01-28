@@ -8,6 +8,9 @@ use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Mail\UploadPayment;
 use App\Models\Affiliation;
+use App\Models\Agency;
+use App\Models\AgencyType;
+use App\Models\Agent;
 use App\Models\DetailIndividualQuote;
 use App\Models\User;
 use Carbon\Carbon;
@@ -1192,10 +1195,11 @@ class AffiliationsTable
                                 ->send();
                         }),
 
-            ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
+                ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+
                     DeleteBulkAction::make()
                         ->deselectRecordsAfterCompletion()
                         ->requiresConfirmation()
@@ -1695,6 +1699,7 @@ class AffiliationsTable
                                     ->send();
                             }
                         }),
+
                     BulkAction::make('edit_frequency_payment')
                         ->hidden(fn() => Auth::user()->is_business_admin != 1)
                         ->label('Editar Frecuencia de Pago')
@@ -1761,6 +1766,172 @@ class AffiliationsTable
                             }    
                             
                         }),
+
+                    BulkAction::make('reassign_affiliation')
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1)
+                        ->label('Reasignar Afiliación')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->color('warning')
+                        ->icon('heroicon-s-squares-plus')
+                        ->form([
+                            Section::make('REASIGNAR AFILIACION')
+                            ->description('En esta seccion realizaras una reasignacion de las afiliaciones seleccionadas')
+                            ->schema([
+                                Select::make('owner_code')
+                                    ->label('Pertenece a una Agencia Master?')
+                                    ->helperText('Si el agente pertenece a una agencia master, debes seleccionarla')
+                                    ->options(function (Get $get, $record) {
+                                        return Agency::all()
+                                            ->where('status', 'ACTIVO')
+                                            ->mapWithKeys(function ($agency) {
+                                                $type = AgencyType::find($agency->agency_type_id)->definition;
+                                                return [$agency->code => "{$type} - {$agency->code}"];
+                                            });
+                                    })
+                                    ->searchable()
+                                    ->preload(),
+                                Select::make('code_agency')
+                                    ->label('Pertenece a una Agencia General?')
+                                    ->helperText('Si el agente pertenece a una agencia general, debes seleccionarla')
+                                    ->options(function (Get $get, $record) {
+                                        return Agency::all()
+                                            ->where('status', 'ACTIVO')
+                                            ->where('agency_type_id', 3)
+                                            ->mapWithKeys(function ($agency) {
+                                                $type = AgencyType::find($agency->agency_type_id)->definition;
+                                                return [$agency->code => "{$type} - {$agency->code}"];
+                                            });
+                                    })
+                                    ->searchable()
+                                    ->preload(),
+                                Select::make('agent_id')
+                                    ->native(false)
+                                    ->label('Propietario')
+                                    ->options(function (Get $get, $record) {
+                                        return Agent::all()
+                                            ->where('status', 'ACTIVO')
+                                            ->mapWithKeys(function ($agent) {
+                                                return [$agent->id => "{$agent->owner_code} - {$agent->name}"];
+                                            });
+                                    })
+                                    ->searchable()
+                                    ->preload(),
+                            ])
+                        ])
+                        ->action(function (Collection $records, array $data) {
+
+                            try {
+
+                                //1.- Master
+                                if($data['owner_code'] != null && $data['code_agency'] == null && $data['agent_id'] == null) {
+                                    $records->each(function ($record) use ($data) {
+                                        $record->update([
+                                            'owner_code'    => $data['owner_code'],
+                                            'code_agency'   => $data['owner_code'],
+                                            'agent_id'      => null,
+                                        ]);
+                                    });
+                                }
+
+                                //2.- General
+                                if ($data['code_agency'] != null && $data['owner_code'] == null && $data['agent_id'] == null) {
+                                    $records->each(function ($record) use ($data) {
+                                        $record->update([
+                                            'owner_code'    => $data['code_agency'],
+                                            'code_agency'   => $data['code_agency'],
+                                            'agent_id'      => null,
+                                        ]);
+                                    });
+                                }
+
+                                //3.- Agente
+                                if ($data['owner_code'] == null && $data['code_agency'] == null && $data['agent_id'] != null) {
+                                    $records->each(function ($record) use ($data) {
+                                        $record->update([
+                                            'owner_code'    => 'TDG-100',
+                                            'code_agency'   => 'TDG-100',
+                                            'agent_id'      => $data['agent_id'],
+                                        ]);
+                                    });
+                                }
+
+                                //4.- Master + General + Agente
+                                if ($data['owner_code'] != null && $data['code_agency'] != null && $data['agent_id'] != null) {
+                                    $records->each(function ($record) use ($data) {
+                                        $record->update([
+                                            'owner_code'    => $data['owner_code'],
+                                            'code_agency'   => $data['code_agency'],
+                                            'agent_id'      => $data['agent_id'],
+                                        ]);
+                                    });
+                                }
+
+                                //5.- Master + General
+                                if ($data['owner_code'] != null && $data['code_agency'] != null && $data['agent_id'] == null) {
+                                    $records->each(function ($record) use ($data) {
+                                        $record->update([
+                                            'owner_code'    => $data['owner_code'],
+                                            'code_agency'   => $data['code_agency'],
+                                            'agent_id'      => null,
+                                        ]);
+                                    });
+                                }
+
+                                //6.- Master + Agente
+                                if ($data['owner_code'] != null && $data['code_agency'] == null && $data['agent_id'] != null) {
+                                    $records->each(function ($record) use ($data) {
+                                        $record->update([
+                                            'owner_code'    => $data['owner_code'],
+                                            'code_agency'   => $data['owner_code'],
+                                            'agent_id'      => $data['agent_id'],
+                                        ]);
+                                    });
+                                }
+
+                                //7.- General + Agente
+                                if ($data['owner_code'] == null && $data['code_agency'] != null && $data['agent_id'] != null) {
+                                    $records->each(function ($record) use ($data) {
+                                        $record->update([
+                                            'owner_code'    => $data['code_agency'],
+                                            'code_agency'   => $data['code_agency'],
+                                            'agent_id'      => $data['agent_id'],   
+                                        ]); 
+                                    });
+                                }
+
+                                Notification::make()
+                                    ->title('Actualización Exitosa')
+                                    ->icon('heroicon-m-check-circle')
+                                    ->body('Los códigos han sido actualizados correctamente.')
+                                    ->success()
+                                    ->send();
+
+                                
+                            } catch (\Throwable $th) {
+
+                                // 4. Registro de error con contexto para debugging senior
+                                Log::error("NEGOCIOS-AFILIACIONES: Fallo al actualizar registros de pago", [
+                                    'input_data' => $data,
+                                    'exception_message' => $th->getMessage(),
+                                    'file' => $th->getFile(),
+                                    'line' => $th->getLine(),
+                                ]);
+
+                                // 5. Notificación de error amigable y persistente
+                                Notification::make()
+                                    ->title('Error de Actualización')
+                                    ->icon('heroicon-m-exclamation-triangle')
+                                    ->body('No se pudo procesar la actualización de los códigos.')
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+
+                                // Re-lanzamos si estamos dentro de una transacción mayor o queremos que Filament maneje el rollback
+                                throw $th; 
+                        
+                            }
+                        }),
+
                     ExportBulkAction::make()->exporter(AffiliationExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
                 ]),
             ])
