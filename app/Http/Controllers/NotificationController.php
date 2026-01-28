@@ -563,7 +563,6 @@ class NotificationController extends Controller
             $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
             $filePath = public_path('storage/quotes/' . $nameDoc);
 
-            dd(config('parameters.PUBLIC_URL') . '/quotes/' . $nameDoc);
 
             // 2. Verificación específica de existencia del documento (Requerimiento)
             if (!file_exists($filePath)) {
