@@ -193,28 +193,17 @@ class IndividualQuotesTable
                             Section::make()
                                 ->schema([
                                     TextInput::make('email')
-                                        ->label('Email')
-                                        ->email(),
-                                    Grid::make(2)->schema([
-                                        Select::make('country_code')
-                                            ->label('Código de país')
-                                            ->options(fn() => UtilsController::getCountries())
-                                            ->searchable()
-                                            ->default('+58')
-                                            ->live(onBlur: true),
-                                        TextInput::make('phone')
-                                            ->prefixIcon('heroicon-s-phone')
-                                            ->tel()
-                                            ->label('Número de teléfono')
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                $countryCode = $get('country_code');
-                                                if ($countryCode) {
-                                                    $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
-                                                }
-                                            }),
-                                    ])
+                                        ->label('Correo Electrónico')
+                                        ->email()
+                                        ->maxLength(255)
+                                        ->autocomplete('email')
+                                        ->prefixIcon('heroicon-m-envelope')
+                                        ->helperText('Use una dirección de correo institucional o personal válida.'),
+                                    TextInput::make('phone')
+                                        ->prefixIcon('heroicon-s-phone')
+                                        ->tel()
+                                        ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
+                                        ->label('Número de teléfono')
                                 ])
                         ])
                         ->action(function (IndividualQuote $record, array $data) {
@@ -273,8 +262,9 @@ class IndividualQuotesTable
                                     ->iconColor('verde')
                                     ->success()
                                     ->send();
+
                             } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body($th->getMessage())
