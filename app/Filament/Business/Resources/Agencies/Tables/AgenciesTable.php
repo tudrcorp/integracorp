@@ -296,74 +296,74 @@ class AgenciesTable
                         ->color('success')
                         ->requiresConfirmation()
                         ->hidden(fn(Agency $record) => $record->status == 'ACTIVO'),
-                Action::make('edit_jerarquia')
-                    ->requiresConfirmation()
-                    ->label('Editar Jerarquía')
-                    ->icon('heroicon-s-cog')
-                    ->color('warning')
-                    ->modalWidth(Width::ThreeExtraLarge)
-                    ->action(function (Agency $record) {
-                        
-                        try {
+                    Action::make('edit_jerarquia')
+                        ->requiresConfirmation()
+                        ->label('Editar Jerarquía')
+                        ->icon('heroicon-s-cog')
+                        ->color('warning')
+                        ->modalWidth(Width::ThreeExtraLarge)
+                        ->action(function (Agency $record) {
+                            
+                            try {
 
-                            //1. Busco la informacion del agente en la tabla de usuario para actualizar la informacion
-                            // para que el agente acceda con el mismo usuario como agencia master
-                            $user = User::where('email', $record->email)->first()->update([
-                                'agency_type' => 'MASTER',
-                            ]);
+                                //1. Busco la informacion del agente en la tabla de usuario para actualizar la informacion
+                                // para que el agente acceda con el mismo usuario como agencia master
+                                $user = User::where('email', $record->email)->first()->update([
+                                    'agency_type' => 'MASTER',
+                                ]);
 
-                            //2. Busco en la tabla de COTIZACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
-                            // para migrar la informacion del agente a la agencia master
-                            $individualQuote = IndividualQuote::where('code_agency', $record->code)->get();
-                            foreach ($individualQuote as $quote) {
-                                $quote->owner_code  = $record->code;
-                                $quote->save();
+                                //2. Busco en la tabla de COTIZACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                // para migrar la informacion del agente a la agencia master
+                                $individualQuote = IndividualQuote::where('code_agency', $record->code)->get();
+                                foreach ($individualQuote as $quote) {
+                                    $quote->owner_code  = $record->code;
+                                    $quote->save();
+                                }
+
+                                //3. Busco en la tabla de COTIZACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                // para migrar la informacion del agente a la agencia master
+                                $corporateQuote = CorporateQuote::where('code_agency', $record->code)->get();
+                                foreach ($corporateQuote as $corpquote) {
+                                    $corpquote->owner_code  = $record->code;
+                                    $corpquote->save();
+                                }
+
+                                //4. Busco en la tabla de AFILIACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                // para migrar la informacion del agente a la agencia master
+                                $afiliacionIndividual = Affiliation::where('code_agency', $record->code)->get();
+                                foreach ($afiliacionIndividual as $afiInvidual) {
+                                    $afiInvidual->owner_code  = $record->code;
+                                    $afiInvidual->save();
+                                }
+
+                                //5. Busco en la tabla de AFILIACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                // para migrar la informacion del agente a la agencia master
+                                $afiliacionCorporativa = AffiliationCorporate::where('code_agency', $record->code)->get();
+                                foreach ($afiliacionCorporativa as $corp) {
+                                    $corp->owner_code  = $record->code;
+                                    $corp->save();
+                                }
+
+
+                                Notification::make()
+                                    ->title('ASCENSO EXITOSO')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->iconColor('success')
+                                    ->color('success')
+                                    ->send();
+                                    
+                            } catch (\Throwable $th) {
+
+                                Notification::make()
+                                    ->title('EXCEPCION')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('error')
+                                    ->color('error')
+                                    ->send();
                             }
-
-                            //3. Busco en la tabla de COTIZACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
-                            // para migrar la informacion del agente a la agencia master
-                            $corporateQuote = CorporateQuote::where('code_agency', $record->code)->get();
-                            foreach ($corporateQuote as $corpquote) {
-                                $corpquote->owner_code  = $record->code;
-                                $corpquote->save();
-                            }
-
-                            //4. Busco en la tabla de AFILIACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
-                            // para migrar la informacion del agente a la agencia master
-                            $afiliacionIndividual = Affiliation::where('code_agency', $record->code)->get();
-                            foreach ($afiliacionIndividual as $afiInvidual) {
-                                $afiInvidual->owner_code  = $record->code;
-                                $afiInvidual->save();
-                            }
-
-                            //5. Busco en la tabla de AFILIACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
-                            // para migrar la informacion del agente a la agencia master
-                            $afiliacionCorporativa = AffiliationCorporate::where('code_agency', $record->code)->get();
-                            foreach ($afiliacionCorporativa as $corp) {
-                                $corp->owner_code  = $record->code;
-                                $corp->save();
-                            }
-
-
-                            Notification::make()
-                                ->title('ASCENSO EXITOSO')
-                                ->icon('heroicon-s-check-circle')
-                                ->iconColor('success')
-                                ->color('success')
-                                ->send();
-                                
-                        } catch (\Throwable $th) {
-
-                            Notification::make()
-                                ->title('EXCEPCION')
-                                ->body($th->getMessage())
-                                ->icon('heroicon-s-x-circle')
-                                ->iconColor('error')
-                                ->color('error')
-                                ->send();
-                        }
-                    })
-                    ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        })
+                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
                     Action::make('Inactivate')
                         ->label('Inactivar')
                         ->action(fn(Agency $record) => $record->update(['status' => 'INACTIVO']))

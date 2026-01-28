@@ -232,17 +232,41 @@ class NotificationController extends Controller
     {
         try {
 
+            // Validamos que el email sea válido antes de intentar el envío
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                Log::warning("NEGOCIOS-AGENCIA: Intento de envío de correo a dirección inválida: {$email}");
+                return false;
+            }
+
             $content = [
                 'link' => $link,
+                'sent_at' => now(),
             ];
 
-            // Enviar el correo
-            Mail::to($email)->send(new AgencyRegisterEmail($content));
+            // Se recomienda que AgencyRegisterEmail implemente ShouldQueue para no bloquear la ejecución
+            Mail::to($email)
+            ->cc('tudrgroup.info@gmail.com')
+            ->send(new AgencyRegisterEmail($content));
 
             return true;
+
             //code...
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_email_agency_register()', $th->getMessage());
+
+            // Obtenemos el ID del usuario de forma segura (soporta null si no hay sesión)
+            $userId = Auth::id() ?? 'System/Guest';
+
+            // Logging enriquecido para debugging experto
+            // Usamos el Log nativo de Laravel o tu LogController personalizado
+            Log::error("Error crítico en envío de email de registro", [
+                'user_id' => $userId,
+                'method'  => __METHOD__,
+                'email'   => $email,
+                'message' => $th->getMessage(),
+                'trace'   => $th->getTraceAsString() // Útil para entornos de desarrollo/staging
+            ]);
+
+            return false;
         }
     }
 
@@ -250,23 +274,49 @@ class NotificationController extends Controller
     {
         try {
 
+            // Validamos que el email sea válido antes de intentar el envío
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                Log::warning("NEGOCIOS-AGENCIA: Intento de envío de correo a dirección inválida: {$email}");
+                return false;
+            }
+
             $content = [
                 'link' => $link,
+                'sent_at' => now(),
             ];
 
             // Enviar el correo
-            Mail::to($email)->send(new AgentRegisterEmail($content));
+            Mail::to($email)
+                ->cc('tudrgroup.info@gmail.com')
+                ->send(new AgentRegisterEmail($content));
 
             return true;
             //code...
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_email_agency_register()', $th->getMessage());
+
+            // Obtenemos el ID del usuario de forma segura (soporta null si no hay sesión)
+            $userId = Auth::id() ?? 'System/Guest';
+            
+            // Logging enriquecido para debugging experto
+            // Usamos el Log nativo de Laravel o tu LogController personalizado
+            Log::error("Error crítico en envío de email de registro", [
+                'user_id' => $userId,
+                'method'  => __METHOD__,
+                'email'   => $email,
+                'message' => $th->getMessage(),
+                'trace'   => $th->getTraceAsString() // Útil para entornos de desarrollo/staging
+            ]);
+
+            return false;
         }
     }
 
     static function send_link_agency_register_wp($link, $phone)
     {
         try {
+
+            // 1. Sanitización del teléfono para asegurar compatibilidad
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
 
             $body = <<<HTML
 
@@ -290,7 +340,7 @@ class NotificationController extends Controller
 
             $params = array(
                 'token' => config('parameters.TOKEN'),
-                'to' => $phone,
+                'to' => $cleanPhone,
                 'body' => $body
             );
             $curl = curl_init();
@@ -311,20 +361,45 @@ class NotificationController extends Controller
             ));
 
             $response = curl_exec($curl);
-            $err = curl_error($curl);
+            $err      = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
+            // 4. Manejo experto de errores de la respuesta
             if ($err) {
-                Log::error($err);
+                Log::error("NEGOCIOS-AGENCIA: Error de conexión cURL en WhatsApp API", [
+                    'error' => $err,
+                    'phone' => $cleanPhone
+                ]);
                 return false;
-            } 
+            }
 
-            return true;
+            // Validar si el código HTTP es de éxito (200-299)
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return true;
+            }
+
+            // Log de error si el API responde con un código de falla
+            Log::warning("NEGOCIOS-AGENCIA: WhatsApp API respondió con error", [
+                'status_code' => $httpCode,
+                'response'    => $response,
+                'phone'       => $cleanPhone
+            ]);
+
+            return false;
 
             
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_link_preAffiliation()', $th->getMessage());
+
+            Log::critical("NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_link_agency_register_wp", [
+                'message' => $th->getMessage(),
+                'file'    => $th->getFile(),
+                'line'    => $th->getLine(),
+                'trace'   => $th->getTraceAsString()
+            ]);
+
+            return false;
         }
     }
 
@@ -340,6 +415,9 @@ class NotificationController extends Controller
     static function send_link_agent_register_wp($link, $phone)
     {
         try {
+
+            // 1. Sanitización del teléfono para asegurar compatibilidad
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
 
             $body = <<<HTML
 
@@ -369,7 +447,7 @@ class NotificationController extends Controller
 
             $params = array(
                 'token' => config('parameters.TOKEN'),
-                'to' => $phone,
+                'to' => $cleanPhone,
                 'body' => $body
             );
             $curl = curl_init();
@@ -390,32 +468,44 @@ class NotificationController extends Controller
             ));
 
             $response = curl_exec($curl);
-            $err = curl_error($curl);
+            $err      = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
+            // 4. Manejo experto de errores de la respuesta
             if ($err) {
-                Log::error($err);
+                Log::error("NEGOCIOS-AGENCIA: Error de conexión cURL en WhatsApp API", [
+                    'error' => $err,
+                    'phone' => $cleanPhone
+                ]);
                 return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link para registro del agente',
-                        'objeto' => 'NotificationController::send_link_agent_register_wp',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-                    return false;
-                }
+            }
 
+            // Validar si el código HTTP es de éxito (200-299)
+            if ($httpCode >= 200 && $httpCode < 300) {
                 return true;
             }
+
+            // Log de error si el API responde con un código de falla
+            Log::warning("NEGOCIOS-AGENCIA: WhatsApp API respondió con error", [
+                'status_code' => $httpCode,
+                'response'    => $response,
+                'phone'       => $cleanPhone
+            ]);
+
+            return false;
             
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_link_preAffiliation()', $th->getMessage());
+
+            Log::critical("NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_link_agency_register_wp", [
+                'message' => $th->getMessage(),
+                'file'    => $th->getFile(),
+                'line'    => $th->getLine(),
+                'trace'   => $th->getTraceAsString()
+            ]);
+
+            return false;
         }
     }
 

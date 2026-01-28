@@ -25,48 +25,18 @@ class CreateAgent extends CreateRecord
     protected function beforeCreate(): void
     {
 
-            $ci = $this->data['ci'];
-            $rif = $this->data['rif'];
             $email = $this->data['email'];
-
-            if (Agent::where('ci', $ci)->exists() || Agent::where('rif', $rif)->exists()) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('El RIF o la CI ya se encuentra registrado en la tabla de agentes.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-
-                Log::warning('NEGOCIOS: El Usuario ' . Auth::user()->name . ' intento registrar un agente con un RIF ya existente.');
-
-                $this->halt();
-            }
-
-            if (Agent::where('email', $email)->exists()) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('El Correo electrónico ya se encuentra registrado en la tabla de agencias.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-
-                Log::warning('NEGOCIOS: El Usuario ' . Auth::user()->name . ' intento registrar una agencia con un correo electrónico ya existente.');
-
-                $this->halt();
-            }
 
             if (Agency::where('email', $email)->exists()) {
                 Notification::make()
                     ->title('ERROR')
-                    ->body('El Correo electrónico ya se encuentra registrado en la tabla de agencias.')
+                    ->body('El Correo electrónico ya se encuentra registrado en la tabla de Agencias de Corretaje. Por favor intenta con otro correo electrónico.')
                     ->icon('heroicon-m-tag')
                     ->iconColor('danger')
                     ->danger()
                     ->send();
 
-                Log::warning('NEGOCIOS: El Usuario ' . Auth::user()->name . ' intento registrar una agencia con un correo electrónico ya existente.');
+                Log::warning('NEGOCIOS: El Usuario ' . Auth::user()->name . ' intento registrar un agente con un correo electrónico ya existente en la tabla de agencias.');
 
                 $this->halt();
             }
@@ -74,13 +44,13 @@ class CreateAgent extends CreateRecord
             if (User::where('email', $email)->exists()) {
                 Notification::make()
                     ->title('ERROR')
-                    ->body('El Correo electrónico ya se encuentra registrado en la tabla de usuarios.')
+                    ->body('El Correo electrónico ya se encuentra registrado en la tabla de Usuarios. Por favor intenta con otro correo electrónico.')
                     ->icon('heroicon-m-tag')
                     ->iconColor('danger')
                     ->danger()
                     ->send();
 
-                Log::warning('NEGOCIOS: El Usuario ' . Auth::user()->name . ' intento registrar una agencia con un correo electrónico ya existente.');
+                Log::warning('NEGOCIOS: El Usuario ' . Auth::user()->name . ' intento registrar un agente con un correo electrónico ya existente en la tabla de usuarios.');
 
                 $this->halt();
             }

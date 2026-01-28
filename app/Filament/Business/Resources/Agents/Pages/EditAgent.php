@@ -16,7 +16,15 @@ class EditAgent extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+
         $data['updated_by'] = Auth::user()->name;
+
+        if($data['owner_code'] === null) {
+            $data['owner_code'] = 'TDG-100';
+        }
+        if($data['owner_code'] === '') {
+            $data['owner_code'] = 'TDG-100';
+        }
 
         return $data;
     }
