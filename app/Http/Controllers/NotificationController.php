@@ -557,12 +557,13 @@ class NotificationController extends Controller
 
     static function sendQuote($phone, $nameDoc)
     {
-
         try {
 
             // 1. Limpieza de entrada
             $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
             $filePath = public_path('storage/quotes/' . $nameDoc);
+
+            dd(config('parameters.PUBLIC_URL') . '/quotes/' . $nameDoc);
 
             // 2. Verificación específica de existencia del documento (Requerimiento)
             if (!file_exists($filePath)) {
@@ -599,7 +600,7 @@ class NotificationController extends Controller
                 'token'     => config('parameters.TOKEN'),
                 'to'        => $phone,
                 'filename'  => $nameDoc,
-                'document'  => public_path('storage/quotes/' . $nameDoc),
+                'document'  => config('parameters.PUBLIC_URL') . '/quotes/' . $nameDoc,
                 'caption'   => $body
             );
             $curl = curl_init();
@@ -653,7 +654,7 @@ class NotificationController extends Controller
             return false;
 
         } catch (\Throwable $th) {
-            
+
             // Manejo de excepciones inesperadas
             Log::critical("AGENTE: Fallo crítico en el proceso de envío de cotización", [
                 'message' => $th->getMessage(),
