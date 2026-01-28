@@ -55,6 +55,8 @@ class SendMailPropuestaMultiPlan extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        return [
+            public_path('storage/quotes/' . $this->name_pdf),
+        ];
     }
 }
