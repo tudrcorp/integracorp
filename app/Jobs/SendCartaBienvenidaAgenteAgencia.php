@@ -2,20 +2,21 @@
 
 namespace App\Jobs;
 
+use App\Http\Controllers\NotificationController;
+use App\Mail\MailCartaBienvenidaAgenteAgencia;
+use App\Mail\SendMailPropuestaPlanInicial;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
 use Filament\Notifications\Notification;
-use Illuminate\Queue\InteractsWithQueue;
-use App\Mail\SendMailPropuestaPlanInicial;
-use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Mail\MailCartaBienvenidaAgenteAgencia;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendCartaBienvenidaAgenteAgencia implements ShouldQueue
 {
@@ -56,7 +57,45 @@ class SendCartaBienvenidaAgenteAgencia implements ShouldQueue
         
         $pdf = Pdf::loadView('documents.carta-bienvenida-agente', compact('id', 'name'));
         $pdf->save(public_path('storage/' . $name_pdf));
+
+        // Liberar memoria inmediatamente de la variable pesada
+        unset($pdf);
         
-        Mail::to($email)->send(new MailCartaBienvenidaAgenteAgencia($id, $name, $name_pdf));
+        Mail::to($email)
+            ->cc('tudrgroup.info@gmail.com')
+            ->send(new MailCartaBienvenidaAgenteAgencia($id, $name, $name_pdf));
+
+        Log::info("NEGOCIOS-AGENTES: Job CartaBienvenida completado con éxito.", [
+            'id' => $this->id,
+            'email'   => $this->email
+        ]);
+        
+    }
+
+    /**
+     * Manejo centralizado de errores dentro del Job.
+     */
+    protected function reportError(Throwable $e, string $context): void
+    {
+        Log::error("NEGOCIOS-AGENTES: Error en Job SendCartaBienvenida [Contexto: {$context}]", [
+            'id'      => $this->id,
+            'message' => $e->getMessage(),
+            'file'    => $e->getFile(),
+            'line'    => $e->getLine(),
+        ]);
+    }
+
+    /**
+     * Método ejecutado cuando el Job falla definitivamente tras agotar todos los intentos.
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::critical("NEGOCIOS-AGENTES: El Job SendCartaBienvenida ha FALLADO definitivamente.", [
+            'id'    => $this->id,
+            'email' => $this->email,
+            'error' => $exception->getMessage()
+        ]);
+
+        // Aquí podrías enviar una notificación interna a Slack o por DB a un administrador
     }
 }

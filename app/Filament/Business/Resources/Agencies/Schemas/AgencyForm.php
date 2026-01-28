@@ -132,20 +132,29 @@ class AgencyForm
                             ->label('Rif')
                             ->prefix('J-')
                             ->numeric()
+                            ->unique(
+                                table: Agency::class,
+                                column: 'rif'
+                            )
                             ->required()
                             ->validationMessages([
                                 'required'  => 'Campo requerido',
                                 'numeric'   => 'El campo es numerico',
-                            ])
-                            ->required(),
+                                'unique'    => 'El rif ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
+                            ]),
                         TextInput::make('email')
                             ->label('Correo electrónico')
                             ->prefixIcon('heroicon-s-at-symbol')
                             ->email()
                             ->required()
+                            ->unique(
+                                table: Agency::class,
+                                column: 'email'
+                            )
                             ->validationMessages([
                                 'required'  => 'Campo requerido',
                                 'email'     => 'El campo es un email',
+                                'unique'    => 'El email ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
                             ])
                             ->maxLength(255),
                         TextInput::make('name_representative')

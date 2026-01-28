@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\Agents\Schemas;
 
 use App\Models\Agency;
 use App\Models\AgencyType;
+use App\Models\Agent;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Region;
@@ -118,10 +119,16 @@ class AgentForm
                         TextInput::make('ci')
                             ->label('Cedula de Identidad')
                             ->prefix('V/E/C')
+                            ->unique(
+                                table: Agent::class,
+                                column: 'ci',
+                            )
                             ->numeric()
                             ->required()
                             ->validationMessages([
+                                'required'  => 'Campo requerido',
                                 'numeric'   => 'El campo es numerico',
+                                'unique'    => 'La cedula de identidad ya existe en la tabla de agentes. Por favor intente con otra',
                             ]),
 
                         Select::make('sex')
@@ -158,9 +165,14 @@ class AgentForm
                             ->prefixIcon('heroicon-s-at-symbol')
                             ->email()
                             ->required()
+                            ->unique(
+                                table: Agent::class,
+                                column: 'email',
+                            )
                             ->validationMessages([
                                 'required'  => 'Campo requerido',
                                 'email'     => 'El campo es un email',
+                                'unique'    => 'El correo electrónico ya se encuentra registrado en la tabla de agentes. Por favor intente con otro',
                             ])
                             ->maxLength(255),
                         TextInput::make('address')
