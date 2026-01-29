@@ -1896,10 +1896,8 @@ class NotificationController extends Controller
                 Log::info("es imagen");
                 $params = array(
                     'token' => config('parameters.TOKEN'),
-                    // 'to' => $phone,
-                    'to' => '04127018390',
-                    // 'image' => config('parameters.PUBLIC_URL') . '/' . $file,
-                    'image' => 'https://tudrgroup.com/images/nuevaInvitacion.jpg',
+                    'to' => $phone,
+                    'image' => config('parameters.PUBLIC_URL') . '/' . $file,
                     'caption' => $body
                 );
                 $curl = curl_init();
