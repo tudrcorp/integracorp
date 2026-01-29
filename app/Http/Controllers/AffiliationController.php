@@ -1017,7 +1017,7 @@ class AffiliationController extends Controller
                 $zip->close();
                 Log::info('ZIP path', ['path' => $tempZipPath, 'exists' => file_exists($tempZipPath)]);
                 Log::info("DESCARGA COMPLETADA: Kit enviado correctamente.", [
-                    'to' => $data['email'],
+                    // 'to' => $data['email'],
                     'user' => $record->full_name_payer,
                 ]);
                 return $tempZipPath;
@@ -1048,7 +1048,7 @@ class AffiliationController extends Controller
                 Mail::to($data['email'])->send(new SendMailKitBienvenida($code, $condicionado));
 
                 Log::info("ENVIO COMPLETADO: Kit enviado correctamente.", [
-                    'to' => $data['email'],
+                    // 'to' => $data['email'],
                     'user' => $record->full_name_payer,
                 ]);
 
@@ -1063,7 +1063,7 @@ class AffiliationController extends Controller
         } catch (\Throwable $th) {
 
             Log::error("FALLA DE ENVIO: No se pudo enviar el kit.", [
-                'to' => $data['email'],
+                // 'to' => $data['email'],
                 'user' => $record->full_name_payer,
                 'error' => $th->getMessage(),
                 'trace' => $th->getTraceAsString()
