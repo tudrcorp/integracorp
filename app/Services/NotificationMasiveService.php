@@ -6,6 +6,7 @@ use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\SendNotificationMasiveMailBirthday;
+use App\Jobs\WhatsAppBirthdayNotification;
 use App\Mail\NotificationMasiveMail;
 use App\Mail\NotificationMasiveMailBirthday;
 use App\Models\AgentDocument;
@@ -440,13 +441,39 @@ class NotificationMasiveService
                                         //Ejecuto el envio de la notificacion
                                         set_time_limit(0);
 
-                                        NotificationController::notificationBirthday(
+                                        WhatsAppBirthdayNotification::dispatch(
                                             $data[$k]->name,
                                             $data[$k]->phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
                                         );
+
+                                        WhatsAppBirthdayNotification::dispatch(
+                                            $data[$k]->name,
+                                            '04143027250',
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type'],
+                                        )->delay(now()->addSeconds(10));
+
+                                        // NotificationController::notificationBirthday(
+                                        //     $data[$k]->name,
+                                        //     $data[$k]->phone,
+                                        //     $rowsNotifications[$i]['content'],
+                                        //     $rowsNotifications[$i]['file'],
+                                        //     $rowsNotifications[$i]['type']
+                                        // );
+
+                                        // sleep(5);
+
+                                        // NotificationController::notificationBirthday(
+                                        //     $data[$k]->name,
+                                        //     '04143027250',
+                                        //     $rowsNotifications[$i]['content'],
+                                        //     $rowsNotifications[$i]['file'],
+                                        //     $rowsNotifications[$i]['type']
+                                        // );
 
                                         // LogController::logSuccessWp($data[$k]->phone);
 
@@ -523,13 +550,21 @@ class NotificationMasiveService
                                         //Ejecuto el envio de la notificacion
                                         set_time_limit(0);
 
-                                        NotificationController::notificationBirthday(
+                                        WhatsAppBirthdayNotification::dispatch(
                                             $data[$k]->name_corporative,
                                             $data[$k]->phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
                                         );
+
+                                        WhatsAppBirthdayNotification::dispatch(
+                                            $data[$k]->name_corporative,
+                                            '04143027250',
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        )->delay(now()->addSeconds(10));
 
                                         // LogController::logSuccessWp($data[$k]->phone);
 
@@ -608,13 +643,21 @@ class NotificationMasiveService
                                             set_time_limit(0);
 
                                             //Envio Principal al Cliente
-                                            NotificationController::notificationBirthday(
+                                            WhatsAppBirthdayNotification::dispatch(
                                                 $data[$k]->full_name,
                                                 $data[$k]->phone,
                                                 $rowsNotifications[$i]['content'],
                                                 $rowsNotifications[$i]['file'],
                                                 $rowsNotifications[$i]['type']
                                             );
+
+                                            WhatsAppBirthdayNotification::dispatch(
+                                                $data[$k]->full_name,
+                                                '04143027250',
+                                                $rowsNotifications[$i]['content'],
+                                                $rowsNotifications[$i]['file'],
+                                                $rowsNotifications[$i]['type']
+                                            )->delay(now()->addSeconds(10));
 
                                             // LogController::logSuccess($data[$k]->email);
 
@@ -693,13 +736,21 @@ class NotificationMasiveService
                                         set_time_limit(0);
 
                                         //Envio Principal al Cliente
-                                        NotificationController::notificationBirthday(
+                                        WhatsAppBirthdayNotification::dispatch(
                                             $data[$k]->first_name,
                                             $data[$k]->phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
                                         );
+
+                                        WhatsAppBirthdayNotification::dispatch(
+                                            $data[$k]->first_name,
+                                            '04143027250',
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        )->delay(now()->addSeconds(10));
 
                                         // LogController::logSuccess($data[$k]->email);
                                     } else {
@@ -777,7 +828,7 @@ class NotificationMasiveService
                                         set_time_limit(0);
 
                                         //Envio Principal al Cliente
-                                        NotificationController::notificationBirthday(
+                                        WhatsAppBirthdayNotification::dispatch(
                                             $data[$k]->fullName,
                                             $data[$k]->telefono,
                                             $rowsNotifications[$i]['content'],
@@ -785,7 +836,16 @@ class NotificationMasiveService
                                             $rowsNotifications[$i]['type']
                                         );
 
+                                        WhatsAppBirthdayNotification::dispatch(
+                                            $data[$k]->fullName,
+                                            '04143027250',
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        )->delay(now()->addSeconds(10));
+
                                         LogController::logSuccess($data[$k]->emailCorporativo);
+
                                     } else {
                                         continue;
                                     }
@@ -861,13 +921,21 @@ class NotificationMasiveService
                                         set_time_limit(0);
 
                                         //Envio Principal al Cliente
-                                        NotificationController::notificationBirthday(
+                                        WhatsAppBirthdayNotification::dispatch(
                                             $data[$k]->name,
                                             $data[$k]->personal_phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
                                         );
+
+                                        WhatsAppBirthdayNotification::dispatch(
+                                            $data[$k]->name,
+                                            '04143027250',
+                                            $rowsNotifications[$i]['content'],
+                                            $rowsNotifications[$i]['file'],
+                                            $rowsNotifications[$i]['type']
+                                        )->delay(now()->addSeconds(10));
 
                                         // LogController::logSuccess($data[$k]->personal_phone);
                                     } else {

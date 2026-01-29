@@ -10,6 +10,9 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Address;
 
+use Illuminate\Support\Facades\Log;
+use Illuminate\Mail\Mailables\Attachment;
+
 
 class SendMailPropuestaPlanIdeal extends Mailable implements ShouldQueue
 {
@@ -35,8 +38,12 @@ class SendMailPropuestaPlanIdeal extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('cotizaciones@tudrencasa.com', 'TuDrEnCasa Cotización. (INTEGRACORP)'),
-            subject: 'Propuesta Sr(a). ' . $this->titular . ' Cotización Plan Ideal'
+            from: new Address('cotizaciones@tudrencasa.com', 'TuDrEnCasa Cotización'),
+            subject: "Propuesta Sr(a). {$this->titular} - Cotización Plan Ideal",
+            tags: ['cotizacion', 'plan-ideal'],
+            metadata: [
+                'titular_name' => $this->titular,
+            ],
         );
     }
 
@@ -57,9 +64,34 @@ class SendMailPropuestaPlanIdeal extends Mailable implements ShouldQueue
      */
     public function attachments(): array
     {
+        $filePath = public_path("storage/quotes/{$this->name_pdf}");
+
+        // Validación experta: Si el archivo no existe, registramos el error y enviamos sin adjunto
+        // o podrías lanzar una excepción si el adjunto es obligatorio para el negocio.
+        if (!file_exists($filePath)) {
+            Log::error("Mailable Error: No se encontró el archivo para adjuntar.", [
+                'path'    => $filePath,
+                'titular' => $this->titular
+            ]);
+
+            return [];
+        }
+
         return [
-            public_path('storage/quotes/'.$this->name_pdf),
-            // $this->attachFromStorage('public/ejemploCSV.csv', 'ejemploCSV.csv'),
+            Attachment::fromPath($filePath)
+                ->as("Cotizacion_{$this->titular}.pdf")
+                ->withMime('application/pdf'),
         ];
+    }
+
+    /**
+     * Manejo de errores cuando el Mailable falla después de los reintentos en la cola.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::critical("Fallo definitivo enviando correo de propuesta a: {$this->titular}", [
+            'error' => $exception->getMessage(),
+            'file'  => $this->name_pdf
+        ]);
     }
 }

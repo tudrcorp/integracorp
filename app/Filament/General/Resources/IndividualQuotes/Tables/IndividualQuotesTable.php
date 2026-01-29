@@ -2,40 +2,44 @@
 
 namespace App\Filament\General\Resources\IndividualQuotes\Tables;
 
-use Carbon\Carbon;
-use App\Models\Agent;
+use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UtilsController;
+use App\Jobs\ResendEmailPropuestaEconomica;
+use App\Mail\MailLinkIndividualQuote;
+use App\Mail\SendMailPropuestaMultiPlan;
+use App\Mail\SendMailPropuestaPlanEspecial;
+use App\Mail\SendMailPropuestaPlanIdeal;
+use App\Mail\SendMailPropuestaPlanInicial;
 use App\Models\Agency;
+use App\Models\Agent;
 use App\Models\Bitacora;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
 use App\Models\IndividualQuote;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Illuminate\Support\HtmlString;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\MailLinkIndividualQuote;
-use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Actions\DeleteBulkAction;
-use App\Http\Controllers\LogController;
 use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use App\Http\Controllers\UtilsController;
-use Filament\Forms\Components\DatePicker;
-use Illuminate\Database\Eloquent\Builder;
-use App\Jobs\ResendEmailPropuestaEconomica;
 use Filament\Schemas\Components\Utilities\Get;
-use App\Http\Controllers\NotificationController;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
 
 class IndividualQuotesTable
 {
@@ -233,73 +237,87 @@ class IndividualQuotesTable
                         ->modalWidth(Width::ExtraLarge)
                         ->form([
                             Section::make()
-                                // ->heading('Informacion')
-                                // ->description('El link puede sera enviado por email y/o telefono!')
                                 ->schema([
                                     TextInput::make('email')
-                                        ->label('Email')
-                                        ->email(),
-                                    Grid::make(2)->schema([
-                                        Select::make('country_code')
-                                            ->label('Código de país')
-                                            ->options(fn() => UtilsController::getCountries())
-                                            ->searchable()
-                                            ->default('+58')
-                                            ->required()
-                                            ->live(onBlur: true)
-                                            ->validationMessages([
-                                                'required'  => 'Campo Requerido',
-                                            ]),
-                                        TextInput::make('phone')
-                                            ->prefixIcon('heroicon-s-phone')
-                                            ->tel()
-                                            ->label('Número de teléfono')
-                                            ->required()
-                                            ->validationMessages([
-                                                'required'  => 'Campo Requerido',
-                                            ])
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                $countryCode = $get('country_code');
-                                                if ($countryCode) {
-                                                    $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
-                                                }
-                                            }),
-                                    ])
+                                        ->label('Correo Electrónico')
+                                        ->email()
+                                        ->maxLength(255)
+                                        ->autocomplete('email')
+                                        ->prefixIcon('heroicon-m-envelope')
+                                        ->helperText('Use una dirección de correo institucional o personal válida.'),
+                                    TextInput::make('phone')
+                                        ->prefixIcon('heroicon-s-phone')
+                                        ->tel()
+                                        ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
+                                        ->label('Número de teléfono')
                                 ])
                         ])
                         ->action(function (IndividualQuote $record, array $data) {
 
                             try {
 
+                                // dd($record);
+
                                 $email = null;
                                 $phone = null;
 
                                 if (isset($data['email'])) {
+
                                     $email = $data['email'];
+                                    $doc = $record->code . '.pdf';
+
+                                    if ($record->plan == 1) {
+                                        Mail::to($data['email'])
+                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 2) {
+                                        Mail::to($data['email'])
+                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 3) {
+                                        Mail::to($data['email'])
+                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 'CM') {
+                                        Mail::to($data['email'])
+                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
+                                    }
                                 }
 
                                 if (isset($data['phone'])) {
+
                                     $phone = $data['phone'];
+                                    $nameDoc = $record->code . '.pdf';
+
+                                    $res = NotificationController::sendQuote($phone, $nameDoc);
+
+                                    if (!$res) {
+                                        Notification::make()
+                                            ->title('ERROR')
+                                            ->body('La cotización no pudo ser enviada por whatsapp. Por favor, contacte con el administrador del Sistema.')
+                                            ->icon('heroicon-s-x-circle')
+                                            ->iconColor('danger')
+                                            ->danger()
+                                            ->send();
+                                    }
                                 }
 
-                                /**
-                                 * JOB
-                                 */
-                                $job = ResendEmailPropuestaEconomica::dispatch($record, $email, $phone);
-
-                                if ($job) {
-                                    Notification::make()
-                                        ->title('RE-ENVIADO EXITOSO')
-                                        ->body('La informacion fue re-enviada exitosamente.')
-                                        ->icon('heroicon-s-check-circle')
-                                        ->iconColor('verde')
-                                        ->success()
-                                        ->send();
-                                }
+                                Notification::make()
+                                    ->title('ENVÍO EXITOSO')
+                                    ->body('La cotización fue reenviada exitosamente.')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->iconColor('verde')
+                                    ->success()
+                                    ->send();
                             } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body($th->getMessage())
