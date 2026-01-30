@@ -274,7 +274,6 @@ class TelemedicinePatientForm
                     ])->columnSpanFull(),
                 Section::make('Representante o Contacto')
                     ->hiddenOn('edit')
-                    // ->hidden(fn(Get $get) => $get('age') >= 18)
                     ->schema([
                         Fieldset::make('Formulario de Contacto')
                             ->schema([

@@ -108,7 +108,7 @@ class AgencyForm
                             ->live()
                             ->default('TDG-100'),
                         Hidden::make('created_by')->default(Auth::user()->name)->hiddenOn('edit'),
-                        Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
+                        Hidden::make('updated_by')->hiddenOn('create'),
 
                     ])->columnSpanFull()->columns(4),
                 Section::make('INFORMACION PRINCIPAL')
