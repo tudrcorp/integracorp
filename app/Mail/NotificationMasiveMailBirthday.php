@@ -52,7 +52,7 @@ class NotificationMasiveMailBirthday extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('afiliaciones@tudrencasa.com', 'Departamento de Afiliaciones'),
+            from: new Address('tudrgroup.info@gmail.com', 'TU DR. EN CASA'),
             subject: 'Feliz Cumpleaños Sr(a). ' . $this->name
         );
     }
