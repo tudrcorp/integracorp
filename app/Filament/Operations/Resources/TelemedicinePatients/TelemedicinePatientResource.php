@@ -23,8 +23,7 @@ class TelemedicinePatientResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-ui-user-profile';
 
-
-    // protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
+    protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $navigationLabel = 'Pacientes';
 

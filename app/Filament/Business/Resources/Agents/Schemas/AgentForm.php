@@ -340,7 +340,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-user')
                             ->maxLength(255),
                         Hidden::make('created_by')->default(Auth::user()->name)->hiddenOn('edit'),
-                        Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
+                        Hidden::make('updated_by')->hiddenOn('create'),
                     ])->columnSpanFull()->columns(4),
                 Section::make('DATOS BANCARIOS MONEDA NACIONAL')
                     ->description('Fomulario. Campo Requerido(*)')

@@ -18,12 +18,13 @@ use App\Filament\Operations\Resources\TelemedicineCases\Schemas\TelemedicineCase
 use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\ObservationsRelationManager;
 use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\ConsultationsRelationManager;
 use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\TelemedicineDocumentsRelationManager;
+use UnitEnum;
 
 class TelemedicineCaseResource extends Resource
 {
     protected static ?string $model = TelemedicineCase::class;
 
-    // protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
+    protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $navigationLabel = 'Gestión de Casos';
 

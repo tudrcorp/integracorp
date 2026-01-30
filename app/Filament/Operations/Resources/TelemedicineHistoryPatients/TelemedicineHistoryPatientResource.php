@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class TelemedicineHistoryPatientResource extends Resource
 {
@@ -23,6 +24,8 @@ class TelemedicineHistoryPatientResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-i-exam-qualification';
 
     protected static ?string $navigationLabel = 'Historia Clínica';
+
+    protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $title = 'Historia Clínica';
 
