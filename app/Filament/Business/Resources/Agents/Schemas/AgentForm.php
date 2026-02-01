@@ -80,18 +80,29 @@ class AgentForm
                             })
                             ->searchable()
                             ->preload(),
+
+                        //ROL DEL AGENTE
+                        Select::make('role')
+                            ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament))
+                            ->label('Rol del Agente')
+                            ->options([
+                                'AGENTE-DE-CORRETAJE' => 'AGENTE-DE-CORRETAJE',
+                                'EJECUTIVO'           => 'EJECUTIVO',
+                            ])
+                            ->helperText('Si no seleccionas un rol, por default el sistema asignara AGENTE-DE-CORRETAJE')
+                            ->searchable()
+                            ->preload(),
                         //La seleccion el account manager solo la puede ver el administrador del modulo de negocios
                         Select::make('ownerAccountManagers')
-
-                            //condicion para ocultar el campo   
-                            ->hidden(fn() => !Auth::user()->is_business_admin)
-                            ->label('Acount Manager')
+                            //condicion para ocultar el campo  
+                            ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament))
+                            ->label('Acount Manager (Administrador de Cuenta)')
                             ->options(function (Get $get) {
                                 return User::where('is_accountManagers', true)->get()->pluck('name', 'id');
                             })
                             ->searchable()
                             ->preload(),
-                    ])->columnSpanFull()->columns(4),
+                    ])->columnSpanFull()->columns(5),
                 Section::make('INFORMACION PRINCIPAL')
                     ->description('Fomulario. Campo Requerido(*)')
                     ->collapsed()
@@ -611,6 +622,7 @@ class AgentForm
                             ]),
                     ])->columnSpanFull()->columns(2),
                 Section::make('OBSERVACIONES')
+                    ->collapsed()
                     ->description('Seccion para que el analista documente todo lo relacionado a reunion y contactos con el/los agente(s)')
                     ->icon('heroicon-m-folder-plus')
                     ->schema([

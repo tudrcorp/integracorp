@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Jobs\SendCartaBienvenidaAgenteAgencia;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Jobs\SendCartaBienvenidaEjecutivo;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Agent extends Model
 {
@@ -94,6 +95,7 @@ class Agent extends Model
         'user_tdev',
 
         'activate_monthly_frequency',
+        'role',
 
     ];
 
@@ -193,10 +195,21 @@ class Agent extends Model
      */
     public function sendCartaBienvenida($id, $name, $email)
     {
+        dd($id, $name, $email);
+
         /**
          * JOB
          */
         SendCartaBienvenidaAgenteAgencia::dispatch($id, $name, $email);
+    }
+
+    public function sendCartaBienvenidaEjecutivo($id, $name, $email)
+    {
+
+        /**
+         * JOB
+         */
+        SendCartaBienvenidaEjecutivo::dispatch($id, $name, $email);
     }
 
     public function accountManager()

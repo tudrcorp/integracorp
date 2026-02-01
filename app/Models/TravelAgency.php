@@ -35,8 +35,8 @@ class TravelAgency extends Model
         'agenteSuperiorNivel3',
         'agenciaSuperiorNivel2',
         'agenciaPpalNivel1',
-        'createdBy',
-        'updatedBy',
+        'created_by',
+        'updated_by',
 
         
         'logo',

@@ -41,6 +41,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Closure;
 
 class AffiliationForm
 {
@@ -213,6 +214,34 @@ class AffiliationForm
                                     ->searchable()
                                     ->prefixIcon('fontisto-person')
                                     ->preload(),
+                            ])->columnSpanFull()->columns(3),
+
+                            Fieldset::make('Aliado de Servicio NIVEL 1')
+                            ->schema([
+                                Select::make('aliado_1_name')
+                                    ->label('Nombre')
+                                    ->live()
+                                    ->options([
+                                        'ATEMMEDI' => 'ATEMMEDI',
+                                    ])
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-c-building-library'),
+                                DatePicker::make('date_init_aliado_1')
+                                    ->label('Fecha de Inicio')
+                                    ->format('d/m/Y')
+                                    ->prefixIcon('heroicon-c-building-library'),
+                                DatePicker::make('date_end_aliado_1')
+                                    ->label('Fecha de Finalización')
+                                    ->format('d/m/Y')
+                                    ->prefixIcon('heroicon-c-building-library'),
+                                Grid::make(3)
+                                    ->schema([
+                                        FileUpload::make('vaucher_aliado_1')
+                                            ->label('Vaucher Aliado Nivel 1')
+                                            ->directory('vauchers-aliados')
+                                            ->helperText('Se recomienda que al momento de actualiar la informacion del afiliado se adjunte el vaucher de aceptacion.')
+                                    ])->columnSpanFull(),
+                                        
                             ])->columnSpanFull()->columns(3),
                             
                         ]),

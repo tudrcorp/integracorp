@@ -81,13 +81,10 @@ class OperationsPanelProvider extends PanelProvider
                             ->directory('backgroundBusenissPanelLogin')
                     ),
             ])
-            // ->renderHook(
-            //     PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-            //     fn() => view('filament.return-modulo-negocios')
-            // )
             ->userMenuItems([
+                'profile' => fn(Action $action) => $action->label('PERFIL DE USUARIO'),
                 'logout' => fn(Action $action) => $action
-                    ->label('Cerrar Sesión')
+                    ->label('CERRAR SESIÓN')
                     ->color('danger')
                     ->url(route('internal')),
                 Action::make('business')

@@ -363,18 +363,18 @@ class AgenciesTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     Action::make('Inactivate')
                         ->label('Inactivar')
                         ->action(fn(Agency $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteAction::make()
                         ->color('danger')
                         ->label('Eliminar')
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
                     ->color('azulOscuro')
@@ -536,10 +536,10 @@ class AgenciesTable
                             }
                         })
                         ->requiresConfirmation()
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ])

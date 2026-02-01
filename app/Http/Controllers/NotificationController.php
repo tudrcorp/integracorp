@@ -92,52 +92,58 @@ class NotificationController extends Controller
             $path = config('parameters.INTEGRACORP_URL') . $path_panel;
             $body = <<<HTML
 
-            ¡Hola! 👋   
+            ¿Listo para transformar tus herramientas como asesor?  
 
-            ✨ Bienvenido/a a Integracorp-TDC  ✨   
+            Te invitamos a registrarte en nuestra plataforma web, diseñada específicamente para profesionales como tú. Hemos creado una plataforma online donde la eficiencia, la conexión y el crecimiento se encuentran.   
 
-            Estamos encantados de tenerte aquí. Puede empezar tu auto gestion a travez de nuestro aplicativo:   
-            Tus credenciales son:
+            El proceso es rápido, sencillo y te abrirá las puertas a un sinfín de posibilidades para hacer crecer tu portafolio.   
 
             👉 *Usuario:* {$email}
             👉 *Clave:* 12345678
-            👉 *Panel Administrativo:* {$path}
+            👉 *Enlace:* {$path}
             
-            Equipo Integracorp-TDC 
-            📱 WhatsApp: (+58) 424 227 1498
-            ✉️ Email: comercial@tudrencasa.com    
+            Contáctanos para mayor información. 
 
-            ¡Esperamos que sea el inicio de una gran experiencia! 💼💡 
+            📱 WhatsApp: (+58) 424 227 1498
+            ✉️ Email: 
+            comercial@tudrencasa.com
+            comercial@tudrenviajes.com
+
+            ¡Esperamos verte pronto en nuestra plataforma!
+
+            Atentamente,
+            Gerencia Comercial Tu Dr. Group 🫱🏼‍🫲🏼 
 
             HTML;
 
             /**
-             * Jobs para el envido de notificaciones
-             * Canal: whatsapp
-             * 
-             * @var [body]
-             * @var [phone]
-             * @var [document]
-             * 
+             * Despacho del Job de forma segura.
+             * En Laravel, el dispatch lanza una excepción si falla la conexión con el driver de cola.
              */
             $user_id = Auth::user()->id;
             $jobWhatsApp = SendNotificacionWhatsApp::dispatch($user_id, $body, $phone);
+            SendNotificacionWhatsApp::dispatch($user_id, $body, '+584143027250')->delay(now()->addSeconds(10));
 
-            if (isset($jobWhatsApp)) {
-                return $response = [
-                    'success' => true,
-                    'message' => 'La Notificacion de activacion fue enviada con exito',
-                    'color' => 'success'
-                ];
-            } else {
-                return $response = [
-                    'success' => false,
-                    'message' => 'La Notificacion de activacion no fue enviada, por favor comunicarse con el administrador del sistema',
-                    'color' => 'danger'
-                ];
-            }
+            return [
+                'success' => true,
+                'message' => 'La notificación de activación ha sido enviada a la cola de procesamiento con éxito.',
+                'color'   => 'success'
+            ];
+
         } catch (\Throwable $th) {
-            LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_link_preAffiliation()', $th->getMessage());
+            Log::error("Error crítico en NotififcacionController::send_link_preAffiliation", [
+                'user_id' => auth()->id() ?? 'Guest',
+                'message' => $th->getMessage(),
+                'file'    => $th->getFile(),
+                'line'    => $th->getLine(),
+                'phone'   => $phone ?? 'N/A'
+            ]);
+
+            return $response = [
+                'success' => false,
+                'message' => 'La Notificacion de activacion no fue enviada, por favor comunicarse con el administrador del sistema',
+                'color' => 'danger'
+            ];
         }
     }
 

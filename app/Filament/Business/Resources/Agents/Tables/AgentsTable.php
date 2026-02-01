@@ -3,47 +3,48 @@
 namespace App\Filament\Business\Resources\Agents\Tables;
 
 
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Agent;
+use App\Filament\Exports\AgentExporter;
+use App\Http\Controllers\AgencyController;
+use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UtilsController;
+use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\AgencyType;
-use Filament\Tables\Table;
-use App\Models\Affiliation;
-use Filament\Actions\Action;
+use App\Models\Agent;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
-use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Filament\Actions\DeleteAction;
-use Filament\Tables\Filters\Filter;
-use App\Models\AffiliationCorporate;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Illuminate\Support\Facades\Crypt;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
-use App\Filament\Exports\AgentExporter;
-use App\Http\Controllers\LogController;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use App\Http\Controllers\UtilsController;
-use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Columns\ToggleColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
-use App\Http\Controllers\AgencyController;
-use Illuminate\Database\Eloquent\Collection;
 use Filament\Schemas\Components\Utilities\Get;
-use App\Http\Controllers\NotificationController;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AgentsTable
 {
@@ -253,56 +254,78 @@ class AgentsTable
                         ->label('Activar')
                         ->action(function (Agent $record) {
 
-                            try {
+                    try {
+                        // Iniciamos transacción para asegurar la integridad de los datos
+                        \Illuminate\Support\Facades\DB::beginTransaction();
 
-                                $record->status = 'ACTIVO';
-                                $record->save();
+                        // 1. Actualización del estado del Agente
+                        $record->status = 'ACTIVO';
+                        $record->save();
 
-                                //4. creamos el usuario en la tabla users (AGENTES)
-                                $user = new User();
-                                $user->name = $record->name;
-                                $user->email = $record->email;
-                                $user->password = Hash::make('12345678');
-                                $user->is_agent = true;
-                                $user->code_agency = $record->code_agency;
-                                $user->code_agent = 'AGT-000' . $record->id;
-                                $user->link_agent = env('APP_URL') . '/at/lk/' . Crypt::encryptString($record->code_agent);
-                                $user->agent_id = $record->id;
-                                $user->status = 'ACTIVO';
-                                $user->save();
+                        // 2. Creación del Usuario asociado
+                        $user = new User();
+                        $user->name = $record->name;
+                        $user->email = $record->email;
+                        $user->password = \Illuminate\Support\Facades\Hash::make('12345678'); // Considerar generar una clave aleatoria segura
+                        $user->is_agent = true;
+                        $user->code_agency = $record->code_agency;
+                        $user->code_agent = 'AGT-000' . $record->id;
 
-                                /**
-                                 * Notificacion por correo electronico
-                                 * CARTA DE BIENVENIDA
-                                 * @param Agent $record
-                                 */
-                                $record->sendCartaBienvenida($record->id, $record->name, $record->email);
+                        // Generación segura del link de agente
+                        $encryptedCode = \Illuminate\Support\Facades\Crypt::encryptString($record->code_agent);
+                        $user->link_agent = config('app.url') . '/at/lk/' . $encryptedCode;
 
+                        $user->agent_id = $record->id;
+                        $user->status = 'ACTIVO';
+                        $user->save();
 
-                                $phone = $record->phone;
-                                $email = $record->email;
-                                $nofitication = NotificationController::agent_activated($phone, $email, $record->agent_type_id == 2 ? config('parameters.PATH_AGENT') : config('parameters.PATH_SUBAGENT'));
+                        // 3. Notificación por Correo (CARTA DE BIENVENIDA)
+                        if ($record->role === 'EJECUTIVO') {
+                            $record->sendCartaBienvenidaEjecutivo($record->id, $record->name, $record->email);
+                        } else {
+                            $record->sendCartaBienvenida($record->id, $record->name, $record->email);
+                        }
 
-                                if ($nofitication) {
+                        // 4. Notificación de WhatsApp/SMS vía Controller
+                        $path = ($record->agent_type_id == 2)
+                            ? config('parameters.PATH_AGENT')
+                            : config('parameters.PATH_SUBAGENT');
 
-                                    Notification::make()
-                                        ->title('ACTIVACION DE AGENTE')
-                                        ->body('Se ha activado el agente correctamente.')
-                                        ->icon('heroicon-s-check-circle')
-                                        ->iconColor('success')
-                                        ->color('success')
-                                        ->send();
-                                }
-                                
-                            } catch (\Throwable $th) {
-                                Notification::make()
-                                    ->title('EXCEPCION')
-                                    ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('error')
-                                    ->color('error')
-                                    ->send();
-                            }
+                        $notificationSuccess = NotificationController::agent_activated(
+                            $record->phone,
+                            $record->email,
+                            $path
+                        );
+
+                        // Confirmamos los cambios en la base de datos
+                        \Illuminate\Support\Facades\DB::commit();
+
+                        // 5. Notificación visual al usuario en la interfaz
+                        Notification::make()
+                            ->title('¡AGENTE ACTIVADO!')
+                            ->body("El agente {$record->name} ha sido procesado y su cuenta de usuario creada.")
+                            ->icon('heroicon-s-check-circle')
+                            ->success()
+                            ->send();
+                    } catch (\Throwable $th) {
+                        // Revertimos cualquier cambio en la BD si algo falló
+                        \Illuminate\Support\Facades\DB::rollBack();
+
+                        // Registro profesional del error para el administrador
+                        \Illuminate\Support\Facades\Log::error("Fallo crítico al activar agente ID: {$record->id}", [
+                            'error' => $th->getMessage(),
+                            'file'  => $th->getFile(),
+                            'line'  => $th->getLine()
+                        ]);
+
+                        Notification::make()
+                            ->title('ERROR DE ACTIVACIÓN')
+                            ->body('No se pudo completar la activación. Los cambios han sido revertidos y el error reportado.')
+                            ->icon('heroicon-s-x-circle')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    }
                         })
                         ->icon('heroicon-s-check-circle')
                         ->color('success')
@@ -635,18 +658,18 @@ class AgentsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     Action::make('Inactivate')
                         ->label('Inactivar')
                         ->requiresConfirmation()
                         ->action(fn(Agent $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger')
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteAction::make()
                         ->color('danger')
                         ->label('Eliminar')
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
             ])
             ->toolbarActions([
@@ -739,10 +762,59 @@ class AgentsTable
                             }
                         })
                         ->requiresConfirmation()
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->modalHeading('Eliminar Agentes del Sistema')
+                        ->modalDescription('¿Estas seguro de eliminar los agentes seleccionados?, esta accion no se puede reversar')
+                        ->modalSubmitActionLabel('Eliminar')
+                        ->label('Eliminar Agentes')
+                        ->icon('heroicon-s-trash')
+                        ->color('danger')
+                        ->action(function (Collection $records) {
+                            try {
+
+                                if (empty($records)) {
+                                    return;
+                                }
+
+                                foreach ($records as $record) {
+                                    // Eliminamos el agente
+                                    $agent = Agent::find($record->id);
+                                    if ($agent) {
+                                        $agent->delete();
+                                    }
+
+                                    // Eliminamos el usuario asociado
+                                    if (!empty($record->id)) {
+                                        $user = User::where('agent_id', $record->id)->first();
+                                        if ($user) {
+                                            $user->delete();
+                                        }
+                                    }
+                                }
+
+                                Notification::make()
+                                    ->title('Proceso completado')
+                                    ->body('Los agentes y sus cuentas de usuario han sido eliminados correctamente.')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->success()
+                                    ->send();
+
+                            } catch (\Throwable $th) {
+                                Log::error("Error en eliminación masiva de agentes", [
+                                    'message' => $th->getMessage(),
+                                    'trace' => $th->getTraceAsString()
+                                ]);
+
+                                Notification::make()
+                                    ->title('Error de sistema')
+                                    ->body('Ocurrió un problema al intentar eliminar los registros. El equipo técnico ha sido notificado.')
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
                     ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ])

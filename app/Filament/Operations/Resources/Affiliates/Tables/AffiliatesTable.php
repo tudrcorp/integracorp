@@ -2,12 +2,19 @@
 
 namespace App\Filament\Operations\Resources\Affiliates\Tables;
 
+use App\Filament\Exports\AffiliateExporter;
 use App\Models\Affiliate;
+use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -16,14 +23,20 @@ class AffiliatesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(
-                Affiliate::query()->where('status', 'ACTIVO')
-            )
+        ->defaultSort('created_at', 'desc')
+        ->heading('LISTA DE AFILIADOS INDIVIDUALES')
+        ->description('A continuacion se muestra la lista de afiliados individuales. La tabla esta ordenada por fecha de registro de forma descendente, los mas recientes se muestran primero')
             ->columns([
                 TextColumn::make('full_name')
+                    ->color('info')
+                    ->badge()
+                    ->icon('heroicon-s-user')
                     ->label('Nombre')
                     ->searchable(),
                 TextColumn::make('nro_identificacion')
+                    ->color('info')
+                    ->badge()
+                    ->icon('heroicon-s-identification')
                     ->label('Nro Identificacion')
                     ->searchable(),
                 TextColumn::make('phone')
@@ -41,9 +54,6 @@ class AffiliatesTable
                 TextColumn::make('age')
                     ->label('Edad')
                     ->searchable(),
-                TextColumn::make('status')
-                    ->label('Estado')
-                    ->searchable(), 
                 TextColumn::make('country.name')
                     ->label('Pais')
                     ->numeric()
@@ -68,10 +78,46 @@ class AffiliatesTable
                     ->prefix('$')
                     ->numeric()
                     ->sortable(),
+                
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
+                SelectFilter::make('plan_id')
+                    ->label('Plan Afiliado')
+                    ->relationship('plan', 'description')
+                    ->multiple(),
             ])
+            ->filtersTriggerAction(
+                fn(Action $action) => $action
+                    ->button()
+                    ->label('Filtros'),
+            )
             ->recordActions([
                 ViewAction::make()
                 ->icon('heroicon-o-eye')
@@ -80,6 +126,7 @@ class AffiliatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()->exporter(AffiliateExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
