@@ -663,7 +663,7 @@ class AffiliationCorporatesTable
                             ]),
                         ])
                         ->action(function (AffiliationCorporate $record, array $data): void {
-                            
+
                             try {
 
                                 $upload = AffiliationCorporateController::uploadPayment($record, $data, 'AGENTE');
@@ -709,7 +709,6 @@ class AffiliationCorporatesTable
                                 ];
                                 // dd($info);
                                 Mail::to($info['email'])->send(new UploadPayment($info));
-                                
                             } catch (\Throwable $th) {
                                 Log::error($th);
                                 Notification::make()
@@ -718,7 +717,6 @@ class AffiliationCorporatesTable
                                     ->danger()
                                     ->send();
                             }
-                            
                         })
                         ->hidden(function (AffiliationCorporate $record) {
 
@@ -863,7 +861,7 @@ class AffiliationCorporatesTable
                                 ->success()
                                 ->send();
                         })
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament))
                 ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([

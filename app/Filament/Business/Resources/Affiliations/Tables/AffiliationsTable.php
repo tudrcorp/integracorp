@@ -880,17 +880,49 @@ class AffiliationsTable
                                     ->send();
                             }
                         }),
+                        
+                    /**DESCARGAR CERTIFICADO PDF */
+                    Action::make('downloadTarjeta')
+                        ->label('Descargar Tarjeta')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('verde')
+                        ->requiresConfirmation()
+                        ->modalHeading('DESCARGAR TARJETA DEL AFILIADO')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                        ->action(function (Affiliation $record, array $data) {
+
+                            try {
+
+                                /**
+                                 * Descargar el documento asociado a la cotizacion
+                                 * ruta: storage/
+                                 */
+                                $path = public_path('storage/tarjeta-afiliacion/TAR-' . $record->code . '.pdf');
+                                return response()->download($path);
+
+                            } catch (\Throwable $th) {
+                                Notification::make()
+                                    ->title('ERROR EN LA DESCARGA')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
 
                     /**REGENERAR CERTIFICADO PDF */
                     Action::make('regenerate')
-                        ->label('Regenerar Certificado')
+                        ->label('Regenerar Documentos')
                         ->icon('heroicon-o-arrow-path')
                         ->color('info')
                         ->requiresConfirmation()
-                        ->modalHeading('REGENERAR CERTIFICADO')
+                        ->modalHeading('REGENERAR CERTIFICADO Y TARJETA DEL AFILIADO')
                         ->modalWidth(Width::ExtraLarge)
                         ->modalIcon('heroicon-o-arrow-path')
-                        ->modalDescription('Se realizara la creacion del certificado de forma automatica al hacer clic en confirmar!.')
+                        ->modalDescription('Se realizara la creacion del certificado y tarjeta del afiliado de forma automatica al hacer clic en confirmar!.')
                         ->action(function (Affiliation $record, array $data) {
 
                             try {
@@ -922,11 +954,12 @@ class AffiliationsTable
                                     ->icon('heroicon-s-check-circle')
                                     ->success()
                                     ->send();
+                                    
         
                             } catch (\Throwable $th) {
-                                dd($th);
+
                                 Notification::make()
-                                    ->title('ERROR EN LA DESCARGA')
+                                    ->title('ERROR AL GENERAR EL DOCUMENTO')
                                     ->body($th->getMessage())
                                     ->icon('heroicon-s-x-circle')
                                     ->iconColor('danger')
@@ -934,7 +967,7 @@ class AffiliationsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
 
                     /**DESCARGAR O REENVIAR KIT DE AFILIACION */
                     Action::make('download_resend_kit')
@@ -983,11 +1016,6 @@ class AffiliationsTable
                                 }
                                     
                             } catch (\Throwable $th) {
-
-                                Log::error($th->getMessage());
-                                Log::error($th->getLine());
-                                Log::error($th->getFile());
-                                Log::error($th->getTraceAsString());
                                 
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA O ENVIO DEL KIT')
@@ -1067,7 +1095,7 @@ class AffiliationsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
 
                     Action::make('change_status')
                         ->label('Actualizar Estatus')

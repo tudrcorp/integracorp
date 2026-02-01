@@ -163,13 +163,16 @@
             <div style="position: absolute; top: 423px; right: 458px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['code'] }}
             </div>
-            <div style="position: absolute; top: 455px; left: 138px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
-                {{ $data['name'] }}
+            @php
+                $name = App\Http\Controllers\UtilsController::splitName($data['name']);
+            @endphp
+            <div style="position: absolute; top: 440px; left: 138px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+                {{ $name['first_part'] }}<br>{{ $name['second_part'] }}
             </div>
-            <div style="position: absolute; top: 475px; right: 585px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div style="position: absolute; top: 475px; left: 155px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['ci'] }}
             </div>
-            <div style="position: absolute; top: 497px; right: 570px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div style="position: absolute; top: 497px; left: 164px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 @if($data['plan'] == 'PLAN INICIAL')
                     INICIAL  
                 @endif
@@ -183,13 +186,13 @@
             <div style="position: absolute; top: 494px; right: 323px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['desde'] }}
             </div>
-            <div style="position: absolute; top: 515px; right: 480px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div style="position: absolute; top: 515px; left: 235px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['frecuencia'] }}
             </div>
             <div style="position: absolute; top: 511px; right: 323px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['hasta'] }}
             </div>
-            <div style="position: absolute; top: 533px; right: 530px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div style="position: absolute; top: 533px; left: 190px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 @if($data['cobertura'] != null || $data['cobertura'] != '')
                     {{ number_format($data['cobertura'], 2, ',', '.') }} US$
                 @endif 

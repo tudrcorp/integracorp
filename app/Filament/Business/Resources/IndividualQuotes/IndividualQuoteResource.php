@@ -24,6 +24,8 @@ class IndividualQuoteResource extends Resource
 
     protected static ?string $navigationLabel = 'Individuales';
 
+    protected static ?int $navigationSort = 1;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-tag';
 
     protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';

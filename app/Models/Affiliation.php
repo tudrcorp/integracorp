@@ -88,10 +88,6 @@ class Affiliation extends Model
         'activated_at',
         'family_members',
         'code_individual_quote',
-        'vaucher_ils',
-        'date_payment_initial_ils',
-        'date_payment_final_ils',
-        'document_ils',
         'total_amount',
         'observations',
         'feedback',
@@ -106,7 +102,13 @@ class Affiliation extends Model
         'service_providers',
 
         //...Fecha de Vigencia de la afiliacion
-        'effective_date'
+        'effective_date',
+
+        //...Aliado de Servicio NIVEL 1
+        'aliado_1_name',
+        'date_init_aliado_1',
+        'date_end_aliado_1',
+        'vaucher_aliado_1',
         
     ];
 

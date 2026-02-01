@@ -53,10 +53,7 @@ class BusinessPanelProvider extends PanelProvider
                 'primary'   => '#4c566a',
             ])
             ->navigationGroups([
-                NavigationGroup::make()
-                    ->label('CONFIGURACIÓN')
-                    ->icon('heroicon-o-cog-8-tooth')
-                    ->collapsed(),
+                
                 NavigationGroup::make()
                     ->label('ESTRUCTURA COMERCIAL')
                     ->icon('heroicon-o-building-office-2'),
@@ -64,14 +61,18 @@ class BusinessPanelProvider extends PanelProvider
                     ->label('COTIZACIONES')
                     ->icon('heroicon-o-currency-dollar'),
                 NavigationGroup::make()
-                    ->label('AFILIACIONES')
-                    ->icon('heroicon-o-identification'),
-                NavigationGroup::make()
                     ->label('SOLICITUDES')
                     ->icon('heroicon-o-square-3-stack-3d'),
                 NavigationGroup::make()
+                    ->label('AFILIACIONES')
+                    ->icon('heroicon-o-identification'),
+                NavigationGroup::make()
                     ->label('ZONA DE DESCARGA')
                     ->icon('heroicon-o-cloud-arrow-down'),
+                NavigationGroup::make()
+                    ->label('CONFIGURACIÓN')
+                    ->icon('heroicon-o-cog-8-tooth')
+                    ->collapsed(),
 
             ])
             ->sidebarCollapsibleOnDesktop()

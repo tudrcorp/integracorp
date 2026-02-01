@@ -155,8 +155,8 @@ class TravelAgencyForm
                             ->label('Fecha de Ingreso')
                             ->format('d/m/Y')
                             ->default(now()),
-                        Hidden::make('createdBy')->default(Auth::user()->name)->hiddenOn('edit'),
-                        Hidden::make('updatedBy')->default(Auth::user()->name)->hiddenOn('create'),
+                        Hidden::make('created_by')->default(Auth::user()->name)->hiddenOn('edit'),
+                        Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
 
                     ])->columnSpanFull()->columns(4),
 

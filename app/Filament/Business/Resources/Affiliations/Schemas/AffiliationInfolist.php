@@ -2,13 +2,15 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Schemas;
 
+use App\Models\Affiliation;
+use Filament\Actions\Action;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Schema;
-use App\Models\Affiliation;
-use Filament\Support\Icons\Heroicon;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\IconSize;
+use Filament\Support\Icons\Heroicon;
 
 class AffiliationInfolist
 {
@@ -19,11 +21,11 @@ class AffiliationInfolist
 
                 Section::make()
                     ->collapsible()
-                    ->description(fn(Affiliation $record) => 'Pre-afiliación generada el: ' . $record->created_at->format('d/m/Y H:ma') . ' - Creada por: ' . $record->created_by)
+                    ->description(fn(Affiliation $record) => 'Afiliación generada el: ' . $record->created_at->format('d/m/Y H:ma') . ' - Creada por: ' . $record->created_by)
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
-                        Fieldset::make('PREAFILIACION')
+                        Fieldset::make('AFILIACION')
                             ->schema([
                                 TextEntry::make('code')
                                     ->label('Nro. de solicitud:')
@@ -47,17 +49,17 @@ class AffiliationInfolist
                                 TextEntry::make('status')
                                     ->label('Estatus de la Afiliación:')
                                     ->badge()
-                                    ->color('warning')
-                                    ->icon(Heroicon::InformationCircle),
+                                    ->color('success')
+                                    ->icon(Heroicon::CheckCircle),
                                 TextEntry::make('activation_date')
                                     ->label('Fecha de Activación:')
                                     ->badge()
-                                    ->color('warning')
+                                    ->color('success')
                                     ->icon(Heroicon::InformationCircle)
 
                             ])->columnSpanFull()->columns(5),
 
-                        Fieldset::make('TITULAR DE LA PÓLIZA')
+                        Fieldset::make('TITULAR DEL PLAN')
                             ->schema([
                                 TextEntry::make('full_name_ti')
                                     ->badge()
@@ -66,10 +68,10 @@ class AffiliationInfolist
                                     ->label('Nombre y Apellido:'),
                                 TextEntry::make('nro_identificacion_ti')
                                     ->label('Nro. de Identificación:'),
-                                TextEntry::make('email_ti')
-                                    ->label('Correo electrónico:'),
                                 TextEntry::make('phone_ti')
                                     ->label('Número de teléfono:'),
+                                TextEntry::make('email_ti')
+                                    ->label('Correo electrónico:'),
                             ])->columnSpanFull()->columns(4),
 
                         Fieldset::make('RESPONSABLE DE PAGO (PAGADOR)')
@@ -95,7 +97,9 @@ class AffiliationInfolist
                                     ->color('primary')
                                     ->numeric(),
                                 TextEntry::make('coverage.price')
+                                    ->formatStateUsing(fn(Affiliation $record) => number_format((float)$record->coverage->price, 0, ',', '.'))
                                     ->label('Cobertura')
+                                    ->prefix('US$ ')
                                     ->badge()
                                     ->color('primary'),
                                 TextEntry::make('fee_anual')
@@ -122,23 +126,80 @@ class AffiliationInfolist
                                     ->numeric(),
                             ])->columnSpanFull()->columns(4),
 
-                        Fieldset::make('INFORMACIÓN ILS')
+                        Fieldset::make('ALIADO DE SERVICIO NIVEL 1')
                             ->schema([
-                                TextEntry::make('vaucher_ils')
-                                    ->label('Voucher ILS')
+                                TextEntry::make('aliado_1_name')
+                                    ->label('Nombre del Aliado')
                                     ->badge()
                                     ->color('primary')
                                     ->icon(Heroicon::DocumentText),
-                                TextEntry::make('date_payment_initial_ils')
-                                    ->label('Fecha de inicio de cobro:')
+                                TextEntry::make('date_init_aliado_1')
+                                    ->label('Fecha de inicio:')
                                     ->badge()
                                     ->color('primary')
                                     ->icon(Heroicon::CalendarDays),
-                                TextEntry::make('date_payment_final_ils')
-                                    ->label('Fecha de fin de cobro:')
+                                TextEntry::make('date_end_aliado_1')
+                                    ->label('Fecha de Vencimiento:')
                                     ->badge()
                                     ->color('primary')
                                     ->icon(Heroicon::CalendarDays),
+                                IconEntry::make('vaucher_aliado_1')
+                                    ->label('Ver Voucher')
+                                    ->icon(function (Affiliation $record) {
+                                        // Muestra un ícono si la imagen existe
+                                        return $record->vaucher_aliado_1 != null
+                                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
+                                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
+                                    })
+                                    ->color(function (Affiliation $record) {
+                                        // Color del ícono basado en la existencia de la imagen
+                                        return $record->vaucher_aliado_1 != null
+                                            ? 'success' // Verde si la imagen existe
+                                            : 'danger'; // Rojo si no existe
+                                    })
+                                    ->url(function (Affiliation $record) {
+                                        return asset('storage/' . $record->vaucher_aliado_1);
+                                    })
+                                    ->openUrlInNewTab(),
+                                // ->size(IconSize::Medium)->boolean()->action(Action::make('activate')->label('Activar')->color('success')->icon(Heroicon::CheckCircle)),
+                            ])->columnSpanFull()->columns(4),
+
+                        Fieldset::make('ALIADO DE SERVICIO NIVEL 2')
+                            ->schema([
+                                TextEntry::make('affiliates.vaucherIls')
+                                    ->label('Número de Voucher')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->icon(Heroicon::DocumentText),
+                                TextEntry::make('affiliates.dateInit')
+                                    ->label('Fecha de inicio:')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->icon(Heroicon::CalendarDays),
+                                TextEntry::make('affiliates.dateEnd')
+                                    ->label('Fecha de Vencimiento:')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->icon(Heroicon::CalendarDays),
+                                IconEntry::make('affiliates.document_ils')
+                                    ->label('Ver Voucher')
+                                    ->icon(function (Affiliation $record) {
+                                        // Muestra un ícono si la imagen existe
+                                        return $record->affiliates[0]->document_ils != null
+                                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
+                                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
+                                    })
+                                    ->color(function (Affiliation $record) {
+                                        // Color del ícono basado en la existencia de la imagen
+                                        return $record->affiliates[0]->document_ils != null
+                                            ? 'success' // Verde si la imagen existe
+                                            : 'danger'; // Rojo si no existe
+                                    })
+                                    ->url(function (Affiliation $record) {
+                                        return asset('storage/' . $record->affiliates[0]->document_ils);
+                                    })
+                                    ->openUrlInNewTab(),
+                                    // ->size(IconSize::Medium)->boolean()->action(Action::make('activate')->label('Activar')->color('success')->icon(Heroicon::CheckCircle)),
                             ])->columnSpanFull()->columns(4),
 
                         Fieldset::make('DECLARACIÓN MÉDICA')

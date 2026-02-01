@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\AffiliateCorporates\Schemas;
 use App\Models\AffiliateCorporate;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -154,25 +155,24 @@ class AffiliateCorporateInfolist
                                 ->label('Teléfono:'),
                         ])->columnSpanFull()->columns(4),
 
-                    Fieldset::make('INFORMACIÓN DE BENEFICIOS Y SUS LIMITES')
-                        ->schema([
-                            TextEntry::make('plan.benefitPlans.description')
-                                // ->belowContent(Text::make('This is the user\'s full name.')->weight(FontWeight::Bold))
-                                ->label('Beneficios del Plan:')
-                                ->icon('heroicon-c-check')
-                                ->badge()
-                                ->color('success')
-                                // ->bulleted()
-                                ->listWithLineBreaks(),
-                            TextEntry::make('plan.benefitPlans.limit.description')
-                                // ->belowContent(Text::make('This is the user\'s full name.')->weight(FontWeight::Bold))
-                                ->label('Limite por Beneficios:')
-                                ->icon('heroicon-s-arrow-small-right')
-                                ->badge()
-                                ->color('gray')
-                                // ->bulleted()
-                                ->listWithLineBreaks(),
-                        ])->columnSpanFull()->columns(2),
+                    Grid::make(2)->schema([
+                        Fieldset::make('INFORMACIÓN DE BENEFICIOS')
+                            ->schema([
+                                TextEntry::make('plan.benefitPlans.description')
+                                    ->label('Beneficios del Plan:')
+                                    ->badge()
+                                    ->color('success')
+                                    ->listWithLineBreaks(),
+                            ]),
+                        Fieldset::make('INFORMACIÓN DE SUS LIMITES')
+                            ->schema([
+                                TextEntry::make('plan.benefitPlans.limit.description')
+                                    ->label('Limite por Beneficios:')
+                                    ->badge()
+                                    ->color('gray')
+                                    ->listWithLineBreaks(),
+                            ]),
+                    ])
                 ])->columnSpanFull(),
             ]);
     }

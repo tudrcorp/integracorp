@@ -63,7 +63,7 @@ class BusinessLineResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (Auth::user()->is_business_admin) {
+        if (in_array('SUPERADMIN', auth()->user()->departament)) {
             return true;
         }
         return false;

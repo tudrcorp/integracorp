@@ -96,7 +96,7 @@ class AgencyForm
                         Select::make('ownerAccountManagers')
 
                             //condicion para ocultar el campo   
-                            ->hidden(fn() => !Auth::user()->is_business_admin)
+                            ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament))
 
                             ->label('Acount Manager')
                             ->options(function (Get $get) {
@@ -793,6 +793,6 @@ class AgencyForm
                             ->columns(2)
                             ->columnSpanFull(),
                     ])->columnSpanFull(),
-        ]);
+            ]);
     }
 }
