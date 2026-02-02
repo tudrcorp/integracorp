@@ -97,10 +97,10 @@ class TravelAgenciesTable
                 TextColumn::make('agenciaPpalNivel1')
                     ->label('Agencia Principal Nivel 1')
                     ->searchable(),
-                TextColumn::make('createdBy')
+                TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable(),
-                TextColumn::make('updatedBy')
+                TextColumn::make('updated_by')
                     ->label('Actualizado por')
                     ->searchable(),
                 TextColumn::make('created_at')
