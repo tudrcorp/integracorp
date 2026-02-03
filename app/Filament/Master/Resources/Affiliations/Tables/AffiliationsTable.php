@@ -290,6 +290,8 @@ class AffiliationsTable
                                                 $amount = Affiliation::where('id', $record->id)->first();
                                                 return $amount->total_amount;
                                             })
+                                            ->disabled()
+                                            ->dehydrated()
                                             ->numeric()
                                             ->live(),
                                         DatePicker::make('date_payment_voucher')

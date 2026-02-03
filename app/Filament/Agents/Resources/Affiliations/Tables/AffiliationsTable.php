@@ -309,6 +309,8 @@ class AffiliationsTable
 
                                                 return null;
                                             })
+                                            ->disabled()
+                                            ->dehydrated()
                                             ->numeric()
                                             ->live(),
                                         DatePicker::make('date_payment_voucher')
