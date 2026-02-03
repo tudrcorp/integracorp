@@ -108,7 +108,7 @@ class PaidMembershipController extends Controller
                  * ----------------------------------------------------------------------------------------------------
                  */
                 if ($record->affiliation->payment_frequency == 'ANUAL') {
-                    
+
                     //Pregunto cual es el ultimo numero de factura
                     $lastInvoiceNumberCollection = Collection::where('id', Collection::max('id'))->get()->toArray();
                     
@@ -141,7 +141,7 @@ class PaidMembershipController extends Controller
                     $collections->payment_frequency             = $record->affiliation->payment_frequency;
                     $collections->reference                     = $reference_payment;
                     $collections->created_by                    = Auth::user()->name;
-                    $collections->next_payment_date             = $record->prox_payment_date;
+                    $collections->next_payment_date             = Carbon::createFromFormat('d-m-Y', $record->prox_payment_date)->format('d/m/Y'); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
 
                     //... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
                     $collections->filter_next_payment_date      = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('Y-m-d');
@@ -901,6 +901,7 @@ class PaidMembershipController extends Controller
 
             
         } catch (\Throwable $th) {   
+            dd($th);
             Notification::make()
                 ->title('EXCEPCION')
                 ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())

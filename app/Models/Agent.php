@@ -195,7 +195,6 @@ class Agent extends Model
      */
     public function sendCartaBienvenida($id, $name, $email)
     {
-        dd($id, $name, $email);
 
         /**
          * JOB
