@@ -83,7 +83,6 @@ class AgentForm
 
                         //ROL DEL AGENTE
                         Select::make('role')
-                            ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament))
                             ->label('Rol del Agente')
                             ->options([
                                 'AGENTE-DE-CORRETAJE' => 'AGENTE-DE-CORRETAJE',
@@ -91,6 +90,7 @@ class AgentForm
                             ])
                             ->helperText('Si no seleccionas un rol, por default el sistema asignara AGENTE-DE-CORRETAJE')
                             ->searchable()
+                            ->default('AGENTE-DE-CORRETAJE')
                             ->preload(),
                         //La seleccion el account manager solo la puede ver el administrador del modulo de negocios
                         Select::make('ownerAccountManagers')
