@@ -52,7 +52,7 @@ class MailAvisoDePago extends Mailable
     public function attachments(): array
     {
         return [
-            public_path('storage/reciboDePago/' . $this->name_pdf),
+            public_path('storage/' . $this->name_pdf),
         ];
     }
 }
