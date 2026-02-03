@@ -33,6 +33,8 @@ class SalePlanChart extends ChartWidget
 
     protected ?string $description = 'Análisis porcentual y cuantitativo de planes vendidos en el mes actual.';
 
+    protected ?string $maxHeight = '400px';
+
     // Ocupar medio ancho para que se vea mejor en el dashboard junto a otros widgets
 
 

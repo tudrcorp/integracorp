@@ -63,75 +63,75 @@ class ExclutionChart extends ChartWidget
         ];
     }
 
-    protected function getOptions(): RawJs
-    {
-        return RawJs::make(<<<JS
-        {
-            maintainAspectRatio: false,
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        // Forzamos a que solo muestre números enteros
-                        stepSize: 1,
-                        precision: 0,
-                        callback: function(value) {
-                            if (Math.floor(value) === value) {
-                                return value.toLocaleString('de-DE');
-                            }
-                        },
-                        font: { size: 11 }
-                    },
-                    grid: {
-                        display: true,
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    }
-                },
-                x: {
-                    grid: { display: false } 
-                }
-            },
-            plugins: {
-                legend: { display: false }, 
-                tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    titleColor: '#1e293b',
-                    bodyColor: '#1e293b',
-                    borderColor: '#e2e8f0',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            let value = context.parsed.y;
-                            return 'Afiliaciones Excluidas: ' + value.toLocaleString('de-DE');
-                        }
-                    }
-                }
-            },
-            hover: {
-                mode: 'nearest',
-                intersect: true
-            },
-            elements: {
-                bar: {
-                    hoverBackgroundColor: function(context) {
-                        let color = context.dataset.backgroundColor[context.dataIndex];
-                        return color + 'CC'; 
-                    },
-                    hoverBorderWidth: 2,
-                    hoverBorderColor: 'rgba(0,0,0,0.1)'
-                }
-            },
-            animation: {
-                duration: 2000,
-                easing: 'easeOutQuart'
-            }
-        }
-        JS);
-    }
+    // protected function getOptions(): RawJs
+    // {
+    //     return RawJs::make(<<<JS
+    //     {
+    //         maintainAspectRatio: false,
+    //         responsive: true,
+    //         scales: {
+    //             y: {
+    //                 beginAtZero: true,
+    //                 ticks: {
+    //                     // Forzamos a que solo muestre números enteros
+    //                     stepSize: 1,
+    //                     precision: 0,
+    //                     callback: function(value) {
+    //                         if (Math.floor(value) === value) {
+    //                             return value.toLocaleString('de-DE');
+    //                         }
+    //                     },
+    //                     font: { size: 11 }
+    //                 },
+    //                 grid: {
+    //                     display: true,
+    //                     color: 'rgba(0, 0, 0, 0.05)',
+    //                     drawBorder: false
+    //                 }
+    //             },
+    //             x: {
+    //                 grid: { display: false } 
+    //             }
+    //         },
+    //         plugins: {
+    //             legend: { display: false }, 
+    //             tooltip: {
+    //                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    //                 titleColor: '#1e293b',
+    //                 bodyColor: '#1e293b',
+    //                 borderColor: '#e2e8f0',
+    //                 borderWidth: 1,
+    //                 padding: 12,
+    //                 displayColors: false,
+    //                 callbacks: {
+    //                     label: function(context) {
+    //                         let value = context.parsed.y;
+    //                         return 'Afiliaciones Excluidas: ' + value.toLocaleString('de-DE');
+    //                     }
+    //                 }
+    //             }
+    //         },
+    //         hover: {
+    //             mode: 'nearest',
+    //             intersect: true
+    //         },
+    //         elements: {
+    //             bar: {
+    //                 hoverBackgroundColor: function(context) {
+    //                     let color = context.dataset.backgroundColor[context.dataIndex];
+    //                     return color + 'CC'; 
+    //                 },
+    //                 hoverBorderWidth: 2,
+    //                 hoverBorderColor: 'rgba(0,0,0,0.1)'
+    //             }
+    //         },
+    //         animation: {
+    //             duration: 2000,
+    //             easing: 'easeOutQuart'
+    //         }
+    //     }
+    //     JS);
+    // }
 
     protected function getType(): string
     {

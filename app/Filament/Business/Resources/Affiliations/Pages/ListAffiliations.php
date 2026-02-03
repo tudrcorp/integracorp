@@ -10,9 +10,10 @@ use App\Filament\Business\Resources\Affiliations\Widgets\AffiliationSupplierChar
 use App\Filament\Business\Resources\Affiliations\Widgets\ExclutionChart;
 use App\Filament\Business\Resources\Affiliations\Widgets\StatsOverview;
 use App\Filament\Business\Resources\Affiliations\Widgets\StatsOverviewPlan;
+use App\Filament\Business\Resources\Affiliations\Widgets\TotalAfiliacionesPorEstado;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
+use Filament\Resources\Pages\ListRecords;
 
 class ListAffiliations extends ListRecords
 {
@@ -30,6 +31,7 @@ class ListAffiliations extends ListRecords
             ExclutionChart::class,
             AffiliationPlanChart::class,
             AffiliationSupplierChart::class,
+            TotalAfiliacionesPorEstado::class,
             // AffiliationAgencyChart::class,
             // AffiliationAgencyChart::class,
         ];
