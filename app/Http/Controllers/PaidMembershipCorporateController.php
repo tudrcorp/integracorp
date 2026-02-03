@@ -2,40 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Sale;
-use App\Models\Collection;
-use Illuminate\Http\Request;
-use App\Jobs\SendAvisoDePago;
 use App\Jobs\CreateAvisoDeCobro;
-use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
+use App\Jobs\ReciboDePagoCorporativo;
+use App\Jobs\SendAvisoDePago;
+use App\Mail\SendMailKitBienvenida;
+use App\Models\Agency;
+use App\Models\Collection;
+use App\Models\Commission;
+use App\Models\Sale;
 
 use App\Models\User;
-use App\Models\Agency;
-use App\Models\Commission;
-use Termwind\Components\Li;
-use App\Mail\SendMailKitBienvenida;
+use Carbon\Carbon;
+use Filament\Notifications\Notification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Termwind\Components\Li;
 
 class PaidMembershipCorporateController extends Controller
 {
+    /**
+     * Aprueba el pago de una afiliación corporativa.
+     * Implementa DB::transaction para asegurar que no haya cambios parciales ante fallos.
+     * @version 2.0.0
+     */
     public static function approvePayment($record, $data)
     {
         // dd($record->affiliation_corporate);
+        // Usamos DB::beginTransaction para asegurar que nada se guarde si algo falla
+        DB::beginTransaction();
 
         try {
 
             if ($record->payment_method == 'MULTIPLE') {
                 $reference_payment = $record->reference_payment_ves . '-' . $record->reference_payment_usd;
             } else {
-                if ($record->reference_payment_ves != 'N/A') {
-                    $reference_payment = $record->reference_payment_ves;
-                }
-                if ($record->reference_payment_usd != 'N/A') {
-                    $reference_payment = $record->reference_payment_usd;
-                }
+                $reference_payment = ($record->reference_payment_ves != 'N/A')
+                    ? $record->reference_payment_ves
+                    : $record->reference_payment_usd;
             }
 
             //Primer pago cargado 
@@ -388,23 +394,24 @@ class PaidMembershipCorporateController extends Controller
                     'payment_method'    => $sales->payment_method,
                     'reference'         => $reference_payment,
                     'full_name_ti'      => $sales->affiliate_full_name,
-                    'ci_rif_ti'         => $record->affiliation_corporate->rif,
+                    'ci_rif_ti'         => $sales->affiliate_ci_rif,
                     'address_ti'        => $record->affiliation_corporate->address,
-                    'phone_ti'          => $record->affiliation_corporate->phone,
-                    'email_ti'          => $record->affiliation_corporate->email,
+                    'phone_ti'          => $sales->affiliate_phone,
+                    'email_ti'          => $sales->affiliate_email,
                     'total_amount'      => $record->total_amount,
                     'currency'          => $record->currency,
                     'plan'              => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                     'coverage'          => $record->coverage->price ?? null,
                     'frequency'         => $record->affiliation_corporate->payment_frequency,
                 ];
+                // dd($array_data);
 
                 /**ACTUALIZO EL ESTATUS DEL COMPROBANTE */
                 $record->status = 'APROBADO';
                 $record->aproved_by = Auth::user()->name;
                 $record->save();
 
-                dispatch(new SendAvisoDePago($array_data));
+                dispatch(new ReciboDePagoCorporativo($array_data));
 
                 /**
                  * CALCULO DE LA COMISION DIRECTA POR LA VENTA
@@ -615,6 +622,16 @@ class PaidMembershipCorporateController extends Controller
                 //     Mail::to($correo)->send(new SendMailKitBienvenida($data_tarjeta_afiliado, $condicionado));
                 // }
 
+                // Todo correcto: Confirmamos cambios en la DB
+                DB::commit();
+
+                // Notificación de éxito
+                Notification::make()
+                    ->title('Pago Aprobado')
+                    ->body('El pago y sus registros asociados se procesaron correctamente.')
+                    ->success()
+                    ->send();
+
                 return [
                     'firstRegister' => true
                 ];
@@ -702,7 +719,7 @@ class PaidMembershipCorporateController extends Controller
                 $record->aproved_by = Auth::user()->name;
                 $record->save();
 
-                SendAvisoDePago::dispatch($array_data);
+                ReciboDePagoCorporativo::dispatch($array_data);
 
                 /**
                  * CALCULO DE LA COMISION DIRECTA POR LA VENTA
@@ -877,19 +894,39 @@ class PaidMembershipCorporateController extends Controller
                     $commission->save();
                 }
 
+                // Todo correcto: Confirmamos cambios en la DB
+                DB::commit();
+
+                // Notificación de éxito
+                Notification::make()
+                    ->title('Pago Aprobado')
+                    ->body('El pago y sus registros asociados se procesaron correctamente.')
+                    ->success()
+                    ->send();
+
                 return [
                     'nextRegister' => true
                 ];
             }
 
         } catch (\Throwable $th) {
-            dd($th);
+            // ERROR DETECTADO: Deshacer todos los cambios en la DB
+            DB::rollBack();
+
+            // Registrar el error para el desarrollador
+            Log::error("Falla en approvePayment: " . $th->getMessage(), [
+                'record_id' => $record->id,
+                'exception' => $th
+            ]);
+
+            // Notificación de error para el usuario
             Notification::make()
-                ->title('EXCEPCION')
-                ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
-                ->icon('heroicon-m-tag')
+                ->title('Error al procesar el pago')
+                ->body('No se realizó ningún cambio en el sistema. Motivo: ' . $th->getMessage())
                 ->danger()
+                ->persistent() // Para que el usuario tenga tiempo de leerlo
                 ->send();
+
         }
     }
 }

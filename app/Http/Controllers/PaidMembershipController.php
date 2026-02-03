@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\CreateAvisoDeCobro;
+use App\Jobs\ReciboDePagoIndividual;
 use App\Jobs\SendAvisoDePago;
 use App\Mail\SendMailKitBienvenida;
 use App\Models\Agency;
@@ -403,7 +404,7 @@ class PaidMembershipController extends Controller
                 $record->aproved_by = Auth::user()->name;
                 $record->save();
 
-                dispatch(new SendAvisoDePago($array_data));
+                dispatch(new ReciboDePagoIndividual($array_data));
 
                 /**
                  * CALCULO DE LA COMISION DIRECTA POR LA VENTA
@@ -718,7 +719,7 @@ class PaidMembershipController extends Controller
                 $record->aproved_by = Auth::user()->name;
                 $record->save();
 
-                SendAvisoDePago::dispatch($array_data);
+                ReciboDePagoIndividual::dispatch($array_data);
 
                 /**
                  * CALCULO DE LA COMISION DIRECTA POR LA VENTA
