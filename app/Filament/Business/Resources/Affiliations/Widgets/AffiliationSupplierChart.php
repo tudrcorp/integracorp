@@ -9,9 +9,17 @@ use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
+use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
 
 class AffiliationSupplierChart extends ChartWidget
 {
+    use InteractsWithPageTable;
+
+    protected function getTablePage(): string
+    {
+        return ListAffiliations::class;
+    }
     public function mount(): void
     {
         FilamentAsset::register([
@@ -39,10 +47,18 @@ class AffiliationSupplierChart extends ChartWidget
 
         $supplierIds = [];
         for ($i = 0; $i < count($suppliers); $i++) {
-            $count= Affiliation::where('service_providers', 'like', '%' . $suppliers[$i]['name'] . '%')
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+
+            // $count= Affiliation::where('service_providers', 'like', '%' . $suppliers[$i]['name'] . '%')
+            //     ->whereBetween('created_at', ['2026-01-01 00:00:00', '2026-01-31 23:59:59'])
+            //     ->count();
+
+            /**
+             * @var mixed
+             * @version 2.0.0
+             */
+            $count = $this->getPageTableQuery()
+                ->where('service_providers', 'like', '%' . $suppliers[$i]['name'] . '%')
                 ->count();
-                // dump($count);
 
             array_push($supplierIds, ['name' => $suppliers[$i]['name'], 'count' => $count]);
         }

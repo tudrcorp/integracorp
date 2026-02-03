@@ -8,9 +8,17 @@ use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 
 class AffiliationAgencyChart extends ChartWidget
 {
+    use InteractsWithPageTable;
+
+    protected function getTablePage(): string
+    {
+        return ListAffiliations::class;
+    }
     public function mount(): void
     {
         FilamentAsset::register([
@@ -50,13 +58,21 @@ class AffiliationAgencyChart extends ChartWidget
         // QUERY OPTIMIZADO: 
         // 1. Unimos con la tabla 'agencies' usando el campo común (asumiendo 'code_agency')
         // 2. Seleccionamos el nombre corporativo y el conteo
-        $results = DB::table('affiliations')
+        $query = $this->getPageTableQuery();
+
+        $results = $query
+            ->reorder()
             ->leftJoin('agencies', 'affiliations.code_agency', '=', 'agencies.code')
             ->select(
                 DB::raw('COALESCE(agencies.name_corporative, affiliations.code_agency) as agency_name'),
-                DB::raw('count(*) as total')
+                DB::raw('count(affiliations.id) as total')
             )
-            ->whereBetween('affiliations.created_at', [$startOfMonth, $endOfMonth])
+            /**
+             * Forzamos a que cualquier filtro previo o posterior que use created_at
+             * se refiera a la tabla de afiliaciones. 
+             * Nota: Si el error persiste, es porque Filament inyecta el WHERE antes de este paso.
+             * En ese caso, usamos un Query Raw para limpiar el scope.
+             */
             ->where('affiliations.status', 'ACTIVA')
             ->groupBy('agency_name')
             ->orderByDesc('total')

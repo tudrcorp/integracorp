@@ -44,28 +44,24 @@ class AffiliateExporter extends Exporter
                 ->label('Fecha de Creación'),
             ExportColumn::make('updated_at')
                 ->label('Fecha de Actualización'),
-            ExportColumn::make('document')
-                ->label('Documento'),
             ExportColumn::make('status')
                 ->label('Estado'),
             ExportColumn::make('address')
                 ->label('Dirección'),
             ExportColumn::make('phone')
                 ->label('Teléfono'),
-            ExportColumn::make('country_id')
+            ExportColumn::make('country.name')
                 ->label('País'),
-            ExportColumn::make('state_id')
+            ExportColumn::make('state.definition')
                 ->label('Estado'),
-            ExportColumn::make('city_id')
+            ExportColumn::make('city.definition')
                 ->label('Ciudad'),
             ExportColumn::make('region')
                 ->label('Región'),
-            ExportColumn::make('plan_id')
+            ExportColumn::make('plan.description')
                 ->label('Plan'),
-            ExportColumn::make('coverage_id')
+            ExportColumn::make('coverage.price')
                 ->label('Cobertura'),
-            ExportColumn::make('age_range_id')
-                ->label('Rango de Edad'),
             ExportColumn::make('vaucherIls')
                 ->label('Vaucher Ils'),
             ExportColumn::make('dateInit')

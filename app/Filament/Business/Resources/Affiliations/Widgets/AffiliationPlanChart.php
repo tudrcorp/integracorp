@@ -9,9 +9,17 @@ use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 
 class AffiliationPlanChart extends ChartWidget
 {
+    use InteractsWithPageTable;
+
+    protected function getTablePage(): string
+    {
+        return ListAffiliations::class;
+    }
     public function mount(): void
     {
         FilamentAsset::register([
@@ -30,15 +38,28 @@ class AffiliationPlanChart extends ChartWidget
 
     protected function getData(): array
     {
-        // Rango del mes actual
-        $startOfMonth = now()->startOfMonth();
-        $endOfMonth = now()->endOfMonth();
-
-        // OPTIMIZACIÓN: Una sola consulta para obtener todos los conteos agrupados
-        $salesData = Affiliation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        $affiliations = $this->getPageTableQuery()
+            ->reorder()
             ->select('plan_id', DB::raw('count(*) as total'))
             ->groupBy('plan_id')
             ->get();
+    // dd($affiliations);
+        // dd($affiliations::select('plan_id', DB::raw('count(*) as total'))->groupBy('plan_id')->get());
+        // Rango del mes actual
+        // $startOfMonth = now()->startOfMonth();
+        // $endOfMonth = now()->endOfMonth();
+
+        // $start = $affiliations->first()->created_at;
+        // $end = $affiliations->latest()->first()->created_at;
+
+        // OPTIMIZACIÓN: Una sola consulta para obtener todos los conteos agrupados
+        // $salesData = Affiliation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        $salesData = $this->getPageTableQuery()
+            ->reorder()
+            ->select('plan_id', DB::raw('count(*) as total'))
+            ->groupBy('plan_id')
+            ->get();
+        // dd($salesData);
 
         $totalSales = $salesData->sum('total');
 
