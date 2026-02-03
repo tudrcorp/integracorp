@@ -14,6 +14,8 @@ class SaleYearChart extends ChartWidget
 
     protected ?string $description = 'Visualización mensual de ingresos totales con desglose por periodos.';
 
+    protected ?string $maxHeight = '400px';
+
 
     protected function getData(): array
     {
@@ -55,74 +57,74 @@ class SaleYearChart extends ChartWidget
         ];
     }
 
-    protected function getOptions(): RawJs
-    {
-        return RawJs::make(<<<JS
-        {
-            maintainAspectRatio: false,
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        display: true,
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        // Formato: 10.568,98
-                        callback: function(value) {
-                            return '$' + value.toLocaleString('de-DE', { minimumFractionDigits: 2 });
-                        },
-                        font: { size: 11 }
-                    }
-                },
-                x: {
-                    grid: { display: false } 
-                }
-            },
-            plugins: {
-                legend: { display: false }, 
-                tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    titleColor: '#1e293b',
-                    bodyColor: '#1e293b',
-                    borderColor: '#e2e8f0',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            let value = context.parsed.y;
-                            return 'Ventas: $' + value.toLocaleString('de-DE', { minimumFractionDigits: 2 });
-                        }
-                    }
-                }
-            },
-            // Configuración de interacción para oscurecer el color base
-            hover: {
-                mode: 'nearest',
-                intersect: true
-            },
-            elements: {
-                bar: {
-                    // Al hacer hover, reducimos el brillo del color original
-                    hoverBackgroundColor: function(context) {
-                        let color = context.dataset.backgroundColor[context.dataIndex];
-                        // Añadimos una capa de negro muy transparente para oscurecer
-                        return color + 'CC'; 
-                    },
-                    hoverBorderWidth: 2,
-                    hoverBorderColor: 'rgba(0,0,0,0.1)'
-                }
-            },
-            animation: {
-                duration: 2000,
-                easing: 'easeOutQuart'
-            }
-        }
-        JS);
-    }
+    // protected function getOptions(): RawJs
+    // {
+    //     return RawJs::make(<<<JS
+    //     {
+    //         maintainAspectRatio: false,
+    //         responsive: true,
+    //         scales: {
+    //             y: {
+    //                 beginAtZero: true,
+    //                 grid: {
+    //                     display: true,
+    //                     color: 'rgba(0, 0, 0, 0.05)',
+    //                     drawBorder: false
+    //                 },
+    //                 ticks: {
+    //                     // Formato: 10.568,98
+    //                     callback: function(value) {
+    //                         return '$' + value.toLocaleString('de-DE', { minimumFractionDigits: 2 });
+    //                     },
+    //                     font: { size: 11 }
+    //                 }
+    //             },
+    //             x: {
+    //                 grid: { display: false } 
+    //             }
+    //         },
+    //         plugins: {
+    //             legend: { display: false }, 
+    //             tooltip: {
+    //                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    //                 titleColor: '#1e293b',
+    //                 bodyColor: '#1e293b',
+    //                 borderColor: '#e2e8f0',
+    //                 borderWidth: 1,
+    //                 padding: 12,
+    //                 displayColors: false,
+    //                 callbacks: {
+    //                     label: function(context) {
+    //                         let value = context.parsed.y;
+    //                         return 'Ventas: $' + value.toLocaleString('de-DE', { minimumFractionDigits: 2 });
+    //                     }
+    //                 }
+    //             }
+    //         },
+    //         // Configuración de interacción para oscurecer el color base
+    //         hover: {
+    //             mode: 'nearest',
+    //             intersect: true
+    //         },
+    //         elements: {
+    //             bar: {
+    //                 // Al hacer hover, reducimos el brillo del color original
+    //                 hoverBackgroundColor: function(context) {
+    //                     let color = context.dataset.backgroundColor[context.dataIndex];
+    //                     // Añadimos una capa de negro muy transparente para oscurecer
+    //                     return color + 'CC'; 
+    //                 },
+    //                 hoverBorderWidth: 2,
+    //                 hoverBorderColor: 'rgba(0,0,0,0.1)'
+    //             }
+    //         },
+    //         animation: {
+    //             duration: 2000,
+    //             easing: 'easeOutQuart'
+    //         }
+    //     }
+    //     JS);
+    // }
 
     protected function getType(): string
     {
