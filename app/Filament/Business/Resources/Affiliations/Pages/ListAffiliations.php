@@ -31,7 +31,7 @@ class ListAffiliations extends ListRecords
             AffiliationPlanChart::class,
             AffiliationSupplierChart::class,
             // AffiliationAgencyChart::class,
-            AffiliationAgencyChart::class,
+            // AffiliationAgencyChart::class,
         ];
     }
 
