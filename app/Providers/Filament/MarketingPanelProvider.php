@@ -79,8 +79,9 @@ class MarketingPanelProvider extends PanelProvider
                 DuplicatedSession::class,
             ])
             ->userMenuItems([
+                'profile' => fn(Action $action) => $action->label('PERFIL'),
                 'logout' => fn(Action $action) => $action
-                    ->label('Cerrar Sesión')
+                    ->label('CERRAR SESIÓN')
                     ->color('danger')
                     ->url(route('internal')),
                 Action::make('business')

@@ -15,6 +15,7 @@ class ListSales extends ListRecords
 {
 
     use ExposesTableToWidgets;
+
     protected static string $resource = SaleResource::class;
 
     protected static ?string $title = 'GESTIÓN DE VENTAS';

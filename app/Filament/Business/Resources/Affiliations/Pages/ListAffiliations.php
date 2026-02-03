@@ -12,9 +12,11 @@ use App\Filament\Business\Resources\Affiliations\Widgets\StatsOverview;
 use App\Filament\Business\Resources\Affiliations\Widgets\StatsOverviewPlan;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 
 class ListAffiliations extends ListRecords
 {
+    use ExposesTableToWidgets;
     protected static string $resource = AffiliationResource::class;
 
     protected static ?string $title = 'Afiliaciones Individuales';
@@ -28,6 +30,7 @@ class ListAffiliations extends ListRecords
             ExclutionChart::class,
             AffiliationPlanChart::class,
             AffiliationSupplierChart::class,
+            // AffiliationAgencyChart::class,
             AffiliationAgencyChart::class,
         ];
     }

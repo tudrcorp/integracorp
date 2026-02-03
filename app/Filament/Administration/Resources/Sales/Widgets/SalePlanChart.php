@@ -10,9 +10,17 @@ use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
 
 class SalePlanChart extends ChartWidget
 {
+
+    use InteractsWithPageTable;
+
+    protected function getTablePage(): string
+    {
+        return ListSales::class;
+    }
 
     public function mount(): void
     {
@@ -26,7 +34,7 @@ class SalePlanChart extends ChartWidget
     protected ?string $description = 'Análisis porcentual y cuantitativo de planes vendidos en el mes actual.';
 
     // Ocupar medio ancho para que se vea mejor en el dashboard junto a otros widgets
-    protected int | string | array $columnSpan = 1;
+
 
     protected function getData(): array
     {
@@ -35,7 +43,17 @@ class SalePlanChart extends ChartWidget
         $endOfMonth = now()->endOfMonth();
 
         // OPTIMIZACIÓN: Una sola consulta para obtener todos los conteos agrupados
-        $salesData = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        // $salesData = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        //     ->select('plan_id', DB::raw('count(*) as total'))
+        //     ->groupBy('plan_id')
+        //     ->get();
+
+        /**
+         * @var mixed
+         * @version 2.0
+         */
+        $salesData = $this->getPageTableQuery()
+            ->reorder()
             ->select('plan_id', DB::raw('count(*) as total'))
             ->groupBy('plan_id')
             ->get();
@@ -96,44 +114,6 @@ class SalePlanChart extends ChartWidget
             ],
         ];
     }
-
-    //v1
-    // protected function getOptions(): RawJs
-    // {
-    //     return RawJs::make(<<<JS
-    //     {
-    //         animation: {
-    //             animateScale: true,
-    //             animateRotate: true,
-    //         },
-    //         plugins: {
-    //             legend: {
-    //                 display: true,
-    //                 position: 'bottom',
-    //                 labels: {
-    //                     usePointStyle: true,
-    //                     padding: 20,
-    //                 },
-    //             },
-    //             tooltip: {
-    //                 enabled: true,
-    //             },
-    //             datalabels: {
-    //                 display: true,
-    //                 align: 'center',
-    //                 anchor: 'center',
-    //                 color: '#ffffff',
-    //                 font: {
-    //                     family: 'sans-serif',
-    //                     weight: 'bold',
-    //                     size: 16,
-    //                 },
-    //                 textAlign: 'center',
-    //             },
-    //         },
-    //     }
-    // JS);
-    // }
 
     //v2
     protected function getOptions(): RawJs

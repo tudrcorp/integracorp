@@ -2,18 +2,22 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineHistoryPatients\Schemas;
 
+use App\Filament\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Models\AllergyList;
+use App\Models\RrhhColaborador;
 use App\Models\TelemedicineAllergyList;
+
 use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicineHistoryPatient;
-
 use App\Models\TelemedicinePatient;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Panel;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\FusedGroup;
 use Filament\Schemas\Components\Grid;
@@ -51,7 +55,7 @@ class TelemedicineHistoryPatientForm
                                                 if (TelemedicineHistoryPatient::max('id') == null) {
                                                     $parte_entera = 0;
                                                 } else {
-                                                    $parte_entera = TelemedicineHistoryPatient::max('id');
+                                                    $parte_entera = TelemedicineHistoryPatient::max('id') ?? RrhhColaborador::max('id');
                                                 }
                                                 return 'HIS-000' . $parte_entera + 1;
                                             })
@@ -72,7 +76,8 @@ class TelemedicineHistoryPatientForm
                                         Log::warning(session()->get('patient_id'));
                                         return null;
                                     })
-                                    ->required(),
+                                    ->preload()
+                                    ->searchable(),
                                 DatePicker::make('history_date')
                                     ->label('Fecha')
                                     ->default(now()),

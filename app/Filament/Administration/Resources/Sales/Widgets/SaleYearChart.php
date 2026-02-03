@@ -14,12 +14,6 @@ class SaleYearChart extends ChartWidget
 
     protected ?string $description = 'Visualización mensual de ingresos totales con desglose por periodos.';
 
-    protected function getExtraAttributes(): array
-    {
-        return [
-            'style' => 'height:50vh; width:100%;',
-        ];
-    }
 
     protected function getData(): array
     {

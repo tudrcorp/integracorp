@@ -92,10 +92,10 @@ class AdministrationPanelProvider extends PanelProvider
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('Profile'),
+                'profile' => fn(Action $action) => $action->label('PERFIL'),
                 // ...
                 'logout' => fn(Action $action) => $action
-                    ->label('Cerrar Sesión')
+                    ->label('CERRAR SESIÓN')
                     ->color('danger')
                     ->url(route('internal')),
                 Action::make('business')
