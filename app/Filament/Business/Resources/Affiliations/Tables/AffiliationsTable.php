@@ -353,6 +353,8 @@ class AffiliationsTable
                                                 return $amount->total_amount;
                                             })
                                             ->numeric()
+                                            ->disabled()
+                                            ->dehydrated()
                                             ->live(),
                                         DatePicker::make('date_payment_voucher')
                                             ->label('Fecha del Comprobante de Pago')
