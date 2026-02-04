@@ -532,9 +532,9 @@ Route::get('/generar-qr', function () {
     return view('qr_display', compact('qrCode', 'url'));
 });
 
-Route::get('/r4', function () {
+Route::get('/r4/banesco', function () {
 
-    $cuenta = '01720601066014334780';
+    $cuenta = '01340338463381064391';
     $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
@@ -549,7 +549,7 @@ Route::get('/r4', function () {
     $postData = [
         "docId"     => "V25798531",
         "nombre"    => "Humberto Sanchez",
-        "cuenta"    => "01720601066014334780",
+        "cuenta"    => "01340338463381064391",
         "monto"     => "100.00",
         "concepto"  => "Pago"
     ];
@@ -643,6 +643,454 @@ Route::get('/r4', function () {
         Log::info($resultOperacion);
     }
 
+});
+
+Route::get('/r4/vzla', function () {
+
+    $cuenta = '01020234530000310965';
+    $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
+    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
+    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
+
+
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: ' . $tokenAuthorization,
+        'Commerce: ' . $commerceToken,
+    ];
+
+    $postData = [
+        "docId"     => "V25798531",
+        "nombre"    => "Humberto Sanchez",
+        "cuenta"    => "01020234530000310965",
+        "monto"     => "100.00",
+        "concepto"  => "Pago"
+    ];
+
+
+    $curl = curl_init($url);
+
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($postData),
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+    ]);
+
+    $response = curl_exec($curl);
+
+    if (curl_errno($curl)) {
+        throw new \Exception('Error en cURL: ' . curl_error($curl));
+    }
+
+    //Convierto el JSON to Array
+    $result = json_decode($response, true);
+
+    if ($result === null) {
+        throw new \Exception('Respuesta de la API inválida');
+    }
+
+    curl_close($curl);
+
+    //escribo el response en la tabla de log
+    // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
+
+    // Logging de la respuesta de la API
+    Log::info($cuenta);
+    Log::info($commerceToken);
+    Log::info($url);
+    Log::info($tokenAuthorization);
+    Log::info($headers);
+    Log::info(json_encode($postData));
+
+    Log::info($result);
+
+    Log::info($result['codigo']);
+
+    if ($result['codigo'] == '202') {
+
+        Log::info($result['codigo']);
+
+        $uuid = $result['uuid'];
+        $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
+
+        $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
+
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: ' . $tokenAuthorization,
+            'Commerce: ' . $commerceToken,
+        ];
+
+        $id = [
+            "id"     => $uuid,
+        ];
+
+        $curl = curl_init($url);
+
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => json_encode($id),
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+        ]);
+
+        $responseOperacion = curl_exec($curl);
+
+        if (curl_errno($curl)) {
+            throw new \Exception('Error en cURL: ' . curl_error($curl));
+        }
+
+        $resultOperacion = json_decode($responseOperacion, true);
+
+        if ($result === null) {
+            throw new \Exception('Respuesta de la API inválida');
+        }
+
+        curl_close($curl);
+
+        Log::info($resultOperacion);
+    }
+});
+
+Route::get('/r4/bnc', function () {
+
+    $cuenta = '01910241672100021488';
+    $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
+    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
+    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
+
+
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: ' . $tokenAuthorization,
+        'Commerce: ' . $commerceToken,
+    ];
+
+    $postData = [
+        "docId"     => "V25798531",
+        "nombre"    => "Humberto Sanchez",
+        "cuenta"    => "01910241672100021488",
+        "monto"     => "100.00",
+        "concepto"  => "Pago"
+    ];
+
+
+    $curl = curl_init($url);
+
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($postData),
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+    ]);
+
+    $response = curl_exec($curl);
+
+    if (curl_errno($curl)) {
+        throw new \Exception('Error en cURL: ' . curl_error($curl));
+    }
+
+    //Convierto el JSON to Array
+    $result = json_decode($response, true);
+
+    if ($result === null) {
+        throw new \Exception('Respuesta de la API inválida');
+    }
+
+    curl_close($curl);
+
+    //escribo el response en la tabla de log
+    // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
+
+    // Logging de la respuesta de la API
+    Log::info($cuenta);
+    Log::info($commerceToken);
+    Log::info($url);
+    Log::info($tokenAuthorization);
+    Log::info($headers);
+    Log::info(json_encode($postData));
+
+    Log::info($result);
+
+    Log::info($result['codigo']);
+
+    if ($result['codigo'] == '202') {
+
+        Log::info($result['codigo']);
+
+        $uuid = $result['uuid'];
+        $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
+
+        $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
+
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: ' . $tokenAuthorization,
+            'Commerce: ' . $commerceToken,
+        ];
+
+        $id = [
+            "id"     => $uuid,
+        ];
+
+        $curl = curl_init($url);
+
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => json_encode($id),
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+        ]);
+
+        $responseOperacion = curl_exec($curl);
+
+        if (curl_errno($curl)) {
+            throw new \Exception('Error en cURL: ' . curl_error($curl));
+        }
+
+        $resultOperacion = json_decode($responseOperacion, true);
+
+        if ($result === null) {
+            throw new \Exception('Respuesta de la API inválida');
+        }
+
+        curl_close($curl);
+
+        Log::info($resultOperacion);
+    }
+});
+
+Route::get('/r4/mercantil', function () {
+
+    $cuenta = '01050049451049444078';
+    $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
+    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
+    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
+
+
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: ' . $tokenAuthorization,
+        'Commerce: ' . $commerceToken,
+    ];
+
+    $postData = [
+        "docId"     => "V25798531",
+        "nombre"    => "Humberto Sanchez",
+        "cuenta"    => "01050049451049444078",
+        "monto"     => "100.00",
+        "concepto"  => "Pago"
+    ];
+
+
+    $curl = curl_init($url);
+
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($postData),
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+    ]);
+
+    $response = curl_exec($curl);
+
+    if (curl_errno($curl)) {
+        throw new \Exception('Error en cURL: ' . curl_error($curl));
+    }
+
+    //Convierto el JSON to Array
+    $result = json_decode($response, true);
+
+    if ($result === null) {
+        throw new \Exception('Respuesta de la API inválida');
+    }
+
+    curl_close($curl);
+
+    //escribo el response en la tabla de log
+    // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
+
+    // Logging de la respuesta de la API
+    Log::info($cuenta);
+    Log::info($commerceToken);
+    Log::info($url);
+    Log::info($tokenAuthorization);
+    Log::info($headers);
+    Log::info(json_encode($postData));
+
+    Log::info($result);
+
+    Log::info($result['codigo']);
+
+    if ($result['codigo'] == '202') {
+
+        Log::info($result['codigo']);
+
+        $uuid = $result['uuid'];
+        $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
+
+        $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
+
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: ' . $tokenAuthorization,
+            'Commerce: ' . $commerceToken,
+        ];
+
+        $id = [
+            "id"     => $uuid,
+        ];
+
+        $curl = curl_init($url);
+
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => json_encode($id),
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+        ]);
+
+        $responseOperacion = curl_exec($curl);
+
+        if (curl_errno($curl)) {
+            throw new \Exception('Error en cURL: ' . curl_error($curl));
+        }
+
+        $resultOperacion = json_decode($responseOperacion, true);
+
+        if ($result === null) {
+            throw new \Exception('Respuesta de la API inválida');
+        }
+
+        curl_close($curl);
+
+        Log::info($resultOperacion);
+    }
+});
+
+Route::get('/r4/bbva', function () {
+
+    $cuenta = '01080989410100051948';
+    $commerceToken = '0952d954b485debb4df0f2e9e70f03382d2c849e01bc9aab29ab61c9ff3f70b3';
+    $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
+    $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
+
+
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: ' . $tokenAuthorization,
+        'Commerce: ' . $commerceToken,
+    ];
+
+    $postData = [
+        "docId"     => "V15872584",
+        "nombre"    => "Humberto Sanchez",
+        "cuenta"    => "01080989410100051948",
+        "monto"     => "100.00",
+        "concepto"  => "Pago"
+    ];
+
+
+    $curl = curl_init($url);
+
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($postData),
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+    ]);
+
+    $response = curl_exec($curl);
+
+    if (curl_errno($curl)) {
+        throw new \Exception('Error en cURL: ' . curl_error($curl));
+    }
+
+    //Convierto el JSON to Array
+    $result = json_decode($response, true);
+
+    if ($result === null) {
+        throw new \Exception('Respuesta de la API inválida');
+    }
+
+    curl_close($curl);
+
+    //escribo el response en la tabla de log
+    // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
+
+    // Logging de la respuesta de la API
+    Log::info($cuenta);
+    Log::info($commerceToken);
+    Log::info($url);
+    Log::info($tokenAuthorization);
+    Log::info($headers);
+    Log::info(json_encode($postData));
+
+    Log::info($result);
+
+    Log::info($result['codigo']);
+
+    if ($result['codigo'] == '202') {
+
+        Log::info($result['codigo']);
+
+        $uuid = $result['uuid'];
+        $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
+
+        $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
+
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: ' . $tokenAuthorization,
+            'Commerce: ' . $commerceToken,
+        ];
+
+        $id = [
+            "id"     => $uuid,
+        ];
+
+        $curl = curl_init($url);
+
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => json_encode($id),
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
+        ]);
+
+        $responseOperacion = curl_exec($curl);
+
+        if (curl_errno($curl)) {
+            throw new \Exception('Error en cURL: ' . curl_error($curl));
+        }
+
+        $resultOperacion = json_decode($responseOperacion, true);
+
+        if ($result === null) {
+            throw new \Exception('Respuesta de la API inválida');
+        }
+
+        curl_close($curl);
+
+        Log::info($resultOperacion);
+    }
 });
 
 Route::get('/tel/r4', function () {
