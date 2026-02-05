@@ -27,6 +27,8 @@ class AgentResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
+    protected static ?int $navigationSort = 2;
+
     public static function form(Schema $schema): Schema
     {
         return AgentForm::configure($schema);

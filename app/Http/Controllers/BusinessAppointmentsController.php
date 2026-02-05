@@ -38,6 +38,7 @@ class BusinessAppointmentsController extends Controller
                 'state_id'   => $request->state_id,
                 'city_id'    => $request->city_id,
                 'status'     => 'PENDIENTE', // Estado por defecto
+                'created_by' => $request->legal_name,
             ]);
 
             // 3. Respuesta de éxito

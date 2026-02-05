@@ -27,6 +27,8 @@ class ProspectAgentResource extends Resource
 
     protected static ?string $navigationLabel = 'Agente Prospecto';
 
+    protected static ?int $navigationSort = 6;
+
     public static function form(Schema $schema): Schema
     {
         return ProspectAgentForm::configure($schema);
