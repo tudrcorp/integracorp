@@ -25,6 +25,8 @@ class TravelAgentResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
+    protected static ?int $navigationSort = 4;
+
     public static function form(Schema $schema): Schema
     {
         return TravelAgentForm::configure($schema);

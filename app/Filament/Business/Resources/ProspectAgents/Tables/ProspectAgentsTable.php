@@ -74,7 +74,7 @@ class ProspectAgentsTable
             ])
             ->recordActions([
                 ViewAction::make(),
-                EditAction::make(),
+                // EditAction::make(),
                     
             ])
             ->toolbarActions([

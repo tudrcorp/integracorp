@@ -14,6 +14,8 @@ class BusinessAppointments extends Model
         'state_id',
         'city_id',
         'status',
+        'created_by',
+        'updated_by',
     ];
 
     public function country()
