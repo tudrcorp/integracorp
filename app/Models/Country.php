@@ -27,4 +27,9 @@ class Country extends Model
     {
         return $this->hasMany(Region::class, 'country_id', 'id');
     }
+
+    public function businessAppointments()
+    {
+        return $this->hasMany(BusinessAppointments::class);
+    }
 }
