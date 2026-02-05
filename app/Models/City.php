@@ -29,6 +29,11 @@ class City extends Model
         return $this->belongsTo(City::class, 'city_id', 'id');
     }
 
+    public function businessAppointments()
+    {
+        return $this->hasMany(BusinessAppointments::class);
+    }
+
     
 
     

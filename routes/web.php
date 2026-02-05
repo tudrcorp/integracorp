@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\BusinessAppointmentsController;
+use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\UtilsController;
@@ -11,13 +13,16 @@ use App\Models\AgeRange;
 use App\Models\Benefit;
 use App\Models\BirthdayNotification;
 use App\Models\CheckAffiliation;
+use App\Models\City;
 use App\Models\Collection;
+use App\Models\Country;
 use App\Models\Coverage;
 use App\Models\DataNotification;
 use App\Models\DetailIndividualQuote;
 use App\Models\Fee;
 use App\Models\Guest;
 use App\Models\Sale;
+use App\Models\State;
 use App\Models\TelemedicinePatientMedications;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -32,6 +37,11 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
+
+
+
+
 
 
 Route::get('/', function () {
@@ -1388,3 +1398,38 @@ Route::get('/pr/cumple', function () {
 Route::get('/formulario-externo', function () {
     return view('formulario-externo');
 })->name('formulario-externo');
+
+/*
+|--------------------------------------------------------------------------
+| API Routes - Ubicación y Geografía
+|--------------------------------------------------------------------------
+|
+| Estas rutas han sido optimizadas para permitir el almacenamiento en caché
+| y mejorar la legibilidad del sistema de rutas de Laravel.
+|
+*/
+
+Route::prefix('api')->name('api.')->group(function () {
+
+    // Listado global de países
+    Route::get('/countries', [FormularioExternoController::class, 'countries'])
+        ->name('countries.index');
+
+    // Listado de estados filtrados por país
+    Route::get('/countries/{countryId}/states', [FormularioExternoController::class, 'statesByCountry'])
+        ->name('countries.states');
+
+    // Listado de ciudades filtradas por estado
+    Route::get('/states/{stateId}/cities', [FormularioExternoController::class, 'citiesByState'])
+        ->name('states.cities');
+
+    /**
+     * Ruta para cargar la informacion en la tabla
+     * @version 1.0.0
+     * @author Gustavo Camacho
+     * @return void
+     * 
+     */
+    Route::post('/info/store', [BusinessAppointmentsController::class, 'store'])
+        ->name('info.store');
+});
