@@ -33,7 +33,7 @@ class AffiliationController extends Controller
 
             //1. Actualizamos la tabla de afiliaciones
             $record->update([
-                'family_members'        => Affiliate::select('affiliation_id')->where('affiliation_id', $record->id)->count(),
+                'family_members' => Affiliate::select('affiliation_id')->where('affiliation_id', $record->id)->count(),
             ]);
 
             if ($record['payment_frequency'] == 'ANUAL') {
@@ -455,6 +455,7 @@ class AffiliationController extends Controller
 
     public static function uploadPaymentMultipleAffiliations($records, $data, $type_roll)
     {
+        dd($records, $data, $type_roll);
 
         try {
 
@@ -484,7 +485,7 @@ class AffiliationController extends Controller
                             'payment_method'            => $data['payment_method'],
                             'payment_method_usd'        => 'N/A',
                             'payment_method_ves'        => 'N/A',
-                            'reference_payment_usd'   => isset($data['reference_payment_usd']) ? $data['reference_payment_usd'] : 'N/A',
+                            'reference_payment_usd'     => isset($data['reference_payment_usd']) ? $data['reference_payment_usd'] : 'N/A',
                             'reference_payment_ves'     => isset($data['reference_payment_ves']) ? $data['reference_payment_ves'] : 'N/A',
                             'bank_usd'                  => isset($data['bank_usd']) ? $data['bank_usd'] : 'N/A',
                             'bank_ves'                  => isset($data['bank_ves']) ? $data['bank_ves'] : 'N/A',
@@ -554,7 +555,7 @@ class AffiliationController extends Controller
                             'payment_frequency'         => $record['payment_frequency'],
                             'payment_date'              => now()->format('d-m-Y'),
                             'prox_payment_date'         => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
-                            'reference_payment_usd'   => array_key_exists('reference_payment_usd', $data) ? $data['reference_payment_usd'] : 'N/A',
+                            'reference_payment_usd'     => array_key_exists('reference_payment_usd', $data) ? $data['reference_payment_usd'] : 'N/A',
                             'reference_payment_ves'     => $data['reference_payment_ves'],
                             'observations_payment'      => $data['observations_payment'] == null ? 'N/A' : $data['observations_payment'],
                             'bank_usd'                  => $data['bank_usd'] == null ? 'N/A' : $data['bank_usd'],
@@ -873,6 +874,7 @@ class AffiliationController extends Controller
 
             //code...
         } catch (\Throwable $th) {
+            dd($th);
             Log::error($th->getMessage());
             Notification::make()
                 ->title('EXCEPTION')

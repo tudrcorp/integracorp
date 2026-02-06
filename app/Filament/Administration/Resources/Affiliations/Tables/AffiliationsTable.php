@@ -1037,7 +1037,6 @@ class AffiliationsTable
                                         ])->columnSpanFull(),
                                     ])->columnSpanFull(),
 
-
                                 /**FORMA DE PAGO */
                                 Fieldset::make('FORMA DE PAGO')
                                     ->schema([
@@ -1055,7 +1054,6 @@ class AffiliationsTable
                                                         'MULTIPLE'          => 'MULTIPLE',
                                                         'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
                                                         'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
-
                                                     ])
                                                     ->live()
                                                     ->required()
