@@ -58,7 +58,7 @@
             <!-- Footer Sidebar RESALTADO -->
             <div class="mt-12">
                 <div
-                    class="relative p-5 rounded-2xl bg-zinc-900 dark:bg-zinc-800 overflow-hidden shadow-lg border border-zinc-800 dark:border-zinc-700">
+                    class="relative p-5 rounded-2xl bg-white dark:bg-zinc-800 overflow-hidden shadow-sm dark:shadow-lg border border-zinc-200 dark:border-zinc-700 transition-colors duration-300">
                     <!-- Decoración visual de fondo -->
                     <div class="absolute -right-4 -top-4 size-24 bg-[#23bdf2]/10 rounded-full blur-2xl"></div>
             
@@ -116,15 +116,17 @@
                         </div>
                     </div>
 
+                    <flux:radio.group wire:model="document_type" label="Tipo de Documento" variant="cards" class="max-sm:flex-col">
+                        <flux:radio value="V" label="Venezolano" checked />
+                        <flux:radio value="E" label="Extranjero" />
+                        <flux:radio value="J" label="Jurídico" />
+                    </flux:radio.group>
+
+
                     <!-- Cédula -->
-                    <flux:input.group label="Número de Cédula">
-                        <flux:select class="!max-w-24" wire:model="document_type">
-                            <flux:select.option selected>V</flux:select.option>
-                            <flux:select.option>E</flux:select.option>
-                            <flux:select.option>J</flux:select.option>
-                        </flux:select>
-                        <flux:input placeholder="12345678" wire:model="ci"/>
-                    </flux:input.group>
+                    <div class="space-y-2">
+                        <flux:input label="Número de Documento" placeholder="12345678" wire:model="ci"/>
+                    </div>
 
                     <!-- Banco (Flux Select Style) -->
                     <div class="space-y-2">
