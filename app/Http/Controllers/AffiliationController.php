@@ -455,7 +455,6 @@ class AffiliationController extends Controller
 
     public static function uploadPaymentMultipleAffiliations($records, $data, $type_roll)
     {
-        dd($records, $data, $type_roll);
 
         try {
 
