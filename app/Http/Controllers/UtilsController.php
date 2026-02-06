@@ -2013,4 +2013,48 @@ class UtilsController extends Controller
             'second_part' => implode(' ', $secondPart)
         ];
     }
+
+    /**
+     * Muestra la vista de pago con validación extrema.
+     *
+     * @param string $transaction_id
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
+    public function show(string $transaction_id, Request $request)
+    {
+        dd($transaction_id, $request->all(), $request->hasValidSignature());
+        try {
+            // 1. Buscamos la transacción por UUID v7 (Recomendación Laravel 12)
+            // Solo permitimos transacciones que estén en estado 'pendiente'
+            $transaction = Transaction::where('uuid', $transaction_id)
+                ->where('status', 'pendiente')
+                ->firstOrFail();
+
+            // 2. Verificamos si el link ha expirado lógicamente (opcional a la firma)
+            if ($transaction->expires_at && $transaction->expires_at->isPast()) {
+                return redirect()->route('payment.error')
+                    ->with('error', 'El link de pago ha expirado.');
+            }
+
+            return view('link-debito-inmediato', [
+                'transaction' => $transaction,
+                'amount' => $transaction->amount,
+                'plan_name' => $transaction->plan_name
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            // Error 404: La transacción no existe o ya fue pagada/cancelada
+            Log::warning("Intento de acceso a link de pago inválido o usado: ID {$transaction_id}");
+            return redirect()->route('payment.error')
+                ->with('error', 'El enlace de pago ya no es válido o ya fue procesado.');
+        } catch (Throwable $e) {
+            // Error Crítico: Fallo de base de datos o sistema
+            Log::critical("Error crítico en CheckoutController: " . $e->getMessage(), [
+                'id' => $transaction_id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->view('errors.500', [], 500);
+        }
+    }
 }
