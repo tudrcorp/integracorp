@@ -68,15 +68,15 @@
                                 <flux:icon.shield-check variant="solid" class="size-5 text-emerald-500" />
                             </div>
                             <div class="space-y-0.5">
-                                <p class="text-xs font-bold text-white uppercase tracking-wider">Conexión Segura</p>
-                                <p class="text-[10px] text-zinc-400 font-medium">Cifrado de grado bancario (AES-256)</p>
+                                <p class="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">Conexión Segura</p>
+                                <p class="text-[10px] text-zinc-900 dark:text-zinc-100 font-medium">Cifrado de grado bancario (AES-256)</p>
                             </div>
                         </div>
             
                         <div
                             class="pt-3 border-t border-zinc-800 dark:border-zinc-700 flex items-center justify-between gap-4 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em]">
                             <div class="flex items-center gap-1.5">
-                                <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span class="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-500 animate-pulse"></span>
                                 SSL ACTIVO
                             </div>
                             <div class="flex items-center gap-1">
