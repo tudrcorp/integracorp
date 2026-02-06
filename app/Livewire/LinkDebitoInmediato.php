@@ -155,102 +155,10 @@ class LinkDebitoInmediato extends Component
                 $this->checkOperationStatus($result['uuid'], $commerceToken);
 
                 return Flux::toast(
-                    heading: 'Procesando',
+                    heading: 'Pago procesado con Exito',
                     text: 'Debe autorizar la operación en su portal bancario.',
                     variant: 'success'
                 );
-            }
-
-            // $response = curl_exec($curl);
-
-            // if (curl_errno($curl)) {
-            //     throw new \Exception('Error en cURL: ' . curl_error($curl));
-            // }
-
-            // //Convierto el JSON to Array
-            // $result = json_decode($response, true);
-
-            // //Si el codigo es 108, es porque el pago fue procesado exitosamente
-            // if($result['code'] == '108'){
-
-            //     return Flux::toast(
-            //             heading: 'Codigo: '.$result['code'],
-            //             text: $result['message'],
-            //             variant: 'error'
-            //         );
-            // }
-
-            // if ($result['codigo'] == '202') {
-
-            //     return Flux::toast(
-            //         heading: 'Codigo: ' . $result['code'],
-            //         text: $result['mensaje'].'. Por favor, debe dirigirse a su banco para autorizar la operación.',
-            //         variant: 'success'
-            //     );
-            // }
-
-            // curl_close($curl);
-
-            //escribo el response en la tabla de log
-            // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
-
-            // Logging de la respuesta de la API
-            // Log::info($cuenta);
-            // Log::info($commerceToken);
-            // Log::info($url);
-            // Log::info($tokenAuthorization);
-            // Log::info($headers);
-            // Log::info(json_encode($postData));
-
-            // Log::info($result);
-
-            // Log::info($result['codigo']);
-
-            if ($result['codigo'] == '202') {
-
-                Log::info($result['codigo']);
-
-                $uuid = $result['uuid'];
-                $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
-
-                $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
-
-                $headers = [
-                    'Content-Type: application/json',
-                    'Authorization: ' . $tokenAuthorization,
-                    'Commerce: ' . $commerceToken,
-                ];
-
-                $id = [
-                    "id"     => $uuid,
-                ];
-
-                $curl = curl_init($url);
-
-                curl_setopt_array($curl, [
-                    CURLOPT_POST => true,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_HTTPHEADER => $headers,
-                    CURLOPT_POSTFIELDS => json_encode($id),
-                    CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
-                    CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
-                ]);
-
-                $responseOperacion = curl_exec($curl);
-
-                if (curl_errno($curl)) {
-                    throw new \Exception('Error en cURL: ' . curl_error($curl));
-                }
-
-                $resultOperacion = json_decode($responseOperacion, true);
-
-                if ($result === null) {
-                    throw new \Exception('Respuesta de la API inválida');
-                }
-
-                curl_close($curl);
-
-                Log::info($resultOperacion);
             }
 
         } catch (\Exception $e) {
@@ -261,6 +169,44 @@ class LinkDebitoInmediato extends Component
             );
         }
 
+    }
+
+    protected function checkOperationStatus($uuid, $commerceToken)
+    {
+        try {
+            
+            $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
+            $tokenAuthorization = hash_hmac('sha256', $uuid, $commerceToken);
+
+            $headers = [
+                'Content-Type: application/json',
+                'Authorization: ' . $tokenAuthorization,
+                'Commerce: ' . $commerceToken,
+            ];
+
+            $postData = ["id" => $uuid];
+
+            $curl = curl_init($url);
+            curl_setopt_array($curl, [
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => $headers,
+                CURLOPT_POSTFIELDS => json_encode($postData),
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+            ]);
+
+            $response = curl_exec($curl);
+            $result = json_decode($response, true);
+            curl_close($curl);
+
+            Log::info("Estatus Operación $uuid:", $result ?? []);
+        } catch (\Exception $e) {
+            Log::error("Error consultando estatus de operación $uuid:", [
+                'error' => $e->getMessage(),
+                'uuid' => $uuid,
+            ]);
+        }
     }
 
     public function render()
