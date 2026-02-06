@@ -73,8 +73,8 @@ class ReciboDePagoCorporativo implements ShouldQueue
             }
 
             // 5. Envío de correo con el nombre del PDF
-            Mail::to($this->data['email_ti'])
-                ->send(new MailAvisoDePago($filename));
+            /** Se comenta esta linea a peticion del area administrativa */
+            //Mail::to($this->data['email_ti'])->send(new MailAvisoDePago($filename));
                 
         } catch (Throwable $e) {
             $this->handleFailure($e);
