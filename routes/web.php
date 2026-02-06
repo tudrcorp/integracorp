@@ -35,8 +35,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Livewire\Volt\Volt;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
+
 
 
 
@@ -1433,3 +1437,39 @@ Route::prefix('api')->name('api.')->group(function () {
     Route::post('/info/store', [BusinessAppointmentsController::class, 'store'])
         ->name('info.store');
 });
+
+/**
+ * Ruta para el link de pago
+ * @version 1.0.0
+ * @author Gustavo Camacho
+ * @return void
+ * 
+ */
+
+Route::get('/ldi', function () {
+    // dd(Str::uuid7());
+    // Ejemplo de generación de link firmado con el UUID generado
+    // $link = URL::temporarySignedRoute(
+    //     'ldi',
+    //     now()->addMinutes(30),
+    //     ['transaction_id' => Str::uuid7()] // Aquí va el UUID v7
+    // );
+
+    
+    // dd($link);
+    return view('link-debito-inmediato');
+});
+
+/**
+ * OPTIMIZACIÓN DE SEGURIDAD PARA LINK DE PAGO
+ * * 1. Middleware 'signed': Garantiza que la URL no haya sido manipulada.
+ * 2. Middleware 'throttle': Evita ataques de denegación de servicio o fuerza bruta.
+ * 3. Parámetros validados: Se espera un UUID para identificar la transacción.
+ */
+
+Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
+    ->name('ldi')
+    ->middleware([
+        'signed',           // Verifica que la firma de la URL sea válida
+        'throttle:10,1',    // Máximo 10 intentos por minuto por IP
+    ]);
