@@ -134,6 +134,7 @@ class LinkDebitoInmediato extends Component
             curl_close($curl);
 
             if (!$result) {
+                $this->reset();
                 return Flux::toast(
                     heading: 'Error de conexión',
                     text: 'Respuesta del banco inválida.',
@@ -143,6 +144,7 @@ class LinkDebitoInmediato extends Component
 
             // Manejo de códigos según lógica del negocio
             if (isset($result['code']) && $result['code'] == '108') {
+                $this->reset();
                 return Flux::toast(
                     heading: 'Error en transacción',
                     text: $result['message'] ?? 'Código 108',
@@ -151,6 +153,7 @@ class LinkDebitoInmediato extends Component
             }
 
             if (isset($result['codigo']) && $result['codigo'] == '202') {
+                $this->reset();
                 // Lógica de consulta de operación...
                 $this->checkOperationStatus($result['uuid'], $commerceToken);
 
@@ -160,6 +163,7 @@ class LinkDebitoInmediato extends Component
                     variant: 'success'
                 );
             }
+            
 
         } catch (\Exception $e) {
             return Flux::toast(
