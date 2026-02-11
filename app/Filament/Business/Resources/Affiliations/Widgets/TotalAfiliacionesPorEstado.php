@@ -25,7 +25,34 @@ class TotalAfiliacionesPorEstado extends ChartWidget
 
     protected ?string $maxHeight = '300px';
 
+    /**
+     * Filtro de Año seleccionado.
+     */
+    public ?string $filter = null;
+
     public ?int $selectedStateId = null;
+
+    public function __construct()
+    {
+        // Inicializar con el año actual
+        $this->filter = (string) now()->year;
+    }
+
+    /**
+     * Define las opciones del selector de filtros (Últimos 5 años).
+     */
+    protected function getFilters(): ?array
+    {
+        $years = [];
+        $currentYear = now()->year;
+
+        for ($i = 0; $i < 5; $i++) {
+            $year = $currentYear - $i;
+            $years[$year] = (string) $year;
+        }
+
+        return $years;
+    }
 
     public function handleChartClick(array $payload): void
     {
@@ -37,7 +64,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
 
                 Notification::make()
                     ->title("Detalle: {$state->definition}")
-                    ->body("Mostrando ciudades con afiliaciones activas.")
+                    ->body("Mostrando ciudades con afiliaciones activas en el año {$this->filter}.")
                     ->info()
                     ->send();
             }
@@ -46,7 +73,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
 
             Notification::make()
                 ->title("Vista Nacional")
-                ->body("Regresando al resumen por estados.")
+                ->body("Regresando al resumen por estados del año {$this->filter}.")
                 ->success()
                 ->send();
         }
@@ -59,6 +86,9 @@ class TotalAfiliacionesPorEstado extends ChartWidget
         $backgroundColors = [];
         $datasetLabel = '';
 
+        // Obtenemos el año del filtro
+        $selectedYear = (int) ($this->filter ?? now()->year);
+
         if ($this->selectedStateId) {
             /**
              * VISTA POR CIUDAD (Drill-down)
@@ -68,6 +98,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
             $stats = $this->getPageTableQuery()
                 ->reorder()
                 ->where('status', 'ACTIVA')
+                ->whereYear('created_at', $selectedYear) // Aplicamos filtro de año
                 ->where('state_id_ti', $this->selectedStateId)
                 ->select('city_id_ti', DB::raw('count(*) as total'))
                 ->groupBy('city_id_ti')
@@ -82,7 +113,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
                 $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
             }
 
-            $datasetLabel = "Afiliaciones en {$stateName}";
+            $datasetLabel = "Afiliaciones en {$stateName} ({$selectedYear})";
         } else {
             /**
              * VISTA POR ESTADO (General)
@@ -91,6 +122,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
                 ->reorder()
                 ->select('state_id_ti', DB::raw('count(*) as total'))
                 ->where('status', 'ACTIVA')
+                ->whereYear('created_at', $selectedYear) // Aplicamos filtro de año
                 ->groupBy('state_id_ti')
                 ->pluck('total', 'state_id_ti');
 
@@ -104,7 +136,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
                 $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
             }
 
-            $datasetLabel = 'Afiliaciones por Estado';
+            $datasetLabel = "Afiliaciones por Estado ({$selectedYear})";
         }
 
         return [
@@ -114,10 +146,6 @@ class TotalAfiliacionesPorEstado extends ChartWidget
                     'data' => $values,
                     'backgroundColor' => $backgroundColors,
                     'borderRadius' => 6,
-                    /**
-                     * Configuración de ancho de barras:
-                     * Se ha incrementado a 0.8 y 0.9 para que sean más anchas y consistentes.
-                     */
                     'barPercentage' => 0.8,
                     'categoryPercentage' => 1.0,
                 ],
@@ -148,13 +176,59 @@ class TotalAfiliacionesPorEstado extends ChartWidget
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { stepSize: 1 }
+                    ticks: { 
+                        stepSize: 1,
+                        color: '#86868b' 
+                    },
+                    grid: {
+                        display: true,
+                        color: 'rgba(156, 163, 175, 0.2)', // Color gris suave visible en light/dark
+                        drawTicks: true,
+                        drawBorder: false
+                    }
+                },
+                x: {
+                    grid: {
+                        display: true,
+                        color: 'rgba(156, 163, 175, 0.1)', // Líneas verticales tenues adaptables
+                        drawOnChartArea: true,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#86868b',
+                        autoSkip: false,
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: {
+                            size: 10
+                        },
+                        callback: function(value) {
+                            let label = this.getLabelForValue(value);
+                            if (label.length > 12) {
+                                return label.substring(0, 10) + '...';
+                            }
+                            return label;
+                        }
+                    }
                 }
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                    titleColor: '#1d1d1f',
+                    bodyColor: '#1d1d1f',
+                    footerColor: '#86868b',
+                    borderColor: '#d2d2d7',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    displayColors: false,
                     callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
                         footer: () => 'Clic para profundizar / regresar'
                     }
                 }

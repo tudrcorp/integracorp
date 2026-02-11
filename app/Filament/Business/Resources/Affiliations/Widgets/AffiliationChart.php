@@ -3,6 +3,8 @@
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
 use App\Models\Affiliation;
+use App\Models\Affiliate;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
@@ -15,19 +17,68 @@ class AffiliationChart extends ChartWidget
 {
     protected ?string $heading = 'RESUMEN DE AFILIACIONES Y AFILIADOS INDIVIDUALES';
 
-    protected ?string $description = 'Visualización mensual de afiliaciones con desglose por días del mes. Haz clic en las barras para observar el detalle de las afiliaciones por dia de acuerdo al mes seleccionado.';
+    protected ?string $description = 'Visualización mensual de afiliaciones con desglose por días del mes. Haz clic en las barras para observar el detalle o usa el botón para resetear.';
 
     protected ?string $maxHeight = '300px';
 
     /**
-     * Estado para controlar el filtro.
-     * null: Muestra resumen anual de afiliaciones.
-     * 1-12: Muestra total de afiliados por día en el mes seleccionado.
+     * Filtro de Año (Últimos 5 años)
+     */
+    public ?string $filter = null;
+
+    /**
+     * Estado para controlar el drill-down mensual.
      */
     public ?int $selectedMonth = null;
 
+    public function __construct()
+    {
+        $this->filter = (string) now()->year;
+    }
+
     /**
-     * Maneja el clic en las barras. 
+     * Define las opciones del selector de filtros.
+     */
+    protected function getFilters(): ?array
+    {
+        $years = [];
+        $currentYear = now()->year;
+
+        for ($i = 0; $i < 5; $i++) {
+            $year = $currentYear - $i;
+            $years[$year] = (string) $year;
+        }
+
+        return $years;
+    }
+
+    /**
+     * Acción de encabezado para resetear el gráfico.
+     * Solo es visible cuando hay un mes seleccionado.
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('reset')
+                ->label('Volver a Vista Anual')
+                ->color('gray')
+                ->size('sm')
+                ->icon('heroicon-m-arrow-path')
+                ->visible(fn() => $this->selectedMonth !== null)
+                ->action(function () {
+                    $this->selectedMonth = null;
+
+                    Notification::make()
+                        ->title('Gráfico Reseteado')
+                        ->body('Regresando al resumen anual.')
+                        ->success()
+                        ->send();
+                }),
+        ];
+    }
+
+    /**
+     * Maneja el clic en las barras para alternar vistas.
      */
     public function handleChartClick(array $payload): void
     {
@@ -35,36 +86,31 @@ class AffiliationChart extends ChartWidget
             $this->selectedMonth = $payload['indice'] + 1;
 
             Notification::make()
-                ->title("Detalle de Afiliados: {$payload['mes']}")
-                ->body("Mostrando el total de personas afiliadas en este periodo.")
+                ->title("Detalle de Afiliados: {$payload['mes']} {$this->filter}")
+                ->body("Mostrando el total de personas afiliadas por día.")
                 ->info()
                 ->send();
         } else {
+            // Si el usuario hace clic de nuevo en una barra del detalle, también resetea
             $this->selectedMonth = null;
-
-            Notification::make()
-                ->title('Vista Anual')
-                ->body('Regresando al resumen anual de afiliaciones.')
-                ->success()
-                ->send();
         }
     }
 
     protected function getData(): array
     {
-        $year = now()->year;
+        $selectedYear = (int) ($this->filter ?? now()->year);
         $backgroundColors = [];
 
         if ($this->selectedMonth) {
             /**
-             * VISTA MENSUAL: Conteo de Afiliados por día
+             * VISTA MENSUAL: Detalle por día
              */
-            $startOfMonth = Carbon::create($year, $this->selectedMonth)->startOfMonth();
-            $endOfMonth = Carbon::create($year, $this->selectedMonth)->endOfMonth();
+            $startOfMonth = Carbon::create($selectedYear, $this->selectedMonth)->startOfMonth();
+            $endOfMonth = Carbon::create($selectedYear, $this->selectedMonth)->endOfMonth();
 
             $dataTrend = Trend::query(
-                \App\Models\Affiliate::query()
-                    ->whereHas('affiliation', function ($query) {
+                Affiliate::query()
+                    ->whereHas('affiliation', function ($query) use ($selectedYear) {
                         $query->where('status', 'ACTIVA');
                     })
             )
@@ -73,49 +119,68 @@ class AffiliationChart extends ChartWidget
                 ->count();
 
             $labels = $dataTrend->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
-            $datasetLabel = 'Total Afiliados en ' . Carbon::create(null, $this->selectedMonth)->monthName;
+            $monthName = Carbon::create(null, $this->selectedMonth)->monthName;
+            $datasetLabel = "Afiliados en {$monthName} {$selectedYear}";
 
-            // Generar colores aleatorios para cada día
             foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+                $backgroundColors[] = $this->getRandomVibrantColor();
             }
         } else {
             /**
-             * VISTA ANUAL: Conteo por Mes
+             * VISTA ANUAL: Resumen por mes
              */
+            $startOfYear = Carbon::create($selectedYear)->startOfYear();
+            $endOfYear = Carbon::create($selectedYear)->endOfYear();
+
             $dataTrend = Trend::query(
-                Affiliation::query()->where('status', 'ACTIVA')->whereYear('created_at', $year)
+                Affiliation::query()
+                    ->where('status', 'ACTIVA')
+                    ->whereYear('created_at', $selectedYear)
             )
-                ->between(start: now()->startOfYear(), end: now()->endOfYear())
+                ->between(start: $startOfYear, end: $endOfYear)
                 ->perMonth()
                 ->count();
 
             $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-            $datasetLabel = 'Afiliaciones Activas (Anual)';
+            $datasetLabel = "Afiliaciones Activas ({$selectedYear})";
 
-            // Generar colores aleatorios para cada mes
             foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+                $backgroundColors[] = $this->getRandomVibrantColor();
             }
+        }
+
+        $dataValues = $dataTrend->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray();
+
+        // Si no hay valores en el mes seleccionado, mostramos una notificación automática
+        if ($this->selectedMonth && array_sum($dataValues) === 0) {
+            Notification::make()
+                ->title('Sin datos')
+                ->body('No se encontraron afiliaciones para el mes seleccionado.')
+                ->warning()
+                ->send();
         }
 
         return [
             'datasets' => [
                 [
                     'label' => $datasetLabel,
-                    'data' => $dataTrend->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray(),
+                    'data' => $dataValues,
                     'backgroundColor' => $backgroundColors,
                     'borderRadius' => 6,
-                    /**
-                     * Configuración de ancho de barras:
-                     * Consistente con el gráfico de estados (más anchas).
-                     */
                     'barPercentage' => 0.8,
                     'categoryPercentage' => 0.9,
                 ],
             ],
             'labels' => $labels,
         ];
+    }
+
+    protected function getRandomVibrantColor(): string
+    {
+        $r = mt_rand(50, 200);
+        $g = mt_rand(50, 200);
+        $b = mt_rand(50, 200);
+        return sprintf('#%02X%02X%02X', $r, $g, $b);
     }
 
     protected function getOptions(): RawJs
@@ -138,23 +203,47 @@ class AffiliationChart extends ChartWidget
                 event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
             },
             plugins: {
-                legend: {
-                    display: false // Ocultamos leyenda para dar más espacio a las barras anchas
-                },
+                legend: { display: false },
                 tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 1)',
+                    titleColor: '#000000',
+                    bodyColor: '#000000',
+                    footerColor: '#000000',
+                    borderColor: '#d2d2d7',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: false,
                     callbacks: {
-                        footer: () => 'Haz clic para alternar entre Afiliaciones y Afiliados'
+                        footer: () => 'Haz clic para detallar o volver'
                     }
                 }
             },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 }
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { stepSize: 1 },
+                    grid: {
+                        display: true,
+                        color: 'rgba(156, 163, 175, 0.2)', // Gris suave adaptable
+                        drawBorder: false
+                    }
+                },
+                x: { 
+                    grid: { 
+                        display: true,
+                        color: 'rgba(156, 163, 175, 0.1)', // Líneas verticales más tenues
+                        drawBorder: false
+                    } 
                 }
             }
         }
         JS);
+    }
+
+    protected function getTablePage(): string
+    {
+        // Placeholder en caso de que este widget interactúe con una tabla
+        return '';
     }
 
     protected function getType(): string

@@ -288,7 +288,7 @@ class PaidMembershipController extends Controller
                     $collections->next_payment_date       = $record->prox_payment_date;
                     
                     //... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
-                    $collections->filter_next_payment_date      = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('Y-m-d');
+                    $collections->filter_next_payment_date      = Carbon::createFromFormat('d-m-Y', $collections->next_payment_date)->format('Y-m-d');
                     
                     $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                     $collections->created_by              = Auth::user()->name;

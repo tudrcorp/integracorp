@@ -43,23 +43,13 @@ class AffiliationPlanChart extends ChartWidget
             ->select('plan_id', DB::raw('count(*) as total'))
             ->groupBy('plan_id')
             ->get();
-    // dd($affiliations);
-        // dd($affiliations::select('plan_id', DB::raw('count(*) as total'))->groupBy('plan_id')->get());
-        // Rango del mes actual
-        // $startOfMonth = now()->startOfMonth();
-        // $endOfMonth = now()->endOfMonth();
-
-        // $start = $affiliations->first()->created_at;
-        // $end = $affiliations->latest()->first()->created_at;
-
-        // OPTIMIZACIÓN: Una sola consulta para obtener todos los conteos agrupados
-        // $salesData = Affiliation::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+  
         $salesData = $this->getPageTableQuery()
             ->reorder()
             ->select('plan_id', DB::raw('count(*) as total'))
             ->groupBy('plan_id')
             ->get();
-        // dd($salesData);
+
 
         $totalSales = $salesData->sum('total');
 

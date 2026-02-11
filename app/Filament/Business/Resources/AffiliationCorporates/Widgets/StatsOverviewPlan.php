@@ -2,14 +2,14 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
-
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
-use App\Models\AffiliationCorporatePlan;
 use App\Models\AfilliationCorporatePlan;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 
 class StatsOverviewPlan extends StatsOverviewWidget
 {
@@ -17,79 +17,94 @@ class StatsOverviewPlan extends StatsOverviewWidget
 
     protected ?string $heading = 'ANÁLISIS DE AFILIACIONES POR PLAN';
 
-    protected ?string $description = 'Distribución de afiliaciones mensuales según el tipo de suscripción.';
+    protected ?string $description = 'Distribución de afiliaciones mensuales según el tipo de suscripción. Pasa el mouse para ver datos del mes actual.';
 
     protected function getTablePage(): string
     {
         return ListAffiliationCorporates::class;
     }
+
     protected function getStats(): array
     {
+        $now = Carbon::now();
+        $mesActualNombre = $now->translatedFormat('F');
+
         /**
-         * Optimización de Consulta:
-         * Obtenemos los conteos de todos los planes en una sola consulta agrupada.
+         * Conteos Totales (Históricos/Filtrados)
          */
-        $planStats = AfilliationCorporatePlan::select('plan_id', DB::raw('count(*) as total'))
+        $planStatsTotal = AfilliationCorporatePlan::select('plan_id', DB::raw('count(*) as total'))
             ->where('status', 'ACTIVA')
             ->groupBy('plan_id')
             ->pluck('total', 'plan_id');
 
         /**
-         * Configuración de estilos iOS Premium:
-         * Incluye resplandor dinámico, borde adaptativo y efecto de desenfoque (blur)
-         * sobre los elementos secundarios al hacer hover.
+         * Conteos del Mes en Curso
+         */
+        $planStatsMes = AfilliationCorporatePlan::select('plan_id', DB::raw('count(*) as total'))
+            ->where('status', 'ACTIVA')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->groupBy('plan_id')
+            ->pluck('total', 'plan_id');
+
+        /**
+         * Estilos iOS Premium
          */
         $iosStyles = '
             group cursor-pointer transition-all duration-500 ease-in-out 
             rounded-xl border-b-4 antialiased
-            
-            /* Animación de Borde y Resplandor Verde */
             hover:border-[#10b981] dark:hover:border-[#34c759]
             hover:shadow-[inset_0_-50px_40px_-20px_rgba(16,185,129,0.15)] 
             dark:hover:shadow-[inset_0_-50px_40px_-20px_rgba(52,199,89,0.25)] 
             hover:scale-[1.01] 
-            
-            /* Sincronización de hijos */
             [&_*]:transition-all [&_*]:duration-500 
-            
-            /* Resaltar Valor Principal */
             group-hover:[&_.fi-wi-stats-overview-stat-value]:scale-110 
             group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#059669]
             dark:group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#34c759]
-            
-            /* Desenfoque de elementos secundarios */
-            group-hover:[&_.fi-wi-stats-overview-stat-label]:blur-[1.5px] 
-            group-hover:[&_.fi-wi-stats-overview-stat-label]:opacity-60 
-            group-hover:[&_svg]:blur-[1.5px] 
-            group-hover:[&_svg]:opacity-40 
-            group-hover:[&_.fi-wi-stats-overview-stat-description]:blur-[1.5px] 
-            group-hover:[&_.fi-wi-stats-overview-stat-description]:opacity-60
         ';
 
+        // Helper para construir la lógica de Alpine.js por cada Stat
+        $getAlpineData = function ($total, $mes, $descDefault) use ($mesActualNombre) {
+            return [
+                'x-data' => "{ label: '{$total} Afiliados', desc: '{$descDefault}' }",
+                '@mouseenter' => "label = '{$mes} Afiliados'; desc = 'Nuevos en {$mesActualNombre}'",
+                '@mouseleave' => "label = '{$total} Afiliados'; desc = '{$descDefault}'",
+            ];
+        };
+
         return [
-            Stat::make('PLAN INICIAL', ($planStats[1] ?? 0) . ' Afiliados')
+            Stat::make('PLAN INICIAL', ($planStatsTotal[1] ?? 0) . ' Afiliados')
                 ->description('Plan básico')
                 ->descriptionIcon('heroicon-m-check-badge')
                 ->color('planIncial')
-                ->extraAttributes([
-                    'class' => $iosStyles . ' border-[#9ce1ff]',
-                ]),
+                ->extraAttributes(array_merge(
+                    ['class' => $iosStyles . ' border-[#9ce1ff]'],
+                    $getAlpineData($planStatsTotal[1] ?? 0, $planStatsMes[1] ?? 0, 'Plan básico')
+                ))
+                ->value(new HtmlString("<span x-text='label'>" . ($planStatsTotal[1] ?? 0) . " Afiliados</span>"))
+                ->description(new HtmlString("<span x-text='desc'>Plan básico</span>")),
 
-            Stat::make('PLAN IDEAL', ($planStats[2] ?? 0) . ' Afiliados')
-                ->description('Con Asistencia Médica por Accidentes')
+            Stat::make('PLAN IDEAL', ($planStatsTotal[2] ?? 0) . ' Afiliados')
+                ->description('Con Asistencia Médica')
                 ->descriptionIcon('heroicon-m-star')
                 ->color('planIdeal')
-                ->extraAttributes([
-                    'class' => $iosStyles . ' border-[#25b4e7]',
-                ]),
+                ->extraAttributes(array_merge(
+                    ['class' => $iosStyles . ' border-[#25b4e7]'],
+                    $getAlpineData($planStatsTotal[2] ?? 0, $planStatsMes[2] ?? 0, 'Con Asistencia Médica')
+                ))
+                ->value(new HtmlString("<span x-text='label'>" . ($planStatsTotal[2] ?? 0) . " Afiliados</span>"))
+                ->description(new HtmlString("<span x-text='desc'>Con Asistencia Médica</span>")),
 
-            Stat::make('PLAN ESPECIAL', ($planStats[3] ?? 0) . ' Afiliados')
-                ->description('Con Emergencias Médicas por Patologías Listadas')
+            Stat::make('PLAN ESPECIAL', ($planStatsTotal[3] ?? 0) . ' Afiliados')
+                ->description('Con Emergencias Médicas')
                 ->descriptionIcon('heroicon-m-sparkles')
                 ->color('planEspecial')
-                ->extraAttributes([
-                    'class' => $iosStyles . ' border-[#2d89ca]',
-                ]),
+                ->extraAttributes(array_merge(
+                    ['class' => $iosStyles . ' border-[#2d89ca]'],
+                    $getAlpineData($planStatsTotal[3] ?? 0, $planStatsMes[3] ?? 0, 'Con Emergencias Médicas')
+                ))
+                ->value(new HtmlString("<span x-text='label'>" . ($planStatsTotal[3] ?? 0) . " Afiliados</span>"))
+                ->description(new HtmlString("<span x-text='desc'>Con Emergencias Médicas</span>")),
         ];
     }
 }
