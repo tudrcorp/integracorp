@@ -44,4 +44,24 @@ class RrhhColaborador extends Model
     {
         return $this->belongsTo(RrhhCargo::class, 'cargo_id');
     }
+
+    public function created_by()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function updated_by()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function prospect_agent_tasks()
+    {
+        return $this->hasMany(ProspectAgentTask::class);
+    }
+
+    public function prospect_agent_observations()
+    {
+        return $this->hasMany(ProspectAgentObservation::class);
+    }
 }

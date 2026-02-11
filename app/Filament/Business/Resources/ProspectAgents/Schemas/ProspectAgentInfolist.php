@@ -58,6 +58,58 @@ class ProspectAgentInfolist
                     ])->columnSpanFull(),
 
                 Section::make()
+                    ->heading('Tareas')
+                    ->icon('heroicon-o-pencil-square')
+                    ->description('Detallado de tareas de gestion')
+                    ->schema([
+                        Fieldset::make('Tareas')
+                            ->schema([
+                                RepeatableEntry::make('prospect_agent_tasks')
+                                    ->table([
+                                        TableColumn::make('ID')->width('5%'),
+                                        TableColumn::make('Tarea')->width('20%'),
+                                        TableColumn::make('Creado por')->width('10%'),
+                                        TableColumn::make('Responsable')->width('10%'),
+                                        TableColumn::make('Estatus')->width('10%'),
+                                        TableColumn::make('Resuelto por')->width('15%'),
+                                        TableColumn::make('Fecha de creacion')->width('10%'),
+                                        TableColumn::make('Duracion')->width('10%'),
+                                        TableColumn::make('Fecha de actualizacion')->width('10%'),
+                                    ])
+                                    ->schema([
+                                        TextEntry::make('id')->prefix('#00'),
+                                        TextEntry::make('task'),
+                                        TextEntry::make('created_by'),
+                                        TextEntry::make('rrhh_colaborador.fullName'),
+                                        TextEntry::make('status')
+                                            ->badge()
+                                            ->color(fn (string $state): string => match ($state) {
+                                                'PENDIENTE' => 'warning',
+                                                'RESUELTA' => 'success',
+                                            })
+                                            ->icon(fn (string $state): string => match ($state) {
+                                                'PENDIENTE' => 'heroicon-o-clock',
+                                                'RESUELTA' => 'heroicon-o-check-circle',
+                                            }),
+                                        TextEntry::make('resolved_by')
+                                            ->badge()
+                                            ->color('success')
+                                            ->icon('heroicon-o-check-circle'),
+                                        TextEntry::make('created_at')
+                                            ->dateTime()
+                                            ->placeholder('-'),
+                                        TextEntry::make('duration')
+                                            ->label('Duracion')
+                                            ->default(fn($record) => $record->created_at->diffForHumans()),
+                                        TextEntry::make('updated_at')
+                                            ->dateTime()
+                                            ->placeholder('-'),
+                                    ])->columnSpanFull(),
+                                    
+                            ])->columnSpanFull(),
+                    ])->columnSpanFull(),
+
+                Section::make()
                     ->heading('Observaciones')
                     ->icon('heroicon-o-pencil-square')
                     ->description('Detallado de observaciones de gestion')
@@ -66,11 +118,13 @@ class ProspectAgentInfolist
                             ->schema([
                                 RepeatableEntry::make('prospect_agent_observations')
                                     ->table([
+                                        TableColumn::make('ID Tarea')->width('5%'),
                                         TableColumn::make('Nota'),
                                         TableColumn::make('Creado por'),
-                                        TableColumn::make('Fecha'),
+                                        TableColumn::make('Fecha de creacion'),
                                     ])
                                     ->schema([
+                                        TextEntry::make('prospect_agent_task_id')->prefix('#00'),
                                         TextEntry::make('observation'),
                                         TextEntry::make('created_by'),
                                         TextEntry::make('created_at')

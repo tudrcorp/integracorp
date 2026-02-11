@@ -42,13 +42,13 @@ new #[Layout('components.layouts.interactive')] class extends Component {
         $individual_quote = IndividualQuote::where('id', $id)->first();
 
         if ($individual_quote->plan == 1) {
-            return response()->download(public_path('storage/condicionados/Condicionado-Plan-Inicial.pdf'));
+            return response()->download(public_path('storage/condicionados/CondicionesINICIAL.pdf'));
         }
         if ($individual_quote->plan == 2) {
-            return response()->download(public_path('storage/condicionados/Condicionado-Plan-Ideal.pdf'));
+            return response()->download(public_path('storage/condicionados/CondicionesIDEAL.pdf'));
         }
         if ($individual_quote->plan == 3) {
-            return response()->download(public_path('storage/condicionados/Condicionado-Plan-Especial.pdf'));
+            return response()->download(public_path('storage/condicionados/CondicionesESPECIAL.pdf'));
         }
     }
 

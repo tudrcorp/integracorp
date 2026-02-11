@@ -11,6 +11,18 @@ class EditCorporateQuoteRequest extends EditRecord
 {
     protected static string $resource = CorporateQuoteRequestResource::class;
 
+    protected static ?string $title = 'Editar Solicitud';
+
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('view', ['record' => $this->record]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [

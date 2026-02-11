@@ -148,17 +148,19 @@
     </style>
 </head>
 <body>
+    <!-- PLAN INICIAL -->
     <!-- Primera página: Imagen de fondo -->
-    <div class="cover" style="background-image: url('{{ public_path('storage/footer-inicial.webp') }}');">
+    {{-- <div class="cover" style="background-image: url('{{ public_path('storage/footer-inicial.webp') }}');"> --}}
+    <div class="cover" style="background-image: url('{{ public_path('storage/images-cotizaciones/inicial.png') }}');">
 
-        <div style="position: absolute; top: 0px; left: 0px; margin-top: 15px; padding: 20px; margin-left: 20px">
-            <p class="sin-margen" style="margin-bottom: 5px; font-size: 18px;">
+        <div style="position: absolute; top: 50px; left: 0px; margin-top: 15px; padding: 20px; margin-left: 22px">
+            {{-- <p class="sin-margen" style="margin-bottom: 5px; font-size: 18px;">
                 <span style="font-weight: bold; color: #305B93; font-size: 25px; font-style: italic;">Propuesta
 
                 </span>
                 <span style="font-weight: bold; color: #5488AE; font-size: 25px; font-style: italic;">Económica
                 </span>
-            </p>
+            </p> --}}
 
             <p class="sin-margen" style="font-size: 16px;">
                 <span style="font-weight: bold; color: #000000;">
@@ -182,46 +184,18 @@
                 </span>
                 <span style="margin-left: 50px">
                     {{ now()->format('d/m/Y') }}
-                    <br>
+                    {{-- <br>
                     <span style="font-size: 12px; font-style: italic; font-weight: bold">
                         Propuesta válida por 15 días a partir de la fecha de emisión.
-                    </span>
+                    </span> --}}
                 </span>
             </p>
         </div>
         <div style="position: absolute; top: 130px; right: 10px; margin-top: 15px; padding: 20px; margin-right: 20px">
-            <img src="{{ public_path('storage/beneficios-plan-inicial.png') }}" style="width: 700px; height: auto;" alt="">
+            {{-- <img src="{{ public_path('storage/beneficios-plan-inicial.png') }}" style="width: 700px; height: auto;" alt=""> --}}
         </div>
 
-        <!--prueba-->
-        {{-- @php
-            use App\Models\BenefitPlan;
-            $benefits = BenefitPlan::where('plan_id', 1)->get();
-        @endphp
-        <div style="position: absolute; top: 130px; right: 10px; margin-top: 30px; padding: 20px; margin-right: 20px; width: 700px;">
-            <table style="width: 100%; font-type: Helvetica, sans-serif; border-radius: 30px;">
-                <thead style="background-color: #305B93; ">
-                    <tr>
-                        <th style="padding: 10px; color: white">Beneficios Domiciliarios o In Situ</th>
-                        <th style="padding: 10px; color: white">Plan Inicial</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($benefits as $value)
-                        <tr>
-                            <td style="padding: 10px; font-size: 10px;">{{ $value->description }}</td>
-                            <td style="text-align: center; item-align: center; vertical-align: middle;">
-                                <img src="{{ public_path('storage/checkPng.png') }}" style="width: 20px; height: auto;" alt="">
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div> --}}
-
-       
-
-        <div style="position: absolute; top: 475px; right: 10px; margin-top: 30px; padding: 20px; margin-right: 20px; width: 700px;">
+        <div style="position: absolute; top: 550px; right: 10px; margin-top: 30px; padding: 20px; margin-right: 20px; width: 700px;">
             <table style="width: 100%; font-type: Helvetica, sans-serif;">
 
                 <tr>
@@ -256,11 +230,11 @@
             
         </div>
 
-        <div style="position: absolute; top: 0px; right: 0px; margin-top: 20px; padding: 20px; margin-right: 20px">
+        {{-- <div style="position: absolute; top: 0px; right: 0px; margin-top: 20px; padding: 20px; margin-right: 20px">
             <div>
                 <img class="logo-bottom-left" src="{{ public_path('storage/logo2-pdf.png') }}" style="width: 150px; height: 70px;" alt="">
             </div>
-        </div>
+        </div> --}}
         <!-- Primera página: Imagen de fondo -->
     </div>
 

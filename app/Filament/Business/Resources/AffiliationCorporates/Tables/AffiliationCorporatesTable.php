@@ -2,42 +2,43 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
-use Filament\Tables\Table;
+use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Http\Controllers\AffiliationCorporateController;
 use App\Mail\UploadPayment;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
 use App\Models\AffiliateCorporate;
-use Illuminate\Support\Facades\Log;
 use App\Models\AffiliationCorporate;
 use App\Models\DetailCorporateQuote;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Filament\Support\Enums\Alignment;
 use Filament\Actions\DeleteBulkAction;
-use Illuminate\Database\Query\Builder;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\ColumnGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use App\Http\Controllers\AffiliationCorporateController;
-use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Database\Eloquent\Builder;
 
 class AffiliationCorporatesTable
 {
@@ -57,9 +58,69 @@ class AffiliationCorporatesTable
             ->columns([
                 TextColumn::make('code')
                     ->label('Codigo')
-                    ->badge()
-                    ->color('azulOscuro')
-                    ->searchable(),
+                    ->icon(function ($record) {
+                        $now = Carbon::today();
+                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            return 'heroicon-c-star';
+                        }
+                        return 'heroicon-s-user-group';
+                    })
+                    ->iconColor(function ($record) {
+                        $now = Carbon::today();
+                        // Forzamos el color del icono a rojo (danger) solo cuando el if es true
+                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            return 'danger';
+                        }
+                        return null; // Color por defecto (blanco por el estilo extraAttributes)
+                    })
+                    ->badge(function ($record) {
+                        $now = Carbon::today();
+                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    ->color(function ($record) {
+                        return 'success';
+                    })
+                    ->searchable()
+                    ->extraAttributes(function ($record) {
+
+                        /**
+                         * Diseño optimizado con estilo iOS System Green.
+                         * Utilizamos el verde oficial de Apple (#34C759) para máximo resaltado.
+                         */
+                        $iosGreen = '#34C759';
+                        $iosGreenDark = '#248A3D'; // Para el texto, asegurando legibilidad
+
+                        $now = Carbon::today();
+                        // dd($now->diffInDays($record->created_at));
+
+                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            $iosGreen = '#34C759';
+                            $iosGreenDark = '#248A3D';
+
+                            return [
+                                'style' => "
+                                            background-color: {$iosGreen} !important;
+                                            color: #ffffff !important;
+                                            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+                                            font-weight: 700;
+                                            font-size: 0.85rem;
+                                            letter-spacing: -0.02em;
+                                            padding: 0.2rem 0.8rem;
+                                            border-radius: 20px;
+                                            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.35);
+                                            border: 1px solid rgba(255, 255, 255, 0.2);
+                                            text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+                                            display: inline-flex;
+                                            align-items: center;
+                                            margin-left: 2px;
+                                        ",
+                            ];
+                        }
+                        return [];
+                    }),
                 TextColumn::make('name_corporate')
                     ->label('Cliente Corporativo')
                     ->badge()
@@ -218,8 +279,39 @@ class AffiliationCorporatesTable
                     }),
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
             ])
+            ->filtersTriggerAction(
+                fn(Action $action) => $action
+                    ->button()
+                    ->label('Filtros'),
+            )
             ->recordActions([
                 ActionGroup::make([
 

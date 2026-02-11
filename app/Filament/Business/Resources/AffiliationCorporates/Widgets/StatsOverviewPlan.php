@@ -1,12 +1,15 @@
 <?php
 
-namespace App\Filament\Business\Resources\Affiliations\Widgets;
+namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
-use App\Models\Affiliation;
+
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Models\AffiliationCorporatePlan;
+use App\Models\AfilliationCorporatePlan;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
-use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use Illuminate\Support\Facades\DB;
 
 class StatsOverviewPlan extends StatsOverviewWidget
 {
@@ -18,14 +21,18 @@ class StatsOverviewPlan extends StatsOverviewWidget
 
     protected function getTablePage(): string
     {
-        return ListAffiliations::class;
+        return ListAffiliationCorporates::class;
     }
-    
     protected function getStats(): array
     {
-        // dd($this->getPageTableQuery()->where('plan_id', 1)->sum('total_amount'));
-        $start = now()->startOfMonth();
-        $end = now()->endOfMonth();
+        /**
+         * Optimización de Consulta:
+         * Obtenemos los conteos de todos los planes en una sola consulta agrupada.
+         */
+        $planStats = AfilliationCorporatePlan::select('plan_id', DB::raw('count(*) as total'))
+            ->where('status', 'ACTIVA')
+            ->groupBy('plan_id')
+            ->pluck('total', 'plan_id');
 
         /**
          * Configuración de estilos iOS Premium:
@@ -59,12 +66,8 @@ class StatsOverviewPlan extends StatsOverviewWidget
             group-hover:[&_.fi-wi-stats-overview-stat-description]:opacity-60
         ';
 
-        // Optimización: Obtenemos los totales agrupados en una sola consulta si fuera necesario, 
-        // pero para mantener la claridad del widget Stat::make usamos consultas filtradas.
-
         return [
-            Stat::make('PLAN INICIAL', $this->getPageTableQuery()->where('plan_id', 1)->count(). ' Afiliados')
-                // Stat::make('PLAN INICIAL', Affiliation::where('plan_id', 1)->whereBetween('created_at', [$start, $end])->count())
+            Stat::make('PLAN INICIAL', ($planStats[1] ?? 0) . ' Afiliados')
                 ->description('Plan básico')
                 ->descriptionIcon('heroicon-m-check-badge')
                 ->color('planIncial')
@@ -72,8 +75,7 @@ class StatsOverviewPlan extends StatsOverviewWidget
                     'class' => $iosStyles . ' border-[#9ce1ff]',
                 ]),
 
-            Stat::make('PLAN IDEAL', $this->getPageTableQuery()->where('plan_id', 2)->count() . ' Afiliados')
-                // Stat::make('PLAN IDEAL', Affiliation::where('plan_id', 2)->whereBetween('created_at', [$start, $end])->count())
+            Stat::make('PLAN IDEAL', ($planStats[2] ?? 0) . ' Afiliados')
                 ->description('Con Asistencia Médica por Accidentes')
                 ->descriptionIcon('heroicon-m-star')
                 ->color('planIdeal')
@@ -81,15 +83,13 @@ class StatsOverviewPlan extends StatsOverviewWidget
                     'class' => $iosStyles . ' border-[#25b4e7]',
                 ]),
 
-            Stat::make('PLAN ESPECIAL', $this->getPageTableQuery()->where('plan_id', 3)->count() . ' Afiliados')
-                // Stat::make('PLAN ESPECIAL', Affiliation::where('plan_id', 3)->whereBetween('created_at', [$start, $end])->count())
+            Stat::make('PLAN ESPECIAL', ($planStats[3] ?? 0) . ' Afiliados')
                 ->description('Con Emergencias Médicas por Patologías Listadas')
                 ->descriptionIcon('heroicon-m-sparkles')
                 ->color('planEspecial')
                 ->extraAttributes([
                     'class' => $iosStyles . ' border-[#2d89ca]',
                 ]),
-
         ];
     }
 }

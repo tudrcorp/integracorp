@@ -3,13 +3,19 @@
 namespace App\Filament\Business\Resources\BusinessAppointments\Pages;
 
 use App\Filament\Business\Resources\BusinessAppointments\BusinessAppointmentsResource;
+use App\Models\BusinessAppointmentObservation;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Fieldset;
 
 class ViewBusinessAppointments extends ViewRecord
 {
     protected static string $resource = BusinessAppointmentsResource::class;
+
+    protected static ?string $pollingInterval = '5s';
 
     protected function getHeaderActions(): array
     {
@@ -19,6 +25,48 @@ class ViewBusinessAppointments extends ViewRecord
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
                 ->url(BusinessAppointmentsResource::getUrl()),
+            Action::make('notes')
+                ->label('Agregar Notas/Observaciones')
+                ->icon('heroicon-o-document-text')
+                ->color('success')
+                ->modal()
+                ->modalHeading('Agregar Notas/Observaciones')
+                ->modalSubmitActionLabel('Guardar')
+                ->modalCancelActionLabel('Cancelar')
+                ->form([
+                    Fieldset::make('Formulario de Notas')
+                        ->schema([
+                            Textarea::make('observations')
+                                ->label('Notas')
+                                ->autosize()
+                                ->required(),
+                        ])->columns(1),
+                ])
+                ->action(function ($data, $record) {
+
+                    try {
+
+                        BusinessAppointmentObservation::create([
+                            'business_appointment_id'   => $record->id,
+                            'observation'               => $data['observations'],
+                            'created_by'                => auth()->user()->name,
+                        ]);
+
+                        Notification::make()
+                            ->title('Notas agregadas correctamente')
+                            ->success()
+                            ->send();
+
+                        return $this->redirect(BusinessAppointmentsResource::getUrl('view', ['record' => $record->id]));
+
+                    } catch (\Exception $e) {
+                        dd($e);
+                        Notification::make()
+                            ->title('Error al agregar notas')
+                            ->danger()
+                            ->send();
+                    }
+                }),
         ];
     }
 

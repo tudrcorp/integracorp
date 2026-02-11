@@ -42,10 +42,12 @@ new #[Layout('components.layouts.interactive')] class extends Component {
     {
         // Recibir el parámetro de la URL
         $this->quote = Crypt::decryptString(Route::current()->parameter('quote'));
+        // dd($this->quote);
         // Ahora puedes usar $this->quote para cargar datos
         // Ej: $this->affiliates = Affiliate::where('corporate_quote_id', $this->quote)->get();
 
         $record = IndividualQuote::where('id', $this->quote)->first();
+        // dd($record);
 
         if ($record->plan == 1) {
             $detalle = DB::table('detail_individual_quotes')

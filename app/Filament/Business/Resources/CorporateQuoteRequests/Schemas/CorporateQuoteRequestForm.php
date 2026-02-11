@@ -133,10 +133,10 @@ class CorporateQuoteRequestForm
                         type="submit"
                         size="sm"
                     >
-                        Crear cotización
+                        Generar Solicitud
                     </x-filament::button>
                 BLADE)))
-                    ->hiddenOn('edit')
+                    // ->hiddenOn('edit')
                     ->columnSpanFull(),
             ]);
     }

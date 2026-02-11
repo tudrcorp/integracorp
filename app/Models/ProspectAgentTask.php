@@ -10,15 +10,28 @@ class ProspectAgentTask extends Model
     
     protected $fillable = [
         'prospect_agent_id',
+        'rrhh_colaborador_id',
         'task',
         'created_by',
         'updated_by',
+        'observation_resolved',
         'status',
+        'resolved_by',
     ];
 
     public function prospect_agent()
     {
         return $this->belongsTo(ProspectAgent::class);
+    }
+
+    public function rrhh_colaborador()
+    {
+        return $this->belongsTo(RrhhColaborador::class);
+    }
+
+    public function prospect_agent_observation()
+    {
+        return $this->hasMany(ProspectAgentObservation::class);
     }
 
     public function created_by()
@@ -30,4 +43,6 @@ class ProspectAgentTask extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    
 }

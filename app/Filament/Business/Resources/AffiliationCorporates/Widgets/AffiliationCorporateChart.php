@@ -1,24 +1,21 @@
 <?php
 
-namespace App\Filament\Business\Resources\IndividualQuotes\Widgets;
+namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
-use App\Filament\Business\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
-use App\Models\IndividualQuote;
-use App\Models\State;
+use App\Models\AffiliationCorporate;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
-use Illuminate\Support\Facades\DB;
 
-class TotalIndividualQuoteChart extends ChartWidget
+class AffiliationCorporateChart extends ChartWidget
 {
-    protected ?string $heading = 'RESUMEN DE COTIZACIONES INDIVIDUALES';
+    protected ?string $heading = 'RESUMEN DE AFILIACIONES Y AFILIADOS CORPORATIVOS';
 
-    protected ?string $description = 'Visualización mensual de cotizaciones con desglose por días del mes. Haz clic en las barras para observar el detalle de las cotizaciones por dia de acuerdo al mes seleccionado.';
+    protected ?string $description = 'Visualización mensual de afiliaciones con desglose por dias del Mes. Al hacer click en cualquiera de las barras podras observar el detalle de las afiliaciones de acuerdo al mes seleccionado';
+
 
     protected ?string $maxHeight = '300px';
 
@@ -38,8 +35,8 @@ class TotalIndividualQuoteChart extends ChartWidget
             $this->selectedMonth = $payload['indice'] + 1;
 
             Notification::make()
-                ->title("Detalle de Cotizaciones: {$payload['mes']}")
-                ->body("Mostrando el total de cotizaciones en este periodo.")
+                ->title("Detalle de Afiliados: {$payload['mes']}")
+                ->body("Mostrando el total de personas afiliadas en este periodo.")
                 ->info()
                 ->send();
         } else {
@@ -53,66 +50,73 @@ class TotalIndividualQuoteChart extends ChartWidget
         }
     }
 
+    protected function getChartColors(): array
+    {
+        return [
+            '#94a3b8',
+            '#93c5fd',
+            '#60a5fa',
+            '#3b82f6',
+            '#2563eb',
+            '#1d4ed8',
+            '#1e40af',
+            '#1e3a8a',
+            '#64748b',
+            '#475569',
+            '#334155',
+            '#0f172a'
+        ];
+    }
+
     protected function getData(): array
     {
         $year = now()->year;
-        $backgroundColors = [];
 
         if ($this->selectedMonth) {
             /**
-             * VISTA MENSUAL: Conteo de Afiliados por día
+             * VISTA MENSUAL: Conteo de Afiliados (Relación 1 a N)
+             * Queremos saber cuántos registros hay en la tabla 'affiliates' 
+             * pertenecientes a las afiliaciones activas de este mes.
              */
             $startOfMonth = Carbon::create($year, $this->selectedMonth)->startOfMonth();
             $endOfMonth = Carbon::create($year, $this->selectedMonth)->endOfMonth();
 
-            $dataTrend = Trend::query(
-                \App\Models\IndividualQuote::query()
-                    // ->where('status', 'ACTIVA')
+            $data = Trend::query(
+                \App\Models\AffiliateCorporate::query()
+                    ->whereHas('affiliationCorporate', function ($query) {
+                        $query->where('status', 'ACTIVA');
+                    })
             )
                 ->between(start: $startOfMonth, end: $endOfMonth)
                 ->perDay()
                 ->count();
 
-            $labels = $dataTrend->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
+            $labels = $data->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
             $datasetLabel = 'Total Afiliados en ' . Carbon::create(null, $this->selectedMonth)->monthName;
-
-            // Generar colores aleatorios para cada día
-            foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
-            }
+            $color = '#f59e0b'; // Ámbar para diferenciar la métrica de "Afiliados"
         } else {
             /**
-             * VISTA ANUAL: Conteo por Mes
+             * VISTA ANUAL: Conteo de registros en la tabla Affiliation
              */
-            $dataTrend = Trend::query(
-                IndividualQuote::query()->whereYear('created_at', $year)
+            $data = Trend::query(
+                AffiliationCorporate::query()->where('status', 'ACTIVA')->whereYear('created_at', $year)
             )
                 ->between(start: now()->startOfYear(), end: now()->endOfYear())
                 ->perMonth()
                 ->count();
 
             $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-            $datasetLabel = 'Cotizaciones Activas (Anual)';
-
-            // Generar colores aleatorios para cada mes
-            foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
-            }
+            $datasetLabel = 'Afiliaciones Activas (Anual)';
+            $color = $this->getChartColors(); // Azul para "Afiliaciones"
         }
 
         return [
             'datasets' => [
                 [
                     'label' => $datasetLabel,
-                    'data' => $dataTrend->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray(),
-                    'backgroundColor' => $backgroundColors,
+                    'data' => $data->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray(),
+                    'backgroundColor' => $color,
                     'borderRadius' => 6,
-                    /**
-                     * Configuración de ancho de barras:
-                     * Consistente con el gráfico de estados (más anchas).
-                     */
-                    'barPercentage' => 0.8,
-                    'categoryPercentage' => 0.9,
                 ],
             ],
             'labels' => $labels,
@@ -140,7 +144,8 @@ class TotalIndividualQuoteChart extends ChartWidget
             },
             plugins: {
                 legend: {
-                    display: false // Ocultamos leyenda para dar más espacio a las barras anchas
+                    display: true,
+                    position: 'top'
                 },
                 tooltip: {
                     callbacks: {

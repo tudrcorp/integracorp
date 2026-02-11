@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,13 +77,13 @@
             margin-bottom: 10px;
             color: white;
         }
-
     </style>
 </head>
+
 <body>
-    <!-- Segunda página: Imagen de fondo -->
-    <div class="cover" style="background-image: url('{{ public_path('storage/images-cotizaciones/pagina-dos-cotizaciones.png') }}');"></div>
+    <!-- Solo plan especial -->
+    <div class="cover" style="background-image: url('{{ public_path('storage/images-cotizaciones/patologias-listadas.png') }}');"></div>
 
 </body>
-</html>
 
+</html>

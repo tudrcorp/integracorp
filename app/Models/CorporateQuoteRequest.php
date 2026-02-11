@@ -56,7 +56,7 @@ class CorporateQuoteRequest extends Model
 
     public function agency()
     {
-        return $this->belongsTo(Agent::class);
+        return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
 
 

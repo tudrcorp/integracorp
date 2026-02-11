@@ -117,6 +117,10 @@ class AffiliatesRelationManager extends RelationManager
                         Fieldset::make('Plan de afiliación')
                             ->schema([
                                 Select::make('plan_id')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Campo Obligatorio',
+                                    ])
                                     ->options(function () {
                                         return Plan::all()->pluck('description', 'id');
                                     })
@@ -128,6 +132,10 @@ class AffiliatesRelationManager extends RelationManager
                                     ->placeholder('Seleccione plan(es)'),
 
                                 Select::make('age_range_id')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Campo Obligatorio',
+                                    ])
                                     ->label('Rango de edad')
                                     ->options(function (get $get, $state) {
                                         Log::info($state);
@@ -141,6 +149,10 @@ class AffiliatesRelationManager extends RelationManager
                                     ->preload(),
 
                                 Select::make('coverage_id')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Campo Obligatorio',
+                                    ])
                                     ->label('Cobertura')
                                     ->options(function (get $get) {
                                         if ($get('age_range_id') == 1 || $get('age_range_id') == NULL) {
@@ -154,13 +166,19 @@ class AffiliatesRelationManager extends RelationManager
                                     ->preload(),
 
                                 TextInput::make('fee')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Campo Obligatorio',
+                                    ])
                                     ->label('Tarifa Anual')
                                     ->live(onBlur: true)
-                                    ->validationMessages([
-                                        'required'  => 'Campo Obligatorio',
-                                    ])
                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                 Select::make('payment_frequency')
+
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Campo Obligatorio',
+                                    ])
                                     ->label('Frecuencia de pago')
                                     ->live(onBlur: true)
                                     ->options([
@@ -186,6 +204,10 @@ class AffiliatesRelationManager extends RelationManager
                                         }
                                     }),
                                 TextInput::make('total_amount')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Campo Obligatorio',
+                                    ])
                                     ->label('Monto Total')
                                     ->live()
                                     ->numeric()

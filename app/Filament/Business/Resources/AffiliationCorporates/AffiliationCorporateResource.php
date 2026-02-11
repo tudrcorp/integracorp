@@ -2,23 +2,24 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates;
 
-use UnitEnum;
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use App\Models\AffiliationCorporate;
-use Filament\Support\Icons\Heroicon;
-use App\Filament\Business\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
-use App\Filament\Business\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
-use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
-use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
-use App\Filament\Business\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
-use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
+use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
 use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
 use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
-use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
+use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
+use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
+use App\Filament\Business\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Models\AffiliationCorporate;
+use BackedEnum;
+use Carbon\Carbon;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
@@ -31,6 +32,27 @@ class AffiliationCorporateResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+
+    /**
+     * Muestra un badge con la palabra NEW y el conteo de afiliados
+     * con estatus 'ACTIVA' registrados el día de hoy.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $todayCount = static::getModel()::where('status', 'ACTIVA')
+            ->whereDate('created_at', Carbon::today())
+            ->count();
+
+        return $todayCount > 0 ? "NUEVO {$todayCount}" : null;
+    }
+
+    /**
+     * Color personalizado para el badge (Verde iOS).
+     */
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'verdeApple';
+    }
 
     public static function form(Schema $schema): Schema
     {

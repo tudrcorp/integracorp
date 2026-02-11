@@ -82,43 +82,48 @@
 <body>
     @livewire('portada-cotizacion-individual', ['name' => $details['name']])
 
-    {{-- @livewire('propuesta-economica.propuesta-economica-page-2') --}}
+    @livewire('propuesta-economica.propuesta-economica-page-2')
 
     @if($details['plan'] == 1)
-    @livewire('planes-cotizacion-corporativa-inicial', 
-    [
-        'data' => $collect, 
-        'name' => $details['name'],
-        'name_user' => $name_user
-    ])
-
-
+        @livewire(
+            'planes-cotizacion-corporativa-inicial',
+            [
+                'data' => $collect,
+                'name' => $details['name'],
+                'name_user' => $name_user
+            ]
+        )
     @endif
 
     @if($details['plan'] == 2)
-    @livewire('planes-cotizacion-corporativa-ideal',
+        @livewire(
+            'planes-cotizacion-corporativa-ideal',
 
-    [
-    'data' => $group_collect,
-    'name' => $details['name'],
-    'name_user' => $name_user
+            [
+                'data' => $group_collect,
+                'name' => $details['name'],
+                'name_user' => $name_user
 
-    ])
+            ]
+        )
     @endif
 
     @if($details['plan'] == 3)
-    @livewire('planes-cotizacion-corporativa-especial',
+        @livewire(
+            'planes-cotizacion-corporativa-especial',
+            [
+                'data' => $group_collect,
+                'name' => $details['name'],
+                'name_user' => $name_user
 
-    [
-    'data' => $group_collect,
-    'name' => $details['name'],
-    'name_user' => $name_user
-
-    ])
+            ]
+        )
+        @livewire('propuesta-economica.propuesta-economica-plan-especial')
     @endif
 
 
-    {{-- @livewire('propuesta-economica.propuesta-economica-page-4') --}}
+    @livewire('propuesta-economica.propuesta-economica-page-4')
+
 </body>
 </html>
 

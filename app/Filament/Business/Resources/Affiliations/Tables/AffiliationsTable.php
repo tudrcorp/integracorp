@@ -68,10 +68,71 @@ class AffiliationsTable
             ->columns([
                 TextColumn::make('code')
                     ->label('Codigo')
-                    ->icon('heroicon-s-user-group')
-                    ->badge()
-                    ->color('azulOscuro')
-                    ->searchable(),
+                    ->icon(function ($record) {
+                        $now = Carbon::today();
+                        if($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            return 'heroicon-c-star';
+                        }
+                        return 'heroicon-s-user-group';
+                    })
+                    ->iconColor(function ($record) {
+                        $now = Carbon::today();
+                        // Forzamos el color del icono a rojo (danger) solo cuando el if es true
+                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            return 'danger';
+                        }
+                        return null; // Color por defecto (blanco por el estilo extraAttributes)
+                    })
+                    ->badge(function ($record) {
+                        $now = Carbon::today();
+                        if($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            return false;
+                        }
+                        return true;
+
+                    })
+                    ->color(function ($record) {
+                        return 'success';
+                    })
+                    ->searchable()
+                    ->extraAttributes(function ($record) {
+
+                        /**
+                         * Diseño optimizado con estilo iOS System Green.
+                         * Utilizamos el verde oficial de Apple (#34C759) para máximo resaltado.
+                         */
+                        $iosGreen = '#34C759';
+                        $iosGreenDark = '#248A3D'; // Para el texto, asegurando legibilidad
+
+                        $now = Carbon::today();
+                        // dd($now->diffInDays($record->created_at));
+
+                        if($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                            $iosGreen = '#34C759';
+                            $iosGreenDark = '#248A3D';
+
+                            return [
+                                'style' => "
+                                        background-color: {$iosGreen} !important;
+                                        color: #ffffff !important;
+                                        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+                                        font-weight: 700;
+                                        font-size: 0.85rem;
+                                        letter-spacing: -0.02em;
+                                        padding: 0.2rem 0.8rem;
+                                        border-radius: 20px;
+                                        box-shadow: 0 4px 12px rgba(52, 199, 89, 0.35);
+                                        border: 1px solid rgba(255, 255, 255, 0.2);
+                                        text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+                                        display: inline-flex;
+                                        align-items: center;
+                                        margin-left: 2px;
+                                    ",
+                            ];
+                        }
+                        return [];
+
+                    }),
                 TextColumn::make('individual_quote.code')
                     ->label('Nro. de cotización')
                     ->badge()
@@ -823,7 +884,6 @@ class AffiliationsTable
                                 ];
                                 // dd($info);
                                 Mail::to($info['email'])->send(new UploadPayment($info));
-                                
                             } catch (\Throwable $th) {
                                 Log::error($th);
                                 Notification::make()
@@ -832,7 +892,6 @@ class AffiliationsTable
                                     ->danger()
                                     ->send();
                             }
-                            
                         })
                         ->hidden(function (Affiliation $record) {
 
@@ -871,7 +930,6 @@ class AffiliationsTable
                                  */
                                 $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
                                 return response()->download($path);
-
                             } catch (\Throwable $th) {
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA')
@@ -882,7 +940,7 @@ class AffiliationsTable
                                     ->send();
                             }
                         }),
-                        
+
                     /**DESCARGAR CERTIFICADO PDF */
                     Action::make('downloadTarjeta')
                         ->label('Descargar Tarjeta')
@@ -903,7 +961,6 @@ class AffiliationsTable
                                  */
                                 $path = public_path('storage/tarjeta-afiliacion/TAR-' . $record->code . '.pdf');
                                 return response()->download($path);
-
                             } catch (\Throwable $th) {
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA')
@@ -949,15 +1006,13 @@ class AffiliationsTable
                                 ];
                                 //Creamos la tarjeta del afiliado
                                 TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
-                                
+
                                 Notification::make()
                                     ->title('ACCION EXITOSA')
                                     ->body('Se ha regenerado el certificado del afiliado y la tarjeta de afiliacion con exito.')
                                     ->icon('heroicon-s-check-circle')
                                     ->success()
                                     ->send();
-                                    
-        
                             } catch (\Throwable $th) {
 
                                 Notification::make()
@@ -997,6 +1052,7 @@ class AffiliationsTable
                                         ->required()
                                         ->maxLength(255)
                                         ->label('Correo Electrónico')
+                                        ->default(fn (Affiliation $record) => Agent::where('id', $record->agent_id)->first()->email ?? '')
                                         ->hidden(fn(Get $get) => $get('option') == 'DESCARGAR'),
                                 ])->columnSpanFull()->columns(1),
                         ])
@@ -1011,14 +1067,11 @@ class AffiliationsTable
                                 if ($data['option'] == 'DESCARGAR') {
                                     $path = AffiliationController::downloadResendKit($record, $data);
                                     return response()->download($path);
-                                    
-                                }else{
+                                } else {
                                     AffiliationController::downloadResendKit($record, $data);
-                                    
                                 }
-                                    
                             } catch (\Throwable $th) {
-                                
+
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA O ENVIO DEL KIT')
                                     ->body($th->getMessage())
@@ -1042,41 +1095,41 @@ class AffiliationsTable
                         ->modalDescription('Este procedimiento permitira editar la frecuencia de pago y posterior sera actualizado el monto a pagar de la afiliación!.')
                         ->form([
                             Fieldset::make('payment_frequency')
-                            ->label('Seleciona la Frecuencia de Pago')
-                            ->schema([
-                                Select::make('payment_frequency')
-                                    ->label('Frecuencia de Pago')
-                                    ->options([
-                                        'MENSUAL'   => 'MENSUAL',
-                                        'TRIMESTRAL'=> 'TRIMESTRAL',
-                                        'SEMESTRAL' => 'SEMESTRAL',
-                                        'ANUAL'     => 'ANUAL',
-                                    ])
-                                
-                            ])->columnSpanFull(),
+                                ->label('Seleciona la Frecuencia de Pago')
+                                ->schema([
+                                    Select::make('payment_frequency')
+                                        ->label('Frecuencia de Pago')
+                                        ->options([
+                                            'MENSUAL'   => 'MENSUAL',
+                                            'TRIMESTRAL' => 'TRIMESTRAL',
+                                            'SEMESTRAL' => 'SEMESTRAL',
+                                            'ANUAL'     => 'ANUAL',
+                                        ])
+
+                                ])->columnSpanFull(),
                         ])
                         ->action(function (Affiliation $record, array $data) {
 
                             try {
 
                                 $record->payment_frequency = $data['payment_frequency'];
-                                
-                                if($data['payment_frequency'] == 'ANUAL') {
+
+                                if ($data['payment_frequency'] == 'ANUAL') {
                                     $record->total_amount = $record->fee_anual;
                                 }
 
-                                if($data['payment_frequency'] == 'SEMESTRAL') {
+                                if ($data['payment_frequency'] == 'SEMESTRAL') {
                                     $record->total_amount = $record->fee_anual / 2;
                                 }
 
-                                if($data['payment_frequency'] == 'TRIMESTRAL') {
+                                if ($data['payment_frequency'] == 'TRIMESTRAL') {
                                     $record->total_amount = $record->fee_anual / 4;
                                 }
 
-                                if($data['payment_frequency'] == 'MENSUAL') {
+                                if ($data['payment_frequency'] == 'MENSUAL') {
                                     $record->total_amount = $record->fee_anual / 12;
                                 }
-                                
+
                                 $record->save();
 
                                 Notification::make()
@@ -1085,7 +1138,6 @@ class AffiliationsTable
                                     ->icon('heroicon-s-check-circle')
                                     ->success()
                                     ->send();
-                                    
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
                                 Notification::make()
@@ -1239,34 +1291,33 @@ class AffiliationsTable
                         ->modalHeading('ELIMINAR REGOSTRO DE AFILIACION(ES)')
                         ->modalDescription('Esta accion elimina la afiliacion(es) seleccionada(s) de manera permanente, asi como tambien todas sus asociaciones.)')
                         ->action(function (Collection $records) {
-                            
+
                             try {
-                                
+
                                 foreach ($records as $record) {
-                                    
+
                                     //Elimina la afiliacion
                                     $record->delete();
-                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la afiliacion: '.$record->id);
+                                    Log::info('AFILIACIONES: El usuario ' . Auth::user()->name . ' elimino la afiliacion: ' . $record->id);
 
                                     //Elimina la Cotizacion individual
                                     $record->individual_quote()->delete();
-                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la cotizacion individual: '.$record->individual_quote->id);
+                                    Log::info('AFILIACIONES: El usuario ' . Auth::user()->name . ' elimino la cotizacion individual: ' . $record->individual_quote->id);
 
                                     //Eliminamos los afiliados
                                     $record->affiliates()->delete();
-                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino el afiliado: '.$record->affiliates()->first()->id);
+                                    Log::info('AFILIACIONES: El usuario ' . Auth::user()->name . ' elimino el afiliado: ' . $record->affiliates()->first()->id);
                                 }
-                                    
                             } catch (\Throwable $th) {
                                 Notification::make()
                                     ->title('REGISTRO NO ELIMINADO')
-                                    ->body($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile())
+                                    ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
                                     ->icon('heroicon-m-x-circle')
                                     ->danger()
                                     ->send();
                             }
                         }),
-                        
+
                     BulkAction::make('pay_multiple_affiliations')
                         ->label('Pagar afiliaciones')
                         ->icon('fontisto-share')
@@ -1776,7 +1827,7 @@ class AffiliationsTable
                                     $record->save();
                                 }
 
-                                Log::info('Frecuencia de pago actualizada con exito. Usuario: '. Auth::user()->name);
+                                Log::info('Frecuencia de pago actualizada con exito. Usuario: ' . Auth::user()->name);
                                 Notification::make()
                                     ->title('NOTIFICACION')
                                     ->body('La frecuencia de pago se ha actualizado con exito')
@@ -1784,7 +1835,6 @@ class AffiliationsTable
                                     ->iconColor('success')
                                     ->success()
                                     ->send();
-                                
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
                                 Notification::make()
@@ -1792,9 +1842,8 @@ class AffiliationsTable
                                     ->icon('heroicon-m-exclamation-triangle')
                                     ->body('Hubo un error al actualizar la frecuencia de pago. Por favor, contacte con el administrador del Sistema.')
                                     ->danger()
-                                    ->send();    
-                            }    
-                            
+                                    ->send();
+                            }
                         }),
 
                     BulkAction::make('reassign_affiliation')
@@ -1805,55 +1854,55 @@ class AffiliationsTable
                         ->icon('heroicon-s-squares-plus')
                         ->form([
                             Section::make('REASIGNAR AFILIACION')
-                            ->description('En esta seccion realizaras una reasignacion de las afiliaciones seleccionadas')
-                            ->schema([
-                                Select::make('owner_code')
-                                    ->label('Pertenece a una Agencia Master?')
-                                    ->helperText('Si el agente pertenece a una agencia master, debes seleccionarla')
-                                    ->options(function (Get $get, $record) {
-                                        return Agency::all()
-                                            ->where('status', 'ACTIVO')
-                                            ->mapWithKeys(function ($agency) {
-                                                $type = AgencyType::find($agency->agency_type_id)->definition;
-                                                return [$agency->code => "{$type} - {$agency->code}"];
-                                            });
-                                    })
-                                    ->searchable()
-                                    ->preload(),
-                                Select::make('code_agency')
-                                    ->label('Pertenece a una Agencia General?')
-                                    ->helperText('Si el agente pertenece a una agencia general, debes seleccionarla')
-                                    ->options(function (Get $get, $record) {
-                                        return Agency::all()
-                                            ->where('status', 'ACTIVO')
-                                            ->where('agency_type_id', 3)
-                                            ->mapWithKeys(function ($agency) {
-                                                $type = AgencyType::find($agency->agency_type_id)->definition;
-                                                return [$agency->code => "{$type} - {$agency->code}"];
-                                            });
-                                    })
-                                    ->searchable()
-                                    ->preload(),
-                                Select::make('agent_id')
-                                    ->native(false)
-                                    ->label('Propietario')
-                                    ->options(function (Get $get, $record) {
-                                        return Agent::all()
-                                            ->where('status', 'ACTIVO')
-                                            ->mapWithKeys(function ($agent) {
-                                                return [$agent->id => "{$agent->owner_code} - {$agent->name}"];
-                                            });
-                                    })
-                                    ->searchable()
-                                    ->preload(),
-                            ])
+                                ->description('En esta seccion realizaras una reasignacion de las afiliaciones seleccionadas')
+                                ->schema([
+                                    Select::make('owner_code')
+                                        ->label('Pertenece a una Agencia Master?')
+                                        ->helperText('Si el agente pertenece a una agencia master, debes seleccionarla')
+                                        ->options(function (Get $get, $record) {
+                                            return Agency::all()
+                                                ->where('status', 'ACTIVO')
+                                                ->mapWithKeys(function ($agency) {
+                                                    $type = AgencyType::find($agency->agency_type_id)->definition;
+                                                    return [$agency->code => "{$type} - {$agency->code}"];
+                                                });
+                                        })
+                                        ->searchable()
+                                        ->preload(),
+                                    Select::make('code_agency')
+                                        ->label('Pertenece a una Agencia General?')
+                                        ->helperText('Si el agente pertenece a una agencia general, debes seleccionarla')
+                                        ->options(function (Get $get, $record) {
+                                            return Agency::all()
+                                                ->where('status', 'ACTIVO')
+                                                ->where('agency_type_id', 3)
+                                                ->mapWithKeys(function ($agency) {
+                                                    $type = AgencyType::find($agency->agency_type_id)->definition;
+                                                    return [$agency->code => "{$type} - {$agency->code}"];
+                                                });
+                                        })
+                                        ->searchable()
+                                        ->preload(),
+                                    Select::make('agent_id')
+                                        ->native(false)
+                                        ->label('Propietario')
+                                        ->options(function (Get $get, $record) {
+                                            return Agent::all()
+                                                ->where('status', 'ACTIVO')
+                                                ->mapWithKeys(function ($agent) {
+                                                    return [$agent->id => "{$agent->owner_code} - {$agent->name}"];
+                                                });
+                                        })
+                                        ->searchable()
+                                        ->preload(),
+                                ])
                         ])
                         ->action(function (Collection $records, array $data) {
 
                             try {
 
                                 //1.- Master
-                                if($data['owner_code'] != null && $data['code_agency'] == null && $data['agent_id'] == null) {
+                                if ($data['owner_code'] != null && $data['code_agency'] == null && $data['agent_id'] == null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
                                             'owner_code'    => $data['owner_code'],
@@ -1924,8 +1973,8 @@ class AffiliationsTable
                                         $record->update([
                                             'owner_code'    => $data['code_agency'],
                                             'code_agency'   => $data['code_agency'],
-                                            'agent_id'      => $data['agent_id'],   
-                                        ]); 
+                                            'agent_id'      => $data['agent_id'],
+                                        ]);
                                     });
                                 }
 
@@ -1935,8 +1984,6 @@ class AffiliationsTable
                                     ->body('Los códigos han sido actualizados correctamente.')
                                     ->success()
                                     ->send();
-
-                                
                             } catch (\Throwable $th) {
 
                                 // 4. Registro de error con contexto para debugging senior
@@ -1957,8 +2004,7 @@ class AffiliationsTable
                                     ->send();
 
                                 // Re-lanzamos si estamos dentro de una transacción mayor o queremos que Filament maneje el rollback
-                                throw $th; 
-                        
+                                throw $th;
                             }
                         }),
 

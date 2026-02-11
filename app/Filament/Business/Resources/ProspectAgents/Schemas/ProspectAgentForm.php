@@ -19,28 +19,49 @@ class ProspectAgentForm
         return $schema
             ->components([
                 Section::make()
-                ->heading('Información del prospecto')
-                ->icon('heroicon-o-user')
-                ->schema([
-                    TextInput::make('name')
-                        ->required()
-                        ->label('Nombre y Apellido'),
-                    //En tipo de propecto selección simple: Agencia (corretaje) – Agente (Corretaje) – Agencia de Viajes – Mayorista de Viajes – Freelance – Asesor exclusivo – Cliente Corporativo - Otro
-                    Select::make('type')
+                ->icon('heroicon-o-puzzle-piece')
+                ->description('Selecciona e tipo de prospecto que va a registrar')
+                ->heading("Tipo de Prospecto")
+                    ->schema([
+                        Select::make('type')
+                                ->options([
+                                    'agencia-corretaje'     => 'Agencia (corretaje)',
+                                    'agente-corretaje'      => 'Agente (Corretaje)',
+                                    'agencia-viajes'        => 'Agencia de Viajes',
+                                    'mayorista-viajes'      => 'Mayorista de Viajes',
+                                    'freelance'             => 'Freelance',
+                                    'asesor-exclusivo'      => 'Asesor exclusivo',
+                                    'cliente-individual'    => 'Cliente Individual',
+                                    'cliente-corporativo'   => 'Cliente Corporativo',
+                                    'ejecutivo'             => 'Ejecutivo',
+                                    'otro'                  => 'Otro',
+                                ])
+                                ->required()
+                                ->preload()
+                                ->searchable()
+                                ->label('Tipo'),
+                        Select::make('reference_by')
                             ->options([
-                                'agencia-corretaje'     => 'Agencia (corretaje)',
-                                'agente-corretaje'      => 'Agente (Corretaje)',
-                                'agencia-viajes'        => 'Agencia de Viajes',
-                                'mayorista-viajes'      => 'Mayorista de Viajes',
-                                'freelance'             => 'Freelance',
-                                'asesor-exclusivo'      => 'Asesor exclusivo',
-                                'cliente-corporativo'   => 'Cliente Corporativo',
+                                'directiva-TDG'         => 'Directiva TDG',
+                                'gerencia-de-negocios'  => 'Gerencia de Negocios',
+                                'whatsapp-comercial'    => 'Whatsapp Comercial',
+                                'redes-sociales'        => 'Redes sociales',
+                                'tercero'               => 'Tercero',
                                 'otro'                  => 'Otro',
                             ])
                             ->required()
                             ->preload()
                             ->searchable()
-                            ->label('Tipo'),
+                            ->label('Referido por'),
+                    ])->columnSpan(1)->columns(2),
+                Section::make()
+                ->heading('Información del prospecto')
+                ->description('Información principal y de contacto del prospecto')
+                ->icon('heroicon-o-user')
+                ->schema([
+                    TextInput::make('name')
+                        ->required()
+                        ->label('Nombre y Apellido'),
                     TextInput::make('phone_1')
                         ->tel()
                         ->regex('/^[0-9]*$/')
@@ -120,19 +141,7 @@ class ProspectAgentForm
                             ->searchable()
                             ->label('Estatus'),
                     //En referido por selección simple: Directiva TDG – Gerencia de Negocios – Whatsapp Comercial – Redes sociales – Tercero – Otro.
-                    Select::make('reference_by')
-                        ->options([
-                            'directiva-TDG'         => 'Directiva TDG',
-                            'gerencia-de-negocios'  => 'Gerencia de Negocios',
-                            'whatsapp-comercial'    => 'Whatsapp Comercial',
-                            'redes-sociales'        => 'Redes sociales',
-                            'tercero'               => 'Tercero',
-                            'otro'                  => 'Otro',
-                        ])
-                        ->required()
-                        ->preload()
-                        ->searchable()
-                        ->label('Referido por'),
+                    
                     TextInput::make('created_by')
                         ->default(auth()->user()->name)
                         ->disabled()

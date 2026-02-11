@@ -81,7 +81,7 @@
 </head>
 <body>
     <!-- Primera página: Imagen de fondo -->
-    <div class="cover" style="background-image: url('{{ public_path('storage/pagina-4.png') }}');">
+    <div class="cover" style="background-image: url('{{ public_path('storage/images-cotizaciones/contraportada.png') }}');">
 
     </div>
 

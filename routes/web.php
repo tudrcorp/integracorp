@@ -127,7 +127,7 @@ Route::middleware(['auth'])->group(function () {
 
 /**
  * RUTAS DE VOLT
- * Cotizaciones individuales
+ * Cotizaciones Interactivas Individuales
  */
 Route::prefix('in/{quote?}')
     ->group(function () {
@@ -137,7 +137,7 @@ Route::prefix('in/{quote?}')
 
 /**
  * RUTAS DE VOLT
- * Cotizaciones individuales
+ * Cotizaciones Interactivas Corporativas
  */
 Route::prefix('cor/{quote?}')
     ->group(function () {
