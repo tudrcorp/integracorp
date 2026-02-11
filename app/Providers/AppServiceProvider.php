@@ -43,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
             'planIdeal'     => Color::hex('#25b4e7'),
             'planEspecial'  => Color::hex('#2d89ca'),
             'planCorp'      => Color::hex('#3b82f6'),
+
+            'verdeApple' => Color::hex('#34c759'),
         ]);
     }
 

@@ -163,6 +163,12 @@ class SuppliersTable
                     ->searchable(),
             ])
             ->filters([
+                SelectFilter::make('tipo_servicio')
+                    ->label('Tipo de Servicio')
+                    ->options([
+                        'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
+                        'MULTI-ESTADO'      => 'MULTI-ESTADO',
+                    ]),
                 SelectFilter::make('state_id')
                     ->label('Estado')
                     ->options(State::all()->pluck('definition', 'id')),
@@ -172,33 +178,33 @@ class SuppliersTable
                 SelectFilter::make('clasificacion')
                     ->label('Tipo de Servicio')
                     ->options(SupplierClasificacion::all()->pluck('description', 'id')),
-                // Filter::make('created_at')
-                //     ->form([
-                //         DatePicker::make('desde'),
-                //         DatePicker::make('hasta'),
-                //     ])
-                //     ->query(function (Builder $query, array $data): Builder {
-                //         return $query
-                //             ->when(
-                //                 $data['desde'] ?? null,
-                //                 fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                //             )
-                //             ->when(
-                //                 $data['hasta'] ?? null,
-                //                 fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                //             );
-                //     })
-                //     ->indicateUsing(function (array $data): array {
-                //         $indicators = [];
-                //         if ($data['desde'] ?? null) {
-                //             $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
-                //         }
-                //         if ($data['hasta'] ?? null) {
-                //             $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
-                //         }
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('desde'),
+                        DatePicker::make('hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['desde'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['hasta'] ?? null,
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                        }
 
-                //         return $indicators;
-                //     }),
+                        return $indicators;
+                    }),
                 
 
         ])

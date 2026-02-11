@@ -75,6 +75,16 @@ class CorporateQuoteRequestForm
                                                     $set('full_name', $state.toUpperCase());
                                                 JS),
 
+                                            TextInput::make('rif')
+                                                ->label('RIF')
+                                                ->prefixIcon('heroicon-m-user')
+                                                ->required()
+                                                ->numeric()
+                                                ->validationMessages([
+                                                    'required' => 'Campo requerido',
+                                                    'numeric' => 'Solo se permiten números',
+                                                ]),
+
                                             Select::make('country_code')
                                                 ->label('Código de país')
                                                 ->options(UtilsController::getCountries())
@@ -109,7 +119,7 @@ class CorporateQuoteRequestForm
                                                     'email' => 'El correo no es valido',
                                                     'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
                                                 ]),
-                                            Select::make('country_id_ti')
+                                            Select::make('country_id')
                                                 ->label('País')
                                                 ->live()
                                                 ->options(Country::all()->pluck('name', 'id'))
@@ -121,15 +131,15 @@ class CorporateQuoteRequestForm
                                                 ])
                                                 ->default(189)
                                                 ->preload(),
-                                            Select::make('state_id_ti')
+                                            Select::make('state_id')
                                                 ->label('Estado')
                                                 ->options(function (Get $get) {
-                                                    return State::where('country_id', $get('country_id_ti'))->pluck('definition', 'id');
+                                                    return State::where('country_id', $get('country_id'))->pluck('definition', 'id');
                                                 })
                                                 ->afterStateUpdated(function (Set $set, $state) {
                                                     $region_id = State::where('id', $state)->value('region_id');
                                                     $region = Region::where('id', $region_id)->value('definition');
-                                                    $set('region_ti', $region);
+                                                    $set('region', $region);
                                                 })
                                                 ->live()
                                                 ->searchable()
@@ -139,16 +149,16 @@ class CorporateQuoteRequestForm
                                                     'required'  => 'Campo Requerido',
                                                 ])
                                                 ->preload(),
-                                            TextInput::make('region_ti')
+                                            TextInput::make('region')
                                                 ->label('Región')
                                                 ->prefixIcon('heroicon-m-map')
                                                 ->disabled()
                                                 ->dehydrated()
                                                 ->maxLength(255),
-                                            Select::make('city_id_ti')
+                                            Select::make('city_id')
                                                 ->label('Ciudad')
                                                 ->options(function (Get $get) {
-                                                    return City::where('country_id', $get('country_id_ti'))->where('state_id', $get('state_id_ti'))->pluck('definition', 'id');
+                                                    return City::where('country_id', $get('country_id'))->where('state_id', $get('state_id'))->pluck('definition', 'id');
                                                 })
                                                 ->searchable()
                                                 ->prefixIcon('heroicon-s-globe-europe-africa')

@@ -11,7 +11,9 @@ use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
 
 class ProspectAgentTasksRelationManager extends RelationManager
 {
@@ -24,10 +26,33 @@ class ProspectAgentTasksRelationManager extends RelationManager
             ->description('Lista de tareas asignadas para la captacion del prospecto')
             ->columns([
                 TextColumn::make('task')
+                    ->wrap()  
+                    ->width('40%')
                     ->label('Difinicion de Tarea')
-                    ->searchable(),
-                TextColumn::make('created_by')
-                    ->label('Creada por')
+                // ->description(fn(ProspectAgentTask $record): string => 'Asignada por: ' . $record->created_by)
+                    ->description(fn (ProspectAgentTask $record): HtmlString => new HtmlString(
+                        Blade::render(<<<'BLADE'
+                            <div class="flex flex-col space-y-1">
+                                <span class="text-xs text-gray-500 italic">
+                                    Creada por: {{ $created_by }}
+                                </span>
+                                <span class="text-xs text-gray-500 italic">
+                                    Responsable: {{ $assigned_to }}
+                                </span>
+                                <span class="text-xs text-gray-500 italic">
+                                    Registo: {{ $created_at }}    
+                                </span>
+                                <span class="text-xs text-gray-500 italic">
+                                    {{ $date }}    
+                                </span>
+                            </div>
+                        BLADE, [
+                            'created_by'    => $record->created_by,
+                            'created_at'    => $record->created_at,
+                            'date'          => $record->created_at->diffForHumans(),
+                            'assigned_to'   => $record->rrhh_colaborador?->fullName,
+                        ])
+                    ))
                     ->searchable(),
                 TextColumn::make('status')
                     ->label('Estatus')
@@ -37,14 +62,28 @@ class ProspectAgentTasksRelationManager extends RelationManager
                         'PENDIENTE' => 'gray',
                         'RESUELTA' => 'success',
                     })
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->label('Fecha de Registro')
-                    ->description(fn(ProspectAgentTask $record): string => $record->created_at->diffForHumans())
+                    ->searchable()
+                    ->description(fn(ProspectAgentTask $record): HtmlString => new HtmlString(
+                        Blade::render(<<<'BLADE'
+                                <div class="flex flex-col space-y-1">
+                                    <span class="text-xs text-gray-500 italic">
+                                        {{ $updated_by ? 'Actualizado por: ' : 'Sin actualizar' }}
+                                    </span>
+                                    <span class="text-xs text-gray-500 italic">
+                                        {{ $updated_by ? $updated_by : '' }}
+                                    </span>
+                                </div>
+                            BLADE, [
+                            'updated_by' => $record->updated_by,
+                        ])
+                    )),
+                TextColumn::make('updated_at')
+                    ->label('Ultima Actualizacion')
+                    ->description(fn(ProspectAgentTask $record): string => $record->updated_at->diffForHumans())
                     ->dateTime()
                     ->sortable(),
                 SelectColumn::make('resolved_by')
-                    ->options(RrhhColaborador::all()->pluck('fullName', 'id'))
+                    ->options(RrhhColaborador::all()->pluck('fullName', 'fullName'))
                     ->searchableOptions()
                     ->afterStateUpdated(function ($record, $state) {
                         $record->update([
@@ -59,16 +98,7 @@ class ProspectAgentTasksRelationManager extends RelationManager
                             'date' => now(),
                         ]);
                     }),
-                TextColumn::make('updated_by')
-                    ->label('Actualizado por')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->label('Ultima Actualizacion')
-                    ->description(fn(ProspectAgentTask $record): string => $record->updated_at->diffForHumans())
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                
             ])->striped();
     }
 }

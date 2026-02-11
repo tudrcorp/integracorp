@@ -11,6 +11,7 @@ use App\Filament\Operations\Resources\Affiliates\Schemas\AffiliateInfolist;
 use App\Filament\Operations\Resources\Affiliates\Tables\AffiliatesTable;
 use App\Models\Affiliate;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -26,6 +27,27 @@ class AffiliateResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user';
 
     protected static string | UnitEnum | null $navigationGroup = 'AFILIADOS';
+
+    /**
+     * Muestra un badge con la palabra NEW y el conteo de afiliados
+     * con estatus 'ACTIVA' registrados el día de hoy.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $todayCount = static::getModel()::where('status', 'ACTIVO')
+            ->whereDate('created_at', Carbon::today())
+            ->count();
+
+        return $todayCount > 0 ? "NUEVO {$todayCount}" : null;
+    }
+
+    /**
+     * Color personalizado para el badge (Verde iOS).
+     */
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'verdeApple';
+    }
 
     public static function form(Schema $schema): Schema
     {

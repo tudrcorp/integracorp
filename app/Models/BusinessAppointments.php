@@ -32,4 +32,9 @@ class BusinessAppointments extends Model
     {
         return $this->belongsTo(City::class);
     }
+
+    public function businessAppointmentObservations()
+    {
+        return $this->hasMany(BusinessAppointmentObservation::class, 'business_appointment_id', 'id');
+    }
 }

@@ -87,6 +87,7 @@ class CorporateQuoteRequestsTable
 
                     /**FORWARD */
                     Action::make('forward')
+                        ->hidden(fn($record) => $record->document_file == null)
                         ->label('Reenviar')
                         ->icon('fluentui-document-arrow-right-20')
                         ->color('primary')
@@ -177,6 +178,7 @@ class CorporateQuoteRequestsTable
 
                     /* DESCARGAR DOCUMENTO */
                     Action::make('download')
+                        ->hidden(fn($record) => $record->document_file == null)
                         ->label('Descargar Cotización')
                         ->icon('heroicon-s-arrow-down-on-square-stack')
                         ->color('verde')
@@ -189,7 +191,7 @@ class CorporateQuoteRequestsTable
 
                             try {
 
-                                if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
+                                if (!file_exists(public_path('storage/' . $record->document_file))) {
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
@@ -205,15 +207,10 @@ class CorporateQuoteRequestsTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/quotes/' . $record->code . '.pdf');
+                                $path = public_path('storage/' . $record->document_file);
                                 return response()->download($path);
 
-                                /**
-                                 * LOG
-                                 */
-                                LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Cotizacion Individual', 'DESCARGAR');
                             } catch (\Throwable $th) {
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body($th->getMessage())

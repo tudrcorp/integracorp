@@ -16,16 +16,9 @@ class ExclutionChart extends ChartWidget
 
     protected ?string $description = 'Visualización mensual de afiliaciones excluidas con desglose por mes.';
 
-    protected function getExtraAttributes(): array
-    {
-        return [
-            'style' => 'height:50vh; width:100%;',
-        ];
-    }
-
     protected function getData(): array
     {
-        $data = Trend::query(Affiliation::query()->where('status', 'EXCLUIDO')->whereYear('created_at', now()->year))
+        $data = Trend::query(Affiliation::query()->where('status', 'EXCLUIDO')->whereYear('updated_at', now()->year))
             ->between(
                 start: now()->startOfYear(),
                 end: now()->endOfYear(),
@@ -63,75 +56,45 @@ class ExclutionChart extends ChartWidget
         ];
     }
 
-    // protected function getOptions(): RawJs
-    // {
-    //     return RawJs::make(<<<JS
-    //     {
-    //         maintainAspectRatio: false,
-    //         responsive: true,
-    //         scales: {
-    //             y: {
-    //                 beginAtZero: true,
-    //                 ticks: {
-    //                     // Forzamos a que solo muestre números enteros
-    //                     stepSize: 1,
-    //                     precision: 0,
-    //                     callback: function(value) {
-    //                         if (Math.floor(value) === value) {
-    //                             return value.toLocaleString('de-DE');
-    //                         }
-    //                     },
-    //                     font: { size: 11 }
-    //                 },
-    //                 grid: {
-    //                     display: true,
-    //                     color: 'rgba(0, 0, 0, 0.05)',
-    //                     drawBorder: false
-    //                 }
-    //             },
-    //             x: {
-    //                 grid: { display: false } 
-    //             }
-    //         },
-    //         plugins: {
-    //             legend: { display: false }, 
-    //             tooltip: {
-    //                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    //                 titleColor: '#1e293b',
-    //                 bodyColor: '#1e293b',
-    //                 borderColor: '#e2e8f0',
-    //                 borderWidth: 1,
-    //                 padding: 12,
-    //                 displayColors: false,
-    //                 callbacks: {
-    //                     label: function(context) {
-    //                         let value = context.parsed.y;
-    //                         return 'Afiliaciones Excluidas: ' + value.toLocaleString('de-DE');
-    //                     }
-    //                 }
-    //             }
-    //         },
-    //         hover: {
-    //             mode: 'nearest',
-    //             intersect: true
-    //         },
-    //         elements: {
-    //             bar: {
-    //                 hoverBackgroundColor: function(context) {
-    //                     let color = context.dataset.backgroundColor[context.dataIndex];
-    //                     return color + 'CC'; 
-    //                 },
-    //                 hoverBorderWidth: 2,
-    //                 hoverBorderColor: 'rgba(0,0,0,0.1)'
-    //             }
-    //         },
-    //         animation: {
-    //             duration: 2000,
-    //             easing: 'easeOutQuart'
-    //         }
-    //     }
-    //     JS);
-    // }
+    protected function getOptions(): RawJs
+    {
+        return RawJs::make(<<<'JS'
+        {
+            onClick: (event, elements, chart) => {
+                if (elements && elements.length > 0) {
+                    const activeElement = elements[0];
+                    const dataIndex = activeElement.index;
+                    const label = chart.data.labels[dataIndex];
+
+                    $wire.handleChartClick({
+                        mes: label,
+                        indice: dataIndex
+                    });
+                }
+            },
+            onHover: (event, chartElement) => {
+                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        footer: () => 'Haz clic para alternar entre Afiliaciones y Afiliados'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+        JS);
+    }
 
     protected function getType(): string
     {

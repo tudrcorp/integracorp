@@ -29,9 +29,9 @@ class AffiliationSupplierChart extends ChartWidget
 
     protected ?string $maxHeight = '300px';
 
-    protected ?string $heading = 'DISTRIBUCIÓN DE AFILIACIONES POR PLAN';
+    protected ?string $heading = 'DISTRIBUCIÓN DE AFILIACIONES POR PROVEEDOR';
 
-    protected ?string $description = 'Análisis porcentual y cuantitativo de afiliaciones por plan en el mes actual.';
+    protected ?string $description = 'Análisis porcentual y cuantitativo de afiliaciones por proveedor en el mes actual.';
 
     // Ocupar medio ancho para que se vea mejor en el dashboard junto a otros widgets
     protected int | string | array $columnSpan = 1;

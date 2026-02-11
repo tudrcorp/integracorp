@@ -81,17 +81,8 @@
 </head>
 <body>
     <!-- Primera página: Imagen de fondo -->
-    <div class="cover" style="background-image: url('{{ public_path('storage/portadaReducida.webp') }}');">
-
-        <div style="position: absolute; top: 250px; left: 85px;">
-            <h1>Propuesta económica</h1>
-            <div class="caja">
-                <p style="position: absolute; top: 0; left: 5; font-size: 16px; font-weight: bold; color: #ffffff; margin-top: 7px;">Sr(a): {{ $name }}</p>
-            </div>
-        </div>
-
-
-    </div>
+    {{-- <div class="cover" style="background-image: url('{{ public_path('storage/portadaReducida.webp') }}');"> --}}
+    <div class="cover" style="background-image: url('{{ public_path('storage/images-cotizaciones/Portada-Individual.png') }}');"></div>
 
 </body>
 </html>

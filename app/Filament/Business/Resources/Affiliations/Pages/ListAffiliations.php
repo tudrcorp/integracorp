@@ -27,13 +27,13 @@ class ListAffiliations extends ListRecords
         return [
             StatsOverview::class,
             StatsOverviewPlan::class,
-            AffiliationChart::class,
-            ExclutionChart::class,
+            //...
             AffiliationPlanChart::class,
             AffiliationSupplierChart::class,
+            //...
+            AffiliationChart::class,
             TotalAfiliacionesPorEstado::class,
-            // AffiliationAgencyChart::class,
-            // AffiliationAgencyChart::class,
+            // ExclutionChart::class,
         ];
     }
 

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Business\Resources\BusinessAppointments\Schemas;
 
+use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
@@ -45,6 +47,29 @@ class BusinessAppointmentsInfolist
                                     ->label('Fecha de Actualizacion'),
                             ])
                             ->columns(4),
+                    ])->columnSpanFull(),
+
+                Section::make()
+                    ->heading('Observaciones')
+                    ->icon('heroicon-o-pencil-square')
+                    ->description('Detallado de observaciones de gestion')
+                    ->schema([
+                        Fieldset::make('Observaciones')
+                            ->schema([
+                                RepeatableEntry::make('businessAppointmentObservations')
+                                    ->table([
+                                        TableColumn::make('Nota/Observacion'),
+                                        TableColumn::make('Creado por'),
+                                        TableColumn::make('Fecha de creacion'),
+                                    ])
+                                    ->schema([
+                                        TextEntry::make('observation'),
+                                        TextEntry::make('created_by'),
+                                        TextEntry::make('created_at')
+                                            ->dateTime()
+                                            ->placeholder('-'),
+                                    ])->columnSpanFull(),
+                            ])->columnSpanFull(),
                     ])->columnSpanFull(),
             ]);
     }

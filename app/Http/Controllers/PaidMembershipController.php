@@ -621,8 +621,8 @@ class PaidMembershipController extends Controller
                     'code' => $data_afiliaciones['code']
                 ];
 
-                // Mail::to($array_correos['agente'])->send(new SendMailKitBienvenida($record->code, $condicionado));
-                Mail::to($array_correos['agente'])->cc($array_correos['afiliaciones'])->send(new SendMailKitBienvenida($code, $condicionado));
+                /**Se apaga el envio del Kit por ahora */
+                // Mail::to($array_correos['agente'])->cc($array_correos['afiliaciones'])->send(new SendMailKitBienvenida($code, $condicionado));
 
                 Log::info("ENVIO COMPLETADO: Kit enviado correctamente.", [
                     'to' => $array_correos['agente'],

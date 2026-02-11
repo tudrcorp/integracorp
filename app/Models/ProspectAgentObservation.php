@@ -10,6 +10,7 @@ class ProspectAgentObservation extends Model
     
     protected $fillable = [
         'prospect_agent_id',
+        'prospect_agent_task_id',
         'observation',
         'created_by',
     ];
@@ -23,4 +24,10 @@ class ProspectAgentObservation extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function prospect_agent_task()
+    {
+        return $this->belongsTo(ProspectAgentTask::class);
+    }
+
 }

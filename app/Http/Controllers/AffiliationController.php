@@ -144,7 +144,6 @@ class AffiliationController extends Controller
 
                 /** PAGO USD */
                 if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE' || $data['payment_method'] == 'TRANSFERENCIA US$') {
-
                     $record->paid_memberships()->create([
                         'affiliation_id'            => $record->id,
                         'agent_id'                  => $record->agent_id,
@@ -438,11 +437,12 @@ class AffiliationController extends Controller
                     ]);
                 }
             }
-
+            // dd($data);
             return true;
 
             //code...
         } catch (\Throwable $th) {
+            dd($th);
             Log::error($th->getMessage());
             Notification::make()
                 ->title('EXCEPTION')

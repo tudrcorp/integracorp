@@ -99,11 +99,9 @@ class CorporateQuoteRequestsTable
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-APROBADA'  => 'verdeOpaco',
+                            'PRE-APROBADA'  => 'warning',
                             'PROCESADA'      => 'success',
                             'APROBADA'      => 'success',
-                            'ANULADA'       => 'warning',
-                            'DECLINADA'     => 'danger',
                             default => 'azul',
                         };
                     })
