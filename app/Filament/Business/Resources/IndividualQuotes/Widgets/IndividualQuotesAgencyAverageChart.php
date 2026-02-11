@@ -19,13 +19,26 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
     protected int | string | array $columnSpan = 'full';
 
     /**
+     * Filtro de años: Año actual + 4 anteriores.
+     */
+    protected function getFilters(): ?array
+    {
+        $year = now()->year;
+        $filters = [];
+
+        for ($i = 0; $i < 5; $i++) {
+            $yearValue = $year - $i;
+            $filters[$yearValue] = (string) $yearValue;
+        }
+
+        return $filters;
+    }
+
+    /**
      * Genera un color aleatorio vibrante.
-     * Se limitan los rangos de RGB para evitar colores demasiado claros (pasteles)
-     * o demasiado oscuros que se pierdan en el modo oscuro.
      */
     protected function getRandomVibrantColor(): string
     {
-        // Rango medio-alto para asegurar que el color resalte y sea sólido
         $r = mt_rand(40, 220);
         $g = mt_rand(40, 220);
         $b = mt_rand(40, 220);
@@ -34,10 +47,14 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
 
     protected function getData(): array
     {
-        // Consultamos las 25 agencias que más cotizan agrupando por code_agency
+        // Obtenemos el año seleccionado del filtro, por defecto el actual
+        $activeFilter = $this->filter ?? now()->year;
+
+        // Consultamos las 25 agencias filtrando por el año de creación
         $topAgencies = IndividualQuote::query()
             ->select('code_agency', DB::raw('count(*) as total'))
             ->whereNotNull('code_agency')
+            ->whereYear('created_at', $activeFilter)
             ->groupBy('code_agency')
             ->orderByDesc('total')
             ->limit(25)
@@ -48,21 +65,19 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
         $backgroundColors = [];
 
         foreach ($topAgencies as $quoteData) {
-            // Buscamos el nombre de la agencia en la tabla 'agencies' usando el código
+            // Buscamos el nombre de la agencia
             $agencyName = Agency::where('code', $quoteData->code_agency)->first()?->name_corporative
                 ?? "Agencia: {$quoteData->code_agency}";
 
             $labels[] = $agencyName;
             $values[] = $quoteData->total;
-
-            // Aplicamos un color vibrante aleatorio por cada barra
             $backgroundColors[] = $this->getRandomVibrantColor();
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Total Cotizaciones',
+                    'label' => "Total Cotizaciones ({$activeFilter})",
                     'data' => $values,
                     'backgroundColor' => $backgroundColors,
                     'borderRadius' => 6,
@@ -83,13 +98,23 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    enabled: true,
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
                     titleColor: '#1d1d1f',
                     bodyColor: '#1d1d1f',
                     borderColor: '#d2d2d7',
                     borderWidth: 1,
                     padding: 12,
-                    displayColors: true // Habilitamos para ver el color de la barra en el tooltip
+                    cornerRadius: 10,
+                    displayColors: true,
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            return ' Cotizaciones: ' + context.raw;
+                        }
+                    }
                 }
             },
             scales: {
@@ -97,7 +122,8 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
                     beginAtZero: true,
                     grid: {
                         display: true,
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        drawBorder: false,
+                        color: 'rgba(156, 163, 175, 0.15)' // Cuadrícula horizontal
                     },
                     ticks: { 
                         stepSize: 1,
@@ -106,7 +132,9 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
                 },
                 x: {
                     grid: {
-                        display: false
+                        display: true, // Cuadrícula vertical activada
+                        drawBorder: false,
+                        color: 'rgba(156, 163, 175, 0.1)' // Cuadrícula vertical sutil
                     },
                     ticks: {
                         color: '#86868b',
@@ -115,6 +143,13 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
                         minRotation: 45,
                         font: {
                             size: 10
+                        },
+                        callback: function(value) {
+                            let label = this.getLabelForValue(value);
+                            if (label.length > 12) {
+                                return label.substring(0, 10) + '...';
+                            }
+                            return label;
                         }
                     }
                 }

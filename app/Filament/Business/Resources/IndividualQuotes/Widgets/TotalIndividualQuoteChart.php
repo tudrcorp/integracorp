@@ -23,11 +23,27 @@ class TotalIndividualQuoteChart extends ChartWidget
     protected ?string $maxHeight = '300px';
 
     /**
-     * Estado para controlar el filtro.
-     * null: Muestra resumen anual de afiliaciones.
-     * 1-12: Muestra total de afiliados por día en el mes seleccionado.
+     * Estado para controlar los filtros.
      */
     public ?int $selectedMonth = null;
+
+    public ?string $filter = null;
+
+    /**
+     * Definición de los filtros (Últimos 5 años)
+     */
+    protected function getFilters(): ?array
+    {
+        $years = [];
+        $currentYear = now()->year;
+
+        for ($i = 0; $i < 5; $i++) {
+            $year = $currentYear - $i;
+            $years[$year] = (string) $year;
+        }
+
+        return $years;
+    }
 
     /**
      * Maneja el clic en las barras. 
@@ -55,7 +71,7 @@ class TotalIndividualQuoteChart extends ChartWidget
 
     protected function getData(): array
     {
-        $year = now()->year;
+        $year = (int) ($this->filter ?? now()->year);
         $backgroundColors = [];
 
         if ($this->selectedMonth) {
@@ -67,18 +83,17 @@ class TotalIndividualQuoteChart extends ChartWidget
 
             $dataTrend = Trend::query(
                 \App\Models\IndividualQuote::query()
-                    // ->where('status', 'ACTIVA')
             )
                 ->between(start: $startOfMonth, end: $endOfMonth)
                 ->perDay()
                 ->count();
 
             $labels = $dataTrend->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
-            $datasetLabel = 'Total Afiliados en ' . Carbon::create(null, $this->selectedMonth)->monthName;
+            $datasetLabel = 'Total Cotizaciones en ' . Carbon::create(null, $this->selectedMonth)->monthName . " ($year)";
 
-            // Generar colores aleatorios para cada día
+            // Generar colores suaves estilo pastel
             foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+                $backgroundColors[] = sprintf('#%06X', mt_rand(0x606060, 0xCCCCCC));
             }
         } else {
             /**
@@ -87,16 +102,19 @@ class TotalIndividualQuoteChart extends ChartWidget
             $dataTrend = Trend::query(
                 IndividualQuote::query()->whereYear('created_at', $year)
             )
-                ->between(start: now()->startOfYear(), end: now()->endOfYear())
+                ->between(
+                    start: Carbon::create($year)->startOfYear(),
+                    end: Carbon::create($year)->endOfYear()
+                )
                 ->perMonth()
                 ->count();
 
             $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-            $datasetLabel = 'Cotizaciones Activas (Anual)';
+            $datasetLabel = "Cotizaciones Activas ($year)";
 
             // Generar colores aleatorios para cada mes
             foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+                $backgroundColors[] = sprintf('#%06X', mt_rand(0x404040, 0xDDDDDD));
             }
         }
 
@@ -107,10 +125,6 @@ class TotalIndividualQuoteChart extends ChartWidget
                     'data' => $dataTrend->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray(),
                     'backgroundColor' => $backgroundColors,
                     'borderRadius' => 6,
-                    /**
-                     * Configuración de ancho de barras:
-                     * Consistente con el gráfico de estados (más anchas).
-                     */
                     'barPercentage' => 0.8,
                     'categoryPercentage' => 0.9,
                 ],
@@ -140,19 +154,48 @@ class TotalIndividualQuoteChart extends ChartWidget
             },
             plugins: {
                 legend: {
-                    display: false // Ocultamos leyenda para dar más espacio a las barras anchas
+                    display: false
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                    titleColor: '#1d1d1f',
+                    bodyColor: '#1d1d1f',
+                    borderColor: '#d2d2d7',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
                     callbacks: {
-                        footer: () => 'Haz clic para alternar entre Afiliaciones y Afiliados'
+                        footer: () => 'Haz clic para alternar vista'
                     }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { stepSize: 1 }
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(156, 163, 175, 0.15)'
+                    },
+                    ticks: { 
+                        stepSize: 1,
+                        color: '#86868b' 
+                    }
+                },
+                x: {
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(156, 163, 175, 0.1)'
+                    },
+                    ticks: {
+                        color: '#86868b'
+                    }
                 }
+            },
+            animation: {
+                duration: 1200,
+                easing: 'easeOutQuart'
             }
         }
         JS);

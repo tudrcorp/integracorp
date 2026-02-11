@@ -14,77 +14,65 @@ class AffiliationCorporateChart extends ChartWidget
 {
     protected ?string $heading = 'RESUMEN DE AFILIACIONES Y AFILIADOS CORPORATIVOS';
 
-    protected ?string $description = 'Visualización mensual de afiliaciones con desglose por dias del Mes. Al hacer click en cualquiera de las barras podras observar el detalle de las afiliaciones de acuerdo al mes seleccionado';
-
+    protected ?string $description = 'Visualización mensual de afiliaciones con desglose por días del Mes. Haz clic en una barra para ver el detalle de afiliados.';
 
     protected ?string $maxHeight = '300px';
 
     /**
-     * Estado para controlar el filtro.
-     * null: Muestra resumen anual de afiliaciones.
-     * 1-12: Muestra total de afiliados por día en el mes seleccionado.
+     * Estado para controlar el filtro de mes.
      */
     public ?int $selectedMonth = null;
 
-    /**
-     * Maneja el clic en las barras. 
-     */
+    protected function getFilters(): ?array
+    {
+        $currentYear = now()->year;
+        $years = [];
+
+        for ($i = 0; $i < 5; $i++) {
+            $year = $currentYear - $i;
+            $years[$year] = (string) $year;
+        }
+
+        return $years;
+    }
+
     public function handleChartClick(array $payload): void
     {
+        $year = (int) ($this->filter ?? now()->year);
+
         if ($this->selectedMonth === null) {
             $this->selectedMonth = $payload['indice'] + 1;
 
             Notification::make()
-                ->title("Detalle de Afiliados: {$payload['mes']}")
-                ->body("Mostrando el total de personas afiliadas en este periodo.")
+                ->title("Detalle de Afiliados: {$payload['mes']} {$year}")
+                ->body("Mostrando el desglose diario de personas afiliadas.")
                 ->info()
                 ->send();
         } else {
             $this->selectedMonth = null;
 
             Notification::make()
-                ->title('Vista Anual')
-                ->body('Regresando al resumen anual de afiliaciones.')
+                ->title("Vista Anual {$year}")
+                ->body('Regresando al resumen de afiliaciones por mes.')
                 ->success()
                 ->send();
         }
     }
 
-    protected function getChartColors(): array
-    {
-        return [
-            '#94a3b8',
-            '#93c5fd',
-            '#60a5fa',
-            '#3b82f6',
-            '#2563eb',
-            '#1d4ed8',
-            '#1e40af',
-            '#1e3a8a',
-            '#64748b',
-            '#475569',
-            '#334155',
-            '#0f172a'
-        ];
-    }
-
     protected function getData(): array
     {
-        $year = now()->year;
+        $year = (int) ($this->filter ?? now()->year);
+        $backgroundColors = [];
 
         if ($this->selectedMonth) {
-            /**
-             * VISTA MENSUAL: Conteo de Afiliados (Relación 1 a N)
-             * Queremos saber cuántos registros hay en la tabla 'affiliates' 
-             * pertenecientes a las afiliaciones activas de este mes.
-             */
             $startOfMonth = Carbon::create($year, $this->selectedMonth)->startOfMonth();
             $endOfMonth = Carbon::create($year, $this->selectedMonth)->endOfMonth();
 
             $data = Trend::query(
                 \App\Models\AffiliateCorporate::query()
-                    ->whereHas('affiliationCorporate', function ($query) {
-                        $query->where('status', 'ACTIVA');
+                    ->whereHas('affiliationCorporate', function ($query) use ($year) {
+                        $query->where('status', 'ACTIVA')
+                            ->whereYear('created_at', $year);
                     })
             )
                 ->between(start: $startOfMonth, end: $endOfMonth)
@@ -92,22 +80,25 @@ class AffiliationCorporateChart extends ChartWidget
                 ->count();
 
             $labels = $data->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
-            $datasetLabel = 'Total Afiliados en ' . Carbon::create(null, $this->selectedMonth)->monthName;
-            $color = '#f59e0b'; // Ámbar para diferenciar la métrica de "Afiliados"
+            $datasetLabel = 'Afiliados en ' . Carbon::create($year, $this->selectedMonth)->translatedMonth . " ({$year})";
         } else {
-            /**
-             * VISTA ANUAL: Conteo de registros en la tabla Affiliation
-             */
+            $startOfYear = Carbon::create($year)->startOfYear();
+            $endOfYear = Carbon::create($year)->endOfYear();
+
             $data = Trend::query(
                 AffiliationCorporate::query()->where('status', 'ACTIVA')->whereYear('created_at', $year)
             )
-                ->between(start: now()->startOfYear(), end: now()->endOfYear())
+                ->between(start: $startOfYear, end: $endOfYear)
                 ->perMonth()
                 ->count();
 
             $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-            $datasetLabel = 'Afiliaciones Activas (Anual)';
-            $color = $this->getChartColors(); // Azul para "Afiliaciones"
+            $datasetLabel = "Afiliaciones Activas (Anual {$year})";
+        }
+
+        // Generar colores consistentes pero variados
+        foreach ($labels as $label) {
+            $backgroundColors[] = sprintf('#%06X', mt_rand(0x444444, 0xAAAAAA));
         }
 
         return [
@@ -115,8 +106,9 @@ class AffiliationCorporateChart extends ChartWidget
                 [
                     'label' => $datasetLabel,
                     'data' => $data->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray(),
-                    'backgroundColor' => $color,
-                    'borderRadius' => 6,
+                    'backgroundColor' => $backgroundColors,
+                    'borderRadius' => 4,
+                    'barPercentage' => 0.7,
                 ],
             ],
             'labels' => $labels,
@@ -143,20 +135,40 @@ class AffiliationCorporateChart extends ChartWidget
                 event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
             },
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
+                legend: { display: false },
                 tooltip: {
-                    callbacks: {
-                        footer: () => 'Haz clic para alternar entre Afiliaciones y Afiliados'
-                    }
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#111827',
+                    bodyColor: '#374151',
+                    borderColor: '#E5E7EB',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 10,
+                    displayColors: false
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { stepSize: 1 }
+                    grid: {
+                        drawBorder: false,
+                        color: 'rgba(156, 163, 175, 0.15)', // Líneas horizontales
+                    },
+                    ticks: {
+                        color: '#9CA3AF',
+                        font: { size: 10 }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: true, // Activamos líneas verticales
+                        drawBorder: false,
+                        color: 'rgba(156, 163, 175, 0.1)', // Líneas verticales más sutiles
+                    },
+                    ticks: {
+                        color: '#9CA3AF',
+                        font: { size: 10 }
+                    }
                 }
             }
         }

@@ -72,6 +72,15 @@ class CorporateQuoteRequestForm
                                                 ->afterStateUpdatedJs(<<<'JS'
                                                     $set('full_name', $state.toUpperCase());
                                                 JS),
+                                            TextInput::make('rif')
+                                                ->label('RIF')
+                                                ->prefixIcon('heroicon-m-user')
+                                                ->required()
+                                                ->numeric()
+                                                ->validationMessages([
+                                                    'required' => 'Campo requerido',
+                                                    'numeric' => 'Solo se permiten números',
+                                                ]),
 
                                             Select::make('country_code')
                                                 ->label('Código de país')
