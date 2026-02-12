@@ -155,6 +155,14 @@
                 </span>
             </p>
         </div>
+
+        <!-- Numero de Control -->
+        <p style="font-size: 15px; position: absolute; top: 180px; left: 615px;">
+            <span style="">
+                {{ $number_control }}
+            </span>
+        </p>
+
         <div style="position: absolute; top: 130px; right: 10px; margin-top: 20px; padding: 20px; margin-right: 20px">
             {{-- <img src="{{ public_path('storage/beneficios-plan-especial.png') }}"
                 style="width: 700px; height: auto;" alt=""> --}}
@@ -189,18 +197,18 @@
                 @endforeach
             </table>
             @php
-                use Illuminate\Support\Facades\Log;
-                // Inicializar array para almacenar los totales por columna
-                $totalColumns = [0, 0, 0, 0, 0, 0]; // Para US$5K a US$40K (6 columnas)
+use Illuminate\Support\Facades\Log;
+// Inicializar array para almacenar los totales por columna
+$totalColumns = [0, 0, 0, 0, 0, 0]; // Para US$5K a US$40K (6 columnas)
 
-                // Recorrer los datos para sumar por columna
-                foreach ($data as $key => $value) {
-                    foreach ($value as $index => $item) {
-                        if (isset($totalColumns[$index])) {
-                            $totalColumns[$index] += round($item->subtotal_anual);
-                        }
-                    }
-                }
+// Recorrer los datos para sumar por columna
+foreach ($data as $key => $value) {
+    foreach ($value as $index => $item) {
+        if (isset($totalColumns[$index])) {
+            $totalColumns[$index] += round($item->subtotal_anual);
+        }
+    }
+}
 
             @endphp
             <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">

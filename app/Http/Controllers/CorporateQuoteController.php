@@ -20,11 +20,11 @@ class CorporateQuoteController extends Controller
             $user = User::findOrFail($user);
 
             $collect = collect($details['data'][0]);
-
+// dd($collect);
             ini_set('memory_limit', '2048M');
             set_time_limit(120);
 
-
+            // dd($details, $collect);
             $name_user = $user->name;
             $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'collect', 'name_user'));
             $name_pdf = $details['code'] . '.pdf';

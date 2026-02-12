@@ -44,16 +44,25 @@ class PaidMembershipController extends Controller
              * @version 2.0
              */
             if (!isset($data['collections'])) {
+
                 /**
                  * Actualizamos el registro en la tabla de afiliaciones
                  * cambiamos el estatus y cargamos la fecha de aceptacion
                  * ----------------------------------------------------------------------------------------------------
                  */
                 if ($record->affiliation->activated_at == null) {
+                    /** Fecha de ACTIVACION de la afiliacion */
                     $record->affiliation->activated_at = now()->format('d/m/Y');
+                    /** Fecha de RENOVACION de la afiliacion */
                     $record->affiliation->effective_date = Carbon::createFromFormat('d/m/Y', now()->format('d/m/Y'))->addYear()->format('d/m/Y');
+                    /** Cambiamos el estatus de la afiliacion */
                     $record->affiliation->status = 'ACTIVA';
                     $record->affiliation->save();
+
+                    /** Actualizo a todos los afiliados asociados a la afiliacion */
+                    $record->affiliation->affiliates()->update([
+                        'status' => 'ACTIVO'
+                    ]);
                 }
 
                 /**

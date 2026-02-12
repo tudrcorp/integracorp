@@ -20,7 +20,7 @@ class IndividualQuoteController extends Controller
             $user = User::findOrFail($user);
             
             $collect = collect($details['data'][0]);
-
+            
             ini_set('memory_limit', '2048M');
             set_time_limit(120);
             

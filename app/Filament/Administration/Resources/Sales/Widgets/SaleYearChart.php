@@ -14,7 +14,7 @@ class SaleYearChart extends ChartWidget
 
     protected ?string $description = 'Visualización mensual de ingresos totales con desglose por periodos.';
 
-    protected ?string $maxHeight = '400px';
+    protected ?string $maxHeight = '350px';
 
 
     protected function getData(): array
@@ -26,6 +26,12 @@ class SaleYearChart extends ChartWidget
             )
             ->perMonth()
             ->sum('total_amount');
+
+        $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+        foreach ($labels as $label) {
+            $backgroundColors[] = $this->getRandomVibrantColor();
+        }
 
         // Paleta de colores minimalista (uno por mes)
         $minimalistColors = [
@@ -48,86 +54,101 @@ class SaleYearChart extends ChartWidget
                 [
                     'label' => 'Total Ventas (US$)',
                     'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
-                    'backgroundColor' => $minimalistColors,
+                    'backgroundColor' => $backgroundColors,
                     'borderRadius' => 8, // Barras redondeadas modernas
                     // Se elimina el color fijo negro para permitir que JS gestione el hover dinámicamente
                 ],
             ],
-            'labels' => ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            'labels' => $labels,
         ];
     }
 
-    // protected function getOptions(): RawJs
-    // {
-    //     return RawJs::make(<<<JS
-    //     {
-    //         maintainAspectRatio: false,
-    //         responsive: true,
-    //         scales: {
-    //             y: {
-    //                 beginAtZero: true,
-    //                 grid: {
-    //                     display: true,
-    //                     color: 'rgba(0, 0, 0, 0.05)',
-    //                     drawBorder: false
-    //                 },
-    //                 ticks: {
-    //                     // Formato: 10.568,98
-    //                     callback: function(value) {
-    //                         return '$' + value.toLocaleString('de-DE', { minimumFractionDigits: 2 });
-    //                     },
-    //                     font: { size: 11 }
-    //                 }
-    //             },
-    //             x: {
-    //                 grid: { display: false } 
-    //             }
-    //         },
-    //         plugins: {
-    //             legend: { display: false }, 
-    //             tooltip: {
-    //                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    //                 titleColor: '#1e293b',
-    //                 bodyColor: '#1e293b',
-    //                 borderColor: '#e2e8f0',
-    //                 borderWidth: 1,
-    //                 padding: 12,
-    //                 displayColors: false,
-    //                 callbacks: {
-    //                     label: function(context) {
-    //                         let value = context.parsed.y;
-    //                         return 'Ventas: $' + value.toLocaleString('de-DE', { minimumFractionDigits: 2 });
-    //                     }
-    //                 }
-    //             }
-    //         },
-    //         // Configuración de interacción para oscurecer el color base
-    //         hover: {
-    //             mode: 'nearest',
-    //             intersect: true
-    //         },
-    //         elements: {
-    //             bar: {
-    //                 // Al hacer hover, reducimos el brillo del color original
-    //                 hoverBackgroundColor: function(context) {
-    //                     let color = context.dataset.backgroundColor[context.dataIndex];
-    //                     // Añadimos una capa de negro muy transparente para oscurecer
-    //                     return color + 'CC'; 
-    //                 },
-    //                 hoverBorderWidth: 2,
-    //                 hoverBorderColor: 'rgba(0,0,0,0.1)'
-    //             }
-    //         },
-    //         animation: {
-    //             duration: 2000,
-    //             easing: 'easeOutQuart'
-    //         }
-    //     }
-    //     JS);
-    // }
+    protected function getRandomVibrantColor(): string
+    {
+        $r = mt_rand(50, 200);
+        $g = mt_rand(50, 200);
+        $b = mt_rand(50, 200);
+        return sprintf('#%02X%02X%02X', $r, $g, $b);
+    }
+
 
     protected function getType(): string
     {
         return 'bar';
+    }
+
+    protected function getOptions(): RawJs
+    {
+        return RawJs::make(<<<JS
+            {
+                animation: {
+                    animateScale: true,
+                    animateRotate: true,
+                    duration: 1500,
+                    easing: 'easeOutQuart'
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 25,
+                            font: { size: 12 }
+                        },
+                    },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function(context) {
+                                return ' ' + context.label + ': ' + context.raw + '%';
+                            }
+                        }
+                    },
+                    // Configuración para mostrar texto DENTRO de las porciones
+                    datalabels: {
+                        display: true,
+                        color: '#ffffff',
+                        anchor: 'center',
+                        align: 'center',
+                        offset: 0,
+                        font: {
+                            size: 18,
+                            weight: 'bold',
+                            family: 'sans-serif'
+                        },
+                        formatter: (value) => {
+                            return value > 0 ? value + '%' : '';
+                        },
+                        // Sombra para mejorar legibilidad sobre colores claros
+                        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+                        textShadowBlur: 4
+                    }
+                },
+                //cuadricula
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { stepSize: 1 },
+                        grid: {
+                            display: true,
+                            color: 'rgba(156, 163, 175, 0.2)', // Gris suave adaptable
+                            drawBorder: false
+                        }
+                    },
+                    x: { 
+                        grid: { 
+                            display: true,
+                            color: 'rgba(156, 163, 175, 0.1)', // Líneas verticales más tenues
+                            drawBorder: false
+                        } 
+                    }
+                },
+                // Optimización de espacio
+                layout: {
+                    padding: 20
+                }
+            }
+        JS);
     }
 }
