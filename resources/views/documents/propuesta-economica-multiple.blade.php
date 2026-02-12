@@ -101,15 +101,18 @@
     @if($data_ideal != null)
 
         @livewire(
-        'planes-cotizacion-individual-ideal',
+            'planes-cotizacion-individual-ideal',
 
-        [
-            'data' => $data_ideal,
-            'name' => $details_generals['name'],
-            'name_user' => $name_user
+            [
+                'data' => $data_ideal,
+                'name' => $details_generals['name'],
+                'name_user' => $name_user,
+                'number_control' => Str::contains($details_generals['code'], 'COT-IND-') ?
+                    str_replace('COT-IND-', '', $details_generals['code']) :
+                    str_replace('COT-CORP-', '', $details_generals['code'])
 
-        ]
-    )
+            ]
+        )
 
     @endif
 
@@ -121,7 +124,10 @@
             [
                 'data' => $data_especial,
                 'name' => $details_generals['name'],
-                'name_user' => $name_user
+                'name_user' => $name_user,
+                'number_control' => Str::contains($details_generals['code'], 'COT-IND-') ?
+                    str_replace('COT-IND-', '', $details_generals['code']) :
+                    str_replace('COT-CORP-', '', $details_generals['code'])
 
             ]
         )
