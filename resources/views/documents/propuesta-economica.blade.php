@@ -98,13 +98,16 @@
 
     @if($details['plan'] == 2)
         @livewire(
-        'planes-cotizacion-individual-ideal',
-        [
-            'data' => $group_collect,
-            'name' => $details['name'],
-            'name_user' => $name_user
-        ]
-    )
+            'planes-cotizacion-individual-ideal',
+            [
+                'data' => $group_collect,
+                'name' => $details['name'],
+                'name_user' => $name_user,
+                'number_control' => Str::contains($details['code'], 'COT-IND-') ? 
+                                    str_replace('COT-IND-', '', $details['code']) : 
+                                    str_replace('COT-CORP-', '', $details['code'])
+            ]
+        )
     @endif
 
     @if($details['plan'] == 3)
@@ -113,7 +116,10 @@
             [
                 'data' => $group_collect,
                 'name' => $details['name'],
-                'name_user' => $name_user
+                'name_user' => $name_user,
+                'number_control' => Str::contains($details['code'], 'COT-IND-') ? 
+                                    str_replace('COT-IND-', '', $details['code']) : 
+                                    str_replace('COT-CORP-', '', $details['code'])
             ]
         )
         @livewire('propuesta-economica.propuesta-economica-plan-especial')

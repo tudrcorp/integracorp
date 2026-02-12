@@ -190,7 +190,16 @@
                     </span> --}}
                 </span>
             </p>
+            
         </div>
+        
+        <!-- Numero de Control -->
+        <p style="font-size: 15px; position: absolute; top: 199px; left: 620px;">
+            <span style="">
+                000{{ isset($data['individual_quote_id']) ? $data['individual_quote_id'] : $data['corporate_quote_id'] }}
+            </span>
+        </p>
+        
         <div style="position: absolute; top: 130px; right: 10px; margin-top: 15px; padding: 20px; margin-right: 20px">
             {{-- <img src="{{ public_path('storage/beneficios-plan-inicial.png') }}" style="width: 700px; height: auto;" alt=""> --}}
         </div>

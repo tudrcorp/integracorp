@@ -114,6 +114,7 @@
 </head>
 <body>
     <!-- PLAN IDEAL -->
+    <!-- COTIZACIONES INDIVIDUALES -->
     <!-- Primera página: Imagen de fondo -->
     <div class="cover" style="background-image: url('{{ public_path('storage/images-cotizaciones/ideal.png') }}');">
 
@@ -154,6 +155,14 @@
                 </span>
             </p>
         </div>
+
+        <!-- Numero de Control -->
+        <p style="font-size: 15px; position: absolute; top: 179px; left: 610px;">
+            <span style="">
+                {{ $number_control }}
+            </span>
+        </p>
+        
         <div style="position: absolute; top: 140px; right: 10px; margin-top: 20px; padding: 20px; margin-right: 20px">
             {{-- <img src="{{ public_path('storage/beneficios-plan-ideal.png') }}" style="width: 700px; height: auto;" alt=""> --}}
         </div>

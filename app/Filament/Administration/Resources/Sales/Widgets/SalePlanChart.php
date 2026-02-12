@@ -33,7 +33,7 @@ class SalePlanChart extends ChartWidget
 
     protected ?string $description = 'Análisis porcentual y cuantitativo de planes vendidos en el mes actual.';
 
-    protected ?string $maxHeight = '400px';
+    protected ?string $maxHeight = '350px';
 
     // Ocupar medio ancho para que se vea mejor en el dashboard junto a otros widgets
 
@@ -43,12 +43,6 @@ class SalePlanChart extends ChartWidget
         // Rango del mes actual
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
-
-        // OPTIMIZACIÓN: Una sola consulta para obtener todos los conteos agrupados
-        // $salesData = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-        //     ->select('plan_id', DB::raw('count(*) as total'))
-        //     ->groupBy('plan_id')
-        //     ->get();
 
         /**
          * @var mixed
@@ -122,6 +116,24 @@ class SalePlanChart extends ChartWidget
     {
         return RawJs::make(<<<JS
             {
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { stepSize: 1 },
+                        grid: {
+                            display: true,
+                            color: 'rgba(156, 163, 175, 0.2)', // Gris suave adaptable
+                            drawBorder: false
+                        }
+                    },
+                    x: { 
+                        grid: { 
+                            display: true,
+                            color: 'rgba(156, 163, 175, 0.1)', // Líneas verticales más tenues
+                            drawBorder: false
+                        } 
+                    }
+                },
                 animation: {
                     animateScale: true,
                     animateRotate: true,

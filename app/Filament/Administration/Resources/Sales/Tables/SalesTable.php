@@ -514,7 +514,7 @@ class SalesTable
                             try {
                                 
                                 foreach ($records as $record) {
-                                    
+
                                     //Eliminamos el registro de la venta
                                     $record->delete();
                                     
@@ -524,6 +524,10 @@ class SalesTable
 
                                     //Elimino la comision de la venta
                                     $record->commission()->delete();
+
+                                    //Elimino el aviso de cobro de la venta
+                                    $record->collections()->delete();
+                                    
                                 }
 
                                 Notification::make()
