@@ -763,22 +763,6 @@ class AffiliationCorporatesTable
                                     ->seconds(5)
                                     ->send();
                             }
-                        })
-                        ->hidden(function (AffiliationCorporate $record) {
-
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_membership_corporates()->count() == 1) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_membership_corporates()->count() == 2) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_membership_corporates()->count() == 4) {
-                                return true;
-                            }
-
-                            return false;
                         }),
 
                     Action::make('change_status')
@@ -907,6 +891,7 @@ class AffiliationCorporatesTable
                                 ->success()
                                 ->send();
                         }),
+
                 ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([

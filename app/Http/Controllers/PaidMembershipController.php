@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Termwind\Components\Li;
@@ -24,6 +25,8 @@ class PaidMembershipController extends Controller
 {
     public static function approvePayment($record, $data)
     {
+        // Usamos DB::beginTransaction para asegurar que nada se guarde si algo falla
+        DB::beginTransaction();
         try {
 
             if($record->payment_method == 'MULTIPLE'){
@@ -149,7 +152,7 @@ class PaidMembershipController extends Controller
                     $collections->bank_usd                      = 'N/A';
                     $collections->bank_ves                      = 'N/A';
                     $collections->payment_frequency             = $record->affiliation->payment_frequency;
-                    $collections->reference                     = $reference_payment;
+                    $collections->reference                     = isset($reference_payment) ? $reference_payment : null;
                     $collections->created_by                    = Auth::user()->name;
                     $collections->next_payment_date             = Carbon::createFromFormat('d-m-Y', $record->prox_payment_date)->format('d/m/Y'); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
 
@@ -223,7 +226,7 @@ class PaidMembershipController extends Controller
 
 
                         $collections->payment_frequency       = $record->affiliation->payment_frequency;
-                        $collections->reference               = $record->reference_payment;
+                        $collections->reference               = isset($reference_payment) ? $reference_payment : null;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                         
@@ -292,7 +295,7 @@ class PaidMembershipController extends Controller
 
 
                     $collections->payment_frequency       = $record->affiliation->payment_frequency;
-                    $collections->reference               = $reference_payment;
+                    $collections->reference               = isset($reference_payment) ? $reference_payment : null;
                     $collections->created_by              = Auth::user()->name;
                     $collections->next_payment_date       = $record->prox_payment_date;
                     
@@ -359,7 +362,7 @@ class PaidMembershipController extends Controller
 
 
                         $collections->payment_frequency       = $record->affiliation->payment_frequency;
-                        $collections->reference               = $reference_payment;
+                        $collections->reference               = isset($reference_payment) ? $reference_payment : null;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = $record->prox_payment_date;
                         
@@ -395,7 +398,7 @@ class PaidMembershipController extends Controller
                     'invoice_number'    => $sales->invoice_number,
                     'emission_date'     => now()->format('d/m/Y'),
                     'payment_method'    => $sales->payment_method,
-                    'reference'         => $reference_payment,
+                    'reference'         => isset($reference_payment) ? $reference_payment : '',
                     'full_name_ti'      => $sales->affiliate_full_name,
                     'ci_rif_ti'         => $sales->affiliate_ci_rif,
                     'address_ti'        => $record->affiliation->adress_ti,
@@ -826,6 +829,16 @@ class PaidMembershipController extends Controller
                     $commission->affiliation_code   = $sales->affiliation_code;
                     $commission->created_by         = Auth::user()->name;
                     $commission->save();
+
+                    // Todo correcto: Confirmamos cambios en la DB
+                    DB::commit();
+
+                    // Notificación de éxito
+                    Notification::make()
+                        ->title('Pago Aprobado')
+                        ->body('El pago y sus registros asociados se procesaron correctamente.')
+                        ->success()
+                        ->send();
                 }
 
                 //1.- Validamos que la venta sea hecha por una agencia general o una agencia master
@@ -901,6 +914,16 @@ class PaidMembershipController extends Controller
                     $commission->affiliation_code   = $sales->affiliation_code;
                     $commission->created_by         = Auth::user()->name;
                     $commission->save();
+
+                    // Todo correcto: Confirmamos cambios en la DB
+                    DB::commit();
+
+                    // Notificación de éxito
+                    Notification::make()
+                        ->title('Pago Aprobado')
+                        ->body('El pago y sus registros asociados se procesaron correctamente.')
+                        ->success()
+                        ->send();
                 }
 
                 return [
@@ -910,13 +933,22 @@ class PaidMembershipController extends Controller
             }
 
             
-        } catch (\Throwable $th) {   
-            dd($th);
+        } catch (\Throwable $th) {
+            // ERROR DETECTADO: Deshacer todos los cambios en la DB
+            DB::rollBack();
+
+            // Registrar el error para el desarrollador
+            Log::error("ADMINISTRACION: Falla en al aprobar el pago: " . $th->getMessage(), [
+                'record_id' => $record->id,
+                'exception' => $th
+            ]);
+
+            // Notificación de error para el usuario
             Notification::make()
-                ->title('EXCEPCION')
-                ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
-                ->icon('heroicon-m-tag')
+                ->title('Error al procesar el pago')
+                ->body('No se realizó ningún cambio en el sistema. Motivo: ' . $th->getMessage())
                 ->danger()
+                ->persistent() // Para que el usuario tenga tiempo de leerlo
                 ->send();
         }
     }

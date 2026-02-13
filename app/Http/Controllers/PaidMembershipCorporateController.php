@@ -146,7 +146,7 @@ class PaidMembershipCorporateController extends Controller
 
 
                     $collections->payment_frequency       = $record->affiliation_corporate->payment_frequency;
-                    $collections->reference               = $reference_payment;
+                    $collections->reference               = isset($reference_payment) ? $reference_payment : null;
                     $collections->created_by              = Auth::user()->name;
                     $collections->next_payment_date       = $record->prox_payment_date;
 
@@ -223,7 +223,7 @@ class PaidMembershipCorporateController extends Controller
 
 
                         $collections->payment_frequency       = $record->affiliation_corporate->payment_frequency;
-                        $collections->reference               = $record->reference_payment;
+                        $collections->reference               = isset($reference_payment) ? $reference_payment : null;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
 
@@ -289,7 +289,7 @@ class PaidMembershipCorporateController extends Controller
 
 
                     $collections->payment_frequency       = $record->affiliation_corporate->payment_frequency;
-                    $collections->reference               = $reference_payment;
+                    $collections->reference               = isset($reference_payment) ? $reference_payment : null;
                     $collections->created_by              = Auth::user()->name;
                     $collections->next_payment_date       = $record->prox_payment_date;
 
@@ -356,7 +356,7 @@ class PaidMembershipCorporateController extends Controller
 
 
                         $collections->payment_frequency       = $record->affiliation_corporate->payment_frequency;
-                        $collections->reference               = $reference_payment;
+                        $collections->reference               = isset($reference_payment) ? $reference_payment : null;
                         $collections->created_by              = Auth::user()->name;
                         $collections->next_payment_date       = $record->prox_payment_date;
 
@@ -392,7 +392,7 @@ class PaidMembershipCorporateController extends Controller
                     'invoice_number'    => $sales->invoice_number,
                     'emission_date'     => now()->format('d/m/Y'),
                     'payment_method'    => $sales->payment_method,
-                    'reference'         => $reference_payment,
+                    'reference'         => isset($reference_payment) ? $reference_payment : '',
                     'full_name_ti'      => $sales->affiliate_full_name,
                     'ci_rif_ti'         => $sales->affiliate_ci_rif,
                     'address_ti'        => $record->affiliation_corporate->address,
@@ -914,7 +914,7 @@ class PaidMembershipCorporateController extends Controller
             DB::rollBack();
 
             // Registrar el error para el desarrollador
-            Log::error("Falla en approvePayment: " . $th->getMessage(), [
+            Log::error("ADMINISTRACION: Falla en al aprobar el pago: " . $th->getMessage(), [
                 'record_id' => $record->id,
                 'exception' => $th
             ]);
