@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Exports\AffiliationCorporateExporter;
 use App\Http\Controllers\AffiliationCorporateController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliateCorporate;
@@ -15,6 +16,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -35,10 +37,10 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Database\Eloquent\Builder;
 
 class AffiliationCorporatesTable
 {
@@ -958,6 +960,7 @@ class AffiliationCorporatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()->exporter(AffiliationCorporateExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),
                 ]),
             ])
