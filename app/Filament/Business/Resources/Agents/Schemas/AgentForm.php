@@ -115,7 +115,6 @@ class AgentForm
                             })
                             ->live(onBlur: true)
                             ->prefixIcon('heroicon-s-identification')
-                            ->required()
                             ->validationMessages([
                                 'required' => 'Campo requerido',
                             ])
@@ -135,7 +134,6 @@ class AgentForm
                                 column: 'ci',
                             )
                             ->numeric()
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo requerido',
                                 'numeric'   => 'El campo es numerico',
@@ -151,7 +149,6 @@ class AgentForm
                             ])
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -161,7 +158,6 @@ class AgentForm
                             ->label('Fecha de Nacimiento')
                             ->prefixIcon('heroicon-m-calendar-days')
                             ->displayFormat('d/m/Y')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ]),
@@ -175,7 +171,6 @@ class AgentForm
                             ->label('Correo electrónico')
                             ->prefixIcon('heroicon-s-at-symbol')
                             ->email()
-                            ->required()
                             ->unique(
                                 table: Agent::class,
                                 column: 'email',
@@ -193,7 +188,6 @@ class AgentForm
                             })
                             ->live(onBlur: true)
                             ->prefixIcon('heroicon-s-identification')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -277,7 +271,6 @@ class AgentForm
                             ])
                             ->searchable()
                             ->default('+58')
-                            ->required()
                             ->live(onBlur: true)
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
@@ -287,7 +280,6 @@ class AgentForm
                             ->prefixIcon('heroicon-s-phone')
                             ->tel()
                             ->label('Número de teléfono')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -305,7 +297,6 @@ class AgentForm
                             ->options(Country::all()->pluck('name', 'id'))
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -323,7 +314,6 @@ class AgentForm
                             ->live()
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -341,7 +331,6 @@ class AgentForm
                             })
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
