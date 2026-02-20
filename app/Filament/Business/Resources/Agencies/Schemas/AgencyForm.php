@@ -56,7 +56,6 @@ class AgencyForm
                                 }
                                 return 'TDG-' . $parte_entera + 1;
                             })
-                            ->required()
                             ->disabled()
                             ->dehydrated()
                             ->maxLength(255),
@@ -65,7 +64,6 @@ class AgencyForm
                             ->options(AgencyType::all()->pluck('definition', 'id'))
                             ->searchable()
                             ->live()
-                            ->required()
                             ->validationMessages([
                                 'required' => 'Campo requerido',
                             ])
@@ -123,7 +121,6 @@ class AgencyForm
                             })
                             ->live(onBlur: true)
                             ->prefixIcon('heroicon-s-identification')
-                            ->required()
                             ->validationMessages([
                                 'required' => 'Campo requerido',
                             ])
@@ -136,7 +133,6 @@ class AgencyForm
                                 table: Agency::class,
                                 column: 'rif'
                             )
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo requerido',
                                 'numeric'   => 'El campo es numerico',
@@ -146,7 +142,6 @@ class AgencyForm
                             ->label('Correo electrónico')
                             ->prefixIcon('heroicon-s-at-symbol')
                             ->email()
-                            ->required()
                             ->unique(
                                 table: Agency::class,
                                 column: 'email'
@@ -160,7 +155,6 @@ class AgencyForm
                         TextInput::make('name_representative')
                             ->label('Nombre del Representante')
                             ->prefixIcon('heroicon-s-identification')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -177,24 +171,20 @@ class AgencyForm
                                 table: 'agencies',
                                 column: 'ci_responsable',
                             )
-                            ->required()
                             ->validationMessages([
                                 'unique'    => 'La cedula del responsable ya se encuentra registrado.',
                                 'required'  => 'Campo requerido',
                                 'numeric'   => 'El campo es numerico',
-                            ])
-                            ->required(),
+                            ]),
                         DatePicker::make('brithday_date')
                             ->label('Fecha de Nacimiento del Representante')
                             ->format('d/m/Y')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ]),
                         DatePicker::make('anniversary_date')
                             ->label('Fecha de Aniversario de la Agencia')
                             ->format('d/m/Y')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ]),
@@ -205,7 +195,6 @@ class AgencyForm
                             })
                             ->live(onBlur: true)
                             ->prefixIcon('heroicon-s-identification')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -289,7 +278,6 @@ class AgencyForm
                             ])
                             ->searchable()
                             ->default('+58')
-                            ->required()
                             ->live(onBlur: true)
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
@@ -299,7 +287,6 @@ class AgencyForm
                             ->prefixIcon('heroicon-s-phone')
                             ->tel()
                             ->label('Número de teléfono')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -317,7 +304,6 @@ class AgencyForm
                             ->options(Country::all()->pluck('name', 'id'))
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -335,7 +321,6 @@ class AgencyForm
                             ->live()
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
@@ -353,7 +338,6 @@ class AgencyForm
                             })
                             ->searchable()
                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                            ->required()
                             ->validationMessages([
                                 'required'  => 'Campo Requerido',
                             ])
