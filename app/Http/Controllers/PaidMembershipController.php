@@ -27,6 +27,7 @@ class PaidMembershipController extends Controller
     {
         // Usamos DB::beginTransaction para asegurar que nada se guarde si algo falla
         DB::beginTransaction();
+
         try {
 
             if($record->payment_method == 'MULTIPLE'){
@@ -107,6 +108,7 @@ class PaidMembershipController extends Controller
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
                 $sales->reference_payment       = isset($reference_payment) ? $reference_payment : null;
+
                 $sales->save();
 
                 /**
@@ -262,9 +264,10 @@ class PaidMembershipController extends Controller
 
                 if ($record->affiliation->payment_frequency == 'SEMESTRAL') {
 
+
                     //Pregunto cual es el ultimo numero de factura
                     $lastInvoiceNumberCollection = Collection::where('id', Collection::max('id'))->get()->toArray();
-                    
+
                     $collections = new Collection();
                     $collections->sale_id                 = $sales->id;
                     $collections->include_date            = $record->affiliation->activated_at;
@@ -304,6 +307,7 @@ class PaidMembershipController extends Controller
                     
                     $collections->expiration_date         = date($collections->next_payment_date, strtotime('+5 days')); //Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
                     $collections->created_by              = Auth::user()->name;
+
                     $collections->save();
 
                     /**Ejecutamos el Job para crea el aviso de cobro */
@@ -642,6 +646,9 @@ class PaidMembershipController extends Controller
                     'user' => $data_afiliaciones['full_name_payer'],
                 ]);
 
+                // Todo correcto: Confirmamos cambios en la DB
+                DB::commit();
+
                 return [
                     'firstRegister' => true
                 ];
@@ -830,9 +837,6 @@ class PaidMembershipController extends Controller
                     $commission->created_by         = Auth::user()->name;
                     $commission->save();
 
-                    // Todo correcto: Confirmamos cambios en la DB
-                    DB::commit();
-
                     // Notificación de éxito
                     Notification::make()
                         ->title('Pago Aprobado')
@@ -926,6 +930,9 @@ class PaidMembershipController extends Controller
                         ->send();
                 }
 
+                // Todo correcto: Confirmamos cambios en la DB
+                DB::commit();
+
                 return [
                     'nextRegister' => true
                 ];
@@ -934,6 +941,7 @@ class PaidMembershipController extends Controller
 
             
         } catch (\Throwable $th) {
+            dd($th);
             // ERROR DETECTADO: Deshacer todos los cambios en la DB
             DB::rollBack();
 
