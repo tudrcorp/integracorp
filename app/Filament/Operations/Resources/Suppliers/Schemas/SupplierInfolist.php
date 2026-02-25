@@ -33,7 +33,7 @@ class SupplierInfolist
                                     ->badge()
                                     ->placeholder('-'),
                                 TextEntry::make('razon_social')
-                                    ->label('Razon Social:')
+                                    ->label('Razón Social:')
                                     ->placeholder('-'),
                                 TextEntry::make('status_convenio')
                                     ->label('Estatus del Convenio:')
@@ -42,11 +42,11 @@ class SupplierInfolist
                                     ->label('Estatus del Sistema:')
                                     ->placeholder('-'),
                                 TextEntry::make('SupplierClasificacion.description')
-                                    ->label('Clasificacion del Proveedor:')
+                                    ->label('Clasificación del Proveedor:')
                                     ->badge()
                                     ->placeholder('-'),
                                 TextEntry::make('tipo_clinica')
-                                    ->label('Tipo de Clinica:')
+                                    ->label('Tipo de Clínica:')
                                     ->badge()
                                     ->placeholder('-'),
                                 TextEntry::make('type_service')
@@ -80,7 +80,7 @@ class SupplierInfolist
                                     ->label('Correo Electrónico:')
                                     ->placeholder('-'),
                                 TextEntry::make('afiliacion_proveedor')
-                                    ->label('Fecha de Afiliacion del Proveedor:')
+                                    ->label('Fecha de Afiliación del Proveedor:')
                                     ->badge()
                                     ->icon('heroicon-o-calendar-date-range')
                                     ->placeholder('-'),
@@ -99,7 +99,53 @@ class SupplierInfolist
 
                             ])->columnSpanFull()->columns(5),
 
-                        Fieldset::make('Características de la Infraestructura')
+                        RepeatableEntry::make('supplierContactPrincipals')
+                            ->placeholder('No posee contactos principales')
+                            ->label('Contactos Principales')
+                            ->table([
+                                TableColumn::make('Departamento'),
+                                TableColumn::make('Cargo'),
+                                TableColumn::make('Nombre y Apellido'),
+                                TableColumn::make('Correo Electrónico'),
+                                TableColumn::make('Teléfono Celular'),
+                                TableColumn::make('Teléfono Local'),
+                                TableColumn::make('Extensión(es)'),
+                            ])
+                            ->schema([
+                                TextEntry::make('departament'),
+                                TextEntry::make('position'),
+                                TextEntry::make('name'),
+                                TextEntry::make('email'),
+                                TextEntry::make('personal_phone'),
+                                TextEntry::make('local_phone'),
+                                TextEntry::make('extensions'), 
+
+                            ])->columnSpanFull(),
+
+                        RepeatableEntry::make('supplierRedGlobals')
+                            ->placeholder('No posee Sucursales')
+                            ->label('Información de Sucursales')
+                            ->table([
+                                TableColumn::make('Estado'),
+                                TableColumn::make('Ciudad'),
+                                TableColumn::make('Nombre y Apellido'),
+                                TableColumn::make('Correo Electrónico'),
+                                TableColumn::make('Teléfono Celular'),
+                                TableColumn::make('Teléfono Local'),
+                                TableColumn::make('Direccion de Ubicación'),
+                            ])
+                            ->schema([
+                                TextEntry::make('state.definition'),
+                                TextEntry::make('city.definition'),
+                                TextEntry::make('name'),
+                                TextEntry::make('email'),
+                                TextEntry::make('personal_phone'),
+                                TextEntry::make('local_phone'),
+                                TextEntry::make('address'),
+
+                            ])->columnSpanFull(),
+
+                        Fieldset::make('Certificación de Infraestructura')
                             ->schema([
 
                                 IconEntry::make('densitometria_osea')
@@ -163,52 +209,6 @@ class SupplierInfolist
 
                             ])->columnSpanFull()->columns(4),
 
-                        RepeatableEntry::make('supplierContactPrincipals')
-                            ->placeholder('No posee contactos principales')
-                            ->label('Contactos Principales')
-                            ->table([
-                                TableColumn::make('Departamento'),
-                                TableColumn::make('Cargo'),
-                                TableColumn::make('Nombre y Apellido'),
-                                TableColumn::make('Correo Electrónico'),
-                                TableColumn::make('Teléfono Celular'),
-                                TableColumn::make('Teléfono Local'),
-                                TableColumn::make('Extension(es)'),
-                            ])
-                            ->schema([
-                                TextEntry::make('departament'),
-                                TextEntry::make('position'),
-                                TextEntry::make('name'),
-                                TextEntry::make('email'),
-                                TextEntry::make('personal_phone'),
-                                TextEntry::make('local_phone'),
-                                TextEntry::make('extensions'), 
-
-                            ])->columnSpanFull(),
-
-                        RepeatableEntry::make('supplierRedGlobals')
-                            ->placeholder('No posee Sucursales')
-                            ->label('Información de Sucursales')
-                            ->table([
-                                TableColumn::make('Estado'),
-                                TableColumn::make('Ciudad'),
-                                TableColumn::make('Nombre y Apellido'),
-                                TableColumn::make('Correo Electrónico'),
-                                TableColumn::make('Teléfono Celular'),
-                                TableColumn::make('Teléfono Local'),
-                                TableColumn::make('Direccion de Ubicacion'),
-                            ])
-                            ->schema([
-                                TextEntry::make('state.definition'),
-                                TextEntry::make('city.definition'),
-                                TextEntry::make('name'),
-                                TextEntry::make('email'),
-                                TextEntry::make('personal_phone'),
-                                TextEntry::make('local_phone'),
-                                TextEntry::make('address'),
-
-                            ])->columnSpanFull(),
-
                         RepeatableEntry::make('SupplierZonaCoberturas')
                             ->placeholder('No posee Zonas de Cobertura!')
                             ->label('Zonas de Cobertura')
@@ -226,17 +226,18 @@ class SupplierInfolist
                             ])->columnSpanFull(),
 
                         RepeatableEntry::make('supplierObservacions')
+                            // ->orderByDesc('created_at')
                             ->placeholder('No posee Notas y/o Observaciones')
-                            ->label('Bitacora de Notas y/o Observaciones')
+                            ->label('Bitácora de Notas y/o Observaciones')
                             ->table([
-                                TableColumn::make('Notas y/o Observacion'),
+                                TableColumn::make('Notas y/o Observación'),
                                 TableColumn::make('Responsable de la Nota'),
                                 TableColumn::make('Fecha de la Nota'),
                             ])
                             ->schema([
                                 TextEntry::make('observation'),
                                 TextEntry::make('created_by'),
-                                TextEntry::make('created_at'),
+                                TextEntry::make('created_at')->dateTime('d/m/Y H:i:s'),
                             ])->columnSpanFull(),
                         
                     ])->columnSpanFull(),
