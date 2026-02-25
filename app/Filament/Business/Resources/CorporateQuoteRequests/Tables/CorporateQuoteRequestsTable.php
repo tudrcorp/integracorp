@@ -99,6 +99,7 @@ class CorporateQuoteRequestsTable
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
+                            'ACTIVA-PENDIENTE'  => 'warning',
                             'PRE-APROBADA'  => 'warning',
                             'PROCESADA'      => 'success',
                             'APROBADA'      => 'success',
@@ -107,11 +108,10 @@ class CorporateQuoteRequestsTable
                     })
                     ->icon(function (mixed $state): ?string {
                         return match ($state) {
+                            'ACTIVA-PENDIENTE'  => 'heroicon-c-information-circle',
                             'PRE-APROBADA'  => 'heroicon-c-information-circle',
                             'APROBADA'      => 'heroicon-s-check-circle',
                             'PROCESADA'      => 'heroicon-s-check-circle',
-                            'ANULADA'       => 'heroicon-s-exclamation-circle',
-                            'DECLINADA'     => 'heroicon-c-x-circle',
                         };
                     })
                     ->searchable(),
