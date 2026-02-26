@@ -92,7 +92,7 @@ class Supplier extends Model
 
     public function supplierObservacions()
     {
-        return $this->hasMany(SupplierObservacion::class);
+        return $this->hasMany(SupplierObservacion::class)->orderBy('created_at', 'desc');
     }
 
     public function supplierContactPrincipals()
