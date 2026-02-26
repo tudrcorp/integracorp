@@ -22,7 +22,7 @@ class SupplierInfolist
                     ->icon('heroicon-o-identification')
                     ->description('Esta es la información general del Proveedor')
                     ->schema([
-                        Fieldset::make('Deltalles del Proveedor')
+                        Fieldset::make('Detalles del Proveedor')
                             ->schema([
                                 TextEntry::make('name')
                                     ->label('Nombre del Proveedor:')
@@ -46,7 +46,7 @@ class SupplierInfolist
                                     ->badge()
                                     ->placeholder('-'),
                                 TextEntry::make('tipo_clinica')
-                                    ->label('Tipo de Clínica:')
+                                    ->label('Categoría del Proveedor:')
                                     ->badge()
                                     ->placeholder('-'),
                                 TextEntry::make('type_service')
@@ -62,7 +62,7 @@ class SupplierInfolist
                                     ->label('Ciudad:')
                                     ->placeholder('-'),
                                 TextEntry::make('tipo_servicio')
-                                    ->label('Servicio:')
+                                    ->label('Cobertura Geográficas:')
                                     ->placeholder('-'),
                                 TextEntry::make('state_services')
                                     ->label('Presta Servicios en:')
@@ -74,7 +74,7 @@ class SupplierInfolist
                                     ->label('Teléfono Celular:')
                                     ->placeholder('-'),
                                 TextEntry::make('local_phone')
-                                    ->label('Telefono Local:')
+                                    ->label('Teléfono Local:')
                                     ->placeholder('-'),
                                 TextEntry::make('correo_principal')
                                     ->label('Correo Electrónico:')
@@ -91,7 +91,7 @@ class SupplierInfolist
                                     ->label('Convenio de Pago:')
                                     ->placeholder('-'),
                                 TextEntry::make('tiempo_credito')
-                                    ->label('Tiempo de Credito:')
+                                    ->label('Tiempo de Crédito:')
                                     ->placeholder('-'),
                                 TextEntry::make('promedio_costo_proveedor')
                                     ->label('Promedio de Costo del Proveedor:')
@@ -143,6 +143,22 @@ class SupplierInfolist
                                 TextEntry::make('local_phone'),
                                 TextEntry::make('address'),
 
+                            ])->columnSpanFull(),
+
+                        RepeatableEntry::make('SupplierZonaCoberturas')
+                            ->placeholder('No posee Zonas de Cobertura!')
+                            ->label('Zonas de Cobertura')
+                            ->table([
+                                TableColumn::make('Clasificación del Proveedor'),
+                                TableColumn::make('Tipo de Servicio'),
+                                TableColumn::make('Estado'),
+                                TableColumn::make('Ciudad'),
+                            ])
+                            ->schema([
+                                TextEntry::make('supplierClasificacion.description'),
+                                TextEntry::make('type_service'),
+                                TextEntry::make('state.definition'),
+                                TextEntry::make('city.definition'),
                             ])->columnSpanFull(),
 
                         Fieldset::make('Certificación de Infraestructura')
@@ -209,22 +225,7 @@ class SupplierInfolist
 
                             ])->columnSpanFull()->columns(4),
 
-                        RepeatableEntry::make('SupplierZonaCoberturas')
-                            ->placeholder('No posee Zonas de Cobertura!')
-                            ->label('Zonas de Cobertura')
-                            ->table([
-                                TableColumn::make('Clasificación del Proveedor'),
-                                TableColumn::make('Tipo de Servicio'),
-                                TableColumn::make('Estado'),
-                                TableColumn::make('Ciudad'),
-                            ])
-                            ->schema([
-                                TextEntry::make('supplierClasificacion.description'),
-                                TextEntry::make('type_service'),
-                                TextEntry::make('state.definition'),
-                                TextEntry::make('city.definition'),
-                            ])->columnSpanFull(),
-
+                    
                         RepeatableEntry::make('supplierObservacions')
                             // ->orderByDesc('created_at')
                             ->placeholder('No posee Notas y/o Observaciones')
