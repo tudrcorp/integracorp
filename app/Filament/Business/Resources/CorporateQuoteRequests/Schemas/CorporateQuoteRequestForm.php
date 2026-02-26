@@ -2,31 +2,32 @@
 
 namespace App\Filament\Business\Resources\CorporateQuoteRequests\Schemas;
 
-use App\Models\Plan;
-use App\Models\Agent;
-use App\Models\State;
-use App\Models\Agency;
-use App\Models\Region;
-use Filament\Schemas\Schema;
-use Illuminate\Support\HtmlString;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Models\CorporateQuoteRequest;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
-use Filament\Schemas\Components\Wizard;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
 use App\Http\Controllers\UtilsController;
+use App\Models\Agency;
+use App\Models\Agent;
+use App\Models\CorporateQuoteRequest;
+use App\Models\Plan;
+use App\Models\Region;
+use App\Models\State;
 use Filament\Forms\Components\FileUpload;
-use Filament\Schemas\Components\Wizard\Step;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 
 class CorporateQuoteRequestForm
 {
@@ -119,9 +120,28 @@ class CorporateQuoteRequestForm
                                                 ->required()
                                                 ->autosize()
                                         ])->columnSpanFull(),
+                                    Fieldset::make('Asociar Agencia y/o Agente')
+                                        ->schema([
+                                            Select::make('code_agency')
+                                                ->label('Lista de Agencias')
+                                                ->options(Agency::all()->pluck('name_corporative', 'code'))
+                                                ->searchable()
+                                                ->live()
+                                                ->prefixIcon('heroicon-c-building-library')
+                                                ->preload(),
+                                            Select::make('agent_id')
+                                                ->label('Agentes')
+                                                ->options(function (Get $get) {
+                                                    if ($get('code_agency') == null) {
+                                                        return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
+                                                    }
+                                                    return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
+                                                })
+                                                ->searchable()
+                                                ->prefixIcon('fontisto-person')
+                                                ->preload(),
+                                        ])->columnSpanFull(),
                                     Hidden::make('created_by')->default(Auth::user()->name),
-                                    Hidden::make('code_agency')->default('TDG-100'),
-                                    Hidden::make('owner_code')->default('TDG-100'),
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                 ])
                                 ->columns(3)
