@@ -91,8 +91,9 @@ class SupplierForm
                             ->live()
                             ->searchable()
                             ->options([
-                                'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
                                 'LOCAL'             => 'LOCAL',
+                                'MULTI-ESTADO'      => 'MULTI-ESTADO',
+                                'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
                             ])
                             ->afterStateUpdated(
                                 fn(callable $set, ?string $state) =>
