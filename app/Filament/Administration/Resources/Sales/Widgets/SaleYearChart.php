@@ -19,7 +19,7 @@ class SaleYearChart extends ChartWidget
 
     protected function getData(): array
     {
-        $data = Trend::query(Sale::query()->whereYear('created_at', now()->year))
+        $data = Trend::query(Sale::query()->where('is_payment_link', false)->whereYear('created_at', now()->year))
             ->between(
                 start: now()->startOfYear(),
                 end: now()->endOfYear(),

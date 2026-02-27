@@ -98,6 +98,7 @@ class PaidMembershipCorporateController extends Controller
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
                 $sales->reference_payment       = isset($reference_payment) ? $reference_payment : null;
+                $sales->is_payment_link         = $record->payment_method == 'LINK DE PAGO' ? true : false;
                 $sales->save();
 
                 /**
@@ -679,6 +680,7 @@ class PaidMembershipCorporateController extends Controller
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
                 $sales->reference_payment       = isset($reference_payment) ? $reference_payment : null;
+                $sales->is_payment_link         = $record->payment_method == 'LINK DE PAGO' ? true : false;
                 $sales->save();
 
                 /**

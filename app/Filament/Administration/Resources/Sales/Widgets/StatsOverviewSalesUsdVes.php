@@ -33,9 +33,10 @@ class StatsOverviewSalesUsdVes extends StatsOverviewWidget
                 'id' => 'usd',
                 'label' => 'VENTAS TOTALES USD',
                 'column' => 'total_amount',
-                'symbol' => '$',
+                'symbol' => 'US$',
                 'icon' => 'heroicon-m-currency-dollar',
                 'color' => 'info', // Azul
+                'is_payment_link' => false,
             ],
             [
                 'id' => 'ves',
@@ -44,15 +45,26 @@ class StatsOverviewSalesUsdVes extends StatsOverviewWidget
                 'symbol' => 'Bs.',
                 'icon' => 'heroicon-m-banknotes',
                 'color' => 'success', // Verde
+                'is_payment_link' => false,
+            ],
+            [
+                'id' => 'link',
+                'label' => 'VENTAS TOTALES LINK DE PAGO',
+                'column' => 'pay_amount_usd',
+                'symbol' => 'US$',
+                'icon' => 'heroicon-o-link',
+                'color' => 'success', // Verde
+                'is_payment_link' => true,
             ],
         ];
 
         return array_map(function ($metric) use ($startOfMonth, $endOfMonth, $nombreMes) {
             // 1. Cálculo Histórico (Total)
-            $totalHistorico = (clone $this->getPageTableQuery())->sum($metric['column']) ?? 0;
+            $totalHistorico = (clone $this->getPageTableQuery())->where('is_payment_link', $metric['is_payment_link'])->sum($metric['column']) ?? 0;
 
             // 2. Cálculo Mes en Curso (Independiente)
             $totalMesActual = (clone $this->getPageTableQuery())
+                ->where('is_payment_link', $metric['is_payment_link'])
                 ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->sum($metric['column']) ?? 0;
 

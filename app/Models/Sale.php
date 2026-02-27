@@ -43,6 +43,7 @@ class Sale extends Model
         'reference_payment',
         'date_payment_voucher',
         'invoice_generated',
+        'is_payment_link',
     ];
 
     public function affiliation()
