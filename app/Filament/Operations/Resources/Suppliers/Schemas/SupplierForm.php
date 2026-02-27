@@ -68,8 +68,7 @@ class SupplierForm
                             ->searchable()
                             ->options(SupplierTipoClinica::all()->pluck('description', 'description'))
                             ->preload()
-                            ->searchable()
-                            ->hidden(fn (Get $get) => $get('clasificacion_id') != 3),
+                            ->searchable(),
                         Select::make('type_service')
                             ->options(fn(Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('supplier_clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
                             ->label('Tipo de servicio')
@@ -93,7 +92,7 @@ class SupplierForm
                             ->searchable()
                             ->options([
                                 'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
-                                'MULTI-ESTADO'      => 'MULTI-ESTADO',
+                                'LOCAL'             => 'LOCAL',
                             ])
                             ->afterStateUpdated(
                                 fn(callable $set, ?string $state) =>
