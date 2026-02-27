@@ -2,44 +2,46 @@
 
 namespace App\Filament\Administration\Resources\Affiliations\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
-use Filament\Tables\Table;
+use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
+use App\Http\Controllers\AffiliationController;
+use App\Mail\UploadPayment;
 use App\Models\Affiliation;
-use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
+use App\Models\DetailIndividualQuote;
+use App\Models\User;
 
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Illuminate\Support\Collection;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Log;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use App\Models\DetailIndividualQuote;
-use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Filament\Support\Enums\Alignment;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\ColumnGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use App\Http\Controllers\AffiliationController;
-use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AffiliationsTable
 {
@@ -466,6 +468,7 @@ class AffiliationsTable
                                                     'MULTIPLE'          => 'MULTIPLE',
                                                     'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
                                                     'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
+                                                    'LINK DE PAGO'      => 'LINK DE PAGO',
                                                 ])
                                                 ->live()
                                                 ->required()
@@ -529,6 +532,42 @@ class AffiliationsTable
                                             ])
                                         ])->columnSpanFull()->hidden(function (Get $get) {
                                             if ($get('payment_method') == 'ZELLE') {
+                                                return false;
+                                            }
+                                            return true;
+                                        }),
+
+                                    /* PAGO EN DOLARES LINK DE PAGO */
+                                    Fieldset::make('INFORMACION DE PAGO EN LINK DE PAGO (US$)')
+                                        ->schema([
+                                            TextInput::make('name_ti_usd')
+                                                ->label('Nombre del Titular')
+                                                ->helperText('Debe colocar Nombre y Apellido')
+                                                ->prefixIcon('heroicon-s-pencil')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required'  => 'Seleccione un tipo de pago',
+                                                ]),
+                                            TextInput::make('reference_payment_usd')
+                                                ->label('Nro. de Referencia')
+                                                ->helperText('Debe colocar el número de referencia completo')
+                                                ->prefix('#')
+                                                ->regex('/^[A-Za-z0-9\-]+$/')
+                                                ->helperText('Solo se permiten letras, números y el guion (-)')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'regex'  => 'Solo se permite el guion (-)',
+                                                    'required'  => 'Seleccione un tipo de pago',
+                                                ]),
+
+                                            Grid::make(1)->schema([
+                                                FileUpload::make('document_usd')
+                                                    ->label('Comprobante(US$)')
+                                                    ->uploadingMessage('Cargando...')
+                                                    ->required(),
+                                            ])
+                                        ])->columnSpanFull()->hidden(function (Get $get) {
+                                            if ($get('payment_method') == 'LINK DE PAGO') {
                                                 return false;
                                             }
                                             return true;
@@ -897,6 +936,18 @@ class AffiliationsTable
                                             ])
                                             ->sendToDatabase($recipient);
                                     }
+
+                                    /**
+                                     * Ejecutamos el Jobs para enviar la notificacion al 
+                                     * correo de administracion
+                                     * ----------------------------------------------------------------------------------
+                                     */
+                                    $info = [
+                                        'code' => $record->code,
+                                        'email' => config('parameters.EMAIL_ADMINISTRACION'),
+                                    ];
+                                    // dd($info);
+                                    Mail::to($info['email'])->send(new UploadPayment($info));
                                 }
                                 
                             } catch (\Throwable $th) {
@@ -1037,6 +1088,7 @@ class AffiliationsTable
                                 ->success()
                                 ->send();
                         }),
+                        
                 ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
@@ -1096,6 +1148,7 @@ class AffiliationsTable
                                                         'MULTIPLE'          => 'MULTIPLE',
                                                         'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
                                                         'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
+                                                        'LINK DE PAGO'      => 'LINK DE PAGO',
                                                     ])
                                                     ->live()
                                                     ->required()
@@ -1159,6 +1212,42 @@ class AffiliationsTable
                                                 ])
                                             ])->columnSpanFull()->hidden(function (Get $get) {
                                                 if ($get('payment_method') == 'ZELLE') {
+                                                    return false;
+                                                }
+                                                return true;
+                                            }),
+
+                                        /* PAGO EN DOLARES - LINK DE PAGO */
+                                        Fieldset::make('INFORMACION DE PAGO EN ZELLE (US$)')
+                                            ->schema([
+                                                TextInput::make('name_ti_usd')
+                                                    ->label('Nombre del Titular')
+                                                    ->helperText('Debe colocar Nombre y Apellido')
+                                                    ->prefixIcon('heroicon-s-pencil')
+                                                    ->required()
+                                                    ->validationMessages([
+                                                        'required'  => 'Seleccione un tipo de pago',
+                                                    ]),
+                                                TextInput::make('reference_payment_usd')
+                                                    ->label('Nro. de Referencia')
+                                                    ->helperText('Debe colocar el número de referencia completo')
+                                                    ->prefix('#')
+                                                    ->regex('/^[A-Za-z0-9\-]+$/')
+                                                    ->helperText('Solo se permiten letras, números y el guion (-)')
+                                                    ->required()
+                                                    ->validationMessages([
+                                                        'regex'  => 'Solo se permite el guion (-)',
+                                                        'required'  => 'Seleccione un tipo de pago',
+                                                    ]),
+
+                                                Grid::make(1)->schema([
+                                                    FileUpload::make('document_usd')
+                                                        ->label('Comprobante(US$)')
+                                                        ->uploadingMessage('Cargando...')
+                                                        ->required(),
+                                                ])
+                                            ])->columnSpanFull()->hidden(function (Get $get) {
+                                                if ($get('payment_method') == 'LINK DE PAGO') {
                                                     return false;
                                                 }
                                                 return true;

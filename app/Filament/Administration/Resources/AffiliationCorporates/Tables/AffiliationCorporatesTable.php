@@ -338,6 +338,7 @@ class AffiliationCorporatesTable
                                                     'MULTIPLE'          => 'MULTIPLE',
                                                     'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
                                                     'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
+                                                    'LINK DE PAGO'      => 'LINK DE PAGO',
 
                                                 ])
                                                 ->live()
@@ -402,6 +403,42 @@ class AffiliationCorporatesTable
                                             ])
                                         ])->columnSpanFull()->hidden(function (Get $get) {
                                             if ($get('payment_method') == 'ZELLE') {
+                                                return false;
+                                            }
+                                            return true;
+                                        }),
+
+                                    /* PAGO EN DOLARES ZELLE */
+                                    Fieldset::make('INFORMACION DE PAGO EN ZELLE (US$)')
+                                        ->schema([
+                                            TextInput::make('name_ti_usd')
+                                                ->label('Nombre del Titular')
+                                                ->helperText('Debe colocar Nombre y Apellido')
+                                                ->prefixIcon('heroicon-s-pencil')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required'  => 'Seleccione un tipo de pago',
+                                                ]),
+                                            TextInput::make('reference_payment_usd')
+                                                ->label('Nro. de Referencia')
+                                                ->helperText('Debe colocar el número de referencia completo')
+                                                ->prefix('#')
+                                                ->regex('/^[A-Za-z0-9\-]+$/')
+                                                ->helperText('Solo se permiten letras, números y el guion (-)')
+                                                ->required()
+                                                ->validationMessages([
+                                                    'regex'  => 'Solo se permite el guion (-)',
+                                                    'required'  => 'Seleccione un tipo de pago',
+                                                ]),
+
+                                            Grid::make(1)->schema([
+                                                FileUpload::make('document_usd')
+                                                    ->label('Comprobante(US$)')
+                                                    ->uploadingMessage('Cargando...')
+                                                    ->required(),
+                                            ])
+                                        ])->columnSpanFull()->hidden(function (Get $get) {
+                                            if ($get('payment_method') == 'LINK DE PAGO') {
                                                 return false;
                                             }
                                             return true;
@@ -746,7 +783,7 @@ class AffiliationCorporatesTable
                                         ->success()
                                         ->seconds(5)
                                         ->send();
-                                        
+
 
                                     redirect()->to(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'administration') . '?relation=2');
 

@@ -109,6 +109,10 @@ class PaidMembershipController extends Controller
                 $sales->payment_date            = $record->payment_date;
                 $sales->reference_payment       = isset($reference_payment) ? $reference_payment : null;
 
+                //Agregado para trabajar el pago que realiza el cliente por el link de pago
+                $sales->is_payment_link         = $record->payment_method == 'LINK DE PAGO' ? true : false;
+                
+
                 $sales->save();
 
                 /**
@@ -698,6 +702,10 @@ class PaidMembershipController extends Controller
                 $sales->type_roll               = $record->type_roll;
                 $sales->payment_date            = $record->payment_date;
                 $sales->reference_payment       = isset($reference_payment) ? $reference_payment : null;
+
+                //Agregado para trabajar el pago que realiza el cliente por el link de pago
+                $sales->is_payment_link         = $record->payment_method == 'LINK DE PAGO' ? true : false;
+                
                 $sales->save();
 
                 /**
