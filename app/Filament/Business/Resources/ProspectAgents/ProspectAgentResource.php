@@ -23,9 +23,9 @@ class ProspectAgentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-user-plus';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
+    protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
-    protected static ?string $navigationLabel = 'Prospecto';
+    protected static ?string $navigationLabel = 'Captación';
 
     protected static ?int $navigationSort = 6;
 

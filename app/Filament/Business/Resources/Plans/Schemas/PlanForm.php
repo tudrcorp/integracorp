@@ -2,26 +2,28 @@
 
 namespace App\Filament\Business\Resources\Plans\Schemas;
 
-use App\Models\Fee;
-use App\Models\Plan;
-use App\Models\Limit;
-use App\Models\Agency;
-use App\Models\Benefit;
 use App\Models\AgeRange;
+use App\Models\Benefit;
 use App\Models\Coverage;
-use App\Models\BusinessUnit;
-use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Limit;
+use App\Models\Plan;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Flex;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 
 class PlanForm
 {
@@ -29,278 +31,277 @@ class PlanForm
     {
         return $schema
             ->components([
-                
-                Section::make('PLANES')
-                    ->description('Formulario para el registro de los planes. Campo Requerido(*)')
-                    ->icon('heroicon-s-squares-plus')
-                    ->schema([
-                        Grid::make(3)->schema([
-                            TextInput::make('code')
-                                ->label('Código')
-                                ->prefixIcon('heroicon-m-clipboard-document-check')
-                                ->default(function () {
-                                    if (Plan::max('id') == null) {
-                                        $parte_entera = 0;
-                                    } else {
-                                        $parte_entera = Plan::max('id');
-                                    }
-                                    return 'TDEC-PL-000' . $parte_entera + 1;
-                                })
-                                ->required()
-                                ->disabled()
-                                ->dehydrated()
-                                ->maxLength(255),
-                        ])->columnSpanFull()->columns(3),
-                        TextInput::make('description')
-                            ->label('Definición')
-                            ->prefixIcon('heroicon-m-pencil')
-                            ->afterStateUpdated(function (Set $set, $state) {
-                                $set('description', strtoupper($state));
-                            })
-                            ->live(onBlur: true)
-                            ->required()
-                            ->maxLength(255),
 
-                        //UNIDAD DE NEGOCIOS
-                        //-------------------------------------------------
-                        Select::make('business_unit_id')
-                            ->label('Unidad de Negocio')
-                            ->options(BusinessUnit::all()->pluck('definition', 'id'))
-                            ->prefixIcon('heroicon-m-pencil')
-                            ->preload()
-                            ->required()
-                            ->createOptionForm([
-                                Section::make('UNIDAD DE NEGOCIO')
-                                    ->description('Formulario para el registro de la unidad de negocio. Campo Requerido(*)')
-                                    ->icon('heroicon-m-rectangle-group')
-                                    ->schema([
-                                        Grid::make(3)->schema([
-                                            TextInput::make('code')
-                                                ->label('Código')
-                                                ->prefixIcon('heroicon-m-clipboard-document-check')
-                                                ->default(function () {
-                                                    if (BusinessUnit::max('id') == null) {
-                                                        $parte_entera = 0;
-                                                    } else {
-                                                        $parte_entera = BusinessUnit::max('id');
-                                                    }
-                                                    return 'TDEC-UN-000' . $parte_entera + 1;
-                                                })
-                                                ->required()
-                                                ->disabled()
-                                                ->dehydrated()
-                                                ->maxLength(255),
-                                        ]),
-                                        TextInput::make('definition')
-                                            ->label('Definición')
-                                            ->prefixIcon('heroicon-m-pencil')
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('definition', strtoupper($state));
-                                            })
-                                            ->live(onBlur: true)
-                                            ->required()
-                                            ->maxLength(255),
-                                        TextInput::make('status')
-                                            ->label('Estatus')
-                                            ->prefixIcon('heroicon-m-shield-check')
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->maxLength(255)
-                                            ->default('ACTIVO'),
-                                        TextInput::make('created_by')
-                                            ->label('Creado Por:')
-                                            ->prefixIcon('heroicon-s-user-circle')
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->default(Auth::user()->name)
-                                            ->maxLength(255),
-                                    ])->columnSpanFull()->columns(3),
-                            ]),
-                        Select::make('type')
-                            ->label('Tipo de Plan')
-                            ->options([
-                                'BASICO' => 'BÁSICO',
-                                'DRESS-TAILOR' => 'DRESS-TAILOR',
-                            ])
-                            ->default('BASICO')
-                            ->helperText('DRESS-TAILOR, son los planes que se utilizaran para las cotizaciones hechas a la medida del cliente.')
-                            ->prefixIcon('heroicon-m-pencil')
-                            ->preload()
-                            ->live()
-                            ->required(),
-                        TextInput::make('status')
-                            ->label('Estatus')
-                            ->prefixIcon('heroicon-m-shield-check')
-                            ->disabled()
-                            ->dehydrated()
-                            ->maxLength(255)
-                            ->default('INACTIVO'),
-                        Hidden::make('created_by')->default(Auth::user()->name)
-                    ])->columnSpanFull()->columns(4),
-
-                //...Crear los rangos de edad
-                Section::make('RANGO DE EDADES Y COBERTURAS')
-                    ->hiddenOn('edit')
-                    ->description('Formulario dinamico para crear el/los rango(s) etario(e) y sus coberturas con costo Anual . Campo Requerido(*)')
-                    ->icon('heroicon-s-squares-plus')
+                // SECCIÓN 1: INFORMACIÓN GENERAL DEL PLAN
+                Section::make('Configuración General del Plan')
+                    ->description('Defina la identidad principal y el tipo de plan que está creando.')
+                    ->icon('heroicon-o-identification')
                     ->schema([
-                        Repeater::make('edades')
-                            ->table([
-                                TableColumn::make('Rango de edad'),
-                                TableColumn::make('Edad Minima'),
-                                TableColumn::make('Edad Maxima'),
-                            ])
+                        Grid::make(2)
                             ->schema([
-                                TextInput::make('range')
+                                TextInput::make('plan_name')
+                                    ->label('Nombre del Plan')
+                                    ->placeholder('Ej: Plan Platinum Global')
+                                    ->required()
+                                    ->columnSpan(1),
+
+                                Select::make('category')
+                                    ->label('Categoría del Plan')
+                                    ->options([
+                                        'BASICO' => 'BASICO',
+                                        'DRESS-TYLOR' => 'DRESS-TYLOR',
+                                    ])
                                     ->required(),
-                                TextInput::make('age_init')
-                                    ->numeric()
-                                    ->required(),
-                                TextInput::make('age_end')
-                                    ->numeric()   
-                                    ->required(),
+
+                                TextInput::make('description')
+                                    ->label('Descripción Corta')
+                                    ->placeholder('Resumen de lo que incluye este plan...')
+                                    ->columnSpanFull(),
                             ]),
-                        Repeater::make('coberturas')
-                            ->table([
-                                TableColumn::make('Cobertura'),
-                                TableColumn::make('Tarifa Anual'),
-                            ])
-                            ->schema([
-                                TextInput::make('price_coverages'),
-                                TextInput::make('price_fees')
-                                    ->numeric()
-                                    ->required(),
-                            ])
-                    ])->columnSpanFull()->columns(2),
+                    ])->collapsible()->columnSpanFull(),
 
-                //...Beneficios
-                Section::make('ASOCIACION DE BENEFICIOS')
-                    ->collapsible()
-                    ->description('Seleccion multiple de beneficios')
-                    ->icon('heroicon-m-trophy')
+                // SECCIÓN 2: ESTRUCTURA MAESTRA (BENEFICIOS -> COBERTURAS -> EDADES)
+                Section::make('Arquitectura de Beneficios y Tarifas')
+                    ->description('Agregue beneficios y desglose sus coberturas y rangos de edad con sus respectivas tarifas.')
+                    ->icon('heroicon-o-puzzle-piece')
                     ->schema([
-                        Select::make('beneficios')
-                            ->label('Beneficios asociados')
-                            ->multiple()
-                            ->relationship(name: 'benefitPlans', titleAttribute: 'description')
-                            ->preload()
-                            ->getOptionLabelFromRecordUsing(fn(Benefit $record) => "{$record->code} - {$record->description}")
-                            ->searchable()
-                            ->createOptionForm([
-                                Section::make('UNIDAD DE NEGOCIO')
-                                    ->description('Formulario para el registro de la unidad de negocio. Campo Requerido(*)')
-                                    ->icon('heroicon-m-rectangle-group')
+                        Repeater::make('benefits')
+                            ->label('Lista de Beneficios')
+                            ->addActionLabel('Añadir Nuevo Beneficio')
+                            ->collapsible()
+                            ->cloneable()
+                            ->itemLabel(
+                                fn (array $state): ?string => Benefit::find($state['benefit_id'] ?? null)?->description ?? 'Nuevo Beneficio'
+                            )
+                            ->schema([
+                                // Selección del Beneficio
+                                Grid::make(2)
                                     ->schema([
-                                        Grid::make()->schema([
-                                            TextInput::make('code')
-                                                ->label('Código')
-                                                ->prefixIcon('heroicon-m-clipboard-document-check')
-                                                ->default(function () {
-                                                    if (Benefit::max('id') == null) {
-                                                        $parte_entera = 0;
-                                                    } else {
-                                                        $parte_entera = Benefit::max('id');
-                                                    }
-                                                    return 'TDEC-BN-000' . $parte_entera + 1;
-                                                })
-                                                ->required()
-                                                ->disabled()
-                                                ->dehydrated()
-                                                ->maxLength(255),
-                                        ])->columnSpanFull()->columns(3),
-                                        TextInput::make('description')
-                                            ->label('Definición')
-                                            ->prefixIcon('heroicon-m-pencil')
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('description', strtoupper($state));
-                                            })
-                                            ->live(onBlur: true)
-                                            ->required()
-                                            ->maxLength(255),
 
-                                        Select::make('limit_id')
-                                            ->label('Límite de Consumo del Beneficio')
-                                            ->relationship('limit', 'description')
+                                        Select::make('benefit_id')
+                                            ->label('Seleccionar Beneficio Base')
+                                            ->options(Benefit::all()->pluck('description', 'id'))
                                             ->searchable()
-                                            ->preload()
-                                            ->createOptionForm([
-                                                Section::make('LIMITES')
-                                                    ->description('Formulario para el registro de los limites asociados a los beneficios de planes. Campo Requerido(*)')
-                                                    ->icon('heroicon-c-adjustments-horizontal')
-                                                    ->schema([
-                                                        Grid::make(3)->schema([
-                                                            TextInput::make('code')
-                                                                ->label('Código')
-                                                                ->prefixIcon('heroicon-m-clipboard-document-check')
-                                                                ->default(function () {
-                                                                    if (Limit::max('id') == null) {
-                                                                        $parte_entera = 0;
-                                                                    } else {
-                                                                        $parte_entera = Limit::max('id');
-                                                                    }
-                                                                    return 'TDEC-BN-000' . $parte_entera + 1;
-                                                                })
-                                                                ->required()
-                                                                ->disabled()
-                                                                ->dehydrated()
-                                                                ->maxLength(255),
-                                                        ]),
-                                                        TextInput::make('description')
-                                                            ->label('Definición')
-                                                            ->prefixIcon('heroicon-m-pencil')
-                                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                                $set('description', strtoupper($state));
-                                                            })
-                                                            ->live(onBlur: true)
-                                                            ->required()
-                                                            ->maxLength(255),
-                                                        TextInput::make('status')
-                                                            ->label('Estatus')
-                                                            ->prefixIcon('heroicon-m-shield-check')
-                                                            ->disabled()
-                                                            ->dehydrated()
-                                                            ->maxLength(255)
-                                                            ->default('ACTIVO'),
-                                                        TextInput::make('created_by')
-                                                            ->label('Creado Por:')
-                                                            ->prefixIcon('heroicon-s-user-circle')
-                                                            ->disabled()
-                                                            ->dehydrated()
-                                                            ->default(Auth::user()->name)
-                                                            ->maxLength(255),
-                                                    ])->columnSpanFull()->columns(3),
-                                            ]),
-                                        TextInput::make('status')
-                                            ->label('Estatus')
-                                            ->prefixIcon('heroicon-m-shield-check')
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->maxLength(255)
-                                            ->default('ACTIVO'),
-                                        TextInput::make('created_by')
-                                            ->label('Creado Por:')
-                                            ->prefixIcon('heroicon-s-user-circle')
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->default(Auth::user()->name)
-                                            ->maxLength(255),
-                                    ])->columnSpanFull()->columns(3),
-                            ]),
-                    ])->columnSpanFull()->columns(1),
+                                            ->required()
+                                            ->live()
+                                            ->afterStateUpdated(function (Set $set, $state) {
+                                                if ($state == null) {
+                                                    $set('benefit_pvp', 0);
 
-                //.. Asociacion de Beneficios y Coberturas
-                Section::make('ASIGNACIÓN DE PLANES PARA AGENCIAS')
-                    ->collapsible()
-                    ->description('Seleccion multiple de agencias, estas agencia son las que podrán cotizar el plan')
-                    ->icon('heroicon-s-shopping-cart')
+                                                    return;
+                                                }
+                                                $benefit = Benefit::find($state);
+                                                $set('benefit_pvp', Limit::where('id', $benefit->limit_id)->first()->cuota ?? 0);
+                                            })
+                                            ->hint(function (Get $get) {
+                                                $benefit = Benefit::find($get('benefit_id'));
+
+                                                return 'Cuota: $'.number_format((float) ($benefit?->pvp ?? 0), 2);
+                                            })
+                                            ->hintColor('primary')
+                                            ->belowContent(Schema::between([
+                                                Flex::make([
+                                                    Icon::make(Heroicon::InformationCircle)
+                                                        ->grow(false),
+                                                    'No existe en lista?, Créalo aquí!.',
+                                                ]),
+                                                Action::make('create_benefit')
+                                                    ->label('Crear Beneficio')
+                                                    ->icon('heroicon-o-plus')
+                                                    ->color('success')
+                                                    ->modal()
+                                                    ->form([
+                                                        TextInput::make('description')
+                                                            ->label('Descripción')
+                                                            ->required(),
+                                                        Hidden::make('status')->default('ACTIVO'),
+                                                        Hidden::make('created_by')->default(Auth::user()->name),
+                                                    ])
+                                                    ->action(function (array $data) {
+                                                        dd($data);
+                                                    }),
+                                            ])),
+
+                                        Select::make('benefit_pvp')
+                                            ->options(Limit::all()->pluck('description', 'id'))
+                                            ->label('Límite del Beneficio')
+                                            ->required()
+                                            ->searchable()
+                                            ->belowContent(Schema::between([
+                                                Flex::make([
+                                                    Icon::make(Heroicon::InformationCircle)
+                                                        ->grow(false),
+                                                    'No existe en lista?, Créalo aquí!.',
+                                                ]),
+                                                Action::make('create_limit')
+                                                    ->label('Crear Limite')
+                                                    ->icon('heroicon-o-plus')
+                                                    ->color('success')
+                                                    ->modal()
+                                                    ->form([
+                                                        Fieldset::make('Formulario para Crear Limite')
+                                                            ->schema([
+                                                                TextInput::make('description')
+                                                                    ->label('Descripción del Limite')
+                                                                    ->columns(8)
+                                                                    ->required(),
+                                                                TextInput::make('cuota')
+                                                                    ->label('Cuota del Limite')
+                                                                    ->columns(4)
+                                                                    ->required()
+                                                                    ->numeric(),
+                                                                Hidden::make('status')->default('ACTIVO'),
+                                                                Hidden::make('created_by')->default(Auth::user()->name),
+                                                            ])->columnSpanFull(),
+                                                    ])
+                                                    ->action(function (array $data) {
+                                                        dd($data);
+                                                    }),
+
+                                            ])),
+
+                                    ]),
+
+                                // REPETIDOR ANIDADO: COBERTURAS (Relación 1 a N con Límites/Coberturas)
+                                Repeater::make('coverages')
+                                    ->label('Configuración de Coberturas')
+                                    ->addActionLabel('Agregar Cobertura')
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->itemLabel(
+                                        fn (array $state): ?string => 'US $'.Coverage::find($state['coverage_id'] ?? null)?->price ?? 'Nueva Cobertura'
+                                    )
+                                    ->schema([
+                                        Grid::make(2)
+                                            ->schema([
+                                                Select::make('coverage_id')
+                                                    ->label('Cobertura')
+                                                    ->options(Coverage::all()->pluck('price', 'id'))
+                                                    ->belowContent(Schema::between([
+                                                        Flex::make([
+                                                            Icon::make(Heroicon::InformationCircle)
+                                                                ->grow(false),
+                                                            'Para vincular una cobertura debes crearla aquí.',
+                                                        ]),
+                                                        Action::make('create_coverage')
+                                                            ->label('Crear Cobertura')
+                                                            ->icon('heroicon-o-plus')
+                                                            ->color('success')
+                                                            ->modal()
+                                                            ->modalWidth(Width::Medium)
+                                                            ->form([
+                                                                Fieldset::make('Formulario para Crear Cobertura')
+                                                                    ->schema([
+                                                                        TextInput::make('price')
+                                                                            ->label('Valor de la Cobertura')
+                                                                            ->numeric()
+                                                                            ->prefix('$')
+                                                                            ->required(),
+                                                                        Hidden::make('status')->default('ACTIVO'),
+                                                                        Hidden::make('created_by')->default(Auth::user()->name),
+                                                                    ])->columnSpanFull()->columns(1),
+                                                            ])
+                                                            ->action(function (array $data) {
+                                                                dd($data);
+                                                            }),
+                                                    ]))
+                                                    ->live()
+                                                    ->required()
+                                                    ->searchable(),
+                                            ]),
+
+                                        // REPETIDOR ANIDADO: RANGOS DE EDAD Y TARIFAS
+                                        Repeater::make('age_rates')
+                                            ->label('Rango de Edad y Tarifa para esta Cobertura')
+                                            ->addActionLabel('Agregar Rango de Edad y Tarifa')
+                                            ->itemLabel(
+                                                fn (array $state): ?string => 'Rango: '.AgeRange::find($state['age_range_id'] ?? null)?->range.' años' ?? 'Nuevo Rango de Edad y Tarifa'
+                                            )
+                                            ->columns(2)
+                                            ->grid(2)
+                                            ->schema([
+                                                Select::make('age_range_id')
+                                                    ->label('Rango de Edad')
+                                                    ->live()
+                                                    ->options(AgeRange::all()->pluck('range', 'id'))
+                                                    ->required()
+                                                    ->belowContent(Schema::between([
+                                                        Action::make('create_age_range')
+                                                            ->label('Crear Rango de Edad')
+                                                            ->icon('heroicon-o-plus')
+                                                            ->color('success')
+                                                            ->modal()
+                                                            ->form([
+                                                                Fieldset::make('Formulario para Crear Limite')
+                                                                    ->schema([
+                                                                        TextInput::make('description')
+                                                                            ->label('Descripción del Limite')
+                                                                            ->columns(8)
+                                                                            ->required(),
+                                                                        TextInput::make('cuota')
+                                                                            ->label('Cuota del Limite')
+                                                                            ->columns(4)
+                                                                            ->required()
+                                                                            ->numeric(),
+                                                                        Hidden::make('status')->default('ACTIVO'),
+                                                                        Hidden::make('created_by')->default(Auth::user()->name),
+                                                                    ])->columnSpanFull(),
+                                                            ])
+                                                            ->action(function (array $data) {
+                                                                dd($data);
+                                                            }),
+
+                                                    ])),
+
+                                                TextInput::make('rate')
+                                                    ->label('Tarifa/Prima ($)')
+                                                    ->numeric()
+                                                    ->prefix('$')
+                                                    ->required(),
+                                            ])
+                                            ->defaultItems(1),
+                                    ])
+                                    ->grid(2)
+                                    ->defaultItems(1)
+                                    ->columnSpan(1),
+                            ])
+                            // ->grid(2)
+                            ->columnSpanFull(),
+                    ])->collapsible()->columnSpanFull(),
+
+                // SECCIÓN 3: RESUMEN Y AJUSTES GLOBALES
+                Section::make('Ajustes Finales')
+                    ->icon('heroicon-o-adjustments-horizontal')
+                    ->compact()
                     ->schema([
-                        Select::make('agencies')
-                            ->label('Agencias asociadas al Plan')
-                            ->relationship(name: 'agencyPlans', titleAttribute: 'name_corporative')
-                            ->multiple()
-                            ->preload()
-                            ->searchable(),
-                    ])->columnSpanFull()->columns(1),
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('tax_percent')
+                                    ->label('Impuestos (%)')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->suffix('%'),
+
+                                TextInput::make('admin_fee')
+                                    ->label('Gasto Administrativo ($)')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->prefix('$'),
+
+                                ToggleButtons::make('status')
+                                    ->label('Estado Inicial')
+                                    ->inline()
+                                    ->options([
+                                        'draft' => 'Borrador',
+                                        'active' => 'Publicar',
+                                    ])
+                                    ->colors([
+                                        'draft' => 'gray',
+                                        'active' => 'success',
+                                    ])
+                                    ->default('draft'),
+                            ]),
+                    ])->collapsible(),
 
             ]);
     }

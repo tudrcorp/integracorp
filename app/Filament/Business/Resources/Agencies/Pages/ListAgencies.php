@@ -2,23 +2,26 @@
 
 namespace App\Filament\Business\Resources\Agencies\Pages;
 
+use App\Filament\Business\Resources\Agencies\AgencyResource;
+use App\Filament\Business\Resources\Agencies\Widgets\AgencyGeoChart;
+use App\Filament\Business\Resources\Agencies\Widgets\AgentActiveForEstructureChart;
+use App\Filament\Business\Resources\Agencies\Widgets\StatsOverviewAgency;
+use App\Filament\Business\Resources\Agencies\Widgets\TotalEstructureAgency;
+use App\Filament\Business\Resources\Agencies\Widgets\TotalSaleForEstructureChart;
+use App\Http\Controllers\NotificationController;
 use Filament\Actions\Action;
-use Filament\Support\Enums\Width;
 use Filament\Actions\CreateAction;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use App\Http\Controllers\LogController;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
-use App\Http\Controllers\NotificationController;
-use App\Filament\Business\Resources\Agencies\AgencyResource;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 
 class ListAgencies extends ListRecords
 {
+    use ExposesTableToWidgets;
+
     protected static string $resource = AgencyResource::class;
 
     protected static ?string $title = 'Gestión de Agencias';
@@ -52,8 +55,8 @@ class ListAgencies extends ListRecords
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
                                 ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
-                                ->label('Número de teléfono')
-                        ])
+                                ->label('Número de teléfono'),
+                        ]),
                 ])
                 ->action(function (array $data) {
 
@@ -73,7 +76,7 @@ class ListAgencies extends ListRecords
                         if ($data['email'] != null) {
 
                             $link = config('parameters.REGISTER_AGENCY');
-                            $sendEmail  = NotificationController::send_email_agency_register($link, $data['email']);
+                            $sendEmail = NotificationController::send_email_agency_register($link, $data['email']);
                             if ($sendEmail == true) {
 
                                 Notification::make()
@@ -121,8 +124,19 @@ class ListAgencies extends ListRecords
                             ->color('danger')
                             ->send();
                     }
-                })
-                
+                }),
+
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            StatsOverviewAgency::class,
+            AgencyGeoChart::class,
+            TotalEstructureAgency::class,
+            AgentActiveForEstructureChart::class,
+            TotalSaleForEstructureChart::class,
         ];
     }
 }

@@ -33,14 +33,14 @@ class IndividualQuotesAgentAverageChart extends ChartWidget
     }
 
     /**
-     * Genera un color vibrante aleatorio para las barras.
+     * Paleta fija de colores para las barras (mismo orden = mismo color).
      */
-    protected function getRandomVibrantColor(): string
+    protected function getBarColors(): array
     {
-        $r = mt_rand(40, 220);
-        $g = mt_rand(40, 220);
-        $b = mt_rand(40, 220);
-        return sprintf('#%02X%02X%02X', $r, $g, $b);
+        return [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+            '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
+        ];
     }
 
     protected function getData(): array
@@ -60,14 +60,15 @@ class IndividualQuotesAgentAverageChart extends ChartWidget
         $labels = [];
         $values = [];
         $backgroundColors = [];
+        $palette = $this->getBarColors();
 
-        foreach ($topAgents as $quoteData) {
+        foreach ($topAgents as $index => $quoteData) {
             // Buscamos el nombre del agente en la tabla 'agents'
             $agentName = Agent::find($quoteData->agent_id)?->name ?? "Agente #{$quoteData->agent_id}";
 
             $labels[] = $agentName;
             $values[] = $quoteData->total;
-            $backgroundColors[] = $this->getRandomVibrantColor();
+            $backgroundColors[] = $palette[$index % count($palette)];
         }
 
         return [

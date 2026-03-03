@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TelemedicinePatient extends Model
 {
     protected $table = 'telemedicine_patients';
-    
+
     protected $fillable = [
         'plan_id',
         'coverage_id',
@@ -96,7 +96,7 @@ class TelemedicinePatient extends Model
     }
 
     // ...
-    //Relacion 1 a N con la tabla telemedicine_consultation_patients
+    // Relacion 1 a N con la tabla telemedicine_consultation_patients
     public function telemedicineConsultationPatients()
     {
         return $this->hasMany(TelemedicineConsultationPatient::class);
@@ -157,6 +157,9 @@ class TelemedicinePatient extends Model
         return $this->hasMany(TelemedicineDocument::class);
     }
 
-    
-    
+    // relacion 1 a 1 con OperationInventoryMovement
+    public function operationInventoryMovements()
+    {
+        return $this->hasMany(OperationInventoryMovement::class);
+    }
 }

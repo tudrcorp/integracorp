@@ -16,7 +16,7 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
 
     protected ?string $maxHeight = '350px';
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     /**
      * Filtro de años: Año actual + 4 anteriores.
@@ -35,14 +35,17 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
     }
 
     /**
-     * Genera un color aleatorio vibrante.
+     * Paleta fija de colores para las barras (mismo orden = mismo color).
      */
-    protected function getRandomVibrantColor(): string
+    protected function getBarColors(): array
     {
-        $r = mt_rand(40, 220);
-        $g = mt_rand(40, 220);
-        $b = mt_rand(40, 220);
-        return sprintf('#%02X%02X%02X', $r, $g, $b);
+        return [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+            '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
+            '#14B8A6', '#A855F7', '#EAB308', '#DC2626', '#2563EB',
+            '#059669', '#D97706', '#BE185D', '#7C3AED', '#0D9488',
+            '#65A30D', '#EA580C', '#4F46E5', '#0891B2', '#DB2777',
+        ];
     }
 
     protected function getData(): array
@@ -63,15 +66,16 @@ class IndividualQuotesAgencyAverageChart extends ChartWidget
         $labels = [];
         $values = [];
         $backgroundColors = [];
+        $palette = $this->getBarColors();
 
-        foreach ($topAgencies as $quoteData) {
+        foreach ($topAgencies as $index => $quoteData) {
             // Buscamos el nombre de la agencia
             $agencyName = Agency::where('code', $quoteData->code_agency)->first()?->name_corporative
                 ?? "Agencia: {$quoteData->code_agency}";
 
             $labels[] = $agencyName;
             $values[] = $quoteData->total;
-            $backgroundColors[] = $this->getRandomVibrantColor();
+            $backgroundColors[] = $palette[$index % count($palette)];
         }
 
         return [

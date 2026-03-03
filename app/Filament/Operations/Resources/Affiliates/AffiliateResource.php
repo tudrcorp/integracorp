@@ -28,6 +28,8 @@ class AffiliateResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'AFILIADOS';
 
+    protected static ?int $navigationSort = 1;
+
     /**
      * Muestra un badge con la palabra NEW y el conteo de afiliados
      * con estatus 'ACTIVA' registrados el día de hoy.

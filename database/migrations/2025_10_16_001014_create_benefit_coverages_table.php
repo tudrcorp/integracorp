@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id();
             $table->integer('benefit_id');
             $table->integer('coverage_id');
-            // 💡 Atributo extra en la tabla pivote
-            $table->unsignedInteger('limit')->default(0)->comment('Máximo de usos por cobertura en este beneficio');
+            $table->string('benefit_description');
+            $table->string('coverage_price');
+            $table->string('price');
             $table->timestamps();
         });
     }

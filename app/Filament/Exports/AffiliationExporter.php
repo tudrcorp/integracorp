@@ -7,7 +7,6 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
 use Illuminate\Support\Number;
-
 use OpenSpout\Common\Entity\Style\CellAlignment;
 use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
 use OpenSpout\Common\Entity\Style\Color;
@@ -23,7 +22,7 @@ class AffiliationExporter extends Exporter
             ExportColumn::make('id')
                 ->label('ID'),
             ExportColumn::make('individual_quote_id')
-                ->label('COTIZACIÓN INDIVIDUAL'),    
+                ->label('COTIZACIÓN INDIVIDUAL'),
             ExportColumn::make('owner_code')
                 ->label('PERTENECE A:'),
             ExportColumn::make('code')
@@ -58,16 +57,16 @@ class AffiliationExporter extends Exporter
                 ->label('FECHA DE NACIMIENTO TITULAR DE LA AFILIACIÓN'),
             ExportColumn::make('adress_ti')
                 ->label('DIRECCIÓN TITULAR DE LA AFILIACIÓN'),
-            ExportColumn::make('city_id_ti')
+            ExportColumn::make('city.definition')
                 ->label('CIUDAD TITULAR DE LA AFILIACIÓN'),
-            ExportColumn::make('state_id_ti')
+            ExportColumn::make('state.definition')
                 ->label('ESTADO TITULAR DE LA AFILIACIÓN'),
             ExportColumn::make('country_id_ti')
-                ->label('PAÍS TITULAR DE LA AFILIACIÓN'),    
+                ->label('PAÍS TITULAR DE LA AFILIACIÓN'),
             ExportColumn::make('region_ti')
-                ->label('REGIÓN TITULAR DE LA AFILIACIÓN'),    
+                ->label('REGIÓN TITULAR DE LA AFILIACIÓN'),
             ExportColumn::make('phone_ti')
-                ->label('TELÉFONO TITULAR DE LA AFILIACIÓN'),    
+                ->label('TELÉFONO TITULAR DE LA AFILIACIÓN'),
             ExportColumn::make('email_ti')
                 ->label('CORREO TITULAR DE LA AFILIACIÓN'),
             ExportColumn::make('created_by')
@@ -82,7 +81,7 @@ class AffiliationExporter extends Exporter
             ExportColumn::make('vaucher_ils')
                 ->label('VAUCHER ILS'),
             ExportColumn::make('date_payment_initial_ils')
-                ->label('FECHA PAGO INICIAL ILS'),  
+                ->label('FECHA PAGO INICIAL ILS'),
             ExportColumn::make('date_payment_final_ils')
                 ->label('FECHA PAGO FINAL ILS'),
             ExportColumn::make('created_at')
@@ -94,7 +93,7 @@ class AffiliationExporter extends Exporter
             ExportColumn::make('total_amount')
                 ->label('MONTO TOTAL'),
             ExportColumn::make('business_unit_id')
-                ->label('UNIDAD DE NEGOCIO'),    
+                ->label('UNIDAD DE NEGOCIO'),
             ExportColumn::make('business_line_id')
                 ->label('LÍNEA DE NEGOCIO'),
             ExportColumn::make('service_providers')
@@ -104,10 +103,10 @@ class AffiliationExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Tu exportación de afiliaciones ha finalizado y ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' registros exportados.';
+        $body = 'Tu exportación de afiliaciones ha finalizado y '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' registros exportados.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;
@@ -115,7 +114,7 @@ class AffiliationExporter extends Exporter
 
     public function getXlsxHeaderCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontBold()
             ->setFontItalic()
             ->setFontSize(11)
@@ -128,7 +127,7 @@ class AffiliationExporter extends Exporter
 
     public function getXlsxCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontSize(10)
             ->setFontName('Helvetica')
             ->setFontColor(Color::rgb(0, 0, 0))

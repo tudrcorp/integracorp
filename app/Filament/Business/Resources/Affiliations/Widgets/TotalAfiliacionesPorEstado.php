@@ -54,6 +54,21 @@ class TotalAfiliacionesPorEstado extends ChartWidget
         return $years;
     }
 
+    /**
+     * Paleta fija de colores para las barras (mismo orden = mismo color).
+     */
+    protected function getBarColors(): array
+    {
+        return [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+            '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
+            '#14B8A6', '#A855F7', '#EAB308', '#DC2626', '#2563EB',
+            '#059669', '#D97706', '#BE185D', '#7C3AED', '#0D9488',
+            '#65A30D', '#EA580C', '#4F46E5', '#0891B2', '#DB2777',
+            '#0EA5E9', '#22C55E', '#E11D48', '#9333EA', '#F43F5E', '#64748B',
+        ];
+    }
+
     public function handleChartClick(array $payload): void
     {
         if ($this->selectedStateId === null) {
@@ -72,7 +87,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
             $this->selectedStateId = null;
 
             Notification::make()
-                ->title("Vista Nacional")
+                ->title('Vista Nacional')
                 ->body("Regresando al resumen por estados del año {$this->filter}.")
                 ->success()
                 ->send();
@@ -104,13 +119,13 @@ class TotalAfiliacionesPorEstado extends ChartWidget
                 ->groupBy('city_id_ti')
                 ->get();
 
-            foreach ($stats as $stat) {
+            $palette = $this->getBarColors();
+            foreach ($stats as $index => $stat) {
                 $cityName = DB::table('cities')->where('id', $stat->city_id_ti)->value('definition') ?? "Ciudad #{$stat->city_id_ti}";
                 $labels[] = $cityName;
                 $values[] = $stat->total;
 
-                // Colores aleatorios para ciudades
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+                $backgroundColors[] = $palette[$index % count($palette)];
             }
 
             $datasetLabel = "Afiliaciones en {$stateName} ({$selectedYear})";
@@ -128,12 +143,12 @@ class TotalAfiliacionesPorEstado extends ChartWidget
 
             $allStates = State::all(['id', 'definition']);
 
-            foreach ($allStates as $state) {
+            $palette = $this->getBarColors();
+            foreach ($allStates as $index => $state) {
                 $labels[] = $state->definition;
                 $values[] = $stats->get($state->id, 0);
 
-                // Colores aleatorios para estados
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+                $backgroundColors[] = $palette[$index % count($palette)];
             }
 
             $datasetLabel = "Afiliaciones por Estado ({$selectedYear})";

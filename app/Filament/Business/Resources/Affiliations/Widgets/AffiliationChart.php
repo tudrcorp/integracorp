@@ -2,8 +2,8 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
-use App\Models\Affiliation;
 use App\Models\Affiliate;
+use App\Models\Affiliation;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
@@ -11,7 +11,6 @@ use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class AffiliationChart extends ChartWidget
 {
@@ -64,7 +63,7 @@ class AffiliationChart extends ChartWidget
                 ->color('gray')
                 ->size('sm')
                 ->icon('heroicon-m-arrow-path')
-                ->visible(fn() => $this->selectedMonth !== null)
+                ->visible(fn () => $this->selectedMonth !== null)
                 ->action(function () {
                     $this->selectedMonth = null;
 
@@ -87,9 +86,10 @@ class AffiliationChart extends ChartWidget
 
             Notification::make()
                 ->title("Detalle de Afiliados: {$payload['mes']} {$this->filter}")
-                ->body("Mostrando el total de personas afiliadas por día.")
+                ->body('Mostrando el total de personas afiliadas por día.')
                 ->info()
                 ->send();
+
         } else {
             // Si el usuario hace clic de nuevo en una barra del detalle, también resetea
             $this->selectedMonth = null;
@@ -110,7 +110,7 @@ class AffiliationChart extends ChartWidget
 
             $dataTrend = Trend::query(
                 Affiliate::query()
-                    ->whereHas('affiliation', function ($query) use ($selectedYear) {
+                    ->whereHas('affiliation', function ($query) {
                         $query->where('status', 'ACTIVA');
                     })
             )
@@ -118,12 +118,13 @@ class AffiliationChart extends ChartWidget
                 ->perDay()
                 ->count();
 
-            $labels = $dataTrend->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
+            $labels = $dataTrend->map(fn (TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
             $monthName = Carbon::create(null, $this->selectedMonth)->monthName;
             $datasetLabel = "Afiliados en {$monthName} {$selectedYear}";
 
-            foreach ($labels as $label) {
-                $backgroundColors[] = $this->getRandomVibrantColor();
+            $palette = $this->getBarColors();
+            foreach ($labels as $index => $label) {
+                $backgroundColors[] = $palette[$index % count($palette)];
             }
         } else {
             /**
@@ -144,12 +145,13 @@ class AffiliationChart extends ChartWidget
             $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
             $datasetLabel = "Afiliaciones Activas ({$selectedYear})";
 
-            foreach ($labels as $label) {
-                $backgroundColors[] = $this->getRandomVibrantColor();
+            $palette = $this->getBarColors();
+            foreach ($labels as $index => $label) {
+                $backgroundColors[] = $palette[$index % count($palette)];
             }
         }
 
-        $dataValues = $dataTrend->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray();
+        $dataValues = $dataTrend->map(fn (TrendValue $value) => (int) $value->aggregate)->toArray();
 
         // Si no hay valores en el mes seleccionado, mostramos una notificación automática
         if ($this->selectedMonth && array_sum($dataValues) === 0) {
@@ -175,12 +177,19 @@ class AffiliationChart extends ChartWidget
         ];
     }
 
-    protected function getRandomVibrantColor(): string
+    /**
+     * Paleta fija de colores para las barras (mismo orden = mismo color).
+     */
+    protected function getBarColors(): array
     {
-        $r = mt_rand(50, 200);
-        $g = mt_rand(50, 200);
-        $b = mt_rand(50, 200);
-        return sprintf('#%02X%02X%02X', $r, $g, $b);
+        return [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+            '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
+            '#14B8A6', '#A855F7', '#EAB308', '#DC2626', '#2563EB',
+            '#059669', '#D97706', '#BE185D', '#7C3AED', '#0D9488',
+            '#65A30D', '#EA580C', '#4F46E5', '#0891B2', '#DB2777',
+            '#0EA5E9', '#22C55E', '#E11D48', '#9333EA', '#F43F5E', '#64748B',
+        ];
     }
 
     protected function getOptions(): RawJs
@@ -192,6 +201,9 @@ class AffiliationChart extends ChartWidget
                     const activeElement = elements[0];
                     const dataIndex = activeElement.index;
                     const label = chart.data.labels[dataIndex];
+                    console.log(label);
+                    console.log(dataIndex);
+                    console.log(chart);
 
                     $wire.handleChartClick({
                         mes: label,

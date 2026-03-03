@@ -22,7 +22,7 @@ class TelemedicineDoctor extends Model
         'code',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function telemedicineConsultationPatients()
@@ -45,4 +45,9 @@ class TelemedicineDoctor extends Model
         return $this->belongsToMany(TelemedicinePatient::class, 'telemedicine_cases', 'telemedicine_doctor_id', 'telemedicine_patient_id');
     }
 
+    // relacion 1 a 1 con OperationInventoryMovement
+    public function operationInventoryMovements()
+    {
+        return $this->hasMany(OperationInventoryMovement::class);
+    }
 }

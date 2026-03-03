@@ -8,6 +8,8 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class UploadPayment extends Mailable implements ShouldQueue
 {
@@ -30,7 +32,7 @@ class UploadPayment extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Comprobante de pago '. $this->data['code'],
+            subject: 'Comprobante de pago '.$this->data['code'],
         );
     }
 
@@ -52,5 +54,23 @@ class UploadPayment extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         return [];
+    }
+
+    /**
+     * Gestión optimizada de errores críticos.
+     */
+    public function failed(Throwable $exception): void
+    {
+        // 1. Log estructurado con severidad crítica y contexto completo
+        Log::critical('FALLA: Envío de correo de carga de comprobante de pago', [
+            'code' => [
+                'code' => $this->data['code'],
+            ],
+            'causa_error' => $exception->getMessage(),
+            'codigo_error' => $exception->getCode(),
+            'clase_error' => get_class($exception),
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+
     }
 }

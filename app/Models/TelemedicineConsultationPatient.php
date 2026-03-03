@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\TelemedicineServiceList;
 use Illuminate\Database\Eloquent\Model;
 
 class TelemedicineConsultationPatient extends Model
@@ -41,29 +40,28 @@ class TelemedicineConsultationPatient extends Model
         'priorityMonitoring',
         'observations',
 
-        //... Datos agregados
-        'pa',           //presion arterial
-        'fc',           //frecuencia cardiaca
-        'fr',           //frecuencia respiratoria
-        'temp',         //temperatura
-        'saturacion',   //saturacion
-        'peso',         //peso
-        'estatura',     //estatura
-        'imc',          //indice de masa corporal
+        // ... Datos agregados
+        'pa',           // presion arterial
+        'fc',           // frecuencia cardiaca
+        'fr',           // frecuencia respiratoria
+        'temp',         // temperatura
+        'saturacion',   // saturacion
+        'peso',         // peso
+        'estatura',     // estatura
+        'imc',          // indice de masa corporal
 
         'feedbackOne',
     ];
 
     protected $casts = [
-        'labs'                  => 'array',
-        'studies'               => 'array',
-        'consult_specialist'    => 'array',
-        'other_labs'            => 'array',
-        'other_studies'         => 'array',
-        'other_specialist'      => 'array',
+        'labs' => 'array',
+        'studies' => 'array',
+        'consult_specialist' => 'array',
+        'other_labs' => 'array',
+        'other_studies' => 'array',
+        'other_specialist' => 'array',
     ];
 
-    
     public function telemedicinePatient()
     {
         return $this->belongsTo(TelemedicinePatient::class);
@@ -84,25 +82,25 @@ class TelemedicineConsultationPatient extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    //...Muchos medicamentos
+    // ...Muchos medicamentos
     public function telemedicinePatientMedications()
     {
         return $this->hasMany(TelemedicinePatientMedications::class);
     }
 
-    //...Muchos laboratorios
+    // ...Muchos laboratorios
     public function telemedicinePatientLabs()
     {
         return $this->hasMany(TelemedicinePatientLab::class);
     }
 
-    //...Muchas imagenes
+    // ...Muchas imagenes
     public function telemedicinePatientStudies()
     {
         return $this->hasMany(TelemedicinePatientStudy::class);
     }
 
-    //...Muchas consultas con especialistas
+    // ...Muchas consultas con especialistas
     public function telemedicinePatientSpecialists()
     {
         return $this->hasMany(TelemedicinePatientSpecialty::class);
@@ -128,4 +126,9 @@ class TelemedicineConsultationPatient extends Model
         return $this->hasMany(TelemedicineDocument::class);
     }
 
+    // Relacion 1 a 1 OperationInventoryMovement
+    public function operationInventoryMovements()
+    {
+        return $this->hasMany(OperationInventoryMovement::class);
+    }
 }

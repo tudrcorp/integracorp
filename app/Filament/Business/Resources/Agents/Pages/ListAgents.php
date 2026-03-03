@@ -2,23 +2,25 @@
 
 namespace App\Filament\Business\Resources\Agents\Pages;
 
+use App\Filament\Business\Resources\Agents\AgentResource;
+use App\Filament\Business\Resources\Agents\Widgets\StatsOverviewAgent;
+use App\Filament\Business\Resources\Agents\Widgets\TotalForStateAgent;
+use App\Filament\Business\Resources\Agents\Widgets\TotalSaleForAgent;
+use App\Filament\Business\Resources\Agents\Widgets\TotalSaleMonthlyNowVsLastAgent;
+use App\Http\Controllers\NotificationController;
 use Filament\Actions\Action;
-use Filament\Support\Enums\Width;
 use Filament\Actions\CreateAction;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use App\Http\Controllers\LogController;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\Layout\Grid;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
-use App\Http\Controllers\NotificationController;
-use App\Filament\Business\Resources\Agents\AgentResource;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 
 class ListAgents extends ListRecords
 {
+    use ExposesTableToWidgets;
+
     protected static string $resource = AgentResource::class;
 
     protected static ?string $title = 'Gestión de Agentes';
@@ -52,8 +54,8 @@ class ListAgents extends ListRecords
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
                                 ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
-                                ->label('Número de teléfono')
-                        ])
+                                ->label('Número de teléfono'),
+                        ]),
                 ])
                 ->action(function (array $data) {
 
@@ -73,7 +75,7 @@ class ListAgents extends ListRecords
                         if ($data['email'] != null) {
 
                             $link = config('parameters.register_agent');
-                            $sendEmail  = NotificationController::send_email_agent_register($link, $data['email']);
+                            $sendEmail = NotificationController::send_email_agent_register($link, $data['email']);
                             if ($sendEmail == true) {
 
                                 Notification::make()
@@ -122,7 +124,24 @@ class ListAgents extends ListRecords
                             ->color('danger')
                             ->send();
                     }
-                })
+                }),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            StatsOverviewAgent::class,
+            TotalForStateAgent::class,
+            TotalSaleMonthlyNowVsLastAgent::class,
+            TotalSaleForAgent::class,
+        ];
+    }
+
+    protected function getTableColumns(): array
+    {
+        return [
+
         ];
     }
 }

@@ -7,7 +7,6 @@ use App\Models\IndividualQuote;
 use Carbon\Carbon;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
-
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;
 
@@ -15,14 +14,16 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
 
+    // protected array $tableColumnSearches = [];
+
     protected ?string $heading = 'ANÁLISIS DE REGISTROS DE COTIZACIÓN INDIVIDUAL EMITIDAS';
 
     protected ?string $description = 'Distribución de ingresos mensuales según el tipo de suscripción. Pasa el mouse para ver datos del mes actual.';
 
-    protected function getTablePage(): string
-    {
-        return ListIndividualQuotes::class;
-    }
+    // protected function getTablePage(): string
+    // {
+    //     return ListIndividualQuotes::class;
+    // }
 
     protected function getStats(): array
     {
@@ -76,7 +77,7 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
                 ->descriptionIcon($config['icon'])
                 ->color($config['color'])
                 ->extraAttributes([
-                    'class' => $iosStyles . " border-[{$config['border']}]",
+                    'class' => $iosStyles." border-[{$config['border']}]",
                     'x-data' => "{ valor: '{$total}', desc: 'Histórico Total' }",
                     '@mouseenter' => "valor = '{$mes}'; desc = 'Emitidas en {$mesActualNombre}'",
                     '@mouseleave' => "valor = '{$total}'; desc = 'Histórico Total'",

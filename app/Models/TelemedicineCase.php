@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class TelemedicineCase extends Model
 {
     protected $table = 'telemedicine_cases';
-    
+
     protected $fillable = [
         'telemedicine_patient_id',
         'telemedicine_doctor_id',
@@ -26,7 +26,7 @@ class TelemedicineCase extends Model
         'reason',
         'code',
         'ambulanceParking',
-        'directionAmbulance'
+        'directionAmbulance',
     ];
 
     public function telemedicinePatient()
@@ -79,5 +79,9 @@ class TelemedicineCase extends Model
         return $this->hasMany(TelemedicineDocument::class);
     }
 
-    
+    // relacion 1 a 1 con OperationInventoryMovement
+    public function operationInventoryMovements()
+    {
+        return $this->hasMany(OperationInventoryMovement::class);
+    }
 }
