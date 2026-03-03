@@ -4,25 +4,24 @@ namespace App\Filament\Operations\Resources\Suppliers\Schemas;
 
 use App\Models\City;
 use App\Models\State;
-use Filament\Schemas\Schema;
-use App\Models\SupplierTipoClinica;
-use App\Models\SupplierTipoServicio;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
 use App\Models\SupplierClasificacion;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
 use App\Models\SupplierEstatusSistema;
 use App\Models\SupplierStatusConvenio;
+use App\Models\SupplierTipoClinica;
+use App\Models\SupplierTipoServicio;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class SupplierForm
 {
@@ -70,7 +69,7 @@ class SupplierForm
                             ->preload()
                             ->searchable(),
                         Select::make('type_service')
-                            ->options(fn(Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('supplier_clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
+                            ->options(fn (Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('supplier_clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
                             ->label('Tipo de servicio')
                             ->searchable()
                             ->multiple()
@@ -81,7 +80,7 @@ class SupplierForm
                             ->searchable()
                             ->preload(),
                         Select::make('city_id')
-                            ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
+                            ->options(fn (Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                             ->label('Ciudad')
                             ->live()
                             ->searchable()
@@ -91,13 +90,12 @@ class SupplierForm
                             ->live()
                             ->searchable()
                             ->options([
-                                'LOCAL'             => 'LOCAL',
-                                'MULTI-ESTADO'      => 'MULTI-ESTADO',
-                                'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
+                                'LOCAL' => 'LOCAL',
+                                'MULTI-ESTADO' => 'MULTI-ESTADO',
+                                'A-NIVEL-NACIONAL' => 'A-NIVEL-NACIONAL',
                             ])
                             ->afterStateUpdated(
-                                fn(callable $set, ?string $state) =>
-                                $set(
+                                fn (callable $set, ?string $state) => $set(
                                     'state_services',
                                     $state === 'A-NIVEL-NACIONAL'
                                         ? State::pluck('definition')->all()
@@ -157,17 +155,17 @@ class SupplierForm
                             ->label('Tiempo de Crédito')
                             ->searchable()
                             ->options([
-                                '3 DIAS'            => '3 DIAS',
-                                '5 DIAS'            => '5 DIAS',
-                                '7 DIAS'            => '7 DIAS',
-                                '10 DIAS'           => '10 DIAS',
-                                '15 DIAS'           => '15 DIAS',
-                                '20 DIAS'           => '20 DIAS',
-                                '25 DIAS'           => '25 DIAS',
-                                '30 DIAS'           => '30 DIAS',
-                                'CONTADO'           => 'CONTADO',
-                                'FONDO ANTICIPADO'  => 'FONDO ANTICIPADO',
-                                'PREPAGO'           => 'PREPAGO',
+                                '3 DIAS' => '3 DIAS',
+                                '5 DIAS' => '5 DIAS',
+                                '7 DIAS' => '7 DIAS',
+                                '10 DIAS' => '10 DIAS',
+                                '15 DIAS' => '15 DIAS',
+                                '20 DIAS' => '20 DIAS',
+                                '25 DIAS' => '25 DIAS',
+                                '30 DIAS' => '30 DIAS',
+                                'CONTADO' => 'CONTADO',
+                                'FONDO ANTICIPADO' => 'FONDO ANTICIPADO',
+                                'PREPAGO' => 'PREPAGO',
                             ]),
                         TextInput::make('horario')
                             ->label('Horario de Atención')
@@ -182,7 +180,7 @@ class SupplierForm
                             ->afterStateUpdatedJs(<<<'JS'
                                         $set('otros_servicios', $state.toUpperCase());    
                                     JS),
-                        
+
                         Hidden::make('created_by')->default(Auth::user()->name),
                         Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
                     ])->columnSpanFull()->columns(4),
@@ -204,61 +202,61 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_densitometria_osea')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('densitometria_osea'))
+                                            ->disabled(fn ($get) => ! $get('densitometria_osea'))
                                             ->placeholder('----'),
-                                            
+
                                         Toggle::make('dialisis')
                                             ->live()
                                             ->label('Equipo de Dialisis')
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_dialisis')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('dialisis'))
+                                            ->disabled(fn ($get) => ! $get('dialisis'))
                                             ->placeholder('----'),
-                                            
+
                                         Toggle::make('electrocardiograma_centro')
                                             ->live()
                                             ->label('Electrocardiógrafo')
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_electrocardiograma_centro')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('electrocardiograma_centro'))
+                                            ->disabled(fn ($get) => ! $get('electrocardiograma_centro'))
                                             ->placeholder('----'),
-                                            
+
                                         Toggle::make('equipos_especiales_oftalmologia')
                                             ->live()
                                             ->label('Equipos Especiales de Oftalmología')
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_equipos_especiales_oftalmologia')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('equipos_especiales_oftalmologia'))
+                                            ->disabled(fn ($get) => ! $get('equipos_especiales_oftalmologia'))
                                             ->placeholder('----'),
-                                            
+
                                         Toggle::make('mamografia')
                                             ->live()
                                             ->label('Mamógrafo')
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_mamografia')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('mamografia'))
+                                            ->disabled(fn ($get) => ! $get('mamografia'))
                                             ->placeholder('----'),
-                                            
+
                                         Toggle::make('quirofanos')
                                             ->live()
                                             ->label('Quirofanos')
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_quirofanos')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('quirofanos'))
+                                            ->disabled(fn ($get) => ! $get('quirofanos'))
                                             ->placeholder('----'),
-                                            
+
                                         Toggle::make('radioterapia_intraoperatoria')
                                             ->live()
                                             ->label('Radioterapia Intraoperatoria')
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_radioterapia_intraoperatoria')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('radioterapia_intraoperatoria'))
+                                            ->disabled(fn ($get) => ! $get('radioterapia_intraoperatoria'))
                                             ->placeholder('----'),
                                     ])->columns(2),
                                 Section::make()
@@ -270,7 +268,7 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_resonancia')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('resonancia'))
+                                            ->disabled(fn ($get) => ! $get('resonancia'))
                                             ->placeholder('----'),
 
                                         Toggle::make('tomografo')
@@ -279,7 +277,7 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_tomografo')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('tomografo'))
+                                            ->disabled(fn ($get) => ! $get('tomografo'))
                                             ->placeholder('----'),
 
                                         Toggle::make('uci_pediatrica')
@@ -288,7 +286,7 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_uci_pediatrica')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('uci_pediatrica'))
+                                            ->disabled(fn ($get) => ! $get('uci_pediatrica'))
                                             ->placeholder('----'),
 
                                         Toggle::make('uci_adulto')
@@ -297,7 +295,7 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_uci_adulto')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('uci_adulto'))
+                                            ->disabled(fn ($get) => ! $get('uci_adulto'))
                                             ->placeholder('----'),
 
                                         Toggle::make('estacionamiento_propio')
@@ -306,7 +304,7 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_estacionamiento_propio')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('estacionamiento_propio'))
+                                            ->disabled(fn ($get) => ! $get('estacionamiento_propio'))
                                             ->placeholder('----'),
 
                                         Toggle::make('ascensor')
@@ -315,7 +313,7 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_ascensor')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('ascensor'))
+                                            ->disabled(fn ($get) => ! $get('ascensor'))
                                             ->placeholder('----'),
 
                                         Toggle::make('robotica')
@@ -324,11 +322,11 @@ class SupplierForm
                                             ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
                                         TextInput::make('descripcion_robotica')
                                             ->label('Descripción (opcional):')
-                                            ->disabled(fn($get) => !$get('robotica'))
+                                            ->disabled(fn ($get) => ! $get('robotica'))
                                             ->placeholder('----'),
                                     ])->columns(2),
                             ])->columnSpanFull()->columns(1),
-               
+
                     ])->columnSpanFull()->columns(4),
 
                 Section::make('Contactos')
@@ -390,7 +388,7 @@ class SupplierForm
                             ])
                             ->addActionLabel('Añadir Contacto')
                             ->columnSpanFull()
-                            ->reorderable()
+                            ->reorderable(),
                     ])->columnSpanFull(),
 
                 Section::make('Sucursales')
@@ -416,7 +414,7 @@ class SupplierForm
                                     ->searchable()
                                     ->preload(),
                                 Select::make('city_id')
-                                    ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
+                                    ->options(fn (Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                                     ->label('Ciudad')
                                     ->live()
                                     ->searchable()
@@ -462,7 +460,7 @@ class SupplierForm
                             ])
                             ->addActionLabel('Añadir Sucursal')
                             ->columnSpanFull()
-                            ->reorderable()
+                            ->reorderable(),
                     ])->columnSpanFull(),
 
                 Section::make('Zonas')
@@ -487,7 +485,7 @@ class SupplierForm
                                     ->preload()
                                     ->searchable(),
                                 Select::make('type_service')
-                                    ->options(fn(Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
+                                    ->options(fn (Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
                                     ->label('Tipo de servicio')
                                     ->searchable()
                                     ->multiple()
@@ -499,7 +497,7 @@ class SupplierForm
                                     ->searchable()
                                     ->preload(),
                                 Select::make('city_id')
-                                    ->options(fn(Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
+                                    ->options(fn (Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
                                     ->label('Ciudad')
                                     ->live()
                                     ->searchable()
@@ -509,7 +507,7 @@ class SupplierForm
                             ])
                             ->addActionLabel('Añadir Sucursal')
                             ->columnSpanFull()
-                            ->reorderable()
+                            ->reorderable(),
                     ])->columnSpanFull(),
 
                 Section::make('Notas y/o Observaciones')
@@ -520,8 +518,8 @@ class SupplierForm
                             ->label('Bitacora de Notas y/o Observaciones')
                             ->relationship()
                             ->table([
-                                TableColumn::make('Notas y/o Observacion'),
-                                TableColumn::make('Responsable de la Nota'),
+                                TableColumn::make('Notas y/o Observacion')->width('90%'),
+                                TableColumn::make('Responsable de la Nota')->width('10%'),
                             ])
                             ->schema([
                                 Textarea::make('observation')
@@ -536,8 +534,8 @@ class SupplierForm
                             ])
                             ->addActionLabel('Añadir Observación o Nota')
                             ->columnSpanFull()
-                            ->reorderable()
-                    ])->columnSpanFull()
+                            ->reorderable(),
+                    ])->columnSpanFull(),
             ]);
     }
 }
