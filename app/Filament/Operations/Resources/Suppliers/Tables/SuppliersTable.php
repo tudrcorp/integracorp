@@ -7,8 +7,6 @@ use App\Models\City;
 use App\Models\State;
 use App\Models\Supplier;
 use App\Models\SupplierClasificacion;
-use App\Models\SupplierEstatusSistema;
-use App\Models\SupplierStatusConvenio;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -17,7 +15,6 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -32,6 +29,8 @@ class SuppliersTable
         return $table
             ->heading('Proveedores')
             ->description('Tabla de Proveedores')
+            ->defaultSort('state_id', 'asc')
+            ->defaultSort('city_id', 'asc')
             ->columns([
                 TextColumn::make('name')
                     ->label('Nombre del Proveedor')
@@ -71,7 +70,7 @@ class SuppliersTable
                 TextColumn::make('city.definition')
                     ->label('Ciudad')
                     ->searchable(),
-                
+
                 TextColumn::make('tipo_servicio')
                     ->label('Tipo de Servicio')
                     ->badge()
@@ -108,7 +107,6 @@ class SuppliersTable
                 TextColumn::make('promedio_costo_proveedor')
                     ->label('Promedio Costo Proveedor')
                     ->searchable(),
-
 
                 IconColumn::make('densitometria_osea')
                     ->boolean()
@@ -148,7 +146,7 @@ class SuppliersTable
                 IconColumn::make('robotica')
                     ->boolean()
                     ->label('Equipo de  Cirugía Robótica'),
-                    
+
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -163,18 +161,18 @@ class SuppliersTable
                     ->searchable(),
             ])
             ->filters([
-                SelectFilter::make('tipo_servicio')
-                    ->label('Tipo de Servicio')
-                    ->options([
-                        'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
-                        'MULTI-ESTADO'      => 'MULTI-ESTADO',
-                    ]),
                 SelectFilter::make('state_id')
                     ->label('Estado')
                     ->options(State::all()->pluck('definition', 'id')),
                 SelectFilter::make('city_id')
                     ->label('Ciudad')
                     ->options(City::all()->pluck('definition', 'id')),
+                SelectFilter::make('tipo_servicio')
+                    ->label('Tipo de Servicio')
+                    ->options([
+                        'A-NIVEL-NACIONAL' => 'A-NIVEL-NACIONAL',
+                        'LOCAL' => 'LOCAL',
+                    ]),
                 SelectFilter::make('clasificacion')
                     ->label('Tipo de Servicio')
                     ->options(SupplierClasificacion::all()->pluck('description', 'id')),
@@ -187,29 +185,28 @@ class SuppliersTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
                     }),
-                
 
-        ])
+            ])
             ->filtersTriggerAction(
-                fn(Action $action) => $action
+                fn (Action $action) => $action
                     ->button()
                     ->label('Filtros'),
             )
@@ -224,6 +221,7 @@ class SuppliersTable
                         ->modalHeading('Exportar Lista de Proveedores')
                         ->modalDescription(function () {
                             $total = Supplier::count();
+
                             return 'Se realizara la exportacion de los registros seleccionados! 
                                     Si deseas seleccionar todos los registros de la tabla debes hacer click en "Seleccionar todos '.$total.'", 
                                     debajo de el buscador de la tabla!, De lo contrario solo exportaras los registros seleccionados!';
