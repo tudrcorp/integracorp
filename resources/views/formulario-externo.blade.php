@@ -67,7 +67,8 @@
             <div
                 class="mb-10 sm:mb-16 flex flex-col-reverse sm:flex-row justify-between items-center sm:items-start gap-6 text-center sm:text-left">
                 <div>
-                    <h1 class="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-2">Registro</h1>
+                    <h1 class="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-2">Solicitud de Cita
+                    </h1>
                     <p class="text-white/40 text-xs sm:text-sm font-medium uppercase tracking-widest">Contacto Agencia /
                         Agente</p>
                 </div>
@@ -118,6 +119,7 @@
                     </div>
                 </div>
 
+                <!-- Localización -->
                 <div class="space-y-8 pt-4">
                     <div class="flex items-center gap-4 mb-8">
                         <div class="h-[1px] flex-1 bg-white/5"></div>
@@ -148,6 +150,23 @@
                                 class="w-full bg-transparent border-none p-0 text-base sm:text-lg text-white focus:ring-0 focus:outline-none cursor-pointer disabled:opacity-20">
                                 <option value="" class="bg-zinc-900">Seleccionar Estado</option>
                             </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- Observaciones -->
+                <div class="space-y-8 pt-4">
+                    <div class="flex items-center gap-4 mb-8">
+                        <div class="h-[1px] flex-1 bg-white/5"></div>
+                        <h2 class="text-white/30 text-[10px] font-bold uppercase tracking-[0.2em]">Observaciones</h2>
+                        <div class="h-[1px] flex-1 bg-white/5"></div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-x-8 gap-y-10">
+                        <div class="relative border-b border-white/10 pb-2">
+                            <label
+                                class="block text-[10px] sm:text-[11px] font-bold text-white/70 uppercase tracking-tighter mb-1">Observaciones Relevantes</label>
+                            <textarea id="observations" name="observations" required
+                                class="w-full bg-transparent border-none p-0 text-base sm:text-lg text-white focus:ring-0 focus:outline-none cursor-pointer">
+                            </textarea>
                         </div>
                     </div>
                 </div>

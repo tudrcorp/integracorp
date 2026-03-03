@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Coverage extends Model
 {
@@ -22,10 +21,19 @@ class Coverage extends Model
         return $this->belongsTo(Plan::class, 'plan_id', 'id');
     }
 
-    public function beneficios(): BelongsToMany
+    public function benefits()
     {
-        return $this->belongsToMany(Benefit::class, 'beneficio_cobertura_limites')
-            ->withPivot('limite_uso'); // ⬅️ IMPORTANTE: Carga el campo extra
+        return $this->belongsToMany(Benefit::class, 'benefit_coverages', 'coverage_id', 'benefit_id')
+            ->withPivot('benefit_description', 'coverage_price');
     }
 
+    public function benefitCoverages()
+    {
+        return $this->hasMany(BenefitCoverage::class);
+    }
+
+    public function getBenefitCoveragesAttribute()
+    {
+        return $this->benefitCoverages()->get();
+    }
 }

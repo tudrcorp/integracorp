@@ -17,7 +17,6 @@ class BusinessLine extends Model
         'created_by',
     ];
 
-
     public function businessUnit()
     {
         return $this->belongsTo(BusinessUnit::class, 'business_unit_id', 'id');
@@ -28,4 +27,9 @@ class BusinessLine extends Model
         return $this->hasMany(Plan::class, 'business_line_id', 'id');
     }
 
+    // relacion 1 a 1 con OperationInventoryMovement
+    public function operationInventoryMovements()
+    {
+        return $this->hasMany(OperationInventoryMovement::class);
+    }
 }

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Limit extends Model
 {
@@ -15,6 +14,7 @@ class Limit extends Model
         'description',
         'status',
         'created_by',
+        'cuota',
     ];
 
     /**
@@ -22,9 +22,8 @@ class Limit extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function benefit(): BelongsTo
+    public function benefits(): HasMany
     {
-        return $this->belongsTo(Benefit::class);
+        return $this->hasMany(Benefit::class);
     }
-
 }

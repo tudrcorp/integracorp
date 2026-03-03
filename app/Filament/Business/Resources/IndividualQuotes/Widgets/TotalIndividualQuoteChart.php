@@ -2,17 +2,13 @@
 
 namespace App\Filament\Business\Resources\IndividualQuotes\Widgets;
 
-use App\Filament\Business\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
 use App\Models\IndividualQuote;
-use App\Models\State;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
-use Illuminate\Support\Facades\DB;
 
 class TotalIndividualQuoteChart extends ChartWidget
 {
@@ -46,7 +42,22 @@ class TotalIndividualQuoteChart extends ChartWidget
     }
 
     /**
-     * Maneja el clic en las barras. 
+     * Paleta fija de colores para las barras (mismo orden = mismo color).
+     */
+    protected function getBarColors(): array
+    {
+        return [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+            '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
+            '#14B8A6', '#A855F7', '#EAB308', '#DC2626', '#2563EB',
+            '#059669', '#D97706', '#BE185D', '#7C3AED', '#0D9488',
+            '#65A30D', '#EA580C', '#4F46E5', '#0891B2', '#DB2777',
+            '#0EA5E9', '#22C55E', '#E11D48', '#9333EA', '#F43F5E', '#64748B',
+        ];
+    }
+
+    /**
+     * Maneja el clic en las barras.
      */
     public function handleChartClick(array $payload): void
     {
@@ -55,7 +66,7 @@ class TotalIndividualQuoteChart extends ChartWidget
 
             Notification::make()
                 ->title("Detalle de Cotizaciones: {$payload['mes']}")
-                ->body("Mostrando el total de cotizaciones en este periodo.")
+                ->body('Mostrando el total de cotizaciones en este periodo.')
                 ->info()
                 ->send();
         } else {
@@ -88,12 +99,12 @@ class TotalIndividualQuoteChart extends ChartWidget
                 ->perDay()
                 ->count();
 
-            $labels = $dataTrend->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
-            $datasetLabel = 'Total Cotizaciones en ' . Carbon::create(null, $this->selectedMonth)->monthName . " ($year)";
+            $labels = $dataTrend->map(fn (TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
+            $datasetLabel = 'Total Cotizaciones en '.Carbon::create(null, $this->selectedMonth)->monthName." ($year)";
 
-            // Generar colores suaves estilo pastel
-            foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0x606060, 0xCCCCCC));
+            $palette = $this->getBarColors();
+            foreach ($labels as $index => $label) {
+                $backgroundColors[] = $palette[$index % count($palette)];
             }
         } else {
             /**
@@ -112,9 +123,9 @@ class TotalIndividualQuoteChart extends ChartWidget
             $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
             $datasetLabel = "Cotizaciones Activas ($year)";
 
-            // Generar colores aleatorios para cada mes
-            foreach ($labels as $label) {
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0x404040, 0xDDDDDD));
+            $palette = $this->getBarColors();
+            foreach ($labels as $index => $label) {
+                $backgroundColors[] = $palette[$index % count($palette)];
             }
         }
 
@@ -122,7 +133,7 @@ class TotalIndividualQuoteChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => $datasetLabel,
-                    'data' => $dataTrend->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray(),
+                    'data' => $dataTrend->map(fn (TrendValue $value) => (int) $value->aggregate)->toArray(),
                     'backgroundColor' => $backgroundColors,
                     'borderRadius' => 6,
                     'barPercentage' => 0.8,

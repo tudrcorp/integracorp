@@ -9,6 +9,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -99,6 +100,17 @@ class OperationsPanelProvider extends PanelProvider
                         return true;
                     })
                     ->action(fn() => redirect(route('filament.business.pages.dashboard'))),
+            ])
+            ->navigationGroups([
+                NavigationGroup::make()
+                    ->label('AFILIADOS')
+                    ->icon('heroicon-o-identification'),
+                NavigationGroup::make()
+                    ->label('INVENTARIO DIAGNOMOVIL')
+                    ->icon('heroicon-o-building-office-2'),
+                NavigationGroup::make()
+                    ->label('TELEMEDICINA')
+                    ->icon('heroicon-o-building-office-2'),
             ])
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');

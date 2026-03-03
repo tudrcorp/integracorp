@@ -32,6 +32,7 @@ class CorporateQuoteRequest extends Model
         'poblation',
         'ownerAccountManagers',
         'document_file',
+        'date_asignation'
     ];
 
     /**

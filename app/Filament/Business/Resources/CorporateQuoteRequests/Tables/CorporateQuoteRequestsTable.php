@@ -4,20 +4,22 @@ namespace App\Filament\Business\Resources\CorporateQuoteRequests\Tables;
 
 
 use App\Models\Agency;
-use Filament\Tables\Table;
+use App\Models\CorporateQuoteRequest;
+use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Illuminate\Support\Facades\Auth;
-use App\Models\CorporateQuoteRequest;
-use Filament\Actions\BulkActionGroup;
 use Filament\Support\Enums\Alignment;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class CorporateQuoteRequestsTable
 {
@@ -49,6 +51,11 @@ class CorporateQuoteRequestsTable
                     ->color('success')
                     ->icon('heroicon-s-building-library')
                     ->searchable(),
+                TextInputColumn::make('date_asignation')
+                    ->label('Fecha de asignación')
+                    ->placeholder('--/--/----')
+                    ->mask('99/99/9999')
+                    ->hidden(fn() => ! Auth::user()->is_business_admin),
 
                 TextColumn::make('code')
                     ->label('Código')
