@@ -29,12 +29,14 @@
     <meta name="twitter:description" content="Plataforma líder en integración de servicios médicos y tecnología digital.">
     <meta name="twitter:image" content="https://integracorp.tudrgroup.com/image/logoTDG.png">
 
-    <!-- Favicon -->
-    <link rel="icon" href="{{ asset('image/imagotipo.png') }}" type="image/x-icon">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('image/imagotipo.png') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('image/imagotipo.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('image/imagotipo.png') }}">
-    <link rel="manifest" href="/site.webmanifest">
+    <!-- Favicon e icono de app (Android / iOS) -->
+    <link rel="icon" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}" type="image/jpeg">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
+    <link rel="icon" type="image/jpeg" sizes="32x32" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
+    <link rel="icon" type="image/jpeg" sizes="16x16" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
 
 
 

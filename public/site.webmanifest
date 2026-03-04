@@ -1,0 +1,23 @@
+{
+    "name": "IntegraCorp",
+    "short_name": "IntegraCorp",
+    "description": "Sistema Integral de Gestión - Salud y Tecnología",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1e3a5f",
+    "theme_color": "#1e3a5f",
+    "icons": [
+        {
+            "src": "/image/ico_Andriod_IOS.jpeg",
+            "sizes": "192x192",
+            "type": "image/jpeg",
+            "purpose": "any"
+        },
+        {
+            "src": "/image/ico_Andriod_IOS.jpeg",
+            "sizes": "512x512",
+            "type": "image/jpeg",
+            "purpose": "any maskable"
+        }
+    ]
+}

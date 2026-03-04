@@ -52,7 +52,7 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/imagotipo.png'))
+            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
             ->sidebarCollapsibleOnDesktop()
             ->colors([
                 'primary' => '#005ca9',
