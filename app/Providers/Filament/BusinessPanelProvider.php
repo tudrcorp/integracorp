@@ -83,7 +83,7 @@ class BusinessPanelProvider extends PanelProvider
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
-            ->favicon(asset('image/imagotipo.png'))
+            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
             ->discoverResources(in: app_path('Filament/Business/Resources'), for: 'App\Filament\Business\Resources')
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\Filament\Business\Pages')
             ->pages([

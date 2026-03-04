@@ -58,7 +58,7 @@ class MasterPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/imagotipo.png'))
+            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
             ->discoverResources(in: app_path('Filament/Master/Resources'), for: 'App\Filament\Master\Resources')
             ->discoverPages(in: app_path('Filament/Master/Pages'), for: 'App\Filament\Master\Pages')
             ->pages([

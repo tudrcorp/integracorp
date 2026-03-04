@@ -49,7 +49,7 @@ class OperationsPanelProvider extends PanelProvider
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
-            ->favicon(asset('image/imagotipo.png'))
+            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
             ->discoverResources(in: app_path('Filament/Operations/Resources'), for: 'App\Filament\Operations\Resources')
             ->discoverPages(in: app_path('Filament/Operations/Pages'), for: 'App\Filament\Operations\Pages')
             ->pages([

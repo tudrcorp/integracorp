@@ -62,7 +62,7 @@ class AgentsPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/imagotipo.png'))
+            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
             ->discoverResources(in: app_path('Filament/Agents/Resources'), for: 'App\Filament\Agents\Resources')
             ->discoverPages(in: app_path('Filament/Agents/Pages'), for: 'App\Filament\Agents\Pages')
             ->pages([
