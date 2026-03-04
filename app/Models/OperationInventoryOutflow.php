@@ -12,14 +12,19 @@ class OperationInventoryOutflow extends Model
     protected $fillable = [
         'operation_inventory_id',
         'quantity',
-        'unit',
-        'type',
+        'operation_inventory_type_id',
         'created_by',
+        'type_outflow',
     ];
 
     // Relacion 1 a N con OperationInventory
     public function operationInventory()
     {
         return $this->belongsTo(OperationInventory::class);
+    }
+
+    public function operationInventoryType()
+    {
+        return $this->belongsTo(OperationInventoryType::class);
     }
 }

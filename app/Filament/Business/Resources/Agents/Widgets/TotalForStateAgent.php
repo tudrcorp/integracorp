@@ -55,10 +55,10 @@ class TotalForStateAgent extends ChartWidget
 
     protected function getData(): array
     {
-        $query = $this->getPageTableQuery();
+        $baseQuery = $this->getPageTableQuery();
 
-        $results = $query
-            ->reorder()
+        $results = DB::table(DB::raw('('.$baseQuery->toSql().') as agents'))
+            ->mergeBindings($baseQuery->getQuery())
             ->leftJoin('states', 'agents.state_id', '=', 'states.id')
             ->select(
                 DB::raw('COALESCE(states.definition, "Sin estado") as state_name'),

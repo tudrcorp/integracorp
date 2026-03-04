@@ -3,7 +3,7 @@
 namespace App\Filament\Operations\Resources\OperationInventoryOutflows\Pages;
 
 use App\Filament\Operations\Resources\OperationInventoryOutflows\OperationInventoryOutflowResource;
-use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 
 class ListOperationInventoryOutflows extends ListRecords
@@ -13,7 +13,12 @@ class ListOperationInventoryOutflows extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            // CreateAction::make(),
+            Action::make('back')
+                ->label('Volver')
+                ->color('gray')
+                ->icon('heroicon-o-arrow-left')
+                ->url('/operations/operation-inventories'),
         ];
     }
 }

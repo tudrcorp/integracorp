@@ -14,27 +14,42 @@ class OperationInventoryOutflowsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->heading('SALIDAS DE INVENTARIO')
+            ->description('Lista de salidas de inventario')
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('operation_inventory_id')
+                    ->prefix('INV-000')
+                    ->label('Inventario')
                     ->numeric()
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->searchable()
                     ->sortable(),
+                TextColumn::make('type_outflow')
+                    ->label('Tipo de salida')
+                    ->badge()
+                    ->color(fn($record) => $record->type_entry == 'PRIMERA CARGA' ? 'success' : 'warning')
+                    ->icon(fn($record) => $record->type_entry == 'PRIMERA CARGA' ? 'heroicon-o-clipboard-document-check' : 'heroicon-o-truck')
+                    ->iconColor(fn($record) => $record->type_entry == 'PRIMERA CARGA' ? 'success' : 'warning')
+                    ->searchable(),
                 TextColumn::make('quantity')
+                    ->label('Cantidad')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('unit')
-                    ->searchable(),
-                TextColumn::make('type')
-                    ->searchable(),
+                TextColumn::make('operationInventory.operationInventoryType.name')
+                    ->label('Tipo')
+                    ->badge()
+                    ->color('azulOscuro')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('created_by')
+                    ->label('Registrado por')
                     ->searchable(),
                 TextColumn::make('created_at')
+                    ->label('Fecha de registro')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 //

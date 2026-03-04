@@ -12,14 +12,27 @@ class OperationInventoryEntry extends Model
     protected $fillable = [
         'operation_inventory_id',
         'quantity',
-        'unit',
-        'type',
+        'operation_inventory_type_id',
         'created_by',
+        'type_entry',
     ];
 
-    // Relacion 1 a N
-    public function operationInventory()
+    // Relación N a 1 con OperationInventory
+    public function operationInventory(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(OperationInventory::class);
+    }
+
+    // Acceso al tipo a través del inventario (para usar en tablas/columnas)
+    public function operationInventoryType(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    {
+        return $this->hasOneThrough(
+            OperationInventoryType::class,
+            OperationInventory::class,
+            'operation_inventory_type_id',
+            'id',
+            'operation_inventory_id',
+            'id'
+        );
     }
 }
