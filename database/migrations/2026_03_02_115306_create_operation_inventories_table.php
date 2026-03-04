@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('operation_inventories', function (Blueprint $table) {
             $table->id();
-            $table->string('code');
+            $table->string('code')->unique();
             $table->string('name');
             $table->string('unit');
             $table->string('type');
@@ -22,6 +22,14 @@ return new class extends Migration
             $table->string('created_by');
             $table->string('updated_by')->nullable();
             $table->timestamps();
+
+            // Campos para medicamentos y productos de salud
+            $table->string('active_principle')->nullable()->comment('Principio activo (medicamentos)');
+            $table->string('concentration')->nullable()->comment('Concentración ej. 500mg, 10mg/ml');
+            $table->string('laboratory')->nullable()->comment('Laboratorio fabricante');
+            $table->unsignedInteger('min_stock')->default(10)->comment('Stock mínimo para alertas');
+            $table->boolean('is_active')->default(true);
+            $table->string('category')->nullable()->comment('Categoría: medicamento, insumo, equipo médico');
         });
     }
 

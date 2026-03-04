@@ -570,7 +570,7 @@ class AffiliatesRelationManager extends RelationManager
                         $record->save();
 
                     })
-                    ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
+                    ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()->departament)),
 
             ]);
     }
