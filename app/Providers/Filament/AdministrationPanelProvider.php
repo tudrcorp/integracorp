@@ -46,7 +46,7 @@ class AdministrationPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
+            ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Administration/Resources'), for: 'App\Filament\Administration\Resources')
             ->discoverPages(in: app_path('Filament/Administration/Pages'), for: 'App\Filament\Administration\Pages')
             ->pages([
@@ -69,23 +69,23 @@ class AdministrationPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->navigationGroups([
-            NavigationGroup::make()
-                ->label('ESTRUCTURA COMERCIAL')
-                ->icon('heroicon-o-building-office-2'),
-            NavigationGroup::make()
-                ->label('AFILIACIONES')
-                ->icon('heroicon-o-identification'),
-            NavigationGroup::make()
-                ->label('ADMINISTRACIÓN')
-                ->icon('heroicon-o-calculator'),
-            NavigationGroup::make()
-                ->label('RRHH')
-                ->icon('heroicon-o-user-group')
-                ->collapsed(),
-            NavigationGroup::make()
-                ->label('NOMINA')
-                ->icon('heroicon-o-currency-dollar')
-                ->collapsed(),
+                NavigationGroup::make()
+                    ->label('ESTRUCTURA COMERCIAL')
+                    ->icon('heroicon-o-building-office-2'),
+                NavigationGroup::make()
+                    ->label('AFILIACIONES')
+                    ->icon('heroicon-o-identification'),
+                NavigationGroup::make()
+                    ->label('ADMINISTRACIÓN')
+                    ->icon('heroicon-o-calculator'),
+                NavigationGroup::make()
+                    ->label('RRHH')
+                    ->icon('heroicon-o-user-group')
+                    ->collapsed(),
+                NavigationGroup::make()
+                    ->label('NOMINA')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->collapsed(),
             ])
             ->databaseNotifications()
             ->databaseTransactions()
@@ -120,8 +120,12 @@ class AdministrationPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            DuplicatedSession::class,
+                DuplicatedSession::class,
             ])
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn() => view('filament.menu-user')
+            )
             ->viteTheme('resources/css/filament/admin/theme.css');
     }
 }

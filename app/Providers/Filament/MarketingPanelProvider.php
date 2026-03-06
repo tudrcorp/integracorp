@@ -43,7 +43,7 @@ class MarketingPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
+            ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Marketing/Resources'), for: 'App\Filament\Marketing\Resources')
             ->discoverPages(in: app_path('Filament/Marketing/Pages'), for: 'App\Filament\Marketing\Pages')
             ->pages([
@@ -97,17 +97,17 @@ class MarketingPanelProvider extends PanelProvider
                     })
                     ->action(fn() => redirect(route('filament.business.pages.dashboard'))),
             ])
-            // ->renderHook(
-            //     PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-            //     fn() => view('filament.return-modulo-negocios')
-            // )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn() => view('filament.menu-user')
+            )
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(
                         MyImages::make()
                             ->directory('backgroundMarketingPanelLogin')
                     ),
-                ])
+            ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->navigationGroups([
                 NavigationGroup::make()
