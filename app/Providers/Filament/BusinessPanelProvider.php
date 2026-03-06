@@ -53,7 +53,7 @@ class BusinessPanelProvider extends PanelProvider
                 'primary'   => '#4c566a',
             ])
             ->navigationGroups([
-                
+
                 NavigationGroup::make()
                     ->label('ESTRUCTURA COMERCIAL')
                     ->icon('heroicon-o-building-office-2'),
@@ -83,7 +83,7 @@ class BusinessPanelProvider extends PanelProvider
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
-            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
+            ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Business/Resources'), for: 'App\Filament\Business\Resources')
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\Filament\Business\Pages')
             ->pages([
@@ -112,7 +112,7 @@ class BusinessPanelProvider extends PanelProvider
                         }
                         return true;
                     })
-                    ->action(fn () => redirect(route('filament.administration.pages.dashboard'))),
+                    ->action(fn() => redirect(route('filament.administration.pages.dashboard'))),
                 Action::make('Operaciones')
                     ->label('OPERACIONES')
                     ->icon('heroicon-c-server-stack')
@@ -123,8 +123,8 @@ class BusinessPanelProvider extends PanelProvider
                             return false;
                         }
                         return true;
-                })
-                    ->action(fn () => redirect(route('filament.operations.pages.dashboard'))),
+                    })
+                    ->action(fn() => redirect(route('filament.operations.pages.dashboard'))),
                 Action::make('Marketing')
                     ->label('MARKETING')
                     ->icon('heroicon-o-cursor-arrow-rays')
@@ -135,8 +135,8 @@ class BusinessPanelProvider extends PanelProvider
                             return false;
                         }
                         return true;
-                })
-                    ->action(fn () => redirect(route('filament.marketing.pages.dashboard'))),
+                    })
+                    ->action(fn() => redirect(route('filament.marketing.pages.dashboard'))),
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -165,15 +165,15 @@ class BusinessPanelProvider extends PanelProvider
                             ->directory('backgroundBusenissPanelLogin')
                     ),
             ])
-            ->renderHook(
-                PanelsRenderHook::TOPBAR_END,
-                fn() => view('filament.name-user')
-            )
             // ->renderHook(
-            //     PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-            //     fn() => view('filament.menu-user')
+            //     PanelsRenderHook::TOPBAR_END,
+            //     fn() => view('filament.name-user')
             // )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn() => view('filament.menu-user')
+            )
             ->viteTheme('resources/css/filament/admin/theme.css');
-            // ->defaultThemeMode(ThemeMode::Light);
+        // ->defaultThemeMode(ThemeMode::Light);
     }
 }

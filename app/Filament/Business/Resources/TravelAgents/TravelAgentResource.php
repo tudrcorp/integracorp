@@ -53,9 +53,4 @@ class TravelAgentResource extends Resource
         ];
     }
 
-    public static function canAccess(): bool
-    {
-        // Deshabilitado temporalmente por mantenimiento
-        return false;
-    }
 }

@@ -30,12 +30,12 @@
     <meta name="twitter:image" content="https://integracorp.tudrgroup.com/image/logoTDG.png">
 
     <!-- Favicon e icono de app (Android / iOS) -->
-    <link rel="icon" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}" type="image/jpeg">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
-    <link rel="apple-touch-icon" sizes="152x152" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
-    <link rel="apple-touch-icon" sizes="120x120" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
-    <link rel="icon" type="image/jpeg" sizes="32x32" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
-    <link rel="icon" type="image/jpeg" sizes="16x16" href="{{ asset('image/ico_Andriod_IOS.jpeg') }}">
+    <link rel="icon" href="{{ asset('image/ico_Android_IOS.png') }}" type="image/jpeg">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('image/ico_Android_IOS.png') }}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ asset('image/ico_Android_IOS.png') }}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ asset('image/ico_Android_IOS.png') }}">
+    <link rel="icon" type="image/jpeg" sizes="32x32" href="{{ asset('image/ico_Android_IOS.png') }}">
+    <link rel="icon" type="image/jpeg" sizes="16x16" href="{{ asset('image/ico_Android_IOS.png') }}">
     <link rel="manifest" href="{{ asset('site.webmanifest') }}">
 
 

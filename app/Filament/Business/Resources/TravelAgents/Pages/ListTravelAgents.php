@@ -10,10 +10,15 @@ class ListTravelAgents extends ListRecords
 {
     protected static string $resource = TravelAgentResource::class;
 
+    protected static ?string $title = 'Agentes De Viaje';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            // CreateAction::make()
+            //     ->label('Crear Agente De Viaje')
+            //     ->color('primary')
+            //     ->icon('heroicon-o-plus'),
         ];
     }
 }

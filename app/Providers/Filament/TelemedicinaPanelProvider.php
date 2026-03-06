@@ -52,7 +52,7 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
+            ->favicon(asset('image/ico_Android_IOS.png'))
             ->sidebarCollapsibleOnDesktop()
             ->colors([
                 'primary' => '#005ca9',
@@ -84,7 +84,7 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->authMiddleware([
                 Authenticate::class,
-            DuplicatedSession::class,
+                DuplicatedSession::class,
             ])
             ->registerErrorNotification(
                 title: 'ERROR DE EJECUCIÓN',
@@ -96,7 +96,7 @@ class TelemedicinaPanelProvider extends PanelProvider
                     ->icon('healthicons-f-doctor-male')
                     ->color('no-urgente')
                     ->url(function () {
-                        if(Auth::user()->doctor_id != NULL){
+                        if (Auth::user()->doctor_id != NULL) {
                             return TelemedicineDoctorResource::getUrl('view', ['record' => Auth::user()->doctor_id], panel: 'telemedicina');
                         }
                         return TelemedicineDoctorResource::getUrl('create', panel: 'telemedicina');

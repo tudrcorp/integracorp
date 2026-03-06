@@ -62,7 +62,7 @@ class AgentsPanelProvider extends PanelProvider
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
+            ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Agents/Resources'), for: 'App\Filament\Agents\Resources')
             ->discoverPages(in: app_path('Filament/Agents/Pages'), for: 'App\Filament\Agents\Pages')
             ->pages([
@@ -108,7 +108,7 @@ class AgentsPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('ZONA DE DESCARGA')
                     ->icon('heroicon-c-arrow-down-tray'),
-                
+
             ])
             ->registerErrorNotification(
                 title: 'ERROR DE EJECUCIÓN',
@@ -142,7 +142,5 @@ class AgentsPanelProvider extends PanelProvider
             ])
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->viteTheme('resources/css/filament/agents/theme.css');
-
-
     }
-}   
+}

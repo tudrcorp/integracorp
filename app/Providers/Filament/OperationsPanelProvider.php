@@ -23,6 +23,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
@@ -49,7 +50,7 @@ class OperationsPanelProvider extends PanelProvider
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
-            ->favicon(asset('image/ico_Andriod_IOS.jpeg'))
+            ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Operations/Resources'), for: 'App\Filament\Operations\Resources')
             ->discoverPages(in: app_path('Filament/Operations/Pages'), for: 'App\Filament\Operations\Pages')
             ->pages([
@@ -93,7 +94,7 @@ class OperationsPanelProvider extends PanelProvider
                     ->icon('heroicon-o-building-office-2')
                     ->color('warning')
                     ->hidden(function () {
-                        $user = auth()->user()->departament;
+                        $user = Auth::user()->departament;
                         if (in_array('SUPERADMIN', $user)) {
                             return false;
                         }
@@ -111,7 +112,17 @@ class OperationsPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('TELEMEDICINA')
                     ->icon('heroicon-o-building-office-2'),
+                NavigationGroup::make()
+                    ->label('COORDINACIÓN DE SERVICIOS')
+                    ->icon('heroicon-o-square-3-stack-3d'),
+                NavigationGroup::make()
+                    ->label('CONFIGURACION')
+                    ->icon('heroicon-o-cog-8-tooth'),
             ])
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn() => view('filament.menu-user')
+            )
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');
     }
