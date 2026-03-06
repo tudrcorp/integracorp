@@ -1,23 +1,16 @@
 <?php
 
-namespace App\Filament\Business\Resources\Agencies\Widgets;
+namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
-use App\Models\Agency;
+use App\Models\ProspectAgent;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\Cache;
 
-class AgencyGeoChart extends ChartWidget
+class TopRegisterProspectForState extends ChartWidget
 {
-    protected ?string $heading = 'Distribución de Agencias por Estado';
+    protected ?string $heading = 'Prospectos registrados por estado';
 
-    protected ?string $description = 'Análisis porcentual de agencias activas por estado.';
-
-    protected static ?int $sort = 2;
-
-    protected ?string $pollingInterval = null;
-
-    protected int|string|array $columnSpan = 'full';
+    protected ?string $description = 'Distribución de prospectos por estado/región.';
 
     protected ?string $maxHeight = '400px';
 
@@ -28,16 +21,13 @@ class AgencyGeoChart extends ChartWidget
 
     protected function getData(): array
     {
-        $distribution = Cache::remember('agency_geo_distribution:v10', 3600, function () {
-            return Agency::query()
-                ->join('states', 'agencies.state_id', '=', 'states.id')
-                ->selectRaw('states.definition as state_name, COUNT(*) as total')
-                ->where('agencies.status', 'ACTIVO')
-                ->groupBy('states.definition')
-                ->orderByDesc('total')
-                ->pluck('total', 'state_name')
-                ->toArray();
-        });
+        $distribution = ProspectAgent::query()
+            ->join('states', 'prospect_agents.state_id', '=', 'states.id')
+            ->selectRaw('states.definition as state_name, COUNT(*) as total')
+            ->groupBy('states.definition')
+            ->orderByDesc('total')
+            ->pluck('total', 'state_name')
+            ->toArray();
 
         $vibrantPalette = [
             '#FF2D55', // Rosa Apple
@@ -65,11 +55,11 @@ class AgencyGeoChart extends ChartWidget
             'labels' => $labels,
             'datasets' => [
                 [
-                    'label' => 'Agencias Activas',
+                    'label' => 'Prospectos',
                     'data' => $data,
                     'backgroundColor' => $backgroundColors,
                     'borderColor' => 'transparent',
-                    'hoverOffset' => 35, // Aumentado para resaltar más la pieza al frente
+                    'hoverOffset' => 35,
                     'hoverBorderWidth' => 3,
                     'hoverBorderColor' => '#ffffff',
                     'borderRadius' => 4,
@@ -86,7 +76,7 @@ class AgencyGeoChart extends ChartWidget
             maintainAspectRatio: false,
             cutout: '65%',
             layout: {
-                padding: 40 // Espacio extra para permitir que el segmento resalte sin cortarse
+                padding: 40
             },
             plugins: {
                 legend: {
@@ -113,11 +103,10 @@ class AgencyGeoChart extends ChartWidget
                     boxPadding: 6,
                     usePointStyle: true,
                     callbacks: {
-                        label: (context) => ` ${context.label}: ${context.raw} agencias `
+                        label: (context) => ` ${context.label}: ${context.raw} prospecto(s) (${context.formattedValue}%)`
                     }
                 }
             },
-            // Configuraciones de interacción para el resaltado
             hover: {
                 mode: 'nearest',
                 intersect: true
@@ -128,7 +117,6 @@ class AgencyGeoChart extends ChartWidget
                 duration: 1500,
                 easing: 'easeOutQuart'
             },
-            // Efecto de énfasis al posicionar el cursor
             onHover: (event, chartElement) => {
                 event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
             }
