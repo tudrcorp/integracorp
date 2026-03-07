@@ -7,13 +7,29 @@ use Filament\AvatarProviders\Contracts;
 use Filament\Facades\Filament;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class BoringAvatarsProvider implements Contracts\AvatarProvider
 {
     public function get(Model|Authenticatable $record): string
     {
+        $avatarPath = $this->resolveAvatarPath($record);
+
+        if ($avatarPath !== null) {
+            $url = $this->buildAvatarUrl($avatarPath);
+
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
+        return $this->getInitialsAvatarUrl($record);
+    }
+
+    protected function resolveAvatarPath(Model|Authenticatable $record): ?string
+    {
         if ($record instanceof RrhhColaborador && filled($record->avatar)) {
-            return asset('storage/'.$record->avatar);
+            return $record->avatar;
         }
 
         $userId = $record instanceof Authenticatable
@@ -26,10 +42,32 @@ class BoringAvatarsProvider implements Contracts\AvatarProvider
                 ->first();
 
             if ($colaborador && filled($colaborador->avatar)) {
-                return asset('storage/'.$colaborador->avatar);
+                return $colaborador->avatar;
             }
         }
 
+        return null;
+    }
+
+    protected function buildAvatarUrl(string $path): ?string
+    {
+        $path = ltrim($path, '/');
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $disk = Storage::disk('public');
+
+        if (! $disk->exists($path)) {
+            return null;
+        }
+
+        return url('storage/'.$path);
+    }
+
+    protected function getInitialsAvatarUrl(Model|Authenticatable $record): string
+    {
         $name = str(Filament::getNameForDefaultAvatar($record))
             ->trim()
             ->explode(' ')
