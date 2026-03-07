@@ -21,6 +21,7 @@ use App\Models\DataNotification;
 use App\Models\DetailIndividualQuote;
 use App\Models\Fee;
 use App\Models\Guest;
+use App\Models\IndividualQuote;
 use App\Models\Sale;
 use App\Models\State;
 use App\Models\TelemedicinePatientMedications;
@@ -1447,16 +1448,6 @@ Route::prefix('api')->name('api.')->group(function () {
  */
 
 Route::get('/ldi', function () {
-    // dd(Str::uuid7());
-    // Ejemplo de generación de link firmado con el UUID generado
-    // $link = URL::temporarySignedRoute(
-    //     'ldi',
-    //     now()->addMinutes(30),
-    //     ['transaction_id' => Str::uuid7()] // Aquí va el UUID v7
-    // );
-
-    
-    // dd($link);
     return view('link-debito-inmediato');
 });
 
