@@ -85,7 +85,7 @@
                 title="Negocios"
                 aria-label="Ir a Negocios"
                 @mouseenter="typeWriter('Negocios')"
-                class="menu-btn-negocios group flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
+                class="menu-btn-negocios group flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
                     class="size-5 text-white"
@@ -100,13 +100,15 @@
                 title="Administración"
                 aria-label="Ir a Administración"
                 @mouseenter="typeWriter('Administración')"
-                class="menu-btn-admin group flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
+                class="menu-btn-admin group flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                    class="size-5 text-white"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-white">
+
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
+
+
             </a>
 
             {{-- Marketing - paleta TotalSaleForEstructureChart (#0891b2, #0e7490) --}}
@@ -115,7 +117,7 @@
                 title="Marketing"
                 aria-label="Ir a Marketing"
                 @mouseenter="typeWriter('Marketing')"
-                class="menu-btn-marketing group flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
+                class="menu-btn-marketing group flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
                     class="size-5 text-white"
@@ -130,13 +132,17 @@
                 title="Operaciones"
                 aria-label="Ir a Operaciones"
                 @mouseenter="typeWriter('Operaciones')"
-                class="menu-btn-operations group flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
+                class="menu-btn-operations group flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 hover:opacity-90"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"
-                    class="size-5 text-white"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" />
+
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-white">
+
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 0 1-1.125-1.125v-3.75ZM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-8.25ZM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-2.25Z" />
                 </svg>
+
+
+
+
             </a>
         </div>
     </nav>

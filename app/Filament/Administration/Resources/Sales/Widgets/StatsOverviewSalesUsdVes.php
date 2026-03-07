@@ -23,9 +23,12 @@ class StatsOverviewSalesUsdVes extends StatsOverviewWidget
     protected function getStats(): array
     {
         $now = Carbon::now();
+        $startOfYear = $now->copy()->startOfYear();
+        $endOfYear = $now->copy()->endOfYear();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
         $nombreMes = ucfirst($now->translatedFormat('F'));
+        $anioActual = $now->year;
 
         // Definición de métricas
         $metrics = [
@@ -58,25 +61,28 @@ class StatsOverviewSalesUsdVes extends StatsOverviewWidget
             ],
         ];
 
-        return array_map(function ($metric) use ($startOfMonth, $endOfMonth, $nombreMes) {
-            // 1. Cálculo Histórico (Total)
-            $totalHistorico = (clone $this->getPageTableQuery())->where('is_payment_link', $metric['is_payment_link'])->sum($metric['column']) ?? 0;
+        return array_map(function ($metric) use ($startOfYear, $endOfYear, $startOfMonth, $endOfMonth, $nombreMes, $anioActual) {
+            // Query base con filtros de la tabla aplicados (InteractsWithPageTable)
+            $baseQuery = fn () => (clone $this->getPageTableQuery())->where('is_payment_link', $metric['is_payment_link']);
 
-            // 2. Cálculo Mes en Curso (Independiente)
-            $totalMesActual = (clone $this->getPageTableQuery())
-                ->where('is_payment_link', $metric['is_payment_link'])
+            // 1. Total año en curso (respeta filtros de la tabla)
+            $totalAnioActual = $baseQuery()
+                ->whereBetween('created_at', [$startOfYear, $endOfYear])
+                ->sum($metric['column']) ?? 0;
+
+            // 2. Total mes en curso (respeta filtros de la tabla)
+            $totalMesActual = $baseQuery()
                 ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->sum($metric['column']) ?? 0;
 
-            $valHist = $metric['symbol'] . ' ' . number_format($totalHistorico, 2, ',', '.');
-            $valMes = $metric['symbol'] . ' ' . number_format($totalMesActual, 2, ',', '.');
+            $valAnio = $metric['symbol'].' '.number_format($totalAnioActual, 2, ',', '.');
+            $valMes = $metric['symbol'].' '.number_format($totalMesActual, 2, ',', '.');
 
-            // Retornamos el Stat con HTML limpio para evitar que se oculten los datos
-            return Stat::make($metric['label'], $valHist)
+            return Stat::make($metric['label'], $valAnio)
                 ->description(new HtmlString("
                     <div class='flex flex-col mt-1'>
                         <span class='text-xs font-medium text-gray-500 dark:text-gray-400'>
-                            TOTAL HISTÓRICO
+                            TOTAL AÑO {$anioActual}
                         </span>
                         <div class='flex items-center gap-2.5 mt-1'>
                             <span class='px-2 py-0.5 text-xs font-bold rounded-full bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'>
@@ -92,7 +98,7 @@ class StatsOverviewSalesUsdVes extends StatsOverviewWidget
                 ->color($metric['color'])
                 ->extraAttributes([
                     'class' => 'cursor-default transition-all duration-300 hover:ring-2 hover:ring-primary-500',
-                    'style' => 'border-radius: 16px; min-height: 120px;'
+                    'style' => 'border-radius: 16px; min-height: 120px;',
                 ]);
         }, $metrics);
     }
