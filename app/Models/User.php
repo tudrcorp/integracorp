@@ -3,20 +3,18 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Filament\Panel;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Notifications\Notifiable;
-
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Filament\Panel\Concerns\HasAvatars;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasAvatars;
+    use HasAvatars, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -49,7 +47,7 @@ class User extends Authenticatable implements FilamentUser
         'created_by',
         'doctor_id',
         'phone',
-        
+
     ];
 
     /**
@@ -71,14 +69,15 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'departament'       => 'array',
+            'password' => 'hashed',
+            'departament' => 'array',
         ];
     }
 
     public function getFilamentAvatarUrl(): ?string
     {
-        $this->avatar = 'https://ui-avatars.com/api/?name=' . $this->name . '&color=FFFFFF&background=030712';
+        $this->avatar = 'https://ui-avatars.com/api/?name='.$this->name.'&color=FFFFFF&background=030712';
+
         return $this->avatar; // Or any other logic to get the avatar URL
     }
 
@@ -101,7 +100,7 @@ class User extends Authenticatable implements FilamentUser
         if ($panel->getId() === 'admin') {
             return str_ends_with($this->email, '@tudrencasa.com') && $this->is_admin;
         }
-        
+
         if ($panel->getId() === 'agents') {
             return $this->is_agent &&
                 $this->status = 'ACTIVO';
@@ -123,29 +122,29 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($panel->getId() === 'telemedicina') {
-            return  in_array('TELEMEDICINA', $this->departament) == 1 && 
+            return in_array('TELEMEDICINA', $this->departament) == 1 &&
                     $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'marketing') {
-            return  in_array('MARKETING', $this->departament) == 1 && 
+            return in_array('MARKETING', $this->departament) == 1 &&
                     $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'business') {
-            return   str_ends_with($this->email, '@tudrencasa.com') &&
-                     in_array('NEGOCIOS', $this->departament) == 1 && 
+            return str_ends_with($this->email, '@tudrencasa.com') &&
+                     in_array('NEGOCIOS', $this->departament) == 1 &&
                      $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'administration') {
-            return  str_ends_with($this->email, '@tudrencasa.com') && 
-                    in_array('ADMINISTRACION', $this->departament) == 1 && 
+            return str_ends_with($this->email, '@tudrencasa.com') &&
+                    in_array('ADMINISTRACION', $this->departament) == 1 &&
                     $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'operations') {
-            return  str_ends_with($this->email, '@tudrencasa.com') &&
+            return str_ends_with($this->email, '@tudrencasa.com') &&
                 in_array('OPERACIONES', $this->departament) == 1 &&
                 $this->status = 'ACTIVO';
         }
@@ -154,10 +153,15 @@ class User extends Authenticatable implements FilamentUser
 
     }
 
-    // protected static function booted(): void
-    // {
-    //     static::creating(function (User $user) {
-    //         $user->is_admin = 'user';
-    //     });
-    // }
+    /**
+     * Permisos asignados directamente al usuario (tabla user_permissions).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<Permission, $this>
+     */
+    public function permissions(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'user_permissions')
+            ->withPivot(['created_by', 'updated_by'])
+            ->withTimestamps();
+    }
 }
