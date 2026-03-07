@@ -33,6 +33,9 @@ class RrhhColaborador extends Model
         "status",
         "created_by",
         "updated_by",
+        "avatar",
+        "sueldo",
+        "user_id",
     ];
 
     public function departamento()
