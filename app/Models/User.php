@@ -9,6 +9,7 @@ use Filament\Panel\Concerns\HasAvatars;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class User extends Authenticatable implements FilamentUser
@@ -76,9 +77,23 @@ class User extends Authenticatable implements FilamentUser
 
     public function getFilamentAvatarUrl(): ?string
     {
-        $this->avatar = 'https://ui-avatars.com/api/?name='.$this->name.'&color=FFFFFF&background=030712';
+        $colaborador = RrhhColaborador::query()
+            ->where('user_id', $this->getAuthIdentifier())
+            ->first();
 
-        return $this->avatar; // Or any other logic to get the avatar URL
+        if ($colaborador && filled($colaborador->avatar)) {
+            $path = ltrim($colaborador->avatar, '/');
+
+            if (! str_starts_with($path, 'http://') && ! str_starts_with($path, 'https://')) {
+                if (Storage::disk('public')->exists($path)) {
+                    return url('storage/'.$path);
+                }
+            } else {
+                return $path;
+            }
+        }
+
+        return 'https://ui-avatars.com/api/?name='.urlencode($this->name ?? 'U').'&color=FFFFFF&background=030712';
     }
 
     /**
