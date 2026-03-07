@@ -5,6 +5,8 @@ namespace App\Filament\Administration\Resources\RrhhColaboradors\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
@@ -14,87 +16,148 @@ class RrhhColaboradorsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->heading('COLABORADORES')
+            ->description('Registro de colaboradores de la organización')
+            ->defaultSort('fullName')
             ->columns([
+                ImageColumn::make('avatar')
+                    ->label('')
+                    ->circular()
+                    ->disk('public')
+                    ->visibility('public')
+                    ->imageHeight(72)
+                    ->imageWidth(72)
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->fullName ?? 'N').'&background=94a3b8&color=fff&size=128'),
+
                 TextColumn::make('fullName')
-                    ->label('Nombre y Apellido')
-                    ->searchable(),
-                TextColumn::make('departmento_id')
+                    ->label('Nombre completo')
+                    ->searchable()
+                    ->sortable()
+                    ->weight(FontWeight::Bold)
+                    ->icon('heroicon-m-user')
+                    ->badge()
+                    ->color('primary'),
+
+                TextColumn::make('departamento.description')
                     ->label('Departamento')
-                    ->searchable(),
-                TextColumn::make('cargo_id')
+                    ->searchable(['departamento.description'])
+                    ->sortable()
+                    ->badge()
+                    ->icon('heroicon-m-building-office-2')
+                    ->color('gray'),
+
+                TextColumn::make('cargo.description')
                     ->label('Cargo')
-                    ->searchable(),
+                    ->searchable(['cargo.description'])
+                    ->sortable()
+                    ->badge()
+                    ->icon('heroicon-m-briefcase')
+                    ->color('info'),
+
                 TextColumn::make('cedula')
                     ->label('Cédula')
-                    ->searchable(),
+                    ->searchable()
+                    ->icon('heroicon-m-identification'),
+
                 TextColumn::make('sexo')
                     ->label('Sexo')
-                    ->searchable(),
+                    ->searchable()
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Masculino' => 'info',
+                        'Femenino' => 'warning',
+                        default => 'gray',
+                    }),
+
                 TextColumn::make('fechaNacimiento')
-                    ->label('Fecha de Nacimiento')
-                    ->searchable(),
+                    ->label('F. Nacimiento')
+                    ->sortable()
+                    ->icon('heroicon-m-cake'),
+
                 TextColumn::make('fechaIngreso')
-                    ->label('Fecha de Ingreso')
-                    ->searchable(),
+                    ->label('F. Ingreso')
+                    ->sortable()
+                    ->icon('heroicon-m-calendar'),
+
                 TextColumn::make('telefono')
                     ->label('Teléfono')
-                    ->searchable(),
+                    ->searchable()
+                    ->icon('heroicon-m-phone'),
+
                 TextColumn::make('telefonoCorporativo')
-                    ->label('Teléfono Corporativo')
-                    ->searchable(),
+                    ->label('Tel. Corporativo')
+                    ->searchable()
+                    ->icon('heroicon-m-phone'),
+
                 TextColumn::make('emailCorporativo')
                     ->label('Email Corporativo')
-                    ->searchable(),
-                TextColumn::make('emailAlternativo')
-                    ->label('Email Alternativo')
-                    ->searchable(),
+                    ->searchable()
+                    ->icon('heroicon-m-envelope')
+                    ->copyable(),
+
                 TextColumn::make('emailPersonal')
                     ->label('Email Personal')
-                    ->searchable(),
+                    ->searchable()
+                    ->icon('heroicon-m-envelope'),
+
                 TextColumn::make('direccion')
                     ->label('Dirección')
-                    ->searchable(),
+                    ->searchable()
+                    ->icon('heroicon-m-map-pin')
+                    ->limit(30)
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('nroHijos')
                     ->label('Hijos')
-                    ->searchable(),
-                TextColumn::make('nroHijoDependiente')
-                    ->label('Hijos Dependientes')
-                    ->searchable(),
+                    ->badge()
+                    ->color('gray'),
+
                 TextColumn::make('tallaCamisa')
-                    ->label('Talla de Camisa')
-                    ->searchable(),
-                TextColumn::make('banck_id')
-                    ->label('Banco')
-                    ->searchable(),
+                    ->label('Talla')
+                    ->badge()
+                    ->color('success'),
+
                 TextColumn::make('nroCta')
-                    ->label('Nro de Cuenta')
-                    ->searchable(),
-                TextColumn::make('codigoCta')
-                    ->label('Código de Cuenta')
-                    ->searchable(),
+                    ->label('Nº Cuenta')
+                    ->searchable()
+                    ->icon('heroicon-m-credit-card')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('tipoCta')
-                    ->label('Tipo de Cuenta')
-                    ->searchable(),
+                    ->label('Tipo Cuenta')
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextInputColumn::make('sueldo')
-                    ->label('Sueldo US$')
+                    ->label('Sueldo')
+                    ->prefix('US$ ')
                     ->prefixIcon('heroicon-o-currency-dollar')
                     ->rules(['numeric'])
                     ->validationMessages([
                         'numeric' => 'El sueldo debe ser un número',
                     ])
                     ->searchable(),
+
                 TextColumn::make('status')
-                    ->searchable(),
-                TextColumn::make('created_by')
-                    ->searchable(),
-                TextColumn::make('updated_by')
-                    ->searchable(),
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'activo' => 'success',
+                        'inactivo' => 'danger',
+                        default => 'gray',
+                    })
+                    ->icon(fn (string $state): string => $state === 'activo' ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle'),
+
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Creado')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Actualizado')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
