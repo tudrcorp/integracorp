@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
@@ -102,6 +103,7 @@ class OperationsPanelProvider extends PanelProvider
                     })
                     ->action(fn() => redirect(route('filament.business.pages.dashboard'))),
             ])
+            ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label('AFILIADOS')

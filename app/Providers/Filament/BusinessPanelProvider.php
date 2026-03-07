@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Business\Resources\Plans\PlanResource;
 use App\Filament\Pages\AccountManagerDash;
 use App\Http\Middleware\DuplicatedSession;
@@ -23,11 +24,9 @@ use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
-use function Filament\Support\original_request;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +36,8 @@ use SolutionForest\FilamentHeaderSelect\Components\HeaderSelect;
 use SolutionForest\FilamentHeaderSelect\HeaderSelectPlugin;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
+
+use function Filament\Support\original_request;
 
 class BusinessPanelProvider extends PanelProvider
 {
@@ -173,6 +174,7 @@ class BusinessPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => view('filament.menu-user')
             )
+            ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->viteTheme('resources/css/filament/admin/theme.css');
         // ->defaultThemeMode(ThemeMode::Light);
     }
