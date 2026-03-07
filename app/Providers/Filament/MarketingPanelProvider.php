@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -108,6 +109,7 @@ class MarketingPanelProvider extends PanelProvider
                             ->directory('backgroundMarketingPanelLogin')
                     ),
             ])
+            ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->navigationGroups([
                 NavigationGroup::make()
