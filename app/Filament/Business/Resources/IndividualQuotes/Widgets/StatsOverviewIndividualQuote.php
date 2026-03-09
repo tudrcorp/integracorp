@@ -35,35 +35,33 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
          * Obtenemos el conteo total histórico y el conteo del mes actual para cada plan.
          */
         $plans = [
-            '1' => ['label' => 'COTIZACIONES PLAN INICIAL', 'color' => 'planIncial', 'border' => '#9ce1ff', 'icon' => 'heroicon-m-check-badge'],
-            '2' => ['label' => 'COTIZACIONES PLAN IDEAL', 'color' => 'planIdeal', 'border' => '#25b4e7', 'icon' => 'heroicon-m-star'],
-            '3' => ['label' => 'COTIZACIONES PLAN ESPECIAL', 'color' => 'planEspecial', 'border' => '#2d89ca', 'icon' => 'heroicon-m-sparkles'],
-            'CM' => ['label' => 'COTIZACIONES MULTIPLAN', 'color' => 'planCorp', 'border' => '#3b82f6', 'icon' => 'heroicon-m-building-office'],
+            '1' => [
+                'label' => 'COTIZACIONES PLAN INICIAL',
+                'color' => 'planIncial',
+                'icon' => 'heroicon-m-check-badge',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500',
+            ],
+            '2' => [
+                'label' => 'COTIZACIONES PLAN IDEAL',
+                'color' => 'planIdeal',
+                'icon' => 'heroicon-m-star',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-primary-200/60 dark:border-primary-700/50 bg-gradient-to-br from-primary-50/90 via-white to-primary-50/50 dark:from-primary-950/40 dark:via-gray-900/80 dark:to-primary-900/20 hover:shadow-lg hover:shadow-primary-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-primary-400/50 hover:border-primary-300 dark:hover:border-primary-500',
+            ],
+            '3' => [
+                'label' => 'COTIZACIONES PLAN ESPECIAL',
+                'color' => 'planEspecial',
+                'icon' => 'heroicon-m-sparkles',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-warning-200/60 dark:border-warning-700/50 bg-gradient-to-br from-warning-50/90 via-white to-warning-50/50 dark:from-warning-950/40 dark:via-gray-900/80 dark:to-warning-900/20 hover:shadow-lg hover:shadow-warning-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-warning-400/50 hover:border-warning-300 dark:hover:border-warning-500',
+            ],
+            'CM' => [
+                'label' => 'COTIZACIONES MULTIPLAN',
+                'color' => 'planCorp',
+                'icon' => 'heroicon-m-building-office',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500',
+            ],
         ];
 
         $stats = [];
-
-        /**
-         * Configuración de estilos iOS Premium
-         */
-        $iosStyles = '
-            group cursor-pointer transition-all duration-500 ease-in-out 
-            rounded-xl border-b-4 antialiased
-            hover:border-[#10b981] dark:hover:border-[#34c759]
-            hover:shadow-[inset_0_-50px_40px_-20px_rgba(16,185,129,0.15)] 
-            dark:hover:shadow-[inset_0_-50px_40px_-20px_rgba(52,199,89,0.25)] 
-            hover:scale-[1.01] 
-            [&_*]:transition-all [&_*]:duration-500 
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:scale-110 
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#059669]
-            dark:group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#34c759]
-            group-hover:[&_.fi-wi-stats-overview-stat-label]:blur-[1.5px] 
-            group-hover:[&_.fi-wi-stats-overview-stat-label]:opacity-60 
-            group-hover:[&_svg]:blur-[1.5px] 
-            group-hover:[&_svg]:opacity-40 
-            group-hover:[&_.fi-wi-stats-overview-stat-description]:blur-[1.5px] 
-            group-hover:[&_.fi-wi-stats-overview-stat-description]:opacity-60
-        ';
 
         foreach ($plans as $key => $config) {
             $total = IndividualQuote::where('plan', $key)->count();
@@ -77,7 +75,8 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
                 ->descriptionIcon($config['icon'])
                 ->color($config['color'])
                 ->extraAttributes([
-                    'class' => $iosStyles." border-[{$config['border']}]",
+                    'class' => $config['cardClass'],
+                    'style' => 'min-height: 130px;',
                     'x-data' => "{ valor: '{$total}', desc: 'Histórico Total' }",
                     '@mouseenter' => "valor = '{$mes}'; desc = 'Emitidas en {$mesActualNombre}'",
                     '@mouseleave' => "valor = '{$total}'; desc = 'Histórico Total'",

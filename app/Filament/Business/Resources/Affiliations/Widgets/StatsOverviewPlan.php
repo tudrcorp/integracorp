@@ -2,12 +2,11 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
-use App\Models\Affiliation;
-use Filament\Widgets\StatsOverviewWidget;
-use Filament\Widgets\StatsOverviewWidget\Stat;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 use Carbon\Carbon;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
+use Filament\Widgets\StatsOverviewWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;
 
 class StatsOverviewPlan extends StatsOverviewWidget
@@ -53,35 +52,18 @@ class StatsOverviewPlan extends StatsOverviewWidget
             ],
         ];
 
-        /**
-         * Configuración de estilos iOS Premium
-         */
-        $iosStyles = '
-            group cursor-pointer transition-all duration-500 ease-in-out 
-            rounded-xl border-b-4 antialiased
-            hover:border-[#10b981] dark:hover:border-[#34c759]
-            hover:shadow-[inset_0_-50px_40px_-20px_rgba(16,185,129,0.15)] 
-            dark:hover:shadow-[inset_0_-50px_40px_-20px_rgba(52,199,89,0.25)] 
-            hover:scale-[1.01] 
-            [&_*]:transition-all [&_*]:duration-500 
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:scale-110 
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#059669]
-            dark:group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#34c759]
-            group-hover:[&_.fi-wi-stats-overview-stat-label]:blur-[1.5px] 
-            group-hover:[&_.fi-wi-stats-overview-stat-label]:opacity-60 
-            group-hover:[&_svg]:blur-[1.5px] 
-            group-hover:[&_svg]:opacity-40 
-            group-hover:[&_.fi-wi-stats-overview-stat-description]:blur-[1.5px] 
-            group-hover:[&_.fi-wi-stats-overview-stat-description]:opacity-60
-        ';
+        $cardPlan1 = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500';
+        $cardPlan2 = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-primary-200/60 dark:border-primary-700/50 bg-gradient-to-br from-primary-50/90 via-white to-primary-50/50 dark:from-primary-950/40 dark:via-gray-900/80 dark:to-primary-900/20 hover:shadow-lg hover:shadow-primary-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-primary-400/50 hover:border-primary-300 dark:hover:border-primary-500';
+        $cardPlan3 = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-warning-200/60 dark:border-warning-700/50 bg-gradient-to-br from-warning-50/90 via-white to-warning-50/50 dark:from-warning-950/40 dark:via-gray-900/80 dark:to-warning-900/20 hover:shadow-lg hover:shadow-warning-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-warning-400/50 hover:border-warning-300 dark:hover:border-warning-500';
 
         return [
-            Stat::make('PLAN INICIAL', $counts[1]['total'] . ' Afiliados')
+            Stat::make('PLAN INICIAL', $counts[1]['total'].' Afiliados')
                 ->description('Plan básico')
                 ->descriptionIcon('heroicon-m-check-badge')
                 ->color('planIncial')
                 ->extraAttributes([
-                    'class' => $iosStyles . ' border-[#9ce1ff]',
+                    'class' => $cardPlan1,
+                    'style' => 'min-height: 130px;',
                     'x-data' => "{ label: '{$counts[1]['total']} Afiliados', desc: 'Plan básico' }",
                     '@mouseenter' => "label = '{$counts[1]['mes']} Afiliados'; desc = 'Nuevos en {$mesActualNombre}'",
                     '@mouseleave' => "label = '{$counts[1]['total']} Afiliados'; desc = 'Plan básico'",
@@ -89,12 +71,13 @@ class StatsOverviewPlan extends StatsOverviewWidget
                 ->value(new HtmlString("<span x-text='label'>{$counts[1]['total']} Afiliados</span>"))
                 ->description(new HtmlString("<span x-text='desc'>Plan básico</span>")),
 
-            Stat::make('PLAN IDEAL', $counts[2]['total'] . ' Afiliados')
+            Stat::make('PLAN IDEAL', $counts[2]['total'].' Afiliados')
                 ->description('Asistencia Médica')
                 ->descriptionIcon('heroicon-m-star')
                 ->color('planIdeal')
                 ->extraAttributes([
-                    'class' => $iosStyles . ' border-[#25b4e7]',
+                    'class' => $cardPlan2,
+                    'style' => 'min-height: 130px;',
                     'x-data' => "{ label: '{$counts[2]['total']} Afiliados', desc: 'Asistencia Médica' }",
                     '@mouseenter' => "label = '{$counts[2]['mes']} Afiliados'; desc = 'Nuevos en {$mesActualNombre}'",
                     '@mouseleave' => "label = '{$counts[2]['total']} Afiliados'; desc = 'Asistencia Médica'",
@@ -102,12 +85,13 @@ class StatsOverviewPlan extends StatsOverviewWidget
                 ->value(new HtmlString("<span x-text='label'>{$counts[2]['total']} Afiliados</span>"))
                 ->description(new HtmlString("<span x-text='desc'>Asistencia Médica</span>")),
 
-            Stat::make('PLAN ESPECIAL', $counts[3]['total'] . ' Afiliados')
+            Stat::make('PLAN ESPECIAL', $counts[3]['total'].' Afiliados')
                 ->description('Emergencias Médicas')
                 ->descriptionIcon('heroicon-m-sparkles')
                 ->color('planEspecial')
                 ->extraAttributes([
-                    'class' => $iosStyles . ' border-[#2d89ca]',
+                    'class' => $cardPlan3,
+                    'style' => 'min-height: 130px;',
                     'x-data' => "{ label: '{$counts[3]['total']} Afiliados', desc: 'Emergencias Médicas' }",
                     '@mouseenter' => "label = '{$counts[3]['mes']} Afiliados'; desc = 'Nuevos en {$mesActualNombre}'",
                     '@mouseleave' => "label = '{$counts[3]['total']} Afiliados'; desc = 'Emergencias Médicas'",

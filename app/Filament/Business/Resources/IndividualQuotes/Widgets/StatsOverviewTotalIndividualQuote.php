@@ -24,47 +24,27 @@ class StatsOverviewTotalIndividualQuote extends StatsOverviewWidget
             ->whereYear('created_at', $now->year)
             ->count();
 
-        $colors = ['#3b82f6', '#10b981', '#f59e0b'];
-
-        $iosCardBase = '
-            group cursor-default overflow-hidden
-            rounded-2xl antialiased
-            bg-white/90 dark:bg-gray-900/90
-            ring-1 ring-gray-200/60 dark:ring-white/10
-            shadow-lg shadow-gray-200/50 dark:shadow-black/20
-            transition-all duration-500 ease-out
-            hover:scale-[1.02] hover:shadow-xl
-            [&_*]:transition-all [&_*]:duration-500
-        ';
-
-        $iosCardAnio = $iosCardBase.'
-            border-b-4 border-[#3b82f6]/60 dark:border-[#3b82f6]/50
-            hover:border-[#3b82f6] hover:bg-[#3b82f6]/10 dark:hover:bg-[#3b82f6]/15
-            hover:ring-2 hover:ring-[#3b82f6]/30 dark:hover:ring-[#3b82f6]/40
-            hover:shadow-[0_8px_30px_rgba(59,130,246,0.25)] dark:hover:shadow-[0_8px_30px_rgba(59,130,246,0.2)]
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#3b82f6] dark:group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#60a5fa]
-        ';
-
-        $iosCardMes = $iosCardBase.'
-            border-b-4 border-[#10b981]/60 dark:border-[#10b981]/50
-            hover:border-[#10b981] hover:bg-[#10b981]/10 dark:hover:bg-[#10b981]/15
-            hover:ring-2 hover:ring-[#10b981]/30 dark:hover:ring-[#10b981]/40
-            hover:shadow-[0_8px_30px_rgba(16,185,129,0.25)] dark:hover:shadow-[0_8px_30px_rgba(16,185,129,0.2)]
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#10b981] dark:group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#34d399]
-        ';
+        $cardAnio = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500';
+        $cardMes = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500';
 
         return [
             Stat::make('Cotizaciones año '.$now->year, number_format($totalAnio))
                 ->description('Acumulado del año en curso')
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('info')
-                ->extraAttributes(['class' => $iosCardAnio]),
+                ->extraAttributes([
+                    'class' => $cardAnio,
+                    'style' => 'min-height: 130px;',
+                ]),
 
             Stat::make('Cotizaciones '.$now->translatedFormat('F'), number_format($totalMes))
                 ->description('Emitidas en el mes actual')
                 ->descriptionIcon('heroicon-m-calendar')
                 ->color('success')
-                ->extraAttributes(['class' => $iosCardMes]),
+                ->extraAttributes([
+                    'class' => $cardMes,
+                    'style' => 'min-height: 130px;',
+                ]),
         ];
     }
 }
