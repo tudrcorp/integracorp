@@ -10,11 +10,13 @@ use App\Filament\Marketing\Resources\Capemiacs\Schemas\CapemiacForm;
 use App\Filament\Marketing\Resources\Capemiacs\Schemas\CapemiacInfolist;
 use App\Filament\Marketing\Resources\Capemiacs\Tables\CapemiacsTable;
 use App\Models\Capemiac;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class CapemiacResource extends Resource
 {
@@ -54,5 +56,24 @@ class CapemiacResource extends Resource
             'view' => ViewCapemiac::route('/{record}'),
             'edit' => EditCapemiac::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        $module = 'MARKETING';
+        $permission = Permission::where('module', $module)->where('slug', 'capemiac')->first();
+
+        // si es superadmin, retornar true
+        if (in_array('SUPERADMIN', Auth::user()->departament)) {
+            return true;
+        }
+
+        if (in_array($module, Auth::user()->departament)) {
+            if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
