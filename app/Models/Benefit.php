@@ -24,6 +24,7 @@ class Benefit extends Model
         'porcen_comision',
         'porcen_utilidad',
         'porcen_acu_adi',
+        'is_upgrade',
     ];
 
     public function limit(): BelongsTo
