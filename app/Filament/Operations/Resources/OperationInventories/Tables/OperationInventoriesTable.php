@@ -11,6 +11,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,14 @@ class OperationInventoriesTable
             ->description('Lista de inventarios')
             // ->modifyQueryUsing(fn ($query) => $query->with('operationInventoryType', 'operationInventoryCategory'))
             ->columns([
+                ImageColumn::make('image')
+                    ->label('')
+                    ->circular()
+                    ->disk('public')
+                    ->visibility('public')
+                    ->imageHeight(48)
+                    ->imageWidth(48)
+                    ->defaultImageUrl(fn ($record): string => 'https://ui-avatars.com/api/?name='.urlencode($record->name ?? 'N').'&background=0D8ABC&color=fff&size=96'),
                 TextColumn::make('id')
                     ->label('Código')
                     ->prefix('INV-000')

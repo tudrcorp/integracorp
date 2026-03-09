@@ -54,5 +54,13 @@ class TelemedicinePatientLab extends Model
         );
     }
 
-    
+    // relacion 1 a N con la tabla OperationCoordinationService
+    public function operationCoordinationService()
+    {
+        return $this->belongsTo(
+            OperationCoordinationService::class,
+            'operation_coordination_service_id',
+            'id'
+        );
+    }
 }

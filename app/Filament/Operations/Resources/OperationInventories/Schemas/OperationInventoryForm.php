@@ -7,6 +7,7 @@ use App\Models\OperationInventoryCategory;
 use App\Models\OperationInventoryPrincipleActive;
 use App\Models\OperationInventoryType;
 use App\Models\OperationInventoryUbication;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -22,23 +23,39 @@ class OperationInventoryForm
     {
         return $schema
             ->components([
-                Section::make('Informacion del Medicamento')
-                    ->description('Informacion principal del medicamento')
+                Section::make('Imagen del producto')
+                    ->description('Foto o imagen del medicamento o producto para identificación visual')
+                    ->icon('heroicon-o-photo')
+                    ->schema([
+                        FileUpload::make('image')
+                            ->label('Imagen del producto/medicamento')
+                            ->image()
+                            ->directory('operation-inventories-images')
+                            ->visibility('public')
+                            ->imagePreviewHeight('240')
+                            ->maxSize(2048)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Formatos: JPG, PNG o WebP. Máximo 2 MB.'),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Información del medicamento')
+                    ->description('Datos principales del producto o medicamento')
                     ->icon('heroicon-o-identification')
                     ->schema([
-                        Fieldset::make('Producto/Medicamento')
+                        Fieldset::make('Datos del producto')
                             ->schema([
                                 Grid::make(4)
                                     ->schema([
                                         TextInput::make('name')
-                                            ->label('Descripción del Producto/Medicamento')
+                                            ->label('Descripción del producto/medicamento')
                                             ->afterStateUpdatedJs(<<<'JS'
                                                 $set('name', $state.toUpperCase());
                                             JS)
                                             ->required(),
                                         TextInput::make('concentration')
                                             ->label('Concentración')
-                                            ->helperText('Concentración del medicamento, ejemplo: 50mg/ml, 100mg/g, 150mg/l, etc.')
+                                            ->helperText('Ej: 50mg/ml, 100mg/g')
                                             ->required()
                                             ->afterStateUpdatedJs(<<<'JS'
                                                 $set('concentration', $state.toUpperCase());
@@ -46,14 +63,23 @@ class OperationInventoryForm
                                             ->placeholder('50mg/ml'),
                                         TextInput::make('laboratory')
                                             ->label('Laboratorio')
-                                            ->helperText('Laboratorio del medicamento, ejemplo: BAYER, MERCK, FARMALAB, etc.'),
+                                            ->helperText('Ej: BAYER, MERCK, FARMALAB'),
                                         TextInput::make('unit')
-                                            ->label('Unidad de Medida')
-                                            ->helperText('Unidad de medida del medicamento, ejemplo: UNIDAD, TABLETAS, GOTAS, AMPOLLAS, etc.')
+                                            ->label('Unidad de medida')
+                                            ->helperText('Ej: UNIDAD, TABLETAS, GOTAS, AMPOLLAS')
                                             ->afterStateUpdatedJs(<<<'JS'
                                                 $set('unit', $state.toUpperCase());
                                             JS)
                                             ->required(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+
+                        Fieldset::make('Clasificación')
+                            ->schema([
+                                Grid::make(3)
+                                    ->schema([
                                         Select::make('operation_inventory_type_id')
                                             ->label('Tipo')
                                             ->searchable()
@@ -61,7 +87,7 @@ class OperationInventoryForm
                                             ->options(OperationInventoryType::where('is_active', true)->pluck('name', 'id'))
                                             ->required(),
                                         Select::make('operation_inventory_principle_active_id')
-                                            ->label('Principio Activo')
+                                            ->label('Principio activo')
                                             ->searchable()
                                             ->preload()
                                             ->options(OperationInventoryPrincipleActive::where('is_active', true)->pluck('name', 'id'))
@@ -71,9 +97,18 @@ class OperationInventoryForm
                                             ->searchable()
                                             ->preload()
                                             ->options(OperationInventoryCategory::where('is_active', true)->pluck('name', 'id')),
+                                    ])
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+
+                        Fieldset::make('Inventario y almacén')
+                            ->schema([
+                                Grid::make(4)
+                                    ->schema([
                                         TextInput::make('cost')
-                                            ->label('Costo del Medicamento')
-                                            ->helperText('Costo del medicamento en dolares, para uso de la parte administrativa')
+                                            ->label('Costo')
+                                            ->helperText('Costo en dólares (uso administrativo)')
                                             ->numeric()
                                             ->default(0.0)
                                             ->prefix('$'),
@@ -84,20 +119,19 @@ class OperationInventoryForm
                                             ->placeholder('5')
                                             ->hidden('edit'),
                                         TextInput::make('barcode')
-                                            ->label('Código de Barras')
-                                            ->helperText('Código de barras del medicamento, para uso de la parte administrativa')
+                                            ->label('Código de barras')
                                             ->numeric()
                                             ->placeholder('1234567890'),
                                         TextInput::make('min_stock')
-                                            ->label('Stock Mínimo')
-                                            ->helperText('Stock mínimo del medicamento, para uso de la parte administrativa')
+                                            ->label('Stock mínimo')
+                                            ->helperText('Unidades mínimas para alertas')
                                             ->numeric()
                                             ->required()
                                             ->placeholder('5')
-                                            ->suffix('Unidades'),
+                                            ->suffix('unidades'),
                                         Select::make('ubication')
                                             ->label('Almacén')
-                                            ->helperText('Esta información es para el manejo del inventario en diferentes almacenes')
+                                            ->helperText('Ubicación para manejo del inventario')
                                             ->searchable()
                                             ->preload()
                                             ->options(OperationInventoryUbication::where('is_active', true)->pluck('name', 'name'))
@@ -110,20 +144,20 @@ class OperationInventoryForm
                                             ])
                                             ->live()
                                             ->required(),
-                                        Hidden::make('created_by')->default(Auth::user()->name),
-                                        Hidden::make('is_active')->default(true),
-                                        Hidden::make('code')->default(function () {
-                                            if (OperationInventory::max('id') == null) {
-                                                $parte_entera = 0;
-                                            } else {
-                                                $parte_entera = OperationInventory::max('id');
-                                            }
-        
-                                            return 'INV-000'.$parte_entera + 1;
-                                        }),
-                                    ])->columnSpanFull()
-                            ])->columnSpanFull(),
-                    ])->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+
+                        Hidden::make('created_by')->default(Auth::user()->name),
+                        Hidden::make('is_active')->default(true),
+                        Hidden::make('code')->default(function () {
+                            $maxId = OperationInventory::max('id');
+
+                            return 'INV-000'.(($maxId ?? 0) + 1);
+                        }),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 }
