@@ -275,7 +275,7 @@
                     <td class="col-label" style="font-size: 8px;">{{ $b['name'] }}</td>
                     @foreach($data['all_coverages'] as $cov)
                         @php
-        $exit = App\Models\BenefitCoverage::where('benefit_id', $b['id'])->where('coverage_id', $cov->id)->first();
+                            $exit = App\Models\BenefitCoverage::where('benefit_id', $b['id'])->where('coverage_id', $cov->id)->first();
                         @endphp
                         <td>
                             {{-- Lógica corregida para usar el mapeo de benefit_coverages pre-procesado --}}
@@ -290,6 +290,30 @@
             @endforeach
         </tbody>
     </table>
+
+    @if(!empty($data['upgrade_benefits']))
+    <div class="section-header" style="margin-top: 20px;">1.1 BENEFICIOS UPGRADE SELECCIONADOS</div>
+    <table id="upgrade-benefits">
+        <thead>
+            <tr>
+                <th class="col-label">Descripción del beneficio</th>
+                <th style="text-align: right;">Valor (US$)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($data['upgrade_benefits'] as $ub)
+                <tr>
+                    <td class="col-label">{{ $ub['name'] }}</td>
+                    <td style="text-align: right; font-weight: bold;">${{ number_format($ub['pvp'], 2) }}</td>
+                </tr>
+            @endforeach
+            <tr class="bg-subtotal">
+                <td class="col-label">Subtotal Beneficios Upgrade</td>
+                <td style="text-align: right; font-weight: bold;">${{ number_format($data['total_upgrade'], 2) }}</td>
+            </tr>
+        </tbody>
+    </table>
+    @endif
 
     <div class="section-header section-label" style="margin-top: 30px;">2. ANÁLISIS DE COSTOS POR POBLACIÓN</div>
     <table id="costos">
@@ -324,9 +348,7 @@
     <table id="totales">
         <tbody>
             <tr class="bg-subtotal" style="background-color: #2563eb;">
-                <td class="col-label" style="background-color: #2563eb;">TOTAL ANUALIZADO (100%)</td> {{-- Ajustado
-                colspan por
-                nueva columna --}}
+                <td class="col-label" style="background-color: #2563eb;">TOTAL ANUALIZADO (100%)</td>
                 @foreach($data['summary_columns'] as $val)
                     <td>${{ number_format($val, 2) }}</td>
                 @endforeach

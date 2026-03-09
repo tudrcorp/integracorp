@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\DressTylorQuotes\Pages;
 
 use App\Filament\Business\Resources\DressTylorQuotes\DressTylorQuoteResource;
+use App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -31,15 +32,13 @@ class CreateDressTylorQuote extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $benefitsRaw = $data['benefits_repeater'] ?? [];
-        dd($benefitsRaw);
+        $data['quote_structure'] = DressTylorQuoteForm::buildQuoteStructureWithForm($data);
 
         return $data;
     }
 
     protected function beforeCreate(): void
     {
-        dd(session()->get('ageCovegares'));
         // Runs before the form fields are saved to the database.
     }
 }

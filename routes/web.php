@@ -6,48 +6,22 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\UtilsController;
 use App\Mail\NotificationRenewAffiliationMail;
-use App\Models\Agency;
-use App\Models\Agent;
 use App\Models\AgentDocument;
-use App\Models\AgeRange;
 use App\Models\Benefit;
 use App\Models\BirthdayNotification;
-use App\Models\CheckAffiliation;
-use App\Models\City;
 use App\Models\Collection;
-use App\Models\Country;
-use App\Models\Coverage;
-use App\Models\DataNotification;
-use App\Models\DetailIndividualQuote;
-use App\Models\Fee;
 use App\Models\Guest;
-use App\Models\IndividualQuote;
-use App\Models\Sale;
-use App\Models\State;
-use App\Models\TelemedicinePatientMedications;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-use Fidry\CpuCoreCounter\Finder\NullCpuCoreFinder;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 use Livewire\Volt\Volt;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-
-
-
-
-
-
-
-
 
 Route::get('/', function () {
     return view('welcome');
@@ -57,13 +31,15 @@ Route::post('/', function () {
     Filament::auth()->logout();
     session()->invalidate();
     session()->regenerateToken();
+
     return redirect('/');
 })->name('internal');
-    
+
 Route::post('/external', function () {
     Filament::auth()->logout();
     session()->invalidate();
     session()->regenerateToken();
+
     return redirect()->to(config('parameters.REDIRECT_LOGOUT_EXTERNAL_URL'));
 })->name('external');
 
@@ -76,7 +52,6 @@ Route::get('/at/c', function () {
 Route::get('/w/p', function () {
     return view('welcome-public');
 })->name('welcome.public');
-
 
 Route::get('/ay/c', function () {
     return view('create-agency');
@@ -92,26 +67,37 @@ Route::get('/at/lk/{code?}', function ($code) {
 
 /**
  * RUTAS DE PRE-AFILIACION INDIVIDUAL Y CORPORATIVO
- * 
+ *
  * @see \App\Http\Livewire\IndividualPreAffiliation
  * @see \App\Http\Livewire\CorporatePreAffiliation
  */
 Route::get('/plk/{id}', function ($id) {
     return view('individual-pre-affiliation', [
-        'id' => $id
+        'id' => $id,
     ]);
 })->name('pre-affiliation.create');
 
 Route::get('/plk/c/{id}', function ($id) {
     return view('corporate-pre-affiliation', [
-        'id' => $id
+        'id' => $id,
     ]);
 })->name('corporate-pre-affiliation.create');
-
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
+    $quote = \App\Models\DressTylorQuote::findOrFail($record);
+    $structure = $quote->quote_structure;
+    if (empty($structure)) {
+        abort(404, 'Esta cotización no tiene estructura guardada para generar el PDF.');
+    }
+
+    return \App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm::generatePdfFromQuoteStructure($structure);
+})
+    ->middleware(['web', 'auth'])
+    ->name('business.dress-tylor-quotes.pdf');
 
 Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');
@@ -158,9 +144,8 @@ Route::get('/pp', function () {
         'FIRMA DIGITAL AGENTE',
         'W8/W9',
         'CUENTA USD',
-        'CUENTA VES'
+        'CUENTA VES',
     ];
-
 
     $agents = DB::table('agents')
         ->select('id', 'email', 'phone', 'status', 'name')
@@ -178,11 +163,10 @@ Route::get('/pp', function () {
         $string = implode(', ', $result);
 
         dd($agents[$i]);
-        
-        //Send Notificacion via Whatsapp
+
+        // Send Notificacion via Whatsapp
         NotificationController::documentUploadReminder($agents[$i]->phone, $agents[$i]->name, $string);
     }
-
 
 });
 
@@ -196,20 +180,20 @@ Route::get('/d', function () {
 
     $path = public_path('storage/COT-IND-00040.pdf');
     dd($path);
+
     return response()->download($path);
-    
+
 })->name('panel.notification.download.file');
 
 Route::get('/flux/{name}', function ($name) {
     return view('prueba-flux', [
-        'name' => $name
+        'name' => $name,
     ]);
 })->name('flux');
 
 Route::get('/notify', function () {
 
     $array = Guest::all()->toArray();
-
 
     for ($i = 0; $i < count($array); $i++) {
 
@@ -230,41 +214,41 @@ Route::get('/notify', function () {
  
             HTML;
 
-        $params = array(
+        $params = [
             'token' => 'yuvh9eq5kn8bt666',
             'to' => $array[0]['phone'],
             'video' => 'https://tudrgroup.com/images/videoEvento1.mp4',
-            'caption' => $body
-        );
+            'caption' => $body,
+        ];
         $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+        curl_setopt_array($curl, [
+            CURLOPT_URL => 'https://api.ultramsg.com/instance117518/messages/video',
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
+            CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
             CURLOPT_TIMEOUT => 30,
             CURLOPT_SSL_VERIFYHOST => 0,
             CURLOPT_SSL_VERIFYPEER => 0,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => http_build_query($params),
-            CURLOPT_HTTPHEADER => array(
-                "content-type: application/x-www-form-urlencoded"
-            ),
-        ));
+            CURLOPT_HTTPHEADER => [
+                'content-type: application/x-www-form-urlencoded',
+            ],
+        ]);
 
         $response = curl_exec($curl);
         $err = curl_error($curl);
 
         Log::info($response);
         Log::error($err);
-        
+
     }
 
     curl_close($curl);
 
     dd($response);
-    
+
 });
 
 Route::get('/notification', function () {
@@ -282,46 +266,47 @@ Route::get('/truncate', function () {
 
     // Reiniciar el auto-increment
     DB::statement('ALTER TABLE users AUTO_INCREMENT = 3;');
-    
+
 });
 
 Route::get('/rp', function () {
 
     $pdf = Pdf::loadView('pr');
+
     // return view('pr');
     return $pdf->stream();
 
     // return view ('pr');
-    
+
 });
 
 Route::get('/inter', function () {
 
     $pdf = Pdf::loadView('documents.referencia-especialista');
+
     return $pdf->stream();
 
 });
-
 
 Route::get('/lab', function () {
 
     $pdf = Pdf::loadView('documents.laboratorios');
+
     return $pdf->stream();
 
-
 });
-
 
 Route::get('/imag', function () {
 
     $pdf = Pdf::loadView('documents.imagenologia');
-    return $pdf->stream();
 
+    return $pdf->stream();
 
 });
 
 Route::get('/tarjeta', function () {
     $pdf = Pdf::loadView('documents.tarjeta-afiliado');
+
     return $pdf->stream();
 });
 
@@ -339,181 +324,181 @@ Route::get('/largo', function () {
 
         $effectiveDate = Carbon::createFromFormat('d/m/Y', $dates[$i]->effective_date)->format('Y-m-d');
         // dd($effectiveDate, $today);
-        if($effectiveDate == null){
-            continue; 
+        if ($effectiveDate == null) {
+            continue;
         }
-        
-        if($effectiveDate > $today){
-            //1. Calculo los dias faltantes para lleguar al vencimiento
+
+        if ($effectiveDate > $today) {
+            // 1. Calculo los dias faltantes para lleguar al vencimiento
             $diasFaltantes = Carbon::parse($today)->diffInDays($effectiveDate);
             // dd($diasFaltantes);
-            //Faltan 30 dias?
-            if($diasFaltantes == 30){
-                
-                //Si la afiliacion pertenece a un agente
-                if($dates[$i]->agent_id != null){
-                    //Si pertenece a un agente
+            // Faltan 30 dias?
+            if ($diasFaltantes == 30) {
+
+                // Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 30))->onQueue('renew'));
                 }
-                
-                //si la afiliacion pertenece a una agencia
+
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 30))->onQueue('renew'));
                 }
-                
+
             }
 
-            //Faltan 20 dias?
-            if($diasFaltantes == 20){
-                //Si la afiliacion pertenece a un agente
+            // Faltan 20 dias?
+            if ($diasFaltantes == 20) {
+                // Si la afiliacion pertenece a un agente
                 if ($dates[$i]->agent_id != null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 20))->onQueue('renew'));
                 }
 
-                //si la afiliacion pertenece a una agencia
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 20))->onQueue('renew'));
                 }
             }
 
-            //Faltan 15 dias?
+            // Faltan 15 dias?
             if ($diasFaltantes == 15) {
-                //Si la afiliacion pertenece a un agente
+                // Si la afiliacion pertenece a un agente
                 if ($dates[$i]->agent_id != null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 15))->onQueue('renew'));
                 }
 
-                //si la afiliacion pertenece a una agencia
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 15))->onQueue('renew'));
                 }
             }
 
-            //Faltan 10 dias?
-            if($diasFaltantes == 10){
-                //Si la afiliacion pertenece a un agente
+            // Faltan 10 dias?
+            if ($diasFaltantes == 10) {
+                // Si la afiliacion pertenece a un agente
                 if ($dates[$i]->agent_id != null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 10))->onQueue('renew'));
                 }
 
-                //si la afiliacion pertenece a una agencia
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 10))->onQueue('renew'));
                 }
             }
 
-            //Faltan 7 dias?
-            if($diasFaltantes == 7){
-                //Si la afiliacion pertenece a un agente
+            // Faltan 7 dias?
+            if ($diasFaltantes == 7) {
+                // Si la afiliacion pertenece a un agente
                 if ($dates[$i]->agent_id != null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 7))->onQueue('renew'));
                 }
 
-                //si la afiliacion pertenece a una agencia
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 7))->onQueue('renew'));
                 }
             }
 
-            //Faltan 5 dias?
-            if($diasFaltantes == 5){
-                //Si la afiliacion pertenece a un agente
+            // Faltan 5 dias?
+            if ($diasFaltantes == 5) {
+                // Si la afiliacion pertenece a un agente
                 if ($dates[$i]->agent_id != null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 5))->onQueue('renew'));
                 }
 
-                //si la afiliacion pertenece a una agencia
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 5))->onQueue('renew'));
                 }
             }
 
-            //Faltan 4 dias?
-            if($diasFaltantes == 4){
-                //Si la afiliacion pertenece a un agente
+            // Faltan 4 dias?
+            if ($diasFaltantes == 4) {
+                // Si la afiliacion pertenece a un agente
                 if ($dates[$i]->agent_id != null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 4))->onQueue('renew'));
                 }
 
-                //si la afiliacion pertenece a una agencia
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 4))->onQueue('renew'));
                 }
             }
 
-            //Faltan 3 dias?
-            if($diasFaltantes == 3){
-                //Si la afiliacion pertenece a un agente
-                if($dates[$i]->agent_id != null){
-                    //Si pertenece a un agente
+            // Faltan 3 dias?
+            if ($diasFaltantes == 3) {
+                // Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 3))->onQueue('renew'));
                 }
-                
-                //si la afiliacion pertenece a una agencia
+
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 3))->onQueue('renew'));
                 }
             }
 
-            //Faltan 2 dias?
-            if($diasFaltantes == 2){
-                //Si la afiliacion pertenece a un agente
-                if($dates[$i]->agent_id != null){
-                    //Si pertenece a un agente
+            // Faltan 2 dias?
+            if ($diasFaltantes == 2) {
+                // Si la afiliacion pertenece a un agente
+                if ($dates[$i]->agent_id != null) {
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 2))->onQueue('renew'));
                 }
-                
-                //si la afiliacion pertenece a una agencia
+
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 2))->onQueue('renew'));
                 }
             }
 
-            //Faltan 1 dias?
-            if($diasFaltantes == 1){
-                //Si la afiliacion pertenece a un agente
+            // Faltan 1 dias?
+            if ($diasFaltantes == 1) {
+                // Si la afiliacion pertenece a un agente
                 if ($dates[$i]->agent_id != null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgent = DB::table('agents')->select('name', 'email')->where('id', $dates[$i]->agent_id)->first();
                     Mail::to($dataAgent->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 1))->onQueue('renew'));
                 }
 
-                //si la afiliacion pertenece a una agencia
+                // si la afiliacion pertenece a una agencia
                 if ($dates[$i]->agent_id == null) {
-                    //Si pertenece a un agente
+                    // Si pertenece a un agente
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 1))->onQueue('renew'));
                 }
@@ -522,10 +507,10 @@ Route::get('/largo', function () {
             dd($effectiveDate, $today, $diasFaltantes);
 
         }
-        
+
         if ($effectiveDate < $today) {
             // dd('es menor');
-            //Actualizo el estatus
+            // Actualizo el estatus
             DB::table('affiliations')->where('code', $dates[$i]->code)->update([
                 'status' => 'VENCIDA-POR-RENOVAR',
             ]);
@@ -554,21 +539,19 @@ Route::get('/r4/banesco', function () {
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
 
-
     $headers = [
         'Content-Type: application/json',
-        'Authorization: ' . $tokenAuthorization,
-        'Commerce: ' . $commerceToken,
+        'Authorization: '.$tokenAuthorization,
+        'Commerce: '.$commerceToken,
     ];
 
     $postData = [
-        "docId"     => "V25798531",
-        "nombre"    => "Humberto Sanchez",
-        "cuenta"    => "01340338463381064391",
-        "monto"     => "100.00",
-        "concepto"  => "Pago"
+        'docId' => 'V25798531',
+        'nombre' => 'Humberto Sanchez',
+        'cuenta' => '01340338463381064391',
+        'monto' => '100.00',
+        'concepto' => 'Pago',
     ];
-
 
     $curl = curl_init($url);
 
@@ -577,17 +560,17 @@ Route::get('/r4/banesco', function () {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($postData),
-        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
         CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
     ]);
 
     $response = curl_exec($curl);
 
     if (curl_errno($curl)) {
-        throw new \Exception('Error en cURL: ' . curl_error($curl));
+        throw new \Exception('Error en cURL: '.curl_error($curl));
     }
 
-    //Convierto el JSON to Array
+    // Convierto el JSON to Array
     $result = json_decode($response, true);
 
     if ($result === null) {
@@ -596,7 +579,7 @@ Route::get('/r4/banesco', function () {
 
     curl_close($curl);
 
-    //escribo el response en la tabla de log
+    // escribo el response en la tabla de log
     // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
 
     // Logging de la respuesta de la API
@@ -611,10 +594,10 @@ Route::get('/r4/banesco', function () {
 
     Log::info($result['codigo']);
 
-    if($result['codigo'] == '202'){
-        
+    if ($result['codigo'] == '202') {
+
         Log::info($result['codigo']);
-        
+
         $uuid = $result['uuid'];
         $url = 'https://r4conecta.mibanco.com.ve/ConsultarOperaciones';
 
@@ -622,12 +605,12 @@ Route::get('/r4/banesco', function () {
 
         $headers = [
             'Content-Type: application/json',
-            'Authorization: ' . $tokenAuthorization,
-            'Commerce: ' . $commerceToken,
+            'Authorization: '.$tokenAuthorization,
+            'Commerce: '.$commerceToken,
         ];
 
         $id = [
-            "id"     => $uuid,
+            'id' => $uuid,
         ];
 
         $curl = curl_init($url);
@@ -637,14 +620,14 @@ Route::get('/r4/banesco', function () {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => json_encode($id),
-            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
             CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
         ]);
 
         $responseOperacion = curl_exec($curl);
 
         if (curl_errno($curl)) {
-            throw new \Exception('Error en cURL: ' . curl_error($curl));
+            throw new \Exception('Error en cURL: '.curl_error($curl));
         }
 
         $resultOperacion = json_decode($responseOperacion, true);
@@ -667,21 +650,19 @@ Route::get('/r4/vzla', function () {
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
 
-
     $headers = [
         'Content-Type: application/json',
-        'Authorization: ' . $tokenAuthorization,
-        'Commerce: ' . $commerceToken,
+        'Authorization: '.$tokenAuthorization,
+        'Commerce: '.$commerceToken,
     ];
 
     $postData = [
-        "docId"     => "V25798531",
-        "nombre"    => "Humberto Sanchez",
-        "cuenta"    => "01020234530000310965",
-        "monto"     => "100.00",
-        "concepto"  => "Pago"
+        'docId' => 'V25798531',
+        'nombre' => 'Humberto Sanchez',
+        'cuenta' => '01020234530000310965',
+        'monto' => '100.00',
+        'concepto' => 'Pago',
     ];
-
 
     $curl = curl_init($url);
 
@@ -690,17 +671,17 @@ Route::get('/r4/vzla', function () {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($postData),
-        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
         CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
     ]);
 
     $response = curl_exec($curl);
 
     if (curl_errno($curl)) {
-        throw new \Exception('Error en cURL: ' . curl_error($curl));
+        throw new \Exception('Error en cURL: '.curl_error($curl));
     }
 
-    //Convierto el JSON to Array
+    // Convierto el JSON to Array
     $result = json_decode($response, true);
 
     if ($result === null) {
@@ -709,7 +690,7 @@ Route::get('/r4/vzla', function () {
 
     curl_close($curl);
 
-    //escribo el response en la tabla de log
+    // escribo el response en la tabla de log
     // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
 
     // Logging de la respuesta de la API
@@ -735,12 +716,12 @@ Route::get('/r4/vzla', function () {
 
         $headers = [
             'Content-Type: application/json',
-            'Authorization: ' . $tokenAuthorization,
-            'Commerce: ' . $commerceToken,
+            'Authorization: '.$tokenAuthorization,
+            'Commerce: '.$commerceToken,
         ];
 
         $id = [
-            "id"     => $uuid,
+            'id' => $uuid,
         ];
 
         $curl = curl_init($url);
@@ -750,14 +731,14 @@ Route::get('/r4/vzla', function () {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => json_encode($id),
-            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
             CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
         ]);
 
         $responseOperacion = curl_exec($curl);
 
         if (curl_errno($curl)) {
-            throw new \Exception('Error en cURL: ' . curl_error($curl));
+            throw new \Exception('Error en cURL: '.curl_error($curl));
         }
 
         $resultOperacion = json_decode($responseOperacion, true);
@@ -779,21 +760,19 @@ Route::get('/r4/bnc', function () {
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
 
-
     $headers = [
         'Content-Type: application/json',
-        'Authorization: ' . $tokenAuthorization,
-        'Commerce: ' . $commerceToken,
+        'Authorization: '.$tokenAuthorization,
+        'Commerce: '.$commerceToken,
     ];
 
     $postData = [
-        "docId"     => "V25798531",
-        "nombre"    => "Humberto Sanchez",
-        "cuenta"    => "01910241672100021488",
-        "monto"     => "100.00",
-        "concepto"  => "Pago"
+        'docId' => 'V25798531',
+        'nombre' => 'Humberto Sanchez',
+        'cuenta' => '01910241672100021488',
+        'monto' => '100.00',
+        'concepto' => 'Pago',
     ];
-
 
     $curl = curl_init($url);
 
@@ -802,17 +781,17 @@ Route::get('/r4/bnc', function () {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($postData),
-        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
         CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
     ]);
 
     $response = curl_exec($curl);
 
     if (curl_errno($curl)) {
-        throw new \Exception('Error en cURL: ' . curl_error($curl));
+        throw new \Exception('Error en cURL: '.curl_error($curl));
     }
 
-    //Convierto el JSON to Array
+    // Convierto el JSON to Array
     $result = json_decode($response, true);
 
     if ($result === null) {
@@ -821,7 +800,7 @@ Route::get('/r4/bnc', function () {
 
     curl_close($curl);
 
-    //escribo el response en la tabla de log
+    // escribo el response en la tabla de log
     // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
 
     // Logging de la respuesta de la API
@@ -847,12 +826,12 @@ Route::get('/r4/bnc', function () {
 
         $headers = [
             'Content-Type: application/json',
-            'Authorization: ' . $tokenAuthorization,
-            'Commerce: ' . $commerceToken,
+            'Authorization: '.$tokenAuthorization,
+            'Commerce: '.$commerceToken,
         ];
 
         $id = [
-            "id"     => $uuid,
+            'id' => $uuid,
         ];
 
         $curl = curl_init($url);
@@ -862,14 +841,14 @@ Route::get('/r4/bnc', function () {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => json_encode($id),
-            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
             CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
         ]);
 
         $responseOperacion = curl_exec($curl);
 
         if (curl_errno($curl)) {
-            throw new \Exception('Error en cURL: ' . curl_error($curl));
+            throw new \Exception('Error en cURL: '.curl_error($curl));
         }
 
         $resultOperacion = json_decode($responseOperacion, true);
@@ -891,21 +870,19 @@ Route::get('/r4/mercantil', function () {
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
 
-
     $headers = [
         'Content-Type: application/json',
-        'Authorization: ' . $tokenAuthorization,
-        'Commerce: ' . $commerceToken,
+        'Authorization: '.$tokenAuthorization,
+        'Commerce: '.$commerceToken,
     ];
 
     $postData = [
-        "docId"     => "V25798531",
-        "nombre"    => "Humberto Sanchez",
-        "cuenta"    => "01050049451049444078",
-        "monto"     => "100.00",
-        "concepto"  => "Pago"
+        'docId' => 'V25798531',
+        'nombre' => 'Humberto Sanchez',
+        'cuenta' => '01050049451049444078',
+        'monto' => '100.00',
+        'concepto' => 'Pago',
     ];
-
 
     $curl = curl_init($url);
 
@@ -914,17 +891,17 @@ Route::get('/r4/mercantil', function () {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($postData),
-        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
         CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
     ]);
 
     $response = curl_exec($curl);
 
     if (curl_errno($curl)) {
-        throw new \Exception('Error en cURL: ' . curl_error($curl));
+        throw new \Exception('Error en cURL: '.curl_error($curl));
     }
 
-    //Convierto el JSON to Array
+    // Convierto el JSON to Array
     $result = json_decode($response, true);
 
     if ($result === null) {
@@ -933,7 +910,7 @@ Route::get('/r4/mercantil', function () {
 
     curl_close($curl);
 
-    //escribo el response en la tabla de log
+    // escribo el response en la tabla de log
     // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
 
     // Logging de la respuesta de la API
@@ -959,12 +936,12 @@ Route::get('/r4/mercantil', function () {
 
         $headers = [
             'Content-Type: application/json',
-            'Authorization: ' . $tokenAuthorization,
-            'Commerce: ' . $commerceToken,
+            'Authorization: '.$tokenAuthorization,
+            'Commerce: '.$commerceToken,
         ];
 
         $id = [
-            "id"     => $uuid,
+            'id' => $uuid,
         ];
 
         $curl = curl_init($url);
@@ -974,14 +951,14 @@ Route::get('/r4/mercantil', function () {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => json_encode($id),
-            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
             CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
         ]);
 
         $responseOperacion = curl_exec($curl);
 
         if (curl_errno($curl)) {
-            throw new \Exception('Error en cURL: ' . curl_error($curl));
+            throw new \Exception('Error en cURL: '.curl_error($curl));
         }
 
         $resultOperacion = json_decode($responseOperacion, true);
@@ -1003,21 +980,19 @@ Route::get('/r4/bbva', function () {
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $cuenta, $commerceToken);
 
-
     $headers = [
         'Content-Type: application/json',
-        'Authorization: ' . $tokenAuthorization,
-        'Commerce: ' . $commerceToken,
+        'Authorization: '.$tokenAuthorization,
+        'Commerce: '.$commerceToken,
     ];
 
     $postData = [
-        "docId"     => "V15872584",
-        "nombre"    => "Humberto Sanchez",
-        "cuenta"    => "01080989410100051948",
-        "monto"     => "100.00",
-        "concepto"  => "Pago"
+        'docId' => 'V15872584',
+        'nombre' => 'Humberto Sanchez',
+        'cuenta' => '01080989410100051948',
+        'monto' => '100.00',
+        'concepto' => 'Pago',
     ];
-
 
     $curl = curl_init($url);
 
@@ -1026,17 +1001,17 @@ Route::get('/r4/bbva', function () {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($postData),
-        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
         CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
     ]);
 
     $response = curl_exec($curl);
 
     if (curl_errno($curl)) {
-        throw new \Exception('Error en cURL: ' . curl_error($curl));
+        throw new \Exception('Error en cURL: '.curl_error($curl));
     }
 
-    //Convierto el JSON to Array
+    // Convierto el JSON to Array
     $result = json_decode($response, true);
 
     if ($result === null) {
@@ -1045,7 +1020,7 @@ Route::get('/r4/bbva', function () {
 
     curl_close($curl);
 
-    //escribo el response en la tabla de log
+    // escribo el response en la tabla de log
     // LogTransactionalR4Controller::response($result['code'], $result['message'], isset($result['uuid']) ? $result['uuid'] : null);
 
     // Logging de la respuesta de la API
@@ -1071,12 +1046,12 @@ Route::get('/r4/bbva', function () {
 
         $headers = [
             'Content-Type: application/json',
-            'Authorization: ' . $tokenAuthorization,
-            'Commerce: ' . $commerceToken,
+            'Authorization: '.$tokenAuthorization,
+            'Commerce: '.$commerceToken,
         ];
 
         $id = [
-            "id"     => $uuid,
+            'id' => $uuid,
         ];
 
         $curl = curl_init($url);
@@ -1086,14 +1061,14 @@ Route::get('/r4/bbva', function () {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => json_encode($id),
-            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
             CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
         ]);
 
         $responseOperacion = curl_exec($curl);
 
         if (curl_errno($curl)) {
-            throw new \Exception('Error en cURL: ' . curl_error($curl));
+            throw new \Exception('Error en cURL: '.curl_error($curl));
         }
 
         $resultOperacion = json_decode($responseOperacion, true);
@@ -1115,20 +1090,19 @@ Route::get('/tel/r4', function () {
     $url = 'https://r4conecta.mibanco.com.ve/TransferenciaOnline/DomiciliacionCNTA';
     $tokenAuthorization = hash_hmac('sha256', $telefono, $commerceToken);
 
-
     $headers = [
         'Content-Type: application/json',
-        'Authorization: ' . $tokenAuthorization,
-        'Commerce: ' . $commerceToken,
+        'Authorization: '.$tokenAuthorization,
+        'Commerce: '.$commerceToken,
     ];
 
     $postData = [
-        "docId"     => "V16007868",
-        "telefono"  => "04127018390",
-        "nombre"    => "Gustavo Camacho",
-        "banco"     => "0108",
-        "monto"     => "1.20",
-        "concepto"  => "Pago"
+        'docId' => 'V16007868',
+        'telefono' => '04127018390',
+        'nombre' => 'Gustavo Camacho',
+        'banco' => '0108',
+        'monto' => '1.20',
+        'concepto' => 'Pago',
     ];
 
     $curl = curl_init($url);
@@ -1138,14 +1112,14 @@ Route::get('/tel/r4', function () {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($postData),
-        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+        CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
         CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
     ]);
 
     $response = curl_exec($curl);
 
     if (curl_errno($curl)) {
-        throw new \Exception('Error en cURL: ' . curl_error($curl));
+        throw new \Exception('Error en cURL: '.curl_error($curl));
     }
 
     $result = json_decode($response, true);
@@ -1169,12 +1143,12 @@ Route::get('/tel/r4', function () {
 
         $headers = [
             'Content-Type: application/json',
-            'Authorization: ' . $tokenAuthorization,
-            'Commerce: ' . $commerceToken,
+            'Authorization: '.$tokenAuthorization,
+            'Commerce: '.$commerceToken,
         ];
 
         $id = [
-            "id"     => $uuid,
+            'id' => $uuid,
         ];
 
         $curl = curl_init($url);
@@ -1184,14 +1158,14 @@ Route::get('/tel/r4', function () {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => json_encode($id),
-            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor 
+            CURLOPT_SSL_VERIFYPEER => true, // Verificar el certificado del servidor
             CURLOPT_SSL_VERIFYHOST => 2,    // Verificar el hostname del certificado
         ]);
 
         $responseOperacion = curl_exec($curl);
 
         if (curl_errno($curl)) {
-            throw new \Exception('Error en cURL: ' . curl_error($curl));
+            throw new \Exception('Error en cURL: '.curl_error($curl));
         }
 
         $resultOperacion = json_decode($responseOperacion, true);
@@ -1222,10 +1196,10 @@ Route::get('/update', function () {
     $data = Collection::all();
     for ($i = 0; $i < count($data); $i++) {
         $data[$i]->update([
-            'filter_next_payment_date' => Carbon::createFromFormat('d/m/Y', $data[$i]->next_payment_date)->format('Y-m-d')
+            'filter_next_payment_date' => Carbon::createFromFormat('d/m/Y', $data[$i]->next_payment_date)->format('Y-m-d'),
         ]);
     }
-    
+
     // DB::connection('mysql2')->commit();
     // } catch (\Exception $e) {
     //     DB::connection('mysql2')->rollBack();
@@ -1245,7 +1219,7 @@ Route::get('/pr/cumple', function () {
         if (count($rowsNotifications) == 0) {
             return;
         }
-        //Fecha actual con el formato para comparar dia y mes
+        // Fecha actual con el formato para comparar dia y mes
         $now = now()->format('d/m');
 
         // dump($now);
@@ -1253,35 +1227,35 @@ Route::get('/pr/cumple', function () {
         // dd($tables);
         for ($i = 0; $i < count($rowsNotifications); $i++) {
 
-            //For para recorrer los canales de envio
+            // For para recorrer los canales de envio
             for ($j = 0; $j < count($rowsNotifications[$i]['channels']); $j++) {
                 // dump($rowsNotifications[$i]['channels'][$j]);
-                //Canal Whatsapp
+                // Canal Whatsapp
                 if ($rowsNotifications[$i]['channels'][$j] == 'whatsapp') {
                     // dump('whatsapp');
 
-                    //AGENTS, USERS, SUPPLIERS  
+                    // AGENTS, USERS, SUPPLIERS
                     if ($rowsNotifications[$i]['data_type'] == 'agents' || $rowsNotifications[$i]['data_type'] == 'users' || $rowsNotifications[$i]['data_type'] == 'suppliers') {
 
-                        //Selecciono la data que voy a utilizar segun la notificacion
+                        // Selecciono la data que voy a utilizar segun la notificacion
                         $data = DB::table($rowsNotifications[$i]['data_type'])
                             ->select('name', 'email', 'phone', 'birth_date')
                             ->get()
                             ->toArray();
 
-                        //for para recorrer la data, tomar la fecha y enviar la notificacion
+                        // for para recorrer la data, tomar la fecha y enviar la notificacion
                         for ($k = 0; $k < count($data); $k++) {
 
                             /**
                              * En caso de que la data venga NULL
                              */
                             if ($data[$k]->phone != null && $data[$k]->birth_date != null) {
-                                //Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
+                                // Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
                                 $conversionDate = UtilsController::converterDate($data[$k]->birth_date);
 
-                                //comparamos la fecha de nacimiento con la fecha actual
+                                // comparamos la fecha de nacimiento con la fecha actual
                                 if ($conversionDate == $now) {
-                                    //Ejecuto el envio de la notificacion
+                                    // Ejecuto el envio de la notificacion
                                     NotificationController::notificationBirthday($data[$k]->name, $data[$k]->phone, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file'], $rowsNotifications[$i]['type']);
                                 }
                             } else {
@@ -1290,7 +1264,7 @@ Route::get('/pr/cumple', function () {
                         }
                     }
 
-                    //AFFILIATIONS
+                    // AFFILIATIONS
                     if ($rowsNotifications[$i]['data_type'] == 'affiliations') {
                         $data = DB::table($rowsNotifications[$i]['data_type'])
                             ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
@@ -1298,19 +1272,19 @@ Route::get('/pr/cumple', function () {
                             ->get()
                             ->toArray();
 
-                        //for para recorrer la data, tomar la fecha y enviar la notificacion
+                        // for para recorrer la data, tomar la fecha y enviar la notificacion
                         for ($k = 0; $k < count($data); $k++) {
 
                             /**
                              * En caso de que la data venga NULL
                              */
                             if ($data[$k]->phone_ti != null && $data[$k]->birth_date_ti != null) {
-                                //Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
+                                // Tomamos la fecha de nacimiento de la data principal y la convertimos en el formato dd/mm
                                 $conversionDate = UtilsController::converterDate($data[$k]->birth_date_ti);
 
-                                //comparamos la fecha de nacimiento con la fecha actual
+                                // comparamos la fecha de nacimiento con la fecha actual
                                 if ($conversionDate == $now) {
-                                    //Ejecuto el envio de la notificacion
+                                    // Ejecuto el envio de la notificacion
                                     NotificationController::notificationBirthday($data[$k]->full_name_ti, $data[$k]->phone_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file'], $rowsNotifications[$i]['type']);
                                 }
                             } else {
@@ -1320,21 +1294,21 @@ Route::get('/pr/cumple', function () {
                     }
                 }
 
-                //Canal Email
-                //sendEmailBirthday($email, $name, $content, $file)
+                // Canal Email
+                // sendEmailBirthday($email, $name, $content, $file)
                 if ($rowsNotifications[$i]['channels'][$j] == 'email') {
                     // dump('email');
 
-                    //AGENTS, USERS, SUPPLIERS
+                    // AGENTS, USERS, SUPPLIERS
                     if ($rowsNotifications[$i]['data_type'] == 'agents' || $rowsNotifications[$i]['data_type'] == 'users' || $rowsNotifications[$i]['data_type'] == 'suppliers') {
                         // dd($rowsNotifications[$i]['data_type']);
-                        //Selecciono la data que voy a utilizar segun la notificacion
+                        // Selecciono la data que voy a utilizar segun la notificacion
                         $data = DB::table($rowsNotifications[$i]['data_type'])
                             ->select('name', 'email', 'phone', 'birth_date')
                             ->get()
                             ->toArray();
 
-                        //for para recorrer la data, tomar la fecha y enviar la notificacion
+                        // for para recorrer la data, tomar la fecha y enviar la notificacion
                         for ($k = 0; $k < count($data); $k++) {
 
                             /**
@@ -1342,7 +1316,7 @@ Route::get('/pr/cumple', function () {
                              */
                             if ($data[$k]->email != null) {
 
-                                //Ejecuto el envio de la notificacion
+                                // Ejecuto el envio de la notificacion
                                 self::sendEmailBirthday($data[$k]->email, $data[$k]->name, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
                             } else {
                                 continue;
@@ -1350,19 +1324,19 @@ Route::get('/pr/cumple', function () {
                         }
                     }
 
-                    //AFFILIATIONS
+                    // AFFILIATIONS
                     if ($rowsNotifications[$i]['data_type'] == 'affiliations') {
                         // dump($rowsNotifications[$i]['data_type'], $rowsNotifications[$i]['channels']);
                         $data = DB::table($rowsNotifications[$i]['data_type'])
                             ->select('full_name_ti', 'email_ti', 'phone_ti', 'birth_date_ti')
                             ->get()
                             ->toArray();
-                            // dump($data);
+                        // dump($data);
 
-                        //for para recorrer la data, tomar la fecha y enviar la notificacion
+                        // for para recorrer la data, tomar la fecha y enviar la notificacion
                         for ($k = 0; $k < count($data); $k++) {
 
-                            //Validamos si esta cumpliendo años
+                            // Validamos si esta cumpliendo años
                             $isBirthdayToday = UtilsController::isBirthdayToday($data[$k]->birth_date_ti);
                             dump($isBirthdayToday);
                             if ($isBirthdayToday) {
@@ -1372,13 +1346,13 @@ Route::get('/pr/cumple', function () {
                                  */
                                 if ($data[$k]->email_ti != null) {
 
-                                    //Ejecuto el envio de la notificacion
+                                    // Ejecuto el envio de la notificacion
                                     self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
-                                
+
                                 } else {
                                     continue;
                                 }
-                                
+
                             } else {
                                 continue;
                             }
@@ -1387,15 +1361,15 @@ Route::get('/pr/cumple', function () {
                     }
                 }
 
-                //End...
+                // End...
             }
 
-            //End...
+            // End...
         }
 
         return true;
     } catch (\Throwable $th) {
-        Log::error($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile());
+        Log::error($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile());
     }
 
 });
@@ -1430,10 +1404,12 @@ Route::prefix('api')->name('api.')->group(function () {
 
     /**
      * Ruta para cargar la informacion en la tabla
+     *
      * @version 1.0.0
+     *
      * @author Gustavo Camacho
+     *
      * @return void
-     * 
      */
     Route::post('/info/store', [BusinessAppointmentsController::class, 'store'])
         ->name('info.store');
@@ -1441,12 +1417,13 @@ Route::prefix('api')->name('api.')->group(function () {
 
 /**
  * Ruta para el link de pago
+ *
  * @version 1.0.0
+ *
  * @author Gustavo Camacho
+ *
  * @return void
- * 
  */
-
 Route::get('/ldi', function () {
     return view('link-debito-inmediato');
 });
@@ -1457,7 +1434,6 @@ Route::get('/ldi', function () {
  * 2. Middleware 'throttle': Evita ataques de denegación de servicio o fuerza bruta.
  * 3. Parámetros validados: Se espera un UUID para identificar la transacción.
  */
-
 Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
     ->name('ldi')
     ->middleware([
