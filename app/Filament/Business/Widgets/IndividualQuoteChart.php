@@ -2,74 +2,66 @@
 
 namespace App\Filament\Business\Widgets;
 
-use Carbon\Carbon;
-use Flowframe\Trend\Trend;
+use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
-use Flowframe\Trend\TrendValue;
+use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Auth;
 
 class IndividualQuoteChart extends ChartWidget
 {
-    protected ?string $heading = 'Gráfico de Cotizaciones Individuales';
+    protected ?string $heading = 'Cotizaciones Individuales y Corporativas por mes';
 
-    public ?string $filter = 'year';
-
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 1;
 
     protected ?string $maxHeight = '400px';
 
-    protected function getFilters(): ?array
+    protected ?string $description = 'Total de cotizaciones por mes. Selecciona el año para ver el movimiento.';
+
+    public ?string $filter = null;
+
+    public function mount(): void
     {
-        return [
-            'today' => 'HOY',
-            'week' => 'SEMANA',
-            'month' => 'MES',
-            'year' => 'AÑO',
-        ];
+        $this->filter = $this->filter ?? (string) Carbon::now()->year;
     }
 
-    public function getDescription(): ?string
+    protected function getFilters(): ?array
     {
-        return 'Creadas por el agente en el período seleccionado';
+        $now = Carbon::now();
+        $filters = [];
+        for ($i = 0; $i < 3; $i++) {
+            $y = $now->year - $i;
+            $filters[(string) $y] = (string) $y;
+        }
+
+        return $filters;
     }
 
     protected function getData(): array
     {
+        $anio = (int) ($this->filter ?? Carbon::now()->year);
+        $isAccountManager = Auth::user()->is_accountManagers == 1;
+        $userId = Auth::user()->id;
 
-        $activeFilter = $this->filter;
+        $scopeIndividual = fn ($q) => $isAccountManager ? $q->where('ownerAccountManagers', $userId) : $q;
+        $scopeCorporate = fn ($q) => $isAccountManager ? $q->where('ownerAccountManagers', $userId) : $q;
 
-        if ($activeFilter === 'today') {
-            $rangeStartDate = now()->startOfDay();
-            $rangeEndDate   = now()->endOfDay();
-        } elseif ($activeFilter === 'week') {
-            $rangeStartDate = now()->startOfWeek();
-            $rangeEndDate   = now()->endOfWeek();
-        } elseif ($activeFilter === 'month') {
-            $rangeStartDate = now()->startOfMonth();
-            $rangeEndDate   = now()->endOfMonth();
-        } elseif ($activeFilter === 'year') {
-            $rangeStartDate     = now()->startOfYear();
-            $rangeEndDate       = now()->endOfYear();
-        }
+        $labels = [];
+        $individuales = [];
+        $corporativas = [];
 
-        //Si el usuario es admin 
-        if (Auth::user()->is_accountManagers == 1) {
-            $data = Trend::query(IndividualQuote::where('ownerAccountManagers', Auth::user()->id))
-                ->between(
-                    start: $rangeStartDate,
-                    end: $rangeEndDate,
-                )
-                ->perDay()
+        for ($mes = 1; $mes <= 12; $mes++) {
+            $inicio = Carbon::createFromDate($anio, $mes, 1)->startOfMonth();
+            $fin = Carbon::createFromDate($anio, $mes, 1)->endOfMonth();
+
+            $labels[] = $inicio->translatedFormat('F');
+
+            $individuales[] = (clone $scopeIndividual(IndividualQuote::query()))
+                ->whereBetween('created_at', [$inicio, $fin])
                 ->count();
-        } else {
-            //Si el usuario no es admin de cuentas t es un super admin
-            $data = Trend::model(IndividualQuote::class)
-                ->between(
-                    start: $rangeStartDate,
-                    end: $rangeEndDate,
-                )
-                ->perDay()
+
+            $corporativas[] = (clone $scopeCorporate(CorporateQuote::query()))
+                ->whereBetween('created_at', [$inicio, $fin])
                 ->count();
         }
 
@@ -77,70 +69,23 @@ class IndividualQuoteChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Cotizaciones Individuales',
-                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
-                    // 'data' => [30, 10, 5, 40, 21, 32, 1, 74, 65, 45, 77, 89],
-                    'backgroundColor' => [
-                        '#D2D2FF', // Rosado muy claro
-                        '#E6FFF0', // Verde menta claro
-                        '#E6F5FF', // Azul hielo
-                        '#FFF5E6', // Amarillo suave
-                        '#F0DCFF', // Lavanda claro
-                        '#FAFAEA', // Beige claro
-                        '#DCF0DC', // Verde claro
-                        '#FFE6F0', // Magenta pastel
-                        '#EBEBEB', // Gris claro
-                        '#B8E6FF', // Celeste claro
-                        '#FFD2D2', // Rosado cálido
-                        '#D2FFD2', // Verde pálido
-                        '#FFFAEA', // Amarillo dorado claro
-                        '#D2D2FF', // Azul lavanda
-                        '#FFDCDC', // Rosado suave
-                        '#DCFFFF', // Cyan claro
-                        '#F5DCDC', // Coral suave
-                        '#DCE0FF', // Azul claro
-                        '#FFE7DC', // Naranja melocotón
-                        '#DCDCDC', // Gris plata
-                        '#E6FFE6', // Verde agua
-                        '#FFE6FF', // Lila claro
-                        '#F0F0FF', // Azul niebla
-                        '#FFF0F0', // Rosado nieve
-                    ],
-                    'borderColor' => [
-                        '#D2D2FF', // Rosado muy claro
-                        '#E6FFF0', // Verde menta claro
-                        '#E6F5FF', // Azul hielo
-                        '#FFF5E6', // Amarillo suave
-                        '#F0DCFF', // Lavanda claro
-                        '#FAFAEA', // Beige claro
-                        '#DCF0DC', // Verde claro
-                        '#FFE6F0', // Magenta pastel
-                        '#EBEBEB', // Gris claro
-                        '#B8E6FF', // Celeste claro
-                        '#FFD2D2', // Rosado cálido
-                        '#D2FFD2', // Verde pálido
-                        '#FFFAEA', // Amarillo dorado claro
-                        '#D2D2FF', // Azul lavanda
-                        '#FFDCDC', // Rosado suave
-                        '#DCFFFF', // Cyan claro
-                        '#F5DCDC', // Coral suave
-                        '#DCE0FF', // Azul claro
-                        '#FFE7DC', // Naranja melocotón
-                        '#DCDCDC', // Gris plata
-                        '#E6FFE6', // Verde agua
-                        '#FFE6FF', // Lila claro
-                        '#F0F0FF', // Azul niebla
-                        '#FFF0F0', // Rosado nieve
-                    ],
-                    'fill' => true,
+                    'data' => $individuales,
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.8)',
+                    'borderColor' => 'rgb(59, 130, 246)',
+                    'borderWidth' => 1,
+                    'borderRadius' => 4,
+                ],
+                [
+                    'label' => 'Cotizaciones Corporativas',
+                    'data' => $corporativas,
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.8)',
+                    'borderColor' => 'rgb(16, 185, 129)',
+                    'borderWidth' => 1,
+                    'borderRadius' => 4,
                 ],
             ],
-            'labels' => ($data->map(fn(TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
+            'labels' => $labels,
         ];
-    }
-
-    protected function getType(): string
-    {
-        return 'bar';
     }
 
     protected function getOptions(): array
@@ -148,9 +93,30 @@ class IndividualQuoteChart extends ChartWidget
         return [
             'plugins' => [
                 'legend' => [
-                    'display' => false,
+                    'display' => true,
+                    'position' => 'top',
                 ],
             ],
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                    'ticks' => [
+                        'precision' => 0,
+                    ],
+                ],
+                'x' => [
+                    'grid' => [
+                        'display' => true,
+                    ],
+                ],
+            ],
+            'barPercentage' => 0.7,
+            'categoryPercentage' => 0.85,
         ];
+    }
+
+    protected function getType(): string
+    {
+        return 'bar';
     }
 }
