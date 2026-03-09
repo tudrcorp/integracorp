@@ -9,12 +9,15 @@ use App\Filament\Marketing\Resources\TravelAgencies\Pages\ViewTravelAgency;
 use App\Filament\Marketing\Resources\TravelAgencies\Schemas\TravelAgencyForm;
 use App\Filament\Marketing\Resources\TravelAgencies\Schemas\TravelAgencyInfolist;
 use App\Filament\Marketing\Resources\TravelAgencies\Tables\TravelAgenciesTable;
+use App\Models\Permission;
 use App\Models\TravelAgency;
+use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class TravelAgencyResource extends Resource
@@ -23,7 +26,7 @@ class TravelAgencyResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA DE VIAJES';
+    protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA DE VIAJES';
 
     protected static ?string $navigationLabel = 'Agencias De Viajes';
 
@@ -59,5 +62,24 @@ class TravelAgencyResource extends Resource
             'view' => ViewTravelAgency::route('/{record}'),
             'edit' => EditTravelAgency::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        $module = 'MARKETING';
+        $permission = Permission::where('module', $module)->where('slug', 'agencias-de-viaje')->first();
+
+        // si es superadmin, retornar true
+        if (in_array('SUPERADMIN', Auth::user()->departament)) {
+            return true;
+        }
+
+        if (in_array($module, Auth::user()->departament)) {
+            if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

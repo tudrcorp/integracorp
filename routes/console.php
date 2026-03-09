@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\AnulateAgentQuotes;
+use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendNotificationBirthday;
 use App\Jobs\ValidateDateToRenew;
 use Illuminate\Support\Facades\Schedule;
@@ -10,6 +11,13 @@ use Illuminate\Support\Facades\Schedule;
  * Se ejecutara todos los dias a las 8:00am
  */
 Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
+
+/**
+ * Notificaciones de aniversario de colaboradores (día y mes de fechaIngreso = hoy).
+ * Envía email y WhatsApp a cada colaborador que cumple años en la empresa.
+ * Se ejecuta todos los días a las 8:00.
+ */
+Schedule::job(new SendCollaboratorAnniversaryNotification, 'system')->dailyAt('8:00');
 
 /**
  * Tarea que se ejecuta para enviar los medicamentos asignados al paciente

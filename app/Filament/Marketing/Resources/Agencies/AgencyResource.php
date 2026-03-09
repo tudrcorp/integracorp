@@ -10,11 +10,14 @@ use App\Filament\Marketing\Resources\Agencies\Schemas\AgencyForm;
 use App\Filament\Marketing\Resources\Agencies\Schemas\AgencyInfolist;
 use App\Filament\Marketing\Resources\Agencies\Tables\AgenciesTable;
 use App\Models\Agency;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class AgencyResource extends Resource
@@ -23,7 +26,7 @@ class AgencyResource extends Resource
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-c-building-library';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA DE CORRETAJES';
+    protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA DE CORRETAJES';
 
     protected static ?string $navigationLabel = 'Agencias De Corretajes';
 
@@ -59,5 +62,24 @@ class AgencyResource extends Resource
             'view' => ViewAgency::route('/{record}'),
             'edit' => EditAgency::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        $module = 'MARKETING';
+        $permission = Permission::where('module', $module)->where('slug', 'agencias-de-corretaje')->first();
+
+        // si es superadmin, retornar true
+        if (in_array('SUPERADMIN', Auth::user()->departament)) {
+            return true;
+        }
+
+        if (in_array($module, Auth::user()->departament)) {
+            if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

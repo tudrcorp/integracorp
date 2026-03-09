@@ -2,49 +2,57 @@
 
 namespace App\Filament\Business\Resources\Users\Pages;
 
-use Filament\Notifications\Notification;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Business\Resources\Users\Schemas\UserForm;
 use App\Filament\Business\Resources\Users\UserResource;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Auth;
 
 class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
+    /** @var list<int|string> IDs de permisos a sincronizar tras crear (desde el formulario). */
+    protected array $pendingPermissionIds = [];
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data = $this->mergePermissionsFromModuleFields($data);
+        $this->pendingPermissionIds = array_values(array_unique($data['permissions'] ?? []));
+        unset($data['permissions']);
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        if ($this->pendingPermissionIds !== []) {
+            $pivotValues = [
+                'created_by' => Auth::user()->name,
+                'updated_by' => Auth::user()->name,
+            ];
+            $this->record->permissions()->syncWithPivotValues(
+                array_map('intval', $this->pendingPermissionIds),
+                $pivotValues
+            );
+        }
+    }
+
     /**
-     *   #attributes: array:16 [▼
-            "name" => "asd"
-            "email" => "ag@t.com"
-            "departament" => "NEGOCIOS"
-            "password" => "$2y$12$pNT4ZG.ivCG.DWL00rsrmeEi2S8fcFoaM2XVY2.qPW//kGz/AXawq"
-            "is_admin" => false
-            "is_agent" => false
-            "is_subagent" => false
-            "is_agency" => false
-            "is_doctor" => false
-            "is_designer" => false
-            "is_accountManagers" => true
-            "is_superAdmin" => false
-            "is_business_admin" => true
-            "updated_at" => "2025-11-13 11:19:53"
-            "created_at" => "2025-11-13 11:19:53"
-            "id" => 333
-        ]
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
-    // protected function afterCreate(): void
-    // {
-    //     try {
+    private function mergePermissionsFromModuleFields(array $data): array
+    {
+        $permissionIds = [];
+        foreach (UserForm::getDepartamentModules() as $module) {
+            $key = "permissions_{$module}";
+            if (! empty($data[$key]) && is_array($data[$key])) {
+                $permissionIds = array_merge($permissionIds, $data[$key]);
+                unset($data[$key]);
+            }
+        }
+        $data['permissions'] = array_values(array_unique($permissionIds));
 
-    //         dd($this->getRecord());
-
-            
-    //     } catch (\Throwable $th) {
-    //         Notification::make()
-    //             ->title('ERROR')
-    //             ->body($th->getMessage())
-    //             ->icon('heroicon-m-tag')
-    //             ->iconColor('danger')
-    //             ->danger()
-    //             ->send();
-    //     }
-    // }
+        return $data;
+    }
 }
