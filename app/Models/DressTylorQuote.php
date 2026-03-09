@@ -9,17 +9,21 @@ class DressTylorQuote extends Model
     protected $table = 'dress_tylor_quotes';
 
     protected $fillable = [
+        'full_name',
+        'rifCi',
+        'email',
+        'planName',
         'agent_id',
         'agency_code',
         'owner_code',
-        'total',
-        'anual',
-        'mensual',
-        'trimestral',
-        'semestral',
         'status',
         'created_by',
         'updated_by',
+        'quote_structure',
+    ];
+
+    protected $casts = [
+        'quote_structure' => 'array',
     ];
 
     public function agent()

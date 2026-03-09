@@ -15,6 +15,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -59,6 +60,7 @@ class DressTylorQuoteForm
                                 $set('email', null);
                                 $set('plan_id', null);
                                 $set('benefits_repeater', []);
+                                $set('upgrade_benefits_repeater', self::defaultUpgradeRepeaterItems());
                                 $set('manual_adjustment_percent', 0);
                             }),
                     ])
@@ -66,7 +68,7 @@ class DressTylorQuoteForm
                         Grid::make(4)
                             ->schema([
                                 TextInput::make('full_name')
-                                    ->label('Nombre Completo o Razón Social del Solicitante')
+                                    ->label('Nombre o Razón Social')
                                     ->placeholder('Ej: Juan Perez, Addidas C.A.')
                                     ->required(),
                                 TextInput::make('rif_ci')
@@ -183,6 +185,88 @@ class DressTylorQuoteForm
                             ->columnSpanFull()->addActionLabel('Agregar Beneficio')->live(),
                     ])->columnSpanFull(),
 
+                // 2.1 BENEFICIOS UPGRADE (sección diferenciada, más interactiva)
+                Section::make('Beneficios Upgrade')
+                    ->description('Haga clic en los beneficios que desee agregar a la cotización. El subtotal se actualiza al instante y se suma al total final.')
+                    ->icon('heroicon-m-arrow-trending-up')
+                    ->iconColor('success')
+                    ->collapsed(false)
+                    ->schema([
+                        Placeholder::make('upgrade_hero')
+                            ->label('')
+                            ->content(function (Get $get): HtmlString {
+                                $repeater = $get('upgrade_benefits_repeater') ?? [];
+                                $selected = collect($repeater)->where('enabled', true);
+                                $total = (float) $selected->sum('pvp');
+                                $count = $selected->count();
+                                $hasSelection = $count > 0;
+                                $cardBg = $hasSelection
+                                    ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%)'
+                                    : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+                                $borderColor = $hasSelection ? '#10b981' : '#e2e8f0';
+                                $iconSvg = $hasSelection
+                                    ? '<svg class="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+                                    : '<svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>';
+                                $html = '<div class="rounded-xl border-2 p-5 mb-4 shadow-sm" style="background:'.$cardBg.'; border-color:'.$borderColor.';">';
+                                $html .= '<div class="flex items-center gap-4 flex-wrap">';
+                                $html .= '<div class="flex-shrink-0">'.$iconSvg.'</div>';
+                                $html .= '<div class="flex-1 min-w-0">';
+                                $html .= '<p class="text-sm font-semibold text-slate-700 uppercase tracking-wide">Resumen Beneficios Upgrade</p>';
+                                $html .= '<p class="text-slate-600 text-sm mt-0.5">'.($hasSelection ? "{$count} beneficio(s) seleccionado(s)" : 'Ningún beneficio seleccionado').'</p>';
+                                $html .= '</div>';
+                                $html .= '<div class="text-right">';
+                                $html .= '<p class="text-2xl font-bold" style="color:'.($hasSelection ? '#059669' : '#64748b').';">$ '.number_format($total, 2).'</p>';
+                                $html .= '<p class="text-xs text-slate-500">Subtotal</p>';
+                                $html .= '</div>';
+                                $html .= '</div></div>';
+
+                                return new HtmlString($html);
+                            })
+                            ->visible(fn (Get $get): bool => true)
+                            ->columnSpanFull(),
+                        Grid::make(3)
+                            ->schema([
+                                Repeater::make('upgrade_benefits_repeater')
+                                    ->label('Beneficios upgrade — active el toggle para incluir')
+                                    ->schema([
+                                        Hidden::make('benefit_id'),
+                                        Hidden::make('pvp'),
+                                        TextInput::make('description')
+                                            ->label('Beneficio')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->columnSpan(3),
+                                        Toggle::make('enabled')
+                                            ->label('Incluir')
+                                            ->default(false)
+                                            ->inline(false)
+                                            ->live(),
+                                    ])
+                                    ->columns(4)
+                                    ->default(self::defaultUpgradeRepeaterItems())
+                                    ->addable(false)
+                                    ->deletable(false)
+                                    ->reorderable(false)
+                                    ->columnSpan(2)
+                                    ->live()
+                                    ->itemLabel(fn (array $state): string => $state['description'] ?? ''),
+                                Placeholder::make('upgrade_tips')
+                                    ->label('')
+                                    ->content(new HtmlString(
+                                        '<div class="rounded-lg border border-slate-200 bg-slate-50 dark:bg-slate-800/50 dark:border-slate-700 p-4 text-sm">'.
+                                        '<p class="font-medium text-slate-700 dark:text-slate-300 mb-1">💡 Cómo usar</p>'.
+                                        '<ul class="list-disc list-inside text-slate-600 dark:text-slate-400 space-y-0.5">'.
+                                        '<li>Active el toggle para incluir cada beneficio</li>'.
+                                        '<li>El subtotal se suma al total de la cotización</li>'.
+                                        '<li>Puede activar o desactivar en cualquier momento</li>'.
+                                        '</ul>'.
+                                        '</div>'
+                                    ))
+                                    ->columnSpan(1),
+                            ])
+                            ->columnSpanFull(),
+                    ])->columnSpanFull(),
+
                 // 3. AJUSTE GLOBAL
                 Section::make('Ajuste de Cotización')
                     ->description('Ajuste global de la cotización en porcentaje(%)')
@@ -275,9 +359,31 @@ class DressTylorQuoteForm
                                 }
                                 $benefitsTable .= '</tbody></table>';
 
+                                // 1.1 Tabla Beneficios Upgrade (si hay selección)
+                                $upgradeTable = '';
+                                if (! empty($data['upgrade_benefits'])) {
+                                    $upgradeTable = "<div class='section-label'>BENEFICIOS UPGRADE SELECCIONADOS</div><table class='preview-table'><thead><tr><th class='col-label'>DESCRIPCIÓN</th><th class='col-data'>VALOR (US\$)</th></tr></thead><tbody>";
+                                    foreach ($data['upgrade_benefits'] as $ub) {
+                                        $upgradeTable .= "<tr><td class='col-label'>{$ub['name']}</td><td class='price-cell'>$".number_format($ub['pvp'], 2).'</td></tr>';
+                                    }
+                                    $upgradeTable .= "<tr class='subtotal-row'><td class='col-label'>Subtotal Beneficios Upgrade</td><td class='price-cell'>$".number_format($data['total_upgrade'], 2).'</td></tr>';
+                                    $upgradeTable .= '</tbody></table>';
+                                }
+
                                 // 2. Tabla Análisis de Costos
                                 $costsTable = "<div class='section-label'>ANÁLISIS DE COSTOS POR EDAD Y POBLACIÓN</div>";
-                                $costsTable .= "<div style='font-size: 10px; color: #64748b; margin-bottom: 5px;'>Suma total de beneficios aplicados por persona: <strong>US$ ".number_format($data['total_benefits_per_person'], 2).'</strong></div>';
+                                $totalPlan = $data['total_benefits_per_person'];
+                                $totalUpgradeVal = $data['total_upgrade'] ?? 0.0;
+                                $sumaPorPersona = $totalPlan + $totalUpgradeVal;
+                                $costsTable .= "<div style='font-size: 10px; color: #64748b; margin-bottom: 5px;'>";
+                                $costsTable .= 'Beneficios del plan por persona: <strong>US$ '.number_format($totalPlan, 2).'</strong>';
+                                if ($totalUpgradeVal > 0) {
+                                    $costsTable .= ' &nbsp;+&nbsp; Beneficios upgrade: <strong>US$ '.number_format($totalUpgradeVal, 2).'</strong>';
+                                    $costsTable .= ' &nbsp;= &nbsp; <strong>Suma por persona (× cantidad de personas): US$ '.number_format($sumaPorPersona, 2).'</strong>';
+                                } else {
+                                    $costsTable .= ' &nbsp;= &nbsp; <strong>Suma por persona (× cantidad de personas): US$ '.number_format($sumaPorPersona, 2).'</strong>';
+                                }
+                                $costsTable .= '</div>';
 
                                 $costsTable .= "<table class='preview-table'><thead><tr><th class='col-label'>RANGO DE EDAD / DESCRIPCIÓN</th>";
                                 foreach ($data['all_coverages'] as $cov) {
@@ -290,36 +396,37 @@ class DressTylorQuoteForm
 
                                 foreach ($data['age_analysis'] as $row) {
                                     $costsTable .= "<tr><td class='col-label'>{$row['age_range']}</td>";
+                                    $benefitsPlusUpgrade = $data['total_benefits_per_person'] + ($data['total_upgrade'] ?? 0);
                                     if ($data['all_coverages']->isEmpty()) {
                                         $cell = $row['costs_by_coverage']['base'] ?? null;
-                                        $costsTable .= $cell ? "<td class='price-cell'>$".number_format($cell['total'], 2)."<span class='calc-detail'>($".number_format($cell['fee_only'], 2).' + $'.number_format($data['total_benefits_per_person'], 2).") x {$cell['pop']} Pax</span></td>" : '<td>-</td>';
+                                        $costsTable .= $cell ? "<td class='price-cell'>$".number_format($cell['total'], 2)."<span class='calc-detail'>($".number_format($cell['fee_only'], 2).' + $'.number_format($benefitsPlusUpgrade, 2).") x {$cell['pop']} Pax</span></td>" : '<td>-</td>';
                                     } else {
                                         foreach ($data['all_coverages'] as $cov) {
                                             $cell = $row['costs_by_coverage'][$cov->id] ?? null;
-                                            $costsTable .= $cell ? "<td class='price-cell'>$".number_format($cell['total'], 2)."<span class='calc-detail'>($".number_format($cell['fee_only'], 2).' + $'.number_format($data['total_benefits_per_person'], 2).") x {$cell['pop']} Pax</span></td>" : '<td>-</td>';
+                                            $costsTable .= $cell ? "<td class='price-cell'>$".number_format($cell['total'], 2)."<span class='calc-detail'>($".number_format($cell['fee_only'], 2).' + $'.number_format($benefitsPlusUpgrade, 2).") x {$cell['pop']} Pax</span></td>" : '<td>-</td>';
                                         }
                                     }
                                     $costsTable .= '</tr>';
                                 }
                                 $costsTable .= '</tbody></table>';
 
-                                // 3. Tabla Resumen
+                                // 3. Tabla Resumen (totales ya incluyen upgrade en el costo por edad)
                                 $summaryTable = "<div class='section-label'>RESUMEN DE TOTALES Y FORMAS DE PAGO</div><table class='preview-table'><tbody>";
                                 $summaryTable .= "<tr class='total-summary-row'><td class='col-label'>TOTAL ANUALIZADO (100%)</td>";
-                                foreach ($data['summary_columns'] as $val) {
+                                foreach ($data['summary_columns_with_upgrade'] as $val) {
                                     $summaryTable .= "<td class='col-data'>$".number_format($val, 2).'</td>';
                                 }
                                 $summaryTable .= "</tr><tr class='subtotal-row'><td class='col-label'>VALOR SEMESTRAL (50%)</td>";
-                                foreach ($data['summary_columns'] as $val) {
+                                foreach ($data['summary_columns_with_upgrade'] as $val) {
                                     $summaryTable .= "<td class='col-data'>$".number_format($val / 2, 2).'</td>';
                                 }
                                 $summaryTable .= "</tr><tr class='subtotal-row'><td class='col-label'>VALOR TRIMESTRAL (25%)</td>";
-                                foreach ($data['summary_columns'] as $val) {
+                                foreach ($data['summary_columns_with_upgrade'] as $val) {
                                     $summaryTable .= "<td class='col-data'>$".number_format($val / 4, 2).'</td>';
                                 }
                                 $summaryTable .= '</tr></tbody></table>';
 
-                                return new HtmlString("<div id='quotation-print-wrapper'><div class='preview-container'>$style $logoImg $headerHtml $benefitsTable $costsTable $summaryTable</div></div>");
+                                return new HtmlString("<div id='quotation-print-wrapper'><div class='preview-container'>$style $logoImg $headerHtml $benefitsTable $upgradeTable $costsTable $summaryTable</div></div>");
                             }),
                     ]),
 
@@ -343,12 +450,28 @@ class DressTylorQuoteForm
 
         $allCoverages = Coverage::whereIn('id', $coverageIds)->get()->sortBy('price')->values();
 
+        $upgradeRepeater = $get('upgrade_benefits_repeater') ?? [];
+        $upgradeBenefitIds = collect($upgradeRepeater)->where('enabled', true)->pluck('benefit_id')->values()->all();
+        $upgradeBenefits = [];
+        $totalUpgrade = 0.0;
+        if (! empty($upgradeBenefitIds)) {
+            $upgradeBenefits = Benefit::whereIn('id', $upgradeBenefitIds)
+                ->get()
+                ->map(fn ($b) => [
+                    'id' => $b->id,
+                    'name' => $b->description,
+                    'pvp' => (float) $b->pvp,
+                ])
+                ->toArray();
+            $totalUpgrade = array_sum(array_column($upgradeBenefits, 'pvp'));
+        }
+
         $ageAnalysis = [];
         $totalsByCoverage = [];
         $benefitsProcessed = [];
 
         foreach ($benefitsRaw as $item) {
-            $bModel = Benefit::find($item['benefit_id']);
+            $bModel = Benefit::find($item['benefit_id'] ?? null);
             if (! $bModel) {
                 continue;
             }
@@ -370,12 +493,11 @@ class DressTylorQuoteForm
                         $ageAnalysis[$aid] = ['age_range' => $ageModel->range, 'costs_by_coverage' => []];
                     }
 
-                    // Caso A: El usuario seleccionó coberturas específicas
                     if (! empty($distCovIds)) {
                         foreach ($distCovIds as $cid) {
                             $fee = Fee::where('coverage_id', $cid)->where('age_range_id', $aid)->first();
                             $baseFee = (float) ($fee?->price ?? 0);
-                            $unitPrice = ($baseFee + $totalBenefitsPerPerson) * $adjFactor;
+                            $unitPrice = ($baseFee + $totalBenefitsPerPerson + $totalUpgrade) * $adjFactor;
                             $totalRow = $unitPrice * $pop;
 
                             $ageAnalysis[$aid]['costs_by_coverage'][$cid] = [
@@ -386,15 +508,11 @@ class DressTylorQuoteForm
                             ];
                             $totalsByCoverage[$cid] = ($totalsByCoverage[$cid] ?? 0) + $totalRow;
                         }
-                    }
-                    // Caso B: El usuario NO seleccionó coberturas (Beneficios globales por rango de edad)
-                    else {
-                        // Buscamos una tarifa base para el rango de edad (si existe en Fees sin cobertura o similar)
-                        // O simplemente tomamos los beneficios si no hay tarifa de cobertura asociada
-                        $fee = Fee::where('age_range_id', $aid)->first(); // Buscamos cualquier tarifa referencial
+                    } else {
+                        $fee = Fee::where('age_range_id', $aid)->first();
                         $baseFee = (float) ($fee?->price ?? 0);
 
-                        $unitPrice = ($baseFee + $totalBenefitsPerPerson) * $adjFactor;
+                        $unitPrice = ($baseFee + $totalBenefitsPerPerson + $totalUpgrade) * $adjFactor;
                         $totalRow = $unitPrice * $pop;
 
                         $ageAnalysis[$aid]['costs_by_coverage']['base'] = [
@@ -413,6 +531,8 @@ class DressTylorQuoteForm
             ? [$totalsByCoverage['base'] ?? 0]
             : $allCoverages->map(fn ($c) => $totalsByCoverage[$c->id] ?? 0)->toArray();
 
+        $summaryColumnsWithUpgrade = $summaryColumns;
+
         return [
             'is_empty' => empty($benefitsRaw),
             'plan_name' => $get('plan_name') ?? 'N/A',
@@ -427,9 +547,209 @@ class DressTylorQuoteForm
             'total_benefits_per_person' => $totalBenefitsPerPerson,
             'age_analysis' => collect($ageAnalysis)->values()->toArray(),
             'summary_columns' => $summaryColumns,
+            'summary_columns_with_upgrade' => $summaryColumnsWithUpgrade,
             'grand_total' => array_sum($summaryColumns),
-            'user_name' => Auth::user()->name,
+            'upgrade_benefits' => $upgradeBenefits,
+            'total_upgrade' => $totalUpgrade,
+            'user_name' => Auth::user()->name ?? 'Sistema',
         ];
+    }
+
+    /**
+     * Construye el array de datos de la cotización a partir del estado del formulario (array).
+     * Devuelve estructura JSON-serializable para guardar en quote_structure.
+     *
+     * @param  array<string, mixed>  $data  Estado del formulario (ej. mutateFormDataBeforeCreate)
+     * @return array<string, mixed>
+     */
+    public static function getQuotationDataFromArray(array $data): array
+    {
+        $benefitsRaw = $data['benefits_repeater'] ?? [];
+        $adjPercent = (float) ($data['manual_adjustment_percent'] ?? 0);
+        $adjFactor = 1 + ($adjPercent / 100);
+
+        $totalBenefitsPerPerson = collect($benefitsRaw)->sum(fn ($b) => (float) ($b['net_amount'] ?? 0));
+
+        $coverageIds = collect($benefitsRaw)
+            ->flatMap(fn ($b) => collect($b['distribution'] ?? [])
+                ->flatMap(fn ($d) => $d['coverage_ids'] ?? []))
+            ->unique()
+            ->filter()
+            ->values();
+
+        $allCoverages = Coverage::whereIn('id', $coverageIds)->get()->sortBy('price')->values();
+
+        $upgradeRepeater = $data['upgrade_benefits_repeater'] ?? [];
+        $upgradeBenefitIds = collect($upgradeRepeater)->where('enabled', true)->pluck('benefit_id')->values()->all();
+        $upgradeBenefits = [];
+        $totalUpgrade = 0.0;
+        if (! empty($upgradeBenefitIds)) {
+            $upgradeBenefits = Benefit::whereIn('id', $upgradeBenefitIds)
+                ->get()
+                ->map(fn ($b) => [
+                    'id' => $b->id,
+                    'name' => $b->description,
+                    'pvp' => (float) $b->pvp,
+                ])
+                ->toArray();
+            $totalUpgrade = array_sum(array_column($upgradeBenefits, 'pvp'));
+        }
+
+        $ageAnalysis = [];
+        $totalsByCoverage = [];
+        $benefitsProcessed = [];
+
+        foreach ($benefitsRaw as $item) {
+            $bModel = Benefit::find($item['benefit_id'] ?? null);
+            if (! $bModel) {
+                continue;
+            }
+
+            $benefitsProcessed[] = ['id' => $bModel->id, 'name' => $bModel->description];
+
+            foreach ($item['distribution'] ?? [] as $dist) {
+                $pop = (int) ($dist['population'] ?? 1);
+                $distCovIds = $dist['coverage_ids'] ?? [];
+                $distAgeIds = $dist['age_range_ids'] ?? [];
+
+                foreach ($distAgeIds as $aid) {
+                    $ageModel = AgeRange::find($aid);
+                    if (! $ageModel) {
+                        continue;
+                    }
+
+                    if (! isset($ageAnalysis[$aid])) {
+                        $ageAnalysis[$aid] = ['age_range' => $ageModel->range, 'costs_by_coverage' => []];
+                    }
+
+                    if (! empty($distCovIds)) {
+                        foreach ($distCovIds as $cid) {
+                            $fee = Fee::where('coverage_id', $cid)->where('age_range_id', $aid)->first();
+                            $baseFee = (float) ($fee?->price ?? 0);
+                            $unitPrice = ($baseFee + $totalBenefitsPerPerson + $totalUpgrade) * $adjFactor;
+                            $totalRow = $unitPrice * $pop;
+
+                            $ageAnalysis[$aid]['costs_by_coverage'][$cid] = [
+                                'unit' => $unitPrice,
+                                'fee_only' => $baseFee,
+                                'pop' => ($ageAnalysis[$aid]['costs_by_coverage'][$cid]['pop'] ?? 0) + $pop,
+                                'total' => ($ageAnalysis[$aid]['costs_by_coverage'][$cid]['total'] ?? 0) + $totalRow,
+                            ];
+                            $totalsByCoverage[$cid] = ($totalsByCoverage[$cid] ?? 0) + $totalRow;
+                        }
+                    } else {
+                        $fee = Fee::where('age_range_id', $aid)->first();
+                        $baseFee = (float) ($fee?->price ?? 0);
+
+                        $unitPrice = ($baseFee + $totalBenefitsPerPerson + $totalUpgrade) * $adjFactor;
+                        $totalRow = $unitPrice * $pop;
+
+                        $ageAnalysis[$aid]['costs_by_coverage']['base'] = [
+                            'unit' => $unitPrice,
+                            'fee_only' => $baseFee,
+                            'pop' => ($ageAnalysis[$aid]['costs_by_coverage']['base']['pop'] ?? 0) + $pop,
+                            'total' => ($ageAnalysis[$aid]['costs_by_coverage']['base']['total'] ?? 0) + $totalRow,
+                        ];
+                        $totalsByCoverage['base'] = ($totalsByCoverage['base'] ?? 0) + $totalRow;
+                    }
+                }
+            }
+        }
+
+        $summaryColumns = $allCoverages->isEmpty()
+            ? [$totalsByCoverage['base'] ?? 0]
+            : $allCoverages->map(fn ($c) => $totalsByCoverage[$c->id] ?? 0)->toArray();
+
+        $summaryColumnsWithUpgrade = $summaryColumns;
+
+        $allCoveragesArray = $allCoverages->map(fn ($c) => $c->toArray())->values()->all();
+
+        return [
+            'is_empty' => empty($benefitsRaw),
+            'plan_name' => $data['plan_name'] ?? 'N/A',
+            'full_name' => $data['full_name'] ?? 'N/A',
+            'rif_ci' => $data['rif_ci'] ?? 'N/A',
+            'email' => $data['email'] ?? 'N/A',
+            'title' => $data['title'] ?? 'COTIZACIÓN',
+            'subtitle' => $data['subtitle'] ?? 'PLAN MAESTRO DE BENEFICIOS Y COBERTURAS',
+            'date' => now()->format('d/m/Y'),
+            'all_coverages' => $allCoveragesArray,
+            'benefits_processed' => $benefitsProcessed,
+            'total_benefits_per_person' => $totalBenefitsPerPerson,
+            'age_analysis' => collect($ageAnalysis)->values()->toArray(),
+            'summary_columns' => $summaryColumns,
+            'summary_columns_with_upgrade' => $summaryColumnsWithUpgrade,
+            'grand_total' => array_sum($summaryColumns),
+            'upgrade_benefits' => $upgradeBenefits,
+            'total_upgrade' => $totalUpgrade,
+            'user_name' => Auth::user()->name ?? 'Sistema',
+        ];
+    }
+
+    /**
+     * Construye quote_structure incluyendo _form para poder rehidratar el formulario en edición.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function buildQuoteStructureWithForm(array $data): array
+    {
+        $structure = self::getQuotationDataFromArray($data);
+        $structure['_form'] = [
+            'benefits_repeater' => $data['benefits_repeater'] ?? [],
+            'upgrade_benefits_repeater' => $data['upgrade_benefits_repeater'] ?? [],
+            'manual_adjustment_percent' => $data['manual_adjustment_percent'] ?? 0,
+            'plan_id' => $data['plan_id'] ?? null,
+            'title' => $data['title'] ?? 'COTIZACIÓN',
+            'subtitle' => $data['subtitle'] ?? 'PLAN MAESTRO DE BENEFICIOS Y COBERTURAS',
+        ];
+
+        return $structure;
+    }
+
+    /**
+     * Items por defecto para el repeater de beneficios upgrade (un ítem por beneficio con is_upgrade = true).
+     *
+     * @return array<int, array{benefit_id: int, description: string, pvp: float, enabled: bool}>
+     */
+    public static function defaultUpgradeRepeaterItems(): array
+    {
+        return Benefit::query()
+            ->where('is_upgrade', true)
+            ->orderBy('description')
+            ->get()
+            ->map(fn (Benefit $b): array => [
+                'benefit_id' => $b->id,
+                'description' => $b->description.' · US$ '.number_format((float) $b->pvp, 2),
+                'pvp' => (float) $b->pvp,
+                'enabled' => false,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Asegura que cada ítem del repeater upgrade tenga 'description' (nombre + precio) desde el modelo Benefit.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array{benefit_id: int, description: string, pvp: float, enabled: bool}>
+     */
+    public static function enrichUpgradeRepeaterItemsWithDescriptions(array $items): array
+    {
+        return array_map(function (array $item): array {
+            $description = $item['description'] ?? null;
+            if ($description !== null && $description !== '') {
+                return $item;
+            }
+            $benefit = Benefit::find($item['benefit_id'] ?? null);
+            if (! $benefit) {
+                return array_merge($item, ['description' => '']);
+            }
+            $item['description'] = $benefit->description.' · US$ '.number_format((float) $benefit->pvp, 2);
+            $item['pvp'] = (float) ($item['pvp'] ?? $benefit->pvp);
+
+            return $item;
+        }, $items);
     }
 
     /**
@@ -460,6 +780,47 @@ class DressTylorQuoteForm
         return response()->streamDownload(
             fn () => print ($pdf->output()),
             'Cotizacion-'.date('d-m-Y').'.pdf'
+        );
+    }
+
+    /**
+     * Genera el PDF a partir del array quote_structure guardado (ej. en la tabla).
+     * Convierte all_coverages a objetos para que la vista Blade siga usando $cov->price, etc.
+     *
+     * @param  array<string, mixed>  $quoteStructure
+     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public static function generatePdfFromQuoteStructure(array $quoteStructure)
+    {
+        $data = $quoteStructure;
+
+        if (isset($data['all_coverages']) && is_array($data['all_coverages'])) {
+            $data['all_coverages'] = array_map(
+                fn ($c) => is_object($c) ? $c : (object) $c,
+                $data['all_coverages']
+            );
+        }
+
+        $html = View::make('documents.dress-tylor', [
+            'data' => $data,
+            'isPreview' => false,
+        ])->render();
+
+        $pdf = Pdf::loadHTML($html)
+            ->setPaper('a4', 'portrait')
+            ->setWarnings(false)
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'sans-serif',
+            ]);
+
+        $filename = 'Cotizacion-'.($data['plan_name'] ?? date('d-m-Y')).'-'.date('d-m-Y').'.pdf';
+        $filename = preg_replace('/[^a-zA-Z0-9\-_.]/', '-', $filename) ?: 'Cotizacion-'.date('d-m-Y').'.pdf';
+
+        return response()->streamDownload(
+            fn () => print ($pdf->output()),
+            $filename
         );
     }
 
@@ -540,89 +901,4 @@ class DressTylorQuoteForm
 
         return $html;
     }
-
-    // public static function getQuotationDataPdf(Get $get): array
-    // {
-    //     $benefitsRaw = $get('benefits_repeater') ?? [];
-    //     $adjFactor = 1 + ((float)($get('manual_adjustment_percent') ?? 0) / 100);
-    //     $totalBenefitsPerPerson = collect($benefitsRaw)->sum(fn($b) => (float)($b['net_amount'] ?? 0));
-
-    //     $coverageIds = collect($benefitsRaw)
-    //         ->flatMap(fn($b) => collect($b['distribution'] ?? [])
-    //             ->flatMap(fn($d) => $d['coverage_ids'] ?? []))
-    //         ->unique()->filter()->values();
-
-    //     $allCoverages = Coverage::whereIn('id', $coverageIds)->get()->sortBy('price')->values();
-
-    //     $ageAnalysis = [];
-    //     $totalsByCoverage = [];
-    //     $benefitsProcessed = [];
-
-    //     foreach ($benefitsRaw as $item) {
-    //         $bModel = Benefit::find($item['benefit_id']);
-    //         if (!$bModel) continue;
-
-    //         // Pre-procesar relaciones de cobertura
-    //         $coverageRelations = [];
-    //         foreach ($allCoverages as $cov) {
-    //             $coverageRelations[$cov->id] = BenefitCoverage::where('benefit_id', $bModel->id)
-    //                 ->where('coverage_id', $cov->id)
-    //                 ->exists();
-    //         }
-
-    //         $benefitsProcessed[] = [
-    //             'id' => $bModel->id,
-    //             'name' => $bModel->description,
-    //             'coverages' => $coverageRelations
-    //         ];
-
-    //         foreach ($item['distribution'] ?? [] as $dist) {
-    //             // Captura del valor de población definido por el usuario (default 1)
-    //             $popValue = (int)($dist['population'] ?? 1);
-
-    //             foreach ($dist['age_range_ids'] ?? [] as $aid) {
-    //                 $ageModel = AgeRange::find($aid);
-    //                 if (!$ageModel) continue;
-
-    //                 // Inicializamos el nodo del rango si no existe
-    //                 if (!isset($ageAnalysis[$aid])) {
-    //                     $ageAnalysis[$aid] = [
-    //                         'age_range' => $ageModel->range,
-    //                         'population' => 0,
-    //                         'costs_by_coverage' => []
-    //                     ];
-    //                 }
-
-    //                 // Sumamos la población al total acumulado de este rango de edad
-    //                 $ageAnalysis[$aid]['population'] += $popValue;
-
-    //                 foreach ($dist['coverage_ids'] ?? [] as $cid) {
-    //                     $fee = Fee::where('coverage_id', $cid)->where('age_range_id', $aid)->first();
-    //                     $basePrice = (float)($fee?->price ?? 0);
-
-    //                     // Cálculo del costo total considerando población
-    //                     $totalRow = (($basePrice + $totalBenefitsPerPerson) * $adjFactor) * $popValue;
-
-    //                     $ageAnalysis[$aid]['costs_by_coverage'][$cid]['total'] = ($ageAnalysis[$aid]['costs_by_coverage'][$cid]['total'] ?? 0) + $totalRow;
-    //                     $totalsByCoverage[$cid] = ($totalsByCoverage[$cid] ?? 0) + $totalRow;
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     $summaryColumns = $allCoverages->map(fn($c) => $totalsByCoverage[$c->id] ?? 0)->toArray();
-
-    //     return [
-    //         'is_empty'                  => empty($benefitsRaw),
-    //         'title'                     => $get('title') ?? 'COTIZACIÓN',
-    //         'subtitle'                  => $get('subtitle') ?? 'DETALLE TÉCNICO',
-    //         'date'                      => now()->format('d/m/Y'),
-    //         'all_coverages'             => $allCoverages,
-    //         'benefits_processed'        => $benefitsProcessed,
-    //         'total_benefits_per_person' => $totalBenefitsPerPerson,
-    //         'age_analysis'              => collect($ageAnalysis)->values()->toArray(),
-    //         'summary_columns'           => $summaryColumns,
-    //         'user_name'                 => Auth::user()->name
-    //     ];
-    // }
 }
