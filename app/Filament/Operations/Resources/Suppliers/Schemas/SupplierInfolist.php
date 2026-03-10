@@ -62,7 +62,7 @@ class SupplierInfolist
                                     ->label('Ciudad:')
                                     ->placeholder('-'),
                                 TextEntry::make('tipo_servicio')
-                                    ->label('Cobertura Geográficas:')
+                                    ->label('Zona de Cobertura:')
                                     ->placeholder('-'),
                                 TextEntry::make('state_services')
                                     ->label('Presta Servicios en:')

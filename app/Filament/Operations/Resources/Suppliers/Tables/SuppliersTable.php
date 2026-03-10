@@ -169,41 +169,15 @@ class SuppliersTable
                     ->options(City::all()->pluck('definition', 'id')),
                 
                 SelectFilter::make('tipo_servicio')
-                    ->label('Tipo de Servicio')
+                    ->label('Zona de Cobertura')
                     ->options([
-                        'A-NIVEL-NACIONAL' => 'A-NIVEL-NACIONAL',
-                        'LOCAL' => 'LOCAL',
+                        'A-NIVEL-NACIONAL'  => 'A Nivel Nacional',
+                        'MULTI-ESTADO'      => 'MultiEstado',
+                        'LOCAL'             => 'Local',
                     ]),
                 SelectFilter::make('clasificacion')
-                    ->label('Tipo de Servicio')
+                    ->label('Clasificación del Proveedor')
                     ->options(SupplierClasificacion::all()->pluck('description', 'id')),
-                // Filter::make('created_at')
-                //     ->form([
-                //         DatePicker::make('desde'),
-                //         DatePicker::make('hasta'),
-                //     ])
-                //     ->query(function (Builder $query, array $data): Builder {
-                //         return $query
-                //             ->when(
-                //                 $data['desde'] ?? null,
-                //                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                //             )
-                //             ->when(
-                //                 $data['hasta'] ?? null,
-                //                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                //             );
-                //     })
-                //     ->indicateUsing(function (array $data): array {
-                //         $indicators = [];
-                //         if ($data['desde'] ?? null) {
-                //             $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
-                //         }
-                //         if ($data['hasta'] ?? null) {
-                //             $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
-                //         }
-
-                //         return $indicators;
-                //     }),
                 Filter::make('afiliacion_proveedor')
                     ->form([
                         DatePicker::make('desde')
