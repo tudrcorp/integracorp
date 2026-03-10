@@ -167,19 +167,7 @@ class SuppliersTable
                 SelectFilter::make('city_id')
                     ->label('Ciudad')
                     ->options(City::all()->pluck('definition', 'id')),
-                Filter::make('afiliacion_proveedor')
-                    ->form([
-                        DatePicker::make('date')
-                            ->format('d/m/Y')
-                            ->label('Afiliación Proveedor'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (empty($data['date'])) {
-                            return $query;
-                        }
-                        $date = Carbon::parse($data['date'])->format('d/m/Y');
-                        return $query->where('afiliacion_proveedor', $date);
-                    }),
+                
                 SelectFilter::make('tipo_servicio')
                     ->label('Tipo de Servicio')
                     ->options([
@@ -189,29 +177,61 @@ class SuppliersTable
                 SelectFilter::make('clasificacion')
                     ->label('Tipo de Servicio')
                     ->options(SupplierClasificacion::all()->pluck('description', 'id')),
-                Filter::make('created_at')
+                // Filter::make('created_at')
+                //     ->form([
+                //         DatePicker::make('desde'),
+                //         DatePicker::make('hasta'),
+                //     ])
+                //     ->query(function (Builder $query, array $data): Builder {
+                //         return $query
+                //             ->when(
+                //                 $data['desde'] ?? null,
+                //                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                //             )
+                //             ->when(
+                //                 $data['hasta'] ?? null,
+                //                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                //             );
+                //     })
+                //     ->indicateUsing(function (array $data): array {
+                //         $indicators = [];
+                //         if ($data['desde'] ?? null) {
+                //             $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
+                //         }
+                //         if ($data['hasta'] ?? null) {
+                //             $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
+                //         }
+
+                //         return $indicators;
+                //     }),
+                Filter::make('afiliacion_proveedor')
                     ->form([
-                        DatePicker::make('desde'),
-                        DatePicker::make('hasta'),
+                        DatePicker::make('desde')
+                            ->format('d/m/Y')
+                            ->label('Desde (Afiliación Proveedor)'),
+                        DatePicker::make('hasta')
+                            ->format('d/m/Y')
+                            ->label('Hasta (Afiliación Proveedor)'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['desde'] ?? null,
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['hasta'] ?? null,
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                            );
+                        if (! empty($data['desde'])) {
+                            $desde = Carbon::parse($data['desde'])->format('Y-m-d');
+                            $query->whereRaw('STR_TO_DATE(afiliacion_proveedor, "%d/%m/%Y") >= ?', [$desde]);
+                        }
+                        if (! empty($data['hasta'])) {
+                            $hasta = Carbon::parse($data['hasta'])->format('Y-m-d');
+                            $query->whereRaw('STR_TO_DATE(afiliacion_proveedor, "%d/%m/%Y") <= ?', [$hasta]);
+                        }
+
+                        return $query;
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Afiliación Proveedor desde '.Carbon::parse($data['desde'])->format('d/m/Y');
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Afiliación Proveedor hasta '.Carbon::parse($data['hasta'])->format('d/m/Y');
                         }
 
                         return $indicators;
