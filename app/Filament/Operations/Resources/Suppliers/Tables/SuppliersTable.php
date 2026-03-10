@@ -171,8 +171,7 @@ class SuppliersTable
                     ->form([
                         DatePicker::make('date')
                             ->format('d/m/Y')
-                            ->label('Afiliación Proveedor')
-                            ->required(),
+                            ->label('Afiliación Proveedor'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         if (empty($data['date'])) {
