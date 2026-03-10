@@ -169,11 +169,11 @@ class SuppliersTable
                     ->options(City::all()->pluck('definition', 'id')),
                 
                 SelectFilter::make('tipo_servicio')
-                    ->label('Tipo de Servicio')
+                    ->label('Zona de Cobertura')
                     ->options([
-                        'A-NIVEL-NACIONAL'  => 'A-NIVEL-NACIONAL',
-                        'MULTI-ESTADO'      => 'MULTI-ESTADO',
-                        'LOCAL'             => 'LOCAL',
+                        'A-NIVEL-NACIONAL'  => 'A Nivel Nacional',
+                        'MULTI-ESTADO'      => 'MultiEstado',
+                        'LOCAL'             => 'Local',
                     ]),
                 SelectFilter::make('clasificacion')
                     ->label('Clasificación del Proveedor')
