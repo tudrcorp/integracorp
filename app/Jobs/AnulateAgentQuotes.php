@@ -32,6 +32,7 @@ class AnulateAgentQuotes implements ShouldQueue
     {
         $quotes = IndividualQuote::query()
             ->whereNotIn('status', ['APROBADA', 'EJECUTADA'])
+            ->where('created_at', '<=', now()->subDays(15))
             ->get();
 
         $anulatedCount = 0;
