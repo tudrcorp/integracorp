@@ -167,6 +167,20 @@ class SuppliersTable
                 SelectFilter::make('city_id')
                     ->label('Ciudad')
                     ->options(City::all()->pluck('definition', 'id')),
+                Filter::make('afiliacion_proveedor')
+                    ->form([
+                        DatePicker::make('date')
+                            ->format('d/m/Y')
+                            ->label('Afiliación Proveedor')
+                            ->required(),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (empty($data['date'])) {
+                            return $query;
+                        }
+                        $date = Carbon::parse($data['date'])->format('d/m/Y');
+                        return $query->where('afiliacion_proveedor', $date);
+                    }),
                 SelectFilter::make('tipo_servicio')
                     ->label('Tipo de Servicio')
                     ->options([
