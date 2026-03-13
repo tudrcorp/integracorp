@@ -29,6 +29,7 @@ class StatsOverviewCommissionUsdVes extends StatsOverviewWidget
         $endOfMonth = $now->copy()->endOfMonth();
         $nombreMes = ucfirst($now->translatedFormat('F'));
         $anioActual = $now->year;
+        
 
         $metrics = [
             [
@@ -48,17 +49,22 @@ class StatsOverviewCommissionUsdVes extends StatsOverviewWidget
         ];
 
         return array_map(function ($metric) use ($startOfYear, $endOfYear, $startOfMonth, $endOfMonth, $nombreMes, $anioActual) {
-            $baseQuery = fn () => clone $this->getPageTableQuery();
-
             $sumExpression = implode(' + ', array_map(fn ($col) => "COALESCE({$col}, 0)", $metric['columns']));
 
-            $totalAnioActual = $baseQuery()
-                ->whereBetween('created_at', [$startOfYear, $endOfYear])
+            $queryForSum = function (?\DateTimeInterface $from, ?\DateTimeInterface $to) {
+                $query = clone $this->getPageTableQuery();
+                $query->reorder();
+                $query->getQuery()->limit = null;
+                $query->getQuery()->offset = null;
+
+                return $query->when($from && $to, fn ($q) => $q->whereBetween('created_at', [$from, $to]));
+            };
+
+            $totalAnioActual = $queryForSum($startOfYear, $endOfYear)
                 ->selectRaw("SUM({$sumExpression}) as total")
                 ->value('total') ?? 0;
 
-            $totalMesActual = $baseQuery()
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            $totalMesActual = $queryForSum($startOfMonth, $endOfMonth)
                 ->selectRaw("SUM({$sumExpression}) as total")
                 ->value('total') ?? 0;
 
