@@ -129,6 +129,9 @@ class MarketingPanelProvider extends PanelProvider
                     ->label('MARKETING')
                     ->icon('heroicon-m-cursor-arrow-rays'),
                 NavigationGroup::make()
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-o-cloud-arrow-down'),
+                NavigationGroup::make()
                     ->label('VENTAS DIRECTAS')
                     ->icon('heroicon-m-cursor-arrow-rays'),
 

@@ -24,7 +24,7 @@ class CapemiacResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
 
-    protected static ?string $navigationLabel = 'CAPEMIAC';
+    protected static ?string $navigationLabel = 'Capemiac';
 
     public static function form(Schema $schema): Schema
     {
