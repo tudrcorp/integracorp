@@ -34,12 +34,12 @@ class Agent extends Model
         'marital_status',
         'birth_date',
 
-        //contacto secundario
+        // contacto secundario
         'name_contact_2',
         'email_contact_2',
         'phone_contact_2',
 
-        //datos bancarios moneda local
+        // datos bancarios moneda local
         'local_beneficiary_name',
         'local_beneficiary_rif',
         'local_beneficiary_account_number',
@@ -50,8 +50,7 @@ class Agent extends Model
         'local_beneficiary_account_bank_mon_inter',
         'local_beneficiary_account_type_mon_inter',
 
-
-        //datos bancarios moneda extrangera
+        // datos bancarios moneda extrangera
         'extra_beneficiary_name',
         'extra_beneficiary_ci_rif',
         'extra_beneficiary_account_number',
@@ -64,7 +63,7 @@ class Agent extends Model
         'extra_beneficiary_aba',
         'extra_beneficiary_address',
 
-        //comisones        
+        // comisones
         'tdec',
         'tdev',
         'commission_tdec',
@@ -101,8 +100,6 @@ class Agent extends Model
 
     /**
      * Get the user associated with the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
     public function typeAgent(): HasOne
     {
@@ -111,8 +108,6 @@ class Agent extends Model
 
     /**
      * Get the user that owns the Agent
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function agency(): BelongsTo
     {
@@ -121,8 +116,6 @@ class Agent extends Model
 
     /**
      * Get all of the comments for the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function agents(): HasMany
     {
@@ -131,8 +124,6 @@ class Agent extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function country(): BelongsTo
     {
@@ -141,8 +132,6 @@ class Agent extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function city(): BelongsTo
     {
@@ -151,8 +140,6 @@ class Agent extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function region(): BelongsTo
     {
@@ -161,12 +148,15 @@ class Agent extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function state(): BelongsTo
     {
         return $this->belongsTo(State::class, 'state_id', 'id');
+    }
+
+    public function affiliations(): HasMany
+    {
+        return $this->hasMany(Affiliation::class, 'agent_id', 'id');
     }
 
     public function corporateQuoteRequests()
@@ -187,11 +177,11 @@ class Agent extends Model
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de la carta de bienvenida
-     * 
-     * @return void
+     *
      * @author TuDrEnCasa
-     * 
-     * @param array $details
+     *
+     * @param  array  $details
+     * @return void
      */
     public function sendCartaBienvenida($id, $name, $email)
     {
