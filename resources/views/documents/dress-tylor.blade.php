@@ -8,228 +8,187 @@
     <title>{{ $data['title'] }}</title>
     <style>
         @page {
-            margin: 0.8cm 1.2cm;
+            margin: 0.6cm 1cm;
+            size: A4;
         }
 
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #1e293b;
+            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+            color: #1a1a1a;
             line-height: 1.2;
             font-size: 9px;
-            /* Ajuste para acomodar nueva columna */
             margin: 0;
             padding: 0;
         }
 
-        .header {
-            border-bottom: 1.5px solid #3b82f6;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
+        .preview-container {
+            background: white;
+            color: #1a1a1a;
+            padding: 12px 14px;
+            border-radius: 5px;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            border: 1px solid #eee;
         }
 
-        .header-table {
+        .preview-logo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 85px;
+            text-align: right;
+        }
+
+        .preview-logo img {
             width: 100%;
+            height: auto;
+            max-width: 85px;
+            margin-bottom: 3px;
         }
 
-        .header-table td {
-            vertical-align: start;
-            border: none;
+        .preview-header {
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+            margin-right: 95px;
         }
 
-        .title {
-            font-size: 18px;
-            font-weight: bold;
+        .preview-title {
+            font-size: 14px;
+            font-weight: 800;
             color: #1e3a8a;
             margin: 0;
             text-transform: uppercase;
         }
 
-        .subtitle {
-            font-size: 11px;
-            color: #64748b;
-            margin-top: 2px;
-        }
-
-        .meta-info {
-            text-align: right;
-            font-size: 9px;
-            color: #64748b;
-        }
-
-        .section-header {
-            background-color: #f8fafc;
-            color: #1e40af;
-            padding: 4px 8px;
-            font-weight: bold;
+        .preview-subtitle {
             font-size: 10px;
-            margin-top: 10px;
-            margin-bottom: 6px;
-            border-left: 3px solid #3b82f6;
-            text-transform: uppercase;
+            color: #64748b;
+            margin: 3px 0 0;
         }
 
+        .preview-meta {
+            margin-top: 3px;
+            font-size: 8px;
+            color: #94a3b8;
+        }
+
+        .section-label {
+            background: #eff6ff;
+            color: #1d4ed8;
+            padding: 3px 8px;
+            border-radius: 99px;
+            font-size: 8px;
+            font-weight: 800;
+            display: inline-block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .section-label:first-of-type {
+            margin-top: 4px;
+        }
+
+        .preview-table,
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-top: 2px;
+            margin-bottom: 14px;
+            font-size: 8px;
             table-layout: fixed;
         }
 
+        .preview-table th,
+        .preview-table td,
         th,
         td {
-            border: 0.5px solid #cbd5e1;
-            padding: 4px 5px;
+            border: 1px solid #e2e8f0;
             text-align: center;
+            padding: 4px 6px;
             word-wrap: break-word;
         }
 
+        .preview-table th,
         th {
-            background-color: #f1f5f9;
-            color: #334155;
-            font-size: 10px;
-            font-weight: bold;
+            background: #f1f5f9;
+            color: #475569;
+            text-transform: uppercase;
+            font-size: 8px;
         }
 
         .col-label {
-            width: 30%;
-            /* Reducido para dar espacio a población */
+            width: 35%;
             text-align: left !important;
-            /* font-weight: bold; */
-            background-color: #f8fafc;
+            font-weight: 500;
         }
 
-        .col-label-age-range {
-            width: 30%;
-            /* Reducido para dar espacio a población */
-            text-align: center !important;
-            font-weight: bold;
-            background-color: #f8fafc;
-        }
-
-        .col-pop {
-            width: 10%;
-            /* Espacio para la columna de población */
-            background-color: #f1f5f9;
-            font-weight: bold;
-        }
-
-        .text-blue {
-            color: #2563eb;
-            font-weight: bold;
-        }
-
-        .text-green {
-            color: #10b981;
-            font-weight: bold;
-        }
-
-        .bg-total {
-            background-color: #1e3a8a !important;
-            color: #ffffff !important;
-        }
-
-        .bg-subtotal {
-            background-color: #f8fafc;
-            font-weight: bold;
+        .col-data {
+            width: auto;
         }
 
         .check-cell {
             color: #10b981;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 10px;
         }
 
-        /* .footer {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            text-align: center;
+        .price-cell {
+            font-weight: 700;
+            color: #0f172a;
             font-size: 8px;
-            color: #94a3b8;
-            padding-top: 5px;
-        } */
+        }
 
-        /* ========== FOOTER ========== */
+        .total-summary-row {
+            background: #1e3a8a !important;
+            color: white !important;
+            font-weight: 800;
+        }
+
+        .total-summary-row td {
+            border-color: #1e3a8a;
+            color: white !important;
+        }
+
+        .subtotal-row {
+            background: #f1f5f9;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        .subtotal-row td {
+            background: #f1f5f9;
+        }
+
         .footer {
             position: fixed;
             bottom: 0;
             width: 100%;
-            margin-top: 30px;
-            padding-top: 15px;
+            margin-top: 8px;
+            padding-top: 6px;
             border-top: 1px solid #e2e8f0;
             text-align: center;
-            font-size: 8pt;
+            font-size: 7pt;
             color: #475569;
-            line-height: 1.4;
+            line-height: 1.3;
             page-break-inside: avoid;
         }
 
         .footer-note {
             font-style: italic;
             color: #64748b;
-            margin: 4px 0;
+            margin: 3px 0;
         }
 
         .footer-disclaimer {
             background-color: #f8fafc;
-            padding: 8px 15px;
+            padding: 5px 10px;
             border-radius: 4px;
-            margin-top: 8px;
-            font-size: 7.5pt;
-            color: #1e40af;
-            border-left: 3px solid #3b82f6;
+            margin-top: 4px;
+            font-size: 7pt;
+            color: #1d4ed8;
+            border-left: 2px solid #3b82f6;
         }
-
-        .preview-container 
-        { 
-            background: white; 
-            color: #1a1a1a; 
-            margin-top: 10px;
-            padding: 5px; 
-            font-family: 'Inter', sans-serif; 
-            position: relative; 
-        }
-
-        .preview-logo 
-        { 
-            position: absolute; 
-            top: 5px; 
-            right: 5px; 
-            width: 100px; 
-            text-align: right; 
-        }
-
-        .preview-logo img 
-        { 
-            width: 100%; 
-            height: auto; 
-            max-width: 120px; 
-            margin-bottom: 5px; 
-        }
-        
-        .preview-header 
-        { 
-            padding-bottom: 15px; 
-            margin-bottom: 25px; 
-            margin-right: 160px; 
-        }
-        
-        .preview-title 
-        { 
-            font-size: 12px; 
-            font-weight: 800; 
-            color: #1e3a8a; 
-            margin: 0; 
-            text-transform: uppercase; 
-        }
-        
-        .preview-subtitle 
-        { 
-            font-size: 12px; 
-            color: #64748b; 
-            margin: 5px 0 0; 
-        }
-
     </style>
 
 </head>
@@ -238,7 +197,7 @@
     <div class="preview-container">
         <div class="preview-logo">
             <img src="{{ asset('image/logoNewPdf.png') }}" alt="Logo">
-            <div style="font-size: 8px; color: #94a3b8;">Fecha: {{ $data['date'] }}</div>
+            <div style="font-size: 7px; color: #94a3b8;">Fecha: {{ $data['date'] }}</div>
         </div>
         <div class='preview-header'>
             <h3 class='preview-title'>CLIENTE: GUSTAVO CAMACHO</h3>
@@ -259,30 +218,29 @@
         </table> --}}
     </div>
 
-    <div class="section-header">1. BENEFICIOS Y COBERTURAS</div>
-    <table id="beneficios">
+    <div class="section-label">1. BENEFICIOS Y COBERTURAS</div>
+    <table id="beneficios" class="preview-table">
         <thead>
             <tr>
                 <th class="col-label">Descripción del Beneficio</th>
                 @foreach($data['all_coverages'] as $cov)
-                    <th>US$ {{ (int) $cov->price }}</th>
+                    <th class="col-data">US$ {{ (int) $cov->price }}</th>
                 @endforeach
             </tr>
         </thead>
         <tbody>
             @foreach($data['benefits_processed'] as $b)
                 <tr>
-                    <td class="col-label" style="font-size: 8px;">{{ $b['name'] }}</td>
+                    <td class="col-label">{{ $b['name'] }}</td>
                     @foreach($data['all_coverages'] as $cov)
                         @php
                             $exit = App\Models\BenefitCoverage::where('benefit_id', $b['id'])->where('coverage_id', $cov->id)->first();
                         @endphp
                         <td>
-                            {{-- Lógica corregida para usar el mapeo de benefit_coverages pre-procesado --}}
                             @if($exit)
-                                <span class="text-blue">US$ {{ (int) $cov->price }}</span>
+                                <span class="check-cell">US$ {{ (int) $cov->price }}</span>
                             @else
-                                <span style="color: #cbd5e1;"><img src="{{ asset('image/checkPng.png') }}" alt="Check" style="width: 14px; height: auto;"></span>
+                                <span class="check-cell">✔</span>
                             @endif
                         </td>
                     @endforeach
@@ -292,42 +250,40 @@
     </table>
 
     @if(!empty($data['upgrade_benefits']))
-    <div class="section-header" style="margin-top: 20px;">1.1 BENEFICIOS UPGRADE SELECCIONADOS</div>
-    <table id="upgrade-benefits">
+    <div class="section-label">1.1 BENEFICIOS UPGRADE SELECCIONADOS</div>
+    <table id="upgrade-benefits" class="preview-table">
         <thead>
             <tr>
                 <th class="col-label">Descripción del beneficio</th>
-                <th style="text-align: right;">Valor (US$)</th>
+                <th class="col-data">Valor (US$)</th>
             </tr>
         </thead>
         <tbody>
             @foreach($data['upgrade_benefits'] as $ub)
                 <tr>
                     <td class="col-label">{{ $ub['name'] }}</td>
-                    <td style="text-align: right; font-weight: bold;">${{ number_format($ub['pvp'], 2) }}</td>
+                    <td class="price-cell">${{ number_format($ub['pvp'], 2) }}</td>
                 </tr>
             @endforeach
-            <tr class="bg-subtotal">
+            <tr class="subtotal-row">
                 <td class="col-label">Subtotal Beneficios Upgrade</td>
-                <td style="text-align: right; font-weight: bold;">${{ number_format($data['total_upgrade'], 2) }}</td>
+                <td class="price-cell">${{ number_format($data['total_upgrade'], 2) }}</td>
             </tr>
         </tbody>
     </table>
     @endif
 
-    <div class="section-header section-label" style="margin-top: 30px;">2. ANÁLISIS DE COSTOS POR POBLACIÓN</div>
-    <table id="costos">
+    <div class="section-label">2. ANÁLISIS DE COSTOS POR POBLACIÓN</div>
+    <table id="costos" class="preview-table">
         <thead>
             <tr>
                 <th class="col-label">RANGO DE EDAD - POBLACIÓN</th>
-                {{-- <th class="col-pop">POB.</th> --}}
-                @foreach($data['all_coverages'] as $cov) <th>US$ {{ (int) $cov->price }}</th> @endforeach
+                @foreach($data['all_coverages'] as $cov) <th class="col-data">US$ {{ (int) $cov->price }}</th> @endforeach
             </tr>
         </thead>
         <tbody>
             @foreach($data['age_analysis'] as $row)
                 @php
-    // Extraemos la población de la primera cobertura disponible en el rango
     $firstCoverage = collect($row['costs_by_coverage'])->first();
     $population = $firstCoverage['pop'] ?? 0;
                 @endphp
@@ -336,7 +292,7 @@
 
                     @foreach($data['all_coverages'] as $cov)
                         @php $cell = $row['costs_by_coverage'][$cov->id] ?? null; @endphp
-                        <td>{{ $cell ? '$' . number_format($cell['total'], 0) : '-' }}</td>
+                        <td class="price-cell">{{ $cell ? '$' . number_format($cell['total'], 0) : '-' }}</td>
                     @endforeach
                 </tr>
             @endforeach
@@ -344,25 +300,25 @@
     </table>
 
 
-    <div class="section-header" style="margin-top: 30px;">3. TARIFAS TOTALES POR FRECUENCIA DE PAGO</div>
-    <table id="totales">
+    <div class="section-label">3. TARIFAS TOTALES POR FRECUENCIA DE PAGO</div>
+    <table id="totales" class="preview-table">
         <tbody>
-            <tr class="bg-subtotal" style="background-color: #2563eb;">
-                <td class="col-label" style="background-color: #2563eb;">TOTAL ANUALIZADO (100%)</td>
+            <tr class="total-summary-row">
+                <td class="col-label">TOTAL ANUALIZADO (100%)</td>
                 @foreach($data['summary_columns'] as $val)
-                    <td>${{ number_format($val, 2) }}</td>
+                    <td class="col-data">${{ number_format($val, 2) }}</td>
                 @endforeach
             </tr>
-            <tr class="bg-subtotal">
+            <tr class="subtotal-row">
                 <td class="col-label">VALOR SEMESTRAL (50%)</td>
                 @foreach($data['summary_columns'] as $val)
-                    <td>${{ number_format($val / 2, 2) }}</td>
+                    <td class="col-data">${{ number_format($val / 2, 2) }}</td>
                 @endforeach
             </tr>
-            <tr class="bg-subtotal">
+            <tr class="subtotal-row">
                 <td class="col-label">VALOR MENSUAL (12 Cuotas)</td>
                 @foreach($data['summary_columns'] as $val)
-                    <td>${{ number_format($val / 12, 2) }}</td>
+                    <td class="col-data">${{ number_format($val / 12, 2) }}</td>
                 @endforeach
             </tr>
         </tbody>
@@ -381,7 +337,7 @@
             Esta cotización es válida por 15 días calendario a partir de la fecha de emisión.
             Los valores están sujetos a verificación de información, políticas de suscripción y
             autorización final por parte de la compañía aseguradora. No constituye una póliza vigente.
-            <span style="font-size: 10px; text-align: center; display: block;"><a href="https://integracorp.tudrgroup.com/storage/condicionados/CondicionesESPECIAL.pdf">Condiciones Generales del Plan</a></span>
+            <span style="font-size: 7pt; text-align: center; display: block;"><a href="https://integracorp.tudrgroup.com/storage/condicionados/CondicionesESPECIAL.pdf">Condiciones Generales del Plan</a></span>
         </div>
     </div>
 
