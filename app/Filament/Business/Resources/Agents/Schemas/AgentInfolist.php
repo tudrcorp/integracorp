@@ -252,6 +252,7 @@ class AgentInfolist
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
+                    
 
                 Section::make('Auditoría y otros')
                     ->collapsed(true)
