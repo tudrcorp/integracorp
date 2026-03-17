@@ -2,9 +2,14 @@
 
 namespace App\Filament\Business\Resources\Agents\Schemas;
 
-use Filament\Infolists\Components\IconEntry;
+use App\Models\Agent;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
 class AgentInfolist
 {
@@ -12,149 +17,316 @@ class AgentInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('agency.id')
-                    ->label('Agency')
-                    ->placeholder('-'),
-                TextEntry::make('code_agent')
-                    ->placeholder('-'),
-                TextEntry::make('code_agency')
-                    ->placeholder('-'),
-                TextEntry::make('owner_code')
-                    ->placeholder('-'),
-                TextEntry::make('agent_type_id')
-                    ->placeholder('-'),
-                TextEntry::make('name')
-                    ->placeholder('-'),
-                TextEntry::make('ci')
-                    ->placeholder('-'),
-                TextEntry::make('rif')
-                    ->placeholder('-'),
-                TextEntry::make('birth_date')
-                    ->placeholder('-'),
-                TextEntry::make('address')
-                    ->placeholder('-'),
-                TextEntry::make('email')
-                    ->label('Email address'),
-                TextEntry::make('phone')
-                    ->placeholder('-'),
-                TextEntry::make('user_instagram')
-                    ->placeholder('-'),
-                TextEntry::make('country.name')
-                    ->label('Country')
-                    ->placeholder('-'),
-                TextEntry::make('state.id')
-                    ->label('State')
-                    ->placeholder('-'),
-                TextEntry::make('city.id')
-                    ->label('City')
-                    ->placeholder('-'),
-                TextEntry::make('region')
-                    ->placeholder('-'),
-                TextEntry::make('sex')
-                    ->placeholder('-'),
-                TextEntry::make('marital_status')
-                    ->placeholder('-'),
-                TextEntry::make('name_contact_2')
-                    ->placeholder('-'),
-                TextEntry::make('email_contact_2')
-                    ->placeholder('-'),
-                TextEntry::make('phone_contact_2')
-                    ->placeholder('-'),
-                TextEntry::make('local_beneficiary_name')
-                    ->placeholder('-'),
-                TextEntry::make('local_beneficiary_rif')
-                    ->placeholder('-'),
-                TextEntry::make('local_beneficiary_account_number')
-                    ->placeholder('-'),
-                TextEntry::make('local_beneficiary_account_bank')
-                    ->placeholder('-'),
-                TextEntry::make('local_beneficiary_account_type')
-                    ->placeholder('-'),
-                TextEntry::make('local_beneficiary_phone_pm')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_name')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_ci_rif')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_account_number')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_account_bank')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_account_type')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_route')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_zelle')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_ach')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_swift')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_aba')
-                    ->placeholder('-'),
-                TextEntry::make('extra_beneficiary_address')
-                    ->placeholder('-'),
-                IconEntry::make('tdec')
-                    ->boolean()
-                    ->placeholder('-'),
-                IconEntry::make('tdev')
-                    ->boolean()
-                    ->placeholder('-'),
-                TextEntry::make('commission_tdec')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('commission_tdec_renewal')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('commission_tdev')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('commission_tdev_renewal')
-                    ->numeric()
-                    ->placeholder('-'),
-                TextEntry::make('status')
-                    ->placeholder('-'),
-                TextEntry::make('created_by')
-                    ->placeholder('-'),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('date_register')
-                    ->placeholder('-'),
-                TextEntry::make('fir_dig_agent')
-                    ->placeholder('-'),
-                TextEntry::make('fir_dig_agency')
-                    ->placeholder('-'),
-                IconEntry::make('is_accepted_conditions')
-                    ->boolean(),
-                TextEntry::make('file_ci_rif')
-                    ->placeholder('-'),
-                TextEntry::make('file_w8_w9')
-                    ->placeholder('-'),
-                TextEntry::make('file_account_usd')
-                    ->placeholder('-'),
-                TextEntry::make('file_account_bsd')
-                    ->placeholder('-'),
-                TextEntry::make('file_account_zelle')
-                    ->placeholder('-'),
-                TextEntry::make('comments')
-                    ->placeholder('-')
+                Section::make('Datos del agente')
+                    ->collapsed(false)
+                    ->description('Información principal e identificación del agente')
+                    ->icon('heroicon-o-user-circle')
+                    ->schema([
+                        Fieldset::make()
+                            ->schema([
+                                Grid::make(5)
+                                    ->schema([
+                                        TextEntry::make('name')
+                                            ->label('Nombre')
+                                            ->weight('semibold')
+                                            ->placeholder('-'),
+                                        TextEntry::make('email')
+                                            ->label('Correo electrónico')
+                                            ->placeholder('-')
+                                            ->copyable()
+                                            ->copyMessage('Correo copiado'),
+                                        TextEntry::make('phone')
+                                            ->label('Teléfono')
+                                            ->placeholder('-')
+                                            ->copyable(),
+                                        TextEntry::make('owner_code')
+                                            ->label('Código propietario')
+                                            ->placeholder('-'),
+                                        TextEntry::make('status')
+                                            ->label('Estado')
+                                            ->badge()
+                                            ->color(fn (string $state): string => match (strtoupper((string) $state)) {
+                                                'ACTIVO', 'ACTIVA' => 'success',
+                                                default => 'gray',
+                                            })
+                                            ->placeholder('-'),
+                                    ])->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+                    ])
                     ->columnSpanFull(),
-                TextEntry::make('owner_agent')
-                    ->placeholder('-'),
-                TextEntry::make('user_tdev')
-                    ->placeholder('-'),
-                IconEntry::make('conf_position_menu')
-                    ->boolean()
-                    ->placeholder('-'),
-                TextEntry::make('type_chart')
-                    ->placeholder('-'),
-                TextEntry::make('ownerAccountManagers')
-                    ->numeric()
-                    ->placeholder('-'),
+
+                Section::make('Identificación y ubicación')
+                    ->collapsed(true)
+                    ->description('Documento, fecha de nacimiento y ubicación')
+                    ->icon('heroicon-o-map-pin')
+                    ->schema([
+                        Fieldset::make()
+                            ->schema([
+                                Grid::make(5)
+                                    ->schema([
+                                        TextEntry::make('ci')
+                                            ->label('C.I.')
+                                            ->placeholder('-'),
+                                        TextEntry::make('rif')
+                                            ->label('R.I.F.')
+                                            ->placeholder('-'),
+                                        TextEntry::make('birth_date')
+                                            ->label('Fecha de nacimiento')
+                                            ->date('d/m/Y')
+                                            ->placeholder('-'),
+                                        TextEntry::make('sex')
+                                            ->label('Sexo')
+                                            ->placeholder('-'),
+                                        TextEntry::make('marital_status')
+                                            ->label('Estado civil')
+                                            ->placeholder('-'),
+                                        TextEntry::make('country.name')
+                                            ->label('País')
+                                            ->placeholder('-'),
+                                        TextEntry::make('state.id')
+                                            ->label('Estado')
+                                            ->placeholder('-'),
+                                        TextEntry::make('city.id')
+                                            ->label('Ciudad')
+                                            ->placeholder('-'),
+                                        TextEntry::make('region')
+                                            ->label('Región')
+                                            ->placeholder('-'),
+                                        TextEntry::make('address')
+                                            ->label('Dirección')
+                                            ->placeholder('-')
+                                            ->columnSpanFull(),
+                                    ])->columnSpanFull(),
+                            ])->columnSpanFull(),
+                    ])->columnSpanFull(),
+
+                Section::make('Contacto secundario')
+                    ->collapsed(true)
+                    ->description('Datos de contacto alternativo')
+                    ->icon('heroicon-o-phone')
+                    ->schema([
+                        Fieldset::make()
+                            ->schema([
+                                Grid::make(5)
+                                    ->schema([
+                                        TextEntry::make('name_contact_2')
+                                            ->label('Nombre')
+                                            ->placeholder('-'),
+                                        TextEntry::make('email_contact_2')
+                                            ->label('Correo')
+                                            ->placeholder('-'),
+                                        TextEntry::make('phone_contact_2')
+                                            ->label('Teléfono')
+                                            ->placeholder('-'),
+                                        TextEntry::make('user_instagram')
+                                            ->label('Instagram')
+                                            ->placeholder('-'),
+                                    ])->columnSpanFull(),
+                            ])->columnSpanFull(),
+                    ])->columnSpanFull(),
+
+                Section::make('Datos bancarios (local)')
+                    ->collapsed(true)
+                    ->description('Beneficiario en moneda local')
+                    ->icon('heroicon-o-banknotes')
+                    ->schema([
+                        Fieldset::make()
+                            ->schema([
+                                Grid::make(5)
+                                    ->schema([
+                                        TextEntry::make('local_beneficiary_name')
+                                            ->label('Nombre beneficiario')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('local_beneficiary_rif')
+                                            ->label('R.I.F.')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('local_beneficiary_account_number')
+                                            ->label('Nº cuenta')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('local_beneficiary_account_bank')
+                                            ->label('Banco')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('local_beneficiary_account_type')
+                                            ->label('Tipo de cuenta')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('local_beneficiary_phone_pm')
+                                            ->label('Teléfono')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                    ])->columnSpanFull(),
+                            ])->columnSpanFull(),
+                    ])->columnSpanFull(),
+
+                Section::make('Datos bancarios (moneda extranjera)')
+                    ->collapsed(true)
+                    ->description('Beneficiario para pagos en USD u otra moneda')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->schema([
+                        Fieldset::make()
+                            ->schema([
+                                Grid::make(5)
+                                    ->schema([
+                                        TextEntry::make('extra_beneficiary_name')
+                                            ->label('Nombre beneficiario')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('extra_beneficiary_ci_rif')
+                                            ->label('C.I./R.I.F.')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('extra_beneficiary_account_number')
+                                            ->label('Nº cuenta')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('extra_beneficiary_account_bank')
+                                            ->label('Banco')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('extra_beneficiary_zelle')
+                                            ->label('Zelle')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('extra_beneficiary_route')
+                                            ->label('Route')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                        TextEntry::make('extra_beneficiary_address')
+                                            ->label('Dirección')
+                                            ->placeholder('-')
+                                            ->columnSpanFull(),
+                                    ])->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+                    ])->columnSpanFull(),
+
+                Section::make('Comisiones y opciones')
+                    ->collapsed(true)
+                    ->description('Porcentajes de comisión por producto: Tu Dr. En Casa (TDEC) y Tu Dr. En Viajes (TDEV), para venta nueva y renovación.')
+                    ->icon('heroicon-o-calculator')
+                    ->schema([
+                        Fieldset::make('Tu Dr. En Casa (TDEC)')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextEntry::make('commission_tdec')
+                                            ->label('Comisión venta nueva')
+                                            ->numeric(decimalPlaces: 2)
+                                            ->suffix('%')
+                                            ->placeholder('-')
+                                            ->weight('medium'),
+                                        TextEntry::make('commission_tdec_renewal')
+                                            ->label('Comisión renovación')
+                                            ->numeric(decimalPlaces: 2)
+                                            ->suffix('%')
+                                            ->placeholder('-')
+                                            ->weight('medium'),
+                                    ])
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+                        Fieldset::make('Tu Dr. En Viajes (TDEV)')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextEntry::make('commission_tdev')
+                                            ->label('Comisión venta nueva')
+                                            ->numeric(decimalPlaces: 2)
+                                            ->suffix('%')
+                                            ->placeholder('-')
+                                            ->weight('medium'),
+                                        TextEntry::make('commission_tdev_renewal')
+                                            ->label('Comisión renovación')
+                                            ->numeric(decimalPlaces: 2)
+                                            ->suffix('%')
+                                            ->placeholder('-')
+                                            ->weight('medium'),
+                                    ])
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Auditoría y otros')
+                    ->collapsed(true)
+                    ->description('Registro de creación y observaciones')
+                    ->icon('heroicon-o-flag')
+                    ->schema([
+                        Fieldset::make()
+                            ->schema([
+                                Grid::make(5)
+                                    ->schema([
+                                        TextEntry::make('created_by')
+                                            ->label('Creado por')
+                                            ->placeholder('-'),
+                                        TextEntry::make('created_at')
+                                            ->label('Fecha de creación')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->placeholder('-'),
+                                        TextEntry::make('updated_at')
+                                            ->label('Última actualización')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->placeholder('-'),
+                                        TextEntry::make('date_register')
+                                            ->label('Fecha de registro')
+                                            ->placeholder('-'),
+                                        TextEntry::make('comments')
+                                            ->label('Comentarios')
+                                            ->placeholder('-')
+                                            ->columnSpanFull(),
+                                    ])->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull()
+                    ->collapsible(),
+
+                Section::make('Afiliaciones asociadas')
+                    ->description(fn (Agent $record): HtmlString => new HtmlString(
+                        'Afiliaciones en las que el agente figura como agente asignado (agent_id). '
+                            .'Total: <span class="inline-flex shrink-0 items-center justify-center rounded-full bg-primary/15 px-2.5 py-0.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-primary/20">'
+                            .(int) $record->affiliations->count()
+                            .'</span> afiliación(es).'
+                    ))
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
+                        RepeatableEntry::make('affiliations')
+                            ->label('')
+                            ->placeholder('No hay afiliaciones asociadas a este agente.')
+                            ->table([
+                                RepeatableEntry\TableColumn::make('Nº solicitud'),
+                                RepeatableEntry\TableColumn::make('Titular del plan'),
+                                RepeatableEntry\TableColumn::make('Plan afiliado'),
+                                RepeatableEntry\TableColumn::make('Estado'),
+                                RepeatableEntry\TableColumn::make('Fecha'),
+                            ])
+                            ->schema([
+                                TextEntry::make('code')
+                                    ->badge()
+                                    ->color('success'),
+                                TextEntry::make('full_name_ti'),
+                                TextEntry::make('plan.description')
+                                    ->label('Plan afiliado')
+                                    ->placeholder('-'),
+                                TextEntry::make('status')
+                                    ->badge()
+                                    ->color(fn (string $state): string => match (strtoupper((string) $state)) {
+                                        'ACTIVA', 'ACTIVO' => 'success',
+                                        'PENDIENTE' => 'warning',
+                                        default => 'gray',
+                                    }),
+                                TextEntry::make('created_at')
+                                    ->dateTime('d/m/Y H:i'),
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 }
