@@ -28,6 +28,8 @@ class DownloadZoneResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'ZONA DE DESCARGA';
 
+    protected static ?int $navigationSort = 2;
+
     public static function form(Schema $schema): Schema
     {
         return DownloadZoneForm::configure($schema);
