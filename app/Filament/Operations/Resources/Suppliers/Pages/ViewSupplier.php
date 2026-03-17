@@ -7,8 +7,10 @@ use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 
 class ViewSupplier extends ViewRecord
@@ -17,10 +19,25 @@ class ViewSupplier extends ViewRecord
 
     protected static ?string $title = 'Ficha Técnica del Proveedor';
 
+    /**
+     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
+     */
+    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    
+    private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
+            EditAction::make()
+                ->label('Editar')
+                ->icon('heroicon-o-pencil')
+                ->color('primary')
+                ->extraAttributes([
+                    'class' => self::PRIMARY_BUTTON_CLASS,
+                ]),
             Action::make('print_pdf')
                 ->label('Imprimir PDF')
                 ->icon('heroicon-o-printer')
@@ -75,7 +92,49 @@ class ViewSupplier extends ViewRecord
                             ->danger()
                             ->send();
                     }
-                }),
+                })->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ]),
+
+            Action::make('add_carta_acceptance')
+                ->label('Agregar Carta de Aceptación')
+                ->icon('heroicon-s-document-text')
+                ->color('warning')
+                ->form([
+                    FileUpload::make('carta_acceptance')
+                        ->directory('suppliers/carta-acceptance')
+                        ->label('Carta de Aceptación')
+                        ->required()
+                        ->maxFiles(1)
+                        ->maxSize(1024),
+                ])
+                ->action(function (Supplier $record, array $data) {
+                    $record->carta_acceptance = $data['carta_acceptance'];
+                    $record->save();
+                    Notification::make()
+                        ->title('Carta de Aceptación agregada correctamente')
+                        ->icon('heroicon-s-check-circle')
+                        ->iconColor('success')
+                        ->success()
+                        ->send();
+                })
+                ->hidden(fn(Supplier $record) => $record->carta_acceptance != null)
+                ->extraAttributes([
+                    'class' => self::WARNING_BUTTON_CLASS,
+                ]),
+
+            Action::make('view_carta_acceptance')
+                ->label('Ver Carta de Aceptación')
+                ->icon('heroicon-s-document-text')
+                ->color('success')
+                ->action(function (Supplier $record) {
+                    return response()->download(public_path('storage/' . $record->carta_acceptance));
+                })
+                ->openUrlInNewTab()
+                ->hidden(fn(Supplier $record) => $record->carta_acceptance == null)
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ]),
         ];
     }
 
