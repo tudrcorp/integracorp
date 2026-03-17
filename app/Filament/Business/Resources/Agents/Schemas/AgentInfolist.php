@@ -291,12 +291,13 @@ class AgentInfolist
                     ->description(fn (Agent $record): HtmlString => new HtmlString(
                         'Afiliaciones en las que el agente figura como agente asignado (agent_id). '
                             .'Total: <span class="inline-flex shrink-0 items-center justify-center rounded-full bg-primary/15 px-2.5 py-0.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-primary/20">'
-                            .(int) $record->affiliations->count()
+                            .(int) ($record->affiliations?->count() ?? 0)
                             .'</span> afiliación(es).'
                     ))
                     ->icon('heroicon-o-document-text')
                     ->schema([
                         RepeatableEntry::make('affiliations')
+                            ->formatStateUsing(fn ($state) => $state ?? collect())
                             ->label('')
                             ->placeholder('No hay afiliaciones asociadas a este agente.')
                             ->table([
