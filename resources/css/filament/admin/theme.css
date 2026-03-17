@@ -266,6 +266,44 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
   }
 
+  /* Botones estilo iOS azul (#2d89ca) */
+  .aviso-btn-ios-primary {
+    border-radius: 9999px !important;
+    background: linear-gradient(180deg, #3a96d4 0%, #2d89ca 100%) !important;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    color: #fff !important;
+    transition: transform 0.15s ease, box-shadow 0.2s ease !important;
+  }
+  .aviso-btn-ios-primary:hover {
+    background: linear-gradient(180deg, #4aa3e0 0%, #3a96d4 100%) !important;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+    transform: translateY(-1px) !important;
+  }
+  .aviso-btn-ios-primary:active {
+    transform: scale(0.97) !important;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  }
+  .dark .aviso-btn-ios-primary {
+    background: linear-gradient(180deg, #2372a8 0%, #1e6ba3 100%) !important;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  .dark .aviso-btn-ios-primary:hover {
+    background: linear-gradient(180deg, #2d89ca 0%, #2372a8 100%) !important;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  }
+
   .aviso-btn-ios-success {
     border-radius: 9999px !important;
     background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%) !important;

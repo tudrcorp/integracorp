@@ -67,6 +67,7 @@ class Supplier extends Model
             'state_services',
             'supplier_clasificacion_id',
             'type_service',
+            'carta_acceptance'
         
     ];
 
