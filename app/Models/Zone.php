@@ -12,6 +12,7 @@ class Zone extends Model
         'code',
         'zone',
         'status',
+        'position'
     ];
 
     public function downloadzones()
