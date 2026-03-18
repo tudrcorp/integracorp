@@ -13,24 +13,9 @@ use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
 use OpenSpout\Common\Entity\Style\Color;
 use OpenSpout\Common\Entity\Style\Style;
 
-/**
- * Exportación de proveedores sin {@see Exporter::getJobMiddleware()} por defecto
- * (WithoutOverlapping por export). Ese mutex hace que solo un chunk se ejecute a la vez;
- * si un worker falla o el lock en cache no libera bien, los jobs quedan en cola hasta
- * expirar (p. ej. 10 min) o hasta reiniciar el worker. Cada chunk escribe un CSV distinto
- * y Filament actualiza contadores con lock en BD, así que procesar en paralelo es seguro.
- */
 class SupplierExporter extends Exporter
 {
     protected static ?string $model = Supplier::class;
-
-    /**
-     * @return array<int, object>
-     */
-    public function getJobMiddleware(): array
-    {
-        return [];
-    }
 
     /**
      * @param  Builder<Supplier>  $query
@@ -70,7 +55,7 @@ class SupplierExporter extends Exporter
                         ->filter(fn (string $email) => $email !== '')
                         ->unique()
                         ->values()
-                        ->implode(', ');
+                        ->implode('; ');
                 }),
             ExportColumn::make('afiliacion_proveedor')->label('Afiliación Proveedor'),
             ExportColumn::make('ubicacion_principal')->label('Ubicación Principal'),
