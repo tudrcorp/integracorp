@@ -2,29 +2,28 @@
 
 namespace App\Filament\Operations\Resources\Suppliers;
 
-use BackedEnum;
-use App\Models\Supplier;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use App\Filament\Operations\Resources\Suppliers\Pages\EditSupplier;
-use App\Filament\Operations\Resources\Suppliers\Pages\ViewSupplier;
-use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
 use App\Filament\Operations\Resources\Suppliers\Pages\CreateSupplier;
-use App\Filament\Operations\Resources\Suppliers\Schemas\SupplierForm;
-use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
-use App\Filament\Operations\Resources\Suppliers\Schemas\SupplierInfolist;
-use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierRedGlobalsRelationManager;
-use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierObservacionsRelationManager;
-use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierZonaCoberturasRelationManager;
+use App\Filament\Operations\Resources\Suppliers\Pages\EditSupplier;
+use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
+use App\Filament\Operations\Resources\Suppliers\Pages\ViewSupplier;
 use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierContactPrincipalsRelationManager;
+use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierObservacionsRelationManager;
+use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierRedGlobalsRelationManager;
+use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierZonaCoberturasRelationManager;
+use App\Filament\Operations\Resources\Suppliers\Schemas\SupplierForm;
+use App\Filament\Operations\Resources\Suppliers\Schemas\SupplierInfolist;
+use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
+use App\Models\Supplier;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
 
 class SupplierResource extends Resource
 {
     protected static ?string $model = Supplier::class;
 
-    protected static ?string $navigationLabel = 'Proveedores';
+    protected static ?string $navigationLabel = 'Proveedores Jurídicos';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
@@ -51,7 +50,7 @@ class SupplierResource extends Resource
             SupplierRedGlobalsRelationManager::class,
             SupplierZonaCoberturasRelationManager::class,
             SupplierObservacionsRelationManager::class,
-            
+
         ];
     }
 

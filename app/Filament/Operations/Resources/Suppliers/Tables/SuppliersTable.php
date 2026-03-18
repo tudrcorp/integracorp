@@ -167,13 +167,13 @@ class SuppliersTable
                 SelectFilter::make('city_id')
                     ->label('Ciudad')
                     ->options(City::all()->pluck('definition', 'id')),
-                
+
                 SelectFilter::make('tipo_servicio')
                     ->label('Zona de Cobertura')
                     ->options([
-                        'A-NIVEL-NACIONAL'  => 'A Nivel Nacional',
-                        'MULTI-ESTADO'      => 'MultiEstado',
-                        'LOCAL'             => 'Local',
+                        'A-NIVEL-NACIONAL' => 'A Nivel Nacional',
+                        'MULTI-ESTADO' => 'MultiEstado',
+                        'LOCAL' => 'Local',
                     ]),
                 SelectFilter::make('clasificacion')
                     ->label('Clasificación del Proveedor')
@@ -235,8 +235,7 @@ class SuppliersTable
                         })
                         ->exporter(SupplierExporter::class)
                         ->label('Exportar XLS')
-                        ->color('warning')
-                        ->columnMapping(false),
+                        ->color('warning'),
                 ]),
             ]);
     }
