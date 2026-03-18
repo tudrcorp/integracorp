@@ -6,16 +6,40 @@ use App\Models\Supplier;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
-
 use OpenSpout\Common\Entity\Style\CellAlignment;
 use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
 use OpenSpout\Common\Entity\Style\Color;
 use OpenSpout\Common\Entity\Style\Style;
 
+/**
+ * Exportación de proveedores sin {@see Exporter::getJobMiddleware()} por defecto
+ * (WithoutOverlapping por export). Ese mutex hace que solo un chunk se ejecute a la vez;
+ * si un worker falla o el lock en cache no libera bien, los jobs quedan en cola hasta
+ * expirar (p. ej. 10 min) o hasta reiniciar el worker. Cada chunk escribe un CSV distinto
+ * y Filament actualiza contadores con lock en BD, así que procesar en paralelo es seguro.
+ */
 class SupplierExporter extends Exporter
 {
     protected static ?string $model = Supplier::class;
+
+    /**
+     * @return array<int, object>
+     */
+    public function getJobMiddleware(): array
+    {
+        return [];
+    }
+
+    /**
+     * @param  Builder<Supplier>  $query
+     * @return Builder<Supplier>
+     */
+    public static function modifyQuery(Builder $query): Builder
+    {
+        return $query->with('supplierContactPrincipals');
+    }
 
     public static function getColumns(): array
     {
@@ -33,7 +57,21 @@ class SupplierExporter extends Exporter
             ExportColumn::make('razon_social')->label('Razon Social'),
             ExportColumn::make('personal_phone')->label('Teléfono Celular'),
             ExportColumn::make('local_phone')->label('Teléfono Local'),
-            ExportColumn::make('correo_principal')->label('Correo Principal'),
+            ExportColumn::make('principal_contact_emails')
+                ->label('Correo Principal')
+                ->state(function (Supplier $record): string {
+                    $contacts = $record->relationLoaded('supplierContactPrincipals')
+                        ? $record->supplierContactPrincipals
+                        : $record->supplierContactPrincipals()->get();
+
+                    return $contacts
+                        ->pluck('email')
+                        ->map(fn ($email) => is_string($email) ? trim($email) : '')
+                        ->filter(fn (string $email) => $email !== '')
+                        ->unique()
+                        ->values()
+                        ->implode(', ');
+                }),
             ExportColumn::make('afiliacion_proveedor')->label('Afiliación Proveedor'),
             ExportColumn::make('ubicacion_principal')->label('Ubicación Principal'),
             ExportColumn::make('convenio_pago')->label('Convenio de Pago'),
@@ -61,10 +99,10 @@ class SupplierExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your supplier export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your supplier export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;
@@ -72,7 +110,7 @@ class SupplierExporter extends Exporter
 
     public function getXlsxHeaderCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontBold()
             ->setFontItalic()
             ->setFontSize(8)
@@ -85,7 +123,7 @@ class SupplierExporter extends Exporter
 
     public function getXlsxCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontSize(8)
             ->setFontName('Helvetica')
             ->setFontColor(Color::rgb(0, 0, 0))
