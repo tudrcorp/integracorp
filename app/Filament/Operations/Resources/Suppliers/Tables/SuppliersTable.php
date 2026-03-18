@@ -234,6 +234,7 @@ class SuppliersTable
                                     debajo de el buscador de la tabla!, De lo contrario solo exportaras los registros seleccionados!';
                         })
                         ->exporter(SupplierExporter::class)
+                        ->chunkSize(50)
                         ->label('Exportar XLS')
                         ->color('warning'),
                 ]),

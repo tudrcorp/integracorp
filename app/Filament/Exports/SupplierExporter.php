@@ -23,7 +23,7 @@ class SupplierExporter extends Exporter
      */
     public static function modifyQuery(Builder $query): Builder
     {
-        return $query->with('supplierContactPrincipals');
+        return $query->with(['supplierContactPrincipals', 'state', 'city', 'SupplierClasificacion']);
     }
 
     public static function getColumns(): array
@@ -61,6 +61,7 @@ class SupplierExporter extends Exporter
             ExportColumn::make('ubicacion_principal')->label('Ubicación Principal'),
             ExportColumn::make('convenio_pago')->label('Convenio de Pago'),
             ExportColumn::make('tiempo_credito')->label('Tiempo de Credito'),
+            ExportColumn::make('created_by')->label('Creado por'),
 
             // ExportColumn::make('type_service')->label('Tipo de Servicio'),
             // ExportColumn::make('tipo_servicio')->label('Tipo de Servicio'),
@@ -114,5 +115,13 @@ class SupplierExporter extends Exporter
             ->setFontColor(Color::rgb(0, 0, 0))
             ->setCellAlignment(CellAlignment::LEFT)
             ->setCellVerticalAlignment(CellVerticalAlignment::TOP);
+    }
+
+    /**
+     * @return int | array<int> | null
+     */
+    public function getJobBackoff(): int|array|null
+    {
+        return [30, 60, 120, 300];
     }
 }
