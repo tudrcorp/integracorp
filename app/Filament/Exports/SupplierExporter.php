@@ -7,11 +7,13 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Number;
 use OpenSpout\Common\Entity\Style\CellAlignment;
 use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
 use OpenSpout\Common\Entity\Style\Color;
 use OpenSpout\Common\Entity\Style\Style;
+use Throwable;
 
 class SupplierExporter extends Exporter
 {
@@ -29,10 +31,22 @@ class SupplierExporter extends Exporter
     public static function getColumns(): array
     {
         return [
-            ExportColumn::make('state.definition')->label('Estado'),
-            ExportColumn::make('city.definition')->label('Ciudad'),
-            ExportColumn::make('state_services')->label('Zona de Cobertura')->listAsJson(),
-            ExportColumn::make('SupplierClasificacion.description')->label('Clasificacion del Proveedor'),
+            ExportColumn::make('state_definition')
+                ->label('Estado')
+                ->state(fn (Supplier $record): string => $record->state?->definition ?? ''),
+            ExportColumn::make('city_definition')
+                ->label('Ciudad')
+                ->state(fn (Supplier $record): string => $record->city?->definition ?? ''),
+            ExportColumn::make('state_services')
+                ->label('Zona de Cobertura')
+                ->state(function (Supplier $record): string {
+                    $value = $record->state_services;
+
+                    return is_array($value) ? json_encode($value) : (string) $value;
+                }),
+            ExportColumn::make('supplier_clasificacion_description')
+                ->label('Clasificacion del Proveedor')
+                ->state(fn (Supplier $record): string => $record->SupplierClasificacion?->description ?? ''),
             ExportColumn::make('tipo_clinica')->label('Tipo de Clinica'),
             ExportColumn::make('horario')->label('Horario de Atencion'),
             ExportColumn::make('status_convenio')->label('Estatus del Convenio'),
@@ -45,17 +59,27 @@ class SupplierExporter extends Exporter
             ExportColumn::make('principal_contact_emails')
                 ->label('Correo Principal')
                 ->state(function (Supplier $record): string {
-                    $contacts = $record->relationLoaded('supplierContactPrincipals')
-                        ? $record->supplierContactPrincipals
-                        : $record->supplierContactPrincipals()->get();
+                    try {
+                        $contacts = $record->relationLoaded('supplierContactPrincipals')
+                            ? $record->supplierContactPrincipals
+                            : $record->supplierContactPrincipals()->get();
 
-                    return $contacts
-                        ->pluck('email')
-                        ->map(fn ($email) => is_string($email) ? trim($email) : '')
-                        ->filter(fn (string $email) => $email !== '')
-                        ->unique()
-                        ->values()
-                        ->implode('; ');
+                        $emails = $contacts
+                            ->pluck('email')
+                            ->map(fn ($email): string => is_string($email) ? trim($email) : '')
+                            ->filter(fn (string $email): bool => $email !== '')
+                            ->unique()
+                            ->values();
+
+                        return $emails->implode('; ');
+                    } catch (Throwable $e) {
+                        Log::warning('SupplierExporter: fallo en columna principal_contact_emails', [
+                            'supplier_id' => $record->getKey(),
+                            'message' => $e->getMessage(),
+                        ]);
+
+                        return '';
+                    }
                 }),
             ExportColumn::make('afiliacion_proveedor')->label('Afiliación Proveedor'),
             ExportColumn::make('ubicacion_principal')->label('Ubicación Principal'),
