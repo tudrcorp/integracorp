@@ -18,7 +18,9 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -166,12 +168,57 @@ class SuppliersTable
                     ->searchable(),
             ])
             ->filters([
-                SelectFilter::make('state_id')
-                    ->label('Estado')
-                    ->options(State::all()->pluck('definition', 'id')),
-                SelectFilter::make('city_id')
-                    ->label('Ciudad')
-                    ->options(City::all()->pluck('definition', 'id')),
+                Filter::make('state_city')
+                    ->label('Estado/Ciudad')
+                    ->form([
+                        Select::make('state_id')
+                            ->label('Estado')
+                            ->options(State::all()->pluck('definition', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->live(),
+                        Select::make('city_id')
+                            ->label('Ciudad')
+                            ->options(function (Get $get) {
+                                $stateId = $get('state_id');
+
+                                if (blank($stateId)) {
+                                    return [];
+                                }
+
+                                return City::query()
+                                    ->where('state_id', $stateId)
+                                    ->pluck('definition', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->live(),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (! empty($data['state_id'])) {
+                            $query->where('state_id', $data['state_id']);
+                        }
+
+                        if (! empty($data['city_id'])) {
+                            $query->where('city_id', $data['city_id']);
+                        }
+
+                        return $query;
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if (! empty($data['state_id'])) {
+                            $indicators['state'] = 'Estado: '.State::find($data['state_id'])->definition;
+                        }
+
+                        if (! empty($data['city_id'])) {
+                            $indicators['city'] = 'Ciudad: '.City::find($data['city_id'])->definition;
+                        }
+
+                        return $indicators;
+                    }),
 
                 SelectFilter::make('tipo_servicio')
                     ->label('Zona de Cobertura')
@@ -182,6 +229,7 @@ class SuppliersTable
                     ]),
                 SelectFilter::make('clasificacion')
                     ->label('Clasificación del Proveedor')
+                    ->attribute('supplier_clasificacion_id')
                     ->options(SupplierClasificacion::all()->pluck('description', 'id')),
                 Filter::make('afiliacion_proveedor')
                     ->form([
@@ -248,20 +296,20 @@ class SuppliersTable
 
                             return redirect()->route('operations.suppliers.export-csv', ['token' => $token]);
                         }),
-                    ExportBulkAction::make()
-                        ->modalHeading('Exportar Lista de Proveedores')
-                        ->modalDescription(function () {
-                            $total = Supplier::count();
+                    // ExportBulkAction::make()
+                    //     ->modalHeading('Exportar Lista de Proveedores')
+                    //     ->modalDescription(function () {
+                    //         $total = Supplier::count();
 
-                            return 'Se realizara la exportacion de los registros seleccionados! 
-                                    Si deseas seleccionar todos los registros de la tabla debes hacer click en "Seleccionar todos '.$total.'", 
-                                    debajo de el buscador de la tabla!, De lo contrario solo exportaras los registros seleccionados!';
-                        })
-                        ->exporter(SupplierExporter::class)
-                        ->job(PrepareSupplierCsvExport::class)
-                        ->chunkSize(50)
-                        ->label('Exportar XLS')
-                        ->color('warning'),
+                    //         return 'Se realizara la exportacion de los registros seleccionados!
+                    //                 Si deseas seleccionar todos los registros de la tabla debes hacer click en "Seleccionar todos '.$total.'",
+                    //                 debajo de el buscador de la tabla!, De lo contrario solo exportaras los registros seleccionados!';
+                    //     })
+                    //     ->exporter(SupplierExporter::class)
+                    //     ->job(PrepareSupplierCsvExport::class)
+                    //     ->chunkSize(50)
+                    //     ->label('Exportar XLS')
+                    //     ->color('warning'),
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
                         ->modalHeading('Eliminar Proveedores')
