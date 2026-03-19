@@ -248,7 +248,6 @@ class SuppliersTable
 
                             return redirect()->route('operations.suppliers.export-csv', ['token' => $token]);
                         }),
-                    DeleteBulkAction::make(),
                     ExportBulkAction::make()
                         ->modalHeading('Exportar Lista de Proveedores')
                         ->modalDescription(function () {
@@ -263,6 +262,14 @@ class SuppliersTable
                         ->chunkSize(50)
                         ->label('Exportar XLS')
                         ->color('warning'),
+                    DeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Eliminar Proveedores')
+                        ->modalDescription('¿Estas seguro de eliminar los proveedores seleccionados?, esta accion no se puede reversar')
+                        ->modalSubmitActionLabel('Eliminar')
+                        ->label('Eliminar Proveedores')
+                        ->icon('heroicon-s-trash')
+                        ->color('danger'),
                 ]),
             ]);
     }
