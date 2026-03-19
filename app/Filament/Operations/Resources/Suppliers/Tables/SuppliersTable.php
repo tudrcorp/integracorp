@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\Suppliers\Tables;
 
 use App\Filament\Exports\SupplierExporter;
+use App\Jobs\PrepareSupplierCsvExport;
 use App\Models\City;
 use App\Models\State;
 use App\Models\Supplier;
@@ -234,6 +235,7 @@ class SuppliersTable
                                     debajo de el buscador de la tabla!, De lo contrario solo exportaras los registros seleccionados!';
                         })
                         ->exporter(SupplierExporter::class)
+                        ->job(PrepareSupplierCsvExport::class)
                         ->chunkSize(50)
                         ->label('Exportar XLS')
                         ->color('warning'),
