@@ -52,6 +52,7 @@ class SupplierExportCsvController extends Controller
             'Convenio de Pago',
             'Tiempo de Credito',
             'Creado por',
+            'Actualizado por',
         ];
 
         $filename = 'proveedores_'.now()->format('Y-m-d_His').'.csv';
@@ -107,6 +108,7 @@ class SupplierExportCsvController extends Controller
             (string) $record->convenio_pago,
             (string) $record->tiempo_credito,
             (string) $record->created_by,
+            (string) $record->updated_by,
         ];
     }
 

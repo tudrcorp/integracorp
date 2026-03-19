@@ -86,6 +86,7 @@ class SupplierExporter extends Exporter
             ExportColumn::make('convenio_pago')->label('Convenio de Pago'),
             ExportColumn::make('tiempo_credito')->label('Tiempo de Credito'),
             ExportColumn::make('created_by')->label('Creado por'),
+            ExportColumn::make('updated_by')->label('Actualizado por'),
 
             // ExportColumn::make('type_service')->label('Tipo de Servicio'),
             // ExportColumn::make('tipo_servicio')->label('Tipo de Servicio'),
