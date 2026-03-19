@@ -87,6 +87,10 @@ Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('operations/export-suppliers-csv', App\Http\Controllers\SupplierExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.suppliers.export-csv');
+
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
     $quote = \App\Models\DressTylorQuote::findOrFail($record);
     $structure = $quote->quote_structure;
@@ -98,6 +102,20 @@ Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record)
 })
     ->middleware(['web', 'auth'])
     ->name('business.dress-tylor-quotes.pdf');
+
+Route::get('administration/aviso-cobro/download/{collection}', function (Collection $collection) {
+    return \App\Http\Controllers\CollectionController::generateAndDownloadAvisoDeCobro($collection);
+})
+    ->middleware(['web', 'auth'])
+    ->name('aviso-cobro.download');
+
+Route::get('administration/aviso-cobro/regenerate/{collection}', function (Collection $collection) {
+    $ok = \App\Filament\Administration\Resources\AnnualCollections\Tables\AnnualCollectionsTable::runRegeneratePdf($collection);
+
+    return redirect()->back()->with($ok ? 'success' : 'error', $ok ? 'Aviso de cobro regenerado.' : 'Error al regenerar.');
+})
+    ->middleware(['web', 'auth'])
+    ->name('aviso-cobro.regenerate');
 
 Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');

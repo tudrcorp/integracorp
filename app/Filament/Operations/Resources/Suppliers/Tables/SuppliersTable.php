@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\Suppliers\Tables;
 
 use App\Filament\Exports\SupplierExporter;
+use App\Http\Controllers\SupplierExportCsvController;
 use App\Jobs\PrepareSupplierCsvExport;
 use App\Models\City;
 use App\Models\State;
@@ -10,18 +11,21 @@ use App\Models\Supplier;
 use App\Models\SupplierClasificacion;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class SuppliersTable
 {
@@ -224,6 +228,26 @@ class SuppliersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un proveedor')
+                                    ->body('Marca los registros que deseas exportar o usa "Seleccionar todos" para exportar la lista completa.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = SupplierExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('operations.suppliers.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make(),
                     ExportBulkAction::make()
                         ->modalHeading('Exportar Lista de Proveedores')
