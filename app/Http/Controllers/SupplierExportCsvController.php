@@ -114,7 +114,33 @@ class SupplierExportCsvController extends Controller
 
     private function formatStateServices(mixed $value): string
     {
-        return is_array($value) ? json_encode($value) : (string) $value;
+        if (! is_array($value)) {
+            return (string) $value;
+        }
+
+        $parts = [];
+
+        foreach ($value as $item) {
+            if (is_string($item)) {
+                $item = trim($item);
+
+                if ($item !== '') {
+                    $parts[] = $item;
+                }
+
+                continue;
+            }
+
+            if (is_scalar($item)) {
+                $parts[] = (string) $item;
+
+                continue;
+            }
+
+            $parts[] = json_encode($item);
+        }
+
+        return implode('; ', array_values(array_unique($parts)));
     }
 
     private function getPrincipalContactEmails(Supplier $record): string
