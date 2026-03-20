@@ -10,8 +10,11 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Enums\Width;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 
 class ViewSupplier extends ViewRecord
 {
@@ -25,7 +28,7 @@ class ViewSupplier extends ViewRecord
     private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-    
+
     private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     protected function getHeaderActions(): array
@@ -118,7 +121,7 @@ class ViewSupplier extends ViewRecord
                         ->success()
                         ->send();
                 })
-                ->hidden(fn(Supplier $record) => $record->carta_acceptance != null)
+                ->hidden(fn (Supplier $record) => $record->carta_acceptance != null)
                 ->extraAttributes([
                     'class' => self::WARNING_BUTTON_CLASS,
                 ]),
@@ -127,11 +130,33 @@ class ViewSupplier extends ViewRecord
                 ->label('Ver Carta de Aceptación')
                 ->icon('heroicon-s-document-text')
                 ->color('success')
-                ->action(function (Supplier $record) {
-                    return response()->download(public_path('storage/' . $record->carta_acceptance));
+                ->modalHeading('Carta de aceptación')
+                ->modalDescription('Vista previa del documento cargado. Use «Abrir en pestaña» o «Descargar» desde el pie del visor si lo necesita.')
+                ->modalWidth(Width::SevenExtraLarge)
+                ->modalIcon('heroicon-o-document-magnifying-glass')
+                ->modalContent(function (Supplier $record): ViewContract {
+                    $path = $record->carta_acceptance;
+
+                    if (! $path || ! Storage::disk('public')->exists($path)) {
+                        return View::make('filament.operations.suppliers.carta-acceptance-preview', [
+                            'exists' => false,
+                            'supplier' => $record,
+                        ]);
+                    }
+
+                    $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+                    return View::make('filament.operations.suppliers.carta-acceptance-preview', [
+                        'exists' => true,
+                        'url' => asset('storage/'.Str::ltrim($path, '/')),
+                        'extension' => $extension,
+                        'supplier' => $record,
+                    ]);
                 })
-                ->openUrlInNewTab()
-                ->hidden(fn(Supplier $record) => $record->carta_acceptance == null)
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Cerrar')
+                ->action(fn () => null)
+                ->hidden(fn (Supplier $record) => $record->carta_acceptance == null)
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_CLASS,
                 ]),
