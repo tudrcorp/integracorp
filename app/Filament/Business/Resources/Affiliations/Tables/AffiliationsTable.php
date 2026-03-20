@@ -1190,7 +1190,9 @@ class AffiliationsTable
                                         Select::make('status')
                                             ->label('Estatus')
                                             ->options([
-                                                'PENDIENTE' => 'PENDIENTE',
+                                                'ACTIVA' => 'ACTIVA',
+                                                'PRE-APROBADA' => 'PRE-APROBADA',
+                                                'EXCLUIDO' => 'EXCLUIDO',
                                             ])
                                             ->searchable()
                                             ->preload(),
