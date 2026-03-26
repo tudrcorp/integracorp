@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\Suppliers\Widgets;
 
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
+use App\Models\Supplier;
 use Carbon\Carbon;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
@@ -29,23 +30,25 @@ class StatsOverviewPreferencialSupplier extends StatsOverviewWidget
         $endOfMonth = $now->copy()->endOfMonth();
         $nombreMes = ucfirst($now->translatedFormat('F'));
 
+        $t = (new Supplier)->getTable();
+
         $baseQuery = $this->getPageTableQuery()
-            ->where('status_convenio', 'like', '%PREFERENCIAL%');
+            ->where("{$t}.status_convenio", 'like', '%PREFERENCIAL%');
 
         $totalHistorico = (clone $baseQuery)->count();
         $totalMesActual = (clone $baseQuery)
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->whereBetween("{$t}.created_at", [$startOfMonth, $endOfMonth])
             ->count();
 
-        $totalAfiliado = (clone $baseQuery)->where('status_sistema', 'AFILIADO')->count();
+        $totalAfiliado = (clone $baseQuery)->where("{$t}.status_sistema", 'AFILIADO')->count();
         $totalAfiliadoMesActual = (clone $baseQuery)
-            ->where('status_sistema', 'AFILIADO')
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->where("{$t}.status_sistema", 'AFILIADO')
+            ->whereBetween("{$t}.created_at", [$startOfMonth, $endOfMonth])
             ->count();
-        $totalEnProceso = (clone $baseQuery)->where('status_sistema', 'EN PROCESO')->count();
+        $totalEnProceso = (clone $baseQuery)->where("{$t}.status_sistema", 'EN PROCESO')->count();
         $totalEnProcesoMesActual = (clone $baseQuery)
-            ->where('status_sistema', 'EN PROCESO')
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->where("{$t}.status_sistema", 'EN PROCESO')
+            ->whereBetween("{$t}.created_at", [$startOfMonth, $endOfMonth])
             ->count();
 
         $totalMesActualLabel = $totalMesActual === 0 ? 'sin nuevos registros' : (string) $totalMesActual;
