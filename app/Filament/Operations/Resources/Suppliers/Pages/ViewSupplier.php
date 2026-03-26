@@ -160,6 +160,78 @@ class ViewSupplier extends ViewRecord
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_CLASS,
                 ]),
+
+            // Carga de documentos de afiliación del proveedor
+            Action::make('add_documents')
+                ->label('Agregar Documentos de Afiliación')
+                ->icon('heroicon-s-document-text')
+                ->color('warning')
+                ->tooltip('Aqui puede cargar uno o varios documentos del proveedor, por ejemplo RIF, Registro Mercantil, Baremos u otros soportes necesarios.')
+                ->form([
+                    FileUpload::make('documents')
+                        ->directory('suppliers/documents')
+                        ->label('Documentos de Afiliación')
+                        ->multiple()
+                        ->required()
+                        ->maxFiles(10)
+                        ->maxSize(1024),
+                ])
+                ->action(function (Supplier $record, array $data) {
+                    $record->documents = $data['documents'];
+                    $record->save();
+                    Notification::make()
+                        ->title('Documentos de Afiliación agregados correctamente')
+                        ->icon('heroicon-s-check-circle')
+                        ->iconColor('success')
+                        ->success()
+                        ->send();
+                })
+                ->hidden(fn (Supplier $record) => $record->documents != null)
+                ->extraAttributes([
+                    'class' => self::WARNING_BUTTON_CLASS,
+                    'data-tippy-placement' => 'left',
+                ]),
+
+            // Vista previa de los documentos de afiliación del proveedor
+            Action::make('view_documents')
+                ->label('Ver Documentos de Afiliación')
+                ->icon('heroicon-s-document-text')
+                ->color('success')
+                ->modalHeading('Documentos de afiliación')
+                ->modalDescription('Lista de documentos del afiliado con vista previa integrada.')
+                ->modalWidth(Width::SevenExtraLarge)
+                ->modalIcon('heroicon-o-document-magnifying-glass')
+                ->modalContent(function (Supplier $record): ViewContract {
+                    $documents = collect($record->documents ?? [])
+                        ->map(function (mixed $path, int $index): array {
+                            $path = is_string($path) ? trim($path) : '';
+                            $exists = filled($path) && Storage::disk('public')->exists($path);
+                            $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+
+                            return [
+                                'id' => $index + 1,
+                                'path' => $path,
+                                'exists' => $exists,
+                                'extension' => $extension,
+                                'name' => $path !== '' ? basename($path) : 'Documento sin nombre',
+                                'url' => $exists ? asset('storage/'.Str::ltrim($path, '/')) : null,
+                            ];
+                        })
+                        ->values()
+                        ->all();
+
+                    return View::make('filament.operations.suppliers.documents-preview', [
+                        'supplier' => $record,
+                        'documents' => $documents,
+                    ]);
+                })
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Cerrar')
+                ->action(fn () => null)
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ])
+                ->hidden(fn (Supplier $record) => $record->documents == null),
         ];
     }
 
