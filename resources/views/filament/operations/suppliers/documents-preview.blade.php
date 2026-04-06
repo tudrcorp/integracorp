@@ -11,10 +11,10 @@
     @if (empty($documents))
         <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50/90 p-6 text-center shadow-sm dark:border-white/15 dark:bg-gray-900/60">
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                No hay documentos de afiliacion cargados.
+                No hay documentos de afiliación cargados.
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Cargue documentos desde la accion "Agregar Documentos de Afiliacion".
+                Use el botón «Agregar documentos» en el pie del modal, o la acción «Agregar Documentos de Afiliación» en la barra superior.
             </p>
         </div>
     @else
@@ -35,7 +35,7 @@
                                 {{ $document['name'] }}
                             </p>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <span class="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
                                 {{ strtoupper($document['extension'] ?: 'N/A') }}
                             </span>
@@ -46,6 +46,14 @@
                             ])>
                                 {{ $document['exists'] ? 'Disponible' : 'No encontrado' }}
                             </span>
+                            <button
+                                type="button"
+                                wire:click="deleteSupplierAffiliationDocument({{ $document['index'] }})"
+                                wire:confirm="¿Quitar este documento de la ficha? Si el archivo existe en almacenamiento, también se eliminará."
+                                class="inline-flex items-center rounded-full border border-rose-300/90 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-500/40 dark:bg-gray-900 dark:text-rose-300 dark:hover:bg-rose-950/50"
+                            >
+                                Eliminar
+                            </button>
                         </div>
                     </div>
 
