@@ -37,7 +37,7 @@ class SupplierReportMail extends Mailable
     {
         return [
             Attachment::fromData(
-                fn (): string => SupplierReportPdfService::make()->output(),
+                fn (): string => SupplierReportPdfService::outputBinaryCached(),
                 SupplierReportPdfService::FILENAME
             )->withMime('application/pdf'),
         ];

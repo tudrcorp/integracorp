@@ -16,6 +16,48 @@ class SupplierReportPdfService
     private const LOGO_CACHE_PREFIX = 'supplier_report_logo_uri:';
 
     /**
+     * v2: valor en base64 en caché (tabla `cache` en MySQL es UTF-8; bytes del PDF disparan error 1366).
+     */
+    private const PDF_CACHE_KEY_PREFIX = 'supplier_report_pdf:v2:';
+
+    /**
+     * TTL del PDF en caché. Tras muchos proveedores, DomPDF puede superar el max_execution_time del PHP;
+     * servir bytes cacheados evita regenerar en cada vista previa / descarga / correo.
+     */
+    private const PDF_CACHE_TTL_SECONDS = 900;
+
+    /**
+     * Versión de los datos del reporte: cambia al crear/editar/borrar proveedores (invalida caché).
+     */
+    public static function pdfCacheVersion(): string
+    {
+        $count = (int) DB::table('suppliers')->count();
+        $maxUpdated = DB::table('suppliers')->max('updated_at');
+
+        return hash('sha256', $count.'|'.((string) ($maxUpdated ?? '')));
+    }
+
+    public static function outputBinary(): string
+    {
+        return self::make()->output();
+    }
+
+    public static function outputBinaryCached(): string
+    {
+        $ttl = (int) config('supplier-report.pdf_cache_ttl_seconds', self::PDF_CACHE_TTL_SECONDS);
+
+        $encoded = Cache::remember(
+            self::PDF_CACHE_KEY_PREFIX.self::pdfCacheVersion(),
+            max(60, $ttl),
+            static fn (): string => base64_encode(self::outputBinary()),
+        );
+
+        $binary = base64_decode($encoded, true);
+
+        return is_string($binary) ? $binary : self::outputBinary();
+    }
+
+    /**
      * Filas listas para el PDF: una sola consulta, sin hidratar modelos Eloquent ni relaciones.
      *
      * @return list<array{state: string, city: string, name: string, clasificacion: string}>

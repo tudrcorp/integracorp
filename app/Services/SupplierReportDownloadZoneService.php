@@ -41,7 +41,7 @@ class SupplierReportDownloadZoneService
 
         $disk->makeDirectory('download-zone');
 
-        $binary = SupplierReportPdfService::make()->output();
+        $binary = SupplierReportPdfService::outputBinaryCached();
 
         $previousDocument = $record->document;
 
