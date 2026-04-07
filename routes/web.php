@@ -5,6 +5,7 @@ use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
 use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Http\Controllers\UtilsController;
@@ -101,6 +102,14 @@ Route::get('operations/suppliers/report/preview', [SupplierReportPdfController::
 Route::get('operations/suppliers/report/download', [SupplierReportPdfController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('operations.suppliers.report.download');
+
+Route::get('operations/suppliers/{supplier}/ficha/preview', [SupplierFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.suppliers.ficha.preview');
+
+Route::get('operations/suppliers/{supplier}/ficha/download', [SupplierFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.suppliers.ficha.download');
 
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
     $quote = \App\Models\DressTylorQuote::findOrFail($record);
