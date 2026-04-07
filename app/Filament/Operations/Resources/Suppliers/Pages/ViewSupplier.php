@@ -4,7 +4,6 @@ namespace App\Filament\Operations\Resources\Suppliers\Pages;
 
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Models\Supplier;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -99,57 +98,21 @@ class ViewSupplier extends ViewRecord
                 ->label('Imprimir PDF')
                 ->icon('heroicon-o-printer')
                 ->color('success')
-                ->action(function (Supplier $record) {
-
-                    try {
-
-                        // Obtenemos el HTML renderizado primero para debug o procesamiento
-                        $html = View::make('documents.supplier-ficha', [
-                            'supplier' => $record->load([
-                                'SupplierClasificacion',
-                                'state',
-                                'city',
-                                'supplierContactPrincipals',
-                                'supplierRedGlobals.state',
-                                'supplierRedGlobals.city',
-                                'SupplierZonaCoberturas.supplierClasificacion',
-                                'SupplierZonaCoberturas.state',
-                                'SupplierZonaCoberturas.city',
-                                'supplierObservacions',
-                            ]),
-                            'isPreview' => false,
-                        ])->render();
-
-                        $pdf = Pdf::loadHTML($html)
-                            ->setPaper('a4', 'portrait')
-                            ->setWarnings(false)
-                            ->setOptions([
-                                'isHtml5ParserEnabled' => true,
-                                'isRemoteEnabled' => true,
-                                'defaultFont' => 'sans-serif',
-                            ]);
-
-                        // Retornamos el stream download para que Filament no rompa la codificación UTF-8
-                        return response()->streamDownload(
-                            fn () => print ($pdf->output()),
-                            'Ficha-Proveedor-'.$record->id.'.pdf'
-                        );
-
-                        // $pdf->setPaper('A4', 'portrait');
-
-                        // return $pdf->streamDownload('ficha-proveedor-'.$record->id.'.pdf');
-
-                    } catch (\Throwable $th) {
-                        dd($th);
-                        Notification::make()
-                            ->title('ERROR')
-                            ->body($th->getMessage())
-                            ->icon('heroicon-s-x-circle')
-                            ->iconColor('danger')
-                            ->danger()
-                            ->send();
-                    }
-                })->extraAttributes([
+                ->modalHeading('Ficha del proveedor en PDF')
+                ->modalDescription('Vista previa de la ficha técnica. La primera generación puede tardar; las siguientes suelen ser más rápidas mientras los datos no cambien (caché por proveedor).')
+                ->modalWidth(Width::SevenExtraLarge)
+                ->modalIcon('heroicon-o-document-text')
+                ->modalContent(function (Supplier $record): ViewContract {
+                    return View::make('filament.operations.suppliers.supplier-ficha-preview-modal', [
+                        'pdfPreviewUrl' => route('operations.suppliers.ficha.preview', $record),
+                        'pdfDownloadUrl' => route('operations.suppliers.ficha.download', $record),
+                        'supplierLabel' => filled($record->name) ? $record->name : ('Proveedor #'.$record->id),
+                    ]);
+                })
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Cerrar')
+                ->action(fn () => null)
+                ->extraAttributes([
                     'class' => self::TICKET_BUTTON_CLASS,
                 ]),
 
