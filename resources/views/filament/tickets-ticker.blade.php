@@ -1,5 +1,5 @@
 @php
-    use App\Models\Helpdesk;
+    use App\Models\HelpDesk;
     use Filament\Facades\Filament;
     use Illuminate\Support\Str;
 
@@ -69,7 +69,7 @@
                                 };
                                 $createdAtFormatted = $ticket->created_at ? \Carbon\Carbon::parse($ticket->created_at)->format('d/m/Y H:i') : null;
                                 $createdAtShort = $ticket->created_at ? \Carbon\Carbon::parse($ticket->created_at)->format('d/m/Y') : '—';
-                                $ticketEditUrl = Filament::getResourceUrl(Helpdesk::class, 'edit', ['record' => $ticket]);
+                                $ticketEditUrl = Filament::getResourceUrl(HelpDesk::class, 'edit', ['record' => $ticket]);
                             @endphp
                             <a
                                 href="{{ $ticketEditUrl }}"
