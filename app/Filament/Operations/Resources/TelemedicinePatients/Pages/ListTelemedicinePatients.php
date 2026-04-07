@@ -3,28 +3,30 @@
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
-use App\Http\Controllers\UtilsController;
 use App\Models\Affiliate;
-
 use App\Models\AffiliateCorporate;
-use App\Models\BusinessLine;
-use App\Models\Plan;
 use App\Models\TelemedicinePatient;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class ListTelemedicinePatients extends ListRecords
 {
+    /**
+     * Misma apariencia que el botón "Crear Ticket" (menu-user): ticket-btn-ios en theme.css + píldora rounded-full.
+     */
+    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    /** Misma forma iOS que TICKET_BUTTON_CLASS pero gris (theme.css .ticket-btn-ios-gray) */
+    private const TICKET_BUTTON_GRAY_CLASS = 'ticket-btn-ios-gray shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
     protected static string $resource = TelemedicinePatientResource::class;
 
     protected static ?string $title = 'Pacientes';
@@ -35,11 +37,31 @@ class ListTelemedicinePatients extends ListRecords
             CreateAction::make()
                 ->label('Crear Nuevo Paciente')
                 ->icon('heroicon-s-plus')
-                ->color('primary'),
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ]),
             Action::make('asociate_affiliate')
                 ->label('Asociar Afiliado')
-                ->color('verde')
+                ->color('success')
                 ->icon('heroicon-o-plus')
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ])
+                ->modalSubmitAction(
+                    fn (Action $action): Action => $action
+                        ->color('success')
+                        ->extraAttributes([
+                            'class' => self::TICKET_BUTTON_CLASS.' min-w-[7rem] !px-6',
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action): Action => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => self::TICKET_BUTTON_GRAY_CLASS.' min-w-[7rem] !px-6',
+                        ])
+                )
                 ->requiresConfirmation()
                 ->modalWidth(Width::ExtraLarge)
                 ->modalHeading('Seleccionar Afiliado')
@@ -64,7 +86,7 @@ class ListTelemedicinePatients extends ListRecords
                                                 ->options(Affiliate::all()->pluck('full_name', 'id')) // Cargamos todos para la validación, o filtramos en el query de búsqueda
                                                 ->searchable()
                                                 ->getSearchResultsUsing(
-                                                    fn(string $search): array => Affiliate::query()
+                                                    fn (string $search): array => Affiliate::query()
                                                         ->where(function ($query) use ($search) {
                                                             $query->where('full_name', 'like', "%{$search}%")
                                                                 ->orWhere('nro_identificacion', 'like', "%{$search}%");
@@ -78,7 +100,7 @@ class ListTelemedicinePatients extends ListRecords
                                                  * Esta regla verifica que el ID seleccionado pertenezca a un afiliado con estatus 'ACTIVO'
                                                  */
                                                 ->rules([
-                                                    fn(): \Closure => function (string $attribute, $value, \Closure $fail) {
+                                                    fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
                                                         $affiliate = Affiliate::find($value);
 
                                                         if ($affiliate && $affiliate->status !== 'ACTIVO') {
@@ -91,14 +113,14 @@ class ListTelemedicinePatients extends ListRecords
                                                 ])
                                                 ->native(false)
                                                 ->live()
-                                                ->hidden(fn(Get $get) => $get('type_affiliate') == 'cor' || $get('type_affiliate') == null),
+                                                ->hidden(fn (Get $get) => $get('type_affiliate') == 'cor' || $get('type_affiliate') == null),
 
                                             Select::make('affiliate_corporate_id')
                                                 ->label('Lista de Afiliados Corporativos')
                                                 ->options(AffiliateCorporate::all()->pluck('first_name', 'id'))
                                                 ->searchable()
                                                 ->getSearchResultsUsing(
-                                                    fn(string $search): array => AffiliateCorporate::query()
+                                                    fn (string $search): array => AffiliateCorporate::query()
                                                         ->where(function ($query) use ($search) {
                                                             $query->where('first_name', 'like', "%{$search}%")
                                                                 ->orWhere('last_name', 'like', "%{$search}%")
@@ -113,7 +135,7 @@ class ListTelemedicinePatients extends ListRecords
                                                  * Permite buscar inactivos pero impide su selección final con un mensaje claro.
                                                  */
                                                 ->rules([
-                                                    fn(): \Closure => function (string $attribute, $value, \Closure $fail) {
+                                                    fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
                                                         $affiliate = AffiliateCorporate::find($value);
 
                                                         if ($affiliate && $affiliate->status !== 'ACTIVO') {
@@ -124,9 +146,9 @@ class ListTelemedicinePatients extends ListRecords
                                                 ->preload()
                                                 ->live()
                                                 ->native(false)
-                                                ->hidden(fn(Get $get) => $get('type_affiliate') == 'inv' || $get('type_affiliate') == null),
-                                        ])->columnSpanFull()
-                                ])
+                                                ->hidden(fn (Get $get) => $get('type_affiliate') == 'inv' || $get('type_affiliate') == null),
+                                        ])->columnSpanFull(),
+                                ]),
                         ])->columnSpanFull(),
                 ])
                 ->action(function (array $data) {
@@ -140,36 +162,36 @@ class ListTelemedicinePatients extends ListRecords
 
                         $patient = TelemedicinePatient::create([
 
-                            //Informacion de la Afiliacion
-                            'plan_id'                   => $affiliation[0]['affiliation']['plan_id'],
-                            'coverage_id'               => $affiliation[0]['affiliation']['coverage_id'],
-                            'afilliation_id'            => $affiliation[0]['affiliation']['id'],
-                            'code_affiliation'          => $affiliation[0]['affiliation']['code'],
-                            'status_affiliation'        => 'ACTIVO',
-                            'type_affiliation'          => 'INDIVIDUAL',
+                            // Informacion de la Afiliacion
+                            'plan_id' => $affiliation[0]['affiliation']['plan_id'],
+                            'coverage_id' => $affiliation[0]['affiliation']['coverage_id'],
+                            'afilliation_id' => $affiliation[0]['affiliation']['id'],
+                            'code_affiliation' => $affiliation[0]['affiliation']['code'],
+                            'status_affiliation' => 'ACTIVO',
+                            'type_affiliation' => 'INDIVIDUAL',
 
-                            //Informacion del Afiliado -> Paciente
-                            'full_name'                 => $affiliation[0]['full_name'],
-                            'nro_identificacion'        => $affiliation[0]['nro_identificacion'],
-                            'birth_date'                => $affiliation[0]['birth_date'],
-                            'sex'                       => $affiliation[0]['sex'],
-                            'age'                       => $affiliation[0]['age'],
-                            'phone'                     => $affiliation[0]['phone'],
-                            'address'                   => $affiliation[0]['address'],
-                            'city_id'                   => $affiliation[0]['city_id'],
-                            'country_id'                => $affiliation[0]['country_id'],
-                            'region'                    => $affiliation[0]['region'],
-                            'state_id'                  => $affiliation[0]['state_id'],
+                            // Informacion del Afiliado -> Paciente
+                            'full_name' => $affiliation[0]['full_name'],
+                            'nro_identificacion' => $affiliation[0]['nro_identificacion'],
+                            'birth_date' => $affiliation[0]['birth_date'],
+                            'sex' => $affiliation[0]['sex'],
+                            'age' => $affiliation[0]['age'],
+                            'phone' => $affiliation[0]['phone'],
+                            'address' => $affiliation[0]['address'],
+                            'city_id' => $affiliation[0]['city_id'],
+                            'country_id' => $affiliation[0]['country_id'],
+                            'region' => $affiliation[0]['region'],
+                            'state_id' => $affiliation[0]['state_id'],
 
-                            //Informacion del titular
-                            'email'                     => $affiliation[0]['affiliation']['email_ti'],
-                            'phone_contact'             => $affiliation[0]['affiliation']['email_ti'],
-                            'email_contact'             => $affiliation[0]['affiliation']['phone_ti'],
-                            'created_by'                => Auth::user()->name,
+                            // Informacion del titular
+                            'email' => $affiliation[0]['affiliation']['email_ti'],
+                            'phone_contact' => $affiliation[0]['affiliation']['email_ti'],
+                            'email_contact' => $affiliation[0]['affiliation']['phone_ti'],
+                            'created_by' => Auth::user()->name,
 
-                            //Unidad de Negocios
-                            'business_unit_id'          => $affiliation[0]['affiliation']['business_unit_id'] == NULL ? '----' : $affiliation[0]['affiliation']['business_unit_id'],
-                            'business_line_id'          => $affiliation[0]['affiliation']['business_line_id'] == NULL ? '----' : $affiliation[0]['affiliation']['business_line_id']
+                            // Unidad de Negocios
+                            'business_unit_id' => $affiliation[0]['affiliation']['business_unit_id'] == null ? '----' : $affiliation[0]['affiliation']['business_unit_id'],
+                            'business_line_id' => $affiliation[0]['affiliation']['business_line_id'] == null ? '----' : $affiliation[0]['affiliation']['business_line_id'],
                         ]);
                     }
 
@@ -179,40 +201,40 @@ class ListTelemedicinePatients extends ListRecords
 
                         $patient = TelemedicinePatient::create([
 
-                            //Informacion de la Afiliacion
-                            'name_corporate'            => $affiliation[0]['affiliation_corporate']['name_corporate'],
-                            'plan_id'                   => $affiliation[0]['plan_id'],
-                            'coverage_id'               => $affiliation[0]['coverage_id'],
-                            'afilliation_corporate_id'  => $affiliation[0]['affiliation_corporate']['id'],
-                            'code_affiliation'          => $affiliation[0]['affiliation_corporate']['code'],
-                            'status_affiliation'        => 'ACTIVO',
-                            'type_affiliation'          => 'CORPORATIVO',
+                            // Informacion de la Afiliacion
+                            'name_corporate' => $affiliation[0]['affiliation_corporate']['name_corporate'],
+                            'plan_id' => $affiliation[0]['plan_id'],
+                            'coverage_id' => $affiliation[0]['coverage_id'],
+                            'afilliation_corporate_id' => $affiliation[0]['affiliation_corporate']['id'],
+                            'code_affiliation' => $affiliation[0]['affiliation_corporate']['code'],
+                            'status_affiliation' => 'ACTIVO',
+                            'type_affiliation' => 'CORPORATIVO',
 
-                            //Informacion del Afiliado -> Paciente
-                            'full_name'                 => $affiliation[0]['first_name'],
-                            'nro_identificacion'        => $affiliation[0]['nro_identificacion'],
-                            'birth_date'                => $affiliation[0]['birth_date'],
-                            'sex'                       => $affiliation[0]['sex'],
-                            'age'                       => $affiliation[0]['age'],
-                            'phone'                     => $affiliation[0]['phone'],
-                            'address'                   => $affiliation[0]['address'],
-                            'city_id'                   => $affiliation[0]['affiliation_corporate']['city_id'],
-                            'country_id'                => $affiliation[0]['affiliation_corporate']['country_id'],
-                            'region'                    => $affiliation[0]['affiliation_corporate']['region_id'],
-                            'state_id'                  => $affiliation[0]['affiliation_corporate']['state_id'],
+                            // Informacion del Afiliado -> Paciente
+                            'full_name' => $affiliation[0]['first_name'],
+                            'nro_identificacion' => $affiliation[0]['nro_identificacion'],
+                            'birth_date' => $affiliation[0]['birth_date'],
+                            'sex' => $affiliation[0]['sex'],
+                            'age' => $affiliation[0]['age'],
+                            'phone' => $affiliation[0]['phone'],
+                            'address' => $affiliation[0]['address'],
+                            'city_id' => $affiliation[0]['affiliation_corporate']['city_id'],
+                            'country_id' => $affiliation[0]['affiliation_corporate']['country_id'],
+                            'region' => $affiliation[0]['affiliation_corporate']['region_id'],
+                            'state_id' => $affiliation[0]['affiliation_corporate']['state_id'],
 
-                            //Informacion del titular
-                            'email'                     => $affiliation[0]['email'],
-                            'phone_contact'             => $affiliation[0]['affiliation_corporate']['phone'],
-                            'email_contact'             => $affiliation[0]['affiliation_corporate']['email'],
-                            'created_by'                => Auth::user()->name,
+                            // Informacion del titular
+                            'email' => $affiliation[0]['email'],
+                            'phone_contact' => $affiliation[0]['affiliation_corporate']['phone'],
+                            'email_contact' => $affiliation[0]['affiliation_corporate']['email'],
+                            'created_by' => Auth::user()->name,
 
-                            //Unidad de Negocios
-                            'business_unit_id'          => $affiliation[0]['affiliation_corporate']['business_unit_id'] == NULL ? null : $affiliation[0]['affiliation_corporate']['business_unit_id'],
-                            'business_line_id'          => $affiliation[0]['affiliation_corporate']['business_line_id'] == NULL ? null : $affiliation[0]['affiliation_corporate']['business_line_id']
+                            // Unidad de Negocios
+                            'business_unit_id' => $affiliation[0]['affiliation_corporate']['business_unit_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_unit_id'],
+                            'business_line_id' => $affiliation[0]['affiliation_corporate']['business_line_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_line_id'],
                         ]);
                     }
-                })
+                }),
         ];
     }
 }

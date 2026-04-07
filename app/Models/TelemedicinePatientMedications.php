@@ -18,6 +18,10 @@ class TelemedicinePatientMedications extends Model
         'indications',
         'telemedicine_priority_id',
         'duration',
+        'status',
+        'operation_inventory_id',
+        'is_covered',
+        'operation_coordination_service_id',
     ];
 
     public function telemedicinePatient()
@@ -48,6 +52,11 @@ class TelemedicinePatientMedications extends Model
     public function telemedicinePriority()
     {
         return $this->belongsTo(TelemedicinePriority::class);
+    }
+
+    public function operationInventory()
+    {
+        return $this->belongsTo(OperationInventory::class, 'operation_inventory_id', 'id');
     }
 
     // relacion 1 a N con la tabla OperationCoordinationService

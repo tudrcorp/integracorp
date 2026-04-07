@@ -16,6 +16,8 @@ class TelemedicinePatientLab extends Model
         'laboratory',
         'type',
         'assigned_by',
+        'status',
+        'operation_coordination_service_id',
     ];
 
     public function telemedicinePatient()

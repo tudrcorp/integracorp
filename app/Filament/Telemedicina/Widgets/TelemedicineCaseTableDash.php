@@ -2,31 +2,27 @@
 
 namespace App\Filament\Telemedicina\Widgets;
 
-use App\Models\User;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
 use App\Models\ObservationCase;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Filament\Widgets\TableWidget;
+use App\Models\TelemedicineCase;
+use App\Models\TelemedicineConsultationPatient;
+use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
-use Illuminate\Support\Facades\Log;
-use App\Models\TelemedicineFollowUp;
-use Illuminate\Support\Facades\Auth;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\TelemedicineHistoryPatient;
-use App\Models\TelemedicineConsultationPatient;
-use App\Models\TelemedicineCase as TelemedicineCase;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class TelemedicineCaseTableDash extends TableWidget
 {
+    protected int|string|array $columnSpan = 'full';
 
-    protected int | string | array $columnSpan = 'full';
-    
     public function table(Table $table): Table
     {
         return $table
@@ -75,21 +71,21 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'No Urgente'  => 'no-urgente',
-                            'Estándar'    => 'estandar',
-                            'Urgencia'    => 'urgencia',
-                            'Emergencia'  => 'emergencia',
-                            'Critico'     => 'critico',
+                            'NO URGENTE' => 'no-urgente',
+                            'ESTANDAR' => 'estandar',
+                            'URGENCIA' => 'urgencia',
+                            'EMERGENCIA' => 'emergencia',
+                            'CRITICO' => 'critico',
                         };
                     })
                     ->icon(function (string $state): string {
                         return match ($state) {
-                            'No Urgente'  => 'healthicons-f-health',
-                            'Estándar'    => 'healthicons-f-health',
-                            'Urgencia'    => 'healthicons-f-health',
-                            'Emergencia'  => 'heroicon-c-shield-exclamation',
-                            'Critico'     => 'heroicon-c-shield-exclamation',
-                    
+                            'NO URGENTE' => 'healthicons-f-health',
+                            'ESTANDAR' => 'healthicons-f-health',
+                            'URGENCIA' => 'healthicons-f-health',
+                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
+                            'CRITICO' => 'heroicon-c-shield-exclamation',
+
                         };
                     })
                     ->searchable(),
@@ -97,9 +93,9 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->label('Ultima Actualización')
                     ->dateTime()
                     // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
-                    ->description(fn(TelemedicineCase $record): string => $record->updated_at->diffForHumans())
+                    ->description(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
-                    
+
             ])
             ->filters([
                 //
@@ -110,27 +106,28 @@ class TelemedicineCaseTableDash extends TableWidget
             ->recordActions([
                 ActionGroup::make([
 
-                    //...Actions History
+                    // ...Actions History
                     Action::make('view_history')
                         ->label('Historia Clínica')
                         ->icon('heroicon-s-book-open')
                         ->color('primary')
                         ->action(function (TelemedicineCase $record) {
-                                // dd($record);
+                            // dd($record);
                             $history = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->first();
 
                             // dd($record, $history, TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first());
-    
-                            if(isset($history)) {
+
+                            if (isset($history)) {
                                 return redirect()->route('filament.telemedicina.resources.telemedicine-history-patients.view', ['record' => $history->id]);
                             } else {
-                                //Si no tiene historia, redirigir a crear historia
+                                // Si no tiene historia, redirigir a crear historia
                                 session()->put('patient', TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first());
+
                                 return redirect()->route('filament.telemedicina.resources.telemedicine-history-patients.create', ['record' => $record->telemedicine_patient_id]);
                             }
                         }),
-                    
-                    //...Actions consultation
+
+                    // ...Actions consultation
                     Action::make('consultation')
                         ->label('Consulta Inicial')
                         ->icon('healthicons-f-call-centre')
@@ -138,49 +135,50 @@ class TelemedicineCaseTableDash extends TableWidget
                         ->disabled(function (TelemedicineCase $record) {
                             $case = TelemedicineConsultationPatient::where('telemedicine_case_code', $record->code)->exists();
                             // dd($record->status);
-                            if($case && $record->status == 'ATENDIDO') {
+                            if ($case && $record->status == 'ATENDIDO') {
                                 return true;
                             }
+
                             return false;
                         })
                         ->action(function (TelemedicineCase $record) {
-    
-                            $case        = TelemedicineCase::where('code', $record->code)->first();
-                            $patient     = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
+
+                            $case = TelemedicineCase::where('code', $record->code)->first();
+                            $patient = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
                             $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->exists();
-    
+
                             session()->forget('case');
                             session()->forget('patient');
                             // session()->forget('exit_record');
                             session()->forget('redCode');
-    
-                            //Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
+
+                            // Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
                             session(['case' => $case]);
                             session(['patient' => $patient]);
                             // session(['exit_record' => $exit_record]);
-    
+
                             return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
-                            
+
                         })
                         ->hidden(function (TelemedicineCase $record) {
                             return $record->status != 'ASIGNADO';
                         }),
-                          
-                    //...Actions follow up
+
+                    // ...Actions follow up
                     Action::make('add_follow_up')
                         ->label('Hacer Seguimiento')
                         ->icon('healthicons-f-health-literacy')
                         ->color('success')
                         ->action(function (TelemedicineCase $record) {
-                            $case        = TelemedicineCase::where('code', $record->code)->first();
-                            $patient     = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
+                            $case = TelemedicineCase::where('code', $record->code)->first();
+                            $patient = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
                             $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->exists();
 
                             session()->forget('case');
                             session()->forget('patient');
                             session()->forget('exit_record');
 
-                            //Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
+                            // Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
                             session(['case' => $case]);
                             session(['patient' => $patient]);
                             session(['exit_record' => $exit_record]);
@@ -208,9 +206,10 @@ class TelemedicineCaseTableDash extends TableWidget
                         })
                         ->hidden(function (TelemedicineCase $record) {
                             $last = TelemedicineConsultationPatient::where('telemedicine_case_id', $record->id)->latest()->first();
-                            if($last == null) {
+                            if ($last == null) {
                                 return true;
                             }
+
                             return false;
                         }),
 
@@ -226,13 +225,13 @@ class TelemedicineCaseTableDash extends TableWidget
                         ->form([
                             Textarea::make('observation')
                                 ->label('Observaciones')
-                                ->autosize()
+                                ->autosize(),
                         ])
                         ->action(function (TelemedicineCase $record, array $data) {
-                            
+
                             try {
                                 // dd($data, $record);
-                                $observation = new ObservationCase();
+                                $observation = new ObservationCase;
                                 $observation->description = $data['observation'];
                                 $observation->telemedicine_case_id = $record->id;
                                 $observation->created_by = Auth::user()->id;
@@ -244,7 +243,7 @@ class TelemedicineCaseTableDash extends TableWidget
                                     ->body('Las observaciones fueron registradas exitosamente.')
                                     ->success()
                                     ->send();
-                                    
+
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
                                 Notification::make()
@@ -252,13 +251,13 @@ class TelemedicineCaseTableDash extends TableWidget
                                     ->danger()
                                     ->send();
                             }
-                            
+
                         })
                         ->hidden(function (TelemedicineCase $record) {
                             return $record->status == 'EJECUTADA' || $record->status == 'APROBADA';
                         }),
-                        
-                ])
+
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

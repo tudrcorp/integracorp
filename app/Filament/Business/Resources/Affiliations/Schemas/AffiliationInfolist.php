@@ -1,272 +1,352 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\Affiliations\Schemas;
 
 use App\Models\Affiliation;
-use Filament\Actions\Action;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\IconSize;
 use Filament\Support\Icons\Heroicon;
 
 class AffiliationInfolist
 {
+    private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    private const IOS_INNER_CLASS = 'rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+
+    private static function statusColor(?string $state): string
+    {
+        return match ($state) {
+            'ACTIVA', 'PRE-APROBADA' => 'success',
+            'PENDIENTE' => 'warning',
+            'EXCLUIDO' => 'danger',
+            default => 'gray',
+        };
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
-
-                Section::make()
-                    ->collapsible()
-                    ->description(fn(Affiliation $record) => 'Afiliación generada el: ' . $record->created_at->format('d/m/Y H:ma') . ' - Creada por: ' . $record->created_by)
-                    ->columnSpanFull()
-                    ->icon(Heroicon::Bars3BottomLeft)
+                Section::make('Resumen')
+                    ->description(fn (Affiliation $record): string => 'Generada el '.$record->created_at->format('d/m/Y').' a las '.$record->created_at->format('H:i').' · Creada por: '.($record->created_by ?? '—'))
+                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
                     ->schema([
-                        Fieldset::make('AFILIACION')
+                        Grid::make(1)
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
                             ->schema([
-                                TextEntry::make('code')
-                                    ->label('Nro. de solicitud:')
-                                    ->badge()
-                                    ->color('success'),
-                                TextEntry::make('individual_quote.code')
-                                    ->label('Nro. de cotización:')
-                                    ->badge()
-                                    ->color('success'),
-                                // ...
-                                TextEntry::make('created_by')
-                                    ->label('Registrado por:')
-                                    ->badge()
-                                    ->color('primary')
-                                    ->default(fn(Affiliation $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
-                                TextEntry::make('created_at')
-                                    ->label('Fecha:')
-                                    ->badge()
-                                    ->icon(Heroicon::CalendarDays)
-                                    ->dateTime(),
-                                TextEntry::make('status')
-                                    ->label('Estatus de la Afiliación:')
-                                    ->badge()
-                                    ->color('success')
-                                    ->icon(Heroicon::CheckCircle),
-                                TextEntry::make('activation_date')
-                                    ->label('Fecha de Activación:')
-                                    ->badge()
-                                    ->color('success')
-                                    ->icon(Heroicon::InformationCircle)
+                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                    ->schema([
+                                        TextEntry::make('code')
+                                            ->label('Nº solicitud')
+                                            ->icon(Heroicon::OutlinedHashtag)
+                                            ->badge()
+                                            ->color('success'),
+                                        TextEntry::make('individual_quote.code')
+                                            ->label('Nº cotización')
+                                            ->icon(Heroicon::OutlinedDocumentDuplicate)
+                                            ->badge()
+                                            ->color('success'),
+                                        TextEntry::make('agent_id')
+                                            ->label('Código agente')
+                                            ->icon(Heroicon::OutlinedHashtag)
+                                            ->formatStateUsing(fn ($state): string => 'AGT-000'.(string) $state),
+                                        TextEntry::make('agent.name')
+                                            ->label('Nombre del agente')
+                                            ->icon(Heroicon::OutlinedUser)
+                                            ->placeholder('—'),
+                                        TextEntry::make('created_by')
+                                            ->label('Usuario')
+                                            ->icon(Heroicon::OutlinedUserCircle)
+                                            ->placeholder('—'),
+                                        TextEntry::make('created_at')
+                                            ->label('Fecha')
+                                            ->icon(Heroicon::OutlinedCalendarDays)
+                                            ->dateTime('d/m/Y H:i'),
+                                        TextEntry::make('status')
+                                            ->label('Estatus')
+                                            ->icon(Heroicon::OutlinedSignal)
+                                            ->badge()
+                                            ->color(fn (?string $state): string => self::statusColor($state)),
+                                        TextEntry::make('activation_date')
+                                            ->label('Fecha de activación')
+                                            ->icon(Heroicon::OutlinedInformationCircle)
+                                            ->badge()
+                                            ->color('success')
+                                            ->placeholder('—'),
+                                    ]),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
 
-                            ])->columnSpanFull()->columns(5),
-
-                        Fieldset::make('TITULAR DEL PLAN')
+                Section::make('Titular del plan')
+                    ->icon(Heroicon::OutlinedUser)
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
                             ->schema([
                                 TextEntry::make('full_name_ti')
-                                    ->badge()
-                                    ->color('info')
-                                    ->icon('fluentui-person-available-16')
-                                    ->label('Nombre y Apellido:'),
+                                    ->label('Nombre y apellido')
+                                    ->icon(Heroicon::OutlinedUser)
+                                    ->weight('medium')
+                                    ->placeholder('—'),
                                 TextEntry::make('nro_identificacion_ti')
-                                    ->label('Nro. de Identificación:'),
+                                    ->label('Identificación')
+                                    ->icon(Heroicon::OutlinedIdentification)
+                                    ->copyable()
+                                    ->placeholder('—'),
                                 TextEntry::make('phone_ti')
-                                    ->label('Número de teléfono:'),
+                                    ->label('Teléfono')
+                                    ->icon(Heroicon::OutlinedPhone)
+                                    ->copyable()
+                                    ->placeholder('—'),
                                 TextEntry::make('email_ti')
-                                    ->label('Correo electrónico:'),
-                            ])->columnSpanFull()->columns(4),
+                                    ->label('Correo')
+                                    ->icon(Heroicon::OutlinedEnvelope)
+                                    ->copyable()
+                                    ->placeholder('—')
+                                    ->wrap(),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
 
-                        Fieldset::make('RESPONSABLE DE PAGO (PAGADOR)')
+                Section::make('Responsable de pago (pagador)')
+                    ->icon(Heroicon::OutlinedBanknotes)
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
                             ->schema([
                                 TextEntry::make('full_name_payer')
-                                    ->badge()
-                                    ->color('info')
-                                    ->icon('fluentui-money-hand-20')
-                                    ->label('Nombre y Apellido:'),
+                                    ->label('Nombre y apellido')
+                                    ->icon(Heroicon::OutlinedUser)
+                                    ->weight('medium')
+                                    ->placeholder('—'),
                                 TextEntry::make('nro_identificacion_payer')
-                                    ->label('Nro. de Identificación:'),
+                                    ->label('Identificación')
+                                    ->icon(Heroicon::OutlinedIdentification)
+                                    ->copyable()
+                                    ->placeholder('—'),
                                 TextEntry::make('email_payer')
-                                    ->label('Correo electrónico:'),
+                                    ->label('Correo')
+                                    ->icon(Heroicon::OutlinedEnvelope)
+                                    ->copyable()
+                                    ->placeholder('—')
+                                    ->wrap(),
                                 TextEntry::make('phone_payer')
-                                    ->label('Número de teléfono:'),
-                            ])->columnSpanFull()->columns(4),
+                                    ->label('Teléfono')
+                                    ->icon(Heroicon::OutlinedPhone)
+                                    ->copyable()
+                                    ->placeholder('—'),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
 
-                        Fieldset::make('PLAN Y FRECUENCIA DE PAGO')
+                Section::make('Plan y frecuencia de pago')
+                    ->icon(Heroicon::OutlinedRectangleStack)
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
                             ->schema([
                                 TextEntry::make('plan.description')
                                     ->label('Plan')
                                     ->badge()
                                     ->color('primary')
-                                    ->numeric(),
+                                    ->placeholder('—')
+                                    ->wrap(),
                                 TextEntry::make('coverage.price')
-                                    ->formatStateUsing(fn(Affiliation $record) => number_format((float)$record->coverage->price, 0, ',', '.'))
                                     ->label('Cobertura')
-                                    ->prefix('US$ ')
-                                    ->badge()
-                                    ->color('primary'),
+                                    ->money('USD')
+                                    ->placeholder('—'),
                                 TextEntry::make('fee_anual')
                                     ->label('Tarifa anual')
-                                    ->prefix('US$ ')
-                                    ->badge()
-                                    ->color('primary')
-                                    ->numeric(),
+                                    ->money('USD')
+                                    ->placeholder('—'),
                                 TextEntry::make('payment_frequency')
                                     ->label('Frecuencia de pago')
                                     ->badge()
                                     ->color('primary'),
                                 TextEntry::make('total_amount')
                                     ->label('Monto total')
-                                    ->prefix('US$ ')
-                                    ->badge()
-                                    ->color('success')
-                                    ->numeric(),
+                                    ->money('USD')
+                                    ->weight('semibold')
+                                    ->color('success'),
                                 TextEntry::make('family_members')
                                     ->label('Miembros de la familia')
-                                    ->suffix(' Persona(s)')
+                                    ->suffix(' pers.')
                                     ->badge()
-                                    ->color('primary')
-                                    ->numeric(),
-                            ])->columnSpanFull()->columns(4),
+                                    ->color('primary'),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
 
-                        Fieldset::make('ALIADO DE SERVICIO NIVEL 1')
+                Section::make('Aliado de servicio nivel 1')
+                    ->icon(Heroicon::OutlinedBuildingStorefront)
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
                             ->schema([
                                 TextEntry::make('aliado_1_name')
-                                    ->label('Nombre del Aliado')
+                                    ->label('Nombre del aliado')
+                                    ->icon(Heroicon::OutlinedDocumentText)
                                     ->badge()
                                     ->color('primary')
-                                    ->icon(Heroicon::DocumentText),
+                                    ->placeholder('—'),
                                 TextEntry::make('date_init_aliado_1')
-                                    ->label('Fecha de inicio:')
+                                    ->label('Inicio')
+                                    ->icon(Heroicon::OutlinedCalendarDays)
                                     ->badge()
                                     ->color('primary')
-                                    ->icon(Heroicon::CalendarDays),
+                                    ->placeholder('—'),
                                 TextEntry::make('date_end_aliado_1')
-                                    ->label('Fecha de Vencimiento:')
+                                    ->label('Vencimiento')
+                                    ->icon(Heroicon::OutlinedCalendarDays)
                                     ->badge()
                                     ->color('primary')
-                                    ->icon(Heroicon::CalendarDays),
+                                    ->placeholder('—'),
                                 IconEntry::make('vaucher_aliado_1')
-                                    ->label('Ver Voucher')
-                                    ->icon(function (Affiliation $record) {
-                                        // Muestra un ícono si la imagen existe
-                                        return $record->vaucher_aliado_1 != null
-                                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
-                                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
-                                    })
-                                    ->color(function (Affiliation $record) {
-                                        // Color del ícono basado en la existencia de la imagen
-                                        return $record->vaucher_aliado_1 != null
-                                            ? 'success' // Verde si la imagen existe
-                                            : 'danger'; // Rojo si no existe
-                                    })
-                                    ->url(function (Affiliation $record) {
-                                        return asset('storage/' . $record->vaucher_aliado_1);
-                                    })
+                                    ->label('Voucher')
+                                    ->icon(fn (Affiliation $record): string => filled($record->vaucher_aliado_1)
+                                        ? 'heroicon-o-check-circle'
+                                        : 'heroicon-o-x-circle')
+                                    ->color(fn (Affiliation $record): string => filled($record->vaucher_aliado_1) ? 'success' : 'danger')
+                                    ->url(fn (Affiliation $record): ?string => filled($record->vaucher_aliado_1)
+                                        ? asset('storage/'.$record->vaucher_aliado_1)
+                                        : null)
                                     ->openUrlInNewTab(),
-                                // ->size(IconSize::Medium)->boolean()->action(Action::make('activate')->label('Activar')->color('success')->icon(Heroicon::CheckCircle)),
-                            ])->columnSpanFull()->columns(4),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
 
-                        Fieldset::make('ALIADO DE SERVICIO NIVEL 2')
+                Section::make('Aliado de servicio nivel 2')
+                    ->icon(Heroicon::OutlinedBuildingStorefront)
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
                             ->schema([
                                 TextEntry::make('affiliates.vaucherIls')
-                                    ->label('Número de Voucher')
+                                    ->label('Número de voucher')
+                                    ->icon(Heroicon::OutlinedDocumentText)
                                     ->badge()
                                     ->color('primary')
-                                    ->icon(Heroicon::DocumentText),
+                                    ->placeholder('—'),
                                 TextEntry::make('affiliates.dateInit')
-                                    ->label('Fecha de inicio:')
+                                    ->label('Inicio')
+                                    ->icon(Heroicon::OutlinedCalendarDays)
                                     ->badge()
                                     ->color('primary')
-                                    ->icon(Heroicon::CalendarDays),
+                                    ->placeholder('—'),
                                 TextEntry::make('affiliates.dateEnd')
-                                    ->label('Fecha de Vencimiento:')
+                                    ->label('Vencimiento')
+                                    ->icon(Heroicon::OutlinedCalendarDays)
                                     ->badge()
                                     ->color('primary')
-                                    ->icon(Heroicon::CalendarDays),
-                                IconEntry::make('affiliates.document_ils')
-                                    ->label('Ver Voucher')
-                                    ->icon(function (Affiliation $record) {
-                                        // Muestra un ícono si la imagen existe
-                                        return $record->affiliates[0]->document_ils != null
-                                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
-                                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
+                                    ->placeholder('—'),
+                                IconEntry::make('affiliate_level_two_ils')
+                                    ->label('Documento ILS')
+                                    ->icon(function (Affiliation $record): string {
+                                        $doc = $record->affiliates->first()?->document_ils;
+
+                                        return filled($doc) ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle';
                                     })
-                                    ->color(function (Affiliation $record) {
-                                        // Color del ícono basado en la existencia de la imagen
-                                        return $record->affiliates[0]->document_ils != null
-                                            ? 'success' // Verde si la imagen existe
-                                            : 'danger'; // Rojo si no existe
+                                    ->color(function (Affiliation $record): string {
+                                        $doc = $record->affiliates->first()?->document_ils;
+
+                                        return filled($doc) ? 'success' : 'danger';
                                     })
-                                    ->url(function (Affiliation $record) {
-                                        return asset('storage/' . $record->affiliates[0]->document_ils);
+                                    ->url(function (Affiliation $record): ?string {
+                                        $doc = $record->affiliates->first()?->document_ils;
+
+                                        return filled($doc) ? asset('storage/'.$doc) : null;
                                     })
                                     ->openUrlInNewTab(),
-                                    // ->size(IconSize::Medium)->boolean()->action(Action::make('activate')->label('Activar')->color('success')->icon(Heroicon::CheckCircle)),
-                            ])->columnSpanFull()->columns(4),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
 
-                        Fieldset::make('DECLARACIÓN MÉDICA')
+                Section::make('Declaración médica')
+                    ->description('Respuestas del cuestionario de salud.')
+                    ->icon(Heroicon::OutlinedHeart)
+                    ->collapsed()
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(['default' => 1, 'lg' => 2])
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
                             ->schema([
-                                IconEntry::make('cuestion_1')
-                                    ->label('¿Usted y el grupo de beneficiarios solicitantes, gozan de buena salud?')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_2')
-                                    ->label('¿Usted o el grupo de beneficiarios presentan alguna condición médica o congénita?')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_3')
-                                    ->label('¿Usted o el grupo de beneficiario ha sido intervenido quirúrgicamente? ')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_4')
-                                    ->label('¿Usted o el grupo de beneficiario padece o ha padecido alguna enfermedad?')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_5')
-                                    ->label('Enfermedades Cardiovasculares, tales como; Hipertensión Arterial, Ataque cardíaco, Angina o dolor de pecho,
-                                                                Soplo Cardíaco, Insuficiencia Cardíaca Congestiva o desórdenes del corazón o sistema circulatorio.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_6')
-                                    ->label('Enfermedades Cerebrovasculares, tales como: Desmayos, confusión, parálisis de miembros, dificultad para
-                                                                hablar, articular y entender, Accidente Cerebro-vascular (ACV). Cefalea o migraña. Epilepsia o Convulsiones.
-                                                                Otros trastornos o enfermedad del Cerebro o Sistema Nervioso.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_7')
-                                    ->label('Enfermedades Respiratorias, tales como: Asma Bronquial, Bronquitis, Bronquiolitis, Enfisema, Neumonía, Enfer-
-                                                                medad pulmonar Obstructiva Crónica (EPOC) u otras enfermedades del Sistema Respiratorio.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_8')
-                                    ->label('Enfermedades o Trastornos Endocrinos tales como: Diabetes Mellitus, Bocio, hipertiroidismo, hipotiroidismo,
-                                                            Tiroiditis, Resistencia a la insulina, enfermedad de Cushing, cáncer de tiroides.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_9')
-                                    ->label('Enfermedades Gastrointestinales como: Litiasis vesicular, Cólico Biliar, Úlcera gástrica, gastritis, Hemorragia
-                                                            digestivas, colitis, hemorroides, Apendicitis, Peritonitis, Pancreatitis u otros desórdenes del estómago, intestino,
-                                                            hígado o vesícula biliar.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_10')
-                                    ->label('Enfermedades Renales: Litiasis renal, Cólico nefrítico, Sangre en la orina o Hematuria, Cistitis, Infecciones
-                                                            urinarias, Pielonefritis, Insuficiencia renal aguda. Otras enfermedades del riñón, vejiga o próstata.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_11')
-                                    ->label('Enfermedades Osteoarticulares, Artrosis, Artritis reumatoide, Traumatismo craneoencefálico, Fracturas óseas,
-                                                            Luxaciones o esguinces, tumores óseos, u otros trastornos de los músculos, articulaciones o columna vertical o
-                                                            espalda.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_12')
-                                    ->label('¿Ha sufrido o padece de alguna enfermedad de la Piel como: Dermatitis, Celulitis, Abscesos cutáneos, quistes,
-                                                            tumores o cáncer? ,Quemaduras o Heridas Complicadas.')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_13')
-                                    ->label('¿Padece de alguna enfermedad o desorden de los ojos, oídos, nariz o garganta?')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_14')
-                                    ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamen-
-                                                            tosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_15')
-                                    ->label('¿Usted o alguno de los solicitantes, toma algún tipo de medicamentos por tratamiento prolongado?')
-                                    ->boolean(),
-                                IconEntry::make('cuestion_16')
-                                    ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamen-
-                                                            tosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?')
-                                    ->boolean(),
-                            ])->columnSpanFull()->columns(3),
-                    ])->columnSpanFull(),
+                                ...self::medicalQuestionIconEntries(),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
+    }
+
+    /**
+     * @return array<int, IconEntry>
+     */
+    private static function medicalQuestionIconEntries(): array
+    {
+        $labels = [
+            'cuestion_1' => '¿Usted y el grupo de beneficiarios solicitantes, gozan de buena salud?',
+            'cuestion_2' => '¿Usted o el grupo de beneficiarios presentan alguna condición médica o congénita?',
+            'cuestion_3' => '¿Usted o el grupo de beneficiario ha sido intervenido quirúrgicamente? ',
+            'cuestion_4' => '¿Usted o el grupo de beneficiario padece o ha padecido alguna enfermedad?',
+            'cuestion_5' => 'Enfermedades Cardiovasculares, tales como; Hipertensión Arterial, Ataque cardíaco, Angina o dolor de pecho, Soplo Cardíaco, Insuficiencia Cardíaca Congestiva o desórdenes del corazón o sistema circulatorio.',
+            'cuestion_6' => 'Enfermedades Cerebrovasculares, tales como: Desmayos, confusión, parálisis de miembros, dificultad para hablar, articular y entender, Accidente Cerebro-vascular (ACV). Cefalea o migraña. Epilepsia o Convulsiones. Otros trastornos o enfermedad del Cerebro o Sistema Nervioso.',
+            'cuestion_7' => 'Enfermedades Respiratorias, tales como: Asma Bronquial, Bronquitis, Bronquiolitis, Enfisema, Neumonía, Enfermedad pulmonar Obstructiva Crónica (EPOC) u otras enfermedades del Sistema Respiratorio.',
+            'cuestion_8' => 'Enfermedades o Trastornos Endocrinos tales como: Diabetes Mellitus, Bocio, hipertiroidismo, hipotiroidismo, Tiroiditis, Resistencia a la insulina, enfermedad de Cushing, cáncer de tiroides.',
+            'cuestion_9' => 'Enfermedades Gastrointestinales como: Litiasis vesicular, Cólico Biliar, Úlcera gástrica, gastritis, Hemorragia digestivas, colitis, hemorroides, Apendicitis, Peritonitis, Pancreatitis u otros desórdenes del estómago, intestino, hígado o vesícula biliar.',
+            'cuestion_10' => 'Enfermedades Renales: Litiasis renal, Cólico nefrítico, Sangre en la orina o Hematuria, Cistitis, Infecciones urinarias, Pielonefritis, Insuficiencia renal aguda. Otras enfermedades del riñón, vejiga o próstata.',
+            'cuestion_11' => 'Enfermedades Osteoarticulares, Artrosis, Artritis reumatoide, Traumatismo craneoencefálico, Fracturas óseas, Luxaciones o esguinces, tumores óseos, u otros trastornos de los músculos, articulaciones o columna vertical o espalda.',
+            'cuestion_12' => '¿Ha sufrido o padece de alguna enfermedad de la Piel como: Dermatitis, Celulitis, Abscesos cutáneos, quistes, tumores o cáncer? ,Quemaduras o Heridas Complicadas.',
+            'cuestion_13' => '¿Padece de alguna enfermedad o desorden de los ojos, oídos, nariz o garganta?',
+            'cuestion_14' => '¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?',
+            'cuestion_15' => '¿Usted o alguno de los solicitantes, toma algún tipo de medicamentos por tratamiento prolongado?',
+            'cuestion_16' => '¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?',
+        ];
+
+        return collect($labels)
+            ->map(fn (string $label, string $field): IconEntry => IconEntry::make($field)
+                ->label($label)
+                ->boolean())
+            ->values()
+            ->all();
     }
 }

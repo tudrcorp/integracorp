@@ -16,6 +16,8 @@ class TelemedicinePatientSpecialty extends Model
         'type',
         'specialty',
         'assigned_by',
+        'status',
+        'operation_coordination_service_id',
     ];
 
     public function telemedicinePatient()

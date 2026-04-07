@@ -11,7 +11,6 @@ use App\Models\Helpdesk;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -21,8 +20,7 @@ class HelpdeskResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-circle';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
-
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {

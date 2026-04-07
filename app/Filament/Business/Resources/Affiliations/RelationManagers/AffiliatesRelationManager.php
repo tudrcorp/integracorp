@@ -7,6 +7,7 @@ use App\Models\Affiliation;
 use App\Models\AgeRange;
 use App\Models\Fee;
 use App\Models\Plan;
+use App\Support\AffiliateVaucherIlsRemainingDays;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -227,28 +228,18 @@ class AffiliatesRelationManager extends RelationManager
                                         ->label('Desde')
                                         ->live()
                                         ->format('d-m-Y')
-                                        ->afterStateUpdated(function (Set $set, Get $get) {
-                                            $dateEnd = $get('dateEnd');
-                                            if ($dateEnd) {
-                                                $hoy = Carbon::today()->startOfDay();
-                                                $fechaFin = Carbon::parse($dateEnd)->startOfDay();
-                                                $diasFaltantes = $hoy->diffInDays($fechaFin, false);
-                                                $set('numberDays', max(0, (int) $diasFaltantes));
-                                            }
+                                        ->afterStateUpdated(function (Set $set, Get $get): void {
+                                            $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($get('dateEnd'));
+                                            $set('numberDays', $days ?? 0);
                                         })
                                         ->required(),
                                     DatePicker::make('dateEnd')
                                         ->label('Hasta')
                                         ->live()
                                         ->format('d-m-Y')
-                                        ->afterStateUpdated(function (Set $set, Get $get) {
-                                            $dateEnd = $get('dateEnd');
-                                            if ($dateEnd) {
-                                                $hoy = Carbon::today()->startOfDay();
-                                                $fechaFin = Carbon::parse($dateEnd)->startOfDay();
-                                                $diasFaltantes = $hoy->diffInDays($fechaFin, false);
-                                                $set('numberDays', max(0, (int) $diasFaltantes));
-                                            }
+                                        ->afterStateUpdated(function (Set $set, Get $get): void {
+                                            $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($get('dateEnd'));
+                                            $set('numberDays', $days ?? 0);
                                         })
                                         ->required(),
                                     TextInput::make('numberDays')
@@ -304,6 +295,14 @@ class AffiliatesRelationManager extends RelationManager
                 TextColumn::make('coverage.price')
                     ->badge()
                     ->color('success'),
+                TextColumn::make('payment_frequency')
+                    ->label('Frecuencia de Pago')
+                    ->badge()
+                    ->color('success'),
+                TextColumn::make('fee')
+                    ->label('Tarifa Anual')
+                    ->badge()
+                    ->color('success'),
                 TextColumn::make('total_amount')
                     ->label('Monto a Pagar')
                     ->badge()
@@ -347,11 +346,10 @@ class AffiliatesRelationManager extends RelationManager
                         if ($record->dateEnd === null) {
                             return '--';
                         }
-                        $hoy = Carbon::today()->startOfDay();
-                        $fechaFin = Carbon::parse($record->dateEnd)->startOfDay();
-                        $diasFaltantes = $hoy->diffInDays($fechaFin, false);
 
-                        return max(0, (int) $diasFaltantes);
+                        $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($record->dateEnd);
+
+                        return $days === null ? '--' : $days;
                     }),
                 IconColumn::make('document_ils')
                     ->alignment(Alignment::Center)
@@ -400,17 +398,20 @@ class AffiliatesRelationManager extends RelationManager
                                     Grid::make(3)->schema([
                                         DatePicker::make('dateInit')
                                             ->label('Desde')
+                                            ->live()
                                             ->format('d/m/Y')
+                                            ->afterStateUpdated(function (Set $set, Get $get): void {
+                                                $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($get('dateEnd'));
+                                                $set('numberDays', $days ?? 0);
+                                            })
                                             ->required(),
                                         DatePicker::make('dateEnd')
                                             ->label('Hasta')
                                             ->live()
                                             ->format('d/m/Y')
-                                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
-                                                $fecha1 = Carbon::createFromFormat('d/m/Y', $get('dateInit'));
-                                                $fecha2 = Carbon::createFromFormat('d/m/Y', $get('dateEnd'));
-                                                $diasRestantes = $fecha2->diffInDays($fecha1);
-                                                $set('numberDays', abs($diasRestantes));
+                                            ->afterStateUpdated(function (Set $set, Get $get): void {
+                                                $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($get('dateEnd'));
+                                                $set('numberDays', $days ?? 0);
                                             })
                                             ->required(),
                                         TextInput::make('numberDays')
@@ -431,14 +432,11 @@ class AffiliatesRelationManager extends RelationManager
 
                             try {
 
-                                $fecha1 = Carbon::createFromFormat('d/m/Y', $data['dateInit']);
-                                $fecha2 = Carbon::createFromFormat('d/m/Y', $data['dateEnd']);
-
                                 $record->update([
                                     'vaucherIls' => $data['vaucherIls'],
                                     'dateInit' => $data['dateInit'],
                                     'dateEnd' => $data['dateEnd'],
-                                    'numberDays' => abs($fecha2->diffInDays($fecha1)),
+                                    'numberDays' => AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($data['dateEnd']) ?? 0,
                                     'document_ils' => $data['document_ils'],
                                 ]);
 
@@ -467,18 +465,38 @@ class AffiliatesRelationManager extends RelationManager
                         ->label('Editar Afiliación')
                         ->icon('heroicon-s-pencil')
                         ->color('warning')
-                        ->after(function (Affiliate $record, array $data) {
-                            // actualizo la afiliacion
+                        ->after(function (Affiliate $record, array $data): void {
                             try {
+                                $record->refresh();
+
+                                $annualFee = (float) ($data['fee'] ?? 0);
+                                $frequency = (string) ($data['payment_frequency'] ?? 'ANUAL');
+
+                                $recalculatedTotal = $this->totalAmountForPaymentFrequency($annualFee, $frequency);
+
+                                $record->update([
+                                    'plan_id' => $data['plan_id'],
+                                    'coverage_id' => $data['coverage_id'],
+                                    'age_range_id' => $data['age_range_id'],
+                                    'fee' => $annualFee,
+                                    'total_amount' => $recalculatedTotal,
+                                    'payment_frequency' => $frequency,
+                                ]);
 
                                 $owner = $this->getOwnerRecord();
-                                $owner->plan_id = $data['plan_id'];
-                                $owner->coverage_id = $data['coverage_id'];
-                                $owner->fee_anual = $data['fee'];
-                                $owner->total_amount = $data['total_amount'];
-                                $owner->payment_frequency = $data['payment_frequency'];
+
+                                $fee_anual = $this->recalculateAffiliationTotalsFromAffiliates($owner->affiliates->toArray());
+
+                                $owner->plan_id = (int) $data['plan_id'];
+                                $owner->coverage_id = (int) $data['coverage_id'];
+                                $owner->payment_frequency = $frequency;
+                                $owner->fee_anual = $fee_anual;
+                                $owner->family_members = $owner->affiliates->count();
+                                $owner->total_amount = $this->totalAmountForPaymentFrequency($owner->fee_anual, $frequency);
                                 $owner->save();
+
                             } catch (\Throwable $th) {
+                                dd($th);
                                 Log::error($th->getMessage());
                                 Notification::make()
                                     ->danger()
@@ -495,17 +513,15 @@ class AffiliatesRelationManager extends RelationManager
                         ->requiresConfirmation()
                         ->action(function (Affiliate $record): void {
 
-                            // ... Actualizo la afiliacion
-                            $owner = $this->getOwnerRecord();
-                            $owner->fee_anual = $owner->fee_anual - $record->fee;
-                            $owner->total_amount = $owner->total_amount - $record->total_amount;
-                            $owner->family_members = $owner->family_members - 1;
-                            $owner->save();
-
-                            // ... Actualizo el familiar
                             $record->update([
                                 'status' => 'INACTIVO',
                             ]);
+
+                            $owner = $this->getOwnerRecord();
+                            $owner->family_members = $owner->affiliates()->where('status', 'ACTIVO')->count();
+                            $owner->save();
+
+                            $this->recalculateAffiliationTotalsFromAffiliates($owner);
 
                             Notification::make()
                                 ->success()
@@ -561,17 +577,35 @@ class AffiliatesRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Agregar Familiar')
                     ->icon('heroicon-s-user-plus')
-                    // Actualizo el total de familiarles en la afiliacion
-                    ->after(function (array $data) {
-                        $record = $this->getOwnerRecord();
-                        $record->fee_anual = $record->fee_anual + $data['fee'];
-                        $record->total_amount = $record->total_amount + $data['total_amount'];
-                        $record->family_members = $record->family_members + 1;
-                        $record->save();
+                    ->after(function (array $data): void {
+                        $owner = $this->getOwnerRecord();
+                        $owner->family_members = $owner->affiliates()->where('status', 'ACTIVO')->count();
+                        $owner->save();
 
+                        $this->recalculateAffiliationTotalsFromAffiliates($owner);
                     })
                     ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()->departament)),
 
             ]);
+    }
+
+    public function totalAmountForPaymentFrequency(float $annualFee, string $frequency): float
+    {
+        return match ($frequency) {
+            'ANUAL' => round($annualFee, 2),
+            'SEMESTRAL' => round($annualFee / 2, 2),
+            'TRIMESTRAL' => round($annualFee / 4, 2),
+            default => round($annualFee, 2),
+        };
+    }
+
+    public function recalculateAffiliationTotalsFromAffiliates(array $affiliates): float
+    {
+        $total_amount = 0;
+        foreach ($affiliates as $affiliate) {
+            $total_amount += $affiliate['fee'];
+        }
+
+        return round($total_amount, 2);
     }
 }

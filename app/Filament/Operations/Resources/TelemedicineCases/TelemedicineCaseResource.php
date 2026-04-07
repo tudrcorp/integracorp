@@ -2,29 +2,29 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineCases;
 
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use App\Models\TelemedicineCase;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use App\Filament\Operations\Resources\TelemedicineCases\Pages\EditTelemedicineCase;
-use App\Filament\Operations\Resources\TelemedicineCases\Pages\ViewTelemedicineCase;
-use App\Filament\Operations\Resources\TelemedicineCases\Pages\ListTelemedicineCases;
 use App\Filament\Operations\Resources\TelemedicineCases\Pages\CreateTelemedicineCase;
-use App\Filament\Operations\Resources\TelemedicineCases\Schemas\TelemedicineCaseForm;
-use App\Filament\Operations\Resources\TelemedicineCases\Tables\TelemedicineCasesTable;
-use App\Filament\Operations\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
-use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\ObservationsRelationManager;
+use App\Filament\Operations\Resources\TelemedicineCases\Pages\EditTelemedicineCase;
+use App\Filament\Operations\Resources\TelemedicineCases\Pages\ListTelemedicineCases;
+use App\Filament\Operations\Resources\TelemedicineCases\Pages\ViewTelemedicineCase;
 use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\ConsultationsRelationManager;
+use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\ObservationsRelationManager;
 use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\TelemedicineDocumentsRelationManager;
+use App\Filament\Operations\Resources\TelemedicineCases\Schemas\TelemedicineCaseForm;
+use App\Filament\Operations\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
+use App\Filament\Operations\Resources\TelemedicineCases\Tables\TelemedicineCasesTable;
+use App\Models\TelemedicineCase;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class TelemedicineCaseResource extends Resource
 {
     protected static ?string $model = TelemedicineCase::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
+    protected static string|UnitEnum|null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $navigationLabel = 'Gestión de Casos';
 
@@ -40,6 +40,19 @@ class TelemedicineCaseResource extends Resource
         return TelemedicineCaseInfolist::configure($schema);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'telemedicinePatient',
+                'telemedicineDoctor',
+                'priority',
+                'city',
+                'state',
+                'country',
+            ]);
+    }
+
     public static function table(Table $table): Table
     {
         return TelemedicineCasesTable::configure($table);
@@ -48,11 +61,9 @@ class TelemedicineCaseResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ConsultationsRelationManager::class,
-            ObservationsRelationManager::class,
-            TelemedicineDocumentsRelationManager::class,
-            
-            //
+            'consultations' => ConsultationsRelationManager::class,
+            'observations' => ObservationsRelationManager::class,
+            'documents' => TelemedicineDocumentsRelationManager::class,
         ];
     }
 

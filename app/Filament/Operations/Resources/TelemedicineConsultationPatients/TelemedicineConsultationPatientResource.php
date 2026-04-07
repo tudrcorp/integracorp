@@ -2,23 +2,23 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineConsultationPatients;
 
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use App\Models\TelemedicineConsultationPatient;
-use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Pages\EditTelemedicineConsultationPatient;
-use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Pages\ViewTelemedicineConsultationPatient;
-use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Pages\ListTelemedicineConsultationPatients;
 use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Pages\CreateTelemedicineConsultationPatient;
-use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientForm;
-use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Tables\TelemedicineConsultationPatientsTable;
-use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientInfolist;
+use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Pages\EditTelemedicineConsultationPatient;
+use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Pages\ListTelemedicineConsultationPatients;
+use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Pages\ViewTelemedicineConsultationPatient;
 use App\Filament\Operations\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientLabsRelationManager;
-use App\Filament\Operations\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientStudiesRelationManager;
 use App\Filament\Operations\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientMedicationsRelationManager;
 use App\Filament\Operations\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientSpecialistsRelationManager;
+use App\Filament\Operations\Resources\TelemedicineConsultationPatients\RelationManagers\TelemedicinePatientStudiesRelationManager;
+use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientForm;
+use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineConsultationPatientInfolist;
+use App\Filament\Operations\Resources\TelemedicineConsultationPatients\Tables\TelemedicineConsultationPatientsTable;
+use App\Models\TelemedicineConsultationPatient;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TelemedicineConsultationPatientResource extends Resource
 {
@@ -46,6 +46,18 @@ class TelemedicineConsultationPatientResource extends Resource
         return TelemedicineConsultationPatientInfolist::configure($schema);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'telemedicinePatient',
+                'telemedicineDoctor',
+                'telemedicineCase',
+                'telemedicineServiceList',
+                'telemedicinePriority',
+            ]);
+    }
+
     public static function table(Table $table): Table
     {
         return TelemedicineConsultationPatientsTable::configure($table);
@@ -58,8 +70,7 @@ class TelemedicineConsultationPatientResource extends Resource
             TelemedicinePatientMedicationsRelationManager::class,
             TelemedicinePatientStudiesRelationManager::class,
             TelemedicinePatientSpecialistsRelationManager::class,
-            
-            
+
             //
         ];
     }

@@ -2,56 +2,71 @@
 
 namespace App\Jobs;
 
-use App\Models\Plan;
-use App\Models\Coverage;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Mail\SendMailTarjetaAfiliado;
-use Illuminate\Queue\SerializesModels;
-use App\Mail\SendMailPropuestaPlanIdeal;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use App\Models\Affiliation;
+use App\Support\DomPdfBatchRenderOptions;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SendTarjetaAfiliado implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 3;
-    public $details;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct($details)
-    {
-        $this->details = $details;
-        //
-    }
+    public function __construct(
+        public Affiliation $details,
+    ) {}
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         ini_set('memory_limit', '2048M');
 
-        $details = $this->details;
-        $name_pdf = $details['code'] . '.pdf';
-        $plan = Plan::find($details['plan_id'])->description;
-        $coverage = Coverage::find($details['coverage_id'])->price;
+        $record = $this->details;
+        $record->loadMissing(['plan', 'coverage']);
 
-        $pdf = Pdf::loadView('documents.tarjeta-afiliado', compact('details', 'plan', 'coverage'));
-        $pdf->save(public_path('storage/' . $name_pdf));
+        $effective = $record->effective_date ?? '';
+        $hasta = '';
+        if ($effective !== '') {
+            try {
+                $hasta = Carbon::createFromFormat('d/m/Y', $effective)->addYear()->format('d/m/Y');
+            } catch (\Throwable) {
+                $hasta = '';
+            }
+        }
 
-        /**
-         * Despues de guardar el certificado lo enviamos por email
-         * ----------------------------------------------------------------------------------------------------
-         */
-        Mail::to($details['email_con'])->send(new SendMailTarjetaAfiliado($details['full_name_con'], $name_pdf));
-        //
+        $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
+            'name' => $record->full_name_ti,
+            'ci' => $record->nro_identificacion_ti,
+            'code' => $record->code,
+            'plan' => $record->plan?->description ?? '',
+            'frecuencia' => $record->payment_frequency,
+            'cobertura' => $record->coverage?->price ?? '',
+            'desde' => $effective,
+            'hasta' => $hasta,
+        ]);
+
+        $name_pdf = $record->code.'.pdf';
+
+        $pdf = Pdf::loadView('documents.tarjeta-afiliado', compact('data'));
+        DomPdfBatchRenderOptions::apply($pdf);
+        $pdf->save(public_path('storage/'.$name_pdf));
+
+        $to = $record->email_ti ?? $record->email_payer;
+        if (blank($to)) {
+            Log::warning('SendTarjetaAfiliado: afiliación sin correo titular/pagador.', ['affiliation_id' => $record->id]);
+
+            return;
+        }
+
+        Mail::to($to)->send(new SendMailTarjetaAfiliado((string) ($record->full_name_ti ?? ''), $name_pdf));
     }
 }

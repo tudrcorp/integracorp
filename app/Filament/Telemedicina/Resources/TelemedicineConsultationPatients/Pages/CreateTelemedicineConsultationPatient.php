@@ -2,6 +2,7 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages;
 
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Http\Controllers\OperationCoordinationServiceController;
@@ -13,6 +14,7 @@ use App\Jobs\GeneratePdfInformeMedicoLargo;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Models\OperationCoordinationService;
+use App\Models\OperationInventory;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDoctor;
@@ -38,6 +40,8 @@ use Illuminate\Support\HtmlString;
 
 class CreateTelemedicineConsultationPatient extends CreateRecord
 {
+    use HasMedicamentosStepInfoModal;
+
     protected static string $resource = TelemedicineConsultationPatientResource::class;
 
     /**
@@ -137,6 +141,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         return [
             // 'evento' => 'metodo_a_ejecutar'
             'undoEditingPost' => 'handleUndoEditingPost',
+            'open-medicamentos-step-info-modal' => 'openMedicamentosStepInfoModal',
         ];
     }
 
@@ -329,6 +334,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         isset($data['consult_specialist']) ? session()->put('consult_specialist', $data['consult_specialist']) : null;
         isset($data['other_specialist']) ? session()->put('other_specialist', $data['other_specialist']) : null;
 
+        // dd($data);
         return $data;
     }
 
@@ -369,6 +375,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $feedbackOne = session()->get('feedbackOne');
 
                     $medicationsArr = session()->get('medications') ?? [];
+                    // dd($medicationsArr);
                     $labsArr = session()->get('labs') ?? [];
                     $otherLabsArr = session()->get('other_labs') ?? [];
                     $studiesArr = session()->get('studies') ?? [];
@@ -385,18 +392,20 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     // dd($finalArrLabs, $finalArrStudies, $finalArrSpecialist);
 
                     // Arreglo de medicamento
-                    if (! empty($medicationsArr) && $medicationsArr[0]['medicines'] != null) {
-
+                    // if (! empty($medicationsArr) && $medicationsArr[0]['medicines'] != null || $medicationsArr[0]['operation_inventory_id'] != null) {
+                    if (! empty($medicationsArr)) {
+                        // dd($medicationsArr);
                         for ($i = 0; $i < count($medicationsArr); $i++) {
                             $medications = new TelemedicinePatientMedications;
                             $medications->telemedicine_consultation_patient_id = $record['id'];
                             $medications->telemedicine_patient_id = $record['telemedicine_patient_id'];
                             $medications->telemedicine_case_id = $record['telemedicine_case_id'];
                             $medications->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                            $medications->medicine = $medicationsArr[$i]['medicines'];
+                            $medications->medicine = $medicationsArr[$i]['medicines'] == null ? OperationInventory::where('id', $medicationsArr[$i]['operation_inventory_id'])->first()->name : $medicationsArr[$i]['medicines'];
                             $medications->indications = $medicationsArr[$i]['indications'];
                             $medications->duration = $medicationsArr[$i]['duration'];
                             $medications->telemedicine_priority_id = $record['telemedicine_priority_id'];
+                            $medications->operation_inventory_id = $medicationsArr[$i]['operation_inventory_id'] ?? null;
                             $medications->assigned_by = Auth::user()->id;
                             $medications->save();
                         }
@@ -729,7 +738,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         GeneratePdfMedicamentos::dispatch($dataMedicamentos, Auth::user(), 'medicamentos')->onQueue('telemedicina');
 
                         // Genero el servicio de coordinacion
-                        $registeredOperationCoordinationService = OperationCoordinationServiceController::create($record, $doctor, $patient);
+                        $registeredOperationCoordinationService = OperationCoordinationServiceController::createMedicineService($record, $doctor, $patient);
 
                     }
 
@@ -737,7 +746,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
                         GeneratePdfLaboratorio::dispatch($dataLaboratorios, Auth::user(), 'laboratorios')->onQueue('telemedicina');
 
-                        $registeredOperationCoordinationService = OperationCoordinationServiceController::create($record, $doctor, $patient);
+                        $registeredOperationCoordinationService = OperationCoordinationServiceController::createLaboratoryService($record, $doctor, $patient);
 
                     }
 
@@ -745,7 +754,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
                         GeneratePdfImagenologia::dispatch($dataEstudios, Auth::user(), 'imagenologia')->onQueue('telemedicina');
 
-                        $registeredOperationCoordinationService = OperationCoordinationServiceController::create($record, $doctor, $patient);
+                        $registeredOperationCoordinationService = OperationCoordinationServiceController::createStudyService($record, $doctor, $patient);
 
                     }
 
@@ -753,7 +762,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
                         GeneratePdfEspecialista::dispatch($dataEspecialistas, Auth::user(), 'especialista')->onQueue('telemedicina');
 
-                        $registeredOperationCoordinationService = OperationCoordinationServiceController::create($record, $doctor, $patient);
+                        $registeredOperationCoordinationService = OperationCoordinationServiceController::createSpecialistService($record, $doctor, $patient);
 
                     }
 
@@ -783,35 +792,120 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 }
             });
 
-            $registeredOperationCoordinationService = OperationCoordinationService::where('telemedicine_consultation_patient_id', $record['id'])->first()->id;
-
-            // actualiza la tabla de medicamentoa con el id del servicio de coordinacion
-            $medications = TelemedicinePatientMedications::where('telemedicine_consultation_patient_id', $record['id'])->get();
-            foreach ($medications as $medication) {
-                $medication->operation_coordination_service_id = $registeredOperationCoordinationService;
-                $medication->save();
+            $registeredOperationCoordinationService = OperationCoordinationService::query()
+                ->where('telemedicine_consultation_patient_id', $record['id'])
+                ->where('status', 'PENDIENTE')
+                ->latest()
+                ->get();
+            if ($registeredOperationCoordinationService->isNotEmpty()) {
+                foreach ($registeredOperationCoordinationService as $operationCoordinationService) {
+                    if ($operationCoordinationService->specific_service == 'MEDICAMENTOS') {
+                        $medications = TelemedicinePatientMedications::query()
+                            ->where('telemedicine_consultation_patient_id', $record['id'])
+                            ->latest()
+                            ->get();
+                        foreach ($medications as $medication) {
+                            $medication->operation_coordination_service_id = $operationCoordinationService->id;
+                            $medication->save();
+                        }
+                    }
+                    if ($operationCoordinationService->specific_service == 'LABORATORIOS') {
+                        $labs = TelemedicinePatientLab::query()
+                            ->where('telemedicine_consultation_patient_id', $record['id'])
+                            ->latest()
+                            ->get();
+                        foreach ($labs as $lab) {
+                            $lab->operation_coordination_service_id = $operationCoordinationService->id;
+                            $lab->save();
+                        }
+                    }
+                    if ($operationCoordinationService->specific_service == 'IMAGENOLOGIA') {
+                        $studies = TelemedicinePatientStudy::query()
+                            ->where('telemedicine_consultation_patient_id', $record['id'])
+                            ->latest()
+                            ->get();
+                        foreach ($studies as $study) {
+                            $study->operation_coordination_service_id = $operationCoordinationService->id;
+                            $study->save();
+                        }
+                    }
+                    if ($operationCoordinationService->specific_service == 'ESPECIALISTA') {
+                        $specialists = TelemedicinePatientSpecialty::query()
+                            ->where('telemedicine_consultation_patient_id', $record['id'])
+                            ->latest()
+                            ->get();
+                        foreach ($specialists as $specialist) {
+                            $specialist->operation_coordination_service_id = $operationCoordinationService->id;
+                            $specialist->save();
+                        }
+                    }
+                }
             }
 
-            // actualiza la tabla de laboratorios con el id del servicio de coordinacion
-            $labs = TelemedicinePatientLab::where('telemedicine_consultation_patient_id', $record['id'])->get();
-            foreach ($labs as $lab) {
-                $lab->operation_coordination_service_id = $registeredOperationCoordinationService;
-                $lab->save();
-            }
+            // foreach ($arrayOperationCoordinationService as $operationCoordinationService)
+            // {
+            //     $registeredOperationCoordinationService = OperationCoordinationService::where('telemedicine_consultation_patient_id', $record['id'])->where('status', 'PENDIENTE')->where('specific_service', $operationCoordinationService)->latest()->first()->id;
+            //     if($registeredOperationCoordinationService != null) {
+            //         if($operationCoordinationService == 'MEDICAMENTOS') {
+            //         $medications = TelemedicinePatientMedications::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
+            //             foreach ($medications as $medication) {
+            //                 $medication->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //                 $medication->save();
+            //             }
+            //         }
+            //         if($operationCoordinationService == 'LABORATORIOS') {
+            //             $labs = TelemedicinePatientLab::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
+            //             foreach ($labs as $lab) {
+            //                 $lab->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //                 $lab->save();
+            //             }
+            //         }
+            //         if($operationCoordinationService == 'IMAGENOLOGIA') {
+            //             $studies = TelemedicinePatientStudy::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
+            //             foreach ($studies as $study) {
+            //                 $study->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //                 $study->save();
+            //             }
+            //         }
+            //         if($operationCoordinationService == 'ESPECIALISTA') {
+            //             $specialists = TelemedicinePatientSpecialty::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
+            //             foreach ($specialists as $specialist) {
+            //                 $specialist->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //                 $specialist->save();
+            //             }
+            //         }
+            //     }
+            // }
 
-            // actualiza la tabla de estudios con el id del servicio de coordinacion
-            $studies = TelemedicinePatientStudy::where('telemedicine_consultation_patient_id', $record['id'])->get();
-            foreach ($studies as $study) {
-                $study->operation_coordination_service_id = $registeredOperationCoordinationService;
-                $study->save();
-            }
+            // $registeredOperationCoordinationService = OperationCoordinationService::where('telemedicine_consultation_patient_id', $record['id'])->first()->id;
 
-            // actualiza la tabla de especialistas con el id del servicio de coordinacion
-            $specialists = TelemedicinePatientSpecialty::where('telemedicine_consultation_patient_id', $record['id'])->get();
-            foreach ($specialists as $specialist) {
-                $specialist->operation_coordination_service_id = $registeredOperationCoordinationService;
-                $specialist->save();
-            }
+            // // actualiza la tabla de medicamentoa con el id del servicio de coordinacion
+            // $medications = TelemedicinePatientMedications::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
+            // foreach ($medications as $medication) {
+            //     $medication->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //     $medication->save();
+            // }
+
+            // // actualiza la tabla de laboratorios con el id del servicio de coordinacion
+            // $labs = TelemedicinePatientLab::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
+            // foreach ($labs as $lab) {
+            //     $lab->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //     $lab->save();
+            // }
+
+            // // actualiza la tabla de estudios con el id del servicio de coordinacion
+            // $studies = TelemedicinePatientStudy::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
+            // foreach ($studies as $study) {
+            //     $study->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //     $study->save();
+            // }
+
+            // // actualiza la tabla de especialistas con el id del servicio de coordinacion
+            // $specialists = TelemedicinePatientSpecialty::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
+            // foreach ($specialists as $specialist) {
+            //     $specialist->operation_coordination_service_id = $registeredOperationCoordinationService;
+            //     $specialist->save();
+            // }
 
         } catch (\Throwable $th) {
             Log::error('Error en afterCreate (telemedicina): '.$th->getMessage(), [

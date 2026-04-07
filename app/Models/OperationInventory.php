@@ -27,6 +27,7 @@ class OperationInventory extends Model
         'barcode',
         'concentration',
         'image',
+        'is_covered',
     ];
 
     public function operationInventoryCategory()

@@ -825,6 +825,45 @@ class DressTylorQuoteForm
     }
 
     /**
+     * Genera el PDF inline para vista previa en iframe.
+     *
+     * @param  array<string, mixed>  $quoteStructure
+     */
+    public static function generateInlinePdfFromQuoteStructure(array $quoteStructure)
+    {
+        $data = $quoteStructure;
+
+        if (isset($data['all_coverages']) && is_array($data['all_coverages'])) {
+            $data['all_coverages'] = array_map(
+                fn ($c) => is_object($c) ? $c : (object) $c,
+                $data['all_coverages']
+            );
+        }
+
+        $html = View::make('documents.dress-tylor', [
+            'data' => $data,
+            'isPreview' => false,
+        ])->render();
+
+        $pdf = Pdf::loadHTML($html)
+            ->setPaper('a4', 'portrait')
+            ->setWarnings(false)
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'sans-serif',
+            ]);
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Cotizacion-preview.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'X-Frame-Options' => 'SAMEORIGIN',
+        ]);
+    }
+
+    /**
      * Lógica unificada de renderizado para Preview y PDF
      */
     private static function renderHtmlContent(array $data, bool $isForPdf = false): string

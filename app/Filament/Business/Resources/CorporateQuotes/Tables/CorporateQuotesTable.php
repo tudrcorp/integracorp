@@ -2,179 +2,243 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
+use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
+use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UtilsController;
+use App\Jobs\ResendEmailPropuestaEconomica;
+use App\Jobs\SendNotificacionUploadDataCorporate;
+use App\Mail\MailLinkIndividualQuote;
 use App\Models\CorporateQuote;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Illuminate\Support\HtmlString;
-use Filament\Tables\Filters\Filter;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\MailLinkIndividualQuote;
-use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Actions\DeleteBulkAction;
-use App\Http\Controllers\LogController;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
-use App\Jobs\ResendEmailPropuestaEconomica;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use App\Http\Controllers\NotificationController;
-use App\Jobs\SendNotificacionUploadDataCorporate;
-use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
 
 class CorporateQuotesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            // ->query(CorporateQuote::query()->where('ownerAccountManagers', Auth::user()->id))
             ->query(function (Builder $query) {
                 if (Auth::user()->is_accountManagers) {
                     return CorporateQuote::query()->where('ownerAccountManagers', Auth::user()->id);
                 }
+
                 return CorporateQuote::query();
             })
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'accountManager',
+                'agent',
+            ]))
             ->defaultSort('created_at', 'desc')
-            ->heading('COTIZACIONES CORPORATIVAS')
-            ->description('Lista de cotizaciones corporativas generadas por el agente')
+            ->deferFilters(false)
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->heading('Cotizaciones corporativas')
+            ->description('Filtre por fecha, estatus o plan; use copiar en correo y teléfono. Las acciones de carga, reenvío y enlaces están en el menú «Más acciones» (oculto si la cotización está anulada o declinada).')
+            ->emptyStateHeading('Sin cotizaciones corporativas')
+            ->emptyStateDescription('Las propuestas corporativas generadas por los agentes aparecerán aquí. Puede crear una nueva desde el recurso correspondiente.')
+            ->emptyStateIcon(Heroicon::OutlinedBuildingOffice2)
             ->columns([
                 TextColumn::make('code')
-                    ->label('Código')
+                    ->label('Código')
                     ->badge()
                     ->color('azulOscuro')
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('Código copiado')
+                    ->weight('font-semibold'),
                 TextColumn::make('accountManager.name')
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
-                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->placeholder('—')
+                    ->default(fn (CorporateQuote $record): string => $record->accountManager?->name ?? '—')
                     ->color(function (string $state): string {
                         return match ($state) {
-                            '-----' => 'info',
+                            '—' => 'gray',
                             default => 'success',
                         };
                     })
-                    ->hidden(fn() => ! Auth::user()->is_business_admin),
+                    ->hidden(fn (): bool => ! Auth::user()->is_business_admin)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('agent.name')
                     ->label('Agente')
                     ->badge()
-                    ->default(fn($record): string => $record->agent_id ? $record->agent_id : '-----')
+                    ->placeholder('—')
+                    ->default(fn (CorporateQuote $record): string => $record->agent?->name ?? '—')
                     ->color(function (string $state): string {
                         return match ($state) {
-                            '-----' => 'info',
+                            '—' => 'gray',
                             default => 'success',
                         };
                     })
                     ->icon('heroicon-m-user')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('full_name')
-                    ->label('Solicitada por:')
-                    ->searchable(),
+                    ->label('Solicitante')
+                    ->icon(Heroicon::OutlinedUser)
+                    ->iconColor('gray')
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->grow(),
                 TextColumn::make('rif')
-                    ->label('Rif:')
-                    ->searchable(),
+                    ->label('RIF')
+                    ->badge()
+                    ->color('gray')
+                    ->icon(Heroicon::OutlinedIdentification)
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('plan')
+                    ->label('Tipo de plan')
+                    ->formatStateUsing(fn (mixed $state): string => self::planLabel($state))
+                    ->badge()
+                    ->color(fn (mixed $state): string => self::planColor(self::planLabel($state)))
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email')
-                    ->label('Email')
-                    ->badge()
-                    ->default(fn($record): string => $record->email ? $record->email : '-----')
-                    ->searchable(),
+                    ->label('Correo')
+                    ->icon(Heroicon::OutlinedEnvelope)
+                    ->iconColor('gray')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('Correo copiado')
+                    ->limit(28)
+                    ->tooltip(fn (CorporateQuote $record): ?string => $record->email),
                 TextColumn::make('phone')
-                    ->label('Nro. de Teléfono')
-                    ->badge()
-                    ->default(fn($record): string => $record->phone ? $record->phone : '-----')
-                    ->searchable(),
+                    ->label('Teléfono')
+                    ->icon(Heroicon::OutlinedPhone)
+                    ->iconColor('gray')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('Teléfono copiado')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->label('Generada el:')
-                    ->description(fn($record): string => Carbon::parse($record->created_at)->diffForHumans())
-                    ->dateTime()
-                    ->sortable(),
+                    ->label('Generada el')
+                    ->description(fn (CorporateQuote $record): string => Carbon::parse($record->created_at)->diffForHumans())
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-APROBADA'  => 'verdeOpaco',
-                            'APROBADA'      => 'success',
-                            'ANULADA'       => 'warning',
-                            'DECLINADA'     => 'danger',
-                            default => 'azul',
+                            'PRE-APROBADA' => 'verdeOpaco',
+                            'APROBADA' => 'success',
+                            'APROBADA-DATA-ENVIADA' => 'info',
+                            'ANULADA' => 'warning',
+                            'DECLINADA' => 'danger',
+                            'EJECUTADA' => 'azul',
+                            default => 'azulOscuro',
                         };
                     })
                     ->icon(function (mixed $state): ?string {
                         return match ($state) {
-                            'PRE-APROBADA'  => 'heroicon-c-information-circle',
-                            'APROBADA'      => 'heroicon-s-check-circle',
-                            'ANULADA'       => 'heroicon-s-exclamation-circle',
-                            'DECLINADA'     => 'heroicon-c-x-circle',
-                            default     => 'heroicon-c-information-circle',
+                            'PRE-APROBADA' => 'heroicon-c-information-circle',
+                            'APROBADA' => 'heroicon-s-check-circle',
+                            'APROBADA-DATA-ENVIADA' => 'heroicon-s-arrow-up-tray',
+                            'ANULADA' => 'heroicon-s-exclamation-circle',
+                            'DECLINADA' => 'heroicon-c-x-circle',
+                            'EJECUTADA' => 'heroicon-s-check-circle',
+                            default => 'heroicon-c-information-circle',
                         };
                     })
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
             ])
             ->filters([
                 Filter::make('created_at')
+                    ->label('Fecha de cotización')
                     ->form([
-                        DatePicker::make('desde'),
-                        DatePicker::make('hasta'),
+                        DatePicker::make('desde')
+                            ->label('Desde')
+                            ->native(false),
+                        DatePicker::make('hasta')
+                            ->label('Hasta')
+                            ->native(false),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Cotización desde '.Carbon::parse($data['desde'])->translatedFormat('d M Y');
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Cotización hasta '.Carbon::parse($data['hasta'])->translatedFormat('d M Y');
                         }
 
                         return $indicators;
                     }),
                 SelectFilter::make('status')
+                    ->label('Estatus')
                     ->options([
-                        'PRE-APROBADA'  => 'PRE-APROBADA',
-                        'APROBADA'      => 'APROBADA',
-                        'EJECUTADA'       => 'EJECUTADA',
-                    ]),
-                SelectFilter::make('plan')
-                    ->options([
-                        1       => 'Plan Inicial',
-                        2       => 'Plan Ideal',
-                        3       => 'Plan Especial',
-                        'CM'    => 'MultiPlan',
+                        'PRE-APROBADA' => 'PRE-APROBADA',
+                        'APROBADA' => 'APROBADA',
+                        'APROBADA-DATA-ENVIADA' => 'APROBADA-DATA-ENVIADA',
+                        'ANULADA' => 'ANULADA',
+                        'DECLINADA' => 'DECLINADA',
+                        'EJECUTADA' => 'EJECUTADA',
                     ])
-                    ->label('Tipo de Plan')
+                    ->searchable()
+                    ->preload()
+                    ->indicator('Estatus'),
+                SelectFilter::make('plan')
+                    ->label('Tipo de plan')
+                    ->options([
+                        1 => 'Plan Inicial',
+                        2 => 'Plan Ideal',
+                        3 => 'Plan Especial',
+                        'CM' => 'MultiPlan',
+                    ])
+                    ->searchable()
+                    ->preload()
+                    ->indicator('Plan'),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->label('Ver'),
+                EditAction::make()
+                    ->label('Editar'),
                 ActionGroup::make([
 
                     Action::make('upload_data_dress_tailor')
@@ -196,8 +260,8 @@ class CorporateQuotesTable
                                         ->label('Población')
                                         ->required()
                                         ->visibility('public')
-                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png')
-                                ])->columns(1)
+                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png'),
+                                ])->columns(1),
                         ])
                         ->action(function (array $data, $record): void {
 
@@ -207,7 +271,8 @@ class CorporateQuotesTable
                             ]);
 
                             Notification::make()
-                                ->title('lLa data fue cargada de forma exitosa.')
+                                ->title('Data cargada')
+                                ->body('La data se registró correctamente.')
                                 ->success()
                                 ->send();
 
@@ -216,7 +281,7 @@ class CorporateQuotesTable
                                 $recipient_for_user = User::find($user->id);
                                 Notification::make()
                                     ->title('COTIZACION CORPORATIVA')
-                                    ->body('El agente ' . Auth::user()->name . ' cargo el modelo de data para la cotización Nro. ' . $record->code)
+                                    ->body('El agente '.Auth::user()->name.' cargo el modelo de data para la cotización Nro. '.$record->code)
                                     ->icon('heroicon-m-tag')
                                     ->iconColor('success')
                                     ->success()
@@ -229,7 +294,7 @@ class CorporateQuotesTable
                                     ->sendToDatabase($recipient_for_user);
                             }
 
-                            //Notificacion por whatsapp
+                            // Notificacion por whatsapp
                             NotificationController::sendUploadDataCorporate(Auth::user()->name, $record->code);
 
                             /**
@@ -238,7 +303,7 @@ class CorporateQuotesTable
                              */
                             SendNotificacionUploadDataCorporate::dispatch($record->data_doc, Auth::user()->name, $record->code);
                         })
-                        ->hidden(fn($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor == null),
+                        ->hidden(fn ($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor == null),
 
                     // Action::make('aproved')
                     //     ->label('Aprobar')
@@ -251,11 +316,11 @@ class CorporateQuotesTable
                     //             Blade::render(
                     //                 <<<BLADE
                     //                     <div class="fi-section-header-description mt-10">
-                    //                         Por favor cargue la data de la población y a continuación haga click en Confirmar. 
+                    //                         Por favor cargue la data de la población y a continuación haga click en Confirmar.
                     //                         <br>
                     //                         <br>
                     //                         💡 Si desea agilizar la gestión puede descargar un archivo de ejemplo haciendo click en los
-                    //                         <strong class="text-gray-900">tres puntos verticales (⋮) de Estatus</strong> 
+                    //                         <strong class="text-gray-900">tres puntos verticales (⋮) de Estatus</strong>
                     //                         y seleccionando la opción <strong class="text-gray-900">Formato Data de Población.</strong>
                     //                         <br>
                     //                     </div>
@@ -338,7 +403,7 @@ class CorporateQuotesTable
                                     Grid::make(2)->schema([
                                         Select::make('country_code')
                                             ->label('Código de país')
-                                            ->options(fn() => UtilsController::getCountries())
+                                            ->options(fn () => UtilsController::getCountries())
                                             ->searchable()
                                             ->default('+58')
                                             ->live(onBlur: true),
@@ -351,11 +416,11 @@ class CorporateQuotesTable
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
+                                                    $set('phone', $countryCode.$cleanNumber);
                                                 }
                                             }),
-                                    ])
-                                ])
+                                    ]),
+                                ]),
                         ])
                         ->action(function (CorporateQuote $record, array $data) {
 
@@ -380,7 +445,7 @@ class CorporateQuotesTable
                                 if ($job) {
                                     Notification::make()
                                         ->title('RE-ENVIADO EXITOSO')
-                                        ->body('La informacion fue re-enviada exitosamente.')
+                                        ->body('La información fue reenviada correctamente.')
                                         ->icon('heroicon-s-check-circle')
                                         ->iconColor('verde')
                                         ->success()
@@ -397,7 +462,7 @@ class CorporateQuotesTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn($record): bool => $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
 
                     /**DESCARGA DE COTIZACION */
                     Action::make('download')
@@ -413,7 +478,7 @@ class CorporateQuotesTable
 
                             try {
 
-                                if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
+                                if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
@@ -429,7 +494,8 @@ class CorporateQuotesTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/quotes/' . $record->code . '.pdf');
+                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
+
                                 return response()->download($path);
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
@@ -442,7 +508,7 @@ class CorporateQuotesTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn($record): bool => $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
 
                     /**FORWARD */
                     Action::make('link')
@@ -465,13 +531,13 @@ class CorporateQuotesTable
                                     Grid::make(2)->schema([
                                         Select::make('country_code')
                                             ->label('Código de país')
-                                            ->options(fn() => UtilsController::getCountries())
+                                            ->options(fn () => UtilsController::getCountries())
                                             ->searchable()
                                             ->default('+58')
                                             ->required()
                                             ->live(onBlur: true)
                                             ->validationMessages([
-                                                'required'  => 'Campo Requerido',
+                                                'required' => 'Campo Requerido',
                                             ]),
                                         TextInput::make('phone')
                                             ->prefixIcon('heroicon-s-phone')
@@ -479,18 +545,18 @@ class CorporateQuotesTable
                                             ->label('Número de teléfono')
                                             ->required()
                                             ->validationMessages([
-                                                'required'  => 'Campo Requerido',
+                                                'required' => 'Campo Requerido',
                                             ])
                                             ->live(onBlur: true)
                                             ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
+                                                    $set('phone', $countryCode.$cleanNumber);
                                                 }
                                             }),
-                                    ])
-                                ])
+                                    ]),
+                                ]),
                         ])
                         ->action(function (CorporateQuote $record, array $data) {
 
@@ -498,7 +564,7 @@ class CorporateQuotesTable
 
                                 $email = null;
                                 $phone = null;
-                                $link = config('parameters.INTEGRACORP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
+                                $link = config('parameters.INTEGRACORP_URL').'/in/'.Crypt::encryptString($record->id).'/w';
 
                                 if (isset($data['email'])) {
 
@@ -541,7 +607,6 @@ class CorporateQuotesTable
                                     }
                                 }
                             } catch (\Throwable $th) {
-                                dd($th);
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -552,7 +617,7 @@ class CorporateQuotesTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn($record): bool => $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
 
                     /**OBSERVACIONES */
                     Action::make('observations')
@@ -567,7 +632,7 @@ class CorporateQuotesTable
                         ->form([
                             Textarea::make('description')
                                 ->label('Observaciones')
-                                ->rows(5)
+                                ->rows(5),
                         ])
                         ->action(function (CorporateQuote $record, array $data) {
 
@@ -600,15 +665,17 @@ class CorporateQuotesTable
                         ->color('info')
                         ->action(function (CorporateQuote $record, array $data) {
                             $path = public_path('storage/files/poblacion_ejemplo.xlsx');
+
                             return response()->download($path);
                         })
-                        ->hidden(fn($record): bool => $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
                 ])
+                    ->label('Más acciones')
+                    ->tooltip('Cargar data, reenviar, descargar PDF, link interactivo y más')
                     ->icon('heroicon-c-ellipsis-vertical')
+                    ->iconButton()
                     ->color('azulOscuro')
-                    ->hidden(function (CorporateQuote $record) {
-                        return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                    })
+                    ->hidden(fn (CorporateQuote $record): bool => in_array($record->status, ['ANULADA', 'DECLINADA'], true)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -616,5 +683,29 @@ class CorporateQuotesTable
                 ]),
             ])
             ->striped();
+    }
+
+    private static function planLabel(mixed $plan): string
+    {
+        return match (true) {
+            $plan === '1' || $plan === 1 => 'Plan Inicial',
+            $plan === '2' || $plan === 2 => 'Plan Ideal',
+            $plan === '3' || $plan === 3 => 'Plan Especial',
+            $plan === 'CM' => 'MultiPlan',
+            $plan === null, $plan === '' => '—',
+            default => (string) $plan,
+        };
+    }
+
+    private static function planColor(string $label): string
+    {
+        return match ($label) {
+            'Plan Inicial' => 'azulClaro',
+            'Plan Ideal' => 'azulOscuro',
+            'Plan Especial' => 'verde',
+            'MultiPlan' => 'warning',
+            '—' => 'gray',
+            default => 'info',
+        };
     }
 }

@@ -18,524 +18,569 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 
 class SupplierForm
 {
+    private const SECTION_CARD = 'rounded-[1.25rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_10px_36px_-12px_rgba(15,23,42,0.1)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_10px_36px_-12px_rgba(0,0,0,0.4)]';
+
+    private static function auditHiddenFields(): array
+    {
+        return [
+            Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? ''),
+            Hidden::make('updated_by')
+                ->default(fn (): string => Auth::user()?->name ?? '')
+                ->hiddenOn('create'),
+        ];
+    }
+
+    private static function phoneField(string $name, string $label): TextInput
+    {
+        return TextInput::make($name)
+            ->label($label)
+            ->placeholder('04141234567')
+            ->helperText('11 dígitos, sin espacios ni guiones.')
+            ->mask('99999999999')
+            ->tel()
+            ->maxLength(255)
+            ->rules(['nullable', 'regex:/^\d{11}$/'])
+            ->validationMessages([
+                'regex' => 'Debe tener exactamente 11 dígitos, sin espacios ni guiones.',
+            ]);
+    }
+
+    /**
+     * @param  list<array{key: string, desc: string, label: string}>  $items
+     */
+    private static function infrastructureGrid(array $items): Grid
+    {
+        $components = [];
+        foreach ($items as $item) {
+            $toggleKey = $item['key'];
+            $descKey = $item['desc'];
+            $components[] = Toggle::make($toggleKey)
+                ->label($item['label'])
+                ->live()
+                ->inline(false)
+                ->onIcon('heroicon-s-check')
+                ->onColor('success');
+            $components[] = TextInput::make($descKey)
+                ->label('Detalle opcional')
+                ->placeholder('Observaciones del equipo o servicio')
+                ->disabled(fn (Get $get): bool => ! $get($toggleKey))
+                ->maxLength(500);
+        }
+
+        return Grid::make(2)->schema($components);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Información General')
-                    ->description('Información de la entidad.')
-                    ->collapsed()
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Nombre del Proveedor')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                $set('name', $state.toUpperCase());
-                            JS),
-                        TextInput::make('rif')
-                            ->label('RIF')
-                            ->mask('J999999999999'),
-                        TextInput::make('razon_social')
-                            ->label('Razón Social')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                        $set('razon_social', $state.toUpperCase());
-                                    JS),
-                        Select::make('status_convenio')
-                            ->label('Tipo de Convenio')
-                            ->options(SupplierStatusConvenio::all()->pluck('description', 'description'))
-                            ->preload()
-                            ->searchable(),
-                        Select::make('status_sistema')
-                            ->label('Estatus del Convenio')
-                            ->searchable()
-                            ->options(SupplierEstatusSistema::all()->pluck('description', 'description')),
-                        Select::make('supplier_clasificacion_id')
-                            ->label('Clasificación del Proveedor')
-                            ->searchable()
-                            ->live()
-                            ->options(SupplierClasificacion::orderBy('description', 'asc')->pluck('description', 'id'))
-                            ->preload()
-                            ->searchable(),
-                        Select::make('tipo_clinica')
-                            ->label('Tipo de Clinica')
-                            ->searchable()
-                            ->options(SupplierTipoClinica::all()->pluck('description', 'description'))
-                            ->preload()
-                            ->searchable(),
-                        Select::make('type_service')
-                            ->options(fn (Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('supplier_clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
-                            ->label('Tipo de servicio')
-                            ->searchable()
-                            ->multiple()
-                            ->preload(),
-                        Select::make('state_id')
-                            ->options(State::all()->pluck('definition', 'id'))
-                            ->label('Estado')
-                            ->searchable()
-                            ->preload(),
-                        Select::make('city_id')
-                            ->options(fn (Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
-                            ->label('Ciudad')
-                            ->live()
-                            ->searchable()
-                            ->preload(),
-                        Select::make('tipo_servicio')
-                            ->label('Zona de Cobertura')
-                            ->live()
-                            ->searchable()
-                            ->options([
-                                'LOCAL' => 'LOCAL',
-                                'MULTI-ESTADO' => 'MULTI-ESTADO',
-                                'A-NIVEL-NACIONAL' => 'A-NIVEL-NACIONAL',
-                            ])
-                            ->afterStateUpdated(
-                                fn (callable $set, ?string $state) => $set(
-                                    'state_services',
-                                    $state === 'A-NIVEL-NACIONAL'
-                                        ? State::pluck('definition')->all()
-                                        : null
-                                )
-                            ),
-                        Select::make('state_services')
-                            ->label('Desglose de Zona de Cobertura')
-                            ->searchable()
-                            ->multiple()
-                            ->options(State::all()->pluck('definition', 'definition'))
-                            ->preload()
-                            ->searchable(),
-                        TextInput::make('local_phone')
-                            ->label('Teléfono Local')
-                            ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
-                            ->mask('99999999999') // Opcional: mejora la UX en el navegad
-                            ->rules([
-                                'regex:/^\d{11}$/',
-                            ])
-                            ->validationMessages([
-                                'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
-                                'length' => 'El número de teléfono debe tener 11 dígitos.',
-                            ])
-                            ->tel()
-                            ->maxLength(255),
-                        TextInput::make('personal_phone')
-                            ->label('Teléfono Celular')
-                            ->helperText('Formato de teléfono: 04122346790, sin espacios( ), sin guiones(-).')
-                            ->mask('99999999999') // Opcional: mejora la UX en el navegad
-                            ->rules([
-                                'regex:/^\d{11}$/',
-                            ])
-                            ->validationMessages([
-                                'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
-                                'length' => 'El número de teléfono debe tener 11 dígitos.',
-                            ])
+                Tabs::make('supplierFormTabs')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Tab::make('Datos principales')
+                            ->icon('heroicon-o-building-office-2')
+                            ->schema([
+                                Section::make('Identificación y razón social')
+                                    ->description('Nombre comercial, fiscal y datos legales básicos.')
+                                    ->icon('heroicon-o-identification')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->schema([
+                                                TextInput::make('name')
+                                                    ->label('Nombre del proveedor')
+                                                    ->placeholder('Ej: CENTRO MÉDICO CARACAS')
+                                                    ->maxLength(255)
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('name', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('rif')
+                                                    ->label('RIF')
+                                                    ->placeholder('J-123456789')
+                                                    ->mask('J999999999999'),
+                                                TextInput::make('razon_social')
+                                                    ->label('Razón social')
+                                                    ->placeholder('Según documento fiscal')
+                                                    ->maxLength(255)
+                                                    ->columnSpan(['default' => 1, 'lg' => 2])
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('razon_social', $state.toUpperCase());
+                                                    JS),
+                                            ]),
+                                    ])
+                                    ->collapsible(),
 
-                            ->tel()
-                            ->maxLength(255),
+                                Section::make('Clasificación y convenio')
+                                    ->description('Tipo de relación contractual y categoría del proveedor en red.')
+                                    ->icon('heroicon-o-tag')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->schema([
+                                                Select::make('status_convenio')
+                                                    ->label('Tipo de convenio')
+                                                    ->options(SupplierStatusConvenio::query()->orderBy('description')->pluck('description', 'description'))
+                                                    ->searchable()
+                                                    ->preload(),
+                                                Select::make('status_sistema')
+                                                    ->label('Estatus del convenio')
+                                                    ->options(SupplierEstatusSistema::query()->orderBy('description')->pluck('description', 'description'))
+                                                    ->searchable()
+                                                    ->preload(),
+                                                Select::make('supplier_clasificacion_id')
+                                                    ->label('Clasificación del proveedor')
+                                                    ->options(SupplierClasificacion::query()->orderBy('description')->pluck('description', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->live()
+                                                    ->helperText('Define los tipos de servicio disponibles a continuación.'),
+                                                Select::make('tipo_clinica')
+                                                    ->label('Tipo de clínica')
+                                                    ->options(SupplierTipoClinica::query()->orderBy('description')->pluck('description', 'description'))
+                                                    ->searchable()
+                                                    ->preload(),
+                                                Select::make('type_service')
+                                                    ->label('Tipo de servicio')
+                                                    ->options(fn (Get $get) => SupplierTipoServicio::query()
+                                                        ->where('supplier_clasificacion_id', $get('supplier_clasificacion_id'))
+                                                        ->orderBy('description')
+                                                        ->pluck('description', 'description'))
+                                                    ->searchable()
+                                                    ->multiple()
+                                                    ->preload()
+                                                    ->placeholder('Seleccione uno o más')
+                                                    ->helperText('Opciones según la clasificación elegida.')
+                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                            ]),
+                                    ])
+                                    ->collapsible(),
 
-                        TextInput::make('correo_principal')
-                            ->label('Correo Electrónico')
-                            ->email()
-                            ->maxLength(255),
-                        TextInput::make('ubicacion_principal')
-                            ->label('Ubicación Principal')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                        $set('ubicacion_principal', $state.toUpperCase());
-                                    JS),
-                        TextInput::make('convenio_pago')
-                            ->label('Convenio de Pago')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                        $set('convenio_pago', $state.toUpperCase());    
-                                    JS),
-                        Select::make('tiempo_credito')
-                            ->label('Tiempo de Crédito')
-                            ->searchable()
-                            ->options([
-                                '3 DIAS' => '3 DIAS',
-                                '5 DIAS' => '5 DIAS',
-                                '7 DIAS' => '7 DIAS',
-                                '10 DIAS' => '10 DIAS',
-                                '15 DIAS' => '15 DIAS',
-                                '20 DIAS' => '20 DIAS',
-                                '25 DIAS' => '25 DIAS',
-                                '30 DIAS' => '30 DIAS',
-                                'CONTADO' => 'CONTADO',
-                                'FONDO ANTICIPADO' => 'FONDO ANTICIPADO',
-                                'PREPAGO' => 'PREPAGO',
+                                Section::make('Ubicación principal')
+                                    ->description('Estado y ciudad de la sede principal.')
+                                    ->icon('heroicon-o-map-pin')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->schema([
+                                                Select::make('state_id')
+                                                    ->label('Estado')
+                                                    ->options(State::query()->orderBy('definition')->pluck('definition', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->live()
+                                                    ->afterStateUpdated(fn (Set $set) => $set('city_id', null)),
+                                                Select::make('city_id')
+                                                    ->label('Ciudad')
+                                                    ->options(fn (Get $get) => City::query()
+                                                        ->where('state_id', $get('state_id'))
+                                                        ->orderBy('definition')
+                                                        ->pluck('definition', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->disabled(fn (Get $get): bool => blank($get('state_id')))
+                                                    ->helperText('Elija primero el estado.'),
+                                                TextInput::make('ubicacion_principal')
+                                                    ->label('Dirección / ubicación principal')
+                                                    ->placeholder('Av., urbanización, punto de referencia')
+                                                    ->maxLength(255)
+                                                    ->columnSpan(['default' => 1, 'lg' => 2])
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('ubicacion_principal', $state.toUpperCase());
+                                                    JS),
+                                            ]),
+                                    ])
+                                    ->collapsible(),
+
+                                Section::make('Contacto')
+                                    ->description('Teléfonos y correo principal del proveedor.')
+                                    ->icon('heroicon-o-phone')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->schema([
+                                                self::phoneField('local_phone', 'Teléfono local'),
+                                                self::phoneField('personal_phone', 'Teléfono celular'),
+                                                TextInput::make('correo_principal')
+                                                    ->label('Correo electrónico principal')
+                                                    ->placeholder('contacto@proveedor.com')
+                                                    ->email()
+                                                    ->maxLength(255)
+                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                            ]),
+                                    ])
+                                    ->collapsible(),
+
+                                Section::make('Condiciones comerciales')
+                                    ->description('Pago, crédito y vigencia de la relación.')
+                                    ->icon('heroicon-o-banknotes')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->schema([
+                                                TextInput::make('convenio_pago')
+                                                    ->label('Convenio de pago')
+                                                    ->maxLength(255)
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('convenio_pago', $state.toUpperCase());
+                                                    JS),
+                                                Select::make('tiempo_credito')
+                                                    ->label('Tiempo de crédito')
+                                                    ->searchable()
+                                                    ->options([
+                                                        '3 DIAS' => '3 días',
+                                                        '5 DIAS' => '5 días',
+                                                        '7 DIAS' => '7 días',
+                                                        '10 DIAS' => '10 días',
+                                                        '15 DIAS' => '15 días',
+                                                        '20 DIAS' => '20 días',
+                                                        '25 DIAS' => '25 días',
+                                                        '30 DIAS' => '30 días',
+                                                        'CONTADO' => 'Contado',
+                                                        'FONDO ANTICIPADO' => 'Fondo anticipado',
+                                                        'PREPAGO' => 'Prepago',
+                                                    ]),
+                                                TextInput::make('horario')
+                                                    ->label('Horario de atención')
+                                                    ->placeholder('Ej: LUN-VIE 8:00–18:00')
+                                                    ->maxLength(255)
+                                                    ->columnSpan(['default' => 1, 'lg' => 2])
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('horario', $state.toUpperCase());
+                                                    JS),
+                                                DatePicker::make('afiliacion_proveedor')
+                                                    ->label('Fecha de afiliación del proveedor')
+                                                    ->native(false)
+                                                    ->displayFormat('d/m/Y')
+                                                    ->format('d/m/Y'),
+                                                Textarea::make('otros_servicios')
+                                                    ->label('Otros servicios')
+                                                    ->placeholder('Servicios adicionales no listados arriba')
+                                                    ->rows(3)
+                                                    ->columnSpanFull()
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('otros_servicios', $state.toUpperCase());
+                                                    JS),
+                                            ]),
+                                    ])
+                                    ->collapsible(),
                             ]),
-                        TextInput::make('horario')
-                            ->label('Horario de Atención')
-                            ->afterStateUpdatedJs(<<<'JS'
-                                        $set('horario', $state.toUpperCase());    
-                                    JS),
-                        DatePicker::make('afiliacion_proveedor')
-                            ->format('d/m/Y')
-                            ->label('Fecha Afiliación Proveedor'),
-                        Textarea::make('otros_servicios')
-                            ->columnSpanFull()
-                            ->afterStateUpdatedJs(<<<'JS'
-                                        $set('otros_servicios', $state.toUpperCase());    
-                                    JS),
 
-                        Hidden::make('created_by')->default(Auth::user()->name),
-                        Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
-                    ])->columnSpanFull()->columns(4),
-
-                Section::make('Certificación de Infraestructura')
-                    ->description('Facilidades Adicionales que ofrece el Proveedor')
-                    ->collapsed()
-                    ->schema([
-
-                        Fieldset::make()
+                        Tab::make('Cobertura territorial')
+                            ->icon('heroicon-o-globe-americas')
                             ->schema([
-                                Section::make()
-                                    ->inlineLabel()
+                                Section::make('Alcance geográfico')
+                                    ->description('Indique si la cobertura es local, multiestado o nacional.')
+                                    ->icon('heroicon-o-map')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Toggle::make('densitometria_osea')
-                                            ->inline(false)
+                                        Select::make('tipo_servicio')
+                                            ->label('Zona de cobertura')
                                             ->live()
-                                            ->label('Densitómetro')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_densitometria_osea')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('densitometria_osea'))
-                                            ->placeholder('----'),
+                                            ->searchable()
+                                            ->options([
+                                                'LOCAL' => 'Local',
+                                                'MULTI-ESTADO' => 'Multi-estado',
+                                                'A-NIVEL-NACIONAL' => 'A nivel nacional',
+                                            ])
+                                            ->helperText('En cobertura nacional se incluyen todos los estados automáticamente.')
+                                            ->afterStateUpdated(
+                                                fn (Set $set, ?string $state) => $set(
+                                                    'state_services',
+                                                    $state === 'A-NIVEL-NACIONAL'
+                                                        ? State::query()->orderBy('definition')->pluck('definition')->all()
+                                                        : null
+                                                )
+                                            ),
+                                        Select::make('state_services')
+                                            ->label('Estados incluidos en la cobertura')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->options(State::query()->orderBy('definition')->pluck('definition', 'definition'))
+                                            ->preload()
+                                            ->visible(fn (Get $get): bool => in_array($get('tipo_servicio'), ['LOCAL', 'MULTI-ESTADO'], true))
+                                            ->disabled(fn (Get $get): bool => $get('tipo_servicio') === 'A-NIVEL-NACIONAL')
+                                            ->helperText(fn (Get $get): string => match ($get('tipo_servicio')) {
+                                                'MULTI-ESTADO' => 'Seleccione todos los estados donde opera.',
+                                                'LOCAL' => 'Puede acotar o ampliar estados según su operación.',
+                                                default => '',
+                                            }),
+                                    ])
+                                    ->collapsible(),
+                            ]),
 
-                                        Toggle::make('dialisis')
-                                            ->live()
-                                            ->label('Equipo de Dialisis')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_dialisis')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('dialisis'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('electrocardiograma_centro')
-                                            ->live()
-                                            ->label('Electrocardiógrafo')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_electrocardiograma_centro')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('electrocardiograma_centro'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('equipos_especiales_oftalmologia')
-                                            ->live()
-                                            ->label('Equipos Especiales de Oftalmología')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_equipos_especiales_oftalmologia')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('equipos_especiales_oftalmologia'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('mamografia')
-                                            ->live()
-                                            ->label('Mamógrafo')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_mamografia')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('mamografia'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('quirofanos')
-                                            ->live()
-                                            ->label('Quirofanos')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_quirofanos')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('quirofanos'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('radioterapia_intraoperatoria')
-                                            ->live()
-                                            ->label('Radioterapia Intraoperatoria')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_radioterapia_intraoperatoria')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('radioterapia_intraoperatoria'))
-                                            ->placeholder('----'),
-                                    ])->columns(2),
-                                Section::make()
-                                    ->inlineLabel()
+                        Tab::make('Equipamiento')
+                            ->icon('heroicon-o-wrench-screwdriver')
+                            ->schema([
+                                Section::make('Infraestructura y equipos')
+                                    ->description('Active solo lo que aplica; el detalle es opcional.')
+                                    ->icon('heroicon-o-cube')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Toggle::make('resonancia')
-                                            ->live()
-                                            ->label('Resonador')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_resonancia')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('resonancia'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('tomografo')
-                                            ->live()
-                                            ->label('Tomografo')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_tomografo')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('tomografo'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('uci_pediatrica')
-                                            ->live()
-                                            ->label('UCI Pediatrica(Unidad de Cuidados Intensivos)')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_uci_pediatrica')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('uci_pediatrica'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('uci_adulto')
-                                            ->live()
-                                            ->label('UCI Adulto(Unidad de Cuidados Intensivos)')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_uci_adulto')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('uci_adulto'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('estacionamiento_propio')
-                                            ->live()
-                                            ->label('Estacionamiento Propio?')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_estacionamiento_propio')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('estacionamiento_propio'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('ascensor')
-                                            ->live()
-                                            ->label('Ascensor Operativo')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_ascensor')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('ascensor'))
-                                            ->placeholder('----'),
-
-                                        Toggle::make('robotica')
-                                            ->live()
-                                            ->label('Equipo de  Cirugía Robótica')
-                                            ->onIcon('heroicon-s-hand-thumb-up')->onColor('success'),
-                                        TextInput::make('descripcion_robotica')
-                                            ->label('Descripción (opcional):')
-                                            ->disabled(fn ($get) => ! $get('robotica'))
-                                            ->placeholder('----'),
-                                    ])->columns(2),
-                            ])->columnSpanFull()->columns(1),
-
-                    ])->columnSpanFull()->columns(4),
-
-                Section::make('Contactos')
-                    ->description('Información de contactos principales de la entidad.')
-                    ->collapsed()
-                    ->schema([
-                        Repeater::make('supplierContactPrincipals')
-                            ->label('Tabla dinamica de Contactos Principales')
-                            ->relationship()
-                            ->table([
-                                TableColumn::make('Departamento'),
-                                TableColumn::make('Cargo'),
-                                TableColumn::make('Nombre y Apellido'),
-                                TableColumn::make('Correo Electrónico'),
-                                TableColumn::make('Teléfono Celular'),
-                                TableColumn::make('Teléfono Local'),
-                                TableColumn::make('Extensión(es)'),
-                            ])
-                            ->schema([
-                                TextInput::make('departament')
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                            $set('departament', $state.toUpperCase());    
-                                        JS),
-                                TextInput::make('position')
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                        $set('position', $state.toUpperCase());    
-                                    JS),
-                                TextInput::make('name')
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                        $set('name', $state.toUpperCase());    
-                                    JS),
-                                TextInput::make('email')
-                                    ->email(),
-                                TextInput::make('personal_phone')
-                                    ->label('Teléfono Celular')
-                                    ->tel()
-                                    ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->rules([
-                                        'regex:/^\d{11}$/',
+                                        Fieldset::make('Diagnóstico e imagen')
+                                            ->schema([
+                                                self::infrastructureGrid([
+                                                    ['key' => 'densitometria_osea', 'desc' => 'descripcion_densitometria_osea', 'label' => 'Densitómetro'],
+                                                    ['key' => 'dialisis', 'desc' => 'descripcion_dialisis', 'label' => 'Equipo de diálisis'],
+                                                    ['key' => 'electrocardiograma_centro', 'desc' => 'descripcion_electrocardiograma_centro', 'label' => 'Electrocardiógrafo'],
+                                                    ['key' => 'equipos_especiales_oftalmologia', 'desc' => 'descripcion_equipos_especiales_oftalmologia', 'label' => 'Equipos especiales de oftalmología'],
+                                                    ['key' => 'mamografia', 'desc' => 'descripcion_mamografia', 'label' => 'Mamógrafo'],
+                                                    ['key' => 'resonancia', 'desc' => 'descripcion_resonancia', 'label' => 'Resonancia'],
+                                                    ['key' => 'tomografo', 'desc' => 'descripcion_tomografo', 'label' => 'Tomógrafo'],
+                                                    ['key' => 'radioterapia_intraoperatoria', 'desc' => 'descripcion_radioterapia_intraoperatoria', 'label' => 'Radioterapia intraoperatoria'],
+                                                ]),
+                                            ]),
+                                        Fieldset::make('Hospitalización y cirugía')
+                                            ->schema([
+                                                self::infrastructureGrid([
+                                                    ['key' => 'quirofanos', 'desc' => 'descripcion_quirofanos', 'label' => 'Quirófanos'],
+                                                    ['key' => 'uci_pediatrica', 'desc' => 'descripcion_uci_pediatrica', 'label' => 'UCI pediátrica'],
+                                                    ['key' => 'uci_adulto', 'desc' => 'descripcion_uci_adulto', 'label' => 'UCI adulto'],
+                                                    ['key' => 'robotica', 'desc' => 'descripcion_robotica', 'label' => 'Cirugía robótica'],
+                                                ]),
+                                            ]),
+                                        Fieldset::make('Accesibilidad y comodidades')
+                                            ->schema([
+                                                self::infrastructureGrid([
+                                                    ['key' => 'estacionamiento_propio', 'desc' => 'descripcion_estacionamiento_propio', 'label' => 'Estacionamiento propio'],
+                                                    ['key' => 'ascensor', 'desc' => 'descripcion_ascensor', 'label' => 'Ascensor operativo'],
+                                                ]),
+                                            ]),
                                     ])
-                                    ->validationMessages([
-                                        'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
-                                        'length' => 'El número de teléfono debe tener 11 dígitos.',
-                                    ]),
-                                TextInput::make('local_phone')
-                                    ->label('Teléfono Local')
-                                    ->tel()
-                                    ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->rules([
-                                        'regex:/^\d{11}$/',
-                                    ])
-                                    ->validationMessages([
-                                        'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
-                                        'length' => 'El número de teléfono debe tener 11 dígitos.',
-                                    ]),
-                                TextInput::make('extensions'),
-                                Hidden::make('created_by')->default(Auth::user()->name),
-                                Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
-                            ])
-                            ->addActionLabel('Añadir Contacto')
-                            ->columnSpanFull()
-                            ->reorderable(),
-                    ])->columnSpanFull(),
+                                    ->collapsible(),
+                            ]),
 
-                Section::make('Sucursales')
-                    ->description('Información de sucursales asosiadas al proveedor.')
-                    ->collapsed()
-                    ->schema([
-                        Repeater::make('supplierRedGlobals')
-                            ->label('Tabla dinámica de Información de Sucursales')
-                            ->relationship()
-                            ->table([
-                                TableColumn::make('Estado'),
-                                TableColumn::make('Ciudad'),
-                                TableColumn::make('Nombre y Apellido'),
-                                TableColumn::make('Correo Electrónico'),
-                                TableColumn::make('Teléfono Celular'),
-                                TableColumn::make('Teléfono Local'),
-                                TableColumn::make('Direccion de Ubicacion'),
-                            ])
+                        Tab::make('Contactos')
+                            ->icon('heroicon-o-user-group')
                             ->schema([
-                                Select::make('state_id')
-                                    ->options(State::all()->pluck('definition', 'id'))
-                                    ->label('Estado')
-                                    ->searchable()
-                                    ->preload(),
-                                Select::make('city_id')
-                                    ->options(fn (Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
-                                    ->label('Ciudad')
-                                    ->live()
-                                    ->searchable()
-                                    ->preload(),
-                                TextInput::make('name')
-                                    ->label('Nombre o Razón Social')
-                                    ->maxLength(255)
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                        $set('name', $state.toUpperCase());    
-                                    JS),
-                                TextInput::make('email')
-                                    ->label('Correo Electrónico')
-                                    ->email()
-                                    ->maxLength(255),
-                                TextInput::make('personal_phone')
-                                    ->label('Teléfono Celular')
-                                    ->tel()
-                                    ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->rules([
-                                        'regex:/^\d{11}$/',
+                                Section::make('Personas de contacto')
+                                    ->description('Responsables por departamento o área.')
+                                    ->icon('heroicon-o-users')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Repeater::make('supplierContactPrincipals')
+                                            ->label('Contactos principales')
+                                            ->relationship()
+                                            ->table([
+                                                TableColumn::make('Departamento'),
+                                                TableColumn::make('Cargo'),
+                                                TableColumn::make('Nombre y apellido'),
+                                                TableColumn::make('Correo'),
+                                                TableColumn::make('Celular'),
+                                                TableColumn::make('Teléfono local'),
+                                                TableColumn::make('Extensión'),
+                                            ])
+                                            ->schema([
+                                                TextInput::make('departament')
+                                                    ->label('Departamento')
+                                                    ->placeholder('Ej: FACTURACIÓN')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('departament', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('position')
+                                                    ->label('Cargo')
+                                                    ->placeholder('Ej: COORDINADOR')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('position', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('name')
+                                                    ->label('Nombre y apellido')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('name', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('email')
+                                                    ->label('Correo')
+                                                    ->email(),
+                                                self::phoneField('personal_phone', 'Teléfono celular'),
+                                                self::phoneField('local_phone', 'Teléfono local'),
+                                                TextInput::make('extensions')
+                                                    ->label('Extensión(es)')
+                                                    ->placeholder('Ej: 101, 102'),
+                                                Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? ''),
+                                                Hidden::make('updated_by')
+                                                    ->default(fn (): string => Auth::user()?->name ?? '')
+                                                    ->hiddenOn('create'),
+                                            ])
+                                            ->addActionLabel('Agregar contacto')
+                                            ->columnSpanFull()
+                                            ->reorderable(),
                                     ])
-                                    ->validationMessages([
-                                        'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
-                                        'length' => 'El número de teléfono debe tener 11 dígitos.',
-                                    ]),
-                                TextInput::make('local_phone')
-                                    ->label('Teléfono Local')
-                                    ->tel()
-                                    ->mask('99999999999') // Opcional: mejora la UX en el navegador
-                                    ->rules([
-                                        'regex:/^\d{11}$/',
+                                    ->collapsible(),
+                            ]),
+
+                        Tab::make('Sucursales')
+                            ->icon('heroicon-o-building-storefront')
+                            ->schema([
+                                Section::make('Red de sucursales')
+                                    ->description('Otras sedes asociadas al proveedor.')
+                                    ->icon('heroicon-o-map')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Repeater::make('supplierRedGlobals')
+                                            ->label('Sucursales')
+                                            ->relationship()
+                                            ->table([
+                                                TableColumn::make('Estado'),
+                                                TableColumn::make('Ciudad'),
+                                                TableColumn::make('Nombre / razón social'),
+                                                TableColumn::make('Correo'),
+                                                TableColumn::make('Celular'),
+                                                TableColumn::make('Teléfono local'),
+                                                TableColumn::make('Dirección'),
+                                            ])
+                                            ->schema([
+                                                Select::make('state_id')
+                                                    ->label('Estado')
+                                                    ->options(State::query()->orderBy('definition')->pluck('definition', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->live()
+                                                    ->afterStateUpdated(fn (Set $set) => $set('city_id', null)),
+                                                Select::make('city_id')
+                                                    ->label('Ciudad')
+                                                    ->options(fn (Get $get) => City::query()
+                                                        ->where('state_id', $get('state_id'))
+                                                        ->orderBy('definition')
+                                                        ->pluck('definition', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->disabled(fn (Get $get): bool => blank($get('state_id'))),
+                                                TextInput::make('name')
+                                                    ->label('Nombre o razón social')
+                                                    ->maxLength(255)
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('name', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('email')
+                                                    ->label('Correo electrónico')
+                                                    ->email()
+                                                    ->maxLength(255),
+                                                self::phoneField('personal_phone', 'Teléfono celular'),
+                                                self::phoneField('local_phone', 'Teléfono local'),
+                                                TextInput::make('address')
+                                                    ->label('Dirección')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('address', $state.toUpperCase());
+                                                    JS),
+                                                Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? ''),
+                                                Hidden::make('updated_by')
+                                                    ->default(fn (): string => Auth::user()?->name ?? '')
+                                                    ->hiddenOn('create'),
+                                            ])
+                                            ->addActionLabel('Agregar sucursal')
+                                            ->columnSpanFull()
+                                            ->reorderable(),
                                     ])
-                                    ->validationMessages([
-                                        'regex' => 'El número de teléfono debe contener exactamente 11 dígitos y no debe incluir espacios ni guiones.',
-                                        'length' => 'El número de teléfono debe tener 11 dígitos.',
-                                    ]),
-                                TextInput::make('address')
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                        $set('address', $state.toUpperCase());    
-                                    JS),
-                                Hidden::make('created_by')->default(Auth::user()->name),
-                                Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
-                            ])
-                            ->addActionLabel('Añadir Sucursal')
-                            ->columnSpanFull()
-                            ->reorderable(),
-                    ])->columnSpanFull(),
+                                    ->collapsible(),
+                            ]),
 
-                Section::make('Zonas')
-                    ->description('Zonas de cobertura del proveedor.')
-                    ->collapsed()
-                    ->schema([
-                        Repeater::make('SupplierZonaCoberturas')
-                            ->label('Tabla dinámica para incluir las Zonas de Cobertura')
-                            ->relationship()
-                            ->table([
-                                TableColumn::make('Clasificación del Proveedor'),
-                                TableColumn::make('Tipo de Servicio'),
-                                TableColumn::make('Estado'),
-                                TableColumn::make('Ciudad'),
-                            ])
+                        Tab::make('Zonas de servicio')
+                            ->icon('heroicon-o-squares-2x2')
                             ->schema([
-                                Select::make('clasificacion_id')
-                                    ->label('Clasificación del Proveedor')
-                                    ->searchable()
-                                    ->live()
-                                    ->options(SupplierClasificacion::orderBy('description', 'asc')->pluck('description', 'id'))
-                                    ->preload()
-                                    ->searchable(),
-                                Select::make('type_service')
-                                    ->options(fn (Get $get) => SupplierTipoServicio::where('supplier_clasificacion_id', $get('clasificacion_id'))->orderBy('description', 'asc')->pluck('description', 'description'))
-                                    ->label('Tipo de servicio')
-                                    ->searchable()
-                                    ->multiple()
-                                    ->preload(),
-                                Select::make('state_id')
-                                    ->options(State::all()->pluck('definition', 'id'))
-                                    // ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                    ->label('Estado')
-                                    ->searchable()
-                                    ->preload(),
-                                Select::make('city_id')
-                                    ->options(fn (Get $get) => City::where('state_id', $get('state_id'))->pluck('definition', 'id'))
-                                    ->label('Ciudad')
-                                    ->live()
-                                    ->searchable()
-                                    ->preload(),
-                                Hidden::make('created_by')->default(Auth::user()->name),
-                                Hidden::make('updated_by')->default(Auth::user()->name)->hiddenOn('create'),
-                            ])
-                            ->addActionLabel('Añadir Sucursal')
-                            ->columnSpanFull()
-                            ->reorderable(),
-                    ])->columnSpanFull(),
+                                Section::make('Cobertura por clasificación')
+                                    ->description('Combinaciones de clasificación, tipo de servicio y ubicación.')
+                                    ->icon('heroicon-o-rectangle-group')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Repeater::make('SupplierZonaCoberturas')
+                                            ->label('Zonas de cobertura')
+                                            ->relationship()
+                                            ->table([
+                                                TableColumn::make('Clasificación'),
+                                                TableColumn::make('Tipo de servicio'),
+                                                TableColumn::make('Estado'),
+                                                TableColumn::make('Ciudad'),
+                                            ])
+                                            ->schema([
+                                                Select::make('clasificacion_id')
+                                                    ->label('Clasificación del proveedor')
+                                                    ->options(SupplierClasificacion::query()->orderBy('description')->pluck('description', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->live(),
+                                                Select::make('type_service')
+                                                    ->label('Tipo de servicio')
+                                                    ->options(fn (Get $get) => SupplierTipoServicio::query()
+                                                        ->where('supplier_clasificacion_id', $get('clasificacion_id'))
+                                                        ->orderBy('description')
+                                                        ->pluck('description', 'description'))
+                                                    ->searchable()
+                                                    ->multiple()
+                                                    ->preload(),
+                                                Select::make('state_id')
+                                                    ->label('Estado')
+                                                    ->options(State::query()->orderBy('definition')->pluck('definition', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->live()
+                                                    ->afterStateUpdated(fn (Set $set) => $set('city_id', null)),
+                                                Select::make('city_id')
+                                                    ->label('Ciudad')
+                                                    ->options(fn (Get $get) => City::query()
+                                                        ->where('state_id', $get('state_id'))
+                                                        ->pluck('definition', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->disabled(fn (Get $get): bool => blank($get('state_id'))),
+                                                Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? ''),
+                                                Hidden::make('updated_by')
+                                                    ->default(fn (): string => Auth::user()?->name ?? '')
+                                                    ->hiddenOn('create'),
+                                            ])
+                                            ->addActionLabel('Agregar zona')
+                                            ->columnSpanFull()
+                                            ->reorderable(),
+                                    ])
+                                    ->collapsible(),
+                            ]),
 
-                Section::make('Notas y/o Observaciones')
-                    ->description('Detalles adicionales del proveedor.')
-                    ->collapsed()
-                    ->schema([
-                        Repeater::make('supplierObservacions')
-                            ->label('Bitacora de Notas y/o Observaciones')
-                            ->relationship()
-                            ->table([
-                                TableColumn::make('Notas y/o Observacion')->width('90%'),
-                                TableColumn::make('Responsable de la Nota')->width('10%'),
-                            ])
+                        Tab::make('Notas')
+                            ->icon('heroicon-o-chat-bubble-left-right')
                             ->schema([
-                                Textarea::make('observation')
-                                    ->autosize()
-                                    ->afterStateUpdatedJs(<<<'JS'
-                                        $set('observation', $state.toUpperCase());    
-                                    JS),
-                                TextInput::make('created_by')
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->default(Auth::user()->name),
-                            ])
-                            ->addActionLabel('Añadir Observación o Nota')
-                            ->columnSpanFull()
-                            ->reorderable(),
-                    ])->columnSpanFull(),
+                                Section::make('Bitácora')
+                                    ->description('Observaciones internas sobre el proveedor.')
+                                    ->icon('heroicon-o-clipboard-document-list')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Repeater::make('supplierObservacions')
+                                            ->label('Notas y observaciones')
+                                            ->relationship()
+                                            ->table([
+                                                TableColumn::make('Nota')->width('90%'),
+                                                TableColumn::make('Responsable')->width('10%'),
+                                            ])
+                                            ->schema([
+                                                Textarea::make('observation')
+                                                    ->label('Nota')
+                                                    ->autosize()
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('observation', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('created_by')
+                                                    ->label('Responsable')
+                                                    ->disabled()
+                                                    ->dehydrated()
+                                                    ->default(fn (): string => Auth::user()?->name ?? ''),
+                                            ])
+                                            ->addActionLabel('Agregar nota')
+                                            ->columnSpanFull()
+                                            ->reorderable(),
+                                    ])
+                                    ->collapsible(),
+                            ]),
+                    ]),
+
+                ...self::auditHiddenFields(),
             ]);
     }
 }

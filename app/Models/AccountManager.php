@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccountManager extends Model
@@ -21,15 +22,23 @@ class AccountManager extends Model
         'updated_by',
     ];
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
-     * Get all of the comments for the Agency
+     * Usuario de negocio que registró el account manager (si aplica).
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get all of the comments for the Agency
      */
     public function agencies(): HasMany
     {
@@ -38,8 +47,6 @@ class AccountManager extends Model
 
     /**
      * Get all of the comments for the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function agents(): HasMany
     {

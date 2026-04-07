@@ -1,17 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Operations\Resources\Affiliates\Tables;
 
 use App\Filament\Exports\AffiliateExporter;
-use App\Models\Affiliate;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -23,51 +23,44 @@ class AffiliatesTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->defaultSort('created_at', 'desc')
-        ->heading('LISTA DE AFILIADOS INDIVIDUALES')
-        ->description('A continuacion se muestra la lista de afiliados individuales. La tabla esta ordenada por fecha de registro de forma descendente, los mas recientes se muestran primero')
+            ->defaultSort('created_at', 'desc')
+            ->heading('Afiliados individuales')
+            ->description('Orden por fecha de registro (más recientes primero). La celda del nombre resalta en verde cuando el estado es ACTIVO y el alta es hoy.')
+            ->striped()
+            ->emptyStateHeading('Sin afiliados')
+            ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros.')
             ->columns([
                 TextColumn::make('full_name')
+                    ->label('Nombre y apellido')
                     ->icon(function ($record) {
                         $now = Carbon::today();
                         if ($record->status == 'ACTIVO' && $record->created_at >= $now) {
                             return 'heroicon-s-star';
                         }
+
                         return 'heroicon-s-user-group';
                     })
                     ->iconColor(function ($record) {
                         $now = Carbon::today();
-                        // Forzamos el color del icono a rojo (danger) solo cuando el if es true
                         if ($record->status == 'ACTIVO' && $record->created_at >= $now) {
                             return 'danger';
                         }
-                        return null; // Color por defecto (blanco por el estilo extraAttributes)
+
+                        return null;
                     })
                     ->badge(function ($record) {
                         $now = Carbon::today();
                         if ($record->status == 'ACTIVO' && $record->created_at >= $now) {
                             return false;
                         }
+
                         return true;
                     })
-                    ->color(function ($record) {
-                        return 'success';
-                    })
+                    ->color(fn (): string => 'success')
                     ->extraAttributes(function ($record) {
-
-                        /**
-                         * Diseño optimizado con estilo iOS System Green.
-                         * Utilizamos el verde oficial de Apple (#34C759) para máximo resaltado.
-                         */
-                        $iosGreen = '#34C759';
-                        $iosGreenDark = '#248A3D'; // Para el texto, asegurando legibilidad
-
                         $now = Carbon::today();
-                        // dd($now->diffInDays($record->created_at));
-
                         if ($record->status == 'ACTIVO' && $record->created_at >= $now) {
                             $iosGreen = '#34C759';
-                            $iosGreenDark = '#248A3D';
 
                             return [
                                 'style' => "
@@ -87,56 +80,99 @@ class AffiliatesTable
                                         ",
                             ];
                         }
+
                         return [];
                     })
-                    ->label('Nombre Y Apellido')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->lineClamp(2)
+                    ->tooltip(fn (?string $state): ?string => filled($state) ? $state : null),
                 TextColumn::make('nro_identificacion')
+                    ->label('Identificación')
                     ->color('info')
                     ->badge()
-                    ->icon('heroicon-s-identification')
-                    ->label('Nro Identificacion')
-                    ->searchable(),
+                    ->icon(Heroicon::OutlinedIdentification)
+                    ->copyable()
+                    ->copyMessage('Identificación copiada')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('phone')
-                    ->label('Telefono')
+                    ->label('Teléfono')
+                    ->icon(Heroicon::OutlinedPhone)
+                    ->copyable()
+                    ->copyMessage('Teléfono copiado')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable(),
+                    ->label('Correo')
+                    ->icon(Heroicon::OutlinedEnvelope)
+                    ->copyable()
+                    ->copyMessage('Correo copiado')
+                    ->searchable()
+                    ->wrap(),
                 TextColumn::make('sex')
                     ->label('Sexo')
+                    ->badge()
+                    ->color('gray')
                     ->searchable(),
                 TextColumn::make('birth_date')
-                    ->label('Fecha Nacimiento')
-                    ->searchable(),
+                    ->label('Fecha de nacimiento')
+                    ->icon(Heroicon::OutlinedCalendarDays)
+                    ->formatStateUsing(function (mixed $state): ?string {
+                        if (blank($state)) {
+                            return null;
+                        }
+                        try {
+                            return Carbon::parse($state)->format('d/m/Y');
+                        } catch (\Throwable) {
+                            return (string) $state;
+                        }
+                    })
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('age')
                     ->label('Edad')
-                    ->searchable(),
-                TextColumn::make('country.name')
-                    ->label('Pais')
-                    ->numeric()
+                    ->alignCenter()
+                    ->searchable()
                     ->sortable(),
+                TextColumn::make('country.name')
+                    ->label('País')
+                    ->icon(Heroicon::OutlinedGlobeAmericas)
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—'),
                 TextColumn::make('state.definition')
                     ->label('Estado')
-                    ->numeric()
-                    ->sortable(),
+                    ->icon(Heroicon::OutlinedMap)
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—'),
                 TextColumn::make('city.definition')
                     ->label('Ciudad')
-                    ->numeric()
-                    ->sortable(),
+                    ->icon(Heroicon::OutlinedBuildingOffice2)
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—'),
                 TextColumn::make('region')
-                    ->label('Region')
-                    ->searchable(),
+                    ->label('Región')
+                    ->icon(Heroicon::OutlinedMapPin)
+                    ->searchable()
+                    ->placeholder('—'),
                 TextColumn::make('plan.description')
                     ->label('Plan')
-                    ->numeric()
-                    ->sortable(),
+                    ->badge()
+                    ->color('primary')
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->placeholder('—'),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
-                    ->prefix('$')
-                    ->numeric()
-                    ->sortable(),
-                
+                    ->money('USD')
+                    ->alignEnd()
+                    ->sortable()
+                    ->placeholder('—'),
             ])
             ->filters([
                 Filter::make('created_at')
@@ -148,43 +184,51 @@ class AffiliatesTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Alta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Alta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
                     }),
                 SelectFilter::make('plan_id')
-                    ->label('Plan Afiliado')
+                    ->label('Plan')
                     ->relationship('plan', 'description')
-                    ->multiple(),
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Todos'),
             ])
             ->filtersTriggerAction(
-                fn(Action $action) => $action
+                fn (Action $action) => $action
                     ->button()
-                    ->label('Filtros'),
+                    ->label('Filtros')
+                    ->icon(Heroicon::OutlinedFunnel),
             )
             ->recordActions([
                 ViewAction::make()
-                ->icon('heroicon-o-eye')
-                ->label('Ver Detalles')
-                ->color('primary'),
+                    ->icon(Heroicon::OutlinedEye)
+                    ->label('Ver detalles')
+                    ->color('primary'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    ExportBulkAction::make()->exporter(AffiliateExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
+                    ExportBulkAction::make()
+                        ->exporter(AffiliateExporter::class)
+                        ->label('Exportar XLS')
+                        ->color('info')
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }

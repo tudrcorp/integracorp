@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\SendMailKitBienvenida;
 use App\Models\Affiliate;
 use App\Models\User;
+use App\Support\DomPdfBatchRenderOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -878,7 +879,7 @@ class AffiliationController extends Controller
         }
     }
 
-    public static function generateCertificateIndividual($record, $afiliates, $user)
+    public static function generateCertificateIndividual($record, $afiliates, $user, bool $notifyUser = true, bool $rethrowOnFailure = false)
     {
         /**
          * Genera el certificado PDF para una afiliación individual.
@@ -899,10 +900,12 @@ class AffiliationController extends Controller
             // ✅ Reconstruye el usuario dentro del job
             $user = $user instanceof User ? $user : User::find($user);
 
-            if (! $user) {
-                Log::error('Certificado Error: No se pudo encontrar el usuario para notificar.', ['user_id' => $user]);
+            if ($notifyUser) {
+                if (! $user) {
+                    Log::error('Certificado Error: No se pudo encontrar el usuario para notificar.', ['user_id' => $user]);
 
-                return;
+                    return;
+                }
             }
 
             // 3. Preparación de datos del pagador con valores de respaldo (Fallback)
@@ -966,24 +969,31 @@ class AffiliationController extends Controller
             // ini_set('memory_limit', '2048M');
             // set_time_limit(120);
 
-            // 5. Configuración de recursos
-            ini_set('memory_limit', '512M'); // Suficiente para la mayoría de PDFs, evita saturar el server
-            set_time_limit(180);
+            // En regeneración por lote el servicio ya fija límites; no reducir memory aquí.
+            if (! $rethrowOnFailure) {
+                ini_set('memory_limit', '512M'); // Suficiente para la mayoría de PDFs, evita saturar el server
+                set_time_limit(180);
+            }
 
-            $pdf = Pdf::loadView('documents.certificate', compact('pagador', 'beneficios_table', 'afiliates'));
+            $pdf = Pdf::loadView(
+                'documents.certificate',
+                self::dataForCertificatePdfView($pagador, $beneficios_table, $afiliates),
+            );
+            DomPdfBatchRenderOptions::apply($pdf);
             $pdf->save(public_path('storage/certificados-doc/'.$name_pdf));
 
-            Notification::make()
-                ->title('¡TAREA COMPLETADA!')
-                ->body('📎 '.$name_pdf.' ya se encuentra disponible para su descarga.')
-                ->success()
-                ->actions([
-                    Action::make('download')
-                        ->label('Descargar archivo')
-                        ->url('/storage/certificados-doc/'.$name_pdf),
-                ])
-                ->sendToDatabase($user);
-
+            if ($notifyUser && $user) {
+                Notification::make()
+                    ->title('¡TAREA COMPLETADA!')
+                    ->body('📎 '.$name_pdf.' ya se encuentra disponible para su descarga.')
+                    ->success()
+                    ->actions([
+                        Action::make('download')
+                            ->label('Descargar archivo')
+                            ->url('/storage/certificados-doc/'.$name_pdf),
+                    ])
+                    ->sendToDatabase($user);
+            }
         } catch (\Throwable $th) {
             // Log profesional de errores
             Log::error('Fallo crítico en generación de certificado', [
@@ -992,6 +1002,10 @@ class AffiliationController extends Controller
                 'file' => $th->getFile(),
                 'record' => $record->id ?? 'N/A',
             ]);
+
+            if ($rethrowOnFailure) {
+                throw $th;
+            }
 
             // Notificación de error amigable al usuario (no técnica)
             Notification::make()
@@ -1101,7 +1115,9 @@ class AffiliationController extends Controller
                     $condicionado = 'CondicionesESPECIAL.pdf';
                 }
 
-                Mail::to($data['email'])->send(new SendMailKitBienvenida($code, $condicionado));
+                Mail::to($data['email'])
+                    ->cc('afiliaciones@tudrencasa.com')
+                    ->send(new SendMailKitBienvenida($code, $condicionado));
 
                 Log::info('ENVIO COMPLETADO: Kit enviado correctamente.', [
                     // 'to' => $data['email'],
@@ -1113,9 +1129,7 @@ class AffiliationController extends Controller
                     ->body('✅ Kit reenviado correctamente.')
                     ->success()
                     ->send();
-
             }
-
         } catch (\Throwable $th) {
 
             Log::error('FALLA DE ENVIO: No se pudo enviar el kit.', [
@@ -1130,7 +1144,107 @@ class AffiliationController extends Controller
                 ->body($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile())
                 ->danger()
                 ->send();
-
         }
+    }
+
+    /**
+     * Variables listas para la vista `documents.certificate` (sin lógica pesada en Blade).
+     *
+     * @param  array<string, mixed>  $pagador
+     * @param  list<string>  $beneficios_table
+     * @param  iterable<mixed>  $afiliates
+     * @return array{pagador: array<string, mixed>, affiliateTableRows: list<array<string, mixed>>, coberturaFormatted: string, beneficiosRows: list<array{text: string, show_cobertura: bool}>}
+     */
+    public static function dataForCertificatePdfView(array $pagador, array $beneficios_table, iterable $afiliates): array
+    {
+        $pagador['periodo_facturado_hasta'] = self::certificatePeriodoFacturadoHasta($pagador);
+
+        return [
+            'pagador' => $pagador,
+            'affiliateTableRows' => self::certificateAffiliateTableRows($afiliates),
+            'coberturaFormatted' => number_format((float) ($pagador['cobertura'] ?? 0), 2, ',', '.'),
+            'beneficiosRows' => self::certificateBeneficiosRows($beneficios_table),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $pagador
+     */
+    private static function certificatePeriodoFacturadoHasta(array $pagador): string
+    {
+        $desde = $pagador['fecha_vigencia'] ?? '';
+        if ($desde === '') {
+            return '';
+        }
+
+        try {
+            $fecha = Carbon::createFromFormat('d/m/Y', $desde);
+        } catch (Throwable) {
+            return '';
+        }
+
+        return match ($pagador['frecuencia_pago'] ?? '') {
+            'MENSUAL' => $fecha->copy()->addMonths(1)->format('d/m/Y'),
+            'TRIMESTRAL' => $fecha->copy()->addMonths(3)->format('d/m/Y'),
+            'SEMESTRAL' => $fecha->copy()->addMonths(6)->format('d/m/Y'),
+            'ANUAL' => $fecha->copy()->addYear()->format('d/m/Y'),
+            default => '',
+        };
+    }
+
+    /**
+     * @param  iterable<mixed>  $afiliates
+     * @return list<array{full_name: string, nro_identificacion: string, birth_date: mixed, relationship: string}>
+     */
+    private static function certificateAffiliateTableRows(iterable $afiliates): array
+    {
+        if ($afiliates instanceof \Illuminate\Support\Collection) {
+            $collection = $afiliates;
+        } elseif (is_array($afiliates)) {
+            $collection = collect($afiliates);
+        } else {
+            $collection = collect([$afiliates]);
+        }
+
+        return $collection->map(function ($a): array {
+            if (is_array($a)) {
+                return [
+                    'full_name' => (string) ($a['full_name'] ?? ''),
+                    'nro_identificacion' => (string) ($a['nro_identificacion'] ?? ''),
+                    'birth_date' => $a['birth_date'] ?? '',
+                    'relationship' => (string) ($a['relationship'] ?? ''),
+                ];
+            }
+
+            return [
+                'full_name' => (string) $a->full_name,
+                'nro_identificacion' => (string) $a->nro_identificacion,
+                'birth_date' => $a->birth_date,
+                'relationship' => (string) $a->relationship,
+            ];
+        })->all();
+    }
+
+    /**
+     * @param  list<string>  $beneficios_table
+     * @return list<array{text: string, show_cobertura: bool}>
+     */
+    private static function certificateBeneficiosRows(array $beneficios_table): array
+    {
+        $conCobertura = [
+            'EMERGENCIAS MÉDICAS POR PATOLOGIAS LISTADAS',
+            'ASISTENCIA MÉDICA POR ACCIDENTES',
+        ];
+
+        $out = [];
+        foreach ($beneficios_table as $fila) {
+            $text = (string) $fila;
+            $out[] = [
+                'text' => $text,
+                'show_cobertura' => in_array($text, $conCobertura, true),
+            ];
+        }
+
+        return $out;
     }
 }

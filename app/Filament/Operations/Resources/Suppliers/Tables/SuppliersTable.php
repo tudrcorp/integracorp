@@ -36,7 +36,7 @@ class SuppliersTable
     {
         return $table
             ->heading('Proveedores')
-            ->description('Listado de proveedores con cobertura, datos de contacto y equipamiento. Use la columna «Estados (cobertura)» para ver en qué entidades federativas prestan servicio.')
+            ->description('Las pestañas superiores filtran por tipo de convenio (GENERAL, PREFERENCIAL, etc.). El listado muestra cobertura, contacto y equipamiento; use «Estados (cobertura)» para ver las entidades federativas.')
             ->modifyQueryUsing(function (Builder $query, bool $isResolvingRecord): Builder {
                 if ($isResolvingRecord) {
                     return $query;
@@ -45,7 +45,11 @@ class SuppliersTable
                 return $query
                     ->leftJoin('states', 'suppliers.state_id', '=', 'states.id')
                     ->leftJoin('cities', 'suppliers.city_id', '=', 'cities.id')
-                    ->select('suppliers.*');
+                    ->select([
+                        'suppliers.*',
+                        'states.definition as supplier_sort_state_definition',
+                        'cities.definition as supplier_sort_city_definition',
+                    ]);
             })
             ->defaultSort(function (Builder $query, string $direction, HasTable $livewire): Builder {
                 if (filled($livewire->getTableSortColumn())) {
@@ -54,8 +58,8 @@ class SuppliersTable
 
                 return $query
                     ->orderBy('suppliers.name', 'asc')
-                    ->orderBy('states.definition', 'asc')
-                    ->orderBy('cities.definition', 'asc');
+                    ->orderBy('supplier_sort_state_definition', 'asc')
+                    ->orderBy('supplier_sort_city_definition', 'asc');
             })
             ->defaultSortOptionLabel('Nombre → Estado sede → Ciudad sede (A–Z)')
             ->columns([
@@ -64,9 +68,12 @@ class SuppliersTable
                     ->icon('heroicon-o-building-storefront')
                     ->weight(FontWeight::SemiBold)
                     ->searchable()
+                    ->wrap()
+                    ->lineClamp(2)
+                    ->tooltip(fn (Supplier $record): string => trim((string) $record->name))
                     ->sortable()
                     ->extraCellAttributes(fn (): array => [
-                        'class' => 'min-w-52 sm:min-w-64 lg:min-w-72',
+                        'class' => 'min-w-52 sm:min-w-64 lg:min-w-72 max-w-[28rem] align-top',
                     ]),
                 TextColumn::make('rif')
                     ->label('RIF')
@@ -79,9 +86,12 @@ class SuppliersTable
                     ->label('Razón social')
                     ->icon('heroicon-o-document-text')
                     ->searchable()
+                    ->wrap()
+                    ->lineClamp(2)
+                    ->tooltip(fn (Supplier $record): string => trim((string) $record->razon_social))
                     ->sortable()
                     ->extraCellAttributes(fn (): array => [
-                        'class' => 'min-w-52 sm:min-w-64 lg:min-w-72',
+                        'class' => 'min-w-52 sm:min-w-64 lg:min-w-72 max-w-[28rem] align-top',
                     ])
                     ->toggleable(),
                 TextColumn::make('status_convenio')
@@ -324,11 +334,11 @@ class SuppliersTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         if (! empty($data['state_id'])) {
-                            $query->where('state_id', $data['state_id']);
+                            $query->where('suppliers.state_id', $data['state_id']);
                         }
 
                         if (! empty($data['city_id'])) {
-                            $query->where('city_id', $data['city_id']);
+                            $query->where('suppliers.city_id', $data['city_id']);
                         }
 
                         return $query;

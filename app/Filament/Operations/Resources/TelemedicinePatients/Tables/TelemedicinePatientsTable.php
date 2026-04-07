@@ -2,17 +2,11 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Tables;
 
-use App\Filament\Resources\Plans\Tables\PlansTable;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\AssignedCase;
-use App\Mail\MailAssignedCase;
 use App\Models\AnotherAddress;
-
 use App\Models\City;
 use App\Models\Country;
-use App\Models\Plan;
-use App\Models\Region;
 use App\Models\State;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
@@ -20,7 +14,6 @@ use App\Models\TelemedicinePatient;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -31,16 +24,12 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
-use Filament\Support\RawJs;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -49,193 +38,208 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class TelemedicinePatientsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('Listado de Pacientes')
-            ->description('Tabla que muestra la lista de pacientes aifiliados y/o pacientes externos')
+            ->heading('Listado de pacientes')
+            ->description('Pacientes afiliados y externos. Use columnas ocultas para ver domicilio y datos de afiliación.')
             ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'businessUnit',
+                'businessLine',
+                'plan',
+                'coverage',
+                'country',
+                'city',
+                'state',
+                'createdBy',
+            ]))
             ->columns([
                 TextColumn::make('full_name')
                     ->label('Paciente')
                     ->icon('heroicon-o-user')
-                    ->formatStateUsing(fn(string $state): string => strtoupper($state))
-                    ->extraAttributes(function ($record) {
-                        /**
-                     * Generamos un color único basado en el valor del código para evitar repeticiones aleatorias.
-                     * Usamos crc32 para obtener un número entero a partir del string del código.
-                     */
-                    $codeValue = $record->id ?? 'default';
-                    $hash = crc32($codeValue);
-
-                    // El tono (Hue) se deriva del hash (0-360)
-                    $h = abs($hash % 360);
-
-                    // Saturación y Luminosidad fijas para mantener el efecto pastel
-                    $s = 70;
-                    $l = 85;
-
-                    $backgroundColor = "hsl({$h}, {$s}%, {$l}%)";
-                    $textColor = "hsl({$h}, {$s}%, 25%)";
-
-                    return [
-                        'style' => "
-                                --c-50: {$backgroundColor};
-                                --c-400: {$textColor};
-                                --c-600: {$textColor};
-                                background-color: {$backgroundColor} !important;
-                                color: {$textColor} !important;
-                                // border: 0.5px solid rgba(0,0,0,0.1);
-                                border-radius: 9999px;
-                                padding: 0.1rem 0.6rem;
-                                font-weight: 600;
-                                box-shadow: 0px 0px 0px 1px rgb(0 0 0 / 0.06),
-                                0px 1px 1px -0.5px rgb(0 0 0 / 0.06),
-                                0px 3px 3px -1.5px rgb(0 0 0 / 0.06), 
-                                0px 6px 6px -3px rgb(0 0 0 / 0.06),
-                                0px 12px 12px -6px rgb(0 0 0 / 0.06),
-                                0px 24px 24px -12px rgb(0 0 0 / 0.06);
-                            ",
-                    ];
-                })
-                    ->searchable(),
-                TextColumn::make('businessUnit.definition')
-                    ->label('Unidad de Negocios')
-                    ->badge()
-                    ->color('success')
-                    ->searchable(),
-                TextColumn::make('businessLine.definition')
-                    ->label('Linea de Servicio')
-                    ->badge()
-                    ->color('success')
-                    ->searchable(),
-                TextColumn::make('type_affiliation')
-                    ->label('Tipo de Afiliación')
-                    ->badge()
-                    ->color('success')
-                    ->searchable(),
-                TextColumn::make('name_corporate')
-                    ->label('Nombre Corporativo')
-                    ->badge()
-                    ->color('success')
-                    ->searchable(),
+                    ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
+                    ->searchable()
+                    ->weight('medium')
+                    ->description(fn (TelemedicinePatient $record): string => $record->nro_identificacion ?? ''),
                 TextColumn::make('nro_identificacion')
-                    ->label('Número de Identificación')
+                    ->label('Identificación')
+                    ->searchable()
+                    ->toggleable()
+                    ->toggledHiddenByDefault(),
+                TextColumn::make('phone')
+                    ->label('Teléfono')
+                    ->icon('heroicon-m-phone')
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('Copiado')
+                    ->placeholder('—'),
+                TextColumn::make('email')
+                    ->label('Correo')
+                    ->icon('heroicon-m-envelope')
+                    ->searchable()
+                    ->limit(28)
+                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->copyable()
+                    ->copyMessage('Copiado')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('businessUnit.definition')
+                    ->label('Unidad de negocio')
                     ->badge()
-                    ->color('success')
-                    ->searchable(),
+                    ->color(fn (?string $state): string => self::badgeColorFromString($state, [
+                        'primary', 'info', 'success', 'warning',
+                    ]))
+                    ->searchable()
+                    ->toggleable(),
+                TextColumn::make('businessLine.definition')
+                    ->label('Línea de servicio')
+                    ->badge()
+                    ->color(fn (?string $state): string => self::badgeColorFromString($state, [
+                        'success', 'warning', 'primary', 'danger',
+                    ]))
+                    ->searchable()
+                    ->toggleable(),
+                TextColumn::make('type_affiliation')
+                    ->label('Tipo de afiliación')
+                    ->badge()
+                    ->color(fn (?string $state): string => match (mb_strtoupper((string) $state)) {
+                        'TITULAR', 'TITULAR ' => 'success',
+                        'BENEFICIARIO', 'DEPENDIENTE' => 'info',
+                        'EXTERNO', 'PARTICULAR' => 'warning',
+                        default => self::badgeColorFromString($state, ['primary', 'gray', 'info']),
+                    })
+                    ->searchable()
+                    ->toggleable(),
+                TextColumn::make('name_corporate')
+                    ->label('Corporativo')
+                    ->limit(24)
+                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->searchable()
+                    ->toggleable()
+                    ->toggledHiddenByDefault(),
                 TextColumn::make('birth_date')
-                    ->label('Fecha de Nacimiento')
-                    ->searchable(),
+                    ->label('Nacimiento')
+                    ->date('d/m/Y')
+                    ->placeholder('—')
+                    ->toggleable()
+                    ->toggledHiddenByDefault(),
                 TextColumn::make('sex')
                     ->label('Sexo')
-                    ->searchable(),
-                TextColumn::make('phone')
-                    ->label('Número de Teléfono')
                     ->badge()
-                    ->color('success')
-                    ->searchable(),
-                TextColumn::make('email')
-                    ->label('Correo Electrónico')
-                    ->searchable(),
-                ColumnGroup::make('Domicilio y Ubicación')->columns([
-                    TextColumn::make('address')
-                        ->label('Dirección Principal')
-                        ->searchable(),
-                    TextColumn::make('country.name')
-                        ->label('País')
-                        ->searchable(),
-                    TextColumn::make('city.definition')
-                        ->label('Ciudad')
-                        ->searchable(),
-                    TextColumn::make('region')
-                        ->label('Región')
-                        ->searchable(),
-                    TextColumn::make('state.definition')
-                        ->label('Estado'),
-
-                ]),
-                ColumnGroup::make('Informacion de la Afiliación')->columns([
-                    TextColumn::make('plan.description')
-                        ->label('Plan')
-                        ->badge()
-                        ->color('success')
-                        ->searchable()
-                        ->action(
-                            Action::make('view_plan')
-                                ->label('Ver Plan')
-                                ->modal()
-                                ->modalHeading('Beneficios del Plan')
-                                ->modalWidth('xl')
-                                ->modalContent(function () {
-                                    //quiero colocar un recurso de tabla en el modal
-
-                                }),
-                        ),
-                    TextColumn::make('coverage.price')
-                        ->label('Cobertura')
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('code_affiliation')
-                        ->label('Codigo')
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('type_affiliation')
-                        ->label('Tipo')
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('status_affiliation')
-                        ->label('Estatus')
-                        ->badge()
-                        ->color('success')
-                        ->searchable(),
-                ]),
-                TextColumn::make('created_by')
-                    ->label('Asociado Por:')
-                    ->searchable(),
+                    ->formatStateUsing(fn (?string $state): string => $state ?: '—')
+                    ->color(fn (?string $state): string => match (mb_strtoupper((string) $state)) {
+                        'M', 'MASCULINO' => 'primary',
+                        'F', 'FEMENINO' => 'danger',
+                        default => 'gray',
+                    })
+                    ->toggleable()
+                    ->toggledHiddenByDefault(),
+                ColumnGroup::make('Domicilio y ubicación')
+                    ->columns([
+                        TextColumn::make('address')
+                            ->label('Dirección')
+                            ->limit(36)
+                            ->tooltip(fn (?string $state): ?string => $state)
+                            ->searchable()
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('country.name')
+                            ->label('País')
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('city.definition')
+                            ->label('Ciudad')
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('region')
+                            ->label('Región')
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('state.definition')
+                            ->label('Estado')
+                            ->toggleable(isToggledHiddenByDefault: true),
+                    ]),
+                ColumnGroup::make('Afiliación')
+                    ->columns([
+                        TextColumn::make('plan.description')
+                            ->label('Plan')
+                            ->badge()
+                            ->color(fn (?string $state): string => self::badgeColorFromString($state, [
+                                'success', 'info', 'primary', 'warning',
+                            ]))
+                            ->searchable()
+                            ->limit(20)
+                            ->tooltip(fn (?string $state): ?string => $state)
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('coverage.price')
+                            ->label('Cobertura')
+                            ->badge()
+                            ->color('warning')
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('code_affiliation')
+                            ->label('Código')
+                            ->badge()
+                            ->color('info')
+                            ->searchable()
+                            ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('status_affiliation')
+                            ->label('Estatus')
+                            ->badge()
+                            ->color(fn (?string $state): string => match (mb_strtoupper((string) $state)) {
+                                'ACTIVO', 'ACTIVA', 'VIGENTE' => 'success',
+                                'INACTIVO', 'INACTIVA', 'SUSPENDIDO', 'BAJA' => 'danger',
+                                'PENDIENTE', 'EN PROCESO' => 'warning',
+                                default => 'primary',
+                            })
+                            ->searchable()
+                            ->toggleable(isToggledHiddenByDefault: true),
+                    ]),
+                TextColumn::make('createdBy.name')
+                    ->label('Asociado por')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('created_at')
-                    ->label('Fecha de Asociación:')
-                    ->dateTime()
-                    ->description(fn ($record) => $record->created_at->diffForHumans())
-                    ->sortable(),
+                    ->label('Fecha de asociación')
+                    ->dateTime('d/m/Y H:i')
+                    ->description(fn (TelemedicinePatient $record): string => $record->created_at->diffForHumans())
+                    ->sortable()
+                    ->icon('heroicon-m-calendar'),
             ])
             ->filters([
                 Filter::make('created_at')
+                    ->label('Fecha de asociación')
                     ->form([
-                        DatePicker::make('desde'),
-                        DatePicker::make('hasta'),
+                        DatePicker::make('desde')->label('Desde'),
+                        DatePicker::make('hasta')->label('Hasta'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
                     }),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->label('Ver'),
+                EditAction::make()
+                    ->label('Editar'),
                 ActionGroup::make([
                     // ...
                     // Action::make('view_history')
@@ -245,7 +249,7 @@ class TelemedicinePatientsTable
                     //     ->url(fn(TelemedicinePatient $record): string => TelemedicineHistoryPatientResource::getUrl('create', ['record' => $record]),),
                     // ...
                     Action::make('asigned_doctor')
-                        ->label('Asignar Doctor')
+                        ->label('Asignar doctor')
                         ->icon('healthicons-f-i-exam-qualification')
                         ->color('success')
                         ->requiresConfirmation()
@@ -253,7 +257,7 @@ class TelemedicinePatientsTable
                         ->modalHeading('Asignación de Caso')
                         ->form([
 
-                            //...Informacion del Doctor
+                            // ...Informacion del Doctor
                             Fieldset::make('Asignar Doctor')
                                 ->schema([
                                     Select::make('doctor_id')
@@ -286,17 +290,17 @@ class TelemedicinePatientsTable
                                                 ->default(true)
                                                 ->inline()
                                                 ->live()
-                                                ->hidden(fn(Get $get) => !$get('feedback')),
+                                                ->hidden(fn (Get $get) => ! $get('feedback')),
                                             Textarea::make('directionAmbulance')
                                                 ->label('Dirección alternativa del Estacionamiento para Ambulancias')
                                                 ->autosize()
-                                                ->hidden(fn(Get $get) => $get('ambulanceParking'))
+                                                ->hidden(fn (Get $get) => $get('ambulanceParking')),
                                         ])->columnSpanFull()->hiddenOn('edit'),
                                 ])->columnSpanFull()->columns(1),
 
-                            //... Lista de ubicaciones ya registradas
+                            // ... Lista de ubicaciones ya registradas
                             Fieldset::make('Lista de ubicaciones registradas por el paciente')
-                                ->hidden(fn(Get $get) => $get('feedback'))
+                                ->hidden(fn (Get $get) => $get('feedback'))
                                 ->schema([
                                     Select::make('address_id')
                                         ->label('Ubicación')
@@ -308,18 +312,19 @@ class TelemedicinePatientsTable
                                             if ($state == null) {
                                                 return '';
                                             }
+
                                             return AnotherAddress::where('telemedicine_patient_id', $record->id)->where('id', $get('address_id'))->first()->ambulanceParking == true ? 'La Dirección SI posee estacionamiento para ambulancias' : 'La Dirección NO posee estacionamiento para ambulancias';
                                         }),
                                     Checkbox::make('new_address')
                                         ->inline()
                                         ->live()
                                         ->label('Nueva Ubicación')
-                                        ->default(false)
+                                        ->default(false),
                                 ])->columnSpanFull()->columns(1),
 
-                            //...SECCION NUEVA UBICACION
+                            // ...SECCION NUEVA UBICACION
                             Section::make()
-                                ->hidden(fn(Get $get) => !$get('new_address'))
+                                ->hidden(fn (Get $get) => ! $get('new_address'))
                                 ->heading('Registro  de Nueva Ubicación')
                                 ->description('La ubicación actual permite coordinar un servicio IN SITU. No afecta los datos registrados del afiliado.')
                                 ->schema([
@@ -331,7 +336,7 @@ class TelemedicinePatientsTable
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->default(189)
                                         ->preload(),
@@ -345,7 +350,7 @@ class TelemedicinePatientsTable
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->preload(),
                                     Select::make('city_id')
@@ -357,30 +362,30 @@ class TelemedicinePatientsTable
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->preload(),
                                     TextInput::make('phone_1')
                                         ->label('Número de Teléfono Principal')
                                         ->tel()
-                                        ->mask(fn(Get $get) => $get('country_id') == 189 ? '99999999999' : '')
+                                        ->mask(fn (Get $get) => $get('country_id') == 189 ? '99999999999' : '')
                                         ->required()
                                         ->helperText('Ejemplo: 04161234567'),
                                     TextInput::make('phone_2')
                                         ->label('Número de Teléfono Alternativo')
                                         ->tel()
-                                        ->mask(fn(Get $get) => $get('country_id') == 189 ? '99999999999' : '')
+                                        ->mask(fn (Get $get) => $get('country_id') == 189 ? '99999999999' : '')
                                         ->helperText('Ejemplo: 04161234567'),
                                     Select::make('relationship')
                                         ->label('Parentesco')
                                         ->options([
-                                            'TITULAR'   => 'TITULAR',
-                                            'MADRE'     => 'MADRE',
-                                            'PADRE'     => 'PADRE',
-                                            'HIJO(A)'   => 'HIJO(A)',
+                                            'TITULAR' => 'TITULAR',
+                                            'MADRE' => 'MADRE',
+                                            'PADRE' => 'PADRE',
+                                            'HIJO(A)' => 'HIJO(A)',
                                             'ABUELO(A)' => 'ABUELO(A)',
-                                            'AMIGO(A)'  => 'AMIGO(A)',
-                                            'OTRO'      => 'OTRO',
+                                            'AMIGO(A)' => 'AMIGO(A)',
+                                            'OTRO' => 'OTRO',
                                         ]),
 
                                     Grid::make()
@@ -402,9 +407,9 @@ class TelemedicinePatientsTable
                                             Textarea::make('directionAmbulance')
                                                 ->label('Dirección alternativa del Estacionamiento para Ambulancias')
                                                 ->autosize()
-                                                ->hidden(fn(Get $get) => $get('ambulanceParking'))
+                                                ->hidden(fn (Get $get) => $get('ambulanceParking')),
                                         ])->columnSpanFull()->columns(1),
-                                ])->columnSpanFull()->columns(2)
+                                ])->columnSpanFull()->columns(2),
 
                         ])
                         ->action(function (TelemedicinePatient $record, array $data) {
@@ -414,33 +419,33 @@ class TelemedicinePatientsTable
                             if ($data['feedback'] == true) {
 
                                 $case = TelemedicineCase::create([
-                                    'code'                      => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id'   => $record->id,
-                                    'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record->full_name,
-                                    'patient_age'               => $record->age,
-                                    'patient_sex'               => $record->sex,
-                                    'patient_phone'             => $record->phone,
-                                    'patient_address'           => $record->address,
-                                    'patient_country_id'        => $record->country_id,
-                                    'patient_state_id'          => $record->state_id,
-                                    'patient_city_id'           => $record->city_id,
-                                    'reason'                    => $data['reason'],
-                                    'ambulanceParking'         => $data['ambulanceParking'],
-                                    'status'                    => 'ASIGNADO',
-                                    'assigned_by'               => Auth::user()->name,
+                                    'code' => UtilsController::generateCaseCode(),
+                                    'telemedicine_patient_id' => $record->id,
+                                    'telemedicine_doctor_id' => $data['doctor_id'],
+                                    'patient_name' => $record->full_name,
+                                    'patient_age' => $record->age,
+                                    'patient_sex' => $record->sex,
+                                    'patient_phone' => $record->phone,
+                                    'patient_address' => $record->address,
+                                    'patient_country_id' => $record->country_id,
+                                    'patient_state_id' => $record->state_id,
+                                    'patient_city_id' => $record->city_id,
+                                    'reason' => $data['reason'],
+                                    'ambulanceParking' => $data['ambulanceParking'],
+                                    'status' => 'ASIGNADO',
+                                    'assigned_by' => Auth::user()->name,
                                 ]);
 
                                 if ($case) {
 
-                                    $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                    $name_patient   = $case['patient_name'];
-                                    $name           = $doctor->full_name;
-                                    $phone          = $doctor->phone;
-                                    $address        = $record->address;
-                                    $code           = $case->code;
-                                    $reason         = $data['reason'];
-                                    $email          = $doctor->email;
+                                    $doctor = TelemedicineDoctor::find($data['doctor_id'])->first();
+                                    $name_patient = $case['patient_name'];
+                                    $name = $doctor->full_name;
+                                    $phone = $doctor->phone;
+                                    $address = $record->address;
+                                    $code = $case->code;
+                                    $reason = $data['reason'];
+                                    $email = $doctor->email;
 
                                     AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
 
@@ -462,34 +467,34 @@ class TelemedicinePatientsTable
 
                                 $case = TelemedicineCase::create([
 
-                                    'code'                      => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id'   => $record->id,
-                                    'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record->full_name,
-                                    'patient_age'               => $record->age,
-                                    'patient_sex'               => $record->sex,
-                                    'patient_phone'             => $address['phone_1'],
-                                    'patient_phone_2'           => $address['phone_2'],
-                                    'patient_address'           => $address['address'],
-                                    'patient_country_id'        => $address['country_id'],
-                                    'patient_state_id'          => $address['state_id'],
-                                    'patient_city_id'           => $address['city_id'],
-                                    'reason'                    => $data['reason'],
-                                    'ambulanceParking'         => $data['ambulanceParking'],
-                                    'status'                    => 'ASIGNADO',
-                                    'assigned_by'               => Auth::user()->name,
+                                    'code' => UtilsController::generateCaseCode(),
+                                    'telemedicine_patient_id' => $record->id,
+                                    'telemedicine_doctor_id' => $data['doctor_id'],
+                                    'patient_name' => $record->full_name,
+                                    'patient_age' => $record->age,
+                                    'patient_sex' => $record->sex,
+                                    'patient_phone' => $address['phone_1'],
+                                    'patient_phone_2' => $address['phone_2'],
+                                    'patient_address' => $address['address'],
+                                    'patient_country_id' => $address['country_id'],
+                                    'patient_state_id' => $address['state_id'],
+                                    'patient_city_id' => $address['city_id'],
+                                    'reason' => $data['reason'],
+                                    'ambulanceParking' => $data['ambulanceParking'],
+                                    'status' => 'ASIGNADO',
+                                    'assigned_by' => Auth::user()->name,
                                 ]);
 
                                 if ($case) {
 
-                                    $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                    $name_patient   = $case['patient_name'];
-                                    $name           = $doctor->full_name;
-                                    $phone          = $doctor->phone;
-                                    $address        = $address['address'];
-                                    $code           = $case->code;
-                                    $reason         = $data['reason'];
-                                    $email          = $doctor->email;
+                                    $doctor = TelemedicineDoctor::find($data['doctor_id'])->first();
+                                    $name_patient = $case['patient_name'];
+                                    $name = $doctor->full_name;
+                                    $phone = $doctor->phone;
+                                    $address = $address['address'];
+                                    $code = $case->code;
+                                    $reason = $data['reason'];
+                                    $email = $doctor->email;
 
                                     AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
 
@@ -506,49 +511,49 @@ class TelemedicinePatientsTable
                              */
                             if ($data['feedback'] == false && $data['address_id'] == null) {
 
-                                //...Creo la nueva ubicacion en la tabla de ubicaciones
-                                $address = new AnotherAddress();
-                                $address->address                   = $data['address'];
-                                $address->phone_1                   = $data['phone_1'];
-                                $address->phone_2                   = $data['phone_2'];
-                                $address->city_id                   = $data['city_id'];
-                                $address->state_id                  = $data['state_id'];
-                                $address->country_id                = $data['country_id'];
-                                $address->ambulanceParking          = $data['ambulanceParking'];
-                                $address->relationship              = $data['relationship'];
-                                $address->telemedicine_patient_id   = $record->id;
+                                // ...Creo la nueva ubicacion en la tabla de ubicaciones
+                                $address = new AnotherAddress;
+                                $address->address = $data['address'];
+                                $address->phone_1 = $data['phone_1'];
+                                $address->phone_2 = $data['phone_2'];
+                                $address->city_id = $data['city_id'];
+                                $address->state_id = $data['state_id'];
+                                $address->country_id = $data['country_id'];
+                                $address->ambulanceParking = $data['ambulanceParking'];
+                                $address->relationship = $data['relationship'];
+                                $address->telemedicine_patient_id = $record->id;
                                 $address->save();
 
                                 $case = TelemedicineCase::create([
 
-                                    'code'                      => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id'   => $record->id,
-                                    'telemedicine_doctor_id'    => $data['doctor_id'],
-                                    'patient_name'              => $record->full_name,
-                                    'patient_age'               => $record->age,
-                                    'patient_sex'               => $record->sex,
-                                    'patient_phone'             => $address->phone_1,
-                                    'patient_phone_2'           => $address->phone_2,
-                                    'patient_address'           => $address->address,
-                                    'patient_country_id'        => $address->country_id,
-                                    'patient_state_id'          => $address->state_id,
-                                    'patient_city_id'           => $address->city_id,
-                                    'reason'                    => $data['reason'],
-                                    'ambulanceParking'         => $data['ambulanceParking'],
-                                    'status'                    => 'ASIGNADO',
-                                    'assigned_by'               => Auth::user()->name,
+                                    'code' => UtilsController::generateCaseCode(),
+                                    'telemedicine_patient_id' => $record->id,
+                                    'telemedicine_doctor_id' => $data['doctor_id'],
+                                    'patient_name' => $record->full_name,
+                                    'patient_age' => $record->age,
+                                    'patient_sex' => $record->sex,
+                                    'patient_phone' => $address->phone_1,
+                                    'patient_phone_2' => $address->phone_2,
+                                    'patient_address' => $address->address,
+                                    'patient_country_id' => $address->country_id,
+                                    'patient_state_id' => $address->state_id,
+                                    'patient_city_id' => $address->city_id,
+                                    'reason' => $data['reason'],
+                                    'ambulanceParking' => $data['ambulanceParking'],
+                                    'status' => 'ASIGNADO',
+                                    'assigned_by' => Auth::user()->name,
                                 ]);
 
                                 if ($case) {
 
-                                    $doctor         = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                    $name_patient   = $case['patient_name'];
-                                    $name           = $doctor->full_name;
-                                    $phone          = $doctor->phone;
-                                    $address        = $address->address;
-                                    $code           = $case->code;
-                                    $reason         = $data['reason'];
-                                    $email          = $doctor->email;
+                                    $doctor = TelemedicineDoctor::find($data['doctor_id'])->first();
+                                    $name_patient = $case['patient_name'];
+                                    $name = $doctor->full_name;
+                                    $phone = $doctor->phone;
+                                    $address = $address->address;
+                                    $code = $case->code;
+                                    $reason = $data['reason'];
+                                    $email = $doctor->email;
 
                                     AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
 
@@ -559,27 +564,46 @@ class TelemedicinePatientsTable
                                         ->send();
                                 }
                             }
-                        })
+                        }),
                 ])
+                    ->label('Más')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                    ->label('Eliminar Paciente')
-                    ->color('danger')
-                    ->icon('heroicon-o-trash')
-                    ->requiresConfirmation()
-                    ->modalHeading('Eliminar Paciente')
-                    ->modalDescription('¿Estas seguro de eliminar el paciente?. Esta accion elimina la acosiacion del paciente en la tabla. Si desea reversar la opracion debera asociar nuevamente al afiliado.')
-                    ->modalIcon('heroicon-o-trash')
-                    ->action(function (Collection $records) {
-                        foreach ($records as $record) {
-                            Log::info('OPERACIONES: El usuario '.Auth::user()->name.' elimino el paciente: ' . $record->full_name);
-                            $record->delete();
-                        }
-                    })
+                        ->label('Eliminar Paciente')
+                        ->color('danger')
+                        ->icon('heroicon-o-trash')
+                        ->requiresConfirmation()
+                        ->modalHeading('Eliminar Paciente')
+                        ->modalDescription('¿Está seguro de eliminar el paciente? Esta acción elimina la asociación del paciente. Para revertir deberá asociar nuevamente al afiliado.')
+                        ->modalIcon('heroicon-o-trash')
+                        ->action(function (Collection $records) {
+                            foreach ($records as $record) {
+                                Log::info('OPERACIONES: El usuario '.Auth::user()->name.' elimino el paciente: '.$record->full_name);
+                                $record->delete();
+                            }
+                        }),
                 ]),
             ])
             ->striped();
+    }
+
+    /**
+     * Asigna un color de badge estable según el texto (misma cadena = mismo color).
+     *
+     * @param  array<int, string>  $palette
+     */
+    private static function badgeColorFromString(?string $state, array $palette): string
+    {
+        if ($state === null || $state === '') {
+            return 'gray';
+        }
+
+        $index = crc32(mb_strtolower($state)) % count($palette);
+
+        return $palette[$index];
     }
 }

@@ -6,10 +6,12 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
 
 class DressTylorQuotesTable
@@ -52,7 +54,24 @@ class DressTylorQuotesTable
                     ->openUrlInNewTab()
                     ->hidden(fn ($record) => empty($record->quote_structure))
                     ->color('gray'),
-                ViewAction::make(),
+                Action::make('preview_pdf')
+                    ->label('Vista previa')
+                    ->icon('heroicon-o-document-magnifying-glass')
+                    ->color('info')
+                    ->modalHeading('Vista previa de cotizacion')
+                    ->modalDescription('Visualice el PDF de la cotizacion con estilo iOS antes de descargar.')
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalIcon('heroicon-o-eye')
+                    ->modalContent(function ($record): ViewContract {
+                        return View::make('filament.business.dress-tylor-quotes.pdf-preview', [
+                            'pdfPreviewUrl' => route('business.dress-tylor-quotes.pdf', ['record' => $record->getKey(), 'preview' => 1]),
+                            'pdfDownloadUrl' => route('business.dress-tylor-quotes.pdf', ['record' => $record->getKey()]),
+                        ]);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->action(fn () => null)
+                    ->hidden(fn ($record) => empty($record->quote_structure)),
                 EditAction::make(),
             ])
             ->toolbarActions([

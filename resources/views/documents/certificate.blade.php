@@ -205,41 +205,7 @@
                             <td class="titulos_table_uno">Periodo Facturado:</td>
                             <td class="contenido_table_uno">
                                 <p class="contenido_table_uno">Desde: {{ $pagador['fecha_vigencia'] }}</p>
-                                @php
-                                    use Carbon\Carbon;
-                                    use Illuminate\Support\Facades\Log;
-
-                                        if($pagador['fecha_vigencia'] != '') {
-
-                                            $fecha = $pagador['fecha_vigencia'];
-
-                                            Log::info('fecha_vigencia: ' . $pagador['fecha_vigencia']);
-                                            Log::info('fecha_vigencia_final: ' . $pagador['fecha_vigencia_final']);
-
-                                            if($pagador['frecuencia_pago'] == 'MENSUAL'){
-                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
-                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addMonths(1)->format('d/m/Y');
-                                            }
-                                            if($pagador['frecuencia_pago'] == 'TRIMESTRAL'){
-                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
-                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addMonths(3)->format('d/m/Y');
-                                            }
-                                            if($pagador['frecuencia_pago'] == 'SEMESTRAL'){
-                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
-                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addMonths(6)->format('d/m/Y');
-                                            }
-                                            if($pagador['frecuencia_pago'] == 'ANUAL'){
-                                                Log::info('frecuencia_pago: ' . $pagador['frecuencia_pago']);
-                                                $fechaVigenciaHasta = Carbon::createFromFormat('d/m/Y', $pagador['fecha_vigencia'])->addYear()->format('d/m/Y');
-
-                                            }
-
-                                        }else{
-                                            $fechaVigenciaHasta = '';
-                                        }
-                                        Log::info('fecha_vigencia_hasta: ' . $fechaVigenciaHasta);
-                                @endphp
-                                <p class="contenido_table_uno">Hasta: {{ $fechaVigenciaHasta }}</p>
+                                <p class="contenido_table_uno">Hasta: {{ $pagador['periodo_facturado_hasta'] }}</p>
                             </td>
                         </tr>
                     </tbody>
@@ -261,19 +227,6 @@
                 </span>
             </p>
 
-            @php
-            // Simulación de datos de ejemplo
-            $datosTabla = [
-            ['NOMBRE Y APELLIDO', 'DOCUMENTO DE IDENTIDAD', 'FECHA DE NACIMIENTO', 'PARENTESCO'],
-            ];
-
-            $colorFondoGris = '#f7f7f7';
-            $colorFondoBlanco = '#ffffff';
-            $colorBorde = '#cccccc';
-            $colorFondoEncabezado = '#e0e0e0';
-
-            @endphp
-
             <!-- Tabla Afiliados -->
             <div style="width: 100%; max-width: 600px; ">
 
@@ -288,10 +241,10 @@
                     {{-- Encabezado de la Tabla --}}
                     <thead style="background-color: #b5b5b5;">
                         <tr>
-                            @foreach ($datosTabla[0] as $header)
+                            @foreach (['NOMBRE Y APELLIDO', 'DOCUMENTO DE IDENTIDAD', 'FECHA DE NACIMIENTO', 'PARENTESCO'] as $header)
                             <th style="
                                         color: #ffffff;
-                                        border: 1px solid {{ $colorBorde }};
+                                        border: 1px solid #cccccc;
                                         padding: 4px; 
                                         text-align: left;
                                         font-weight: bold;
@@ -305,17 +258,10 @@
 
                     {{-- Cuerpo de la Tabla --}}
                     <tbody>
-                        {{-- Iteramos sobre las filas de datos, omitiendo el encabezado (índice 0) --}}
-                        @foreach ($afiliates as $index => $celda)
-                        @php
-                        // Determinamos el color de fondo: Gris para filas pares (empezando en 0), Blanco para impares
-                        // Usamos (index + 1) % 2 == 0 para alternar colores
-                        $backgroundColor = ($index % 2 == 0) ? $colorFondoBlanco : $colorFondoGris;
-                        @endphp
-
-                        <tr style="background-color: {{ $backgroundColor }};">
+                        @foreach ($affiliateTableRows as $index => $celda)
+                        <tr style="background-color: {{ $index % 2 === 0 ? '#ffffff' : '#f7f7f7' }};">
                             <td style="
-                                            border: 1px solid {{ $colorBorde }};
+                                            border: 1px solid #cccccc;
                                             padding: 4px;
                                             text-align: left;
                                             text-transform: uppercase;
@@ -323,21 +269,21 @@
                                 {{ $celda['full_name'] }}
                             </td>
                             <td style="
-                                            border: 1px solid {{ $colorBorde }};
+                                            border: 1px solid #cccccc;
                                             padding: 4px;
                                             text-align: left;
                                         ">
                                 {{ $celda['nro_identificacion'] }}
                             </td>
                             <td style="
-                                            border: 1px solid {{ $colorBorde }};
+                                            border: 1px solid #cccccc;
                                             padding: 4px;
                                             text-align: left;
                                         ">
                                 {{ $celda['birth_date'] }}
                             </td>
                             <td style="
-                                            border: 1px solid {{ $colorBorde }};
+                                            border: 1px solid #cccccc;
                                             padding: 4px;
                                             text-align: left;
                                             text-transform: uppercase;
@@ -367,15 +313,6 @@
                 </span>
             </p>
 
-            @php
-            // Colores base:
-            $colorFondoGris = '#ffffff';
-            $colorFondoBlanco = '#ffffff';
-            $colorBorde = '#cccccc';
-            $colorFondoEncabezado = '#e0e0e0';
-
-            @endphp
-
             <!-- Tabla Beneficios -->
             <div style="width: 100%; max-width: 600px;">
 
@@ -388,31 +325,28 @@
                         ">
                     {{-- Cuerpo de la Tabla --}}
                     <tbody>
-                        {{-- Iteramos sobre las filas de datos, omitiendo el encabezado (índice 0) --}}
-                        @foreach ($beneficios_table as $index => $fila)
+                        @foreach ($beneficiosRows as $row)
                         <tr>
                             {{-- Columna 1: Descripción --}}
                             <td style="
-                                    border-bottom: 1px solid {{ $colorBorde }};
+                                    border-bottom: 1px solid #cccccc;
                                     padding: 0px;
                                     text-align: left;
                                 ">
-                                {{ $fila }}
+                                {{ $row['text'] }}
                             </td>
 
                             {{-- Columna 2: Ícono Unicode (Centrado) --}}
                             <td style="
-                                        border-bottom: 1px solid {{ $colorBorde }};
+                                        border-bottom: 1px solid #cccccc;
                                         padding: 8px;
                                         text-align: right; 
                                         /* Aplicamos el color y tamaño de fuente para simular el ícono */
                                         font-size: 9px; 
                                         font-weight: bold;
                                     ">
-                                @if($fila == "EMERGENCIAS MÉDICAS POR PATOLOGIAS LISTADAS")
-                                    <span style="font-size: 14px; font-weight: bold;">US$ {{ number_format($pagador['cobertura'], 2, ',', '.') }}</span>
-                                @elseif($fila == "ASISTENCIA MÉDICA POR ACCIDENTES")
-                                    <span style="font-size: 14px; font-weight: bold;">US$ {{ number_format($pagador['cobertura'], 2, ',', '.') }}</span>
+                                @if ($row['show_cobertura'])
+                                    <span style="font-size: 14px; font-weight: bold;">US$ {{ $coberturaFormatted }}</span>
                                 @else
                                     <img src="{{ public_path('storage/certificados/check-beneficios.png') }}" style="width: 12px; height: 12px;" alt="">
                                 @endif
