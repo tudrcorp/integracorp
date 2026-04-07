@@ -7,7 +7,7 @@ use App\Filament\Business\Resources\Helpdesks\Pages\EditHelpdesk;
 use App\Filament\Business\Resources\Helpdesks\Pages\ListHelpdesks;
 use App\Filament\Business\Resources\Helpdesks\Schemas\HelpdeskForm;
 use App\Filament\Business\Resources\Helpdesks\Tables\HelpdesksTable;
-use App\Models\Helpdesk;
+use App\Models\HelpDesk;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,7 +16,7 @@ use UnitEnum;
 
 class HelpdeskResource extends Resource
 {
-    protected static ?string $model = Helpdesk::class;
+    protected static ?string $model = HelpDesk::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-circle';
 

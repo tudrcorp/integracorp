@@ -1,7 +1,7 @@
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance
 @php
-    use App\Models\Helpdesk;
+    use App\Models\HelpDesk;
     use Filament\Facades\Filament;
 
     $visible = false;
@@ -10,7 +10,7 @@
         $visible = true;
     }
     $userName = auth()->user()->name ?? '';
-    $helpdeskCreateUrl = Filament::getResourceUrl(Helpdesk::class, 'create');
+    $helpdeskCreateUrl = Filament::getResourceUrl(HelpDesk::class, 'create');
 @endphp
 
 {{-- Contenedor: botón visible para todos; pastilla de módulos solo SUPERADMIN --}}

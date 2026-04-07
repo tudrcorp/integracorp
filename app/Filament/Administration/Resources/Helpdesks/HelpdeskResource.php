@@ -7,7 +7,7 @@ use App\Filament\Administration\Resources\Helpdesks\Pages\EditHelpdesk;
 use App\Filament\Administration\Resources\Helpdesks\Pages\ListHelpdesks;
 use App\Filament\Administration\Resources\Helpdesks\Schemas\HelpdeskForm;
 use App\Filament\Administration\Resources\Helpdesks\Tables\HelpdesksTable;
-use App\Models\Helpdesk;
+use App\Models\HelpDesk;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -15,7 +15,7 @@ use Filament\Tables\Table;
 
 class HelpdeskResource extends Resource
 {
-    protected static ?string $model = Helpdesk::class;
+    protected static ?string $model = HelpDesk::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
 

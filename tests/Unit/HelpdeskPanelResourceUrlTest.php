@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Models\Helpdesk;
+use App\Models\HelpDesk;
 use Filament\Facades\Filament;
 use Tests\TestCase;
 
@@ -11,7 +11,7 @@ uses(TestCase::class);
 it('genera la URL de creación de helpdesk según el panel activo', function (string $panelId) {
     Filament::setCurrentPanel($panelId);
 
-    $url = Filament::getResourceUrl(Helpdesk::class, 'create');
+    $url = Filament::getResourceUrl(HelpDesk::class, 'create');
 
     expect($url)->toContain($panelId);
 })->with(['administration', 'business', 'operations', 'marketing']);
@@ -19,14 +19,14 @@ it('genera la URL de creación de helpdesk según el panel activo', function (st
 it('genera la URL de edición de helpdesk según el panel activo', function (string $panelId) {
     Filament::setCurrentPanel($panelId);
 
-    $ticket = Helpdesk::make([
+    $ticket = HelpDesk::make([
         'description' => 'Ticket de prueba',
         'priority' => 'MEDIA',
     ]);
     $ticket->id = 42;
     $ticket->exists = true;
 
-    $url = Filament::getResourceUrl(Helpdesk::class, 'edit', ['record' => $ticket]);
+    $url = Filament::getResourceUrl(HelpDesk::class, 'edit', ['record' => $ticket]);
 
     expect($url)->toContain($panelId);
     expect($url)->toContain('42');
