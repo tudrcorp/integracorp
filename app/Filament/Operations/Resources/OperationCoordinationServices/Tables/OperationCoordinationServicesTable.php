@@ -2,7 +2,6 @@
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Tables;
 
-use App\Models\OperationStatusService;
 use App\Models\OperationTypeNegotiation;
 use App\Models\OperationTypeService;
 use App\Models\Supplier;
@@ -24,7 +23,11 @@ class OperationCoordinationServicesTable
             ->heading('Listado de Coordinacion de Servicios')
             ->description('Lista de servicios coordinados en el sistema para la telemedicina, RETAIL y otros servicios')
             ->defaultSort('date_solicitud', 'desc')
+            ->modifyQueryUsing(fn ($query) => $query->with('telemedicinePriority'))
             ->columns([
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->searchable(),
                 TextColumn::make('date_solicitud')
                     ->label('Fecha de Solicitud')
                     ->icon('heroicon-m-calendar-days')
@@ -54,40 +57,68 @@ class OperationCoordinationServicesTable
                 TextColumn::make('reference_number')
                     ->label('Número de Referencia')
                     ->searchable(),
-                SelectColumn::make('status')
-                    ->label('Estatus')
-                    ->options(OperationStatusService::all()->pluck('description', 'description'))
-                    ->searchableOptions()
-                    ->afterStateUpdated(function ($record, $state) {
-                        $record->updated_by = Auth::user()->name;
-                        $record->save();
+                TextColumn::make('status')
+                    ->label('Estatus del Servicio')
+                    ->badge()
+                    ->color(function (mixed $state): string {
+                        return match ($state) {
+                            'PENDIENTE' => 'warning',
+                            'PENDIENTE POR RESULTADOS' => 'info',
+                            'EN GESTION' => 'primary',
+                            'CANCELADO' => 'gray',
+                            'FINALIZADO' => 'success',
+                            'NOVEDAD ADMON ESTUDIO' => 'danger',
+                            default => 'gray',
+                        };
+                    })
+                    ->searchable(),
+                TextColumn::make('telemedicinePriority.name')
+                    ->label('Prioridad')
+                    ->badge()
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'NO URGENTE' => 'no-urgente',
+                            'ESTANDAR' => 'estandar',
+                            'URGENCIA' => 'urgencia',
+                            'EMERGENCIA' => 'emergencia',
+                            'CRITICO' => 'critico',
+                        };
+                    })
+                    ->icon(function (string $state): string {
+                        return match ($state) {
+                            'NO URGENTE' => 'healthicons-f-health',
+                            'ESTANDAR' => 'healthicons-f-health',
+                            'URGENCIA' => 'healthicons-f-health',
+                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
+                            'CRITICO' => 'heroicon-c-shield-exclamation',
+                        };
                     })
                     ->searchable(),
                 TextColumn::make('holder')
                     ->label('Titular')
                     ->badge()
-                    ->color('warning')
+                    ->color('gray')
                     ->searchable(),
                 TextColumn::make('ci_holder')
                     ->label('Cédula del Titular')
                     ->badge()
-                    ->color('warning')
+                    ->color('gray')
                     ->searchable(),
                 TextColumn::make('patient')
                     ->label('Paciente')
                     ->badge()
-                    ->color('warning')
+                    ->color('gray')
                     ->searchable(),
                 TextColumn::make('ci_patient')
                     ->label('Cédula del Paciente')
                     ->badge()
-                    ->color('warning')
+                    ->color('gray')
                     ->searchable(),
                 TextColumn::make('birth_date_patient')
                     ->label('Fecha de Nacimiento del Paciente')
                     ->icon('heroicon-m-calendar-days')
                     ->badge()
-                    ->color('warning')
+                    ->color('gray')
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('relationship_patient')
@@ -237,30 +268,20 @@ class OperationCoordinationServicesTable
                         $record->updated_by = Auth::user()->name;
                         $record->save();
                     }),
-                TextInputColumn::make('bill_number')
+                TextColumn::make('bill_number')
                     ->label('Número de Factura')
-                    ->searchable()
-                    ->afterStateUpdated(function ($record, $state) {
-                        $record->updated_by = Auth::user()->name;
-                        $record->save();
-                    }),
-                TextInputColumn::make('bill_price')
-                    ->type('number')
-                    ->inputMode('decimal')
+                    ->searchable(),
+                TextColumn::make('bill_price')
+                    ->money()
+                    ->badge()
+                    ->color(fn ($record) => $record->bill_price > 0 ? 'success' : 'gray')
+                    ->icon('heroicon-s-currency-dollar')
                     ->prefix('US$')
                     ->label('Precio de Factura')
-                    ->sortable()
-                    ->afterStateUpdated(function ($record, $state) {
-                        $record->updated_by = Auth::user()->name;
-                        $record->save();
-                    }),
-                TextInputColumn::make('bill_date')
+                    ->sortable(),
+                TextColumn::make('bill_date')
                     ->label('Fecha de Factura')
-                    ->searchable()
-                    ->afterStateUpdated(function ($record, $state) {
-                        $record->updated_by = Auth::user()->name;
-                        $record->save();
-                    }),
+                    ->searchable(),
                 SelectColumn::make('incidence')
                     ->label('Incidencia')
                     ->options(['SI' => 'SI', 'NO' => 'NO'])
@@ -287,10 +308,12 @@ class OperationCoordinationServicesTable
                     ->searchable(),
                 TextColumn::make('created_by')
                     ->label('Creado Por')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_by')
                     ->label('Actualizado Por')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Creado el')
                     ->description(fn ($record) => $record->created_at->diffForHumans())
@@ -305,6 +328,20 @@ class OperationCoordinationServicesTable
                     ->datetime('d/m/Y')
                     ->sortable(),
             ])
+            ->recordClasses(function ($record): array {
+                /** Paleta alineada con AppServiceProvider (no-urgente, estandar, urgencia, emergencia, critico) */
+                $name = $record->telemedicinePriority?->name;
+                $classes = match ($name) {
+                    'NO URGENTE' => 'bg-[#005ca9]/10 dark:bg-[#005ca9]/25 border-l-4 border-[#005ca9]',
+                    'ESTANDAR' => 'bg-[#02976d]/10 dark:bg-[#02976d]/25 border-l-4 border-[#02976d]',
+                    'URGENCIA' => 'bg-[#eab527]/10 dark:bg-[#eab527]/25 border-l-4 border-[#eab527]',
+                    'EMERGENCIA' => 'bg-[#f17f29]/10 dark:bg-[#f17f29]/25 border-l-4 border-[#f17f29]',
+                    'CRITICO' => 'bg-[#e4003b]/10 dark:bg-[#e4003b]/25 border-l-4 border-[#e4003b]',
+                    default => 'border-l-4 border-gray-200 bg-gray-50/50 dark:border-gray-600 dark:bg-gray-950/20',
+                };
+
+                return [$classes];
+            })
             ->filters([
                 //
             ])

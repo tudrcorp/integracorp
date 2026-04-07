@@ -1,16 +1,35 @@
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance
 @php
+    use App\Models\Helpdesk;
+    use Filament\Facades\Filament;
+
     $visible = false;
     $user = auth()->user()->departament;
     if (in_array('SUPERADMIN', $user)) {
         $visible = true;
     }
     $userName = auth()->user()->name ?? '';
+    $helpdeskCreateUrl = Filament::getResourceUrl(Helpdesk::class, 'create');
 @endphp
 
-<div class="{{ $visible ? 'hidden sm:block' : 'hidden' }}">
-    <nav class="py-3 px-1" role="navigation" aria-label="Módulos">
+{{-- Contenedor: botón visible para todos; pastilla de módulos solo SUPERADMIN --}}
+<div class="hidden sm:flex sm:items-center sm:gap-4 sm:py-3">
+    {{-- Crear Ticket: visible para todos los usuarios autenticados --}}
+    <a
+        href="{{ $helpdeskCreateUrl }}"
+        class="ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98]"
+        title="Crear ticket de soporte"
+        aria-label="Crear Ticket"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="size-[1.125rem] shrink-0" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        <span class="tracking-tight">Crear Ticket</span>
+    </a>
+
+    @if ($visible)
+    <nav class="px-1 shrink-0 flex items-center" role="navigation" aria-label="Módulos">
 
         {{-- Una sola pastilla tipo iOS / Dynamic Island --}}
         <div
@@ -74,6 +93,36 @@
                 .menu-btn-marketing:hover { background-color: #0e7490 !important; }
                 .menu-btn-operations { background-color: #075985 !important; }
                 .menu-btn-operations:hover { background-color: #0c4a6e !important; }
+                /* Crear Ticket: success + sombras tipo iOS (capas suaves + anillo) */
+                .ticket-btn-ios {
+                    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+                    box-shadow:
+                        0 1px 2px rgba(0, 0, 0, 0.06),
+                        0 4px 12px rgba(22, 163, 74, 0.35),
+                        0 12px 28px rgba(0, 0, 0, 0.08),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                }
+                .ticket-btn-ios:hover {
+                    background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
+                    box-shadow:
+                        0 2px 4px rgba(0, 0, 0, 0.08),
+                        0 6px 16px rgba(22, 163, 74, 0.4),
+                        0 16px 32px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                }
+                .dark .ticket-btn-ios {
+                    background: linear-gradient(180deg, #15803d 0%, #166534 100%);
+                    box-shadow:
+                        0 1px 2px rgba(0, 0, 0, 0.4),
+                        0 4px 16px rgba(34, 197, 94, 0.25),
+                        0 12px 32px rgba(0, 0, 0, 0.35),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+                    border-color: rgba(255, 255, 255, 0.08);
+                }
+                .dark .ticket-btn-ios:hover {
+                    background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+                }
             </style>
 
             {{-- Separador entre nombre y botones --}}
@@ -146,4 +195,5 @@
             </a>
         </div>
     </nav>
+    @endif
 </div>

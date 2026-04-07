@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\AffiliationBusinessDocumentsController;
 use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\SupplierReportPdfController;
+use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Http\Controllers\UtilsController;
 use App\Mail\NotificationRenewAffiliationMail;
 use App\Models\AgentDocument;
@@ -91,11 +94,23 @@ Route::get('operations/export-suppliers-csv', App\Http\Controllers\SupplierExpor
     ->middleware(['web', 'auth'])
     ->name('operations.suppliers.export-csv');
 
+Route::get('operations/suppliers/report/preview', [SupplierReportPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.suppliers.report.preview');
+
+Route::get('operations/suppliers/report/download', [SupplierReportPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.suppliers.report.download');
+
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
     $quote = \App\Models\DressTylorQuote::findOrFail($record);
     $structure = $quote->quote_structure;
     if (empty($structure)) {
         abort(404, 'Esta cotización no tiene estructura guardada para generar el PDF.');
+    }
+
+    if (request()->boolean('preview')) {
+        return \App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm::generateInlinePdfFromQuoteStructure($structure);
     }
 
     return \App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm::generatePdfFromQuoteStructure($structure);
@@ -116,6 +131,34 @@ Route::get('administration/aviso-cobro/regenerate/{collection}', function (Colle
 })
     ->middleware(['web', 'auth'])
     ->name('aviso-cobro.regenerate');
+
+Route::post('administration/aviso-cobro/regenerate-async/{collection}', [
+    \App\Http\Controllers\AvisoCobroController::class,
+    'regenerateAsync',
+])
+    ->middleware(['web', 'auth'])
+    ->name('aviso-cobro.regenerate-async');
+
+Route::post('administration/aviso-cobro/send-email/{collection}', [
+    \App\Http\Controllers\AvisoCobroController::class,
+    'sendEmail',
+])
+    ->middleware(['web', 'auth'])
+    ->name('aviso-cobro.send-email');
+
+Route::post('business/affiliations/documents/regenerate-async/{affiliation}', [
+    AffiliationBusinessDocumentsController::class,
+    'regenerateAsync',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-documents.regenerate-async');
+
+Route::post('business/affiliations/documents/send-email/{affiliation}', [
+    AffiliationBusinessDocumentsController::class,
+    'sendEmail',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-documents.send-email');
 
 Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');
@@ -323,7 +366,17 @@ Route::get('/imag', function () {
 });
 
 Route::get('/tarjeta', function () {
-    $pdf = Pdf::loadView('documents.tarjeta-afiliado');
+    $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
+        'name' => 'NOMBRE EJEMPLO APELLIDO',
+        'ci' => 'V-12345678',
+        'code' => 'DEMO-1',
+        'plan' => 'PLAN INICIAL',
+        'frecuencia' => 'ANUAL',
+        'cobertura' => '15304.07',
+        'desde' => '01/01/2025',
+        'hasta' => '01/01/2026',
+    ]);
+    $pdf = Pdf::loadView('documents.tarjeta-afiliado', compact('data'));
 
     return $pdf->stream();
 });

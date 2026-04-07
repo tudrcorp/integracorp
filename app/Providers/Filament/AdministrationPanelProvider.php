@@ -27,7 +27,6 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
-
 class AdministrationPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -92,9 +91,9 @@ class AdministrationPanelProvider extends PanelProvider
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('PERFIL'),
+                'profile' => fn (Action $action) => $action->label('PERFIL'),
                 // ...
-                'logout' => fn(Action $action) => $action
+                'logout' => fn (Action $action) => $action
                     ->label('CERRAR SESIÓN')
                     ->color('danger')
                     ->url(route('internal')),
@@ -107,9 +106,10 @@ class AdministrationPanelProvider extends PanelProvider
                         if (in_array('SUPERADMIN', $user)) {
                             return false;
                         }
+
                         return true;
                     })
-                    ->action(fn() => redirect(route('filament.business.pages.dashboard'))),
+                    ->action(fn () => redirect(route('filament.business.pages.dashboard'))),
             ])
             ->plugins([
                 FilamentBackgroundsPlugin::make()
@@ -124,7 +124,32 @@ class AdministrationPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn() => view('filament.menu-user')
+                fn () => view('filament.menu-user')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): string => view('filament.administration.partials.aviso-cobro-panel-script')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::CONTENT_START,
+                function () {
+                    $colaborador = \App\Models\RrhhColaborador::query()
+                        ->where('user_id', auth()->id())
+                        ->first();
+                    $tickets = $colaborador
+                        ? \App\Models\HelpDesk::query()
+                            ->where('rrhh_colaborador_id', $colaborador->id)
+                            ->whereIn('status', ['PENDIENTE POR INICIAR', 'EN PROCESO'])
+                            ->orderByDesc('id')
+                            ->limit(30)
+                            ->get()
+                        : collect();
+
+                    return view('filament.tickets-ticker', [
+                        'tickets' => $tickets,
+                        'fullWidth' => true,
+                    ]);
+                }
             )
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->viteTheme('resources/css/filament/admin/theme.css');

@@ -3,8 +3,11 @@
 namespace App\Filament\Business\Resources\Plans\Pages;
 
 use App\Filament\Business\Resources\Plans\PlanResource;
+use App\Models\AgeRange;
+use App\Models\Benefit;
+use App\Models\BenefitPlan;
+use App\Models\Coverage;
 use App\Models\Fee;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreatePlan extends CreateRecord
@@ -13,172 +16,80 @@ class CreatePlan extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        dd($data);
-        session()->put('edades', $data['edades']);
-        session()->put('coberturas', $data['coberturas']);
+        // dd($data);
+
+        // BENEFICIOS
+        $beneficios = $data['package_benefit_ids'];
+        session()->put('beneficios', $beneficios);
+
+        // COBERTURAS
+        $coberturas = $data['general_coverages'];
+        session()->put('coberturas', $coberturas);
 
         return $data;
     }
 
-    protected function beforeCreate()
+    protected function beforeCreate(): void
     {
+        $beneficios = session()->get('beneficios');
         $coberturas = session()->get('coberturas');
-        $edades = session()->get('edades');
-
-        // Validación detallada de cada cobertura
-        foreach ($coberturas as $index => $cobertura) {
-            // Verifica que el campo 'price_fees' exista y sea numérico
-            if (! isset($cobertura['price_fees']) || ! is_numeric($cobertura['price_fees'])) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('La cobertura en la posición '.($index + 1).' no tiene un precio válido.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-                $this->halt();
-            }
-
-            if ($cobertura['price_fees'] <= 0) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('El precio de la tarifa anual para el rango de edad debe ser mayor a 0.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-                $this->halt();
-            }
-        }
-
-        foreach ($edades as $index => $edad) {
-            if (! isset($edad['range']) || empty($edad['range'])) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('El rango de edad en la posición '.($index + 1).' no es válido.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-                $this->halt();
-            }
-
-            // La edad inicial no puede ser mayor a la edad final
-            if ($edad['age_init'] >= $edad['age_end']) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('La edad inicial no puede ser mayor o igual a la edad final en la posición '.($index + 1).'.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-                $this->halt();
-            }
-
-            // la edad inicial no puede ser menor a 0
-            if ($edad['age_init'] < 0) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('La edad inicial no puede ser menor a 0 en la posición '.($index + 1).'.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-                $this->halt();
-            }
-
-            // la edad final no puede ser mayor a 120
-            if ($edad['age_end'] > 120) {
-                Notification::make()
-                    ->title('ERROR')
-                    ->body('La edad final no puede ser mayor a 120 en la posición '.($index + 1).'.')
-                    ->icon('heroicon-m-tag')
-                    ->iconColor('danger')
-                    ->danger()
-                    ->send();
-                $this->halt();
-            }
-        }
+        // dd($coberturas);
     }
 
     protected function afterCreate(): void
     {
-        // dd($this->getRecord()->toArray(), session()->all());
-        try {
 
-            // ...Cargamos las coberturas en la tabla de coverages
-            $coberturas = session()->get('coberturas');
+        // Guardamos los beneficios y coberturas en la tabla que asocia los beneficios con el plan
+        $beneficios = session()->get('beneficios');
 
-            for ($i = 0; $i < count($coberturas); $i++) {
+        for ($i = 0; $i < count($beneficios); $i++) {
+            BenefitPlan::create([
+                'plan_id' => $this->getRecord()->id,
+                'benefit_id' => $beneficios[$i],
+                'description' => Benefit::find($beneficios[$i])->description,
+                'created_by' => auth()->user()->name,
+            ]);
+        }
 
-                if ($coberturas[$i]['price_coverages'] != null) {
-                    $this->getRecord()->coverages()->create([
-                        'plan_id' => $this->getRecord()->id,
-                        'price' => $coberturas[$i]['price_coverages'],
-                        'status' => 'ACTIVO',
-                        'created_by' => auth()->user()->name,
-                    ]);
-                }
+        // ACTUALIZO las coberturas en la tabla de cobertura con el ID del plan
+        $coberturas = session()->get('coberturas');
+        for ($i = 0; $i < count($coberturas); $i++) {
+            $coverage = Coverage::find($coberturas[$i]['coverage_id']);
+            $coverage->plan_id = $this->getRecord()->id;
+            $coverage->status = 'ACTIVO';
+            $coverage->created_by = auth()->user()->name;
+            $coverage->save();
+        }
+
+        // Actualizo la tabla de rangos de edad con el ID del plan y el ID de la cobertura
+        $coberturas = session()->get('coberturas');
+        for ($i = 0; $i < count($coberturas); $i++) {
+            for ($j = 0; $j < count($coberturas[$i]['age_rates']); $j++) {
+                $ageRange = AgeRange::find($coberturas[$i]['age_rates'][$j]['age_range_id']);
+                $ageRange->plan_id = $this->getRecord()->id;
+                $ageRange->coverage_id = $coberturas[$i]['coverage_id'];
+                $ageRange->fee = $coberturas[$i]['age_rates'][$j]['rate'];
+                $ageRange->range = AgeRange::find($coberturas[$i]['age_rates'][$j]['age_range_id'])->range;
+                $ageRange->status = 'ACTIVO';
+                $ageRange->created_by = auth()->user()->name;
+                $ageRange->save();
             }
+        }
 
-            // ...Cargamos las edades en la tabla de ages
-            $edades = session()->get('edades');
-            // dd($edades);
-            for ($i = 0; $i < count($edades); $i++) {
-                $this->getRecord()->ageRanges()->create([
-                    'plan_id' => $this->getRecord()->id,
-                    'range' => $edades[$i]['range'],
+        // Creo el registro en la tabla de fees con el age_range_id y el coverage_id y el precio
+        $coberturas = session()->get('coberturas');
+        for ($i = 0; $i < count($coberturas); $i++) {
+            for ($j = 0; $j < count($coberturas[$i]['age_rates']); $j++) {
+                $fee = Fee::create([
+                    'age_range_id' => $coberturas[$i]['age_rates'][$j]['age_range_id'],
+                    'coverage_id' => $coberturas[$i]['coverage_id'],
+                    'price' => $coberturas[$i]['age_rates'][$j]['rate'],
+                    'range' => AgeRange::find($coberturas[$i]['age_rates'][$j]['age_range_id'])->range,
+                    'coverage' => Coverage::find($coberturas[$i]['coverage_id'])->price,
                     'status' => 'ACTIVO',
                     'created_by' => auth()->user()->name,
-                    'age_init' => $edades[$i]['age_init'],
-                    'age_end' => $edades[$i]['age_end'],
                 ]);
             }
-
-            $ageRange = $this->getRecord()->ageRanges()->get()->toArray();
-            $coverages = $this->getRecord()->coverages()->get()->toArray();
-
-            // dd($ageRange, $coverages, count($ageRange), count($coverages));
-
-            for ($i = 0; $i < count($coverages); $i++) {
-
-                for ($j = 0; $j < count($ageRange); $j++) {
-                    $fee = new Fee;
-                    $fee->age_range_id = $ageRange[$j]['id'];
-                    $fee->coverage_id = $coverages[$i]['id'];
-                    $fee->price = $coberturas[$i]['price_fees'];
-                    $fee->status = 'ACTIVO';
-                    $fee->created_by = auth()->user()->name;
-                    $fee->range = $edades[$j]['range'];
-                    $fee->coverage = $coberturas[$i]['price_coverages'];
-                    $fee->save();
-                }
-            }
-
-            // dd($ageRange, $coverages);
-            // ..Cargamos la tabla de fees
-            // for ($i = 0; $i < count($ageRange); $i++) {
-
-            //     $fee = new Fee();
-            //     $fee->age_range_id  = $ageRange[$i]['id'];
-            //     $fee->coverage_id   = isset($coverages[$i]['id']) ? $coverages[$i]['id'] : null;
-            //     $fee->price         = $coberturas[$i]['price_fees'];
-            //     $fee->status        = 'ACTIVO';
-            //     $fee->created_by    = auth()->user()->name;
-            //     $fee->range         = $edades[$i]['range'];
-            //     $fee->coverage      = $coberturas[$i]['price_coverages'];
-            //     $fee->save();
-            // }
-
-        } catch (\Throwable $th) {
-            dd($th);
-            Notification::make()
-                ->title('ERROR')
-                ->body($th->getMessage())
-                ->icon('heroicon-m-tag')
-                ->iconColor('danger')
-                ->danger()
-                ->send();
         }
     }
 }

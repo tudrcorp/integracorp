@@ -5,13 +5,11 @@ namespace App\Filament\Business\Resources\Affiliations\Tables;
 use App\Filament\Exports\AffiliationExporter;
 use App\Filament\Resources\Affiliations\AffiliationResource;
 use App\Http\Controllers\AffiliationController;
-use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Mail\UploadPayment;
 use App\Models\Affiliation;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\Agent;
-use App\Models\DetailIndividualQuote;
 use App\Models\User;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -19,9 +17,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -34,24 +30,26 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use ZipArchive;
+use Illuminate\Support\Facades\View;
 
 class AffiliationsTable
 {
+    private const COLUMN_GROUP_HEADER_CLASS = '[&_th]:bg-gradient-to-r [&_th]:from-slate-100/95 [&_th]:via-slate-50/90 [&_th]:to-transparent dark:[&_th]:from-white/[0.08] dark:[&_th]:via-white/[0.04] dark:[&_th]:to-transparent [&_th]:font-semibold [&_th]:text-slate-800 dark:[&_th]:text-slate-100 [&_th]:border-b [&_th]:border-slate-200/80 dark:[&_th]:border-white/10';
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -60,126 +58,72 @@ class AffiliationsTable
                 if (Auth::user()->is_accountManagers) {
                     return Affiliation::query()->where('ownerAccountManagers', Auth::user()->id);
                 }
+
                 return Affiliation::query();
             })
             ->defaultSort('created_at', 'desc')
-            ->heading('AFILIACIONES INDIVIDUALES')
-            ->description('Lista de afiliaciones individuales registradas en el sistema')
+            ->heading('Afiliaciones individuales')
+            ->description('Listado completo: plan, titular, tomador, montos y estatus. Las filas con emisión hoy se resaltan en verde.')
+            ->emptyStateHeading('Sin afiliaciones')
+            ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros aplicados.')
             ->columns([
                 TextColumn::make('code')
-                    ->label('Codigo')
+                    ->label('Código')
                     ->icon(function ($record) {
                         $now = Carbon::today();
-                        if($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
                             return 'heroicon-c-star';
                         }
+
                         return 'heroicon-s-user-group';
                     })
-                    ->iconColor(function ($record) {
-                        $now = Carbon::today();
-                        // Forzamos el color del icono a rojo (danger) solo cuando el if es true
-                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
-                            return 'danger';
-                        }
-                        return null; // Color por defecto (blanco por el estilo extraAttributes)
-                    })
-                    ->badge(function ($record) {
-                        $now = Carbon::today();
-                        if($record->status == 'ACTIVA' && $record->created_at >= $now) {
-                            return false;
-                        }
-                        return true;
-
-                    })
-                    ->color(function ($record) {
-                        return 'success';
-                    })
+                    ->badge()
+                    ->color('success')
                     ->searchable()
-                    ->extraAttributes(function ($record) {
-
-                        /**
-                         * Diseño optimizado con estilo iOS System Green.
-                         * Utilizamos el verde oficial de Apple (#34C759) para máximo resaltado.
-                         */
-                        $iosGreen = '#34C759';
-                        $iosGreenDark = '#248A3D'; // Para el texto, asegurando legibilidad
-
-                        $now = Carbon::today();
-                        // dd($now->diffInDays($record->created_at));
-
-                        if($record->status == 'ACTIVA' && $record->created_at >= $now) {
-                            $iosGreen = '#34C759';
-                            $iosGreenDark = '#248A3D';
-
-                            return [
-                                'style' => "
-                                        background-color: {$iosGreen} !important;
-                                        color: #ffffff !important;
-                                        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-                                        font-weight: 700;
-                                        font-size: 0.85rem;
-                                        letter-spacing: -0.02em;
-                                        padding: 0.2rem 0.8rem;
-                                        border-radius: 20px;
-                                        box-shadow: 0 4px 12px rgba(52, 199, 89, 0.35);
-                                        border: 1px solid rgba(255, 255, 255, 0.2);
-                                        text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
-                                        display: inline-flex;
-                                        align-items: center;
-                                        margin-left: 2px;
-                                    ",
-                            ];
-                        }
-                        return [];
-
-                    }),
+                    ->sortable(),
                 TextColumn::make('individual_quote.code')
-                    ->label('Nro. de cotización')
+                    ->label('Nº cotización')
                     ->badge()
                     ->color('verde')
-                    ->icon('heroicon-m-tag')
-                    ->searchable(),
+                    ->icon(Heroicon::OutlinedHashtag)
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('accountManager.name')
-                    ->label('Account Manager')
-                    ->icon('heroicon-o-shield-check')
+                    ->label('Account manager')
+                    ->icon(Heroicon::OutlinedShieldCheck)
                     ->badge()
-                    // ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
-                    // ->color(function (string $state): string {
-                    //     return match ($state) {
-                    //         '-----' => 'info',
-                    //         default => 'success',
-                    //     };
-                    // })
-                    ->hidden(fn() => ! Auth::user()->is_business_admin),
+                    ->color('warning')
+                    ->placeholder('—')
+                    ->searchable(),
                 TextColumn::make('agency.name_corporative')
-                    ->label('CO-Agencia')
+                    ->label('Agencia')
                     ->badge()
-                    // ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
                     ->color('azulOscuro')
-                    ->searchable(),
+                    ->icon(Heroicon::OutlinedBuildingOffice2)
+                    ->searchable()
+                    ->wrap(),
                 TextColumn::make('agent.name')
-                    ->label('Nombre del agente')
+                    ->label('Agente')
                     ->badge()
-                    // ->default(fn($record): string => $record->agent_id == null ? '-----' : $record->agent->name)
                     ->color('azulOscuro')
-                    ->icon('heroicon-m-user')
-                    ->searchable(),
+                    ->icon(Heroicon::OutlinedUser)
+                    ->searchable()
+                    ->placeholder('—')
+                    ->wrap(),
 
-                //...  
-                ColumnGroup::make('Plan Afiliado', [
+                ColumnGroup::make('Plan afiliado', [
                     TextColumn::make('plan.description')
                         ->label('Plan')
                         ->alignCenter()
                         ->badge()
                         ->color('success')
-                        ->searchable(),
+                        ->searchable()
+                        ->wrap(),
                     TextColumn::make('coverage.price')
-                        ->label('Covertura')
+                        ->label('Cobertura (US$)')
                         ->alignCenter()
-                        ->numeric()
-                        ->badge()
-                        ->color('success')
-                        ->suffix(' US$')
+                        ->money('USD')
+                        ->sortable()
                         ->searchable(),
                     TextColumn::make('payment_frequency')
                         ->label('Frecuencia de pago')
@@ -188,131 +132,195 @@ class AffiliationsTable
                         ->color('success')
                         ->searchable(),
                     TextColumn::make('family_members')
-                        ->label('Poblacion')
+                        ->label('Población')
                         ->alignCenter()
-                        ->suffix(' persona(s)')
+                        ->suffix(' pers.')
                         ->badge()
                         ->color(function (mixed $state): string {
-                            if ($state > 0) {
+                            if ((int) $state > 0) {
                                 return 'warning';
                             }
+
                             return 'danger';
                         })
-                        ->searchable(),
+                        ->searchable()
+                        ->sortable(),
                     TextColumn::make('fee_anual')
-                        ->label('Tarifa Anual')
+                        ->label('Tarifa anual')
                         ->alignCenter()
-                        ->money()
-                        ->badge()
+                        ->money('USD')
                         ->color(function (mixed $state): string {
-                            if ($state > 0) {
+                            if ((float) $state > 0) {
                                 return 'warning';
                             }
+
                             return 'danger';
                         })
-                        ->searchable(),
-                    //total_amount
+                        ->searchable()
+                        ->sortable(),
                     TextColumn::make('total_amount')
-                        ->label('Total a Pagar')
+                        ->label('Total a pagar')
                         ->alignCenter()
-                        ->money()
-                        ->badge()
+                        ->money('USD')
+                        ->weight('semibold')
                         ->color(function (mixed $state): string {
-                            if ($state > 0) {
+                            if ((float) $state > 0) {
                                 return 'warning';
                             }
+
                             return 'danger';
                         })
-                        ->searchable(),
+                        ->searchable()
+                        ->sortable(),
                     TextColumn::make('businessUnit.definition')
-                        ->label('Unidad de Negocio')
+                        ->label('Unidad de negocio')
                         ->badge()
                         ->color('success')
                         ->searchable(),
                     TextColumn::make('businessLine.definition')
-                        ->label('Linea de Servicio')
+                        ->label('Línea de servicio')
                         ->badge()
                         ->color('success')
                         ->searchable(),
                     TextColumn::make('service_providers')
-                        ->label('Proveedor(es) de Servicio')
+                        ->label('Proveedor(es)')
                         ->badge()
                         ->color('success')
-                        ->searchable(),
-                ]),
+                        ->formatStateUsing(function (mixed $state): ?string {
+                            if (blank($state)) {
+                                return null;
+                            }
+                            if (is_array($state)) {
+                                return implode(', ', array_filter(array_map('strval', $state)));
+                            }
 
-                //...
-                ColumnGroup::make('Información del Titular', [
+                            return (string) $state;
+                        })
+                        ->searchable()
+                        ->limit(32)
+                        ->tooltip(function (mixed $state): ?string {
+                            $text = is_array($state)
+                                ? implode(', ', array_filter(array_map('strval', $state)))
+                                : (string) $state;
+                            if ($text === '' || strlen($text) <= 32) {
+                                return null;
+                            }
+
+                            return $text;
+                        })
+                        ->wrap(),
+                ])
+                    ->extraHeaderAttributes([
+                        'class' => self::COLUMN_GROUP_HEADER_CLASS,
+                    ]),
+
+                ColumnGroup::make('Información del titular', [
                     TextColumn::make('full_name_ti')
                         ->label('Nombre titular')
-                        ->badge()
-                        ->color('azulOscuro')
+                        ->icon(Heroicon::OutlinedUser)
+                        ->weight('medium')
                         ->searchable(),
                     TextColumn::make('nro_identificacion_ti')
-                        ->label('CI. titular')
+                        ->label('CI titular')
                         ->badge()
-                        ->color('azulOscuro')
+                        ->color('gray')
+                        ->copyable()
+                        ->copyMessage('CI copiada')
                         ->searchable(),
                     TextColumn::make('sex_ti')
                         ->label('Sexo')
+                        ->badge()
+                        ->color('gray')
                         ->searchable(),
                     TextColumn::make('birth_date_ti')
                         ->label('Fecha de nacimiento')
+                        ->icon(Heroicon::OutlinedCalendarDays)
+                        ->formatStateUsing(function (mixed $state): ?string {
+                            if (blank($state)) {
+                                return null;
+                            }
+                            try {
+                                return Carbon::parse($state)->format('d/m/Y');
+                            } catch (\Throwable) {
+                                return (string) $state;
+                            }
+                        })
+                        ->placeholder('—')
                         ->searchable(),
                     TextColumn::make('phone_ti')
-                        ->label('Telefono titular')
-                        ->icon('heroicon-m-phone')
+                        ->label('Teléfono titular')
+                        ->icon(Heroicon::OutlinedPhone)
+                        ->copyable()
+                        ->copyMessage('Teléfono copiado')
                         ->searchable(),
                     TextColumn::make('email_ti')
-                        ->label('Email titular')
-                        ->icon('fontisto-email')
+                        ->label('Correo titular')
+                        ->icon(Heroicon::OutlinedEnvelope)
+                        ->copyable()
+                        ->copyMessage('Correo copiado')
                         ->searchable(),
                     TextColumn::make('adress_ti')
-                        ->label('Direccion')
-                        ->icon('fontisto-map-marker-alt')
-                        ->searchable(),
+                        ->label('Dirección')
+                        ->icon(Heroicon::OutlinedMapPin)
+                        ->searchable()
+                        ->wrap()
+                        ->lineClamp(2)
+                        ->tooltip(fn (Affiliation $record): string => trim((string) $record->adress_ti))
+                        ->sortable()
+                        ->extraCellAttributes(fn (): array => [
+                            'class' => 'min-w-52 sm:min-w-64 lg:min-w-72 max-w-[28rem] align-top',
+                        ]),
                     TextColumn::make('city.definition')
                         ->label('Ciudad')
+                        ->icon(Heroicon::OutlinedBuildingOffice2)
                         ->searchable(),
                     TextColumn::make('state.definition')
                         ->label('Estado')
+                        ->icon(Heroicon::OutlinedMap)
                         ->searchable(),
                     TextColumn::make('region_ti')
-                        ->label('Region')
+                        ->label('Región')
                         ->searchable(),
                     TextColumn::make('country.name')
-                        ->label('Pais')
+                        ->label('País')
+                        ->icon(Heroicon::OutlinedGlobeAmericas)
                         ->searchable(),
-                ]),
+                ])
+                    ->extraHeaderAttributes([
+                        'class' => self::COLUMN_GROUP_HEADER_CLASS,
+                    ]),
 
-                //...
-                ColumnGroup::make('Información del Tomador', [
+                ColumnGroup::make('Información del tomador', [
                     TextColumn::make('full_name_payer')
-                        ->label('Nombre y Apellido')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('azulOscuro')
+                        ->label('Nombre y apellido')
+                        ->weight('medium')
+                        ->icon(Heroicon::OutlinedUserCircle)
                         ->searchable(),
                     TextColumn::make('nro_identificacion_payer')
-                        ->label('Numero de Identificación')
+                        ->label('Nº identificación')
                         ->badge()
-                        ->alignCenter()
-                        ->color('azulOscuro')
+                        ->color('gray')
+                        ->copyable()
+                        ->copyMessage('Identificación copiada')
                         ->searchable(),
-                ]),
+                ])
+                    ->extraHeaderAttributes([
+                        'class' => self::COLUMN_GROUP_HEADER_CLASS,
+                    ]),
 
                 TextColumn::make('created_by')
                     ->label('Creado por')
+                    ->icon(Heroicon::OutlinedUserPlus)
                     ->searchable(),
 
                 TextInputColumn::make('activated_at')
-                    ->label('Fecha de Emisión')
-                    ->prefixIcon('heroicon-s-calendar')
+                    ->label('Fecha de emisión')
+                    ->prefixIcon(Heroicon::OutlinedCalendarDays)
                     ->searchable(),
 
                 TextInputColumn::make('effective_date')
-                    ->label('Fecha de Vigencia')
-                    ->prefixIcon('heroicon-s-calendar')
+                    ->label('Fecha de vigencia')
+                    ->prefixIcon(Heroicon::OutlinedCalendar)
                     ->searchable(),
 
                 TextColumn::make('status')
@@ -320,19 +328,22 @@ class AffiliationsTable
                     ->badge()
                     ->color(function (mixed $state): string {
                         return match ($state) {
-                            'PRE-APROBADA'          => 'success',
-                            'ACTIVA'                => 'success',
-                            'PENDIENTE'             => 'warning',
-                            'EXCLUIDO'              => 'danger',
+                            'PRE-APROBADA' => 'success',
+                            'ACTIVA' => 'success',
+                            'PENDIENTE' => 'warning',
+                            'EXCLUIDO' => 'danger',
+                            default => 'gray',
                         };
                     })
                     ->searchable()
+                    ->sortable()
                     ->icon(function (mixed $state): ?string {
                         return match ($state) {
-                            'PRE-APROBADA'          => 'heroicon-c-information-circle',
-                            'ACTIVA'                => 'heroicon-s-check-circle',
-                            'PENDIENTE'             => 'heroicon-s-exclamation-circle',
-                            'EXCLUIDO'              => 'heroicon-c-x-circle',
+                            'PRE-APROBADA' => 'heroicon-c-information-circle',
+                            'ACTIVA' => 'heroicon-s-check-circle',
+                            'PENDIENTE' => 'heroicon-s-exclamation-circle',
+                            'EXCLUIDO' => 'heroicon-c-x-circle',
+                            default => null,
                         };
                     }),
             ])
@@ -346,20 +357,20 @@ class AffiliationsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -371,15 +382,16 @@ class AffiliationsTable
                 SelectFilter::make('payment_frequency')
                     ->label('Frecuencia de Pago')
                     ->options([
-                        'ANUAL'         => 'ANUAL',
-                        'TRIMESTRAL'    => 'TRIMESTRAL',
-                        'SEMESTRAL'     => 'SEMESTRAL',
+                        'ANUAL' => 'ANUAL',
+                        'TRIMESTRAL' => 'TRIMESTRAL',
+                        'SEMESTRAL' => 'SEMESTRAL',
                     ]),
             ])
             ->filtersTriggerAction(
-                fn(Action $action) => $action
+                fn (Action $action) => $action
                     ->button()
-                    ->label('Filtros'),
+                    ->label('Filtros')
+                    ->icon(Heroicon::OutlinedFunnel),
             )
             ->recordActions([
                 ActionGroup::make([
@@ -400,17 +412,19 @@ class AffiliationsTable
                                             ->helperText(function ($state, $set, Get $get, Affiliation $record) {
                                                 // dd($record->coverage_id);
                                                 if (isset($record->coverage_id)) {
-                                                    return 'Plan: ' . $record->plan->description . ' - Cobertura: ' . $record->coverage->price . ' - Frecuencia: ' . $record->payment_frequency;
+                                                    return 'Plan: '.$record->plan->description.' - Cobertura: '.$record->coverage->price.' - Frecuencia: '.$record->payment_frequency;
                                                 }
-                                                return 'Plan: ' . $record->plan->description . ' - Frecuencia: ' . $record->payment_frequency;
+
+                                                return 'Plan: '.$record->plan->description.' - Frecuencia: '.$record->payment_frequency;
                                             })
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, Affiliation $record) {
                                                 /**
-                                                 * Se modifica la logia para buscar el monto a pagar en la tabla 
+                                                 * Se modifica la logia para buscar el monto a pagar en la tabla
                                                  * de afiliaciones y no en la tabla de cotizaciones
                                                  */
                                                 $amount = Affiliation::where('id', $record->id)->first();
+
                                                 return $amount->total_amount;
                                             })
                                             ->numeric()
@@ -420,10 +434,9 @@ class AffiliationsTable
                                         DatePicker::make('date_payment_voucher')
                                             ->label('Fecha del Comprobante de Pago')
                                             ->required()
-                                            ->format('d/m/Y')
+                                            ->format('d/m/Y'),
                                     ])->columnSpanFull(),
                                 ])->columnSpanFull(),
-
 
                             /**FORMA DE PAGO */
                             Fieldset::make('FORMA DE PAGO')
@@ -436,18 +449,18 @@ class AffiliationsTable
                                                 ->native(false)
                                                 ->label('Método de pago')
                                                 ->options([
-                                                    'ZELLE'             => 'ZELLE',
+                                                    'ZELLE' => 'ZELLE',
                                                     'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
-                                                    'EFECTIVO US$'      => 'EFECTIVO US$',
-                                                    'MULTIPLE'          => 'MULTIPLE',
-                                                    'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
+                                                    'EFECTIVO US$' => 'EFECTIVO US$',
+                                                    'MULTIPLE' => 'MULTIPLE',
+                                                    'PAGO MOVIL VES' => 'PAGO MOVIL(VES)',
                                                     'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
 
                                                 ])
                                                 ->live()
                                                 ->required()
                                                 ->validationMessages([
-                                                    'required'  => 'Seleccione un tipo de pago',
+                                                    'required' => 'Seleccione un tipo de pago',
                                                 ]),
                                             TextInput::make('tasa_bcv')
                                                 ->live()
@@ -457,23 +470,24 @@ class AffiliationsTable
                                                 ->numeric()
                                                 ->required()
                                                 ->validationMessages([
-                                                    'required'  => 'Campo requerido',
-                                                    'numeric'   => 'El campo es numerico',
+                                                    'required' => 'Campo requerido',
+                                                    'numeric' => 'El campo es numerico',
                                                 ])
                                                 ->afterStateUpdated(function (?string $state, Get $get, Set $set) {
                                                     if ($get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
                                                         $set('pay_amount_ves', $state * $get('total_amount'));
                                                     }
+
                                                     return $state;
                                                 })
                                                 ->hidden(function ($state, $set, Get $get) {
                                                     if ($get('payment_method') == 'MULTIPLE' || $get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
                                                         return false;
                                                     }
-                                                    return true;
-                                                })
-                                        ])->columnSpan(3),
 
+                                                    return true;
+                                                }),
+                                        ])->columnSpan(3),
 
                                     /* PAGO EN DOLARES ZELLE */
                                     Fieldset::make('INFORMACION DE PAGO EN ZELLE (US$)')
@@ -484,7 +498,7 @@ class AffiliationsTable
                                                 ->prefixIcon('heroicon-s-pencil')
                                                 ->required()
                                                 ->validationMessages([
-                                                    'required'  => 'Seleccione un tipo de pago',
+                                                    'required' => 'Seleccione un tipo de pago',
                                                 ]),
                                             TextInput::make('reference_payment_usd')
                                                 ->label('Nro. de Referencia')
@@ -494,8 +508,8 @@ class AffiliationsTable
                                                 ->helperText('Solo se permiten letras, números y el guion (-)')
                                                 ->required()
                                                 ->validationMessages([
-                                                    'regex'  => 'Solo se permite el guion (-)',
-                                                    'required'  => 'Seleccione un tipo de pago',
+                                                    'regex' => 'Solo se permite el guion (-)',
+                                                    'required' => 'Seleccione un tipo de pago',
                                                 ]),
 
                                             Grid::make(1)->schema([
@@ -503,14 +517,14 @@ class AffiliationsTable
                                                     ->label('Comprobante(US$)')
                                                     ->uploadingMessage('Cargando...')
                                                     ->required(),
-                                            ])
+                                            ]),
                                         ])->columnSpanFull()->hidden(function (Get $get) {
                                             if ($get('payment_method') == 'ZELLE') {
                                                 return false;
                                             }
+
                                             return true;
                                         }),
-
 
                                     /** PAGO EN TRANSFERENCIA US$ */
                                     Fieldset::make('INFORMACIÓN DE PAGO EN TRANSFERENCIA (US$)')
@@ -522,7 +536,7 @@ class AffiliationsTable
                                                     ->prefixIcon('heroicon-s-pencil')
                                                     ->required()
                                                     ->validationMessages([
-                                                        'required'  => 'Campo requerido',
+                                                        'required' => 'Campo requerido',
                                                     ]),
 
                                                 Select::make('bank_usd')
@@ -531,34 +545,33 @@ class AffiliationsTable
                                                     ->live()
                                                     ->required()
                                                     ->validationMessages([
-                                                        'required'  => 'Seleccione un banco',
+                                                        'required' => 'Seleccione un banco',
                                                     ])
                                                     ->options([
-                                                        'CHASE BANK'                => 'CHASE BANK',
-                                                        'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                                                        'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                                                        'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                        'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                        'CHASE BANK' => 'CHASE BANK',
+                                                        'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                        'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
+                                                        'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                                                        'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
                                                     ])
                                                     ->searchable()
                                                     ->live()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
-
 
                                                 Grid::make(1)->schema([
                                                     FileUpload::make('document_usd')
                                                         ->label('Comprobante(US$)')
                                                         ->uploadingMessage('Cargando...')
                                                         ->required(),
-                                                ])
+                                                ]),
                                             ])->columnSpanFull(),
                                         ])->columnSpanFull()->hidden(function (Get $get) {
                                             if ($get('payment_method') == 'TRANSFERENCIA US$') {
                                                 return false;
                                             }
+
                                             return true;
                                         }),
-
 
                                     /** PAGO EN EFECTIVO US$ */
                                     Fieldset::make('INFORMACIÓN DE PAGO EN EFECTIVO (US$)')
@@ -570,16 +583,15 @@ class AffiliationsTable
                                                     ->live()
                                                     ->required()
                                                     ->validationMessages([
-                                                        'required'  => 'Seleccione un banco',
+                                                        'required' => 'Seleccione un banco',
                                                     ])
                                                     ->options([
-                                                        'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                        'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                        'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                                                        'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
                                                     ])
                                                     ->searchable()
                                                     ->live()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
-
 
                                                 Grid::make()->schema([
                                                     FileUpload::make('document_usd')
@@ -591,6 +603,7 @@ class AffiliationsTable
                                                 if ($get('payment_method') == 'EFECTIVO US$') {
                                                     return false;
                                                 }
+
                                                 return true;
                                             })->columnSpanFull(),
 
@@ -598,9 +611,9 @@ class AffiliationsTable
                                             if ($get('payment_method') == 'EFECTIVO US$') {
                                                 return false;
                                             }
+
                                             return true;
                                         }),
-
 
                                     /* PAGO MOVIL Y TRANSFERENCIA */
                                     Fieldset::make('INFORMACIÓN DE PAGO EN MONEDA NACIONAL (VES)')
@@ -621,8 +634,8 @@ class AffiliationsTable
                                                     ->label('Banco')
                                                     ->live()
                                                     ->options([
-                                                        'BANCAMIGA(VES)'           => 'BANCAMIGA',
-                                                        'BANCO DE VENEZUELA(VES)'  => 'BANCO DE VENEZUELA',
+                                                        'BANCAMIGA(VES)' => 'BANCAMIGA',
+                                                        'BANCO DE VENEZUELA(VES)' => 'BANCO DE VENEZUELA',
                                                     ])
                                                     ->searchable()
                                                     ->live()
@@ -636,7 +649,7 @@ class AffiliationsTable
                                                     ->mask('999999')
                                                     ->maxLength(6)
                                                     ->rules([
-                                                        'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
+                                                        'regex:/^\d{1,6}$/', // Acepta de 1 a 6 dígitos
                                                     ])
                                                     ->prefix('Ref:'),
                                                 Grid::make(1)->schema([
@@ -644,17 +657,17 @@ class AffiliationsTable
                                                         ->label('Comprobante de pago(VES)')
                                                         ->disk('public')
                                                         ->uploadingMessage('Cargando...')
-                                                        ->required()
-                                                ])
+                                                        ->required(),
+                                                ]),
 
                                             ])->columnSpanFull(),
                                         ])->columnSpanFull()->hidden(function (Get $get) {
                                             if ($get('payment_method') == 'TRANSFERENCIA VES' || $get('payment_method') == 'PAGO MOVIL VES' && $get('tasa_bcv') > 0) {
                                                 return false;
                                             }
+
                                             return true;
                                         }),
-
 
                                     /** PAGO MULTIPLE */
                                     Fieldset::make('INFORMACIÓN DE PAGO MULTIPLE EN BOLIVARES (VES) Y DOLARES (US$)')
@@ -670,13 +683,13 @@ class AffiliationsTable
                                                             ->native(false)
                                                             ->label('Método de pago en dólares(US$)')
                                                             ->options([
-                                                                'ZELLE'             => 'ZELLE',
+                                                                'ZELLE' => 'ZELLE',
                                                                 'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
-                                                                'EFECTIVO US$'      => 'EFECTIVO US$',
+                                                                'EFECTIVO US$' => 'EFECTIVO US$',
                                                             ])
                                                             ->required()
                                                             ->validationMessages([
-                                                                'required'  => 'Seleccione un tipo de pago',
+                                                                'required' => 'Seleccione un tipo de pago',
                                                             ]),
 
                                                         TextInput::make('pay_amount_usd')
@@ -700,12 +713,13 @@ class AffiliationsTable
                                                             ->prefixIcon('heroicon-s-pencil')
                                                             ->required()
                                                             ->validationMessages([
-                                                                'required'  => 'Seleccione un tipo de pago',
+                                                                'required' => 'Seleccione un tipo de pago',
                                                             ])
                                                             ->hidden(function (Get $get) {
                                                                 if ($get('payment_method_usd') == 'TRANSFERENCIA US$' || $get('payment_method_usd') == 'ZELLE') {
                                                                     return false;
                                                                 }
+
                                                                 return true;
                                                             }),
 
@@ -715,15 +729,14 @@ class AffiliationsTable
                                                             ->label('Banco Moneda Extranjera(US$)')
                                                             ->live()
                                                             ->options([
-                                                                'CHASE BANK'                => 'CHASE BANK',
-                                                                'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                                                                'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                                                                'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                                'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                                'CHASE BANK' => 'CHASE BANK',
+                                                                'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
+                                                                'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                                                                'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
                                                             ])
                                                             ->searchable()
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
-
 
                                                         TextInput::make('reference_payment_usd')
                                                             ->label('Nro. de Referencia')
@@ -733,13 +746,14 @@ class AffiliationsTable
                                                             ->helperText('Solo se permiten letras, números y el guion (-)')
                                                             ->required()
                                                             ->validationMessages([
-                                                                'regex'  => 'Solo se permite el guion (-)',
-                                                                'required'  => 'Seleccione un tipo de pago',
+                                                                'regex' => 'Solo se permite el guion (-)',
+                                                                'required' => 'Seleccione un tipo de pago',
                                                             ])
                                                             ->hidden(function (Get $get) {
                                                                 if ($get('payment_method_usd') == 'ZELLE') {
                                                                     return false;
                                                                 }
+
                                                                 return true;
                                                             }),
 
@@ -758,12 +772,12 @@ class AffiliationsTable
                                                             ->native(false)
                                                             ->label('Método de pago en bolivares(VES)')
                                                             ->options([
-                                                                'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
+                                                                'PAGO MOVIL VES' => 'PAGO MOVIL(VES)',
                                                                 'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
                                                             ])
                                                             ->required()
                                                             ->validationMessages([
-                                                                'required'  => 'Seleccione un tipo de pago',
+                                                                'required' => 'Seleccione un tipo de pago',
                                                             ]),
 
                                                         TextInput::make('pay_amount_ves')
@@ -775,23 +789,20 @@ class AffiliationsTable
                                                             ->disabled()
                                                             ->dehydrated(),
 
-
                                                         /**Banco VES */
                                                         Select::make('bank_ves')
                                                             ->native(false)
                                                             ->label('Banco Moneda Nacional(VES)')
                                                             ->options([
-                                                                'BANCAMIGA - VES'           => 'BANCAMIGA - VES',
-                                                                'BANCO DE VENEZUELA - VES'  => 'BANCO DE VENEZUELA - VES',
+                                                                'BANCAMIGA - VES' => 'BANCAMIGA - VES',
+                                                                'BANCO DE VENEZUELA - VES' => 'BANCO DE VENEZUELA - VES',
                                                             ])
                                                             ->searchable()
                                                             ->required()
                                                             ->validationMessages([
-                                                                'required'  => 'Seleccione un banco',
+                                                                'required' => 'Seleccione un banco',
                                                             ])
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
-
-
 
                                                         TextInput::make('reference_payment_ves')
                                                             ->label('Referencia de pago(VES)')
@@ -800,11 +811,11 @@ class AffiliationsTable
                                                             ->mask('999999')
                                                             ->maxLength(6)
                                                             ->rules([
-                                                                'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
+                                                                'regex:/^\d{1,6}$/', // Acepta de 1 a 6 dígitos
                                                             ])
                                                             ->required()
                                                             ->validationMessages([
-                                                                'required'  => 'Campo requerido',
+                                                                'required' => 'Campo requerido',
                                                             ])
                                                             ->prefix('Ref:'),
                                                         FileUpload::make('document_ves')
@@ -813,20 +824,20 @@ class AffiliationsTable
                                                             ->uploadingMessage('Cargando...')
                                                             ->required()
                                                             ->validationMessages([
-                                                                'required'  => 'El comprobante es requerido',
-                                                            ])
+                                                                'required' => 'El comprobante es requerido',
+                                                            ]),
                                                     ])->columns(1),
 
-                                            ])->columnSpanFull()
+                                            ])->columnSpanFull(),
                                         ])->columnSpanFull()->hidden(function (Get $get) {
                                             if ($get('payment_method') == 'MULTIPLE' && $get('tasa_bcv') > 0) {
                                                 return false;
                                             }
+
                                             return true;
                                         }),
 
                                 ]),
-
 
                             /**OBSERVACIONES */
                             Grid::make(1)->schema([
@@ -834,7 +845,7 @@ class AffiliationsTable
                                     ->label('Observaciones')
                                     ->rows(2)
                                     ->autosize()
-                                    ->dehydrated()
+                                    ->dehydrated(),
                             ]),
                         ])
                         ->action(function (Affiliation $record, array $data): void {
@@ -853,13 +864,13 @@ class AffiliationsTable
                                         ->seconds(5)
                                         ->send();
 
-                                    //Notificacion para Admin
+                                    // Notificacion para Admin
                                     $recipient = User::where('is_admin', 1)->get();
                                     foreach ($recipient as $user) {
                                         $recipient_for_user = User::find($user->id);
                                         Notification::make()
                                             ->title('REGISTRO DE COMPROBANTE')
-                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. ' . $record->code)
+                                            ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. '.$record->code)
                                             ->icon('heroicon-m-user-plus')
                                             ->iconColor('success')
                                             ->success()
@@ -867,14 +878,14 @@ class AffiliationsTable
                                                 Action::make('view')
                                                     ->label('Ver detalle de pago')
                                                     ->button()
-                                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin') . '?activeRelationManager=1'),
+                                                    ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin').'?activeRelationManager=1'),
                                             ])
                                             ->sendToDatabase($recipient_for_user);
                                     }
                                 }
 
                                 /**
-                                 * Ejecutamos el Jobs para enviar la notificacion al 
+                                 * Ejecutamos el Jobs para enviar la notificacion al
                                  * correo de administracion
                                  * ----------------------------------------------------------------------------------
                                  */
@@ -928,7 +939,8 @@ class AffiliationsTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/certificados-doc/CER-' . $record->code . '.pdf');
+                                $path = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+
                                 return response()->download($path);
                             } catch (\Throwable $th) {
                                 Notification::make()
@@ -959,7 +971,8 @@ class AffiliationsTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/tarjeta-afiliacion/TAR-' . $record->code . '.pdf');
+                                $path = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
+
                                 return response()->download($path);
                             } catch (\Throwable $th) {
                                 Notification::make()
@@ -977,54 +990,19 @@ class AffiliationsTable
                         ->label('Regenerar Documentos')
                         ->icon('heroicon-o-arrow-path')
                         ->color('info')
-                        ->requiresConfirmation()
-                        ->modalHeading('REGENERAR CERTIFICADO Y TARJETA DEL AFILIADO')
-                        ->modalWidth(Width::ExtraLarge)
+                        ->modalHeading('Certificado y tarjetas de afiliación')
+                        ->modalWidth(Width::SevenExtraLarge)
                         ->modalIcon('heroicon-o-arrow-path')
-                        ->modalDescription('Se realizara la creacion del certificado y tarjeta del afiliado de forma automatica al hacer clic en confirmar!.')
-                        ->action(function (Affiliation $record, array $data) {
-
-                            try {
-
-                                AffiliationController::generateCertificateIndividual($record, $record->affiliates, Auth::id());
-
-
-                                /**
-                                 * Regeneramos la tarjeta del afiliado
-                                 * @var array $data_tarjeta_afiliado
-                                 * @version 1.0
-                                 */
-                                $data_tarjeta_afiliado = [
-                                    'name'          => $record->full_name_ti,
-                                    'ci'            => $record->nro_identificacion_ti,
-                                    'code'          => $record->code,
-                                    'plan'          => $record->plan->description,
-                                    'frecuencia'    => $record->payment_frequency,
-                                    'cobertura'     => $record->coverage->price ?? '',
-                                    'desde'         => $record->effective_date == null ? '' : $record->effective_date,
-                                    'hasta'         => $record->effective_date == null ? '' : Carbon::createFromFormat('d/m/Y', $record->effective_date)->addYear()->format('d/m/Y')
-                                ];
-                                //Creamos la tarjeta del afiliado
-                                TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
-
-                                Notification::make()
-                                    ->title('ACCION EXITOSA')
-                                    ->body('Se ha regenerado el certificado del afiliado y la tarjeta de afiliacion con exito.')
-                                    ->icon('heroicon-s-check-circle')
-                                    ->success()
-                                    ->send();
-                            } catch (\Throwable $th) {
-
-                                Notification::make()
-                                    ->title('ERROR AL GENERAR EL DOCUMENTO')
-                                    ->body($th->getMessage())
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                            }
+                        ->modalDescription('Se generan el certificado (único) y una tarjeta por cada familiar. Al abrir se cargan las vistas previas y puede enviar por correo al agente.')
+                        ->modalContent(function (Affiliation $record): ViewContract {
+                            return View::make('filament.business.affiliations.affiliation-documents-preview-modal', [
+                                'affiliation' => $record,
+                            ]);
                         })
-                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Cerrar')
+                        ->action(fn () => null)
+                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
 
                     /**DESCARGAR O REENVIAR KIT DE AFILIACION */
                     Action::make('download_resend_kit')
@@ -1053,7 +1031,7 @@ class AffiliationsTable
                                         ->maxLength(255)
                                         ->label('Correo Electrónico')
                                         ->default(fn (Affiliation $record) => Agent::where('id', $record->agent_id)->first()->email ?? '')
-                                        ->hidden(fn(Get $get) => $get('option') == 'DESCARGAR'),
+                                        ->hidden(fn (Get $get) => $get('option') == 'DESCARGAR'),
                                 ])->columnSpanFull()->columns(1),
                         ])
                         ->action(function (Affiliation $record, array $data) {
@@ -1062,10 +1040,12 @@ class AffiliationsTable
 
                                 /**
                                  * LIGICA DE DESCARGA O REENVIO DEL KIT DE BIENVENIDA VIA EMAIL
+                                 *
                                  * @version 2.0
                                  */
                                 if ($data['option'] == 'DESCARGAR') {
                                     $path = AffiliationController::downloadResendKit($record, $data);
+
                                     return response()->download($path);
                                 } else {
                                     AffiliationController::downloadResendKit($record, $data);
@@ -1081,7 +1061,7 @@ class AffiliationsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn(Affiliation $record) => Auth::user()->is_business_admin != 1 || $record->status != 'ACTIVA'),
+                        ->hidden(fn (Affiliation $record) => Auth::user()->is_business_admin != 1 || $record->status != 'ACTIVA'),
 
                     /**EDITAR FRECUENCIA DE PAGO */
                     Action::make('edit_frequency')
@@ -1100,11 +1080,11 @@ class AffiliationsTable
                                     Select::make('payment_frequency')
                                         ->label('Frecuencia de Pago')
                                         ->options([
-                                            'MENSUAL'   => 'MENSUAL',
+                                            'MENSUAL' => 'MENSUAL',
                                             'TRIMESTRAL' => 'TRIMESTRAL',
                                             'SEMESTRAL' => 'SEMESTRAL',
-                                            'ANUAL'     => 'ANUAL',
-                                        ])
+                                            'ANUAL' => 'ANUAL',
+                                        ]),
 
                                 ])->columnSpanFull(),
                         ])
@@ -1149,7 +1129,7 @@ class AffiliationsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
 
                     Action::make('change_status')
                         ->label('Actualizar Estatus')
@@ -1169,11 +1149,11 @@ class AffiliationsTable
                                             ->label('Que accion deseas realizar?')
                                             ->options([
                                                 'observation' => 'Anadir observaciones',
-                                                'status'      => 'Actualizar estatus',
-                                                'exclude'     => 'Excluir Afiliación',
+                                                'status' => 'Actualizar estatus',
+                                                'exclude' => 'Excluir Afiliación',
                                             ])
                                             ->live()
-                                            ->required()
+                                            ->required(),
                                         // ->inline()
                                     ]),
 
@@ -1183,8 +1163,8 @@ class AffiliationsTable
                                             ->autosize()
                                             ->afterStateUpdated(function (Set $set, $state) {
                                                 $set('description', strtoupper($state));
-                                            })
-                                    ])->hidden(fn(Get $get) => $get('action') != 'observation'),
+                                            }),
+                                    ])->hidden(fn (Get $get) => $get('action') != 'observation'),
 
                                     Grid::make(1)->schema([
                                         Select::make('status')
@@ -1200,8 +1180,8 @@ class AffiliationsTable
                                             ->autosize()
                                             ->afterStateUpdated(function (Set $set, $state) {
                                                 $set('description', strtoupper($state));
-                                            })
-                                    ])->hidden(fn(Get $get) => $get('action') != 'status'),
+                                            }),
+                                    ])->hidden(fn (Get $get) => $get('action') != 'status'),
 
                                     Grid::make(1)->schema([
                                         DatePicker::make('date_egress')
@@ -1212,22 +1192,23 @@ class AffiliationsTable
                                             ->autosize()
                                             ->afterStateUpdated(function (Set $set, $state) {
                                                 $set('description', strtoupper($state));
-                                            })
-                                    ])->hidden(fn(Get $get) => $get('action') != 'exclude'),
-                                ])
+                                            }),
+                                    ])->hidden(fn (Get $get) => $get('action') != 'exclude'),
+                                ]),
                         ])
                         ->action(function (Affiliation $record, array $data): void {
                             if ($data['action'] == 'observation') {
                                 $record->status_log_affiliations()->create([
-                                    'affiliation_id'    => $record->id,
-                                    'action'            => 'AGREGO OBSERVACION',
-                                    'observation'       => $data['description'],
-                                    'updated_by'        => Auth::user()->name
+                                    'affiliation_id' => $record->id,
+                                    'action' => 'AGREGO OBSERVACION',
+                                    'observation' => $data['description'],
+                                    'updated_by' => Auth::user()->name,
                                 ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
                                     ->success()
                                     ->send();
+
                                 return;
                             }
 
@@ -1236,42 +1217,43 @@ class AffiliationsTable
                                     'status' => $data['status'],
                                 ]);
                                 $record->status_log_affiliations()->create([
-                                    'affiliation_id'    => $record->id,
-                                    'action'            => 'CAMBIO ESTATUS A: ' . $data['status'],
-                                    'observation'       => $data['description'],
-                                    'updated_by'        => Auth::user()->name
+                                    'affiliation_id' => $record->id,
+                                    'action' => 'CAMBIO ESTATUS A: '.$data['status'],
+                                    'observation' => $data['description'],
+                                    'updated_by' => Auth::user()->name,
                                 ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
                                     ->success()
                                     ->send();
+
                                 return;
                             }
 
                             if ($data['action'] == 'exclude') {
                                 $record->update([
-                                    'status'            => 'EXCLUIDO',
-                                    'fee_anual'         => 0.0,
-                                    'activated_at'      => null,
-                                    'total_amount'      => 0.0,
-                                    'family_members'    => 0
+                                    'status' => 'EXCLUIDO',
+                                    'fee_anual' => 0.0,
+                                    'activated_at' => null,
+                                    'total_amount' => 0.0,
+                                    'family_members' => 0,
                                 ]);
                                 $record->affiliates()->update([
-                                    'status'  => 'EXCLUIDO',
+                                    'status' => 'EXCLUIDO',
                                 ]);
                                 $record->status_log_affiliations()->create([
-                                    'affiliation_id'    => $record->id,
-                                    'action'            => 'EXCLUYO AFILIACION, FECHA DE EGRESO: ' . $data['date_egress'],
-                                    'observation'       => $data['description'],
-                                    'updated_by'        => Auth::user()->name
+                                    'affiliation_id' => $record->id,
+                                    'action' => 'EXCLUYO AFILIACION, FECHA DE EGRESO: '.$data['date_egress'],
+                                    'observation' => $data['description'],
+                                    'updated_by' => Auth::user()->name,
                                 ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
                                     ->success()
                                     ->send();
+
                                 return;
                             }
-
 
                             Notification::make()
                                 ->title('AFILIACION ACTUALIZADA')
@@ -1279,7 +1261,7 @@ class AffiliationsTable
                                 ->send();
                         }),
 
-                ])->hidden(fn($record) => $record->status == 'EXCLUIDO'),
+                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -1298,22 +1280,22 @@ class AffiliationsTable
 
                                 foreach ($records as $record) {
 
-                                    //Elimina la afiliacion
+                                    // Elimina la afiliacion
                                     $record->delete();
-                                    Log::info('AFILIACIONES: El usuario ' . Auth::user()->name . ' elimino la afiliacion: ' . $record->id);
+                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la afiliacion: '.$record->id);
 
-                                    //Elimina la Cotizacion individual
+                                    // Elimina la Cotizacion individual
                                     $record->individual_quote()->delete();
-                                    Log::info('AFILIACIONES: El usuario ' . Auth::user()->name . ' elimino la cotizacion individual: ' . $record->individual_quote->id);
+                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la cotizacion individual: '.$record->individual_quote->id);
 
-                                    //Eliminamos los afiliados
+                                    // Eliminamos los afiliados
                                     $record->affiliates()->delete();
-                                    Log::info('AFILIACIONES: El usuario ' . Auth::user()->name . ' elimino el afiliado: ' . $record->affiliates()->first()->id);
+                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino el afiliado: '.$record->affiliates()->first()->id);
                                 }
                             } catch (\Throwable $th) {
                                 Notification::make()
                                     ->title('REGISTRO NO ELIMINADO')
-                                    ->body($th->getMessage() . ' Linea: ' . $th->getLine() . ' Archivo: ' . $th->getFile())
+                                    ->body($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile())
                                     ->icon('heroicon-m-x-circle')
                                     ->danger()
                                     ->send();
@@ -1333,7 +1315,7 @@ class AffiliationsTable
 
                             $data = $records->toArray();
 
-                            //guardo la data en la sesion para usarla en el formulario
+                            // guardo la data en la sesion para usarla en el formulario
                             session()->put('data', $data);
 
                             return [
@@ -1353,7 +1335,6 @@ class AffiliationsTable
                                         ])->columnSpanFull(),
                                     ])->columnSpanFull(),
 
-
                                 /**FORMA DE PAGO */
                                 Fieldset::make('FORMA DE PAGO')
                                     ->schema([
@@ -1365,18 +1346,18 @@ class AffiliationsTable
                                                     ->native(false)
                                                     ->label('Método de pago')
                                                     ->options([
-                                                        'ZELLE'             => 'ZELLE',
+                                                        'ZELLE' => 'ZELLE',
                                                         'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
-                                                        'EFECTIVO US$'      => 'EFECTIVO US$',
-                                                        'MULTIPLE'          => 'MULTIPLE',
-                                                        'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
+                                                        'EFECTIVO US$' => 'EFECTIVO US$',
+                                                        'MULTIPLE' => 'MULTIPLE',
+                                                        'PAGO MOVIL VES' => 'PAGO MOVIL(VES)',
                                                         'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
 
                                                     ])
                                                     ->live()
                                                     ->required()
                                                     ->validationMessages([
-                                                        'required'  => 'Seleccione un tipo de pago',
+                                                        'required' => 'Seleccione un tipo de pago',
                                                     ]),
                                                 TextInput::make('tasa_bcv')
                                                     ->live()
@@ -1386,23 +1367,24 @@ class AffiliationsTable
                                                     ->numeric()
                                                     ->required()
                                                     ->validationMessages([
-                                                        'required'  => 'Campo requerido',
-                                                        'numeric'   => 'El campo es numerico',
+                                                        'required' => 'Campo requerido',
+                                                        'numeric' => 'El campo es numerico',
                                                     ])
                                                     ->afterStateUpdated(function (?string $state, Get $get, Set $set) {
                                                         if ($get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
                                                             $set('pay_amount_ves', $state * $get('total_amount'));
                                                         }
+
                                                         return $state;
                                                     })
                                                     ->hidden(function ($state, $set, Get $get) {
                                                         if ($get('payment_method') == 'MULTIPLE' || $get('payment_method') == 'PAGO MOVIL VES' || $get('payment_method') == 'TRANSFERENCIA VES') {
                                                             return false;
                                                         }
-                                                        return true;
-                                                    })
-                                            ])->columnSpan(3),
 
+                                                        return true;
+                                                    }),
+                                            ])->columnSpan(3),
 
                                         /* PAGO EN DOLARES ZELLE */
                                         Fieldset::make('INFORMACION DE PAGO EN ZELLE (US$)')
@@ -1413,7 +1395,7 @@ class AffiliationsTable
                                                     ->prefixIcon('heroicon-s-pencil')
                                                     ->required()
                                                     ->validationMessages([
-                                                        'required'  => 'Seleccione un tipo de pago',
+                                                        'required' => 'Seleccione un tipo de pago',
                                                     ]),
                                                 TextInput::make('reference_payment_usd')
                                                     ->label('Nro. de Referencia')
@@ -1423,8 +1405,8 @@ class AffiliationsTable
                                                     ->helperText('Solo se permiten letras, números y el guion (-)')
                                                     ->required()
                                                     ->validationMessages([
-                                                        'regex'  => 'Solo se permite el guion (-)',
-                                                        'required'  => 'Seleccione un tipo de pago',
+                                                        'regex' => 'Solo se permite el guion (-)',
+                                                        'required' => 'Seleccione un tipo de pago',
                                                     ]),
 
                                                 Grid::make(1)->schema([
@@ -1432,14 +1414,14 @@ class AffiliationsTable
                                                         ->label('Comprobante(US$)')
                                                         ->uploadingMessage('Cargando...')
                                                         ->required(),
-                                                ])
+                                                ]),
                                             ])->columnSpanFull()->hidden(function (Get $get) {
                                                 if ($get('payment_method') == 'ZELLE') {
                                                     return false;
                                                 }
+
                                                 return true;
                                             }),
-
 
                                         /** PAGO EN TRANSFERENCIA US$ */
                                         Fieldset::make('INFORMACIÓN DE PAGO EN TRANSFERENCIA (US$)')
@@ -1451,7 +1433,7 @@ class AffiliationsTable
                                                         ->prefixIcon('heroicon-s-pencil')
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Campo requerido',
+                                                            'required' => 'Campo requerido',
                                                         ]),
 
                                                     Select::make('bank_usd')
@@ -1460,34 +1442,33 @@ class AffiliationsTable
                                                         ->live()
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Seleccione un banco',
+                                                            'required' => 'Seleccione un banco',
                                                         ])
                                                         ->options([
-                                                            'CHASE BANK'                => 'CHASE BANK',
-                                                            'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                                                            'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                                                            'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                            'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                            'CHASE BANK' => 'CHASE BANK',
+                                                            'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                            'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
+                                                            'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                                                            'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
                                                         ])
                                                         ->searchable()
                                                         ->live()
                                                         ->prefixIcon('heroicon-s-globe-europe-africa'),
-
 
                                                     Grid::make(1)->schema([
                                                         FileUpload::make('document_usd')
                                                             ->label('Comprobante(US$)')
                                                             ->uploadingMessage('Cargando...')
                                                             ->required(),
-                                                    ])
+                                                    ]),
                                                 ])->columnSpanFull(),
                                             ])->columnSpanFull()->hidden(function (Get $get) {
                                                 if ($get('payment_method') == 'TRANSFERENCIA US$') {
                                                     return false;
                                                 }
+
                                                 return true;
                                             }),
-
 
                                         /** PAGO EN EFECTIVO US$ */
                                         Fieldset::make('INFORMACIÓN DE PAGO EN EFECTIVO (US$)')
@@ -1499,16 +1480,15 @@ class AffiliationsTable
                                                         ->live()
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Seleccione un banco',
+                                                            'required' => 'Seleccione un banco',
                                                         ])
                                                         ->options([
-                                                            'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                            'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                            'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                                                            'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
                                                         ])
                                                         ->searchable()
                                                         ->live()
                                                         ->prefixIcon('heroicon-s-globe-europe-africa'),
-
 
                                                     Grid::make()->schema([
                                                         FileUpload::make('document_usd')
@@ -1520,6 +1500,7 @@ class AffiliationsTable
                                                     if ($get('payment_method') == 'EFECTIVO US$') {
                                                         return false;
                                                     }
+
                                                     return true;
                                                 })->columnSpanFull(),
 
@@ -1527,9 +1508,9 @@ class AffiliationsTable
                                                 if ($get('payment_method') == 'EFECTIVO US$') {
                                                     return false;
                                                 }
+
                                                 return true;
                                             }),
-
 
                                         /* PAGO MOVIL Y TRANSFERENCIA */
                                         Fieldset::make('INFORMACIÓN DE PAGO EN MONEDA NACIONAL (VES)')
@@ -1550,8 +1531,8 @@ class AffiliationsTable
                                                         ->label('Banco')
                                                         ->live()
                                                         ->options([
-                                                            'BANCAMIGA(VES)'           => 'BANCAMIGA',
-                                                            'BANCO DE VENEZUELA(VES)'  => 'BANCO DE VENEZUELA',
+                                                            'BANCAMIGA(VES)' => 'BANCAMIGA',
+                                                            'BANCO DE VENEZUELA(VES)' => 'BANCO DE VENEZUELA',
                                                         ])
                                                         ->searchable()
                                                         ->live()
@@ -1565,7 +1546,7 @@ class AffiliationsTable
                                                         ->mask('999999')
                                                         ->maxLength(6)
                                                         ->rules([
-                                                            'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
+                                                            'regex:/^\d{1,6}$/', // Acepta de 1 a 6 dígitos
                                                         ])
                                                         ->prefix('Ref:'),
                                                     Grid::make(1)->schema([
@@ -1573,17 +1554,17 @@ class AffiliationsTable
                                                             ->label('Comprobante de pago(VES)')
                                                             ->disk('public')
                                                             ->uploadingMessage('Cargando...')
-                                                            ->required()
-                                                    ])
+                                                            ->required(),
+                                                    ]),
 
                                                 ])->columnSpanFull(),
                                             ])->columnSpanFull()->hidden(function (Get $get) {
                                                 if ($get('payment_method') == 'TRANSFERENCIA VES' || $get('payment_method') == 'PAGO MOVIL VES' && $get('tasa_bcv') > 0) {
                                                     return false;
                                                 }
+
                                                 return true;
                                             }),
-
 
                                         /** PAGO MULTIPLE */
                                         Fieldset::make('INFORMACIÓN DE PAGO MULTIPLE EN BOLIVARES (VES) Y DOLARES (US$)')
@@ -1599,13 +1580,13 @@ class AffiliationsTable
                                                                 ->native(false)
                                                                 ->label('Método de pago en dólares(US$)')
                                                                 ->options([
-                                                                    'ZELLE'             => 'ZELLE',
+                                                                    'ZELLE' => 'ZELLE',
                                                                     'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
-                                                                    'EFECTIVO US$'      => 'EFECTIVO US$',
+                                                                    'EFECTIVO US$' => 'EFECTIVO US$',
                                                                 ])
                                                                 ->required()
                                                                 ->validationMessages([
-                                                                    'required'  => 'Seleccione un tipo de pago',
+                                                                    'required' => 'Seleccione un tipo de pago',
                                                                 ]),
 
                                                             TextInput::make('pay_amount_usd')
@@ -1629,12 +1610,13 @@ class AffiliationsTable
                                                                 ->prefixIcon('heroicon-s-pencil')
                                                                 ->required()
                                                                 ->validationMessages([
-                                                                    'required'  => 'Seleccione un tipo de pago',
+                                                                    'required' => 'Seleccione un tipo de pago',
                                                                 ])
                                                                 ->hidden(function (Get $get) {
                                                                     if ($get('payment_method_usd') == 'TRANSFERENCIA US$' || $get('payment_method_usd') == 'ZELLE') {
                                                                         return false;
                                                                     }
+
                                                                     return true;
                                                                 }),
 
@@ -1644,15 +1626,14 @@ class AffiliationsTable
                                                                 ->label('Banco Moneda Extranjera(US$)')
                                                                 ->live()
                                                                 ->options([
-                                                                    'CHASE BANK'                => 'CHASE BANK',
-                                                                    'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                                                                    'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                                                                    'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                                                                    'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
+                                                                    'CHASE BANK' => 'CHASE BANK',
+                                                                    'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                    'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
+                                                                    'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                                                                    'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
                                                                 ])
                                                                 ->searchable()
                                                                 ->prefixIcon('heroicon-s-globe-europe-africa'),
-
 
                                                             TextInput::make('reference_payment_usd')
                                                                 ->label('Nro. de Referencia')
@@ -1662,13 +1643,14 @@ class AffiliationsTable
                                                                 ->helperText('Solo se permiten letras, números y el guion (-)')
                                                                 ->required()
                                                                 ->validationMessages([
-                                                                    'regex'  => 'Solo se permite el guion (-)',
-                                                                    'required'  => 'Seleccione un tipo de pago',
+                                                                    'regex' => 'Solo se permite el guion (-)',
+                                                                    'required' => 'Seleccione un tipo de pago',
                                                                 ])
                                                                 ->hidden(function (Get $get) {
                                                                     if ($get('payment_method_usd') == 'ZELLE') {
                                                                         return false;
                                                                     }
+
                                                                     return true;
                                                                 }),
 
@@ -1687,12 +1669,12 @@ class AffiliationsTable
                                                                 ->native(false)
                                                                 ->label('Método de pago en bolivares(VES)')
                                                                 ->options([
-                                                                    'PAGO MOVIL VES'    => 'PAGO MOVIL(VES)',
+                                                                    'PAGO MOVIL VES' => 'PAGO MOVIL(VES)',
                                                                     'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
                                                                 ])
                                                                 ->required()
                                                                 ->validationMessages([
-                                                                    'required'  => 'Seleccione un tipo de pago',
+                                                                    'required' => 'Seleccione un tipo de pago',
                                                                 ]),
 
                                                             TextInput::make('pay_amount_ves')
@@ -1704,23 +1686,20 @@ class AffiliationsTable
                                                                 ->disabled()
                                                                 ->dehydrated(),
 
-
                                                             /**Banco VES */
                                                             Select::make('bank_ves')
                                                                 ->native(false)
                                                                 ->label('Banco Moneda Nacional(VES)')
                                                                 ->options([
-                                                                    'BANCAMIGA - VES'           => 'BANCAMIGA - VES',
-                                                                    'BANCO DE VENEZUELA - VES'  => 'BANCO DE VENEZUELA - VES',
+                                                                    'BANCAMIGA - VES' => 'BANCAMIGA - VES',
+                                                                    'BANCO DE VENEZUELA - VES' => 'BANCO DE VENEZUELA - VES',
                                                                 ])
                                                                 ->searchable()
                                                                 ->required()
                                                                 ->validationMessages([
-                                                                    'required'  => 'Seleccione un banco',
+                                                                    'required' => 'Seleccione un banco',
                                                                 ])
                                                                 ->prefixIcon('heroicon-s-globe-europe-africa'),
-
-
 
                                                             TextInput::make('reference_payment_ves')
                                                                 ->label('Referencia de pago(VES)')
@@ -1729,11 +1708,11 @@ class AffiliationsTable
                                                                 ->mask('999999')
                                                                 ->maxLength(6)
                                                                 ->rules([
-                                                                    'regex:/^\d{1,6}$/' // Acepta de 1 a 6 dígitos
+                                                                    'regex:/^\d{1,6}$/', // Acepta de 1 a 6 dígitos
                                                                 ])
                                                                 ->required()
                                                                 ->validationMessages([
-                                                                    'required'  => 'Campo requerido',
+                                                                    'required' => 'Campo requerido',
                                                                 ])
                                                                 ->prefix('Ref:'),
                                                             FileUpload::make('document_ves')
@@ -1742,20 +1721,20 @@ class AffiliationsTable
                                                                 ->uploadingMessage('Cargando...')
                                                                 ->required()
                                                                 ->validationMessages([
-                                                                    'required'  => 'El comprobante es requerido',
-                                                                ])
+                                                                    'required' => 'El comprobante es requerido',
+                                                                ]),
                                                         ])->columns(1),
 
-                                                ])->columnSpanFull()
+                                                ])->columnSpanFull(),
                                             ])->columnSpanFull()->hidden(function (Get $get) {
                                                 if ($get('payment_method') == 'MULTIPLE' && $get('tasa_bcv') > 0) {
                                                     return false;
                                                 }
+
                                                 return true;
                                             }),
 
                                     ]),
-
 
                                 /**OBSERVACIONES */
                                 Grid::make(1)->schema([
@@ -1763,7 +1742,7 @@ class AffiliationsTable
                                         ->label('Observaciones')
                                         ->rows(2)
                                         ->autosize()
-                                        ->dehydrated()
+                                        ->dehydrated(),
                                 ]),
                             ];
                         })
@@ -1784,7 +1763,7 @@ class AffiliationsTable
                         }),
 
                     BulkAction::make('edit_frequency_payment')
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1)
+                        ->hidden(fn () => Auth::user()->is_business_admin != 1)
                         ->label('Editar Frecuencia de Pago')
                         ->modalWidth(Width::ExtraLarge)
                         ->color('warning')
@@ -1795,20 +1774,20 @@ class AffiliationsTable
                                 ->label('Frecuencia de pago')
                                 ->options([
                                     'TRIMESTRAL' => 'TRIMESTRAL',
-                                    'SEMESTRAL'  => 'SEMESTRAL',
-                                    'MENSUAL'    => 'MENSUAL',
-                                    'ANUAL'      => 'ANUAL',
+                                    'SEMESTRAL' => 'SEMESTRAL',
+                                    'MENSUAL' => 'MENSUAL',
+                                    'ANUAL' => 'ANUAL',
                                 ])
                                 ->required()
                                 ->validationMessages([
-                                    'required'  => 'Seleccione una frecuencia de pago',
+                                    'required' => 'Seleccione una frecuencia de pago',
                                 ]),
                         ])
                         ->action(function (Collection $records, array $data) {
 
                             try {
 
-                                //Actualizamos el registro para cambiar la frecuencia de pago
+                                // Actualizamos el registro para cambiar la frecuencia de pago
                                 foreach ($records as $record) {
 
                                     $record->payment_frequency = $data['frequency_payment'];
@@ -1829,7 +1808,7 @@ class AffiliationsTable
                                     $record->save();
                                 }
 
-                                Log::info('Frecuencia de pago actualizada con exito. Usuario: ' . Auth::user()->name);
+                                Log::info('Frecuencia de pago actualizada con exito. Usuario: '.Auth::user()->name);
                                 Notification::make()
                                     ->title('NOTIFICACION')
                                     ->body('La frecuencia de pago se ha actualizado con exito')
@@ -1849,7 +1828,7 @@ class AffiliationsTable
                         }),
 
                     BulkAction::make('reassign_affiliation')
-                        ->hidden(fn() => Auth::user()->is_business_admin != 1)
+                        ->hidden(fn () => Auth::user()->is_business_admin != 1)
                         ->label('Reasignar Afiliación')
                         ->modalWidth(Width::ExtraLarge)
                         ->color('warning')
@@ -1866,6 +1845,7 @@ class AffiliationsTable
                                                 ->where('status', 'ACTIVO')
                                                 ->mapWithKeys(function ($agency) {
                                                     $type = AgencyType::find($agency->agency_type_id)->definition;
+
                                                     return [$agency->code => "{$type} - {$agency->code}"];
                                                 });
                                         })
@@ -1880,6 +1860,7 @@ class AffiliationsTable
                                                 ->where('agency_type_id', 3)
                                                 ->mapWithKeys(function ($agency) {
                                                     $type = AgencyType::find($agency->agency_type_id)->definition;
+
                                                     return [$agency->code => "{$type} - {$agency->code}"];
                                                 });
                                         })
@@ -1897,85 +1878,85 @@ class AffiliationsTable
                                         })
                                         ->searchable()
                                         ->preload(),
-                                ])
+                                ]),
                         ])
                         ->action(function (Collection $records, array $data) {
 
                             try {
 
-                                //1.- Master
+                                // 1.- Master
                                 if ($data['owner_code'] != null && $data['code_agency'] == null && $data['agent_id'] == null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
-                                            'owner_code'    => $data['owner_code'],
-                                            'code_agency'   => $data['owner_code'],
-                                            'agent_id'      => null,
+                                            'owner_code' => $data['owner_code'],
+                                            'code_agency' => $data['owner_code'],
+                                            'agent_id' => null,
                                         ]);
                                     });
                                 }
 
-                                //2.- General
+                                // 2.- General
                                 if ($data['code_agency'] != null && $data['owner_code'] == null && $data['agent_id'] == null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
-                                            'owner_code'    => $data['code_agency'],
-                                            'code_agency'   => $data['code_agency'],
-                                            'agent_id'      => null,
+                                            'owner_code' => $data['code_agency'],
+                                            'code_agency' => $data['code_agency'],
+                                            'agent_id' => null,
                                         ]);
                                     });
                                 }
 
-                                //3.- Agente
+                                // 3.- Agente
                                 if ($data['owner_code'] == null && $data['code_agency'] == null && $data['agent_id'] != null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
-                                            'owner_code'    => 'TDG-100',
-                                            'code_agency'   => 'TDG-100',
-                                            'agent_id'      => $data['agent_id'],
+                                            'owner_code' => 'TDG-100',
+                                            'code_agency' => 'TDG-100',
+                                            'agent_id' => $data['agent_id'],
                                         ]);
                                     });
                                 }
 
-                                //4.- Master + General + Agente
+                                // 4.- Master + General + Agente
                                 if ($data['owner_code'] != null && $data['code_agency'] != null && $data['agent_id'] != null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
-                                            'owner_code'    => $data['owner_code'],
-                                            'code_agency'   => $data['code_agency'],
-                                            'agent_id'      => $data['agent_id'],
+                                            'owner_code' => $data['owner_code'],
+                                            'code_agency' => $data['code_agency'],
+                                            'agent_id' => $data['agent_id'],
                                         ]);
                                     });
                                 }
 
-                                //5.- Master + General
+                                // 5.- Master + General
                                 if ($data['owner_code'] != null && $data['code_agency'] != null && $data['agent_id'] == null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
-                                            'owner_code'    => $data['owner_code'],
-                                            'code_agency'   => $data['code_agency'],
-                                            'agent_id'      => null,
+                                            'owner_code' => $data['owner_code'],
+                                            'code_agency' => $data['code_agency'],
+                                            'agent_id' => null,
                                         ]);
                                     });
                                 }
 
-                                //6.- Master + Agente
+                                // 6.- Master + Agente
                                 if ($data['owner_code'] != null && $data['code_agency'] == null && $data['agent_id'] != null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
-                                            'owner_code'    => $data['owner_code'],
-                                            'code_agency'   => $data['owner_code'],
-                                            'agent_id'      => $data['agent_id'],
+                                            'owner_code' => $data['owner_code'],
+                                            'code_agency' => $data['owner_code'],
+                                            'agent_id' => $data['agent_id'],
                                         ]);
                                     });
                                 }
 
-                                //7.- General + Agente
+                                // 7.- General + Agente
                                 if ($data['owner_code'] == null && $data['code_agency'] != null && $data['agent_id'] != null) {
                                     $records->each(function ($record) use ($data) {
                                         $record->update([
-                                            'owner_code'    => $data['code_agency'],
-                                            'code_agency'   => $data['code_agency'],
-                                            'agent_id'      => $data['agent_id'],
+                                            'owner_code' => $data['code_agency'],
+                                            'code_agency' => $data['code_agency'],
+                                            'agent_id' => $data['agent_id'],
                                         ]);
                                     });
                                 }
@@ -1989,7 +1970,7 @@ class AffiliationsTable
                             } catch (\Throwable $th) {
 
                                 // 4. Registro de error con contexto para debugging senior
-                                Log::error("NEGOCIOS-AFILIACIONES: Fallo al actualizar registros de pago", [
+                                Log::error('NEGOCIOS-AFILIACIONES: Fallo al actualizar registros de pago', [
                                     'input_data' => $data,
                                     'exception_message' => $th->getMessage(),
                                     'file' => $th->getFile(),
@@ -2013,6 +1994,29 @@ class AffiliationsTable
                     ExportBulkAction::make()->exporter(AffiliationExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
                 ]),
             ])
+            ->recordClasses(fn (Affiliation $record): array => self::rowClassesForAffiliationActivatedToday($record))
             ->striped();
+    }
+
+    /**
+     * Fila resaltada cuando la afiliación se activó hoy (activated_at en formato d/m/Y).
+     *
+     * @return array<int, string>
+     */
+    private static function rowClassesForAffiliationActivatedToday(Affiliation $record): array
+    {
+        $activatedAt = $record->getAttribute('activated_at');
+        if ($activatedAt === null || $activatedAt === '') {
+            return [];
+        }
+
+        $today = Carbon::today()->format('d/m/Y');
+        if (trim((string) $activatedAt) !== $today) {
+            return [];
+        }
+
+        return [
+            'bg-[#34C759]/14 dark:bg-[#34C759]/18 border-l-[3px] border-[#34C759] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-[#30D158] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+        ];
     }
 }

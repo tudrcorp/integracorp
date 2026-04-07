@@ -14,7 +14,6 @@ use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
@@ -85,8 +84,8 @@ class OperationsPanelProvider extends PanelProvider
                     ),
             ])
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('PERFIL DE USUARIO'),
-                'logout' => fn(Action $action) => $action
+                'profile' => fn (Action $action) => $action->label('PERFIL DE USUARIO'),
+                'logout' => fn (Action $action) => $action
                     ->label('CERRAR SESIÓN')
                     ->color('danger')
                     ->url(route('internal')),
@@ -99,9 +98,10 @@ class OperationsPanelProvider extends PanelProvider
                         if (in_array('SUPERADMIN', $user)) {
                             return false;
                         }
+
                         return true;
                     })
-                    ->action(fn() => redirect(route('filament.business.pages.dashboard'))),
+                    ->action(fn () => redirect(route('filament.business.pages.dashboard'))),
             ])
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->navigationGroups([
@@ -123,7 +123,28 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn() => view('filament.menu-user')
+                fn () => view('filament.menu-user')
+            )
+            ->renderHook(
+                PanelsRenderHook::CONTENT_START,
+                function () {
+                    $colaborador = \App\Models\RrhhColaborador::query()
+                        ->where('user_id', auth()->id())
+                        ->first();
+                    $tickets = $colaborador
+                        ? \App\Models\HelpDesk::query()
+                            ->where('rrhh_colaborador_id', $colaborador->id)
+                            ->whereIn('status', ['PENDIENTE POR INICIAR', 'EN PROCESO'])
+                            ->orderByDesc('id')
+                            ->limit(30)
+                            ->get()
+                        : collect();
+
+                    return view('filament.tickets-ticker', [
+                        'tickets' => $tickets,
+                        'fullWidth' => true,
+                    ]);
+                }
             )
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');

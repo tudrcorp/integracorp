@@ -2,43 +2,46 @@
 
 namespace App\Jobs;
 
-use Throwable;
-use App\Models\User;
-use Filament\Actions\Action;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Filament\Notifications\Notification;
-use Illuminate\Queue\InteractsWithQueue;
+use App\Http\Controllers\AffiliationController;
 use App\Mail\SendMailPropuestaPlanInicial;
-use Illuminate\Foundation\Queue\Queueable;
+use App\Models\User;
+use App\Support\DomPdfBatchRenderOptions;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendNotificacionAfiliacionIndividual implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $pagador;
+
     protected $beneficios_table;
+
     protected $name_pdf;
+
     protected $afiliates;
+
     protected $user;
-    
 
     /**
      * Create a new job instance.
      */
     public function __construct($pagador, $beneficios_table, $name_pdf, $afiliates, $user)
     {
-        $this->pagador          = $pagador;
+        $this->pagador = $pagador;
         $this->beneficios_table = $beneficios_table;
-        $this->name_pdf         = $name_pdf;
-        $this->afiliates        = $afiliates;
-        $this->user             = $user;
+        $this->name_pdf = $name_pdf;
+        $this->afiliates = $afiliates;
+        $this->user = $user;
     }
 
     /**
@@ -51,15 +54,15 @@ class SendNotificacionAfiliacionIndividual implements ShouldQueue
         Log::info('Se ha generado el certificado de afiliacion');
         Log::info($this->name_pdf);
         Log::info($this->user);
-        
+
         Notification::make()
             ->title('¡TAREA COMPLETADA!')
-            ->body('📎 ' . $this->name_pdf . ' ya se encuentra disponible para su descarga.')
+            ->body('📎 '.$this->name_pdf.' ya se encuentra disponible para su descarga.')
             ->success()
             ->actions([
                 Action::make('download')
                     ->label('Descargar archivo')
-                    ->url('/storage/certificados-doc/' . $this->name_pdf)
+                    ->url('/storage/certificados-doc/'.$this->name_pdf),
             ])
             ->sendToDatabase($this->user);
     }
@@ -73,8 +76,12 @@ class SendNotificacionAfiliacionIndividual implements ShouldQueue
         Log::info($name_pdf);
         Log::info($afiliates);
 
-        $pdf = Pdf::loadView('documents.certificate', compact('pagador', 'beneficios_table', 'afiliates'));
-        $pdf->save(public_path('storage/certificados-doc/' . $name_pdf));
+        $pdf = Pdf::loadView(
+            'documents.certificate',
+            AffiliationController::dataForCertificatePdfView($pagador, $beneficios_table, $afiliates),
+        );
+        DomPdfBatchRenderOptions::apply($pdf);
+        $pdf->save(public_path('storage/certificados-doc/'.$name_pdf));
 
         /**
          * Despues de guardar el pdf lo enviamos por email
@@ -89,7 +96,7 @@ class SendNotificacionAfiliacionIndividual implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info("SendNotificacionAfiliacionIndividual: FAILED");
+        Log::info('SendNotificacionAfiliacionIndividual: FAILED');
         Log::error($exception->getMessage());
 
         Notification::make()

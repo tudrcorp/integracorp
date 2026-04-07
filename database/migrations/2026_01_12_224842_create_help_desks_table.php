@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('help_desks', function (Blueprint $table) {
             $table->id();
+            $table->longText('description');
+            $table->string('image')->nullable();
+            $table->string('priority');
+            $table->string('status')->default('PENDIENTE POR INICIAR');
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
             $table->timestamps();
         });
     }

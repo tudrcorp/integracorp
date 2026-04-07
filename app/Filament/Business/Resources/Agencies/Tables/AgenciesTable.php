@@ -2,45 +2,39 @@
 
 namespace App\Filament\Business\Resources\Agencies\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Agent;
+use App\Filament\Exports\AgencyExporter;
+use App\Http\Controllers\NotificationController;
+use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\AgencyType;
-use Filament\Tables\Table;
-use App\Models\Affiliation;
-use Filament\Actions\Action;
+use App\Models\Agent;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
-use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Filament\Actions\DeleteAction;
-use Illuminate\Support\Collection;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Log;
-use App\Models\AffiliationCorporate;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Illuminate\Support\Facades\Crypt;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
-use App\Http\Controllers\LogController;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use App\Filament\Exports\AgencyExporter;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Http\Controllers\AgencyController;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AgenciesTable
 {
@@ -51,18 +45,23 @@ class AgenciesTable
                 if (Auth::user()->is_accountManagers) {
                     return Agency::query()->where('ownerAccountManagers', Auth::user()->id);
                 }
+
                 return Agency::query();
             })
             ->defaultSort('created_at', 'desc')
-            ->heading('AGENCIAS')
-            ->description('Lista de agencias registradas en el sistema')
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->heading('Agencias')
+            ->description('Listado de agencias registradas en el sistema. Todas las columnas están visibles por defecto; puedes reorganizarlas desde el selector de columnas.')
             ->columns([
                 TextColumn::make('owner_code')
-                    ->label('Pertenece a:')
+                    ->label('Pertenece a')
                     ->badge()
                     ->color('success')
                     ->icon('heroicon-s-building-library')
                     ->searchable()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->wrap()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('code')
                     ->label('Código')
@@ -75,107 +74,99 @@ class AgenciesTable
                             ->first()
                             ->definition;
 
-                        return $agency_type . ' - ';
+                        return $agency_type.' - ';
                     })
                     ->searchable()
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('accountManager.full_name')
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
                     ->searchable()
-                    ->color('warning'),
+                    ->sortable()
+                    ->color('warning')
+                    ->placeholder('—')
+                    ->wrap(),
                 TextColumn::make('typeAgency.definition')
-                    ->label('Tipo agencia')
+                    ->label('Tipo de agencia')
                     ->searchable()
+                    ->sortable()
                     ->badge()
                     ->color('azulOscuro')
+                    ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('name_corporative')
-                    ->label('Razon social')
+                    ->label('Razón social')
                     ->searchable()
+                    ->sortable()
                     ->badge()
                     ->color('verde')
+                    ->wrap()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('rif')
-                    ->label('RIF:')
+                    ->label('RIF')
                     ->searchable()
+                    ->sortable()
                     ->badge()
                     ->color('verde')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('ci_responsable')
-                    ->label('Cedula del responsable:')
+                    ->label('Cédula del responsable')
                     ->searchable()
+                    ->sortable()
                     ->badge()
                     ->color('verde')
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('address')
-                    ->label('Direccion')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('email')
                     ->label('Correo electrónico')
                     ->searchable()
+                    ->sortable()
+                    ->icon('heroicon-m-envelope')
+                    ->wrap()
+                    ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('phone')
-                    ->label('Número de Teléfono')
+                    ->label('Teléfono')
                     ->searchable()
+                    ->sortable()
+                    ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdec')
                     ->label('(%) TDEC')
                     ->suffix('%')
+                    ->alignCenter()
                     ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-                        return 'warning';
-                    })
-                    ->numeric()
+                    ->color(fn (Agency $record): string => ($record->commission_tdec ?? 0) > 0 ? 'success' : 'warning')
+                    ->numeric(2)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdec_renewal')
-                    ->label('(%) TDEC Renovacion')
+                    ->label('(%) TDEC renovación')
                     ->suffix('%')
+                    ->alignCenter()
                     ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-                        return 'warning';
-                    })
-                    ->numeric()
+                    ->color(fn (Agency $record): string => ($record->commission_tdec_renewal ?? 0) > 0 ? 'success' : 'warning')
+                    ->numeric(2)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdev')
                     ->label('(%) TDEV')
                     ->suffix('%')
+                    ->alignCenter()
                     ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-                        return 'warning';
-                    })
-                    ->numeric()
+                    ->color(fn (Agency $record): string => ($record->commission_tdev ?? 0) > 0 ? 'success' : 'warning')
+                    ->numeric(2)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('commission_tdev_renewal')
-                    ->label('(%) TDEV Renovacion')
+                    ->label('(%) TDEV renovación')
                     ->suffix('%')
+                    ->alignCenter()
                     ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-                        return 'warning';
-                    })
-                    ->numeric()
+                    ->color(fn (Agency $record): string => ($record->commission_tdev_renewal ?? 0) > 0 ? 'success' : 'warning')
+                    ->numeric(2)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -187,26 +178,33 @@ class AgenciesTable
                             'ACTIVO' => 'success',
                             'INACTIVO' => 'danger',
                             'POR REVISION' => 'warning',
+                            default => 'gray',
                         };
                     })
                     ->searchable()
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_by')
-                    ->label('Creado Por')
+                    ->label('Creado por')
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_at')
-                    ->label('Fecha de Creación')
-                    ->dateTime()
+                    ->label('Fecha de creación')
+                    ->dateTime('d/m/Y H:i')
+                    ->description(fn (Agency $record) => $record->created_at->diffForHumans())
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('updated_at')
-                    ->label('Fecha de Modificación')
-                    ->dateTime()
+                    ->label('Última modificación')
+                    ->description(fn (Agency $record) => $record->updated_at->diffForHumans())
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 ToggleColumn::make('activate_monthly_frequency')
-                    ->label('Frecuencia Mensual')
+                    ->label('Frecuencia mensual')
+                    ->alignCenter(),
             ])
             ->filters([
                 Filter::make('created_at')
@@ -218,25 +216,30 @@ class AgenciesTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
                     }),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action) => $action
+                    ->button()
+                    ->label('Filtros'),
+            )
             ->recordActions([
                 ActionGroup::make([
                     Action::make('Activate')
@@ -245,15 +248,15 @@ class AgenciesTable
 
                             try {
 
-                                //1. creamos el usuario en la tabla users para la agencia tipo master o general
-                                $user = new User();
+                                // 1. creamos el usuario en la tabla users para la agencia tipo master o general
+                                $user = new User;
                                 $user->name = $record->name_corporative;
                                 $user->email = $record->email;
                                 $user->password = Hash::make('12345678');
                                 $user->is_agency = true;
                                 $user->code_agency = $record->code;
                                 $user->agency_type = $record->agency_type_id == 1 ? 'MASTER' : 'GENERAL';
-                                $user->link_agency = env('APP_URL') . '/ay/lk/' . Crypt::encryptString($record->code);
+                                $user->link_agency = env('APP_URL').'/ay/lk/'.Crypt::encryptString($record->code);
                                 $user->status = 'ACTIVO';
                                 $user->save();
 
@@ -263,7 +266,8 @@ class AgenciesTable
 
                                 /**
                                  * Notificacion por whatsapp
-                                 * @param Agency $record
+                                 *
+                                 * @param  Agency  $record
                                  */
                                 $phone = $record->phone;
                                 $email = $record->email;
@@ -278,7 +282,7 @@ class AgenciesTable
                                         ->iconColor('success')
                                         ->color('success')
                                         ->send();
-                                    
+
                                 }
 
                             } catch (\Throwable $th) {
@@ -295,7 +299,7 @@ class AgenciesTable
                         ->icon('heroicon-s-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->hidden(fn(Agency $record) => $record->status == 'ACTIVO'),
+                        ->hidden(fn (Agency $record) => $record->status == 'ACTIVO'),
                     Action::make('edit_jerarquia')
                         ->requiresConfirmation()
                         ->label('Editar Jerarquía')
@@ -303,47 +307,46 @@ class AgenciesTable
                         ->color('warning')
                         ->modalWidth(Width::ThreeExtraLarge)
                         ->action(function (Agency $record) {
-                            
+
                             try {
 
-                                //1. Busco la informacion del agente en la tabla de usuario para actualizar la informacion
+                                // 1. Busco la informacion del agente en la tabla de usuario para actualizar la informacion
                                 // para que el agente acceda con el mismo usuario como agencia master
                                 $user = User::where('email', $record->email)->first()->update([
                                     'agency_type' => 'MASTER',
                                 ]);
 
-                                //2. Busco en la tabla de COTIZACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                // 2. Busco en la tabla de COTIZACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
                                 // para migrar la informacion del agente a la agencia master
                                 $individualQuote = IndividualQuote::where('code_agency', $record->code)->get();
                                 foreach ($individualQuote as $quote) {
-                                    $quote->owner_code  = $record->code;
+                                    $quote->owner_code = $record->code;
                                     $quote->save();
                                 }
 
-                                //3. Busco en la tabla de COTIZACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                // 3. Busco en la tabla de COTIZACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
                                 // para migrar la informacion del agente a la agencia master
                                 $corporateQuote = CorporateQuote::where('code_agency', $record->code)->get();
                                 foreach ($corporateQuote as $corpquote) {
-                                    $corpquote->owner_code  = $record->code;
+                                    $corpquote->owner_code = $record->code;
                                     $corpquote->save();
                                 }
 
-                                //4. Busco en la tabla de AFILIACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
+                                // 4. Busco en la tabla de AFILIACIONES INDIVIDUALES los registros asociados al agentes y actualizo la informacion
                                 // para migrar la informacion del agente a la agencia master
                                 $afiliacionIndividual = Affiliation::where('code_agency', $record->code)->get();
                                 foreach ($afiliacionIndividual as $afiInvidual) {
-                                    $afiInvidual->owner_code  = $record->code;
+                                    $afiInvidual->owner_code = $record->code;
                                     $afiInvidual->save();
                                 }
 
-                                //5. Busco en la tabla de AFILIACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
+                                // 5. Busco en la tabla de AFILIACIONES CORPOTAIVAS los registros asociados al agentes y actualizo la informacion
                                 // para migrar la informacion del agente a la agencia master
                                 $afiliacionCorporativa = AffiliationCorporate::where('code_agency', $record->code)->get();
                                 foreach ($afiliacionCorporativa as $corp) {
-                                    $corp->owner_code  = $record->code;
+                                    $corp->owner_code = $record->code;
                                     $corp->save();
                                 }
-
 
                                 Notification::make()
                                     ->title('ASCENSO EXITOSO')
@@ -351,7 +354,7 @@ class AgenciesTable
                                     ->iconColor('success')
                                     ->color('success')
                                     ->send();
-                                    
+
                             } catch (\Throwable $th) {
 
                                 Notification::make()
@@ -363,21 +366,21 @@ class AgenciesTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     Action::make('Inactivate')
                         ->label('Inactivar')
-                        ->action(fn(Agency $record) => $record->update(['status' => 'INACTIVO']))
+                        ->action(fn (Agency $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteAction::make()
                         ->color('danger')
                         ->label('Eliminar')
-                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
+                    ->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -397,73 +400,73 @@ class AgenciesTable
                                 ])->columnSpanFull()->columns(1),
                         ])
                         ->action(function (Collection $records, array $data) {
-                            
+
                             $records = $records->toArray();
                             // dd($records);
                             try {
 
                                 for ($i = 0; $i < count($records); $i++) {
-                                    
-                                    //Agencias Tipo Master
+
+                                    // Agencias Tipo Master
                                     if ($records[$i]['agency_type_id'] == 1) {
-                                        
+
                                         if ($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION') {
                                             throw new \Exception('No se puede asignar un coordinador a un agencia  en estatus"INACTIVO" o "POR REVISION"');
                                         }
 
-                                        //actualizo la agencia master
+                                        // actualizo la agencia master
                                         Agency::where('status', 'ACTIVO')
-                                        ->where('id', $records[$i]['id'])
-                                        ->where('code', $records[$i]['code'])
-                                        ->first()
-                                        ->update([
-                                            'ownerAccountManagers' => $data['ownerAccountManagers']
-                                        ]);
-                                        
-                                        //Busco la agencia y validamos la estructura de la agebcia
-                                        //varificamos las agencias generales y los agentes asociados a ella
-                                        $agencyGenerals = Agency::where('status', 'ACTIVO')
-                                        ->where('agency_type_id', 3)
-                                        ->where('owner_code', $records[0]['owner_code'])
-                                        ->get();
+                                            ->where('id', $records[$i]['id'])
+                                            ->where('code', $records[$i]['code'])
+                                            ->first()
+                                            ->update([
+                                                'ownerAccountManagers' => $data['ownerAccountManagers'],
+                                            ]);
 
-                                        //Si la agencia master tiene agencias generales activas
+                                        // Busco la agencia y validamos la estructura de la agebcia
+                                        // varificamos las agencias generales y los agentes asociados a ella
+                                        $agencyGenerals = Agency::where('status', 'ACTIVO')
+                                            ->where('agency_type_id', 3)
+                                            ->where('owner_code', $records[0]['owner_code'])
+                                            ->get();
+
+                                        // Si la agencia master tiene agencias generales activas
                                         if (count($agencyGenerals) > 0) {
-                                            
+
                                             for ($j = 0; $j < count($agencyGenerals); $j++) {
-                                                //actualizo el valor del coordinador
+                                                // actualizo el valor del coordinador
                                                 $agencyGenerals[$j]->ownerAccountManagers = $data['ownerAccountManagers'];
                                                 $agencyGenerals[$j]->save();
 
                                             }
-            
+
                                         }
 
-                                        //Busco los agentes que pertenecen a la agencia master
+                                        // Busco los agentes que pertenecen a la agencia master
                                         $agentes = Agent::where('status', 'ACTIVO')
-                                        ->where('owner_code', $records[0]['owner_code'])
-                                        ->get();
+                                            ->where('owner_code', $records[0]['owner_code'])
+                                            ->get();
 
-                                        //Si la agencia master tiene agentes activos
+                                        // Si la agencia master tiene agentes activos
                                         if (count($agentes) > 0) {
 
                                             for ($k = 0; $k < count($agentes); $k++) {
-                                                //actualizo el valor del coordinador
+                                                // actualizo el valor del coordinador
                                                 $agentes[$k]->ownerAccountManagers = $data['ownerAccountManagers'];
                                                 $agentes[$k]->save();
 
-                                                //Busco si el agente tiene subagente asignados a el
-                                                //varificamos las agencias generales y los agentes asociados a ella
+                                                // Busco si el agente tiene subagente asignados a el
+                                                // varificamos las agencias generales y los agentes asociados a ella
                                                 $subAgents = Agent::where('status', 'ACTIVO')
                                                     ->where('agent_type_id', 3)
                                                     ->where('owner_agent', $agentes[$k]['id'])
                                                     ->get();
 
-                                                //Si la agencia master tiene agencias generales activas
+                                                // Si la agencia master tiene agencias generales activas
                                                 if (count($subAgents) > 0) {
 
                                                     for ($l = 0; $l < count($subAgents); $l++) {
-                                                        //actualizo el valor del coordinador
+                                                        // actualizo el valor del coordinador
                                                         $subAgents[$l]->ownerAccountManagers = $data['ownerAccountManagers'];
                                                         $subAgents[$l]->save();
                                                     }
@@ -473,48 +476,48 @@ class AgenciesTable
 
                                     }
 
-                                    //Agencias Tipo General
+                                    // Agencias Tipo General
                                     if ($records[$i]['agency_type_id'] == 3) {
 
                                         if ($records[$i]['status'] == 'INACTIVO' || $records[$i]['status'] == 'POR REVISION') {
                                             throw new \Exception('No se puede asignar un coordinador a un agencia  en estatus"INACTIVO" o "POR REVISION"');
                                         }
 
-                                        //actualizo la agencia general
+                                        // actualizo la agencia general
                                         Agency::where('status', 'ACTIVO')
                                             ->where('id', $records[$i]['id'])
                                             ->where('code', $records[$i]['code'])
                                             ->first()
                                             ->update([
-                                                'ownerAccountManagers' => $data['ownerAccountManagers']
+                                                'ownerAccountManagers' => $data['ownerAccountManagers'],
                                             ]);
-                                        
-                                        //Busco los agentes que pertenecen a la agencia master
-                                        $agentes = Agent::where('status', 'ACTIVO')
-                                        ->where('owner_code', $records[0]['owner_code'])
-                                        ->get();
 
-                                        //Si la agencia master tiene agentes activos
+                                        // Busco los agentes que pertenecen a la agencia master
+                                        $agentes = Agent::where('status', 'ACTIVO')
+                                            ->where('owner_code', $records[0]['owner_code'])
+                                            ->get();
+
+                                        // Si la agencia master tiene agentes activos
                                         if (count($agentes) > 0) {
 
                                             for ($k = 0; $k < count($agentes); $k++) {
-                                                //actualizo el valor del coordinador
+                                                // actualizo el valor del coordinador
                                                 $agentes[$k]->update([
-                                                    'ownerAccountManagers' => $data['ownerAccountManagers']
+                                                    'ownerAccountManagers' => $data['ownerAccountManagers'],
                                                 ]);
 
-                                                //Busco si el agente tiene subagente asignados a el
-                                                //varificamos las agencias generales y los agentes asociados a ella
+                                                // Busco si el agente tiene subagente asignados a el
+                                                // varificamos las agencias generales y los agentes asociados a ella
                                                 $subAgents = Agent::where('status', 'ACTIVO')
                                                     ->where('agent_type_id', 3)
                                                     ->where('owner_agent', $agentes[$k]['id'])
                                                     ->get();
 
-                                                //Si la agencia master tiene agencias generales activas
+                                                // Si la agencia master tiene agencias generales activas
                                                 if (count($subAgents) > 0) {
 
                                                     for ($l = 0; $l < count($subAgents); $l++) {
-                                                        //actualizo el valor del coordinador
+                                                        // actualizo el valor del coordinador
                                                         $subAgents[$l]->ownerAccountManagers = $data['ownerAccountManagers'];
                                                         $subAgents[$l]->save();
                                                     }
@@ -522,7 +525,7 @@ class AgenciesTable
                                             }
                                         }
                                     }
-                                    
+
                                 }
 
                             } catch (\Throwable $th) {
@@ -536,10 +539,10 @@ class AgenciesTable
                             }
                         })
                         ->requiresConfirmation()
-                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
-                        ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ])

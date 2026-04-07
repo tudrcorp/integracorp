@@ -6,6 +6,7 @@ use App\Filament\Operations\Resources\TelemedicinePatients\Pages\CreateTelemedic
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\EditTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\ListTelemedicinePatients;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\ViewTelemedicinePatient;
+use App\Filament\Operations\Resources\TelemedicinePatients\RelationManagers\TelemedicineCasesRelationManager;
 use App\Filament\Operations\Resources\TelemedicinePatients\Schemas\TelemedicinePatientForm;
 use App\Filament\Operations\Resources\TelemedicinePatients\Schemas\TelemedicinePatientInfolist;
 use App\Filament\Operations\Resources\TelemedicinePatients\Tables\TelemedicinePatientsTable;
@@ -13,8 +14,8 @@ use App\Models\TelemedicinePatient;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class TelemedicinePatientResource extends Resource
@@ -23,7 +24,7 @@ class TelemedicinePatientResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-ui-user-profile';
 
-    protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
+    protected static string|UnitEnum|null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $navigationLabel = 'Pacientes';
 
@@ -48,6 +49,8 @@ class TelemedicinePatientResource extends Resource
     {
         return [
             //
+            TelemedicineCasesRelationManager::class,
+
         ];
     }
 
@@ -59,5 +62,18 @@ class TelemedicinePatientResource extends Resource
             'view' => ViewTelemedicinePatient::route('/{record}'),
             'edit' => EditTelemedicinePatient::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'plan.benefitPlans.limit',
+                'plan.businessUnit',
+                'coverage',
+                'city',
+                'country',
+                'state',
+            ]);
     }
 }

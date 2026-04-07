@@ -2,97 +2,131 @@
 
 namespace App\Filament\Business\Resources\AccountManagers\RelationManagers;
 
-use App\Models\AgencyType;
+use App\Filament\Business\Resources\Agencies\AgencyResource;
+use App\Models\Agency;
 use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Actions\EditAction;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\AssociateAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Actions\DissociateBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Enums\FontFamily;
+use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AgenciesRelationManager extends RelationManager
 {
     protected static string $relationship = 'agencies';
 
-    protected static ?string $title = 'AGENCIAS DE CORRETAJE';
+    protected static ?string $title = 'Agencias de corretaje';
 
-    protected static string|BackedEnum|null $icon = 'heroicon-c-building-library';
+    protected static string|BackedEnum|null $icon = 'heroicon-o-building-library';
 
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('ownerAccountManagers')
+            ->recordTitleAttribute('name_corporative')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['typeAgency']))
             ->defaultSort('created_at', 'desc')
-            ->heading('AGENCIAS')
-            ->description('Lista de Agencias Master y General asignadas a esta estrucutra de negocios')
+            ->heading('Agencias')
+            ->description('Agencias Master y General asignadas a este account manager.')
+            ->emptyStateHeading('Sin agencias asignadas')
+            ->emptyStateDescription('Aún no hay agencias vinculadas a este ejecutivo.')
+            ->striped()
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')
+                    ->icon('heroicon-m-qr-code')
+                    ->formatStateUsing(function (?string $state, Agency $record): string {
+                        $type = $record->typeAgency?->definition ?? '';
+                        $code = $state ?? '';
+
+                        return $type !== '' ? "{$type} · {$code}" : $code;
+                    })
                     ->badge()
                     ->color('success')
-                    ->icon('heroicon-o-building-office-2')
-                    ->prefix(function ($record) {
-                        $agency_type = AgencyType::select('definition')
-                            ->where('id', $record->agency_type_id)
-                            ->first()
-                            ->definition;
-
-                        return $agency_type . ' - ';
-                    })
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->sortable(),
                 TextColumn::make('name_corporative')
-                    ->label('Razon social')
+                    ->label('Razón social')
+                    ->icon('heroicon-m-building-office-2')
+                    ->weight(FontWeight::SemiBold)
+                    ->wrap()
                     ->searchable()
-                    ->badge()
-                    ->color('verde')
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->sortable()
+                    ->extraCellAttributes(fn (): array => [
+                        'class' => 'min-w-44 sm:min-w-56',
+                    ]),
                 TextColumn::make('rif')
-                    ->label('RIF:')
+                    ->label('RIF')
+                    ->icon('heroicon-m-document-text')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable()
-                    ->badge()
-                    ->color('verde')
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(),
                 TextColumn::make('ci_responsable')
-                    ->label('Cedula del responsable:')
+                    ->label('CI responsable')
+                    ->icon('heroicon-m-identification')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable()
-                    ->badge()
-                    ->color('verde')
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(),
                 TextColumn::make('address')
-                    ->label('Direccion')
+                    ->label('Dirección')
+                    ->icon('heroicon-m-map-pin')
+                    ->wrap()
+                    ->lineClamp(2)
+                    ->tooltip(fn (Agency $record): string => (string) $record->address)
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email')
-                    ->label('Correo electrónico')
+                    ->label('Correo')
+                    ->icon('heroicon-m-envelope')
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->copyable()
+                    ->copyMessage('Correo copiado')
+                    ->limit(28)
+                    ->tooltip(fn (Agency $record): string => (string) $record->email),
                 TextColumn::make('phone')
-                    ->label('Número de Teléfono')
+                    ->label('Teléfono')
+                    ->icon('heroicon-m-phone')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-
+                    ->copyable()
+                    ->copyMessage('Teléfono copiado')
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label('Estatus')
+                    ->icon('heroicon-m-signal')
                     ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'ACTIVO' => 'success',
-                            'INACTIVO' => 'danger',
-                            'POR REVISION' => 'warning',
-                        };
+                    ->color(fn (mixed $state): string => match ($state) {
+                        'ACTIVO' => 'success',
+                        'INACTIVO' => 'danger',
+                        'POR REVISION' => 'warning',
+                        default => 'gray',
                     })
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('created_at')
+                    ->label('Alta')
+                    ->icon('heroicon-m-calendar-days')
+                    ->dateTime('d/m/Y')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options([
+                        'ACTIVO' => 'Activo',
+                        'INACTIVO' => 'Inactivo',
+                        'POR REVISION' => 'Por revisión',
+                    ])
+                    ->native(false),
+            ])
+            ->recordActions([
+                ViewAction::make()
+                    ->label('Ver ficha')
+                    ->icon('heroicon-m-arrow-top-right-on-square')
+                    ->url(fn (Agency $record): string => AgencyResource::getUrl('view', ['record' => $record], true, 'business')),
             ]);
     }
 }

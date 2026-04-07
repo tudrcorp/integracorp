@@ -6,27 +6,95 @@ use App\Models\AgeRange;
 use App\Models\Benefit;
 use App\Models\Coverage;
 use App\Models\Limit;
-use App\Models\Plan;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\GridDirection;
+use Filament\Support\Enums\TextSize;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 
 class PlanForm
 {
+    private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    private static function isPackageMode(Get $get): bool
+    {
+        return (bool) ($get('is_package') ?? false);
+    }
+
+    /**
+     * Etiqueta del ítem del repetidor de coberturas generales: cobertura(s) elegida(s) y rangos de edad configurados.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private static function generalCoverageRepeaterItemLabel(array $state): string
+    {
+        $rawIds = $state['coverage_id'] ?? null;
+
+        $ids = match (true) {
+            is_array($rawIds) => array_values(array_filter($rawIds, static fn ($id): bool => filled($id))),
+            filled($rawIds) => [(string) $rawIds],
+            default => [],
+        };
+
+        if ($ids === []) {
+            return 'Nueva cobertura general — seleccione una o más coberturas';
+        }
+
+        $coverageLabels = [];
+        foreach ($ids as $id) {
+            $coverage = Coverage::find($id);
+            if ($coverage !== null) {
+                $coverageLabels[] = 'US $'.number_format((float) $coverage->price, 2).' (#'.$coverage->id.')';
+            } else {
+                $coverageLabels[] = 'ID '.$id;
+            }
+        }
+
+        $line = count($coverageLabels) > 1
+            ? 'Coberturas: '.implode(' · ', $coverageLabels)
+            : 'Cobertura: '.$coverageLabels[0];
+
+        $ageRates = $state['age_rates'] ?? [];
+        $rangeLabels = [];
+        if (is_array($ageRates)) {
+            foreach ($ageRates as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $rangeId = $row['age_range_id'] ?? null;
+                if (! filled($rangeId)) {
+                    continue;
+                }
+                $range = AgeRange::find($rangeId);
+                $rangeLabels[] = $range?->range !== null && $range->range !== ''
+                    ? $range->range.' años'
+                    : (string) $rangeId;
+            }
+        }
+
+        if ($rangeLabels !== []) {
+            $line .= ' — Rangos: '.implode(', ', array_unique($rangeLabels));
+        }
+
+        return $line;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -36,10 +104,13 @@ class PlanForm
                 Section::make('Configuración General del Plan')
                     ->description('Defina la identidad principal y el tipo de plan que está creando.')
                     ->icon('heroicon-o-identification')
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                TextInput::make('plan_name')
+                                TextInput::make('description')
                                     ->label('Nombre del Plan')
                                     ->placeholder('Ej: Plan Platinum Global')
                                     ->required()
@@ -52,18 +123,93 @@ class PlanForm
                                         'DRESS-TYLOR' => 'DRESS-TYLOR',
                                     ])
                                     ->required(),
-
-                                TextInput::make('description')
-                                    ->label('Descripción Corta')
-                                    ->placeholder('Resumen de lo que incluye este plan...')
-                                    ->columnSpanFull(),
+                                Hidden::make('status')->default('INACTIVO'),
+                                Hidden::make('created_by')->default(Auth::user()->name),
                             ]),
                     ])->collapsible()->columnSpanFull(),
 
+                // Modo paquete vs armado detallado (UX tipo iOS)
+                Section::make('¿Cómo desea crear este plan?')
+                    ->description('Paquete: elija varios beneficios y luego defina coberturas globales por edad. Detallado: agregue cada beneficio con sus coberturas y rangos de edad.')
+                    ->icon('heroicon-o-squares-2x2')
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(1)
+                            ->extraAttributes([
+                                'class' => 'gap-4',
+                            ])
+                            ->schema([
+                                Grid::make(1)
+                                    ->extraAttributes([
+                                        'class' => 'rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5',
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 12])
+                                            ->schema([
+                                                Grid::make(1)
+                                                    ->columnSpan(['default' => 1, 'lg' => 8])
+                                                    ->schema([
+                                                        Text::make('Crear como paquete')
+                                                            ->weight('semibold')
+                                                            ->size(TextSize::Large)
+                                                            ->color('gray'),
+                                                        Text::make('Un paquete agrupa beneficios y aplica coberturas comunes por edad. Activa el interruptor para configurar crear un paquete.')
+                                                            ->color('gray')
+                                                            ->size(TextSize::Small)
+                                                            ->extraAttributes([
+                                                                'class' => 'mt-1 max-w-prose leading-relaxed',
+                                                            ]),
+                                                    ]),
+                                                Toggle::make('is_package')
+                                                    ->label('Crear como paquete')
+                                                    ->hiddenLabel()
+                                                    ->inline(false)
+                                                    ->live()
+                                                    ->default(false)
+                                                    ->onColor('success')
+                                                    ->offColor('gray')
+                                                    ->columnSpan(['default' => 1, 'lg' => 4])
+                                                    ->extraFieldWrapperAttributes([
+                                                        'class' => 'flex items-start justify-end lg:pt-1',
+                                                    ]),
+                                            ]),
+                                    ]),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Beneficios del paquete')
+                    ->description('Seleccione los beneficios que incluirá este paquete. Luego configure las coberturas en la siguiente sección.')
+                    ->icon('heroicon-o-queue-list')
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->visible(fn (Get $get): bool => self::isPackageMode($get))
+                    ->schema([
+                        CheckboxList::make('package_benefit_ids')
+                            ->label('Beneficios incluidos')
+                            ->options(fn (): array => Benefit::query()->orderBy('description')->pluck('description', 'id')->all())
+                            ->searchable()
+                            ->columns(2)
+                            ->gridDirection(GridDirection::Row)
+                            ->bulkToggleable()
+                            ->required(fn (Get $get): bool => self::isPackageMode($get))
+                            ->extraFieldWrapperAttributes([
+                                'class' => 'rounded-2xl border border-slate-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5 sm:p-4',
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+
                 // SECCIÓN 2: ESTRUCTURA MAESTRA (BENEFICIOS -> COBERTURAS -> EDADES)
                 Section::make('Arquitectura de Beneficios y Tarifas')
-                    ->description('Agregue beneficios y desglose sus coberturas y rangos de edad con sus respectivas tarifas.')
+                    ->description('Agregue beneficios y, si aplica, coberturas por beneficio con rangos de edad. Use este modo cuando no esté creando un paquete.')
                     ->icon('heroicon-o-puzzle-piece')
+                    ->visible(fn (Get $get): bool => ! self::isPackageMode($get))
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
                     ->schema([
                         Repeater::make('benefits')
                             ->label('Lista de Beneficios')
@@ -177,6 +323,7 @@ class PlanForm
                                                 Select::make('coverage_id')
                                                     ->label('Cobertura')
                                                     ->options(Coverage::all()->pluck('price', 'id'))
+                                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                                     ->belowContent(Schema::between([
                                                         Flex::make([
                                                             Icon::make(Heroicon::InformationCircle)
@@ -224,6 +371,7 @@ class PlanForm
                                                     ->label('Rango de Edad')
                                                     ->live()
                                                     ->options(AgeRange::all()->pluck('range', 'id'))
+                                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                                     ->required()
                                                     ->belowContent(Schema::between([
                                                         Action::make('create_age_range')
@@ -269,40 +417,144 @@ class PlanForm
                             ->columnSpanFull(),
                     ])->collapsible()->columnSpanFull(),
 
-                // SECCIÓN 3: RESUMEN Y AJUSTES GLOBALES
-                Section::make('Ajustes Finales')
-                    ->icon('heroicon-o-adjustments-horizontal')
-                    ->compact()
+                // COBERTURAS A NIVEL PLAN (sin pasar por beneficios)
+                Section::make('Coberturas generales del plan')
+                    ->description('Defina coberturas globales con rangos de edad y tarifas cuando trabaja en modo paquete. Si no está en modo paquete, use la arquitectura por beneficio.')
+                    ->icon('heroicon-o-globe-alt')
+                    ->visible(fn (Get $get): bool => self::isPackageMode($get))
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
                     ->schema([
-                        Grid::make(3)
+                        Repeater::make('general_coverages')
+                            ->label('Coberturas generales')
+                            ->addActionLabel('Agregar cobertura general')
+                            ->collapsible()
+                            ->cloneable()
+                            ->defaultItems(0)
+                            ->itemLabel(
+                                fn (array $state): ?string => self::generalCoverageRepeaterItemLabel($state)
+                            )
                             ->schema([
-                                TextInput::make('tax_percent')
-                                    ->label('Impuestos (%)')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->suffix('%'),
+                                Grid::make(2)
+                                    ->schema([
+                                        Select::make('coverage_id')
+                                            ->label('Cobertura')
+                                            ->options(Coverage::all()->where('status', 'ACTIVO')->where('is_assigned', false)->pluck('price', 'id'))
+                                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                            ->belowContent(Schema::between([
+                                                Flex::make([
+                                                    Icon::make(Heroicon::InformationCircle)
+                                                        ->grow(false),
+                                                    'Para vincular una cobertura debe existir en catálogo o créala aquí.',
+                                                ]),
+                                                Action::make('create_general_plan_coverage')
+                                                    ->label('Crear Cobertura')
+                                                    ->icon('heroicon-o-plus')
+                                                    ->color('success')
+                                                    ->modal()
+                                                    ->modalWidth(Width::Medium)
+                                                    ->form([
+                                                        Fieldset::make('Formulario para Crear Cobertura')
+                                                            ->schema([
+                                                                TextInput::make('price')
+                                                                    ->label('Valor de la Cobertura')
+                                                                    ->numeric()
+                                                                    ->prefix('$')
+                                                                    ->required(),
+                                                                Hidden::make('status')->default('ACTIVO'),
+                                                                Hidden::make('created_by')->default(Auth::user()->name),
+                                                            ])->columnSpanFull()->columns(1),
+                                                    ])
+                                                    ->action(function (array $data) {
+                                                        $coverage = Coverage::create([
+                                                            'price' => $data['price'],
+                                                            'status' => 'ACTIVO',
+                                                            'created_by' => Auth::user()->name,
+                                                        ]);
 
-                                TextInput::make('admin_fee')
-                                    ->label('Gasto Administrativo ($)')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->prefix('$'),
+                                                        return $coverage;
+                                                    }),
+                                            ]))
+                                            ->live()
+                                            ->preload()
+                                            ->required()
+                                            ->searchable(),
+                                    ]),
 
-                                ToggleButtons::make('status')
-                                    ->label('Estado Inicial')
-                                    ->inline()
-                                    ->options([
-                                        'draft' => 'Borrador',
-                                        'active' => 'Publicar',
+                                Repeater::make('age_rates')
+                                    ->label('Rangos de edad y tarifa (esta cobertura general)')
+                                    ->addActionLabel('Agregar rango de edad y tarifa')
+                                    ->itemLabel(
+                                        fn (array $state): ?string => isset($state['age_range_id'])
+                                            ? 'Rango: '.(AgeRange::find($state['age_range_id'])?->range ?? '—').' años'
+                                            : 'Nuevo rango de edad y tarifa'
+                                    )
+                                    ->columns(2)
+                                    ->grid(2)
+                                    ->schema([
+                                        Select::make('age_range_id')
+                                            ->label('Rango de Edad')
+                                            ->options(AgeRange::all()->where('status', 'ACTIVO')->where('is_assigned', false)->pluck('range', 'id'))
+                                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                            ->belowContent(Schema::between([
+                                                Action::make('create_general_plan_age_range')
+                                                    ->label('Crear Rango de Edad')
+                                                    ->icon('heroicon-o-plus')
+                                                    ->color('success')
+                                                    ->modal()
+                                                    ->form([
+                                                        Fieldset::make('Formulario para Crear Rango de Edad')
+                                                            ->schema([
+                                                                TextInput::make('range')
+                                                                    ->label('Rango de Edad')
+                                                                    ->columns(8)
+                                                                    ->required(),
+                                                                TextInput::make('age_init')
+                                                                    ->label('Edad Inicial')
+                                                                    ->columns(4)
+                                                                    ->required()
+                                                                    ->numeric(),
+                                                                TextInput::make('age_end')
+                                                                    ->label('Edad Final')
+                                                                    ->columns(4)
+                                                                    ->required()
+                                                                    ->numeric(),
+                                                                Hidden::make('status')->default('ACTIVO'),
+                                                                Hidden::make('created_by')->default(Auth::user()->name),
+                                                            ])->columnSpanFull(),
+                                                    ])
+                                                    ->action(function (array $data) {
+                                                        $ageRange = AgeRange::create([
+                                                            'range' => $data['range'],
+                                                            'age_init' => $data['age_init'],
+                                                            'age_end' => $data['age_end'],
+                                                            'status' => 'ACTIVO',
+                                                            'created_by' => Auth::user()->name,
+                                                        ]);
+
+                                                        return $ageRange;
+                                                    }),
+
+                                            ]))
+                                            ->live()
+                                            ->preload()
+                                            ->required()
+                                            ->searchable(),
+
+                                        TextInput::make('rate')
+                                            ->label('Tarifa/Prima ($)')
+                                            ->numeric()
+                                            ->prefix('$')
+                                            ->required(),
                                     ])
-                                    ->colors([
-                                        'draft' => 'gray',
-                                        'active' => 'success',
-                                    ])
-                                    ->default('draft'),
-                            ]),
-                    ])->collapsible(),
-
+                                    ->defaultItems(1),
+                            ])
+                            ->grid(2)
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible()
+                    ->columnSpanFull(),
             ]);
     }
 }

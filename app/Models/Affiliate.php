@@ -30,18 +30,19 @@ class Affiliate extends Model
         'age_range_id',
         'created_by',
 
-        //...Informacion ILS
+        // ...Informacion ILS
         'vaucherIls',
         'dateInit',
         'dateEnd',
         'numberDays',
         'document_ils',
 
-        //...Informacion adicional
+        // ...Informacion adicional
         'document_telemedicine',
         'fee',
         'total_amount',
-        'created_by'
+        'created_by',
+        'payment_frequency',
     ];
 
     public function affiliation()
@@ -78,5 +79,4 @@ class Affiliate extends Model
     {
         return $this->belongsTo(AgeRange::class);
     }
-
 }

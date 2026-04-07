@@ -3,6 +3,8 @@
 use App\Jobs\AnulateAgentQuotes;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendNotificationBirthday;
+use App\Jobs\UpdateAffiliateIlsRemainingDays;
+use App\Jobs\UpdateAnnualCollectionRemainingDays;
 use App\Jobs\ValidateDateToRenew;
 use Illuminate\Support\Facades\Schedule;
 
@@ -35,6 +37,18 @@ Schedule::job(new SendCollaboratorAnniversaryNotification, 'system')->dailyAt('8
  * Hora de inicio = 8:00am
  */
 Schedule::job(new ValidateDateToRenew, 'renew')->dailyAt('00:00');
+
+/**
+ * Tarea para recalcular días restantes hacia el próximo mes en false
+ * de la cobranza anual. Se ejecuta todos los días a las 6:00am.
+ */
+Schedule::job(new UpdateAnnualCollectionRemainingDays, 'system')->dailyAt('6:00');
+
+/**
+ * Recalcula días restantes hasta dateEnd (vaucher ILS) en familiares afiliados.
+ * Se ejecuta todos los días a las 6:00.
+ */
+Schedule::job(new UpdateAffiliateIlsRemainingDays, 'system')->dailyAt('6:00');
 
 /**
  * Tarea que anula cotizaciones individuales generadas por el agente.

@@ -3,8 +3,6 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
-use App\Filament\Business\Resources\Plans\PlanResource;
-use App\Filament\Pages\AccountManagerDash;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
@@ -13,13 +11,10 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Navigation\NavigationBuilder;
 use Filament\Navigation\NavigationGroup;
-use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
@@ -29,15 +24,9 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use SolutionForest\FilamentHeaderSelect\Components\HeaderSelect;
-use SolutionForest\FilamentHeaderSelect\HeaderSelectPlugin;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-
-use function Filament\Support\original_request;
 
 class BusinessPanelProvider extends PanelProvider
 {
@@ -51,7 +40,7 @@ class BusinessPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->colors([
-                'primary'   => '#4c566a',
+                'primary' => '#4c566a',
             ])
             ->navigationGroups([
 
@@ -96,9 +85,9 @@ class BusinessPanelProvider extends PanelProvider
                 // FilamentInfoWidget::class,
             ])
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('PERFIL DE USUARIO'),
+                'profile' => fn (Action $action) => $action->label('PERFIL DE USUARIO'),
                 // ...
-                'logout' => fn(Action $action) => $action
+                'logout' => fn (Action $action) => $action
                     ->label('CERRAR SESIÓN')
                     ->color('danger')
                     ->url(route('internal')),
@@ -111,9 +100,10 @@ class BusinessPanelProvider extends PanelProvider
                         if (in_array('SUPERADMIN', $user)) {
                             return false;
                         }
+
                         return true;
                     })
-                    ->action(fn() => redirect(route('filament.administration.pages.dashboard'))),
+                    ->action(fn () => redirect(route('filament.administration.pages.dashboard'))),
                 Action::make('Operaciones')
                     ->label('OPERACIONES')
                     ->icon('heroicon-c-server-stack')
@@ -123,9 +113,10 @@ class BusinessPanelProvider extends PanelProvider
                         if (in_array('SUPERADMIN', $user)) {
                             return false;
                         }
+
                         return true;
                     })
-                    ->action(fn() => redirect(route('filament.operations.pages.dashboard'))),
+                    ->action(fn () => redirect(route('filament.operations.pages.dashboard'))),
                 Action::make('Marketing')
                     ->label('MARKETING')
                     ->icon('heroicon-o-cursor-arrow-rays')
@@ -135,9 +126,10 @@ class BusinessPanelProvider extends PanelProvider
                         if (in_array('SUPERADMIN', $user)) {
                             return false;
                         }
+
                         return true;
                     })
-                    ->action(fn() => redirect(route('filament.marketing.pages.dashboard'))),
+                    ->action(fn () => redirect(route('filament.marketing.pages.dashboard'))),
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -172,10 +164,35 @@ class BusinessPanelProvider extends PanelProvider
             // )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn() => view('filament.menu-user')
+                fn () => view('filament.menu-user')
+            )
+            ->renderHook(
+                PanelsRenderHook::CONTENT_START,
+                function () {
+                    $colaborador = \App\Models\RrhhColaborador::query()
+                        ->where('user_id', auth()->id())
+                        ->first();
+                    $tickets = $colaborador
+                        ? \App\Models\HelpDesk::query()
+                            ->where('rrhh_colaborador_id', $colaborador->id)
+                            ->whereIn('status', ['PENDIENTE POR INICIAR', 'EN PROCESO'])
+                            ->orderByDesc('id')
+                            ->limit(30)
+                            ->get()
+                        : collect();
+
+                    return view('filament.tickets-ticker', [
+                        'tickets' => $tickets,
+                        'fullWidth' => true,
+                    ]);
+                }
             )
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
-            ->viteTheme('resources/css/filament/admin/theme.css');
+            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.business.partials.affiliation-documents-panel-script')
+            );
         // ->defaultThemeMode(ThemeMode::Light);
     }
 }

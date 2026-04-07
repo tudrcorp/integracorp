@@ -163,25 +163,14 @@
             <div style="position: absolute; top: 423px; right: 458px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['code'] }}
             </div>
-            @php
-                $name = App\Http\Controllers\UtilsController::splitName($data['name']);
-            @endphp
             <div style="position: absolute; top: 440px; left: 138px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
-                {{ $name['first_part'] }}<br>{{ $name['second_part'] }}
+                {{ $data['name_first_part'] }}<br>{{ $data['name_second_part'] }}
             </div>
             <div style="position: absolute; top: 475px; left: 155px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['ci'] }}
             </div>
             <div style="position: absolute; top: 497px; left: 164px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
-                @if($data['plan'] == 'PLAN INICIAL')
-                    INICIAL  
-                @endif
-                @if($data['plan'] == 'PLAN IDEAL')
-                    IDEAL
-                @endif
-                @if($data['plan'] == 'PLAN ESPECIAL')
-                    ESPECIAL
-                @endif
+                {{ $data['plan_tarjeta_etiqueta'] }}
             </div>
             <div style="position: absolute; top: 494px; right: 323px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['desde'] }}
@@ -193,9 +182,7 @@
                 {{ $data['hasta'] }}
             </div>
             <div style="position: absolute; top: 533px; left: 190px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
-                @if($data['cobertura'] != null || $data['cobertura'] != '')
-                    {{ number_format($data['cobertura'], 2, ',', '.') }} US$
-                @endif 
+                {{ $data['cobertura_display'] }}
             </div>
         </div>
         <script type="text/php">

@@ -20,6 +20,7 @@ class OperationCoordinationService extends Model
         'business_unit_id',
         'reference_number',
         'status',
+        'telemedicine_priority_id',
         'holder',
         'ci_holder',
         'patient',
@@ -132,5 +133,10 @@ class OperationCoordinationService extends Model
     public function telemedicinePatientStudies()
     {
         return $this->hasMany(TelemedicinePatientStudy::class);
+    }
+
+    public function telemedicinePriority()
+    {
+        return $this->belongsTo(TelemedicinePriority::class);
     }
 }

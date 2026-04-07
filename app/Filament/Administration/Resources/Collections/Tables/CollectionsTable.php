@@ -2,13 +2,8 @@
 
 namespace App\Filament\Administration\Resources\Collections\Tables;
 
-use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\LogController;
-use App\Jobs\CreateAvisoDeCobro;
 use App\Mail\MailAvisoDeCobro;
-use App\Models\Affiliation;
-
-use App\Models\AffiliationCorporate;
 use App\Models\Collection;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -19,15 +14,18 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 
 class CollectionsTable
 {
@@ -51,53 +49,53 @@ class CollectionsTable
                     ->label('Nro. de Aviso')
                     ->searchable(),
                 TextColumn::make('quote_number')
-                ->sortable()
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-m-tag')
                     ->label('Cotización')
                     ->searchable(),
                 TextColumn::make('affiliation_code')
-                ->sortable()
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-s-user-group')
                     ->label('Afiliación')
                     ->searchable(),
 
                 TextColumn::make('code_agency')
-                ->sortable()
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-s-building-library')
                     ->label('Agencia')
                     ->searchable(),
                 TextColumn::make('agent.name')
-                ->sortable()
+                    ->sortable()
                     ->badge()
                     ->icon('heroicon-m-user')
                     ->label('Agente')
                     ->numeric()
                     ->searchable(),
                 TextColumn::make('affiliate_full_name')
-                ->sortable()
+                    ->sortable()
                     ->label('Afiliado')
                     ->searchable(),
                 TextColumn::make('affiliate_contact')
-                ->sortable()
+                    ->sortable()
                     ->label('Contacto')
                     ->searchable(),
                 TextColumn::make('affiliate_ci_rif')
-                ->sortable()
+                    ->sortable()
                     ->label('C.I./R.I.F.')
                     ->searchable(),
                 TextColumn::make('affiliate_phone')
-                ->sortable()
+                    ->sortable()
                     ->label('Número de teléfono')
                     ->searchable(),
                 TextColumn::make('affiliate_email')
-                ->sortable()
+                    ->sortable()
                     ->label('Correo')
                     ->searchable(),
                 TextColumn::make('affiliate_status')
-                ->sortable()
+                    ->sortable()
                     ->label('Estatus afiliación')
                     ->badge()
                     ->color(function (string $state): string {
@@ -109,31 +107,31 @@ class CollectionsTable
                     })
                     ->searchable(),
                 TextColumn::make('plan.description')
-                ->sortable()
+                    ->sortable()
                     ->label('Plan')
                     ->badge()
                     ->color(function ($state) {
                         return match ($state) {
-                            'PLAN INICIAL'  => 'azul',
-                            'PLAN IDEAL'    => 'azulOscuro',
+                            'PLAN INICIAL' => 'azul',
+                            'PLAN IDEAL' => 'azulOscuro',
                             'PLAN ESPECIAL' => 'verde',
                             default => 'secondary',
                         };
                     })
                     ->searchable(),
                 TextColumn::make('coverage.price')
-                ->sortable()
+                    ->sortable()
                     ->suffix('US$')
                     ->numeric()
                     ->sortable(),
                 // TextColumn::make('service')
                 //     ->searchable(),
                 TextColumn::make('persons')
-                ->sortable()
+                    ->sortable()
                     ->label('Población')
                     ->searchable(),
                 TextColumn::make('type')
-                ->sortable()
+                    ->sortable()
                     ->label('Tipo')
                     ->badge()
                     ->color(function (string $state): string {
@@ -144,29 +142,29 @@ class CollectionsTable
                     })
                     ->searchable(),
                 TextColumn::make('reference')
-                ->sortable()
+                    ->sortable()
                     ->label('Referencia')
                     ->searchable(),
                 TextColumn::make('payment_method')
-                ->sortable()
+                    ->sortable()
                     ->label('Metodo de pago')
                     ->searchable(),
                 TextColumn::make('payment_frequency')
-                ->sortable()
+                    ->sortable()
                     ->label('Frecuencia de pago')
                     ->searchable(),
                 TextInputColumn::make('next_payment_date')
-                ->sortable()
+                    ->sortable()
                     ->label('Proximo pago')
                     ->searchable(),
                 TextColumn::make('total_amount')
-                ->sortable()
+                    ->sortable()
                     ->label('Monto total')
                     ->numeric()
                     ->suffix('US$')
                     ->sortable(),
                 TextColumn::make('status')
-                ->sortable()
+                    ->sortable()
                     ->badge()
                     ->label('Estado')
                     ->color(function (string $state): string {
@@ -183,38 +181,38 @@ class CollectionsTable
                 Filter::make('filter_next_payment_date')
                     ->form([
                         DatePicker::make('desde')
-                        ->format('Y-m-d'),
+                            ->format('Y-m-d'),
                         DatePicker::make('hasta')
-                        ->format('Y-m-d'),
+                            ->format('Y-m-d'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('filter_next_payment_date', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('filter_next_payment_date', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('filter_next_payment_date', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('filter_next_payment_date', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
                     }),
                 SelectFilter::make('payment_frequency')
                     ->options([
-                        'ANUAL'      => 'ANUAL',
-                        'SEMESTRAL'  => 'SEMESTRAL',
+                        'ANUAL' => 'ANUAL',
+                        'SEMESTRAL' => 'SEMESTRAL',
                         'TRIMESTRAL' => 'TRIMESTRAL',
-                        'MENSUAL'    => 'MENSUAL',
+                        'MENSUAL' => 'MENSUAL',
                     ])
                     ->label('Frecuencia de Pago'),
                 SelectFilter::make('plan_id')
@@ -222,27 +220,27 @@ class CollectionsTable
                     ->label('Planes'),
                 SelectFilter::make('payment_method')
                     ->options([
-                        'EFECTIVO US$'      => 'EFECTIVO US$',
-                        'ZELLE'             => 'ZELLE',
-                        'PAGO MOVIL VES'    => 'PAGO MOVIL VES',
-                        'TRANSFERENCIA VES' => 'TRANSFERENCIA VES'
+                        'EFECTIVO US$' => 'EFECTIVO US$',
+                        'ZELLE' => 'ZELLE',
+                        'PAGO MOVIL VES' => 'PAGO MOVIL VES',
+                        'TRANSFERENCIA VES' => 'TRANSFERENCIA VES',
                     ])
                     ->label('Metodo de Pago'),
                 SelectFilter::make('status')
                     ->options([
                         'POR PAGAR' => 'POR PAGAR',
-                        'PAGADO'    => 'PAGADO',
+                        'PAGADO' => 'PAGADO',
                     ])
                     ->label('Estatus'),
                 SelectFilter::make('bank')
                     ->options([
-                        'CHASE BANK'                => 'CHASE BANK',
-                        'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                        'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                        'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                        'BANCAMIGA - VES'           => 'BANCAMIGA - VES',
-                        'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
-                        'BANCO DE VENEZUELA - VES'  => 'BANCO DE VENEZUELA - VES',
+                        'CHASE BANK' => 'CHASE BANK',
+                        'BANK OF AMERICA' => 'BANK OF AMERICA',
+                        'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
+                        'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                        'BANCAMIGA - VES' => 'BANCAMIGA - VES',
+                        'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
+                        'BANCO DE VENEZUELA - VES' => 'BANCO DE VENEZUELA - VES',
                     ])
                     ->label('Banco'),
 
@@ -270,14 +268,14 @@ class CollectionsTable
                                         ->maxLength(255)
                                         ->label('Teléfono')
                                         ->tel()
-                                        ->placeholder('04127869087')
-                                ])
+                                        ->placeholder('04127869087'),
+                                ]),
                         ])
                         ->action(function (Collection $record, array $data) {
 
                             try {
 
-                                $name_pdf = 'ADP-' . $record->collection_invoice_number . '.pdf';
+                                $name_pdf = 'ADP-'.$record->collection_invoice_number.'.pdf';
 
                                 if ($data['email'] == null) {
                                     Mail::to($record->affiliate_email)->send(new MailAvisoDeCobro($name_pdf));
@@ -320,7 +318,7 @@ class CollectionsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn(Collection $record) => $record->status == 'PAGADO'),
+                        ->hidden(fn (Collection $record) => $record->status == 'PAGADO'),
 
                     /**DESCARGAR PDF */
                     Action::make('download_pdf')
@@ -334,7 +332,8 @@ class CollectionsTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/avisoDeCobro/ADP-' . $record->collection_invoice_number . '.pdf');
+                                $path = public_path('storage/avisoDeCobro/ADP-'.$record->collection_invoice_number.'.pdf');
+
                                 return response()->download($path);
                                 /**
                                  * LOG
@@ -354,86 +353,23 @@ class CollectionsTable
 
                     /**REGENERAR PDF */
                     Action::make('regenerate_pdf')
-                        ->label('Renerar PDF')
+                        ->label('Regenerar PDF')
                         ->icon('heroicon-s-arrow-down-on-square-stack')
                         ->color('warning')
-                        ->action(function (Collection $record) {
+                        ->modalHeading('Aviso de cobro')
+                        ->modalDescription('Se regenera el PDF al abrir. Luego puede previsualizarlo y enviarlo por correo al afiliado.')
+                        ->modalIcon('heroicon-o-document-arrow-down')
+                        ->modalWidth(Width::SevenExtraLarge)
+                        ->modalContent(function (Collection $record): ViewContract {
+                            return View::make('filament.administration.collections.aviso-cobro-preview-modal', [
+                                'collection' => $record,
+                            ]);
+                        })
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Cerrar')
+                        ->action(fn () => null),
 
-                            try {
-                                
-
-                                if ($record->type == 'AFILIACION INDIVIDUAL') {
-                                    $address = Affiliation::where('code', $record->affiliation_code)->first();
-                                    /**Ejecutamos el Job para crea el aviso de cobro */
-                                    $array_data = [
-                                        'invoice_number'    => $record->collection_invoice_number,
-                                        'emission_date'     => $record->next_payment_date,
-                                        'full_name_ti'      => $record->affiliate_full_name,
-                                        'ci_rif_ti'         => $record->affiliate_ci_rif,
-                                        'address_ti'        => $address->adress_ti,
-                                        'phone_ti'          => $record->affiliate_phone,
-                                        'email_ti'          => $record->affiliate_email,
-                                        'total_amount'      => $record->total_amount,
-                                        'plan'              => $record->plan->description,
-                                        'coverage'          => $record->coverage->price ?? null,
-                                        'frequency'         => $record->payment_frequency,
-                                    ];
-
-                                    $regenerate = CollectionController::regenerateAvisoDeCobro($array_data);
-                                }
-                                if ($record->type == 'AFILIACION CORPORATIVA') {
-                                    // dd($record);
-                                    $address = AffiliationCorporate::where('code', $record->affiliation_code)->first();
-                                    $planes = AffiliationCorporate::where('code', $record->affiliation_code)->with('affiliationCorporatePlans')->first()->toArray();
-
-                                    // dd($planes['affiliation_corporate_plans']);
-                                    $array_data = [
-                                        'invoice_number'    => $record->collection_invoice_number,
-                                        'emission_date'     => $record->next_payment_date,
-                                        'full_name_ti'      => $record->affiliate_full_name,
-                                        'ci_rif_ti'         => $record->affiliate_ci_rif,
-                                        'address_ti'        => $address->adress_ti,
-                                        'phone_ti'          => $record->affiliate_phone,
-                                        'email_ti'          => $record->affiliate_email,
-                                        'total_amount'      => $record->total_amount,
-                                        'plan'              => $planes['affiliation_corporate_plans'],
-                                        'coverage'          => $record->coverage->price ?? null,
-                                        'frequency'         => $record->payment_frequency,
-                                    ];
-
-                                    $regenerate = CollectionController::regenerateAvisoDeCobroCorporate($array_data);
-                                }
-
-                                if($regenerate){
-                                    Notification::make()
-                                        ->title('REGENERADO CON EXITO')
-                                        ->body('Aviso de cobro generado correctamente')
-                                        ->icon('heroicon-s-check-circle')
-                                        ->iconColor('success')
-                                        ->success()
-                                        ->send();
-                                }else{
-                                    Notification::make()
-                                        ->title('ERROR')
-                                        ->body('Aviso de cobro no generado')
-                                        ->icon('heroicon-s-x-circle')
-                                        ->iconColor('danger')
-                                        ->danger()
-                                        ->send();
-                                }
-
-                            } catch (\Throwable $th) {
-                                Notification::make()
-                                    ->title('ERROR')
-                                    ->body($th->getMessage())
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
-                        
-            ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

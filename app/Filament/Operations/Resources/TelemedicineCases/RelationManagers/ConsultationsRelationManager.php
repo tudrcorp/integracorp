@@ -2,30 +2,21 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineCases\RelationManagers;
 
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use App\Models\TelemedicineCase;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Support\Icons\Heroicon;
-use Filament\Actions\AssociateAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-
-use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\ColumnGroup;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Actions\DissociateBulkAction;
-use Filament\Infolists\Components\TextEntry;
-use App\Models\TelemedicineConsultationPatient;
-use Filament\Resources\RelationManagers\RelationManager;
 use App\Filament\Operations\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
+use App\Models\TelemedicineCase;
+use App\Models\TelemedicineConsultationPatient;
+use Filament\Actions\CreateAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class ConsultationsRelationManager extends RelationManager
 {
@@ -160,7 +151,7 @@ class ConsultationsRelationManager extends RelationManager
                     ->label('Fecha de Registro')
                     ->dateTime()
                     // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
-                    ->description(fn(TelemedicineConsultationPatient $record): string => $record->updated_at->diffForHumans())
+                    ->description(fn (TelemedicineConsultationPatient $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
                 TextColumn::make('telemedicine_case_code')
                     ->label('Numero de Caso')
@@ -174,7 +165,7 @@ class ConsultationsRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
-                    ->description(fn($record): string => 'Atenido por: Dr(a):' . $record->telemedicineDoctor->full_name)
+                    ->description(fn ($record): string => 'Atenido por: Dr(a):'.$record->telemedicineDoctor->full_name)
                     ->sortable(),
                 TextColumn::make('nro_identificacion')
                     ->label('Número de Identificación')
@@ -305,8 +296,13 @@ class ConsultationsRelationManager extends RelationManager
                     ->label('Ver Detalle')
                     ->color('primary')
                     ->url(function (TelemedicineConsultationPatient $record) {
-                        return TelemedicineConsultationPatientResource::getUrl('view', ['record' => $record->getKey()]);
-                    })
+                        $url = TelemedicineConsultationPatientResource::getUrl('view', ['record' => $record->getKey()]);
+                        if (request()->query('from') === 'patient') {
+                            $url .= (str_contains($url, '?') ? '&' : '?').'from=patient';
+                        }
+
+                        return $url;
+                    }),
             ])
             ->headerActions([
                 CreateAction::make(),

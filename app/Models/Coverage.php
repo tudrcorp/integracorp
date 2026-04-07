@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Coverage extends Model
 {
@@ -19,6 +20,18 @@ class Coverage extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class, 'plan_id', 'id');
+    }
+
+    /**
+     * Rangos de edad configurados para esta cobertura (y el plan asociado).
+     *
+     * @return HasMany<AgeRange, $this>
+     */
+    public function ageRanges(): HasMany
+    {
+        return $this->hasMany(AgeRange::class, 'coverage_id', 'id')
+            ->orderBy('age_init')
+            ->orderBy('id');
     }
 
     public function benefits()

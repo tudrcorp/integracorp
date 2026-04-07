@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Log;
 class OperationCoordinationServiceController extends Controller
 {
     //
-    public static function create(array $record, array $doctor, array $patient)
+    public static function create(array $record, array $doctor, array $patient, $operationCoordinationService)
     {
 
-        DB::transaction(function () use ($record, $doctor, $patient) {
+        DB::transaction(function () use ($record, $doctor, $patient, $operationCoordinationService) {
 
             try {
 
@@ -35,8 +35,9 @@ class OperationCoordinationServiceController extends Controller
                     'business_line_id' => $patient['business_line_id'],
                     'business_unit_id' => $patient['business_unit_id'],
                     'reference_number' => $record['code_reference'],
-                    'status' => 'EN GESTION',
+                    'status' => 'PENDIENTE',
                     'holder' => $colaborador->name,
+                    'telemedicine_priority_id' => $record['telemedicine_priority_id'],
                     'ci_holder' => $colaborador->rrhh_colaborador->cedula,
                     'patient' => $record['full_name'],
                     'ci_patient' => $patient['nro_identificacion'],
@@ -50,7 +51,7 @@ class OperationCoordinationServiceController extends Controller
                     'phone_holder' => $patient['phone'],
                     'symptoms_diagnosis' => $record['diagnostic_impression'] ?? '...',
                     'servicie' => $service->name,
-                    // 'specific_service'                          => $record['specific_service'] ?? '...',
+                    'specific_service' => $operationCoordinationService,
                     'supplier_service' => $record['supplier_service'] ?? '...',
                     'farmadoc' => $record['farmadoc'] ?? '...',
                     'type_negotiation' => '...',
@@ -89,5 +90,56 @@ class OperationCoordinationServiceController extends Controller
                 throw $th;
             }
         });
+    }
+
+    public static function createMedicineService(array $record, array $doctor, array $patient)
+    {
+        return self::create($record, $doctor, $patient, 'MEDICAMENTOS');
+    }
+
+    public static function createLaboratoryService(array $record, array $doctor, array $patient)
+    {
+        return self::create($record, $doctor, $patient, 'LABORATORIOS');
+    }
+
+    public static function createStudyService(array $record, array $doctor, array $patient)
+    {
+        return self::create($record, $doctor, $patient, 'IMAGENOLOGIA');
+    }
+
+    public static function createSpecialistService(array $record, array $doctor, array $patient)
+    {
+        return self::create($record, $doctor, $patient, 'ESPECIALISTA');
+    }
+
+    public static function updateStatus(int $id, string $status)
+    {
+        DB::transaction(function () use ($id, $status) {
+            try {
+                $operationCoordinationService = OperationCoordinationService::find($id);
+                $operationCoordinationService->status = $status;
+                $operationCoordinationService->updated_by = Auth::user()->name;
+                $operationCoordinationService->save();
+                if ($operationCoordinationService) {
+                    Notification::make()
+                        ->title('COORDINACION DE SERVICIOS')
+                        ->body('El estatus del servicio se ha actualizado correctamente')
+                        ->success()
+                        ->send();
+                }
+
+                return true;
+            } catch (\Throwable $th) {
+                Log::error('Error al actualizar el estatus del servicio de coordinacion: '.$th->getMessage());
+                Notification::make()
+                    ->title('Error al actualizar el estatus del servicio de coordinacion')
+                    ->body($th->getMessage())
+                    ->danger()
+                    ->send();
+                throw $th;
+            }
+        });
+
+        return true;
     }
 }

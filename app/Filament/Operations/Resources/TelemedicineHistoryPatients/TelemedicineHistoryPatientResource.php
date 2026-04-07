@@ -13,8 +13,8 @@ use App\Models\TelemedicineHistoryPatient;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class TelemedicineHistoryPatientResource extends Resource
@@ -25,7 +25,7 @@ class TelemedicineHistoryPatientResource extends Resource
 
     protected static ?string $navigationLabel = 'Historia Clínica';
 
-    protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
+    protected static string|UnitEnum|null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $title = 'Historia Clínica';
 
@@ -42,6 +42,15 @@ class TelemedicineHistoryPatientResource extends Resource
     public static function table(Table $table): Table
     {
         return TelemedicineHistoryPatientsTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'telemedicineDoctor',
+                'telemedicinePatient',
+            ]);
     }
 
     public static function getRelations(): array

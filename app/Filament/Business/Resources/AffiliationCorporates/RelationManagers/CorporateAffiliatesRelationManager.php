@@ -2,53 +2,50 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Http\Controllers\AffiliateCorporateController;
+use App\Models\AffiliateCorporate;
+use App\Models\AgeRange;
+use App\Models\Plan;
+use App\Support\FilamentDateDisplay;
 use BackedEnum;
 use Carbon\Carbon;
-use App\Models\Fee;
-use App\Models\Plan;
-
-use App\Models\AgeRange;
-use Filament\Tables\Table;
 use Filament\Actions\Action;
-use Filament\Schemas\Schema;
-use Filament\Actions\BulkAction;
 use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use App\Models\AffiliateCorporate;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Illuminate\Support\Facades\Log;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Filament\Support\Enums\Alignment;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use App\Models\AfilliationCorporatePlan;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Columns\TextInputColumn;
-use Illuminate\Database\Eloquent\Collection;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use App\Http\Controllers\AffiliateCorporateController;
-use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CorporateAffiliatesRelationManager extends RelationManager
 {
     protected static string $relationship = 'corporateAffiliates';
 
-    protected static ?string $title = 'Afiliado(s)';
+    protected static ?string $title = 'Afiliados';
 
     protected static string|BackedEnum|null $icon = 'heroicon-s-user-group';
 
@@ -56,176 +53,305 @@ class CorporateAffiliatesRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Section::make('FAMILIAR')
-                    ->description('Fomulario de familiar.')
-                    ->icon('heroicon-s-user')
+                Section::make('Datos personales')
+                    ->description('Identificación y datos básicos del familiar o colaborador.')
+                    ->icon(Heroicon::User)
                     ->schema([
-                        TextInput::make('first_name')
-                            ->required()
-                            ->label('Nombre completo'),
-                        TextInput::make('nro_identificacion')
-                            ->label('Numero de Identificacion')
-                            ->required()
-                            ->numeric(),
-                        Select::make('sex')
-                            ->label('Genero')
-                            ->required()
-                            ->options([
-                                'MASCULINO' => 'MASCULINO',
-                                'FEMENINO' => 'FEMENINO',
+                        Grid::make(12)
+                            ->schema([
+                                TextInput::make('first_name')
+                                    ->required()
+                                    ->label('Nombre')
+                                    ->maxLength(255)
+                                    ->columnSpan(['default' => 12, 'lg' => 6]),
+                                TextInput::make('last_name')
+                                    ->label('Apellido')
+                                    ->maxLength(255)
+                                    ->columnSpan(['default' => 12, 'lg' => 6]),
+                                TextInput::make('nro_identificacion')
+                                    ->label('Número de identificación')
+                                    ->required()
+                                    ->numeric()
+                                    ->columnSpan(['default' => 12, 'lg' => 4]),
+                                Select::make('sex')
+                                    ->label('Género')
+                                    ->required()
+                                    ->options([
+                                        'MASCULINO' => 'Masculino',
+                                        'FEMENINO' => 'Femenino',
+                                    ])
+                                    ->native(false)
+                                    ->columnSpan(['default' => 12, 'lg' => 4]),
+                                DatePicker::make('birth_date')
+                                    ->label('Fecha de nacimiento')
+                                    ->required()
+                                    ->live()
+                                    ->displayFormat('d/m/Y')
+                                    ->format('d/m/Y')
+                                    ->maxDate(now())
+                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                        if (blank($state)) {
+                                            return;
+                                        }
+                                        try {
+                                            $set('age', (int) Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now()));
+                                        } catch (\Throwable) {
+                                            // formato inválido momentáneo al escribir
+                                        }
+                                    })
+                                    ->columnSpan(['default' => 12, 'lg' => 4]),
+                                TextInput::make('age')
+                                    ->label('Edad')
+                                    ->required()
+                                    ->live()
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(['default' => 12, 'lg' => 3]),
                             ]),
-                        TextInput::make('phone')
-                            ->label('Telefono'),
-                        TextInput::make('email')
-                            ->label('Email address')
-                            ->required()
-                            ->email(),
-                        DatePicker::make('birth_date')
-                            ->label('Fecha de Nacimiento')
-                            ->required()
-                            ->live()
-                            ->format('d/m/Y')
-                            ->afterStateUpdated(function (Set $set, $state) {
-                                $set('age', intval(Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now())));
-                            }),
-                        TextInput::make('age')
-                            ->label('Edad')
-                            ->required()
-                            ->live()
-                            ->numeric()
-                            ->disabled()
-                            ->dehydrated(),
-                        TextInput::make('condition_medical')
-                            ->label('Condicion Medica'),
-                        DatePicker::make('initial_date')
-                            ->label('Fecha de Ingreso a la Empresa')
-                            ->format('d/m/Y'),
-                        TextInput::make('position_company')
-                            ->label('Condicion Medica'),
-                        TextInput::make('full_name_emergency')
-                            ->label('Contacto de Emergencia'),
-                        TextInput::make('phone_emergency')
-                            ->label('Telefono de Emergencia'),
-                        Textarea::make('address')
-                            ->label('Direccion')
-                            ->columnSpanFull()
-                            ->required()
-                            ->autosize(),
+                    ])
+                    ->compact()
+                    ->columnSpanFull(),
 
-                        Fieldset::make('Plan de afiliación')
+                Section::make('Contacto')
+                    ->description('Teléfono y correo para comunicación.')
+                    ->icon(Heroicon::Phone)
+                    ->schema([
+                        Grid::make(12)
+                            ->schema([
+                                TextInput::make('phone')
+                                    ->label('Teléfono')
+                                    ->tel()
+                                    ->columnSpan(['default' => 12, 'md' => 6]),
+                                TextInput::make('email')
+                                    ->label('Correo electrónico')
+                                    ->required()
+                                    ->email()
+                                    ->columnSpan(['default' => 12, 'md' => 6]),
+                            ]),
+                    ])
+                    ->compact()
+                    ->columnSpanFull(),
+
+                Section::make('Salud y empresa')
+                    ->description('Condición médica declarada, antigüedad y cargo.')
+                    ->icon(Heroicon::Heart)
+                    ->schema([
+                        Grid::make(12)
+                            ->schema([
+                                TextInput::make('condition_medical')
+                                    ->label('Condición médica')
+                                    ->columnSpanFull(),
+                                DatePicker::make('initial_date')
+                                    ->label('Fecha de ingreso a la empresa')
+                                    ->displayFormat('d/m/Y')
+                                    ->format('d/m/Y')
+                                    ->columnSpan(['default' => 12, 'md' => 6]),
+                                TextInput::make('position_company')
+                                    ->label('Cargo en la empresa')
+                                    ->maxLength(255)
+                                    ->columnSpan(['default' => 12, 'md' => 6]),
+                            ]),
+                    ])
+                    ->compact()
+                    ->columnSpanFull(),
+
+                Section::make('Emergencia y dirección')
+                    ->description('Contacto de emergencia y domicilio.')
+                    ->icon(Heroicon::MapPin)
+                    ->schema([
+                        Grid::make(12)
+                            ->schema([
+                                TextInput::make('full_name_emergency')
+                                    ->label('Contacto de emergencia (nombre)')
+                                    ->columnSpan(['default' => 12, 'md' => 6]),
+                                TextInput::make('phone_emergency')
+                                    ->label('Teléfono de emergencia')
+                                    ->tel()
+                                    ->columnSpan(['default' => 12, 'md' => 6]),
+                                Textarea::make('address')
+                                    ->label('Dirección')
+                                    ->columnSpanFull()
+                                    ->required()
+                                    ->rows(3)
+                                    ->autosize(),
+                            ]),
+                    ])
+                    ->compact()
+                    ->columnSpanFull(),
+
+                Section::make('Plan de afiliación')
+                    ->description('Plan, rango de edad, cobertura y tarifa según la afiliación corporativa.')
+                    ->icon(Heroicon::ClipboardDocumentCheck)
+                    ->schema([
+                        Fieldset::make('Cobertura y pago')
                             ->schema([
                                 Select::make('plan_id')
-                                    ->options(function ($record) {
-                                        return Plan::all()->pluck('description', 'id');
-                                    })
-                                    ->label('Planes')
+                                    ->options(fn () => Plan::query()->orderBy('description')->pluck('description', 'id'))
+                                    ->label('Plan')
                                     ->required()
                                     ->live()
                                     ->validationMessages([
-                                        'required'  => 'Campo Obligatorio',
+                                        'required' => 'Campo obligatorio',
                                     ])
                                     ->preload()
-                                    ->placeholder('Seleccione plan(es)'),
-
+                                    ->searchable()
+                                    ->placeholder('Seleccione un plan'),
                                 Select::make('age_range_id')
                                     ->label('Rango de edad')
-                                    ->options(function (Get $get, $state) {
-                                        Log::info($get('plan_id'));
-                                        return AgeRange::where('plan_id', intval($get('plan_id')))->get()->pluck('range', 'id');
-                                    })
-                                    ->searchable()
-                                    ->required()
-                                    ->validationMessages([
-                                        'required'  => 'Campo Obligatorio',
-                                    ])
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->preload(),
-
-                                Select::make('coverage_id')
-                                    ->label('Cobertura')
-                                    ->options(function (get $get) {
-                                        if ($get('age_range_id') == 1 || $get('age_range_id') == NULL) {
+                                    ->options(function (Get $get): array {
+                                        $planId = $get('plan_id');
+                                        if (blank($planId)) {
                                             return [];
                                         }
-                                        $arrayFee = AgeRange::where('plan_id', $get('plan_id'))->where('id', $get('age_range_id'))->with('fees')->get()->toArray();
-                                        return collect($arrayFee[0]['fees'])->pluck('coverage', 'coverage_id');
+
+                                        return AgeRange::query()
+                                            ->where('plan_id', (int) $planId)
+                                            ->orderBy('range')
+                                            ->pluck('range', 'id')
+                                            ->all();
                                     })
                                     ->searchable()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->preload(),
-                                TextInput::make('fee')
-                                    ->label('Tarifa Anual')
-                                    ->live(onBlur: true)
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Obligatorio',
+                                        'required' => 'Campo obligatorio',
                                     ])
-                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
+                                    ->prefixIcon(Heroicon::ChartBar)
+                                    ->preload(),
+                                Select::make('coverage_id')
+                                    ->label('Cobertura')
+                                    ->options(function (Get $get): array {
+                                        if (blank($get('age_range_id')) || (int) $get('age_range_id') === 1) {
+                                            return [];
+                                        }
+                                        $ageRange = AgeRange::query()
+                                            ->where('plan_id', $get('plan_id'))
+                                            ->where('id', $get('age_range_id'))
+                                            ->with('fees')
+                                            ->first();
+
+                                        if (! $ageRange || $ageRange->fees->isEmpty()) {
+                                            return [];
+                                        }
+
+                                        return $ageRange->fees->pluck('coverage', 'coverage_id')->all();
+                                    })
+                                    ->searchable()
+                                    ->prefixIcon(Heroicon::ShieldCheck)
+                                    ->preload(),
+                                TextInput::make('fee')
+                                    ->label('Tarifa anual')
+                                    ->live(onBlur: true)
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('US$')
+                                    ->validationMessages([
+                                        'required' => 'Campo obligatorio',
+                                    ])
+                                    ->prefixIcon(Heroicon::CurrencyDollar),
                                 TextInput::make('payment_frequency')
                                     ->label('Frecuencia de pago')
                                     ->live()
-                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                    ->prefixIcon(Heroicon::CalendarDays)
                                     ->disabled()
                                     ->dehydrated()
-                                    ->default(function () {
-                                        return $this->getOwnerRecord()->payment_frequency;
-                                    }),
+                                    ->default(fn () => $this->getOwnerRecord()->payment_frequency),
                                 Hidden::make('created_by')->default(Auth::user()->name),
-                            ])->columnSpanFull()->columns(2),
-
-                    ])->columnSpanFull()->columns(3),
+                            ]),
+                    ])
+                    ->compact()
+                    ->columnSpanFull(),
             ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->heading('AFILIADOS')
-            ->description('Lista de empleados afiliados')
-            ->recordTitleAttribute('affiliation_corporate_id')
+            ->heading('Afiliados corporativos')
+            ->description('Empleados o familiares vinculados a esta afiliación. Use la búsqueda y el gestor de columnas para ajustar la vista.')
+            ->recordTitleAttribute('first_name')
             ->columns([
+                TextColumn::make('plan.description')
+                    ->label('Plan')
+                    ->weight(FontWeight::SemiBold)
+                    ->icon(Heroicon::ClipboardDocumentList)
+                    ->badge()
+                    ->color('success')
+                    ->searchable(),
+                TextColumn::make('coverage.price')
+                    ->label('Cobertura')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' US$')
+                    ->icon(Heroicon::Banknotes),
+                TextColumn::make('fee')
+                    ->label('Tarifa anual')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' US$')
+                    ->icon(Heroicon::CurrencyDollar),
                 TextColumn::make('first_name')
                     ->label('Nombre')
-                    ->searchable(),
+                    ->searchable()
+                    ->weight(FontWeight::Medium),
                 TextColumn::make('last_name')
                     ->label('Apellido')
                     ->searchable(),
                 TextColumn::make('birth_date')
                     ->label('Fecha de nacimiento')
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                     ->searchable(),
                 TextColumn::make('nro_identificacion')
-                    ->label('C.I.'),
+                    ->label('C.I.')
+                    ->copyable()
+                    ->copyMessage('Copiado'),
                 TextColumn::make('email')
-                    ->label('Email'),
+                    ->label('Correo')
+                    ->icon(Heroicon::Envelope)
+                    ->copyable()
+                    ->limit(28)
+                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) $record->email) > 28 ? $record->email : null),
                 TextColumn::make('age')
                     ->label('Edad')
-                    ->searchable(),
+                    ->searchable()
+                    ->alignCenter(),
                 TextColumn::make('sex')
-                    ->label('Sexo'),
+                    ->label('Sexo')
+                    ->badge()
+                    ->color('gray'),
                 TextColumn::make('phone')
-                    ->label('Telefono'),
+                    ->label('Teléfono')
+                    ->icon(Heroicon::Phone)
+                    ->copyable(),
                 TextColumn::make('condition_medical')
-                    ->label('Condicion Medica'),
+                    ->label('Condición médica')
+                    ->wrap()
+                    ->limit(40)
+                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) ($record->condition_medical ?? '')) > 40 ? $record->condition_medical : null),
                 TextColumn::make('initial_date')
-                    ->label('Fecha de Ingreso'),
+                    ->label('Ingreso empresa')
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state)),
+                TextColumn::make('position_company')
+                    ->label('Cargo'),
                 TextColumn::make('address')
-                    ->label('Direccion'),
+                    ->label('Dirección')
+                    ->wrap()
+                    ->limit(36)
+                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) ($record->address ?? '')) > 36 ? $record->address : null),
                 TextColumn::make('full_name_emergency')
-                    ->label('Contacto de Emergencia'),
+                    ->label('Emergencia (nombre)')
+                    ->wrap(),
                 TextColumn::make('phone_emergency')
-                    ->label('Telefono de Emergencia'),
-                TextColumn::make('phone_emergency')
-                    ->label('Telefono de Emergencia'),
+                    ->label('Emergencia (tel.)')
+                    ->copyable(),
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-AFILIADO'  => 'info',
-                            'ACTIVO'        => 'success',
-                            'EXCLUIDO'      => 'danger',
-                            'INACTIVO'      => 'danger',
-                            default         => 'azul',
+                            'PRE-AFILIADO' => 'info',
+                            'ACTIVO' => 'success',
+                            'EXCLUIDO' => 'danger',
+                            'INACTIVO' => 'danger',
+                            default => 'gray',
                         };
                     }),
                 TextColumn::make('vaucherIls')
@@ -233,62 +359,60 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->badge()
                     ->color('warning')
                     ->searchable()
-                    ->default(fn($record) => $record->vaucherIls == null ? '--------' : $record->vaucherIls),
+                    ->default(fn ($record) => $record->vaucherIls == null ? '—' : $record->vaucherIls),
                 TextColumn::make('dateInit')
-                    ->label('Fecha Inicio')
+                    ->label('Inicio ILS')
                     ->badge()
                     ->color('warning')
                     ->searchable()
-                    ->default(fn($record) => $record->dateInit == null ? '--/--/---' : $record->dateInit),
+                    ->default(fn ($record) => $record->dateInit == null ? '—' : $record->dateInit),
                 TextColumn::make('dateEnd')
-                    ->label('Fecha Fin')
+                    ->label('Fin ILS')
                     ->badge()
                     ->color('warning')
                     ->searchable()
-                    ->default(fn($record) => $record->DateEnd == null ? '--/--/---' : $record->DateEnd),
+                    ->default(fn ($record) => $record->DateEnd == null ? '—' : $record->DateEnd),
                 TextColumn::make('numberDays')
-                    ->label('Dias Cobertura')
-                    ->suffix(' Dias Restantes')
+                    ->label('Días cobertura')
+                    ->suffix(' días')
                     ->badge()
                     ->color('warning')
                     ->searchable()
-                    ->default(fn($record) => $record->numberDays == null ? '0 ' : abs($record->numberDays)),
+                    ->default(fn ($record) => $record->numberDays == null ? '0' : (string) abs((int) $record->numberDays)),
                 IconColumn::make('document_ils')
                     ->alignment(Alignment::Center)
                     ->label('Comprobante')
-                    ->icon(function ($record) {
-                        // Muestra un ícono si la imagen existe
-                        return $record->document_ils != null
-                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
-                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
-                    })
-                    // ->iconPosition(IconPosition::After), // Posición del ícono
-                    ->color(function ($record) {
-                        // Color del ícono basado en la existencia de la imagen
-                        return $record->document_ils != null
-                            ? 'success' // Verde si la imagen existe
-                            : 'danger'; // Rojo si no existe
-                    })
-                    ->url(function ($record) {
-                        return asset('storage/' . $record->document_ils);
-                    })
+                    ->icon(fn (AffiliateCorporate $record): string => $record->document_ils != null
+                        ? 'heroicon-o-check-circle'
+                        : 'heroicon-o-x-circle')
+                    ->color(fn (AffiliateCorporate $record): string => $record->document_ils != null
+                        ? 'success'
+                        : 'danger')
+                    ->url(fn (AffiliateCorporate $record): ?string => $record->document_ils
+                        ? asset('storage/'.$record->document_ils)
+                        : null)
                     ->openUrlInNewTab(),
 
             ])
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50])
             ->headerActions([
                 CreateAction::make()
-                    ->label('Crear Afiliado')
+                    ->label('Crear afiliado')
                     ->color('success')
                     ->createAnother(false)
                     ->icon(Heroicon::Plus)
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalHeading('Nuevo afiliado corporativo')
+                    ->modalDescription('Complete los datos del familiar o colaborador y el plan. Los campos marcados como obligatorios deben completarse antes de guardar.')
                     ->before(function (array $data, CreateAction $action) {
                         $plans = $this->getOwnerRecord()->affiliationCorporatePlans->pluck('plan_id')->toArray();
-                        if (!in_array($data['plan_id'], $plans)) {
+                        if (! in_array($data['plan_id'], $plans)) {
                             Notification::make()
-                                ->title('Error')
+                                ->title('Plan no permitido')
                                 ->danger()
                                 ->icon(Heroicon::ExclamationCircle)
-                                ->body('El plan seleccionado no se encuentra en la lista de planes afiliados. Por favor, seleccione un plan que pertenece a la afiliación corporativa')
+                                ->body('El plan seleccionado no está en la lista de planes de esta afiliación corporativa. Elija un plan autorizado.')
                                 ->send();
 
                             $action->halt();
@@ -303,56 +427,72 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 ->title('Afiliado creado')
                                 ->success()
                                 ->icon(Heroicon::CheckCircle)
-                                ->body('El afiliado se ha creado correctamente')
+                                ->body('El afiliado se registró correctamente.')
                                 ->send();
                         } else {
                             Notification::make()
-                                ->title('Error')
+                                ->title('Error al crear')
                                 ->danger()
                                 ->icon(Heroicon::ExclamationCircle)
-                                ->body('Ha ocurrido un error al crear el afiliado')
+                                ->body('No se pudo crear el afiliado. Intente de nuevo o contacte a soporte.')
                                 ->send();
                         }
                     })
-                    ->hidden(fn() => !in_array('SUPERADMIN', auth()->user()->departament))
+                    ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [])),
             ])
             ->recordActions([
                 ActionGroup::make([
+                    EditAction::make()
+                        ->label('Editar')
+                        ->color('warning')
+                        ->icon(Heroicon::PencilSquare)
+                        ->modalWidth(Width::SevenExtraLarge)
+                        ->modalHeading('Editar afiliado')
+                        ->modalDescription('Actualice los datos del afiliado. No se ocultan campos: revise cada sección.'),
                     Action::make('upload_info_ils')
-                        ->label('Vaucher ILS')
+                        ->label('Voucher ILS')
                         ->color('info')
                         ->icon(Heroicon::Ticket)
                         ->requiresConfirmation()
                         ->modalWidth(Width::TwoExtraLarge)
-                        ->modalHeading('Activar afiliacion')
+                        ->modalHeading('Activar cobertura ILS')
+                        ->modalDescription('Ingrese voucher, vigencia y adjunte el comprobante. Campos obligatorios marcados con validación.')
                         ->form([
-                            Section::make('ACTIVAR AFILIACION')
-                                ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
-                                ->icon('heroicon-s-check-circle')
+                            Section::make('Datos del voucher')
+                                ->description('Vigencia del beneficio ILS y documento de respaldo.')
+                                ->icon(Heroicon::Ticket)
                                 ->schema([
                                     Grid::make(2)->schema([
                                         TextInput::make('vaucherIls')
-                                            ->label('Vaucher ILS')
+                                            ->label('Voucher ILS')
                                             ->required(),
                                     ]),
                                     Grid::make(3)->schema([
                                         DatePicker::make('dateInit')
                                             ->label('Desde')
                                             ->format('d/m/Y')
+                                            ->displayFormat('d/m/Y')
                                             ->required(),
                                         DatePicker::make('dateEnd')
                                             ->label('Hasta')
                                             ->live()
                                             ->format('d/m/Y')
-                                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
-                                                $fecha1 = Carbon::createFromFormat('d/m/Y', $get('dateInit'));
-                                                $fecha2 = Carbon::createFromFormat('d/m/Y', $get('dateEnd'));
-                                                $diasRestantes = $fecha2->diffInDays($fecha1);
-                                                $set('numberDays', abs($diasRestantes));
+                                            ->displayFormat('d/m/Y')
+                                            ->afterStateUpdated(function (Set $set, $state, Get $get): void {
+                                                $init = $get('dateInit');
+                                                if (blank($init) || blank($state)) {
+                                                    return;
+                                                }
+                                                try {
+                                                    $fecha1 = Carbon::createFromFormat('d/m/Y', $init);
+                                                    $fecha2 = Carbon::createFromFormat('d/m/Y', $state);
+                                                    $set('numberDays', abs($fecha2->diffInDays($fecha1)));
+                                                } catch (\Throwable) {
+                                                }
                                             })
                                             ->required(),
                                         TextInput::make('numberDays')
-                                            ->label('Dias Restantes')
+                                            ->label('Días de vigencia')
                                             ->disabled()
                                             ->dehydrated()
                                             ->required(),
@@ -360,10 +500,12 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ]),
                                     Grid::make(1)->schema([
                                         FileUpload::make('document_ils')
-                                            ->label('Documento/Comprobante ILS')
-                                            ->required(),
-                                    ])
-                                ])
+                                            ->label('Documento / comprobante ILS')
+                                            ->required()
+                                            ->downloadable()
+                                            ->openable(),
+                                    ]),
+                                ]),
                         ])
                         ->action(function (AffiliateCorporate $record, array $data): void {
 
@@ -373,23 +515,23 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 $fecha2 = Carbon::createFromFormat('d/m/Y', $data['dateEnd']);
 
                                 $record->update([
-                                    'vaucherIls'    => $data['vaucherIls'],
-                                    'dateInit'      => $data['dateInit'],
-                                    'dateEnd'       => $data['dateEnd'],
-                                    'numberDays'    => abs($fecha2->diffInDays($fecha1)),
-                                    'document_ils'  => $data['document_ils']
+                                    'vaucherIls' => $data['vaucherIls'],
+                                    'dateInit' => $data['dateInit'],
+                                    'dateEnd' => $data['dateEnd'],
+                                    'numberDays' => abs($fecha2->diffInDays($fecha1)),
+                                    'document_ils' => $data['document_ils'],
                                 ]);
 
                                 Notification::make()
                                     ->success()
-                                    ->title('Vaucher ILS Activado')
+                                    ->title('Voucher ILS activado')
                                     ->send();
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
                                 Notification::make()
                                     ->danger()
                                     ->title('Error')
-                                    ->body('Hubo un error activando el Vaucher ILS. Por favor, intente nuevamente.')
+                                    ->body('No se pudo activar el voucher ILS. Intente de nuevo.')
                                     ->send();
                             }
                         })
@@ -397,17 +539,24 @@ class CorporateAffiliatesRelationManager extends RelationManager
                             if ($record->vaucherIls != null) {
                                 return true;
                             }
+
                             return false;
                         }),
                     Action::make('changet_status')
-                        ->label('Dar de Baja')
-                        ->icon('heroicon-s-trash')
+                        ->label('Dar de baja')
+                        ->icon(Heroicon::Trash)
                         ->color('danger')
                         ->requiresConfirmation()
+                        ->modalHeading('Dar de baja al afiliado')
+                        ->modalDescription('Esta acción cambia el estado del afiliado según las reglas del sistema.')
                         ->action(function (AffiliateCorporate $record): void {
                             try {
-
                                 AffiliateCorporateController::clearAffiliate($record, $this->getOwnerRecord());
+                                Notification::make()
+                                    ->success()
+                                    ->title('Afiliado dado de baja')
+                                    ->body('Se actualizaron montos, población del plan y totales de la afiliación.')
+                                    ->send();
                             } catch (\Throwable $th) {
                                 Log::error($th);
                                 Notification::make()
@@ -416,47 +565,55 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->body($th->getMessage())
                                     ->send();
                             }
-                        })
-                ])->hidden(fn($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO' || Auth::user()->is_business_admin != 1),
-
+                        }),
+                ])->hidden(fn ($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO' || Auth::user()->is_business_admin != 1),
 
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('asigned_vaucher_ils')
-                        ->modalHeading('Asignacion de Vaucher ILS!')
+                        ->modalHeading('Asignar voucher ILS')
+                        ->modalDescription('Se aplicará la misma información a todos los registros seleccionados.')
                         ->requiresConfirmation()
                         ->modalWidth(Width::TwoExtraLarge)
                         ->color('info')
                         ->icon(Heroicon::Ticket)
                         ->form([
-                            Section::make('ACTIVAR AFILIACION')
-                                ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
-                                ->icon('heroicon-s-check-circle')
+                            Section::make('Datos del voucher')
+                                ->description('Vigencia y comprobante para los afiliados seleccionados.')
+                                ->icon(Heroicon::Ticket)
                                 ->schema([
                                     Grid::make(2)->schema([
                                         TextInput::make('vaucherIls')
-                                            ->label('Vaucher ILS')
+                                            ->label('Voucher ILS')
                                             ->required(),
                                     ]),
                                     Grid::make(3)->schema([
                                         DatePicker::make('dateInit')
                                             ->label('Desde')
                                             ->format('d/m/Y')
+                                            ->displayFormat('d/m/Y')
                                             ->required(),
                                         DatePicker::make('dateEnd')
                                             ->label('Hasta')
                                             ->live()
                                             ->format('d/m/Y')
-                                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
-                                                $fecha1 = Carbon::createFromFormat('d/m/Y', $get('dateInit'));
-                                                $fecha2 = Carbon::createFromFormat('d/m/Y', $get('dateEnd'));
-                                                $diasRestantes = $fecha2->diffInDays($fecha1);
-                                                $set('numberDays', abs($diasRestantes));
+                                            ->displayFormat('d/m/Y')
+                                            ->afterStateUpdated(function (Set $set, $state, Get $get): void {
+                                                $init = $get('dateInit');
+                                                if (blank($init) || blank($state)) {
+                                                    return;
+                                                }
+                                                try {
+                                                    $fecha1 = Carbon::createFromFormat('d/m/Y', $init);
+                                                    $fecha2 = Carbon::createFromFormat('d/m/Y', $state);
+                                                    $set('numberDays', abs($fecha2->diffInDays($fecha1)));
+                                                } catch (\Throwable) {
+                                                }
                                             })
                                             ->required(),
                                         TextInput::make('numberDays')
-                                            ->label('Dias Restantes')
+                                            ->label('Días de vigencia')
                                             ->disabled()
                                             ->dehydrated()
                                             ->required(),
@@ -464,10 +621,12 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ]),
                                     Grid::make(1)->schema([
                                         FileUpload::make('document_ils')
-                                            ->label('Documento/Comprobante ILS')
-                                            ->required(),
-                                    ])
-                                ])
+                                            ->label('Documento / comprobante ILS')
+                                            ->required()
+                                            ->downloadable()
+                                            ->openable(),
+                                    ]),
+                                ]),
                         ])
                         ->action(function (Collection $records, array $data): void {
 
@@ -479,34 +638,37 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     $fecha2 = Carbon::createFromFormat('d/m/Y', $data['dateEnd']);
 
                                     $record->update([
-                                        'vaucherIls'    => $data['vaucherIls'],
-                                        'dateInit'      => $data['dateInit'],
-                                        'dateEnd'       => $data['dateEnd'],
-                                        'numberDays'    => abs($fecha2->diffInDays($fecha1)),
-                                        'document_ils'  => $data['document_ils']
+                                        'vaucherIls' => $data['vaucherIls'],
+                                        'dateInit' => $data['dateInit'],
+                                        'dateEnd' => $data['dateEnd'],
+                                        'numberDays' => abs($fecha2->diffInDays($fecha1)),
+                                        'document_ils' => $data['document_ils'],
                                     ]);
                                 }
 
                                 Notification::make()
                                     ->success()
-                                    ->title('Vaucher ILS Activado')
+                                    ->title('Voucher ILS asignado')
                                     ->send();
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
                                 Notification::make()
                                     ->danger()
                                     ->title('Error')
-                                    ->body('Hubo un error activando el Vaucher ILS. Por favor, intente nuevamente.')
+                                    ->body('No se pudo asignar el voucher ILS.')
                                     ->send();
                             }
                         }),
                     DeleteBulkAction::make()
-                        ->modalHeading('INTEGRACORP eliminar el/los registros seleccionados!')
+                        ->modalHeading('Eliminar registros seleccionados')
+                        ->modalDescription('Esta acción no se puede deshacer.')
                         ->requiresConfirmation()
                         ->color('danger')
                         ->icon(Heroicon::Trash),
 
                 ]),
-            ])->striped()->poll('5s');
+            ])
+            ->striped()
+            ->poll('5s');
     }
 }

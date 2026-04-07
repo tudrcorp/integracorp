@@ -16,6 +16,8 @@ class TelemedicinePatientStudy extends Model
         'study',
         'type',
         'assigned_by',
+        'status',
+        'operation_coordination_service_id',
     ];
 
     public function telemedicineCase()
