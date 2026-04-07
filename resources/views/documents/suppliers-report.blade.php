@@ -81,15 +81,12 @@
             font-size: 6.5pt;
         }
         table.report thead th {
-            background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+            background: #e2e8f0;
             color: #0f172a;
             font-weight: bold;
             font-size: 6.5pt;
             text-align: center;
             border-bottom: 2px solid {{ $brandCyan }};
-        }
-        table.report tbody tr:nth-child(even) {
-            background-color: #f8fafc;
         }
         .muted {
             color: #94a3b8;

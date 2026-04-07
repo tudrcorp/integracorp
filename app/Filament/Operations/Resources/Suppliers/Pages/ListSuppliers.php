@@ -55,6 +55,9 @@ class ListSuppliers extends ListRecords
 
     public function sendSupplierReportPdf(): void
     {
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+
         $this->validate([
             'supplierReportEmail' => ['required', 'email', 'max:255'],
         ]);
@@ -72,6 +75,9 @@ class ListSuppliers extends ListRecords
 
     public function moveSupplierReportToDownloadZone(): void
     {
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+
         try {
             SupplierReportDownloadZoneService::publish();
 
