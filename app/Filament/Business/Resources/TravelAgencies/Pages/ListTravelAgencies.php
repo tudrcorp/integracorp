@@ -4,11 +4,15 @@ namespace App\Filament\Business\Resources\TravelAgencies\Pages;
 
 use App\Filament\Business\Resources\TravelAgencies\TravelAgencyResource;
 use App\Filament\Business\Resources\TravelAgencies\Widgets\TotalTravelAgencyStatOverview;
+use App\Filament\Business\Resources\TravelAgencies\Widgets\TravelAgencyForStateChart;
 use Filament\Actions\CreateAction;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
 
 class ListTravelAgencies extends ListRecords
 {
+    use ExposesTableToWidgets;
+
     protected static string $resource = TravelAgencyResource::class;
 
     protected static ?string $title = 'Listado de Agencias de Viajes';
@@ -28,6 +32,7 @@ class ListTravelAgencies extends ListRecords
     {
         return [
             TotalTravelAgencyStatOverview::class,
+            TravelAgencyForStateChart::class,
         ];
     }
 }
