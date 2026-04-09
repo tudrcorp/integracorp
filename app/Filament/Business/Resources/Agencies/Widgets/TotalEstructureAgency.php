@@ -13,11 +13,15 @@ class TotalEstructureAgency extends ChartWidget
 {
     use InteractsWithPageTable;
 
+    protected string $view = 'filament.widgets.total-estructure-agency-chart';
+
+    protected string $color = 'gray';
+
     protected ?string $heading = 'Ventas totales por estructura';
 
     protected ?string $description = 'Seleccione una agencia Master o General en el filtro para ver la jerarquía de ventas del año en curso: ventas directas de la agencia master, ventas directas de sus agencias generales y ventas de los agentes. El listado respeta los filtros de la tabla.';
 
-    protected ?string $maxHeight = '500px';
+    protected ?string $maxHeight = '440px';
 
     protected int|string|array $columnSpan = 'full';
 
@@ -233,6 +237,8 @@ class TotalEstructureAgency extends ChartWidget
 
     public function mount(): void
     {
+        parent::mount();
+
         if ($this->filter === null || $this->filter === '') {
             $firstMaster = Agency::query()
                 ->where('agency_type_id', 1)

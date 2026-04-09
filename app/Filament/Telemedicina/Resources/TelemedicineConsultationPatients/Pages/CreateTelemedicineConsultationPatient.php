@@ -6,6 +6,7 @@ use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concern
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Http\Controllers\OperationCoordinationServiceController;
+use App\Http\Controllers\TelemedicineConsultationPatientController;
 use App\Http\Controllers\TelemedicineMedicalReportController;
 use App\Jobs\GeneratePdfEspecialista;
 use App\Jobs\GeneratePdfImagenologia;
@@ -28,6 +29,8 @@ use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Services\NotificationTelemedicinaService;
+use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -71,6 +74,38 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             $this->redirect($this->getResource()::getUrl('index'));
 
             return;
+        }
+
+        if ($this->case !== null) {
+            $countCase = TelemedicineConsultationPatient::query()
+                ->where('telemedicine_case_id', $this->case->id)
+                ->count();
+
+            $formState = ConsultationCreateWizardDefaults::formStatePatientStepFromCaseAndPatient(
+                $this->case,
+                $this->patient,
+                (int) Auth::user()->id,
+                $countCase,
+            );
+
+            $lastConsultation = TelemedicineConsultationPatient::query()
+                ->where('telemedicine_case_id', $this->case->id)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($lastConsultation !== null) {
+                $formState = array_merge(
+                    $formState,
+                    ConsultationCreateWizardDefaults::formStatePrefillFromLastConsultation($lastConsultation),
+                );
+            }
+
+            $consultationInSession = session()->get('consultation');
+            if ($consultationInSession instanceof TelemedicineConsultationPatient && filled($consultationInSession->telemedicine_service_list_id)) {
+                $formState['telemedicine_service_list_id'] = (int) $consultationInSession->telemedicine_service_list_id;
+            }
+
+            $this->form->fill($formState);
         }
 
         // 3. Verificar si el paciente NO tiene historia clínica
@@ -194,6 +229,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->button()
                 ->icon('heroicon-s-arrow-left')
                 ->color('estandar')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('estandar'),
+                ])
                 ->url(route('filament.telemedicina.pages.dashboard')),
 
             Action::make('create_history')
@@ -202,6 +240,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->slideOver()
                 ->icon('healthicons-f-health-worker-form')
                 ->color('urgencia')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('urgencia'),
+                ])
                 ->action(function () {
 
                     $patient = session()->get('patient');
@@ -222,6 +263,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->slideOver()
                 ->icon('healthicons-f-health-worker-form')
                 ->color('urgencia')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('urgencia'),
+                ])
                 ->action(function () {
 
                     $patient = session()->get('patient');
@@ -245,6 +289,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->slideOver()
                 ->icon('healthicons-f-health-worker-form')
                 ->color('primary')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                ])
                 ->modalSubmitAction(false)
                 ->modalContent(function () {
 
@@ -265,6 +312,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->button()
                 ->icon('heroicon-s-clipboard-document-list')
                 ->color('primary')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                ])
                 ->slideOver()
                 ->modalHeading('Historial de Casos del Paciente')
                 ->modalContent(function () {
@@ -286,6 +336,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->button()
                 ->icon('heroicon-s-clipboard-document-list')
                 ->color('primary')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                ])
                 ->slideOver()
                 ->modalHeading('Historial de Casos del Paciente')
                 ->modalContent(function () {
@@ -776,6 +829,19 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                      */
                     TelemedicineMedicalReportController::create($record);
 
+                    /**
+                     * Creacion de la siguiente consulta que deriva de la actual
+                     * ----------------------------------------------------------------------------------------------------
+                     *
+                     * array $record, array $doctor, array $patient
+                     * Si el campo del servicio que deriva es null no se crea la siguiente consulta
+                     *
+                     * * @version 1.0
+                     */
+                    if ($record['telemedicine_service_list_drift_id'] != null || $record['telemedicine_service_list_drift_id'] != '') {
+                        TelemedicineConsultationPatientController::createNextConsultation($record, $doctor, $patient);
+                    }
+
                     Notification::make()
                         ->title('Telemedicina creada exitosamente')
                         ->success()
@@ -842,70 +908,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 }
             }
 
-            // foreach ($arrayOperationCoordinationService as $operationCoordinationService)
-            // {
-            //     $registeredOperationCoordinationService = OperationCoordinationService::where('telemedicine_consultation_patient_id', $record['id'])->where('status', 'PENDIENTE')->where('specific_service', $operationCoordinationService)->latest()->first()->id;
-            //     if($registeredOperationCoordinationService != null) {
-            //         if($operationCoordinationService == 'MEDICAMENTOS') {
-            //         $medications = TelemedicinePatientMedications::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
-            //             foreach ($medications as $medication) {
-            //                 $medication->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //                 $medication->save();
-            //             }
-            //         }
-            //         if($operationCoordinationService == 'LABORATORIOS') {
-            //             $labs = TelemedicinePatientLab::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
-            //             foreach ($labs as $lab) {
-            //                 $lab->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //                 $lab->save();
-            //             }
-            //         }
-            //         if($operationCoordinationService == 'IMAGENOLOGIA') {
-            //             $studies = TelemedicinePatientStudy::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
-            //             foreach ($studies as $study) {
-            //                 $study->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //                 $study->save();
-            //             }
-            //         }
-            //         if($operationCoordinationService == 'ESPECIALISTA') {
-            //             $specialists = TelemedicinePatientSpecialty::where('telemedicine_consultation_patient_id', $record['id'])->where('operation_coordination_service_id', $registeredOperationCoordinationService)->latest()->first()->get();
-            //             foreach ($specialists as $specialist) {
-            //                 $specialist->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //                 $specialist->save();
-            //             }
-            //         }
-            //     }
-            // }
-
-            // $registeredOperationCoordinationService = OperationCoordinationService::where('telemedicine_consultation_patient_id', $record['id'])->first()->id;
-
-            // // actualiza la tabla de medicamentoa con el id del servicio de coordinacion
-            // $medications = TelemedicinePatientMedications::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
-            // foreach ($medications as $medication) {
-            //     $medication->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //     $medication->save();
-            // }
-
-            // // actualiza la tabla de laboratorios con el id del servicio de coordinacion
-            // $labs = TelemedicinePatientLab::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
-            // foreach ($labs as $lab) {
-            //     $lab->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //     $lab->save();
-            // }
-
-            // // actualiza la tabla de estudios con el id del servicio de coordinacion
-            // $studies = TelemedicinePatientStudy::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
-            // foreach ($studies as $study) {
-            //     $study->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //     $study->save();
-            // }
-
-            // // actualiza la tabla de especialistas con el id del servicio de coordinacion
-            // $specialists = TelemedicinePatientSpecialty::where('telemedicine_consultation_patient_id', $record['id'])->latest()->first()->get();
-            // foreach ($specialists as $specialist) {
-            //     $specialist->operation_coordination_service_id = $registeredOperationCoordinationService;
-            //     $specialist->save();
-            // }
+            session()->forget('consultation');
 
         } catch (\Throwable $th) {
             Log::error('Error en afterCreate (telemedicina): '.$th->getMessage(), [

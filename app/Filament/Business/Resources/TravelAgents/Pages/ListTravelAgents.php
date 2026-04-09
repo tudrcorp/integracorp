@@ -3,7 +3,7 @@
 namespace App\Filament\Business\Resources\TravelAgents\Pages;
 
 use App\Filament\Business\Resources\TravelAgents\TravelAgentResource;
-use Filament\Actions\CreateAction;
+use App\Filament\Business\Resources\TravelAgents\Widgets\TotalTravelAgentStatOverview;
 use Filament\Resources\Pages\ListRecords;
 
 class ListTravelAgents extends ListRecords
@@ -19,6 +19,13 @@ class ListTravelAgents extends ListRecords
             //     ->label('Crear Agente De Viaje')
             //     ->color('primary')
             //     ->icon('heroicon-o-plus'),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            TotalTravelAgentStatOverview::class,
         ];
     }
 }

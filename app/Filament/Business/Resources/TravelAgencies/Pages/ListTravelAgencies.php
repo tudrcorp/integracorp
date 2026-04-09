@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\TravelAgencies\Pages;
 
 use App\Filament\Business\Resources\TravelAgencies\TravelAgencyResource;
+use App\Filament\Business\Resources\TravelAgencies\Widgets\TotalTravelAgencyStatOverview;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -10,7 +11,7 @@ class ListTravelAgencies extends ListRecords
 {
     protected static string $resource = TravelAgencyResource::class;
 
-    protected static ?string $title = "Listado de Agencias de Viajes";
+    protected static ?string $title = 'Listado de Agencias de Viajes';
 
     protected function getHeaderActions(): array
     {
@@ -18,8 +19,15 @@ class ListTravelAgencies extends ListRecords
             CreateAction::make()
                 ->icon('heroicon-o-plus-circle')
                 ->color('primary')
-                ->label('Crear Agencia de Viajes')
+                ->label('Crear Agencia de Viajes'),
 
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            TotalTravelAgencyStatOverview::class,
         ];
     }
 }

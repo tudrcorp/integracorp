@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\Agencies\Pages;
 use App\Filament\Business\Resources\Agencies\AgencyResource;
 use App\Filament\Business\Resources\Agencies\Widgets\AgencyGeoChart;
 use App\Filament\Business\Resources\Agencies\Widgets\AgentActiveForEstructureChart;
+use App\Filament\Business\Resources\Agencies\Widgets\NewRegisterAgencyForMountChart;
 use App\Filament\Business\Resources\Agencies\Widgets\StatsOverviewAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalEstructureAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalSaleForEstructureChart;
@@ -133,6 +134,7 @@ class ListAgencies extends ListRecords
     {
         return [
             StatsOverviewAgency::class,
+            NewRegisterAgencyForMountChart::class,
             AgencyGeoChart::class,
             TotalEstructureAgency::class,
             AgentActiveForEstructureChart::class,

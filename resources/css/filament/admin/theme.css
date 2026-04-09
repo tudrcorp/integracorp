@@ -1211,4 +1211,952 @@
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* TelemedicineCaseTableDash — UI tipo iOS (lista agrupada, vidrio, SF)        */
+/* -------------------------------------------------------------------------- */
+@layer components {
+  /*
+   * El widget no puede usar overflow:hidden ni backdrop-filter en el contenedor externo:
+   * los modales de acciones viven dentro del mismo Livewire y usan position:fixed; un
+   * antepasado con recorte o blur crea contexto de apilamiento y el modal queda “dentro”
+   * de la tarjeta. El aspecto iOS se mantiene con fondo más opaco y bordes redondeados.
+   */
+  .fi-wi-widget.fi-wi-table:has(.telemedicine-case-table-ios) {
+    @apply overflow-visible rounded-[1.375rem] border border-black/[0.06] bg-white/92 shadow-[0_4px_32px_-12px_rgba(0,0,0,0.14)] dark:border-white/[0.08] dark:bg-zinc-900/92 dark:shadow-[0_4px_40px_-12px_rgba(0,0,0,0.55)];
+  }
+
+  .telemedicine-case-table-ios.fi-ta {
+    overflow: visible;
+  }
+
+  .telemedicine-case-table-ios {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply text-[0.9375rem] leading-snug tracking-[-0.01em];
+  }
+
+  .telemedicine-case-table-ios .fi-ta-ctn {
+    @apply gap-0 overflow-visible;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-main {
+    @apply gap-0 overflow-visible;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-header-ctn {
+    @apply px-4 pt-4 pb-2 sm:px-5 sm:pt-5;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-header {
+    @apply flex-col items-stretch gap-1 border-0 bg-transparent p-0 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-header-heading {
+    @apply text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-header-description {
+    @apply text-[0.8125rem] leading-relaxed text-zinc-500 dark:text-zinc-400;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-header-toolbar {
+    @apply border-0 bg-transparent p-0 shadow-none;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-search-field {
+    @apply w-full max-w-md;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-search-field .fi-input-wrp {
+    @apply rounded-2xl border border-zinc-200/90 bg-transparent shadow-none ring-0 dark:border-zinc-700/80 dark:bg-transparent dark:ring-0;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-content-ctn {
+    @apply mx-3 mb-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-white/[0.06] dark:bg-zinc-950/35 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:mx-4 sm:mb-4;
+  }
+
+  .telemedicine-case-table-ios table.fi-ta-table {
+    @apply w-full;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-table thead tr {
+    @apply border-b border-black/[0.06] bg-zinc-50/95 dark:border-white/[0.06] dark:bg-zinc-900/85;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-header-cell {
+    @apply py-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-zinc-500 dark:text-zinc-400;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-record {
+    @apply border-b border-black/[0.04] transition-[background-color] duration-150 ease-out dark:border-white/[0.05];
+  }
+
+  .telemedicine-case-table-ios .fi-ta-record:last-child {
+    @apply border-b-0;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-record:hover,
+  .telemedicine-case-table-ios .fi-ta-record:focus-within {
+    @apply bg-sky-500/[0.07] dark:bg-sky-400/[0.09];
+  }
+
+  .telemedicine-case-table-ios .fi-ta-cell {
+    @apply align-middle;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-actions {
+    @apply gap-1.5 pe-1;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-actions .fi-btn,
+  .telemedicine-case-table-ios .fi-ta-actions .fi-icon-btn {
+    @apply rounded-full;
+  }
+
+  .telemedicine-case-table-ios .fi-badge {
+    @apply rounded-full border-0 px-2.5 py-0.5 text-[0.75rem] font-medium shadow-none ring-1 ring-inset ring-black/[0.06] dark:ring-white/[0.1];
+  }
+
+  .telemedicine-case-table-ios nav.fi-pagination {
+    @apply border-t border-black/[0.06] px-4 py-3 dark:border-white/[0.06] sm:px-5;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-empty-state {
+    @apply mx-3 mb-6 rounded-2xl border border-dashed border-zinc-300/90 bg-zinc-50/60 py-14 dark:border-zinc-600/55 dark:bg-zinc-900/35 sm:mx-4;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-empty-state-heading {
+    @apply text-base font-semibold tracking-tight text-zinc-800 dark:text-zinc-100;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-empty-state-description {
+    @apply mt-1 max-w-sm text-[0.8125rem] leading-relaxed text-zinc-500 dark:text-zinc-400;
+  }
+
+  .telemedicine-case-table-ios .fi-ta-empty-state-icon-bg {
+    @apply rounded-2xl bg-zinc-200/80 text-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-300;
+  }
+
+  /* CaseStats — liquid glass 100% (blur + saturate + capas de tinte por métrica) */
+  .fi-telemedicine-case-stats-ios {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply tracking-[-0.01em];
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-section-content {
+    @apply gap-3 sm:gap-4;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.35rem;
+    border: 1px solid color-mix(in oklch, white 58%, transparent);
+    background-color: color-mix(in oklch, white 22%, transparent);
+    backdrop-filter: blur(28px) saturate(200%);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 5%, transparent),
+      0 4px 20px color-mix(in oklch, black 6%, transparent),
+      0 16px 48px -12px color-mix(in oklch, black 12%, transparent);
+    @apply ring-0 transition-shadow transition-transform transition-colors duration-300 ease-out;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat:hover:not([class*="fi-telemedicine-case-stat-ios--"]) {
+    border-color: color-mix(in oklch, white 72%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 88%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 4%, transparent),
+      0 8px 28px color-mix(in oklch, black 8%, transparent),
+      0 22px 56px -14px color-mix(in oklch, black 14%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--assigned:hover {
+    border-color: color-mix(in oklch, #ffb900 42%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      0 0 0 1px color-mix(in oklch, #ffb900 24%, transparent),
+      0 16px 48px -8px color-mix(in oklch, #ffb900 34%, transparent),
+      0 24px 56px -14px color-mix(in oklch, black 12%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--followup:hover {
+    border-color: color-mix(in oklch, #00a7d1 38%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      0 0 0 1px color-mix(in oklch, #00a7d1 22%, transparent),
+      0 16px 48px -8px color-mix(in oklch, #00a7d1 30%, transparent),
+      0 24px 56px -14px color-mix(in oklch, black 12%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--discharge:hover {
+    border-color: color-mix(in oklch, #068500 36%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      0 0 0 1px color-mix(in oklch, #068500 20%, transparent),
+      0 16px 48px -8px color-mix(in oklch, #068500 28%, transparent),
+      0 24px 56px -14px color-mix(in oklch, black 12%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 1;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Tinte líquido — ASIGNADOS (#ffb900) */
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--assigned::before {
+    background:
+      radial-gradient(120% 90% at 10% -20%, color-mix(in oklch, #ffb900 55%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, #ffb900 28%, transparent) 0%,
+        color-mix(in oklch, #ffb900 10%, transparent) 42%,
+        transparent 68%
+      );
+    box-shadow: inset 0 0 60px -20px color-mix(in oklch, #ffb900 35%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--assigned {
+    border-color: color-mix(in oklch, #ffb900 32%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 70%, transparent),
+      0 0 0 1px color-mix(in oklch, #ffb900 18%, transparent),
+      0 12px 40px -10px color-mix(in oklch, #ffb900 28%, transparent),
+      0 20px 50px -16px color-mix(in oklch, black 10%, transparent);
+  }
+
+  /* Tinte — SEGUIMIENTO (#00a7d1) */
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--followup::before {
+    background:
+      radial-gradient(120% 90% at 10% -20%, color-mix(in oklch, #00a7d1 50%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, #00a7d1 26%, transparent) 0%,
+        color-mix(in oklch, #00a7d1 9%, transparent) 42%,
+        transparent 68%
+      );
+    box-shadow: inset 0 0 60px -20px color-mix(in oklch, #00a7d1 30%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--followup {
+    border-color: color-mix(in oklch, #00a7d1 28%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 72%, transparent),
+      0 0 0 1px color-mix(in oklch, #00a7d1 16%, transparent),
+      0 12px 40px -10px color-mix(in oklch, #00a7d1 24%, transparent),
+      0 20px 50px -16px color-mix(in oklch, black 10%, transparent);
+  }
+
+  /* Tinte — ALTA MÉDICA (#068500) */
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--discharge::before {
+    background:
+      radial-gradient(120% 90% at 10% -20%, color-mix(in oklch, #068500 48%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, #068500 24%, transparent) 0%,
+        color-mix(in oklch, #068500 8%, transparent) 42%,
+        transparent 68%
+      );
+    box-shadow: inset 0 0 60px -20px color-mix(in oklch, #068500 28%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--discharge {
+    border-color: color-mix(in oklch, #068500 26%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 72%, transparent),
+      0 0 0 1px color-mix(in oklch, #068500 14%, transparent),
+      0 12px 40px -10px color-mix(in oklch, #068500 22%, transparent),
+      0 20px 50px -16px color-mix(in oklch, black 10%, transparent);
+  }
+
+  .dark .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat {
+    border-color: color-mix(in oklch, white 14%, transparent);
+    background-color: color-mix(in oklch, oklch(0.2 0.02 280) 45%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 12%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 35%, transparent),
+      0 4px 24px color-mix(in oklch, black 45%, transparent),
+      0 18px 48px -12px color-mix(in oklch, black 55%, transparent);
+  }
+
+  .dark .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat:hover {
+    border-color: color-mix(in oklch, white 20%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat-label {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-zinc-600/90 dark:text-zinc-300/90;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat-value {
+    @apply text-3xl font-semibold tracking-tight tabular-nums;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--assigned .fi-wi-stats-overview-stat-value {
+    @apply text-amber-950 dark:text-amber-100;
+    text-shadow: 0 1px 0 color-mix(in oklch, white 40%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--followup .fi-wi-stats-overview-stat-value {
+    @apply text-sky-950 dark:text-sky-100;
+    text-shadow: 0 1px 0 color-mix(in oklch, white 40%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--discharge .fi-wi-stats-overview-stat-value {
+    @apply text-emerald-950 dark:text-emerald-100;
+    text-shadow: 0 1px 0 color-mix(in oklch, white 40%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat-description {
+    @apply text-[0.8125rem] font-medium text-zinc-600/85 dark:text-zinc-400/95;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--assigned .fi-wi-stats-overview-stat-description {
+    @apply text-amber-900/75 dark:text-amber-200/85;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--followup .fi-wi-stats-overview-stat-description {
+    @apply text-sky-900/75 dark:text-sky-200/85;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--discharge .fi-wi-stats-overview-stat-description {
+    @apply text-emerald-900/75 dark:text-emerald-200/85;
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat {
+      @apply bg-white/85 dark:bg-zinc-900/90;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  /* Modal listado consultas (coherente con la tabla) */
+  .telemedicine-ios-consultations-sheet {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply tracking-[-0.01em];
+  }
+
+  .telemedicine-ios-consultations-sheet .fi-btn {
+    @apply rounded-full;
+  }
+
+  /* Modal «Agregar observaciones» (dashboard casos telemedicina) — vidrio + acento ámbar */
+  .fi-telemedicine-observation-modal-window {
+    @apply !max-w-2xl overflow-hidden rounded-[1.5rem] border border-amber-200/40 shadow-2xl;
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: color-mix(in oklch, oklch(0.99 0.03 85) 78%, transparent);
+    backdrop-filter: blur(22px) saturate(165%);
+    -webkit-backdrop-filter: blur(22px) saturate(165%);
+    box-shadow:
+      0 25px 50px -12px color-mix(in oklch, black 18%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 82%, transparent),
+      0 0 0 1px color-mix(in oklch, #ffb900 14%, transparent);
+  }
+
+  .dark .fi-telemedicine-observation-modal-window {
+    @apply border-amber-500/30;
+    background: color-mix(in oklch, oklch(0.17 0.04 85) 58%, transparent);
+    box-shadow:
+      0 28px 56px -14px color-mix(in oklch, black 58%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 10%, transparent),
+      0 0 0 1px color-mix(in oklch, #ffb900 18%, transparent);
+  }
+
+  .fi-telemedicine-observation-modal-window .fi-modal-header {
+    @apply border-b border-amber-200/35 bg-gradient-to-b from-amber-50/55 to-transparent px-5 py-4 dark:border-amber-500/20 dark:from-amber-950/40 sm:px-6;
+  }
+
+  .fi-telemedicine-observation-modal-window .fi-modal-content {
+    @apply px-5 py-5 sm:px-6;
+  }
+
+  .fi-telemedicine-observation-modal-window textarea {
+    @apply min-h-[10rem] w-full rounded-xl border border-amber-200/55 bg-white/75 px-3.5 py-3 text-[0.9375rem] leading-relaxed text-zinc-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] transition-colors transition-shadow duration-200 dark:border-amber-500/30 dark:bg-zinc-950/45 dark:text-zinc-100;
+  }
+
+  .fi-telemedicine-observation-modal-window textarea:focus-visible {
+    @apply border-amber-400/90 outline-none ring-2 ring-amber-400/30 dark:border-amber-400/55 dark:ring-amber-400/22;
+  }
+
+  .fi-telemedicine-observation-modal-window .fi-fo-field-wrp-label {
+    @apply text-sm font-semibold text-zinc-800 dark:text-zinc-100;
+  }
+
+  .fi-telemedicine-observation-modal-window .fi-fo-field-wrp-helper-text {
+    @apply text-xs leading-relaxed text-zinc-600 dark:text-zinc-400;
+  }
+
+  .fi-telemedicine-observation-modal-window .fi-modal-footer {
+    @apply gap-3 border-t border-amber-200/30 bg-amber-50/30 px-4 py-4 dark:border-amber-500/15 dark:bg-amber-950/20 sm:px-6;
+  }
+
+  /* Business — modal asociar afiliados a plan corporativo (lista + plan) */
+  .fi-ios-affiliation-associate-plan-modal {
+    @apply !max-w-4xl overflow-hidden rounded-[1.35rem] border border-emerald-200/40 shadow-2xl;
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: color-mix(in oklch, oklch(0.99 0.02 155) 82%, transparent);
+    backdrop-filter: blur(20px) saturate(155%);
+    -webkit-backdrop-filter: blur(20px) saturate(155%);
+    box-shadow:
+      0 25px 50px -12px color-mix(in oklch, black 16%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 80%, transparent),
+      0 0 0 1px color-mix(in oklch, #16a34a 12%, transparent);
+  }
+
+  .dark .fi-ios-affiliation-associate-plan-modal {
+    @apply border-emerald-500/28;
+    background: color-mix(in oklch, oklch(0.17 0.03 155) 55%, transparent);
+    box-shadow:
+      0 28px 56px -14px color-mix(in oklch, black 55%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 8%, transparent),
+      0 0 0 1px color-mix(in oklch, #22c55e 16%, transparent);
+  }
+
+  .fi-ios-affiliation-associate-plan-modal .fi-modal-header {
+    @apply border-b border-emerald-200/35 bg-gradient-to-b from-emerald-50/60 to-transparent px-5 py-4 dark:border-emerald-500/20 dark:from-emerald-950/35 sm:px-6;
+  }
+
+  .fi-ios-affiliation-associate-plan-modal .fi-modal-content {
+    @apply max-h-[min(70vh,36rem)] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5;
+  }
+
+  .fi-ios-affiliation-associate-plan-modal .fi-fo-checkbox-list-option-label {
+    @apply rounded-xl border border-zinc-200/80 bg-white/70 px-3 py-2.5 text-sm shadow-sm transition-colors dark:border-white/10 dark:bg-zinc-900/50;
+  }
+
+  .fi-ios-affiliation-associate-plan-modal .fi-fo-checkbox-list-option-input:checked + .fi-fo-checkbox-list-option-label {
+    @apply border-emerald-500/50 bg-emerald-50/80 ring-2 ring-emerald-500/20 dark:border-emerald-400/40 dark:bg-emerald-950/40 dark:ring-emerald-400/25;
+  }
+
+  .fi-ios-affiliation-associate-plan-modal .fi-input-wrp,
+  .fi-ios-affiliation-associate-plan-modal .fi-fo-select-trigger {
+    @apply rounded-xl border-zinc-200/90 dark:border-zinc-600/70;
+  }
+
+  .fi-ios-affiliation-associate-plan-modal .fi-modal-footer {
+    @apply gap-3 border-t border-emerald-200/30 bg-emerald-50/25 px-4 py-4 dark:border-emerald-500/15 dark:bg-emerald-950/20 sm:px-6;
+  }
+
+  /*
+   * Wizard crear consulta telemedicina — agrupación tipo Ajustes iOS, tipografía SF,
+   * pasos con separación clara y controles táctiles.
+   */
+  .fi-telemedicine-consultation-wizard {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply tracking-[-0.015em];
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-header-ctn,
+  .fi-telemedicine-consultation-wizard [data-slot="wizardHeader"] {
+    @apply mb-4 rounded-2xl border border-black/[0.06] bg-zinc-100/90 p-2 dark:border-white/[0.08] dark:bg-zinc-800/80;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-header {
+    @apply gap-1.5;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-header .fi-btn,
+  .fi-telemedicine-consultation-wizard [data-slot="wizardHeader"] button {
+    @apply min-h-11 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all duration-200 active:scale-[0.98];
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-header .fi-btn.fi-active,
+  .fi-telemedicine-consultation-wizard [data-slot="wizardHeader"] [aria-current="step"] {
+    @apply shadow-sm;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-section {
+    @apply overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-white/95 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_28px_rgb(0_0_0/0.06)] dark:border-white/[0.08] dark:bg-zinc-900/90 dark:shadow-[0_1px_2px_rgb(0_0_0/0.35),0_10px_32px_rgb(0_0_0/0.45)];
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-section-header {
+    @apply border-b border-black/[0.05] bg-zinc-50/80 px-4 py-3.5 dark:border-white/[0.06] dark:bg-zinc-800/50;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-section-header-heading {
+    @apply text-[1.05rem] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-section-header-description {
+    @apply mt-0.5 text-[0.8125rem] leading-relaxed text-zinc-600 dark:text-zinc-400;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-section-content-ctn {
+    @apply px-3 py-4 sm:px-5 sm:py-5;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-fieldset {
+    @apply rounded-2xl border border-black/[0.05] bg-zinc-50/80 p-3 sm:p-4 dark:border-white/[0.07] dark:bg-zinc-800/40;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-fieldset > .fi-sc-fieldset-label-ctn {
+    @apply mb-3 border-b border-black/[0.05] pb-2 text-[0.8125rem] font-semibold uppercase tracking-wide text-zinc-500 dark:border-white/[0.08] dark:text-zinc-400;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-fo-field-wrp-label {
+    @apply text-[0.8125rem] font-medium text-zinc-700 dark:text-zinc-300;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-input-wrp,
+  .fi-telemedicine-consultation-wizard .fi-fo-select-trigger {
+    @apply min-h-11 rounded-xl border-zinc-200/90 shadow-none transition-shadow transition-colors duration-200 dark:border-zinc-600/80;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-input-wrp:has(.fi-input:focus),
+  .fi-telemedicine-consultation-wizard .fi-fo-select-trigger:focus-within {
+    @apply border-[color:var(--color-primary-500)] ring-2 ring-[color:var(--color-primary-500)]/20 dark:ring-[color:var(--color-primary-400)]/25;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-fo-textarea textarea {
+    @apply min-h-[5.5rem] rounded-xl border-zinc-200/90 dark:border-zinc-600/80;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-fo-field-wrp-helper-text {
+    @apply text-[0.75rem] leading-snug text-zinc-500 dark:text-zinc-400;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-fo-toggle-buttons > .fi-btn,
+  .fi-telemedicine-consultation-wizard .fi-fo-checkbox-list .fi-fo-checkbox-list-option-label {
+    @apply rounded-xl;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-footer {
+    @apply mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-black/[0.06] pt-5 dark:border-white/[0.08];
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-footer .fi-btn {
+    @apply min-h-11 rounded-full px-6 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98];
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-fo-repeater .fi-fo-repeater-item {
+    @apply rounded-xl border border-black/[0.06] bg-white/80 dark:border-white/[0.08] dark:bg-zinc-900/60;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-fo-repeater .fi-ta-table {
+    @apply rounded-xl;
+  }
+
+  /* Estatus del caso — bloque destacado tipo aviso iOS (seguimiento / alta) */
+  .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-section {
+    @apply border-l-[3px] border-l-amber-400 bg-gradient-to-br from-amber-50/95 via-white to-white shadow-[0_2px_16px_-4px_rgba(245,158,11,0.2)] dark:border-l-amber-500/90 dark:from-amber-950/35 dark:via-zinc-900/95 dark:to-zinc-900/90 dark:shadow-[0_2px_20px_-4px_rgba(0,0,0,0.45)];
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-section-header {
+    @apply border-b border-amber-200/60 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-950/25;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-section-header-heading {
+    @apply text-amber-950 dark:text-amber-100;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-section-header-description {
+    @apply text-amber-900/80 dark:text-amber-200/75;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-fo-field-wrp-helper-text {
+    @apply text-[0.8125rem] leading-relaxed text-amber-900/70 dark:text-amber-100/65;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-fo-toggle-buttons {
+    @apply w-full max-w-2xl;
+  }
+
+  .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-fo-toggle-buttons .fi-btn {
+    @apply min-h-12 min-w-0 flex-1 gap-2 px-3 py-2.5 text-[0.8125rem] font-semibold leading-tight sm:px-4 sm:text-sm;
+  }
+
+  /* Gráfico agentes / mes — panel liquid glass iOS */
+  .fi-ios-liquid-glass-agent-registrations-chart {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply tracking-[-0.015em];
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-section {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+    border-radius: 1.35rem;
+    border: 1px solid color-mix(in oklch, white 58%, transparent);
+    background-color: color-mix(in oklch, white 20%, transparent);
+    backdrop-filter: blur(26px) saturate(195%);
+    -webkit-backdrop-filter: blur(26px) saturate(195%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 76%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 5%, transparent),
+      0 4px 22px color-mix(in oklch, black 7%, transparent),
+      0 18px 50px -14px color-mix(in oklch, black 14%, transparent);
+    @apply ring-0 transition-shadow transition-colors duration-300 ease-out;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 85% at 8% -25%, color-mix(in oklch, #0a84ff 38%, transparent), transparent 58%),
+      radial-gradient(90% 70% at 92% 108%, color-mix(in oklch, #34c759 28%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, white 42%, transparent) 0%,
+        color-mix(in oklch, white 8%, transparent) 48%,
+        color-mix(in oklch, #c7c7cc 12%, transparent) 100%
+      );
+    opacity: 0.95;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-section:hover {
+    border-color: color-mix(in oklch, white 72%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 86%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 4%, transparent),
+      0 10px 32px color-mix(in oklch, black 9%, transparent),
+      0 24px 58px -14px color-mix(in oklch, black 16%, transparent);
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-section-header {
+    position: relative;
+    z-index: 1;
+    @apply border-b border-black/[0.06] bg-transparent px-4 py-3.5 dark:border-white/[0.08];
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-section-header-heading {
+    @apply text-[1.05rem] font-semibold tracking-tight text-zinc-950 dark:text-zinc-50;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-section-header-description {
+    @apply mt-0.5 text-[0.8125rem] leading-relaxed text-zinc-700 dark:text-zinc-300;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-section-content-ctn {
+    position: relative;
+    z-index: 1;
+    @apply px-3 pb-4 pt-2 sm:px-5 sm:pb-5;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-wi-chart-filter {
+    color: rgb(9 9 11);
+    @apply rounded-xl border border-black/[0.08] bg-white/70 shadow-sm backdrop-blur-md dark:border-white/[0.14] dark:bg-zinc-900/60 dark:text-zinc-50;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-wi-chart-filter select {
+    color: inherit;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-ios-liquid-glass-agent-registrations-chart__canvas {
+    position: relative;
+    z-index: 1;
+    min-height: 280px;
+    @apply rounded-2xl border border-black/[0.05] bg-white/35 p-3 shadow-inner dark:border-white/[0.08] dark:bg-zinc-950/35 sm:p-4;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart .fi-ios-agent-registrations-chart__canvas-el {
+    display: block;
+    max-width: 100%;
+  }
+
+  /*
+   * Chart.js (Filament) lee getComputedStyle() sobre estos spans.
+   * Contraste reforzado para ejes y etiquetas sobre vidrio en tema claro y oscuro.
+   */
+  .fi-ios-liquid-glass-agent-registrations-chart span.fi-wi-chart-grid-color {
+    color: rgb(39 39 42 / 0.45);
+  }
+
+  .dark .fi-ios-liquid-glass-agent-registrations-chart span.fi-wi-chart-grid-color {
+    color: rgb(255 255 255 / 0.22);
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart span.fi-wi-chart-text-color {
+    color: rgb(9 9 11);
+  }
+
+  .dark .fi-ios-liquid-glass-agent-registrations-chart span.fi-wi-chart-text-color {
+    color: rgb(250 250 250);
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart span.fi-wi-chart-border-color {
+    color: rgb(24 24 27 / 0.72);
+  }
+
+  .dark .fi-ios-liquid-glass-agent-registrations-chart span.fi-wi-chart-border-color {
+    color: rgb(255 255 255 / 0.38);
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart__empty {
+    position: relative;
+    z-index: 1;
+    min-height: 280px;
+    @apply flex flex-col items-center justify-center gap-3 rounded-2xl border border-black/[0.06] bg-white/30 px-6 py-12 text-center shadow-inner backdrop-blur-md dark:border-white/[0.1] dark:bg-zinc-950/35;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart__empty-icon {
+    @apply rounded-2xl bg-zinc-200/70 p-3 text-zinc-500 dark:bg-zinc-800/80 dark:text-zinc-400;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart__empty-title {
+    @apply text-[0.9375rem] font-semibold tracking-tight text-zinc-950 dark:text-zinc-50;
+  }
+
+  .fi-ios-liquid-glass-agent-registrations-chart__empty-body {
+    @apply max-w-sm text-[0.8125rem] leading-relaxed text-zinc-700 dark:text-zinc-300;
+  }
+
+  .dark .fi-ios-liquid-glass-agent-registrations-chart .fi-section {
+    border-color: color-mix(in oklch, white 14%, transparent);
+    background-color: color-mix(in oklch, #1c1c1e 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 10%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 35%, transparent),
+      0 4px 24px color-mix(in oklch, black 45%, transparent);
+  }
+
+  .dark .fi-ios-liquid-glass-agent-registrations-chart .fi-section::before {
+    background:
+      radial-gradient(120% 85% at 10% -20%, color-mix(in oklch, #0a84ff 22%, transparent), transparent 55%),
+      radial-gradient(90% 70% at 88% 105%, color-mix(in oklch, #34c759 18%, transparent), transparent 52%),
+      linear-gradient(165deg, color-mix(in oklch, white 8%, transparent), transparent 55%);
+    opacity: 1;
+  }
+
+  /* Gráficos agencias / agentes — mismo efecto iOS 3D en canvas que proveedores por clasificación */
+  .fi-agency-registrations-chart-like-suppliers .fi-wi-chart-canvas-ctn canvas,
+  .fi-agent-charts-like-suppliers .fi-wi-chart-canvas-ctn canvas {
+    filter:
+      drop-shadow(0 1px 0 rgba(255, 255, 255, 0.32))
+      drop-shadow(0 8px 20px rgba(34, 89, 173, 0.16))
+      drop-shadow(0 18px 38px rgba(0, 0, 0, 0.14));
+  }
+
+  .dark .fi-agency-registrations-chart-like-suppliers .fi-wi-chart-canvas-ctn canvas,
+  .dark .fi-agent-charts-like-suppliers .fi-wi-chart-canvas-ctn canvas {
+    filter:
+      drop-shadow(0 1px 0 rgba(255, 255, 255, 0.08))
+      drop-shadow(0 10px 24px rgba(80, 140, 255, 0.2))
+      drop-shadow(0 20px 44px rgba(0, 0, 0, 0.36));
+  }
+
+  /* Stats overview agentes / agencias / viajes — liquid glass iOS (solo tarjetas stat) */
+  .fi-ios-liquid-glass-stats-overview-agent,
+  .fi-agency-stats-overview-glass,
+  .fi-travel-agency-stats-overview-glass,
+  .fi-travel-agent-stats-overview-glass {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply w-full max-w-full tracking-[-0.015em];
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.35rem;
+    border: 1px solid color-mix(in oklch, white 58%, transparent);
+    background-color: color-mix(in oklch, white 20%, transparent);
+    backdrop-filter: blur(26px) saturate(195%);
+    -webkit-backdrop-filter: blur(26px) saturate(195%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 76%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 5%, transparent),
+      0 4px 22px color-mix(in oklch, black 7%, transparent),
+      0 18px 50px -14px color-mix(in oklch, black 14%, transparent);
+    @apply p-4 ring-0 transition-shadow transition-colors duration-300 ease-out sm:p-5;
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat::before,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat::before,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat::before,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 85% at 8% -25%, color-mix(in oklch, #0a84ff 38%, transparent), transparent 58%),
+      radial-gradient(90% 70% at 92% 108%, color-mix(in oklch, #34c759 28%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, white 42%, transparent) 0%,
+        color-mix(in oklch, white 8%, transparent) 48%,
+        color-mix(in oklch, #c7c7cc 12%, transparent) 100%
+      );
+    opacity: 0.95;
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat:hover,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat:hover,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat:hover,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat:hover {
+    border-color: color-mix(in oklch, white 72%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 86%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 4%, transparent),
+      0 10px 32px color-mix(in oklch, black 9%, transparent),
+      0 24px 58px -14px color-mix(in oklch, black 16%, transparent);
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat-content,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat-content,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat-content,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat-content {
+    position: relative;
+    z-index: 1;
+    @apply min-w-0;
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat-label-ctn,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat-label-ctn,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat-label-ctn,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat-label-ctn {
+    @apply flex min-w-0 flex-wrap items-center gap-2;
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat-label,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat-label,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat-label,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat-label {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400;
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat-value,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat-value,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat-value,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat-value {
+    @apply text-3xl font-bold tracking-tight text-zinc-900 tabular-nums dark:text-zinc-50;
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat-description,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat-description,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat-description,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat-description {
+    @apply block w-full min-w-0 max-w-full text-zinc-600 dark:text-zinc-300;
+  }
+
+  .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat-description > span,
+  .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat-description > span,
+  .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat-description > span,
+  .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat-description > span {
+    @apply block w-full min-w-0 max-w-full;
+  }
+
+  .dark .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat,
+  .dark .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat,
+  .dark .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat,
+  .dark .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat {
+    border-color: color-mix(in oklch, white 14%, transparent);
+    background-color: color-mix(in oklch, #1c1c1e 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 10%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 35%, transparent),
+      0 4px 24px color-mix(in oklch, black 45%, transparent);
+  }
+
+  .dark .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat::before,
+  .dark .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat::before,
+  .dark .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat::before,
+  .dark .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat::before {
+    background:
+      radial-gradient(120% 85% at 10% -20%, color-mix(in oklch, #0a84ff 22%, transparent), transparent 55%),
+      radial-gradient(90% 70% at 88% 105%, color-mix(in oklch, #34c759 18%, transparent), transparent 52%),
+      linear-gradient(165deg, color-mix(in oklch, white 8%, transparent), transparent 55%);
+    opacity: 1;
+  }
+
+  .dark .fi-ios-liquid-glass-stats-overview-agent .fi-wi-stats-overview-stat:hover,
+  .dark .fi-agency-stats-overview-glass .fi-wi-stats-overview-stat:hover,
+  .dark .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat:hover,
+  .dark .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat:hover {
+    border-color: color-mix(in oklch, white 22%, transparent);
+  }
+}
+
 

@@ -2,16 +2,15 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers;
 
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Actions\ViewAction;
-use Filament\Actions\CreateAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ColumnGroup;
-use App\Models\TelemedicineConsultationPatient;
-use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
+use App\Models\TelemedicineConsultationPatient;
+use BackedEnum;
+use Filament\Actions\CreateAction;
+use Filament\Actions\ViewAction;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class ConsultationsRelationManager extends RelationManager
 {
@@ -39,7 +38,7 @@ class ConsultationsRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
-                    ->description(fn($record): string => 'Atenido por: Dr(a):' . $record->telemedicineDoctor->full_name)
+                    ->description(fn ($record): string => 'Atenido por: Dr(a):'.$record->telemedicineDoctor->full_name)
                     ->sortable(),
                 TextColumn::make('nro_identificacion')
                     ->label('Número de Identificación')
@@ -142,45 +141,45 @@ class ConsultationsRelationManager extends RelationManager
                         return $record->status == 'EN SEGUIMIENTO' ? 'warning' : 'success';
                     }),
 
-                TextColumn::make('telemedicinePriority.name')
-                    ->label('Prioridad')
-                    ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'No Urgente'  => 'no-urgente',
-                            'Estándar'    => 'estandar',
-                            'Urgencia'    => 'urgencia',
-                            'Emergencia'  => 'emergencia',
-                            'Critico'     => 'critico',
-                        };
-                    })
-                    ->icon(function (string $state): string {
-                        return match ($state) {
-                            'No Urgente'  => 'healthicons-f-health',
-                            'Estándar'    => 'healthicons-f-health',
-                            'Urgencia'    => 'healthicons-f-health',
-                            'Emergencia'  => 'heroicon-c-shield-exclamation',
-                            'Critico'     => 'heroicon-c-shield-exclamation',
-                    
-                        };
-                    })
-                    ->searchable(),
+                // TextColumn::make('telemedicinePriority.name')
+                //     ->label('Prioridad')
+                //     ->badge()
+                //     ->color(function (string $state): string {
+                //         return match ($state) {
+                //             'NO URGENTE'  => 'NO URGENTE',
+                //             'Estándar'    => 'ESTANDAR',
+                //             'URGENCIA'    => 'URGENCIA',
+                //             'EMERGENCIA'  => 'EMERGENCIA',
+                //             'CRITICO'     => 'CRITICO',
+                //         };
+                //     })
+                //     ->icon(function (string $state): string {
+                //         return match ($state) {
+                //             'NO URGENTE'  => 'healthicons-f-health',
+                //             'ESTANDAR'    => 'healthicons-f-health',
+                //             'URGENCIA'    => 'healthicons-f-health',
+                //             'EMERGENCIA'  => 'heroicon-c-shield-exclamation',
+                //             'CRITICO'     => 'heroicon-c-shield-exclamation',
+
+                //         };
+                //     })
+                //     ->searchable(),
 
                 TextColumn::make('created_at')
                     ->label('Fecha de Registro')
                     ->dateTime()
                     // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
-                    ->description(fn(TelemedicineConsultationPatient $record): string => $record->updated_at->diffForHumans())
+                    ->description(fn (TelemedicineConsultationPatient $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
             ])
             ->recordActions([
                 ViewAction::make()
-                ->icon('heroicon-s-eye')
-                ->label('Ver Detalle')
-                ->color('primary')
-                ->url(function (TelemedicineConsultationPatient $record) {
-                    return TelemedicineConsultationPatientResource::getUrl('view', ['record' => $record->getKey()]);
-                })
+                    ->icon('heroicon-s-eye')
+                    ->label('Ver Detalle')
+                    ->color('primary')
+                    ->url(function (TelemedicineConsultationPatient $record) {
+                        return TelemedicineConsultationPatientResource::getUrl('view', ['record' => $record->getKey()]);
+                    }),
             ])
             ->headerActions([
                 CreateAction::make(),

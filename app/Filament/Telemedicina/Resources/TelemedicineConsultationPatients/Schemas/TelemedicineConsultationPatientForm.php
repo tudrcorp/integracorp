@@ -10,6 +10,7 @@ use App\Models\TelemedicineListSpecialist;
 use App\Models\TelemedicineListStudy;
 use App\Models\TelemedicinePriority;
 use App\Models\TelemedicineServiceList;
+use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
@@ -40,12 +41,20 @@ use Livewire\Component;
 
 class TelemedicineConsultationPatientForm
 {
+    private const WIZARD_IOS_CLASS = 'fi-telemedicine-consultation-wizard';
+
     public static function configure(Schema $schema): Schema
     {
         // Variables recuperadas de la sesion del usuario
         // ------------------------------------------------
         $case = session()->get('case');
         $patient = session()->get('patient');
+        $consultation = session()->get('consultation');
+        $defaultTelemedicineServiceListId = null;
+        if ($consultation instanceof TelemedicineConsultationPatient && filled($consultation->telemedicine_service_list_id)) {
+            $defaultTelemedicineServiceListId = (int) $consultation->telemedicine_service_list_id;
+        }
+        $isTelemedicineServiceListIdLocked = $defaultTelemedicineServiceListId !== null;
         $countCase = TelemedicineConsultationPatient::where('telemedicine_case_id', $case->id)->count();
         // ------------------------------------------------
 
@@ -54,10 +63,14 @@ class TelemedicineConsultationPatientForm
                 Wizard::make([
 
                     Step::make('Datos del Paciente')
+                        ->description('Verifica referencia, caso y datos de contacto del paciente.')
+                        ->icon(Heroicon::OutlinedUserCircle)
                         ->schema([
                             Section::make()
                                 ->heading('Datos del Paciente')
                                 ->description('Información principal sobre el paciente')
+                                ->icon(Heroicon::OutlinedIdentification)
+                                ->iconColor('primary')
                                 ->schema([
                                     Fieldset::make('Datos del Caso')
                                         ->schema([
@@ -142,6 +155,8 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Motivo de la Consulta')
+                        ->description('Signos vitales, motivo de consulta y tipo de servicio.')
+                        ->icon(Heroicon::OutlinedHeart)
                         ->hidden(function () use ($countCase) {
 
                             $action = session()->get('action') ?? null;
@@ -304,15 +319,15 @@ class TelemedicineConsultationPatientForm
                                                         }),
                                                 ])
                                                 ->afterStateUpdatedJs(<<<'JS'
-                                        $set('background', $state.toUpperCase());
-                                    JS),
+                                                    $set('background', $state.toUpperCase());
+                                                JS),
 
                                             Textarea::make('diagnostic_impression')
                                                 ->label('Impresión Diagnóstica')
                                                 ->autosize()
                                                 ->afterStateUpdatedJs(<<<'JS'
-                                        $set('diagnostic_impression', $state.toUpperCase());
-                                    JS),
+                                                    $set('diagnostic_impression', $state.toUpperCase());
+                                                JS),
 
                                             // ...Asignación de Servicio
                                             Fieldset::make('Asignación de Servicio y Actualización de Priroridad')
@@ -327,6 +342,9 @@ class TelemedicineConsultationPatientForm
                                                     Select::make('telemedicine_service_list_id')
                                                         ->label('Tipo de Servicio')
                                                         ->live()
+                                                        ->default($defaultTelemedicineServiceListId)
+                                                        ->disabled($isTelemedicineServiceListIdLocked)
+                                                        ->dehydrated(true)
                                                         ->options(function (Get $get) use ($countCase) {
                                                             if ($countCase < 1) {
                                                                 return TelemedicineServiceList::where('level', 1)->get()->pluck('name', 'id');
@@ -334,27 +352,45 @@ class TelemedicineConsultationPatientForm
 
                                                             return TelemedicineServiceList::all()->pluck('name', 'id');
                                                         })
-                                                        ->helperText(function (Get $get, $state) {
+                                                        ->helperText(function (Get $get) {
+                                                            $state = $get('telemedicine_service_list_id');
+                                                            if (! filled($state)) {
+                                                                return 'Seleccione un servicio para ver detalles';
+                                                            }
                                                             $service = TelemedicineServiceList::find($state);
 
-                                                            return $service ? $service->description : '---';
+                                                            return $service?->description ?? '---';
+                                                        })
+                                                        ->afterStateUpdated(function (Set $set, $state, Get $get): void {
+                                                            if ((string) $get('telemedicine_service_list_drift_id') === (string) $state) {
+                                                                $set('telemedicine_service_list_drift_id', null);
+                                                            }
                                                         })
                                                         ->searchable()
                                                         ->required(),
-                                                    Select::make('telemedicine_priority_id')
-                                                        ->label('Prioridad de Servicio')
+                                                    Select::make('telemedicine_service_list_drift_id')
+                                                        ->label('Tipo de Servicio de Deriva')
                                                         ->live()
-                                                        ->options(TelemedicinePriority::all()->pluck('name', 'id'))
-                                                        ->searchable()
-                                                        ->required(),
-                                                    CheckboxList::make('complements')
-                                                        ->hidden(function (Get $get) {
-                                                            if ($get('telemedicine_service_list_id') == 2) {
-                                                                return true;
+                                                        ->options(function (Get $get): \Illuminate\Support\Collection {
+                                                            $query = TelemedicineServiceList::query()->where('level', 1);
+                                                            $mainId = $get('telemedicine_service_list_id');
+                                                            if (filled($mainId)) {
+                                                                $query->where('id', '!=', $mainId);
                                                             }
 
-                                                            return false;
+                                                            return $query->get()->pluck('name', 'id');
                                                         })
+                                                        ->searchable()
+                                                        ->required()
+                                                        ->different('telemedicine_service_list_id'),
+                                                    CheckboxList::make('complements')
+                                                        // ->hidden(function (Get $get) {
+                                                        //     if ($get('telemedicine_service_list_id') == 2) {
+                                                        //         return true;
+                                                        //     }
+
+                                                        //     return false;
+                                                        // })
                                                         ->label('Complementos')
                                                         ->columnSpanFull(1)
                                                         ->live()
@@ -393,6 +429,8 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Cuestionario de Seguimiento')
+                        ->description('Seguimiento clínico, servicio y prioridad.')
+                        ->icon(Heroicon::OutlinedClipboardDocumentList)
                         ->hidden(function () use ($countCase) {
 
                             $action = session()->get('action') ?? null;
@@ -449,17 +487,37 @@ class TelemedicineConsultationPatientForm
                                                 JS),
                                 ])->columnSpanFull()->columns(2),
 
-                            // ...Estatus de caso
-                            Fieldset::make('Estatus del Caso')
+                            Section::make('Estatus del caso')
+                                ->description('Indica si esta consulta cierra el seguimiento con alta médica o si el paciente continúa con asignación de servicio y complementos.')
+                                ->icon(Heroicon::OutlinedFlag)
+                                ->iconColor('warning')
                                 ->schema([
                                     ToggleButtons::make('feedbackOne')
-                                        ->label('El paciente ya se encuentra de ALTA?')
-                                        ->boolean(trueLabel: 'Si')
-                                        ->boolean(falseLabel: 'No, asignar un nuevo servicio!')
+                                        ->label('¿Dar de alta al paciente en esta sesión?')
+                                        ->helperText('Alta médica: no se mostrarán servicio, prioridad ni complementos. Continuar: podrás definir el siguiente paso asistencial.')
+                                        ->boolean(
+                                            trueLabel: 'Sí — alta médica',
+                                            falseLabel: 'No — asignar servicio',
+                                        )
                                         ->default(false)
                                         ->grouped()
-                                        ->live(),
-                                ])->columnSpanFull(),
+                                        ->inline(true)
+                                        ->live()
+                                        ->colors([
+                                            1 => 'success',
+                                            0 => 'primary',
+                                        ])
+                                        ->icons([
+                                            1 => Heroicon::OutlinedCheckCircle,
+                                            0 => Heroicon::OutlinedArrowPath,
+                                        ])
+                                        ->columnSpanFull(),
+                                ])
+                                ->columns(1)
+                                ->columnSpanFull()
+                                ->extraAttributes([
+                                    'class' => 'fi-telemedicine-case-status-section',
+                                ]),
 
                             // ...Asignación de Servicio
                             Fieldset::make('Asignación de Servicio y Actualización de Prioridad')
@@ -474,6 +532,9 @@ class TelemedicineConsultationPatientForm
                                     Select::make('telemedicine_service_list_id')
                                         ->label('Tipo de Servicio')
                                         ->live()
+                                        ->default($defaultTelemedicineServiceListId)
+                                        ->disabled($isTelemedicineServiceListIdLocked)
+                                        ->dehydrated(true)
                                         ->options(function (Get $get) use ($countCase) {
                                             if ($countCase < 1) {
                                                 return TelemedicineServiceList::where('level', 1)->get()->pluck('name', 'id');
@@ -482,15 +543,38 @@ class TelemedicineConsultationPatientForm
                                             return TelemedicineServiceList::all()->pluck('name', 'id');
                                         })
                                         ->helperText(function (Get $get) {
-                                            return 'Seleccione un servicio para ver detalles';
-                                        })
-                                        ->helperText(function (Get $get, $state) {
+                                            $state = $get('telemedicine_service_list_id');
+                                            if (! filled($state)) {
+                                                return 'Seleccione un servicio para ver detalles';
+                                            }
                                             $service = TelemedicineServiceList::find($state);
 
-                                            return $service ? $service->description : '---';
+                                            return $service?->description ?? '---';
+                                        })
+                                        ->afterStateUpdated(function (Set $set, $state, Get $get): void {
+                                            if ((string) $get('telemedicine_service_list_drift_id') === (string) $state) {
+                                                $set('telemedicine_service_list_drift_id', null);
+                                            }
                                         })
                                         ->searchable()
                                         ->required(),
+                                    Select::make('telemedicine_service_list_drift_id')
+                                        ->label('Tipo de Servicio de Deriva')
+                                        ->live()
+                                        ->options(function (Get $get) use ($countCase): \Illuminate\Support\Collection {
+                                            $query = $countCase < 1
+                                                ? TelemedicineServiceList::query()->where('level', 1)
+                                                : TelemedicineServiceList::query();
+                                            $mainId = $get('telemedicine_service_list_id');
+                                            if (filled($mainId)) {
+                                                $query->where('id', '!=', $mainId);
+                                            }
+
+                                            return $query->get()->pluck('name', 'id');
+                                        })
+                                        ->nullable()
+                                        ->searchable()
+                                        ->different('telemedicine_service_list_id'),
                                     Select::make('telemedicine_priority_id')
                                         ->label('Prioridad de Servicio')
                                         ->live()
@@ -498,13 +582,13 @@ class TelemedicineConsultationPatientForm
                                         ->searchable()
                                         ->required(),
                                     CheckboxList::make('complements')
-                                        ->hidden(function (Get $get) {
-                                            if ($get('telemedicine_service_list_id') == 2) {
-                                                return true;
-                                            }
+                                        // ->hidden(function (Get $get) {
+                                        //     if ($get('telemedicine_service_list_id') == 2) {
+                                        //         return true;
+                                        //     }
 
-                                            return false;
-                                        })
+                                        //     return false;
+                                        // })
                                         ->label('Complementos')
                                         ->columnSpanFull(1)
                                         ->live()
@@ -549,7 +633,9 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Medicamentos e Indicaciones')
-                        ->hidden(fn (Get $get) => $get('feedbackOne') == true || $get('telemedicine_service_list_id') == 2 || ! in_array(1, $get('complements')))
+                        ->description('Indica medicamentos desde inventario o manualmente.')
+                        ->icon(Heroicon::OutlinedBeaker)
+                        ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(1, $get('complements')))
                         ->schema([
                             LivewireField::make('medicamentos_step_modal_trigger')
                                 ->component(\App\Livewire\Forms\MedicamentosStepModalTrigger::class)
@@ -612,7 +698,9 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Laboratorios y Estudios de Imagenología')
-                        ->hidden(fn (Get $get) => $get('feedbackOne') == true || $get('telemedicine_service_list_id') == 2 || ! in_array(2, $get('complements')))
+                        ->description('Laboratorios e imagenología cubiertos y no cubiertos.')
+                        ->icon(Heroicon::OutlinedPhoto)
+                        ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(2, $get('complements')))
                         ->schema([
                             // ...
                             Grid::make()
@@ -650,7 +738,9 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Interconsulta con Especialista')
-                        ->hidden(fn (Get $get) => $get('feedbackOne') == true || $get('telemedicine_service_list_id') == 2 || ! in_array(3, $get('complements')))
+                        ->description('Selecciona especialistas según corresponda.')
+                        ->icon(Heroicon::OutlinedUserGroup)
+                        ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(3, $get('complements')))
                         ->schema([
                             // ...
                             Fieldset::make()
@@ -666,9 +756,26 @@ class TelemedicineConsultationPatientForm
                                 ])->columnSpanFull()->columns(2),
                         ]),
                 ])
+                    ->previousAction(fn (Action $action): Action => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                        ]))
+                    ->nextAction(fn (Action $action): Action => $action
+                        ->color('primary')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                        ]))
+                    ->extraAttributes([
+                        'class' => self::WIZARD_IOS_CLASS,
+                    ])
                     ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
-                    <x-filament::button type="submit" size="sm">
-                        Registrar Consulta
+                    <x-filament::button
+                        type="submit"
+                        size="lg"
+                        class="aviso-btn-ios-success !rounded-full px-8 py-3 text-base font-semibold tracking-tight shadow-md transition-all duration-200 active:scale-[0.98]"
+                    >
+                        Registrar consulta
                     </x-filament::button>
                 BLADE)))
                     ->hidden(fn () => session()->get('redCode'))
