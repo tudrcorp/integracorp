@@ -3,8 +3,8 @@
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Carbon\Carbon;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;

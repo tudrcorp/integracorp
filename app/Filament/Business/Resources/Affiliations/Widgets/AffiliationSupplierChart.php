@@ -2,15 +2,14 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
+use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Affiliation;
 use App\Models\ServiceProvider;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
-use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 
 class AffiliationSupplierChart extends ChartWidget
 {
@@ -20,6 +19,7 @@ class AffiliationSupplierChart extends ChartWidget
     {
         return ListAffiliations::class;
     }
+
     public function mount(): void
     {
         FilamentAsset::register([
@@ -34,7 +34,7 @@ class AffiliationSupplierChart extends ChartWidget
     protected ?string $description = 'Análisis porcentual y cuantitativo de afiliaciones por proveedor en el mes actual.';
 
     // Ocupar medio ancho para que se vea mejor en el dashboard junto a otros widgets
-    protected int | string | array $columnSpan = 1;
+    protected int|string|array $columnSpan = 1;
 
     protected function getData(): array
     {
@@ -42,7 +42,7 @@ class AffiliationSupplierChart extends ChartWidget
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
-        //Proveedores
+        // Proveedores
         $suppliers = ServiceProvider::all('name')->toArray();
 
         $supplierIds = [];
@@ -54,10 +54,11 @@ class AffiliationSupplierChart extends ChartWidget
 
             /**
              * @var mixed
+             *
              * @version 2.0.0
              */
             $count = $this->getPageTableQuery()
-                ->where('service_providers', 'like', '%' . $suppliers[$i]['name'] . '%')
+                ->where('service_providers', 'like', '%'.$suppliers[$i]['name'].'%')
                 ->count();
 
             array_push($supplierIds, ['name' => $suppliers[$i]['name'], 'count' => $count]);
@@ -69,7 +70,7 @@ class AffiliationSupplierChart extends ChartWidget
         if ($totalCountSuppliers === 0) {
             return [
                 'labels' => ['Sin datos'],
-                'datasets' => [['data' => [0], 'backgroundColor' => ['#e5e7eb']]]
+                'datasets' => [['data' => [0], 'backgroundColor' => ['#e5e7eb']]],
             ];
         }
 
@@ -81,7 +82,7 @@ class AffiliationSupplierChart extends ChartWidget
         ];
 
         $counts = [
-            'ATENMEDI' => $supplierIds[0]['count'], 
+            'ATENMEDI' => $supplierIds[0]['count'],
             'ILS' => $supplierIds[1]['count'],
             'TDEC' => $supplierIds[2]['count'],
         ];
@@ -116,10 +117,10 @@ class AffiliationSupplierChart extends ChartWidget
         ];
     }
 
-    //v2
+    // v2
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<JS
+        return RawJs::make(<<<'JS'
             {
                 animation: {
                     animateScale: true,

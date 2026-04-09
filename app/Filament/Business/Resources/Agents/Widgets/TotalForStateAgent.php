@@ -3,11 +3,11 @@
 namespace App\Filament\Business\Resources\Agents\Widgets;
 
 use App\Filament\Business\Resources\Agents\Pages\ListAgents;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Illuminate\Support\Facades\DB;
 
 class TotalForStateAgent extends ChartWidget

@@ -3,7 +3,7 @@
 namespace App\Filament\Administration\Resources\Commissions\Widgets;
 
 use App\Filament\Administration\Resources\Commissions\Pages\ListCommissions;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;
@@ -29,7 +29,6 @@ class StatsOverviewCommissionUsdVes extends StatsOverviewWidget
         $endOfMonth = $now->copy()->endOfMonth();
         $nombreMes = ucfirst($now->translatedFormat('F'));
         $anioActual = $now->year;
-        
 
         $metrics = [
             [

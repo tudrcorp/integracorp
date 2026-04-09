@@ -3,7 +3,7 @@
 namespace App\Filament\Administration\Resources\Sales\Widgets;
 
 use App\Filament\Administration\Resources\Sales\Pages\ListSales;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;

@@ -1,14 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
+use App\Filament\Business\Resources\ProspectAgents\Widgets\Concerns\AgencyLikeBarChartStyling;
 use App\Models\ProspectAgent;
-use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
 class TopRegisterProspect extends ChartWidget
 {
+    use AgencyLikeBarChartStyling;
+
+    protected string $view = 'filament.widgets.prospect-chart-agency-style';
+
+    protected string $color = 'gray';
+
+    protected int|string|array $columnSpan = 'full';
+
     protected ?string $pollingInterval = null;
 
     protected ?string $heading = 'Top 10 colaboradores por prospectos registrados';
@@ -30,74 +40,30 @@ class TopRegisterProspect extends ChartWidget
             ->get();
 
         $labels = $topColaboradores->pluck('label')->map(fn (?string $name): string => $name ?? 'Sin nombre')->toArray();
-        $data = $topColaboradores->pluck('total')->map(fn (mixed $v): int => (int) $v)->toArray();
+        $values = $topColaboradores->pluck('total')->map(fn (mixed $v): int => (int) $v)->toArray();
 
-        $colors = [
-            '#38bdf8',
-            '#0ea5e9',
-            '#0284c7',
-            '#0369a1',
-            '#075985',
-            '#0c4a6e',
-            '#7dd3fc',
-            '#06b6d4',
-            '#0891b2',
-            '#0e7490',
-        ];
-        $backgroundColors = [];
-        foreach ($data as $index => $value) {
-            $backgroundColors[] = $colors[$index % count($colors)];
-        }
+        $colors = $this->glassBarColorsForValues($values);
 
         return [
             'datasets' => [
                 [
                     'label' => 'Prospectos registrados',
-                    'data' => $data,
-                    'backgroundColor' => $backgroundColors,
-                    'borderColor' => 'rgba(0,0,0,0.08)',
-                    'borderWidth' => 1,
-                    'borderRadius' => 6,
+                    'data' => $values,
+                    'backgroundColor' => $colors['fills'],
+                    'borderColor' => $colors['strokes'],
+                    'borderWidth' => 1.25,
+                    'borderRadius' => 8,
+                    'borderSkipped' => false,
+                    'hoverBackgroundColor' => $colors['hovers'],
                 ],
             ],
             'labels' => $labels,
         ];
     }
 
-    protected function getOptions(): RawJs
+    protected function getOptions(): array
     {
-        return RawJs::make(<<<'JS'
-        {
-            barPercentage: 0.6,
-            categoryPercentage: 0.8,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => context.parsed.y + ' prospecto(s) registrado(s)'
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 },
-                    grid: {
-                        display: true,
-                        color: 'rgba(156, 163, 175, 0.25)',
-                        drawBorder: false
-                    }
-                },
-                x: {
-                    grid: {
-                        display: true,
-                        color: 'rgba(156, 163, 175, 0.25)',
-                        drawBorder: false
-                    }
-                }
-            }
-        }
-        JS);
+        return $this->agencyStyleVerticalBarChartOptions();
     }
 
     protected function getType(): string

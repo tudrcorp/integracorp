@@ -3,8 +3,8 @@
 namespace App\Filament\Business\Resources\IndividualQuotes\Widgets;
 
 use App\Filament\Business\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\IndividualQuote;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;

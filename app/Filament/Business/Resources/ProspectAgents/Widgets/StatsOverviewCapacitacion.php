@@ -1,53 +1,92 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
-use App\Models\ProspectAgent;
+use App\Filament\Business\Resources\ProspectAgents\Pages\ListProspectAgents;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Carbon\Carbon;
+use Filament\Schemas\Schema;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;
 
 class StatsOverviewCapacitacion extends StatsOverviewWidget
 {
+    use InteractsWithPageTable;
+
+    protected string $view = 'filament.widgets.stats-overview-agency-glass';
+
+    protected ?string $heading = null;
+
+    protected ?string $description = null;
+
     protected ?string $pollingInterval = null;
+
+    protected int|string|array $columnSpan = 'full';
+
+    protected function getTablePage(): string
+    {
+        return ListProspectAgents::class;
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components($this->getCachedStats())
+            ->columns($this->getColumns());
+    }
+
+    protected function getColumns(): int|array|null
+    {
+        return 1;
+    }
 
     protected function getStats(): array
     {
+        $baseQuery = $this->getPageTableQuery();
+
+        $total = (clone $baseQuery)->count();
+
         $now = Carbon::now();
-        $totalProspectos = ProspectAgent::query()->count();
-        $prospectosMesActual = ProspectAgent::query()
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
+        $startOfMonth = $now->copy()->startOfMonth();
+        $endOfMonth = $now->copy()->endOfMonth();
+        $nombreMes = ucfirst($now->translatedFormat('F'));
+
+        $altasEsteMes = (clone $baseQuery)
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->count();
-        $mesActualNombre = $now->translatedFormat('F');
 
-        $iosStyles = '
-            group cursor-pointer transition-all duration-500 ease-in-out
-            rounded-2xl border border-gray-200/80 dark:border-white/10
-            shadow-sm hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-gray-900/30
-            hover:scale-[1.02] hover:border-blue-400/40 dark:hover:border-blue-500/30
-            antialiased
-            [&_*]:transition-all [&_*]:duration-500
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:text-blue-600 dark:group-hover:[&_.fi-wi-stats-overview-stat-value]:text-blue-400
-        ';
-
-        $descripcionMes = new HtmlString(sprintf(
-            '<span class="block text-sm text-gray-500 dark:text-gray-400">Registrados en el sistema</span>'.
-            '<span class="mt-3 inline-block rounded-lg bg-blue-500/15 px-2.5 py-1 text-sm font-semibold text-blue-700 dark:bg-blue-400/20 dark:text-blue-300 ring-1 ring-blue-500/20 dark:ring-blue-400/30">%s en %s</span>',
-            $prospectosMesActual,
-            $mesActualNombre
-        ));
+        $anteriores = max(0, $total - $altasEsteMes);
 
         return [
-            Stat::make('Total prospectos', $totalProspectos)
-                ->description($descripcionMes)
+            Stat::make('Prospectos', $total)
                 ->descriptionIcon('heroicon-m-user-plus')
-                ->icon('heroicon-m-user-group')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => $iosStyles,
-                ]),
+                ->description(new HtmlString("
+                    <div class='mt-2 w-full min-w-0'>
+                        <div class='mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400'>
+                            Total según listado y filtros · {$nombreMes}
+                        </div>
+                        <div class='grid w-full min-w-0 grid-cols-2 gap-3 rounded-2xl border border-zinc-200/60 bg-white/35 p-3 shadow-inner backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-950/40'>
+                            <div class='flex min-w-0 flex-col'>
+                                <div class='flex items-center gap-1.5'>
+                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)]'></div>
+                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Altas este mes</span>
+                                </div>
+                                <span class='text-lg font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white'>{$altasEsteMes}</span>
+                            </div>
+                            <div class='flex min-w-0 flex-col border-l border-zinc-200/80 pl-3 dark:border-white/10'>
+                                <div class='flex items-center gap-1.5'>
+                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400 shadow-[0_0_6px_rgba(148,163,184,0.45)]'></div>
+                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Anteriores</span>
+                                </div>
+                                <span class='text-lg font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white'>{$anteriores}</span>
+                            </div>
+                        </div>
+                    </div>
+                "))
+                ->color('primary'),
         ];
     }
 }

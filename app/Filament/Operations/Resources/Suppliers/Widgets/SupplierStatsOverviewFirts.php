@@ -3,8 +3,8 @@
 namespace App\Filament\Operations\Resources\Suppliers\Widgets;
 
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Supplier;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;

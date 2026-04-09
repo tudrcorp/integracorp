@@ -1,36 +1,38 @@
 <?php
 
-namespace App\Filament\Operations\Resources\Suppliers\Widgets;
+declare(strict_types=1);
 
-use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
-use App\Filament\Widgets\Concerns\InteractsWithPageTable;
-use App\Models\Supplier;
-use App\Models\SupplierClasificacion;
-use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Str;
+namespace App\Filament\Business\Resources\ProspectAgents\Widgets\Concerns;
 
-class SupplierClasificationChart extends ChartWidget
+/**
+ * Vista y paleta alineadas con {@see \App\Filament\Business\Resources\Agencies\Widgets\NewRegisterAgencyForMountChart}.
+ */
+trait UsesAgencyStyleProspectBarChart
 {
-    use InteractsWithPageTable;
+    public function getProspectBarChartDataSum(): int
+    {
+        $data = $this->getCachedData();
+        $values = $data['datasets'][0]['data'] ?? [];
 
-    protected static ?int $sort = 11;
+        return (int) collect($values)->sum();
+    }
 
-    protected int|string|array $columnSpan = [
-        'default' => 1,
-    ];
+    public function getProspectBarChartEmptyTitle(): string
+    {
+        return 'Sin datos en este periodo';
+    }
 
-    protected ?string $heading = 'Proveedores por clasificación';
-
-    protected ?string $description = 'Totales según la clasificación del proveedor (respeta filtros de la tabla).';
-
-    // protected ?string $maxHeight = 'min(72vh, 900px)';
-
-    protected string $color = 'gray';
+    public function getProspectBarChartEmptyMessage(): string
+    {
+        return 'No hay prospectos que coincidan con este gráfico.';
+    }
 
     /**
+     * Misma paleta que NewRegisterAgencyForMountChart::glassColorAt().
+     *
      * @return array{fill: string, stroke: string}
      */
-    private function glassColorAt(int $index): array
+    protected function prospectGlassColorAt(int $index): array
     {
         $palette = [
             ['fill' => 'rgba(48, 209, 88, 0.8)', 'stroke' => 'rgba(255, 255, 255, 0.78)'],
@@ -46,7 +48,7 @@ class SupplierClasificationChart extends ChartWidget
         return $palette[$index % count($palette)];
     }
 
-    private function brighterGlassFill(string $rgba): string
+    protected function prospectBrighterGlassFill(string $rgba): string
     {
         if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/', $rgba, $m)) {
             $a = min(0.88, (float) $m[4] + 0.18);
@@ -57,105 +59,26 @@ class SupplierClasificationChart extends ChartWidget
         return $rgba;
     }
 
-    protected function getTablePage(): string
-    {
-        return ListSuppliers::class;
-    }
-
-    protected function getData(): array
-    {
-        $table = (new Supplier)->getTable();
-        $base = $this->getPageTableQuery();
-
-        $filteredIdsQuery = (clone $base)
-            ->reorder()
-            ->select("{$table}.id")
-            ->distinct();
-
-        $aggregates = Supplier::query()
-            ->whereIn('id', $filteredIdsQuery)
-            ->selectRaw('supplier_clasificacion_id, COUNT(*) as cnt')
-            ->groupBy('supplier_clasificacion_id')
-            ->get();
-
-        if ($aggregates->isEmpty()) {
-            return [
-                'labels' => ['Sin datos'],
-                'datasets' => [
-                    [
-                        'label' => '—',
-                        'data' => [0],
-                        'backgroundColor' => 'rgba(142, 142, 147, 0.25)',
-                        'borderColor' => 'rgba(255, 255, 255, 0.35)',
-                        'borderWidth' => 1,
-                        'borderRadius' => 10,
-                        'borderSkipped' => false,
-                    ],
-                ],
-            ];
-        }
-
-        $knownIds = $aggregates->pluck('supplier_clasificacion_id')->filter()->unique()->values();
-        /** @var array<int|string, string> $names */
-        $names = SupplierClasificacion::query()
-            ->whereIn('id', $knownIds)
-            ->pluck('description', 'id')
-            ->all();
-
-        $rows = [];
-        foreach ($aggregates as $row) {
-            $id = $row->supplier_clasificacion_id;
-            if ($id === null) {
-                $label = 'Sin clasificación';
-            } else {
-                $label = $names[$id] ?? ('Clasificación #'.$id);
-            }
-            $rows[] = [
-                'label' => Str::limit((string) $label, 42),
-                'count' => (int) $row->cnt,
-            ];
-        }
-
-        usort($rows, fn (array $a, array $b): int => $b['count'] <=> $a['count']);
-
-        $labels = array_column($rows, 'label');
-        $data = array_column($rows, 'count');
-
-        $fills = [];
-        $strokes = [];
-        $hovers = [];
-        foreach (array_keys($data) as $i) {
-            $c = $this->glassColorAt((int) $i);
-            $fills[] = $c['fill'];
-            $strokes[] = $c['stroke'];
-            $hovers[] = $this->brighterGlassFill($c['fill']);
-        }
-
-        return [
-            'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => 'Proveedores',
-                    'data' => $data,
-                    'backgroundColor' => $fills,
-                    'borderColor' => $strokes,
-                    'borderWidth' => 1.25,
-                    'borderRadius' => 8,
-                    'borderSkipped' => false,
-                    'hoverBackgroundColor' => $hovers,
-                ],
-            ],
-        ];
-    }
-
-    protected function getOptions(): array
+    /**
+     * Opciones de barras alineadas con el gráfico de registros por mes de agencias.
+     *
+     * @return array<string, mixed>
+     */
+    protected function prospectAgencyStyleBarChartOptions(): array
     {
         $iosFont = '-apple-system, BlinkMacSystemFont, system-ui, sans-serif';
 
         return [
-            'indexAxis' => 'y',
             'responsive' => true,
             'maintainAspectRatio' => false,
+            'layout' => [
+                'padding' => [
+                    'top' => 8,
+                    'right' => 8,
+                    'bottom' => 4,
+                    'left' => 4,
+                ],
+            ],
             'interaction' => [
                 'mode' => 'nearest',
                 'intersect' => true,
@@ -219,7 +142,25 @@ class SupplierClasificationChart extends ChartWidget
             ],
             'scales' => [
                 'x' => [
-                    'stacked' => true,
+                    'offset' => true,
+                    'stacked' => false,
+                    'grid' => [
+                        'display' => true,
+                        'drawBorder' => false,
+                        'color' => 'rgba(120, 120, 128, 0.1)',
+                    ],
+                    'ticks' => [
+                        'maxRotation' => 45,
+                        'minRotation' => 0,
+                        'color' => '#8e8e93',
+                        'font' => [
+                            'size' => 10,
+                            'family' => $iosFont,
+                        ],
+                    ],
+                ],
+                'y' => [
+                    'stacked' => false,
                     'beginAtZero' => true,
                     'grid' => [
                         'display' => true,
@@ -236,32 +177,11 @@ class SupplierClasificationChart extends ChartWidget
                         ],
                     ],
                 ],
-                'y' => [
-                    'stacked' => true,
-                    'grid' => [
-                        'display' => true,
-                        'drawBorder' => false,
-                        'color' => 'rgba(120, 120, 128, 0.1)',
-                    ],
-                    'ticks' => [
-                        'autoSkip' => false,
-                        'color' => '#8e8e93',
-                        'font' => [
-                            'size' => 10,
-                            'family' => $iosFont,
-                        ],
-                    ],
-                ],
             ],
             'animation' => [
                 'duration' => 900,
                 'easing' => 'easeOutQuart',
             ],
         ];
-    }
-
-    protected function getType(): string
-    {
-        return 'bar';
     }
 }

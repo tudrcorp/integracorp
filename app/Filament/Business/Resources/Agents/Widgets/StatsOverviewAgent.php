@@ -3,9 +3,9 @@
 namespace App\Filament\Business\Resources\Agents\Widgets;
 
 use App\Filament\Business\Resources\Agents\Pages\ListAgents;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Agent;
 use Filament\Schemas\Schema;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;

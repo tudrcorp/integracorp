@@ -27,3 +27,10 @@ it('incluye el tema glass para agencias de viaje', function (): void {
     expect($css)->not->toBeFalse()
         ->and($css)->toContain('.fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat');
 });
+
+it('permite tableColumnSearches nulo para props reactivas de Livewire (PHP 8.4)', function (): void {
+    $prop = (new ReflectionClass(TotalTravelAgencyStatOverview::class))->getProperty('tableColumnSearches');
+
+    expect($prop->getType())->not->toBeNull()
+        ->and($prop->getType()->allowsNull())->toBeTrue();
+});

@@ -2,14 +2,13 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
-use App\Models\Affiliation;
+use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
-use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 
 class AffiliationAgencyChart extends ChartWidget
 {
@@ -19,6 +18,7 @@ class AffiliationAgencyChart extends ChartWidget
     {
         return ListAffiliations::class;
     }
+
     public function mount(): void
     {
         FilamentAsset::register([
@@ -32,7 +32,7 @@ class AffiliationAgencyChart extends ChartWidget
 
     protected ?string $description = 'Análisis porcentual de afiliaciones activas por agencia en el mes actual.';
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     /**
      * Genera una paleta de colores pasteles cálidos aleatorios.
@@ -47,6 +47,7 @@ class AffiliationAgencyChart extends ChartWidget
             $lightness = rand(75, 85);
             $colors[] = "hsl({$hue}, {$saturation}%, {$lightness}%)";
         }
+
         return $colors;
     }
 
@@ -55,7 +56,7 @@ class AffiliationAgencyChart extends ChartWidget
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
-        // QUERY OPTIMIZADO: 
+        // QUERY OPTIMIZADO:
         // 1. Unimos con la tabla 'agencies' usando el campo común (asumiendo 'code_agency')
         // 2. Seleccionamos el nombre corporativo y el conteo
         $query = $this->getPageTableQuery();
@@ -69,7 +70,7 @@ class AffiliationAgencyChart extends ChartWidget
             )
             /**
              * Forzamos a que cualquier filtro previo o posterior que use created_at
-             * se refiera a la tabla de afiliaciones. 
+             * se refiera a la tabla de afiliaciones.
              * Nota: Si el error persiste, es porque Filament inyecta el WHERE antes de este paso.
              * En ese caso, usamos un Query Raw para limpiar el scope.
              */
@@ -84,7 +85,7 @@ class AffiliationAgencyChart extends ChartWidget
                 'datasets' => [[
                     'data' => [100],
                     'backgroundColor' => ['#f3f4f6'],
-                ]]
+                ]],
             ];
         }
 
@@ -94,7 +95,7 @@ class AffiliationAgencyChart extends ChartWidget
         $dataCounts = $results->pluck('total')->toArray();
 
         // Calculamos porcentajes para los datalabels
-        $percentages = $results->map(fn($item) => round(($item->total / $totalGlobal) * 100, 1))->toArray();
+        $percentages = $results->map(fn ($item) => round(($item->total / $totalGlobal) * 100, 1))->toArray();
 
         return [
             'labels' => $labels,
@@ -113,7 +114,7 @@ class AffiliationAgencyChart extends ChartWidget
 
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<JS
+        return RawJs::make(<<<'JS'
             {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -140,7 +141,7 @@ class AffiliationAgencyChart extends ChartWidget
                                 let label = context.label || '';
                                 let value = context.raw || 0;
                                 let percentage = context.dataset.percentages[context.dataIndex];
-                                return ` \${label}: \${value} (\${percentage}%)`;
+                                return ` ${label}: ${value} (${percentage}%)`;
                             }
                         }
                     },

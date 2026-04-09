@@ -3,12 +3,11 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\State;
-use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Illuminate\Support\Facades\DB;
 
 class AffiliationCorporatePorEstadoChart extends ChartWidget
@@ -62,7 +61,7 @@ class AffiliationCorporatePorEstadoChart extends ChartWidget
 
                 Notification::make()
                     ->title("Detalle: {$state->definition} ({$year})")
-                    ->body("Mostrando afiliaciones activas por ciudad.")
+                    ->body('Mostrando afiliaciones activas por ciudad.')
                     ->info()
                     ->send();
             }
@@ -71,7 +70,7 @@ class AffiliationCorporatePorEstadoChart extends ChartWidget
 
             Notification::make()
                 ->title("Vista Nacional {$year}")
-                ->body("Regresando al resumen por estados.")
+                ->body('Regresando al resumen por estados.')
                 ->success()
                 ->send();
         }
@@ -129,7 +128,7 @@ class AffiliationCorporatePorEstadoChart extends ChartWidget
             foreach ($allStates as $state) {
                 $labels[] = $state->definition;
                 $values[] = $stats->get($state->id, 0);
-                $backgroundColors[] = sprintf('#%06X', mt_rand(0x10b981, 0x3b82f6)); // Tonos entre verde y azul
+                $backgroundColors[] = sprintf('#%06X', mt_rand(0x10B981, 0x3B82F6)); // Tonos entre verde y azul
             }
 
             $datasetLabel = "Afiliaciones por Estado ({$year})";
