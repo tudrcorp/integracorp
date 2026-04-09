@@ -2,15 +2,13 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
-use App\Models\Affiliation;
-use App\Models\Sale;
+use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
-use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 
 class AffiliationPlanChart extends ChartWidget
 {
@@ -20,6 +18,7 @@ class AffiliationPlanChart extends ChartWidget
     {
         return ListAffiliations::class;
     }
+
     public function mount(): void
     {
         FilamentAsset::register([
@@ -34,7 +33,7 @@ class AffiliationPlanChart extends ChartWidget
     protected ?string $description = 'Análisis porcentual y cuantitativo de afiliaciones por plan en el mes actual.';
 
     // Ocupar medio ancho para que se vea mejor en el dashboard junto a otros widgets
-    protected int | string | array $columnSpan = 1;
+    protected int|string|array $columnSpan = 1;
 
     protected function getData(): array
     {
@@ -43,13 +42,12 @@ class AffiliationPlanChart extends ChartWidget
             ->select('plan_id', DB::raw('count(*) as total'))
             ->groupBy('plan_id')
             ->get();
-  
+
         $salesData = $this->getPageTableQuery()
             ->reorder()
             ->select('plan_id', DB::raw('count(*) as total'))
             ->groupBy('plan_id')
             ->get();
-
 
         $totalSales = $salesData->sum('total');
 
@@ -57,7 +55,7 @@ class AffiliationPlanChart extends ChartWidget
         if ($totalSales === 0) {
             return [
                 'labels' => ['Sin datos'],
-                'datasets' => [['data' => [0], 'backgroundColor' => ['#e5e7eb']]]
+                'datasets' => [['data' => [0], 'backgroundColor' => ['#e5e7eb']]],
             ];
         }
 
@@ -104,10 +102,10 @@ class AffiliationPlanChart extends ChartWidget
         ];
     }
 
-    //v2
+    // v2
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<JS
+        return RawJs::make(<<<'JS'
             {
                 animation: {
                     animateScale: true,

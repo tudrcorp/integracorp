@@ -3,10 +3,10 @@
 namespace App\Filament\Business\Resources\Agencies\Widgets;
 
 use App\Filament\Business\Resources\Agencies\Pages\ListAgencies;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Agency;
 use Carbon\Carbon;
 use Filament\Schemas\Schema;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;

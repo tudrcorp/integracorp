@@ -3,8 +3,8 @@
 namespace App\Filament\Business\Resources\TravelAgencies\Widgets;
 
 use App\Filament\Business\Resources\TravelAgencies\Pages\ListTravelAgencies;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Schemas\Schema;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;

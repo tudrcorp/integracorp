@@ -3,10 +3,10 @@
 namespace App\Filament\Operations\Resources\Suppliers\Widgets;
 
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\State;
 use App\Models\Supplier;
 use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Illuminate\Support\Str;
 
 class SupplierForState extends ChartWidget

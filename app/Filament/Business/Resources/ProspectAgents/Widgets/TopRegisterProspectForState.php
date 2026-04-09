@@ -1,13 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
 use App\Models\ProspectAgent;
+use Filament\Support\Assets\Js;
+use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 
 class TopRegisterProspectForState extends ChartWidget
 {
+    public function mount(): void
+    {
+        parent::mount();
+
+        FilamentAsset::register([
+            Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'),
+        ]);
+    }
+
+    protected string $view = 'filament.widgets.prospect-chart-agency-style';
+
+    protected string $color = 'gray';
+
+    protected int|string|array $columnSpan = 'full';
+
     protected ?string $heading = 'Prospectos registrados por estado';
 
     protected ?string $description = 'Distribución de prospectos por estado/región.';
@@ -30,22 +49,30 @@ class TopRegisterProspectForState extends ChartWidget
             ->toArray();
 
         $vibrantPalette = [
-            '#FF2D55', // Rosa Apple
-            '#5856D6', // Púrpura Apple
-            '#34C759', // Verde Apple
-            '#FF9500', // Naranja Apple
-            '#007AFF', // Azul Apple
-            '#AF52DE', // Índigo
-            '#FFCC00', // Amarillo
-            '#5AC8FA', // Cian
-            '#FF3B30', // Rojo
-            '#2dd4bf', // Teal
-            '#f472b6', // Rosa fuerte
-            '#a78bfa', // Violeta claro
+            '#FF2D55',
+            '#5856D6',
+            '#34C759',
+            '#FF9500',
+            '#007AFF',
+            '#AF52DE',
+            '#FFCC00',
+            '#5AC8FA',
+            '#FF3B30',
+            '#2dd4bf',
+            '#f472b6',
+            '#a78bfa',
         ];
 
         $labels = array_keys($distribution);
         $data = array_values($distribution);
+
+        $total = (int) array_sum($data);
+        $percentages = $total > 0
+            ? array_map(
+                static fn (mixed $n): float => round(((float) $n / $total) * 100, 1),
+                $data
+            )
+            : [];
 
         $backgroundColors = array_map(function ($index) use ($vibrantPalette) {
             return $vibrantPalette[$index % count($vibrantPalette)];
@@ -57,6 +84,7 @@ class TopRegisterProspectForState extends ChartWidget
                 [
                     'label' => 'Prospectos',
                     'data' => $data,
+                    'percentages' => array_values($percentages),
                     'backgroundColor' => $backgroundColors,
                     'borderColor' => 'transparent',
                     'hoverOffset' => 35,
@@ -103,8 +131,32 @@ class TopRegisterProspectForState extends ChartWidget
                     boxPadding: 6,
                     usePointStyle: true,
                     callbacks: {
-                        label: (context) => ` ${context.label}: ${context.raw} prospecto(s) (${context.formattedValue}%)`
+                        label: (context) => {
+                            const value = context.raw || 0;
+                            const pct = context.dataset.percentages[context.dataIndex];
+                            return ` ${context.label}: ${value} prospecto(s) (${pct}%)`;
+                        }
                     }
+                },
+                datalabels: {
+                    display: function(context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct >= 4;
+                    },
+                    color: '#ffffff',
+                    anchor: 'center',
+                    align: 'center',
+                    font: {
+                        size: 12,
+                        weight: '700',
+                        family: 'ui-sans-serif, -apple-system, system-ui, sans-serif'
+                    },
+                    formatter: function(value, context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct + '%';
+                    },
+                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+                    textShadowBlur: 3
                 }
             },
             hover: {
@@ -122,12 +174,5 @@ class TopRegisterProspectForState extends ChartWidget
             }
         }
         JS);
-    }
-
-    protected function getExtraAttributes(): array
-    {
-        return [
-            'class' => 'fi-geo-chart-widget shadow-2xl rounded-[32px] overflow-hidden border-none bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6',
-        ];
     }
 }

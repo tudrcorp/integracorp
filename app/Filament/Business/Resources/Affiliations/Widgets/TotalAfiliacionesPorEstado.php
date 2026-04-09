@@ -3,11 +3,11 @@
 namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\State;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Illuminate\Support\Facades\DB;
 
 class TotalAfiliacionesPorEstado extends ChartWidget

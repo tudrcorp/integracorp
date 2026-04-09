@@ -3,18 +3,15 @@
 namespace App\Filament\Administration\Resources\Sales\Widgets;
 
 use App\Filament\Administration\Resources\Sales\Pages\ListSales;
-use App\Models\Sale;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 
 class SalePlanChart extends ChartWidget
 {
-
     use InteractsWithPageTable;
 
     protected function getTablePage(): string
@@ -37,7 +34,6 @@ class SalePlanChart extends ChartWidget
 
     // Ocupar medio ancho para que se vea mejor en el dashboard junto a otros widgets
 
-
     protected function getData(): array
     {
         // Rango del mes actual
@@ -46,6 +42,7 @@ class SalePlanChart extends ChartWidget
 
         /**
          * @var mixed
+         *
          * @version 2.0
          */
         $salesData = $this->getPageTableQuery()
@@ -60,7 +57,7 @@ class SalePlanChart extends ChartWidget
         if ($totalSales === 0) {
             return [
                 'labels' => ['Sin datos'],
-                'datasets' => [['data' => [0], 'backgroundColor' => ['#e5e7eb']]]
+                'datasets' => [['data' => [0], 'backgroundColor' => ['#e5e7eb']]],
             ];
         }
 
@@ -97,7 +94,7 @@ class SalePlanChart extends ChartWidget
                         $plans[1]['color'],
                         $plans[2]['color'],
                         $plans[3]['color'],
-                        $plans['corp']['color']
+                        $plans['corp']['color'],
                     ],
                     'label' => 'Dataset 1',
                     // Efectos de interacción mejorados
@@ -111,10 +108,10 @@ class SalePlanChart extends ChartWidget
         ];
     }
 
-    //v2
+    // v2
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<JS
+        return RawJs::make(<<<'JS'
             {
                 scales: {
                     y: { 
@@ -185,10 +182,6 @@ class SalePlanChart extends ChartWidget
             }
         JS);
     }
-
-
-
-
 
     protected function getType(): string
     {

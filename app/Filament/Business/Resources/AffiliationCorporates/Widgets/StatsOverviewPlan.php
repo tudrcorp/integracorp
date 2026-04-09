@@ -3,11 +3,11 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\AfilliationCorporatePlan;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
+use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 
@@ -73,37 +73,37 @@ class StatsOverviewPlan extends StatsOverviewWidget
         };
 
         return [
-            Stat::make('PLAN INICIAL', ($planStatsTotal[1] ?? 0) . ' Afiliados')
+            Stat::make('PLAN INICIAL', ($planStatsTotal[1] ?? 0).' Afiliados')
                 ->description('Plan básico')
                 ->descriptionIcon('heroicon-m-check-badge')
                 ->color('planIncial')
                 ->extraAttributes(array_merge(
-                    ['class' => $iosStyles . ' border-[#9ce1ff]'],
+                    ['class' => $iosStyles.' border-[#9ce1ff]'],
                     $getAlpineData($planStatsTotal[1] ?? 0, $planStatsMes[1] ?? 0, 'Plan básico')
                 ))
-                ->value(new HtmlString("<span x-text='label'>" . ($planStatsTotal[1] ?? 0) . " Afiliados</span>"))
+                ->value(new HtmlString("<span x-text='label'>".($planStatsTotal[1] ?? 0).' Afiliados</span>'))
                 ->description(new HtmlString("<span x-text='desc'>Plan básico</span>")),
 
-            Stat::make('PLAN IDEAL', ($planStatsTotal[2] ?? 0) . ' Afiliados')
+            Stat::make('PLAN IDEAL', ($planStatsTotal[2] ?? 0).' Afiliados')
                 ->description('Con Asistencia Médica')
                 ->descriptionIcon('heroicon-m-star')
                 ->color('planIdeal')
                 ->extraAttributes(array_merge(
-                    ['class' => $iosStyles . ' border-[#25b4e7]'],
+                    ['class' => $iosStyles.' border-[#25b4e7]'],
                     $getAlpineData($planStatsTotal[2] ?? 0, $planStatsMes[2] ?? 0, 'Con Asistencia Médica')
                 ))
-                ->value(new HtmlString("<span x-text='label'>" . ($planStatsTotal[2] ?? 0) . " Afiliados</span>"))
+                ->value(new HtmlString("<span x-text='label'>".($planStatsTotal[2] ?? 0).' Afiliados</span>'))
                 ->description(new HtmlString("<span x-text='desc'>Con Asistencia Médica</span>")),
 
-            Stat::make('PLAN ESPECIAL', ($planStatsTotal[3] ?? 0) . ' Afiliados')
+            Stat::make('PLAN ESPECIAL', ($planStatsTotal[3] ?? 0).' Afiliados')
                 ->description('Con Emergencias Médicas')
                 ->descriptionIcon('heroicon-m-sparkles')
                 ->color('planEspecial')
                 ->extraAttributes(array_merge(
-                    ['class' => $iosStyles . ' border-[#2d89ca]'],
+                    ['class' => $iosStyles.' border-[#2d89ca]'],
                     $getAlpineData($planStatsTotal[3] ?? 0, $planStatsMes[3] ?? 0, 'Con Emergencias Médicas')
                 ))
-                ->value(new HtmlString("<span x-text='label'>" . ($planStatsTotal[3] ?? 0) . " Afiliados</span>"))
+                ->value(new HtmlString("<span x-text='label'>".($planStatsTotal[3] ?? 0).' Afiliados</span>'))
                 ->description(new HtmlString("<span x-text='desc'>Con Emergencias Médicas</span>")),
         ];
     }

@@ -3,11 +3,11 @@
 namespace App\Filament\Business\Resources\Agencies\Widgets;
 
 use App\Filament\Business\Resources\Agencies\Pages\ListAgencies;
+use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Agency;
 use App\Models\Sale;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 
 class TotalEstructureAgency extends ChartWidget
 {
