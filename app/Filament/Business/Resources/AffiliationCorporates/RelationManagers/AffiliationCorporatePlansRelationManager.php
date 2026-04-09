@@ -2,14 +2,22 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Models\AffiliateCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
 use App\Models\Fee;
 use App\Models\Plan;
+use App\Services\AssociateAffiliatesWithCorporatePlanService;
+use App\Support\Filament\FilamentIosButton;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -25,7 +33,9 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class AffiliationCorporatePlansRelationManager extends RelationManager
 {
@@ -337,6 +347,349 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                             'created_by' => Auth::id(),
                         ]);
                     }),
+            ])
+            ->bulkActions([
+                DeleteBulkAction::make()
+                    ->label('Eliminar')
+                    ->icon(Heroicon::Trash)
+                    ->color('danger')
+                    ->action(function (array $data): void {
+                        $this->getOwnerRecord()->affiliationCorporatePlans()->whereIn('id', $data['ids'])->delete();
+                    }),
+                BulkAction::make('associate_and_recalculate')
+                    ->label('Asociar y recalcular')
+                    ->icon(Heroicon::ArrowPath)
+                    ->color('success')
+                    ->modalHeading('Asociar afiliados al plan')
+                    ->modalDescription('Seleccione exactamente una fila de plan en la tabla. Plan, cobertura y tarifa son los de esa fila (solo lectura). Puede elegir afiliados manualmente o asignar en masa a quienes calzan con el rango de edad de esa fila. Los subtotales estiman según la cantidad de afiliados y la frecuencia de pago.')
+                    ->modalIcon(Heroicon::ArrowPath)
+                    ->modalIconColor('success')
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalSubmitActionLabel('Asociar y recalcular')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('success')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('success'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->extraModalWindowAttributes([
+                        'class' => 'fi-ios-affiliation-associate-plan-modal',
+                    ], merge: false)
+                    ->deselectRecordsAfterCompletion()
+                    ->fillForm(function (Action $action): array {
+                        $records = $action->getSelectedRecords();
+                        if ($records->count() !== 1) {
+                            return [];
+                        }
+
+                        $row = $records->first();
+                        if (! $row instanceof AfilliationCorporatePlan) {
+                            return [];
+                        }
+
+                        return [
+                            'associate_plan_row_id' => $row->getKey(),
+                            'assignment_mode' => 'manual',
+                        ];
+                    })
+                    ->schema([
+                        Section::make('Afiliados de la corporación')
+                            ->description('En modo manual, solo se asocian los marcados y todos deben tener edad dentro del rango de la fila. En modo masivo por edad, el sistema asigna el plan solo a quienes calzan con ese rango (con edad registrada).')
+                            ->icon(Heroicon::UserGroup)
+                            ->schema([
+                                Radio::make('assignment_mode')
+                                    ->label('Forma de asignación')
+                                    ->options([
+                                        'manual' => 'Elegir afiliados en la lista',
+                                        'auto_by_age' => 'Masivo: todos los que calzan con el rango de edad de esta fila',
+                                    ])
+                                    ->default('manual')
+                                    ->live()
+                                    ->required()
+                                    ->columnSpanFull(),
+                                Placeholder::make('auto_by_age_summary')
+                                    ->label('Resumen asignación masiva')
+                                    ->visible(fn (Get $get): bool => ($get('assignment_mode') ?? 'manual') === 'auto_by_age')
+                                    ->content(function (Get $get): string {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+                                        if ($row === null) {
+                                            return 'Marque una sola fila de plan en la tabla.';
+                                        }
+
+                                        $rangeLabel = $row->ageRange !== null && $row->ageRange->range !== ''
+                                            ? $row->ageRange->range.' años'
+                                            : 'el rango configurado en esta fila';
+
+                                        $count = count(AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
+                                            $this->getOwnerRecord(),
+                                            $row,
+                                        ));
+
+                                        if ($count === 0) {
+                                            return 'Ningún afiliado tiene edad registrada dentro de '.$rangeLabel.'. Revise edades en el padrón o elija modo manual.';
+                                        }
+
+                                        return sprintf(
+                                            'Al confirmar se asignará este plan y tarifa a %d afiliado(s) cuya edad está dentro de %s. Quienes estén fuera del rango o sin edad no se modifican.',
+                                            $count,
+                                            $rangeLabel
+                                        );
+                                    })
+                                    ->columnSpanFull(),
+                                CheckboxList::make('affiliate_ids')
+                                    ->label('')
+                                    ->options(function (): array {
+                                        return AffiliateCorporate::query()
+                                            ->where('affiliation_corporate_id', $this->getOwnerRecord()->id)
+                                            ->orderBy('first_name')
+                                            ->orderBy('last_name')
+                                            ->get()
+                                            ->mapWithKeys(function (AffiliateCorporate $a): array {
+                                                $name = trim(($a->first_name ?? '').' '.($a->last_name ?? ''));
+                                                $label = $name !== '' ? $name : 'Afiliado #'.$a->id;
+
+                                                return [
+                                                    $a->id => $label.' · Edad '.($a->age ?? '—').' · CI '.($a->nro_identificacion ?? '—'),
+                                                ];
+                                            })
+                                            ->all();
+                                    })
+                                    ->columns(1)
+                                    ->gridDirection('row')
+                                    ->bulkToggleable()
+                                    ->searchable()
+                                    ->required(fn (Get $get): bool => ($get('assignment_mode') ?? 'manual') === 'manual')
+                                    ->visible(fn (Get $get): bool => ($get('assignment_mode') ?? 'manual') === 'manual')
+                                    ->live(onBlur: false)
+                                    ->columnSpanFull(),
+                                Placeholder::make('payment_frequency_hint')
+                                    ->label('Frecuencia de pago (afiliación)')
+                                    ->content(fn (): string => 'Frecuencia actual: '.($this->getOwnerRecord()->payment_frequency ?? '—').'. Los montos por periodo se calculan con esta frecuencia.'),
+                            ])
+                            ->columnSpanFull(),
+                        Section::make('Cobertura y tarifa')
+                            ->description('Datos de la fila seleccionada en la tabla. Solo lectura: no se pueden modificar desde este formulario.')
+                            ->icon(Heroicon::ClipboardDocumentCheck)
+                            ->schema([
+                                Hidden::make('associate_plan_row_id'),
+                                Placeholder::make('selected_plan_label')
+                                    ->label('Plan')
+                                    ->content(function (Get $get): string {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+                                        if ($row === null) {
+                                            return 'Marque una sola fila en la tabla de planes y vuelva a abrir esta acción.';
+                                        }
+
+                                        return $row->plan?->description ?? '—';
+                                    }),
+                                Placeholder::make('age_range_readonly')
+                                    ->label('Rango de edad')
+                                    ->content(function (Get $get): string {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+
+                                        return $row?->ageRange?->range !== null && $row->ageRange->range !== ''
+                                            ? $row->ageRange->range.' años'
+                                            : '—';
+                                    }),
+                                Placeholder::make('coverage_readonly')
+                                    ->label('Cobertura')
+                                    ->content(function (Get $get): string {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+                                        if ($row?->coverage === null) {
+                                            return '—';
+                                        }
+
+                                        return number_format((float) $row->coverage->price, 2, '.', ',').' US$';
+                                    }),
+                                Placeholder::make('fee_readonly')
+                                    ->label('Tarifa anual (por persona)')
+                                    ->content(function (Get $get): string {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+                                        $fee = (float) ($row?->fee ?? 0);
+
+                                        return $fee > 0
+                                            ? number_format($fee, 2, '.', ',').' US$'
+                                            : '—';
+                                    }),
+                                Placeholder::make('calc_summary')
+                                    ->label('Vista previa del cálculo')
+                                    ->content(function (Get $get): string {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+                                        $fee = (float) ($row?->fee ?? 0);
+
+                                        $mode = $get('assignment_mode') ?? 'manual';
+                                        if ($mode === 'auto_by_age' && $row !== null) {
+                                            $n = count(AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
+                                                $this->getOwnerRecord(),
+                                                $row,
+                                            ));
+                                        } else {
+                                            $ids = $get('affiliate_ids');
+                                            $n = is_array($ids) ? count($ids) : 0;
+                                        }
+                                        if ($n === 0 || $fee <= 0) {
+                                            return $mode === 'auto_by_age'
+                                                ? 'No hay afiliados elegibles por edad para estimar totales, o la tarifa no está definida.'
+                                                : 'Seleccione afiliados para ver totales anuales estimados.';
+                                        }
+                                        $annual = $fee * $n;
+                                        $owner = $this->getOwnerRecord();
+                                        $f = strtoupper(trim((string) ($owner->payment_frequency ?? '')));
+                                        $perPeriod = match ($f) {
+                                            'SEMESTRAL' => $annual / 2,
+                                            'TRIMESTRAL' => $annual / 4,
+                                            'MENSUAL' => $annual / 12,
+                                            default => $annual,
+                                        };
+
+                                        return sprintf(
+                                            '%d afiliado(s) × US$ %s anuales = US$ %s / año. Monto referencial por periodo (%s): US$ %s.',
+                                            $n,
+                                            number_format($fee, 2, '.', ','),
+                                            number_format($annual, 2, '.', ','),
+                                            $owner->payment_frequency ?? 'N/D',
+                                            number_format($perPeriod, 2, '.', ','),
+                                        );
+                                    })
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
+                    ])
+                    ->action(function (array $data, Collection $records): void {
+                        if ($records->count() !== 1) {
+                            Notification::make()
+                                ->title('Seleccione una sola fila')
+                                ->body('Marque exactamente un plan en la tabla para asociar afiliados y recalcular.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $planRow = $records->first();
+                        if (! $planRow instanceof AfilliationCorporatePlan) {
+                            Notification::make()
+                                ->title('Plan no válido')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        if ((int) $planRow->affiliation_corporate_id !== (int) $this->getOwnerRecord()->id) {
+                            Notification::make()
+                                ->title('Plan no válido')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $planRow = AfilliationCorporatePlan::query()
+                            ->whereKey($planRow->getKey())
+                            ->where('affiliation_corporate_id', $this->getOwnerRecord()->id)
+                            ->first();
+
+                        if ($planRow === null) {
+                            Notification::make()
+                                ->title('Plan no válido')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $mode = $data['assignment_mode'] ?? 'manual';
+                        if ($mode === 'auto_by_age') {
+                            $affiliateIds = AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
+                                $this->getOwnerRecord(),
+                                $planRow,
+                            );
+                            if ($affiliateIds === []) {
+                                Notification::make()
+                                    ->title('Sin afiliados elegibles')
+                                    ->body('No hay afiliados con edad registrada dentro del rango de edad de esta fila de plan. Revise el padrón o use el modo manual.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+                        } else {
+                            $affiliateIds = $data['affiliate_ids'] ?? [];
+                            if (! is_array($affiliateIds)) {
+                                $affiliateIds = [];
+                            }
+                        }
+
+                        try {
+                            AssociateAffiliatesWithCorporatePlanService::run(
+                                $this->getOwnerRecord(),
+                                $planRow,
+                                $affiliateIds,
+                                [
+                                    'plan_id' => $planRow->plan_id,
+                                    'age_range_id' => $planRow->age_range_id,
+                                    'coverage_id' => $planRow->coverage_id,
+                                    'fee' => $planRow->fee,
+                                ],
+                            );
+                        } catch (ValidationException $e) {
+                            $errors = $e->errors();
+                            $msg = collect($errors)->flatten()->implode(' ');
+
+                            if (isset($errors['age_range'])) {
+                                Notification::make()
+                                    ->title('Edad no compatible con el plan')
+                                    ->body($msg !== '' ? $msg : 'Uno o más afiliados están fuera del rango de edad de esta fila o no tienen edad registrada.')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
+                            Notification::make()
+                                ->title('No se pudo completar la asociación')
+                                ->body($msg !== '' ? $msg : 'Revise los datos e intente de nuevo.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $assignedCount = count($affiliateIds);
+                        Notification::make()
+                            ->title('Asociación y recálculo listos')
+                            ->body($assignedCount === 1
+                                ? 'Se actualizó 1 afiliado, la fila de plan y los totales de la afiliación.'
+                                : 'Se actualizaron '.$assignedCount.' afiliados, la fila de plan y los totales de la afiliación.')
+                            ->success()
+                            ->send();
+                    }),
             ]);
+    }
+
+    private function resolveAssociateModalPlanRow(mixed $rowId): ?AfilliationCorporatePlan
+    {
+        if (blank($rowId)) {
+            return null;
+        }
+
+        $ownerId = (int) $this->getOwnerRecord()->id;
+
+        return AfilliationCorporatePlan::query()
+            ->whereKey((int) $rowId)
+            ->where('affiliation_corporate_id', $ownerId)
+            ->with(['plan', 'ageRange', 'coverage'])
+            ->first();
     }
 }

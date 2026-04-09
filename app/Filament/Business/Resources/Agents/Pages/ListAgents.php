@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Agents\Pages;
 
 use App\Filament\Business\Resources\Agents\AgentResource;
+use App\Filament\Business\Resources\Agents\Widgets\NewRegisterAgentForMountChart;
 use App\Filament\Business\Resources\Agents\Widgets\StatsOverviewAgent;
 use App\Filament\Business\Resources\Agents\Widgets\TotalForStateAgent;
 use App\Filament\Business\Resources\Agents\Widgets\TotalSaleForAgent;
@@ -132,6 +133,7 @@ class ListAgents extends ListRecords
     {
         return [
             StatsOverviewAgent::class,
+            NewRegisterAgentForMountChart::class,
             TotalForStateAgent::class,
             TotalSaleMonthlyNowVsLastAgent::class,
             TotalSaleForAgent::class,

@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers
 
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
+use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
 use App\Models\Plan;
 use App\Support\FilamentDateDisplay;
@@ -658,6 +659,76 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->body('No se pudo asignar el voucher ILS.')
                                     ->send();
                             }
+                        }),
+                    BulkAction::make('reassign_plan')
+                        ->label('Reasignar plan')
+                        ->color('info')
+                        ->icon(Heroicon::ArrowPath)
+                        ->requiresConfirmation()
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalHeading('Reasignar plan')
+                        ->modalDescription('Seleccione el plan a reasignar al afiliado.')
+                        ->form([
+                            Select::make('plan_id')
+                                ->label('Plan')
+                                ->live()
+                                ->options(function () {
+                                    // Log::info($this->getOwnerRecord()->affiliationCorporatePlans);
+                                    $plans = $this->getOwnerRecord()->affiliationCorporatePlans->pluck('plan_id')->toArray();
+                                    Log::info($plans);
+
+                                    return Plan::query()->whereIn('id', $plans)->orderBy('description')->pluck('description', 'id');
+                                })
+                                ->required(),
+                            Select::make('age_range_id')
+                                ->label('Rango de edad')
+                                ->live()
+                                ->options(function (Get $get) {
+                                    $planId = $get('plan_id');
+
+                                    return AgeRange::query()->where('plan_id', $planId)->orderBy('range')->pluck('range', 'id');
+                                })
+                                ->required()
+                                ->prefixIcon(Heroicon::ChartBar),
+                        ])
+                        ->action(function (Collection $records, array $data): void {
+
+                            $plans = AfilliationCorporatePlan::where('affiliation_corporate_id', $this->getOwnerRecord()->id)
+                                ->where('plan_id', $data['plan_id'])
+                                ->where('age_range_id', $data['age_range_id'])
+                                ->first();
+                            dd($plans);
+
+                            // 1. En la tabla de rango de edades busco los valores enteros del rango de edad seleccionado
+                            $ageRange = AgeRange::query()->where('id', $data['age_range_id'])->first();
+
+                            if (! $ageRange) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Error')
+                                    ->body('No se encontró el rango de edad seleccionado.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            for ($i = 0; $i < count($records); $i++) {
+                                // 2. Comparo el rango de edad del afiliado con el rango de edad seleccionado
+                                if ($records[$i]->age >= $ageRange->age_init && $records[$i]->age <= $ageRange->age_end) {
+                                    $records[$i]->update([
+                                        'plan_id' => $data['plan_id'],
+                                        'coverage_id' => $plans->coverage_id,
+                                        'fee' => $plans->fee,
+                                    ]);
+                                }
+                            }
+
+                            Notification::make()
+                                ->success()
+                                ->title('Plan reasignado')
+                                ->body('Se reasignó el plan a los afiliados seleccionados.')
+                                ->send();
+
                         }),
                     DeleteBulkAction::make()
                         ->modalHeading('Eliminar registros seleccionados')

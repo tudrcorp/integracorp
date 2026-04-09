@@ -3,12 +3,23 @@
 namespace App\Filament\Business\Resources\Agencies\Widgets;
 
 use App\Models\Agency;
+use Filament\Support\Assets\Js;
+use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Cache;
 
 class AgencyGeoChart extends ChartWidget
 {
+    public function mount(): void
+    {
+        parent::mount();
+
+        FilamentAsset::register([
+            Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'),
+        ]);
+    }
+
     protected ?string $heading = 'Distribución de Agencias por Estado';
 
     protected ?string $description = 'Análisis porcentual de agencias activas por estado.';
@@ -57,6 +68,14 @@ class AgencyGeoChart extends ChartWidget
         $labels = array_keys($distribution);
         $data = array_values($distribution);
 
+        $total = (int) array_sum($data);
+        $percentages = $total > 0
+            ? array_map(
+                static fn (mixed $n): float => round(((float) $n / $total) * 100, 1),
+                $data
+            )
+            : [];
+
         $backgroundColors = array_map(function ($index) use ($vibrantPalette) {
             return $vibrantPalette[$index % count($vibrantPalette)];
         }, array_keys($data));
@@ -67,6 +86,7 @@ class AgencyGeoChart extends ChartWidget
                 [
                     'label' => 'Agencias Activas',
                     'data' => $data,
+                    'percentages' => array_values($percentages),
                     'backgroundColor' => $backgroundColors,
                     'borderColor' => 'transparent',
                     'hoverOffset' => 35, // Aumentado para resaltar más la pieza al frente
@@ -113,8 +133,32 @@ class AgencyGeoChart extends ChartWidget
                     boxPadding: 6,
                     usePointStyle: true,
                     callbacks: {
-                        label: (context) => ` ${context.label}: ${context.raw} agencias `
+                        label: (context) => {
+                            const value = context.raw || 0;
+                            const pct = context.dataset.percentages[context.dataIndex];
+                            return ` ${context.label}: ${value} agencias (${pct}%)`;
+                        }
                     }
+                },
+                datalabels: {
+                    display: function(context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct >= 4;
+                    },
+                    color: '#ffffff',
+                    anchor: 'center',
+                    align: 'center',
+                    font: {
+                        size: 12,
+                        weight: '700',
+                        family: 'ui-sans-serif, -apple-system, system-ui, sans-serif'
+                    },
+                    formatter: function(value, context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct + '%';
+                    },
+                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+                    textShadowBlur: 3
                 }
             },
             // Configuraciones de interacción para el resaltado

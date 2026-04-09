@@ -1,0 +1,9 @@
+---
+description: El agente no debe usar RefreshDatabase ni migrate:fresh en sus actividades
+alwaysApply: true
+---
+
+# Base de datos en pruebas (agente)
+
+- No ejecutes ni sugieras como solución habitual el trait `RefreshDatabase`, `DatabaseMigrations`, `migrate:fresh` ni `migrate:refresh` para correr o arreglar tests, salvo que el usuario lo pida de forma explícita.
+- Prefiere tests que no requieran recrear la base, filtros acotados (`--filter`, archivo concreto) y el entorno de test ya configurado en el proyecto.

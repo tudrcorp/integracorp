@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\Agencies\Widgets;
 use App\Filament\Business\Resources\Agencies\Pages\ListAgencies;
 use App\Models\Agency;
 use Carbon\Carbon;
+use Filament\Schemas\Schema;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -14,15 +15,32 @@ class StatsOverviewAgency extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
 
-    protected ?string $heading = 'Panel de Control de Agencias';
+    protected string $view = 'filament.widgets.stats-overview-agency-glass';
 
-    protected ?string $description = 'Métricas clave de la red operativa.';
+    protected ?string $heading = null;
+
+    protected ?string $description = null;
 
     protected int|string|array $columnSpan = 'full';
 
     protected function getTablePage(): string
     {
         return ListAgencies::class;
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components($this->getCachedStats())
+            ->columns($this->getColumns());
+    }
+
+    /**
+     * Las tres métricas en una sola fila en todos los anchos de vista.
+     */
+    protected function getColumns(): int|array|null
+    {
+        return 3;
     }
 
     protected function getStats(): array
@@ -50,84 +68,68 @@ class StatsOverviewAgency extends StatsOverviewWidget
         $masterMonthText = $totalMesActualAgenciasMaster === 0 ? 'Sin registros' : "+{$totalMesActualAgenciasMaster} este mes";
         $generalMonthText = $totalMesActualAgenciasGeneral === 0 ? 'Sin registros' : "+{$totalMesActualAgenciasGeneral} este mes";
 
-        // Estilo común para las tarjetas tipo iOS
-        $iosCardStyles = '
-            relative overflow-hidden border-none shadow-sm transition-all duration-300 
-            hover:shadow-md hover:-translate-y-1 group 
-            bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl 
-            ring-1 ring-gray-200 dark:ring-white/10
-        ';
+        $insetPanel = 'rounded-2xl border border-zinc-200/55 bg-white/45 p-2 shadow-inner backdrop-blur-md dark:border-white/[0.1] dark:bg-zinc-950/40';
+        $pillBlue = 'inline-flex items-center rounded-full border border-blue-400/35 bg-blue-500/18 px-3 py-1 backdrop-blur-md dark:border-blue-400/25 dark:bg-blue-500/12';
+        $pillEmerald = 'inline-flex items-center rounded-full border border-emerald-400/35 bg-emerald-500/18 px-3 py-1 backdrop-blur-md dark:border-emerald-400/25 dark:bg-emerald-500/12';
 
         return [
             Stat::make('TOTAL AGENCIAS', $totalGlobalAgencias)
                 ->description(new HtmlString("
                     <div class='mt-3 space-y-2'>
-                        <div class='flex items-center justify-between text-[10px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500'>
+                        <div class='flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400'>
                             <span>Distribución de Red</span>
-                            <span class='text-primary-500'>{$nombreMes}</span>
+                            <span class='text-primary-600 dark:text-primary-400'>{$nombreMes}</span>
                         </div>
-                        <div class='flex items-center gap-3 p-2 rounded-2xl bg-gray-50/50 dark:bg-white/5'>
-                            <div class='flex flex-col flex-1'>
+                        <div class='flex items-center gap-3 {$insetPanel}'>
+                            <div class='flex flex-1 flex-col'>
                                 <div class='flex items-center gap-1.5'>
-                                    <div class='w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'></div>
-                                    <span class='text-xs font-medium text-gray-600 dark:text-gray-300'>Activas</span>
+                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.55)]'></div>
+                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Activas</span>
                                 </div>
-                                <span class='text-lg font-bold tracking-tight text-gray-900 dark:text-white'>{$agenciasActivas}</span>
+                                <span class='text-lg font-bold tracking-tight text-zinc-900 tabular-nums dark:text-white'>{$agenciasActivas}</span>
                             </div>
-                            <div class='w-px h-8 bg-gray-200 dark:bg-white/10'></div>
-                            <div class='flex flex-col flex-1'>
+                            <div class='h-8 w-px shrink-0 bg-zinc-200/80 dark:bg-white/15'></div>
+                            <div class='flex flex-1 flex-col'>
                                 <div class='flex items-center gap-1.5'>
-                                    <div class='w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'></div>
-                                    <span class='text-xs font-medium text-gray-600 dark:text-gray-300'>Inactivas</span>
+                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'></div>
+                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Inactivas</span>
                                 </div>
-                                <span class='text-lg font-bold tracking-tight text-gray-900 dark:text-white'>{$agenciasInactivas}</span>
+                                <span class='text-lg font-bold tracking-tight text-zinc-900 tabular-nums dark:text-white'>{$agenciasInactivas}</span>
                             </div>
                         </div>
                     </div>
                 "))
-                ->descriptionIcon('heroicon-m-globe-alt')
-                ->extraAttributes([
-                    'class' => $iosCardStyles,
-                    'style' => 'border-radius: 24px;',
-                ]),
+                ->descriptionIcon('heroicon-m-globe-alt'),
 
             Stat::make('TOTAL AGENCIAS MASTER', $totalHistoricoMaster)
                 ->description(new HtmlString("
                     <div class='mt-3'>
-                        <div class='text-[10px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2'>
+                        <div class='mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400'>
                             Crecimiento Mensual
                         </div>
-                        <div class='inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20'>
-                            <span class='text-[11px] font-bold text-blue-600 dark:text-blue-400'>
+                        <div class='{$pillBlue}'>
+                            <span class='text-[11px] font-bold text-blue-700 dark:text-blue-300'>
                                 {$masterMonthText}
                             </span>
                         </div>
                     </div>
                 "))
-                ->descriptionIcon('heroicon-m-users')
-                ->extraAttributes([
-                    'class' => $iosCardStyles,
-                    'style' => 'border-radius: 24px;',
-                ]),
+                ->descriptionIcon('heroicon-m-users'),
 
-            Stat::make('TOTALAGENCIAS GENERALES', $totalHistoricoGeneral)
+            Stat::make('TOTAL AGENCIAS GENERALES', $totalHistoricoGeneral)
                 ->description(new HtmlString("
                     <div class='mt-3'>
-                        <div class='text-[10px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2'>
+                        <div class='mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400'>
                             Crecimiento Mensual
                         </div>
-                        <div class='inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20'>
-                            <span class='text-[11px] font-bold text-emerald-600 dark:text-emerald-400'>
+                        <div class='{$pillEmerald}'>
+                            <span class='text-[11px] font-bold text-emerald-700 dark:text-emerald-300'>
                                 {$generalMonthText}
                             </span>
                         </div>
                     </div>
                 "))
-                ->descriptionIcon('heroicon-m-check-badge')
-                ->extraAttributes([
-                    'class' => $iosCardStyles,
-                    'style' => 'border-radius: 24px;',
-                ]),
+                ->descriptionIcon('heroicon-m-check-badge'),
         ];
     }
 }

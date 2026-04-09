@@ -4,7 +4,7 @@ namespace App\Filament\Business\Resources\Agents\Widgets;
 
 use App\Filament\Business\Resources\Agents\Pages\ListAgents;
 use App\Models\Agent;
-use Carbon\Carbon;
+use Filament\Schemas\Schema;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -14,67 +14,69 @@ class StatsOverviewAgent extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
 
-    protected ?string $heading = 'Panel de Control de Red';
+    protected string $view = 'filament.widgets.stats-overview-agent-ios';
 
-    protected ?string $description = 'Métricas clave de Agencias y Agentes.';
+    protected ?string $heading = null;
+
+    protected ?string $description = null;
 
     protected function getTablePage(): string
     {
         return ListAgents::class;
     }
 
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components($this->getCachedStats())
+            ->columns($this->getColumns());
+    }
+
+    /**
+     * Grid de 2 columnas desde `md`: la única stat ocupa 1 celda ≈ 50% del ancho.
+     * Por debajo de `md` una columna → tarjeta a ancho completo.
+     *
+     * @return array<string, int>
+     */
+    protected function getColumns(): int|array|null
+    {
+        return [
+            'default' => 1,
+            'md' => 2,
+        ];
+    }
+
     protected function getStats(): array
     {
-        $now = Carbon::now();
-        $nombreMes = ucfirst($now->translatedFormat('F'));
-
-        // --- LÓGICA DE AGENTES ---
-        // Se calculan los agentes basados en el estado global
         $totalAgentes = Agent::count();
         $agentesActivos = Agent::where('status', 'ACTIVO')->count();
         $agentesInactivos = Agent::where('status', 'INACTIVO')->count();
 
-        // Estilo común para las tarjetas tipo iOS
-        $iosCardStyles = '
-            relative overflow-hidden border-none shadow-sm transition-all duration-300 
-            hover:shadow-md hover:-translate-y-1 group 
-            bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl 
-            ring-1 ring-gray-200 dark:ring-white/10
-        ';
-
         return [
-
-            // Card 2: Agentes (Nueva sección solicitada)
-            Stat::make('TOTAL AGENTES', $totalAgentes)
+            Stat::make('Estatus de agentes', $totalAgentes)
+                ->icon('heroicon-m-users')
                 ->description(new HtmlString("
-                    <div class='mt-3 space-y-2'>
-                        <div class='flex items-center justify-between text-[10px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500'>
-                            <span>Estatus de Agentes</span>
-                        </div>
-                        <div class='flex items-center gap-3 p-2 rounded-2xl bg-blue-50/50 dark:bg-blue-500/5'>
-                            <div class='flex flex-col flex-1'>
+                    <div class='mt-2 w-full min-w-0'>
+                        <div class='flex w-full min-w-0 items-stretch gap-3 rounded-2xl border border-zinc-200/60 bg-white/35 p-3 shadow-inner dark:border-white/[0.08] dark:bg-zinc-950/40'>
+                            <div class='flex min-w-0 flex-1 flex-col'>
                                 <div class='flex items-center gap-1.5'>
-                                    <div class='w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'></div>
-                                    <span class='text-xs font-medium text-gray-600 dark:text-gray-300'>Activos</span>
+                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.45)]'></div>
+                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Activos</span>
                                 </div>
-                                <span class='text-lg font-bold tracking-tight text-gray-900 dark:text-white'>{$agentesActivos}</span>
+                                <span class='text-lg font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white'>{$agentesActivos}</span>
                             </div>
-                            <div class='w-px h-8 bg-blue-200 dark:bg-white/10'></div>
-                            <div class='flex flex-col flex-1'>
+                            <div class='h-auto w-px shrink-0 self-stretch bg-zinc-200/80 dark:bg-white/10'></div>
+                            <div class='flex min-w-0 flex-1 flex-col'>
                                 <div class='flex items-center gap-1.5'>
-                                    <div class='w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'></div>
-                                    <span class='text-xs font-medium text-gray-600 dark:text-gray-300'>Inactivos</span>
+                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.45)]'></div>
+                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Inactivos</span>
                                 </div>
-                                <span class='text-lg font-bold tracking-tight text-gray-900 dark:text-white'>{$agentesInactivos}</span>
+                                <span class='text-lg font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white'>{$agentesInactivos}</span>
                             </div>
                         </div>
                     </div>
                 "))
-                ->descriptionIcon('heroicon-m-users')
-                ->extraAttributes([
-                    'class' => $iosCardStyles,
-                    'style' => 'border-radius: 24px;',
-                ]),
+                ->color('primary'),
         ];
     }
 }

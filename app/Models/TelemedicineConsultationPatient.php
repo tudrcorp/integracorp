@@ -39,6 +39,7 @@ class TelemedicineConsultationPatient extends Model
         'duration',
         'priorityMonitoring',
         'observations',
+        'telemedicine_service_list_drift_id',
 
         // ... Datos agregados
         'pa',           // presion arterial
@@ -130,5 +131,10 @@ class TelemedicineConsultationPatient extends Model
     public function operationInventoryMovements()
     {
         return $this->hasMany(OperationInventoryMovement::class);
+    }
+
+    public function telemedicineServiceListDrift()
+    {
+        return $this->belongsTo(TelemedicineServiceList::class, 'telemedicine_service_list_drift_id');
     }
 }

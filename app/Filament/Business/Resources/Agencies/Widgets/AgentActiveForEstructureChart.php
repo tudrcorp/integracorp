@@ -11,11 +11,15 @@ use Illuminate\Support\Facades\DB;
 
 class AgentActiveForEstructureChart extends ChartWidget
 {
+    protected string $view = 'filament.widgets.agent-active-for-estructure-chart';
+
+    protected string $color = 'gray';
+
     protected ?string $heading = 'Agentes activos por agencia';
 
     protected int|string|array $columnSpan = 'full';
 
-    protected ?string $maxHeight = '500px';
+    protected ?string $maxHeight = '440px';
 
     // Estado para controlar si estamos viendo el detalle de una agencia
     public ?string $selectedAgencyCode = null;
@@ -47,10 +51,11 @@ class AgentActiveForEstructureChart extends ChartWidget
                     [
                         'label' => 'Estado de Agentes',
                         'data' => [$activeCount, $inactiveCount],
-                        'backgroundColor' => ['#22c55e', '#ef4444'], // Verde para Activos, Rojo para Inactivos
+                        'backgroundColor' => ['#22c55e', '#ef4444'],
                         'borderColor' => ['#16a34a', '#dc2626'],
-                        'borderWidth' => 1,
-                        'borderRadius' => 6,
+                        'borderWidth' => 1.25,
+                        'borderRadius' => 8,
+                        'borderSkipped' => false,
                     ],
                 ],
                 'labels' => ['ACTIVOS', 'INACTIVOS'],
@@ -110,8 +115,9 @@ class AgentActiveForEstructureChart extends ChartWidget
                     'data' => $data,
                     'backgroundColor' => $backgroundColors,
                     'borderColor' => 'rgba(0,0,0,0.1)',
-                    'borderWidth' => 1,
-                    'borderRadius' => 4,
+                    'borderWidth' => 1.25,
+                    'borderRadius' => 8,
+                    'borderSkipped' => false,
                 ],
             ],
             'labels' => $labels,
@@ -167,31 +173,120 @@ class AgentActiveForEstructureChart extends ChartWidget
                 if (elements && elements.length > 0) {
                     const index = elements[0].index;
                     const label = chart.data.labels[index];
-
-                    $wire.handleChartClick({
-                        label: label,
-                        index: index
-                    });
+                    $wire.handleChartClick({ label: label, index: index });
                 }
             },
             onHover: (event, chartElement) => {
                 event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
             },
-            barPercentage: 0.6,
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: { top: 8, right: 8, bottom: 4, left: 4 }
+            },
+            interaction: {
+                mode: 'nearest',
+                intersect: true,
+                axis: 'xy'
+            },
+            datasets: {
+                bar: {
+                    categoryPercentage: 0.92,
+                    barPercentage: 0.98
+                }
+            },
+            elements: {
+                bar: {
+                    borderWidth: 1.25,
+                    borderRadius: 10,
+                    inflateAmount: 0.6,
+                    hoverBorderWidth: 2.5,
+                    hoverBorderColor: 'rgba(255, 255, 255, 0.92)'
+                }
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    enabled: true,
+                    position: 'nearest',
+                    xAlign: 'center',
+                    yAlign: 'bottom',
+                    backgroundColor: 'rgba(22, 22, 24, 0.56)',
+                    titleColor: '#f5f5f7',
+                    bodyColor: 'rgba(235, 235, 245, 0.88)',
+                    footerColor: 'rgba(235, 235, 245, 0.7)',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 12,
+                    caretSize: 6,
+                    caretPadding: 8,
+                    titleFont: {
+                        size: 14,
+                        weight: '700',
+                        family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    },
+                    bodyFont: {
+                        size: 13,
+                        weight: '500',
+                        family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    },
+                    titleSpacing: 0,
+                    titleMarginBottom: 8,
+                    bodySpacing: 6,
+                    footerSpacing: 8,
+                    displayColors: true,
+                    usePointStyle: true,
+                    boxWidth: 12,
+                    boxHeight: 12,
+                    boxPadding: 8,
+                    multiKeyBackground: 'rgba(255, 255, 255, 0.08)',
                     callbacks: {
                         footer: () => 'Clic para ver detalles de activos/inactivos o regresar'
                     }
                 }
             },
             scales: {
-                y: { 
-                    beginAtZero: true,
-                    grid: { display: true }
+                x: {
+                    stacked: false,
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(120, 120, 128, 0.1)'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        color: '#8e8e93',
+                        font: {
+                            size: 10,
+                            family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                        }
+                    }
                 },
-                x: { grid: { display: true } }
+                y: {
+                    stacked: false,
+                    beginAtZero: true,
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(120, 120, 128, 0.12)'
+                    },
+                    ticks: {
+                        precision: 0,
+                        stepSize: 1,
+                        color: '#8e8e93',
+                        font: {
+                            size: 10,
+                            family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                        },
+                        callback: (value) => Number(value).toLocaleString()
+                    }
+                }
+            },
+            animation: {
+                duration: 900,
+                easing: 'easeOutQuart'
             }
         }
         JS);
