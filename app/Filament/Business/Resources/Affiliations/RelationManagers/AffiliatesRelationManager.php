@@ -237,8 +237,7 @@ class AffiliatesRelationManager extends RelationManager
                                         ->afterStateUpdated(function (Set $set, Get $get): void {
                                             $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($get('dateEnd'));
                                             $set('numberDays', $days ?? 0);
-                                        })
-                                        ->required(),
+                                        }),
                                     TextInput::make('numberDays')
                                         ->label('Dias Restantes')
                                         ->disabled()
