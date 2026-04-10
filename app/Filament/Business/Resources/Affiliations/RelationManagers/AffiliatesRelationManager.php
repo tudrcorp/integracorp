@@ -146,7 +146,6 @@ class AffiliatesRelationManager extends RelationManager
                                     ->preload(),
 
                                 Select::make('coverage_id')
-                                    ->required()
                                     ->validationMessages([
                                         'required' => 'Campo Obligatorio',
                                     ])
@@ -222,8 +221,7 @@ class AffiliatesRelationManager extends RelationManager
                             ->schema([
                                 Grid::make()->schema([
                                     TextInput::make('vaucherIls')
-                                        ->label('Vaucher ILS')
-                                        ->required(),
+                                        ->label('Vaucher ILS'),
                                     DatePicker::make('dateInit')
                                         ->label('Desde')
                                         ->live()
@@ -231,8 +229,7 @@ class AffiliatesRelationManager extends RelationManager
                                         ->afterStateUpdated(function (Set $set, Get $get): void {
                                             $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($get('dateEnd'));
                                             $set('numberDays', $days ?? 0);
-                                        })
-                                        ->required(),
+                                        }),
                                     DatePicker::make('dateEnd')
                                         ->label('Hasta')
                                         ->live()
@@ -245,8 +242,7 @@ class AffiliatesRelationManager extends RelationManager
                                     TextInput::make('numberDays')
                                         ->label('Dias Restantes')
                                         ->disabled()
-                                        ->dehydrated()
-                                        ->required(),
+                                        ->dehydrated(),
                                 ])->columnSpanFull()->columns(3),
                                 Grid::make(1)->schema([
                                     FileUpload::make('document_ils')
