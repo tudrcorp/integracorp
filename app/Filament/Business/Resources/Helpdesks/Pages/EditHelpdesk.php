@@ -2,10 +2,9 @@
 
 namespace App\Filament\Business\Resources\Helpdesks\Pages;
 
+use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Business\Resources\Helpdesks\HelpdeskResource;
-use App\Models\RrhhColaborador;
-use App\Support\HelpdeskTaskStatusOptions;
-use Filament\Actions\DeleteAction;
+use App\Models\HelpDesk;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,28 +14,29 @@ class EditHelpdesk extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['updated_by'] = Auth::user()->name;
+        $record = $this->getRecord();
+        $fillable = $record->getFillable();
+        $preserved = $record->only($fillable);
 
-        if (isset($data['status'])) {
-            $data['status'] = HelpdeskTaskStatusOptions::sanitizeStatusForSave(
-                $this->getRecord(),
-                $data['status'],
-                Auth::user()?->name,
-            );
-        }
+        $preserved['created_by'] = trim((string) ($data['created_by'] ?? $preserved['created_by'] ?? ''));
+        $preserved['updated_by'] = Auth::user()->name;
 
-        $myColaboradorId = RrhhColaborador::query()->where('user_id', Auth::id())->value('id');
-        if ($myColaboradorId !== null && ($data['rrhh_colaborador_id'] ?? null) == $myColaboradorId) {
-            $data['rrhh_colaborador_id'] = null;
-        }
-
-        return $data;
+        return $preserved;
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            // DeleteAction::make(),
+            HelpdeskTicketModalActions::makeAddNoteAction()
+                ->record(fn (): HelpDesk => $this->getRecord())
+                ->after(function (): void {
+                    $this->getRecord()->refresh();
+                }),
+            HelpdeskTicketModalActions::makeUpdateStatusAction()
+                ->record(fn (): HelpDesk => $this->getRecord())
+                ->after(function (): void {
+                    $this->getRecord()->refresh();
+                }),
         ];
     }
 

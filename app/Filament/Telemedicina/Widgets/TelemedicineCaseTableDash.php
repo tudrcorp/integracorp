@@ -146,13 +146,13 @@ class TelemedicineCaseTableDash extends TableWidget
         $openCaseConsultationsAction = Action::make('openCaseConsultations')
             ->label('Consultas del caso')
             ->modalHeading(fn (TelemedicineCase $record): string => 'Consultas del caso '.$record->code)
-            ->modalDescription('Orden: más recientes arriba. «Ver detalle» abre la ficha; «Actualizar» solo en la última consulta (si el caso no está en alta médica).')
+            ->modalDescription('Orden: más recientes arriba. Se indica el servicio derivado de la última consulta: al actualizar, ese valor pasa a ser el tipo de servicio principal en el asistente.')
             ->modalIcon(Heroicon::OutlinedClipboardDocumentList)
             ->modalIconColor('primary')
             ->modalContent(function (TelemedicineCase $record): View {
                 $consultations = TelemedicineConsultationPatient::query()
                     ->where('telemedicine_case_id', $record->id)
-                    ->with('telemedicineServiceList')
+                    ->with(['telemedicineServiceList', 'telemedicineServiceListDrift'])
                     ->orderByDesc('id')
                     ->get();
 
@@ -168,6 +168,7 @@ class TelemedicineCaseTableDash extends TableWidget
                 return view('filament.telemedicina.widgets.case-consultations-modal', [
                     'caseCode' => $record->code,
                     'consultations' => $consultations,
+                    'lastConsultation' => $lastConsultation,
                     'lastConsultationId' => $lastConsultationId,
                     'canEditLast' => $record->status !== 'ALTA MEDICA',
                     'viewUrls' => $viewUrls,

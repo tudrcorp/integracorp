@@ -1,0 +1,87 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Business;
+
+use App\Http\Controllers\Controller;
+use App\Models\HelpDesk;
+use App\Models\RrhhColaborador;
+use App\Support\HelpdeskTaskStatusOptions;
+use Filament\Notifications\Notification;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
+
+final class MarkHelpdeskTicketInProgressController extends Controller
+{
+    public function __invoke(HelpDesk $helpDesk): RedirectResponse
+    {
+        $user = Auth::user();
+        if ($user === null) {
+            abort(403);
+        }
+
+        $colaborador = RrhhColaborador::query()->where('user_id', $user->id)->first();
+        if (! $colaborador) {
+            Notification::make()
+                ->title('No se pudo actualizar')
+                ->danger()
+                ->body('No tienes un perfil de colaborador vinculado.')
+                ->send();
+
+            return redirect()->back();
+        }
+
+        $isAssignee = $helpDesk->rrhhColaboradores()
+            ->where('rrhh_colaboradors.id', $colaborador->id)
+            ->exists();
+
+        if (! $isAssignee) {
+            Notification::make()
+                ->title('No se pudo actualizar')
+                ->danger()
+                ->body('El ticket no existe o no tienes permiso.')
+                ->send();
+
+            return redirect()->back();
+        }
+
+        $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave(
+            $helpDesk,
+            'EN PROCESO',
+            $user->name
+        );
+
+        if ($sanitized !== 'EN PROCESO') {
+            Notification::make()
+                ->title('Acción no permitida')
+                ->warning()
+                ->body('No se puede cambiar el estatus de este ticket.')
+                ->send();
+
+            return redirect()->back();
+        }
+
+        if ($helpDesk->status === 'EN PROCESO') {
+            Notification::make()
+                ->title('Ticket ya en proceso')
+                ->success()
+                ->body('Este ticket ya tiene el estatus «En proceso».')
+                ->send();
+
+            return redirect()->back();
+        }
+
+        $helpDesk->status = 'EN PROCESO';
+        $helpDesk->updated_by = $user->name;
+        $helpDesk->save();
+
+        Notification::make()
+            ->title('Estatus actualizado')
+            ->success()
+            ->body('El ticket pasó a «En proceso».')
+            ->send();
+
+        return redirect()->back();
+    }
+}

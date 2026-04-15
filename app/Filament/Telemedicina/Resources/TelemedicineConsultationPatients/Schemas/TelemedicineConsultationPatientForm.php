@@ -51,8 +51,12 @@ class TelemedicineConsultationPatientForm
         $patient = session()->get('patient');
         $consultation = session()->get('consultation');
         $defaultTelemedicineServiceListId = null;
-        if ($consultation instanceof TelemedicineConsultationPatient && filled($consultation->telemedicine_service_list_id)) {
-            $defaultTelemedicineServiceListId = (int) $consultation->telemedicine_service_list_id;
+        if ($consultation instanceof TelemedicineConsultationPatient) {
+            if (filled($consultation->telemedicine_service_list_drift_id)) {
+                $defaultTelemedicineServiceListId = (int) $consultation->telemedicine_service_list_drift_id;
+            } elseif (filled($consultation->telemedicine_service_list_id)) {
+                $defaultTelemedicineServiceListId = (int) $consultation->telemedicine_service_list_id;
+            }
         }
         $isTelemedicineServiceListIdLocked = $defaultTelemedicineServiceListId !== null;
         $countCase = TelemedicineConsultationPatient::where('telemedicine_case_id', $case->id)->count();
@@ -150,6 +154,20 @@ class TelemedicineConsultationPatientForm
                                                 ->dehydrated()
                                                 ->hidden(fn () => $case->directionAmbulance == null),
                                         ])->columnSpanFull()->columns(3),
+                                ])
+                                ->columnSpanFull(),
+
+                            Section::make('Prioridad de servicio')
+                                ->description('Aplica en consulta inicial y en seguimiento. Debe indicarse siempre, incluso si en un paso posterior se registra alta médica.')
+                                ->icon(Heroicon::OutlinedBolt)
+                                ->iconColor('warning')
+                                ->schema([
+                                    Select::make('telemedicine_priority_id')
+                                        ->label('Prioridad de servicio')
+                                        ->live()
+                                        ->options(TelemedicinePriority::all()->pluck('name', 'id'))
+                                        ->searchable()
+                                        ->required(),
                                 ])
                                 ->columnSpanFull(),
                         ]),
@@ -494,7 +512,7 @@ class TelemedicineConsultationPatientForm
                                 ->schema([
                                     ToggleButtons::make('feedbackOne')
                                         ->label('¿Dar de alta al paciente en esta sesión?')
-                                        ->helperText('Alta médica: no se mostrarán servicio, prioridad ni complementos. Continuar: podrás definir el siguiente paso asistencial.')
+                                        ->helperText('Alta médica: no se mostrarán tipo de servicio ni complementos (la prioridad ya se definió en el primer paso). Continuar: podrás definir el siguiente paso asistencial.')
                                         ->boolean(
                                             trueLabel: 'Sí — alta médica',
                                             falseLabel: 'No — asignar servicio',
@@ -575,12 +593,6 @@ class TelemedicineConsultationPatientForm
                                         ->nullable()
                                         ->searchable()
                                         ->different('telemedicine_service_list_id'),
-                                    Select::make('telemedicine_priority_id')
-                                        ->label('Prioridad de Servicio')
-                                        ->live()
-                                        ->options(TelemedicinePriority::all()->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->required(),
                                     CheckboxList::make('complements')
                                         // ->hidden(function (Get $get) {
                                         //     if ($get('telemedicine_service_list_id') == 2) {
@@ -598,7 +610,7 @@ class TelemedicineConsultationPatientForm
                                             2 => 'Indicacion de Laboratorios o Estudios de Imagenologia',
                                             3 => 'Consulta con Especialista',
                                         ]),
-                                ])->columnSpanFull()->columns(3)->hiddenOn('edit'),
+                                ])->columnSpanFull()->columns(3),
 
                             Fieldset::make('Observaciones')
                                 ->visible(function (Get $get) {

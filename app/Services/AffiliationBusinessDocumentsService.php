@@ -4,12 +4,61 @@ namespace App\Services;
 
 use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\TarjetaAfiliacionController;
+use App\Models\Affiliate;
 use App\Models\Affiliation;
 use Carbon\Carbon;
 use RuntimeException;
 
 class AffiliationBusinessDocumentsService
 {
+    public static function condicionadoBasenameForPlanId(?int $planId): ?string
+    {
+        return match ((int) $planId) {
+            1 => 'CondicionesINICIAL.pdf',
+            2 => 'CondicionesIDEAL.pdf',
+            3 => 'CondicionesESPECIAL.pdf',
+            default => null,
+        };
+    }
+
+    /**
+     * Genera la tarjeta legacy `TAR-{code}.pdf` solo si no hay tarjeta equivalente entre afiliados
+     * (p. ej. el titular ya tiene fila en `affiliates` con su CI).
+     */
+    public static function shouldGenerateLegacyTitularTarjeta(Affiliation $record): bool
+    {
+        if (! $record->relationLoaded('affiliates')) {
+            $record->loadMissing('affiliates');
+        }
+
+        if ($record->affiliates->isEmpty()) {
+            return true;
+        }
+
+        $titularCi = trim((string) $record->nro_identificacion_ti);
+        if ($titularCi === '') {
+            return true;
+        }
+
+        $titularEnAfiliados = $record->affiliates->contains(
+            fn (Affiliate $a): bool => strcasecmp(trim((string) $a->nro_identificacion), $titularCi) === 0
+        );
+
+        return ! $titularEnAfiliados;
+    }
+
+    public static function condicionadoAbsolutePathForAffiliation(Affiliation $record): ?string
+    {
+        $basename = self::condicionadoBasenameForPlanId($record->plan_id);
+        if ($basename === null) {
+            return null;
+        }
+
+        $path = storage_path('app/public/condicionados/'.$basename);
+
+        return is_file($path) ? $path : null;
+    }
+
     /**
      * Regenera el certificado (uno) y una tarjeta PDF por cada familiar en `affiliates`.
      *
@@ -20,7 +69,8 @@ class AffiliationBusinessDocumentsService
         $record->loadMissing(['affiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
 
         $affiliateCount = $record->affiliates->count();
-        $totalPdfs = 2 + $affiliateCount;
+        $legacyTarjetaCount = self::shouldGenerateLegacyTitularTarjeta($record) ? 1 : 0;
+        $totalPdfs = 1 + $affiliateCount + $legacyTarjetaCount;
         $memoryMb = min(1024, 384 + (48 * max(1, $totalPdfs)));
         ini_set('memory_limit', $memoryMb.'M');
         set_time_limit(min(900, 120 + (45 * max(1, $totalPdfs))));
@@ -93,25 +143,45 @@ class AffiliationBusinessDocumentsService
             ];
         }
 
-        $dataLegacy = [
-            'name' => $record->full_name_ti,
-            'ci' => $record->nro_identificacion_ti,
-            'code' => $record->code,
-            'plan' => $planDesc,
-            'frecuencia' => $frecuencia,
-            'cobertura' => $cobertura,
-            'desde' => $desde,
-            'hasta' => $hasta,
-            'output_filename' => 'TAR-'.$record->code.'.pdf',
-        ];
-        $legacy = TarjetaAfiliacionController::generateTarjetaAfiliacion(
-            $dataLegacy,
-            silent: true,
-            ensureOutputDirectory: false,
-            applyResourceLimits: false,
-        );
-        if ($legacy !== true) {
-            throw new RuntimeException(is_string($legacy) ? $legacy : 'Error al generar tarjeta estándar.');
+        if ($legacyTarjetaCount === 1) {
+            $dataLegacy = [
+                'name' => $record->full_name_ti,
+                'ci' => $record->nro_identificacion_ti,
+                'code' => $record->code,
+                'plan' => $planDesc,
+                'frecuencia' => $frecuencia,
+                'cobertura' => $cobertura,
+                'desde' => $desde,
+                'hasta' => $hasta,
+                'output_filename' => 'TAR-'.$record->code.'.pdf',
+            ];
+            $legacy = TarjetaAfiliacionController::generateTarjetaAfiliacion(
+                $dataLegacy,
+                silent: true,
+                ensureOutputDirectory: false,
+                applyResourceLimits: false,
+            );
+            if ($legacy !== true) {
+                throw new RuntimeException(is_string($legacy) ? $legacy : 'Error al generar tarjeta estándar.');
+            }
+
+            $documents[] = [
+                'label' => 'Tarjeta — titular',
+                'kind' => 'tarjeta',
+                'filename' => $dataLegacy['output_filename'],
+                'preview_url' => asset('storage/tarjeta-afiliacion/'.$dataLegacy['output_filename']).'?t='.$version,
+            ];
+        }
+
+        $condicionadoPath = self::condicionadoAbsolutePathForAffiliation($record);
+        if ($condicionadoPath !== null) {
+            $condBasename = basename($condicionadoPath);
+            $documents[] = [
+                'label' => 'Condiciones del plan',
+                'kind' => 'condicionado',
+                'filename' => $condBasename,
+                'preview_url' => asset('storage/condicionados/'.$condBasename).'?t='.$version,
+            ];
         }
 
         return ['documents' => $documents];
@@ -147,7 +217,14 @@ class AffiliationBusinessDocumentsService
             $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$affiliate->id.'.pdf');
         }
 
-        $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
+        if (self::shouldGenerateLegacyTitularTarjeta($record)) {
+            $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
+        }
+
+        $condicionado = self::condicionadoAbsolutePathForAffiliation($record);
+        if ($condicionado !== null) {
+            $paths[] = $condicionado;
+        }
 
         return array_values(array_filter($paths, fn (string $p): bool => is_file($p)));
     }

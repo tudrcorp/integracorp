@@ -897,11 +897,10 @@ class AffiliationController extends Controller
                 throw new \Exception('La afiliación no tiene un plan asociado o el registro es inválido.');
             }
 
-            // ✅ Reconstruye el usuario dentro del job
-            $user = $user instanceof User ? $user : User::find($user);
-
+            $userForNotification = null;
             if ($notifyUser) {
-                if (! $user) {
+                $userForNotification = $user instanceof User ? $user : User::find($user);
+                if (! $userForNotification) {
                     Log::error('Certificado Error: No se pudo encontrar el usuario para notificar.', ['user_id' => $user]);
 
                     return;
@@ -982,7 +981,7 @@ class AffiliationController extends Controller
             DomPdfBatchRenderOptions::apply($pdf);
             $pdf->save(public_path('storage/certificados-doc/'.$name_pdf));
 
-            if ($notifyUser && $user) {
+            if ($notifyUser && $userForNotification) {
                 Notification::make()
                     ->title('¡TAREA COMPLETADA!')
                     ->body('📎 '.$name_pdf.' ya se encuentra disponible para su descarga.')
@@ -992,7 +991,7 @@ class AffiliationController extends Controller
                             ->label('Descargar archivo')
                             ->url('/storage/certificados-doc/'.$name_pdf),
                     ])
-                    ->sendToDatabase($user);
+                    ->sendToDatabase($userForNotification);
             }
         } catch (\Throwable $th) {
             // Log profesional de errores

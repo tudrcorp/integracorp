@@ -3,39 +3,40 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class RrhhColaborador extends Model
 {
     //
-    protected $table = "rrhh_colaboradors";
+    protected $table = 'rrhh_colaboradors';
 
     protected $fillable = [
-        "fullName",
-        "departmento_id",
-        "cargo_id",
-        "cedula",
-        "sexo",
-        "fechaNacimiento",
-        "fechaIngreso",
-        "telefono",
-        "telefonoCorporativo",
-        "emailCorporativo",
-        "emailAlternativo",
-        "emailPersonal",
-        "direccion",
-        "nroHijos",
-        "nroHijoDependiente",
-        "tallaCamisa",
-        "banck_id",
-        "nroCta",
-        "codigoCta",
-        "tipoCta",
-        "status",
-        "created_by",
-        "updated_by",
-        "avatar",
-        "sueldo",
-        "user_id",
+        'fullName',
+        'departmento_id',
+        'cargo_id',
+        'cedula',
+        'sexo',
+        'fechaNacimiento',
+        'fechaIngreso',
+        'telefono',
+        'telefonoCorporativo',
+        'emailCorporativo',
+        'emailAlternativo',
+        'emailPersonal',
+        'direccion',
+        'nroHijos',
+        'nroHijoDependiente',
+        'tallaCamisa',
+        'banck_id',
+        'nroCta',
+        'codigoCta',
+        'tipoCta',
+        'status',
+        'created_by',
+        'updated_by',
+        'avatar',
+        'sueldo',
+        'user_id',
     ];
 
     public function departamento()
@@ -66,5 +67,11 @@ class RrhhColaborador extends Model
     public function prospect_agent_observations()
     {
         return $this->hasMany(ProspectAgentObservation::class);
+    }
+
+    public function helpDesks(): BelongsToMany
+    {
+        return $this->belongsToMany(HelpDesk::class, 'help_desk_rrhh_colaborador')
+            ->withTimestamps();
     }
 }

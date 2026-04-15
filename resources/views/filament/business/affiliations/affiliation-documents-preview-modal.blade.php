@@ -23,14 +23,32 @@
         <div
             x-show="loading && ! regenerated"
             x-cloak
-            class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 p-6 text-center shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70"
+            class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 p-8 text-center shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70"
         >
-            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                Generando certificado y tarjetas…
-            </p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Un momento por favor. Se mostrarán las vistas previas de todos los PDF.
-            </p>
+            <div class="flex flex-col items-center gap-4">
+                <svg
+                    class="size-12 shrink-0 animate-spin text-primary-600 dark:text-primary-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                </svg>
+                <div>
+                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        Generando certificado y tarjetas…
+                    </p>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Un momento por favor. Se mostrarán las vistas previas de todos los PDF.
+                    </p>
+                </div>
+            </div>
         </div>
 
         <p x-show="error" x-cloak class="text-sm text-danger-600 dark:text-danger-400" x-text="error"></p>
@@ -45,7 +63,9 @@
                     >
                         <div>
                             <p class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                <span x-text="doc.kind === 'certificate' ? 'Certificado' : 'Tarjeta'"></span>
+                                <span
+                                    x-text="doc.kind === 'certificate' ? 'Certificado' : (doc.kind === 'condicionado' ? 'Condiciones' : 'Tarjeta')"
+                                ></span>
                             </p>
                             <p class="text-sm font-semibold text-gray-800 dark:text-gray-100" x-text="doc.label"></p>
                         </div>
@@ -113,6 +133,7 @@
                         class="aviso-btn-ios-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98] disabled:opacity-60"
                     >
                         <svg
+                            x-show="! sendingEmail"
                             class="size-5 shrink-0"
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
@@ -126,6 +147,22 @@
                                 stroke-linejoin="round"
                                 d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
                             />
+                        </svg>
+                        <svg
+                            x-show="sendingEmail"
+                            x-cloak
+                            class="size-5 shrink-0 animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
                         </svg>
                         <span x-show="! sendingEmail">Enviar por correo</span>
                         <span x-show="sendingEmail" x-cloak>Enviando…</span>

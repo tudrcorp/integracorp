@@ -69,76 +69,21 @@ class TdevReportImporter extends Importer
             ImportColumn::make('precio_de_venta')
                 ->requiredMapping()
                 ->numeric(),
-                
-            //----------------------------------------------
-            // ImportColumn::make('total_precio_venta')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('fecha_pago_vaucher')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('forma_de_pago')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('entidad_bancaria_receptora')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('referencia_bancaria')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('tasa_pago')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('monto_abonado_en_cuenta')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('estatus_pago')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('dias_emision')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('porcen_comision')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('comision_agencia')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('comision_agente')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('comision_subagente')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('monto_comision')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('estatus_comision')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('fecha_pago_comision')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('referencia_bancaria_comision')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('relacion_comision')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('observaciones')
-            //     ->rules(['max:255']),
-            // ImportColumn::make('neto_del_servicio')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('utilidad_tdev')
-            //     ->numeric()
-            //     ->rules(['decimal']),
-            // ImportColumn::make('status_report')
-            //     ->rules(['max:100']),
+
         ];
     }
 
     public function resolveRecord(): TdevReport
     {
-        return new TdevReport();
+        return new TdevReport;
     }
 
     public static function getCompletedNotificationBody(Import $import): string
     {
-        $body = 'Your tdev report import has completed and ' . Number::format($import->successful_rows) . ' ' . str('row')->plural($import->successful_rows) . ' imported.';
+        $body = 'Your tdev report import has completed and '.Number::format($import->successful_rows).' '.str('row')->plural($import->successful_rows).' imported.';
 
         if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to import.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to import.';
         }
 
         return $body;

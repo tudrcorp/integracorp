@@ -76,7 +76,7 @@ it('rellena tipo de servicio solo con el id derivado de la última consulta', fu
     expect($state['telemedicine_service_list_id'])->toBe(7);
 });
 
-it('no incluye tipo de servicio si no hay servicio derivado', function (): void {
+it('mantiene el servicio principal en el prefill si no hay servicio derivado', function (): void {
     $consultation = new TelemedicineConsultationPatient([
         'telemedicine_service_list_id' => 5,
         'telemedicine_service_list_drift_id' => null,
@@ -84,7 +84,14 @@ it('no incluye tipo de servicio si no hay servicio derivado', function (): void 
 
     $state = ConsultationCreateWizardDefaults::formStatePrefillFromLastConsultation($consultation);
 
-    expect($state)->not->toHaveKey('telemedicine_service_list_id');
+    expect($state['telemedicine_service_list_id'])->toBe(5);
+});
+
+it('no crea una segunda consulta automática al guardar desde Filament', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php';
+    $content = file_get_contents($path);
+
+    expect($content)->not->toContain('createNextConsultation');
 });
 
 it('prefill clínico no incluye nombre ni cédula', function (): void {

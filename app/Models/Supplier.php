@@ -125,4 +125,17 @@ class Supplier extends Model
     {
         return $this->belongsTo(SupplierClasificacion::class);
     }
+
+    public function operationServiceOrders()
+    {
+        return $this->hasMany(OperationServiceOrder::class, 'supplier_id')
+            ->orderByDesc('created_at');
+    }
+
+    public function finalizedOperationServiceOrders()
+    {
+        return $this->hasMany(OperationServiceOrder::class, 'supplier_id')
+            ->where('status', 'FINALIZADO')
+            ->orderByDesc('created_at');
+    }
 }

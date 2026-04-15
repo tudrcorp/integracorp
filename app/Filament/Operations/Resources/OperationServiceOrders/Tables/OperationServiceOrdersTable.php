@@ -2,18 +2,19 @@
 
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Tables;
 
+use App\Models\OperationServiceOrder;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\SelectColumn;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -23,11 +24,52 @@ use ZipArchive;
 
 class OperationServiceOrdersTable
 {
+    private const IOS_SECTION_CLASS = 'fi-helpdesk-ios-section';
+
+    private const IOS_SUCCESS_BTN = 'aviso-btn-ios-success shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const IOS_GRAY_BTN = 'ticket-btn-ios-gray shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    /** @return array<string, string> */
+    private static function paymentMethodOptions(): array
+    {
+        return [
+            'ZELLE' => 'ZELLE',
+            'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
+            'EFECTIVO US$' => 'EFECTIVO US$',
+            'MULTIPLE' => 'MULTIPLE',
+            'PAGO MOVIL VES' => 'PAGO MOVIL(VES)',
+            'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
+        ];
+    }
+
+    /**
+     * Misma lógica que exige el modal al guardar: método de pago, tasa BCV > 0 y al menos un monto.
+     */
+    private static function hasRegisteredPaymentData(OperationServiceOrder $record): bool
+    {
+        if (! filled($record->payment_method)) {
+            return false;
+        }
+
+        $tasa = (float) ($record->tasa_bcv ?? 0);
+        if ($tasa <= 0) {
+            return false;
+        }
+
+        $usd = $record->total_amount_usd;
+        $ves = $record->total_amount_ves;
+        $hasUsd = $usd !== null && $usd !== '' && is_numeric($usd);
+        $hasVes = $ves !== null && $ves !== '' && is_numeric($ves);
+
+        return $hasUsd || $hasVes;
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
             ->heading('Órdenes de servicio')
-            ->description('Listado de órdenes generadas por coordinación; el color de cada fila indica la prioridad asignada.')
+            ->description('Listado de órdenes generadas por coordinación; el color de cada fila indica la prioridad asignada. Flujo: primero «Datos de pago»; al guardarlos podrás usar «Cargar soportes».')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(fn ($query) => $query->with(['telemedicinePriority', 'supplier']))
             ->columns([
@@ -91,45 +133,33 @@ class OperationServiceOrdersTable
                     ->badge()
                     ->color('gray')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextInputColumn::make('tasa_bcv')
+                TextColumn::make('tasa_bcv')
                     ->label('Tasa BCV')
-                    ->placeholder('0.00')
-                    ->prefix('VES')
-                    ->inputMode('decimal')
-                    ->sortable(),
-                TextInputColumn::make('total_amount_usd')
+                    ->sortable()
+                    ->toggleable()
+                    ->alignEnd()
+                    ->formatStateUsing(fn ($state): string => $state !== null && $state !== '' ? (string) $state : '—'),
+                TextColumn::make('total_amount_usd')
                     ->label('Total US$')
-                    ->placeholder('0.00')
-                    ->prefix('US$')
-                    ->afterStateUpdated(function ($record, $state) {
-                        $record->total_amount_ves = $state * $record->tasa_bcv;
-                        $record->save();
-                    })
                     ->sortable()
-                    ->alignEnd(),
-                TextInputColumn::make('total_amount_ves')
+                    ->alignEnd()
+                    ->formatStateUsing(fn ($state): string => $state !== null && $state !== ''
+                        ? 'US$ '.number_format((float) $state, 2, ',', '.')
+                        : '—'),
+                TextColumn::make('total_amount_ves')
                     ->label('Total Bs.')
-                    ->placeholder('0.00')
-                    ->prefix('Bs. ')
-                    ->inputMode('decimal')
-                    ->afterStateUpdated(function ($record, $state) {
-                        $record->total_amount_usd = $state / $record->tasa_bcv;
-                        $record->save();
-                    })
                     ->sortable()
-                    ->alignEnd(),
-                SelectColumn::make('payment_method')
+                    ->alignEnd()
+                    ->formatStateUsing(fn ($state): string => $state !== null && $state !== ''
+                        ? 'Bs. '.number_format((float) $state, 2, ',', '.')
+                        : '—'),
+                TextColumn::make('payment_method')
                     ->label('Método de pago')
-                    ->options([
-                        'ZELLE' => 'ZELLE',
-                        'TRANSFERENCIA US$' => 'TRANSFERENCIA(US$)',
-                        'EFECTIVO US$' => 'EFECTIVO US$',
-                        'MULTIPLE' => 'MULTIPLE',
-                        'PAGO MOVIL VES' => 'PAGO MOVIL(VES)',
-                        'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
-                    ])
+                    ->badge()
+                    ->color('gray')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->formatStateUsing(fn (?string $state): string => $state ? (self::paymentMethodOptions()[$state] ?? $state) : '—'),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable(),
@@ -169,6 +199,128 @@ class OperationServiceOrdersTable
             ->recordActions([
                 // ViewAction::make(),
                 // EditAction::make(),
+                Action::make('registerPayment')
+                    ->label('Datos de pago')
+                    ->icon('heroicon-m-banknotes')
+                    ->color('primary')
+                    ->slideOver()
+                    ->modalWidth(Width::ThreeExtraLarge)
+                    ->modalIcon('heroicon-m-banknotes')
+                    ->modalHeading('Registrar datos de pago')
+                    ->modalDescription('Completa la tasa BCV, los montos y el método de pago para actualizar la orden. Usa el botón «Guardar» al finalizar: los totales en dólares y bolívares se sincronizan según la tasa (si indicas ambos montos, prevalece el total en US$).')
+                    ->modalSubmitActionLabel('Guardar datos de pago')
+                    ->modalSubmitAction(
+                        fn (Action $action): Action => $action
+                            ->extraAttributes([
+                                'class' => self::IOS_SUCCESS_BTN,
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action): Action => $action
+                            ->label('Cancelar')
+                            ->extraAttributes([
+                                'class' => self::IOS_GRAY_BTN,
+                            ])
+                    )
+                    ->fillForm(fn (OperationServiceOrder $record): array => [
+                        'tasa_bcv' => $record->tasa_bcv,
+                        'total_amount_usd' => $record->total_amount_usd,
+                        'total_amount_ves' => $record->total_amount_ves,
+                        'payment_method' => $record->payment_method,
+                    ])
+                    ->form([
+                        Section::make('Información de pago')
+                            ->description('Indica la tasa del día y al menos un monto (US$ o Bs.); el otro se calcula al guardar. El método de pago es obligatorio.')
+                            ->icon('heroicon-m-currency-dollar')
+                            ->schema([
+                                Grid::make(['default' => 1, 'lg' => 2])
+                                    ->schema([
+                                        TextInput::make('tasa_bcv')
+                                            ->label('Tasa BCV')
+                                            ->prefix('VES')
+                                            ->placeholder('Ej. 36,50')
+                                            ->numeric()
+                                            ->required()
+                                            ->minValue(0.000001)
+                                            ->helperText('Tipo de cambio oficial o acordado para esta orden.'),
+                                        Select::make('payment_method')
+                                            ->label('Método de pago')
+                                            ->prefixIcon('heroicon-m-credit-card')
+                                            ->options(self::paymentMethodOptions())
+                                            ->required()
+                                            ->native(false)
+                                            ->searchable(),
+                                        TextInput::make('total_amount_usd')
+                                            ->label('Total en US$')
+                                            ->prefix('US$')
+                                            ->placeholder('0,00')
+                                            ->numeric()
+                                            ->helperText('Opcional si ya ingresaste el total en bolívares.'),
+                                        TextInput::make('total_amount_ves')
+                                            ->label('Total en bolívares')
+                                            ->prefix('Bs.')
+                                            ->placeholder('0,00')
+                                            ->numeric()
+                                            ->helperText('Opcional si ya ingresaste el total en US$.'),
+                                    ]),
+                            ])
+                            ->columns(1)
+                            ->columnSpanFull()
+                            ->extraAttributes([
+                                'class' => self::IOS_SECTION_CLASS,
+                            ]),
+                    ])
+                    ->successNotification(null)
+                    ->action(function (OperationServiceOrder $record, array $data): void {
+                        $tasa = (float) ($data['tasa_bcv'] ?? 0);
+                        if ($tasa <= 0) {
+                            Notification::make()
+                                ->title('Tasa inválida')
+                                ->body('La tasa BCV debe ser mayor que cero.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $usdRaw = $data['total_amount_usd'] ?? null;
+                        $vesRaw = $data['total_amount_ves'] ?? null;
+                        $usd = ($usdRaw !== null && $usdRaw !== '') ? (float) $usdRaw : null;
+                        $ves = ($vesRaw !== null && $vesRaw !== '') ? (float) $vesRaw : null;
+
+                        if ($usd === null && $ves === null) {
+                            Notification::make()
+                                ->title('Montos requeridos')
+                                ->body('Indica al menos el total en US$ o el total en bolívares.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        if ($usd !== null && $ves !== null) {
+                            $ves = $usd * $tasa;
+                        } elseif ($usd !== null) {
+                            $ves = $usd * $tasa;
+                        } else {
+                            $usd = $ves / $tasa;
+                        }
+
+                        $record->update([
+                            'tasa_bcv' => $tasa,
+                            'total_amount_usd' => round($usd, 4),
+                            'total_amount_ves' => round($ves, 4),
+                            'payment_method' => (string) $data['payment_method'],
+                            'updated_by' => Auth::user()?->name ?? 'sistema',
+                        ]);
+
+                        Notification::make()
+                            ->title('Datos de pago guardados')
+                            ->body('La orden #'.($record->order_number ?: $record->getKey()).' se actualizó correctamente.')
+                            ->success()
+                            ->send();
+                    })
+                    ->hidden(fn (OperationServiceOrder $record): bool => self::hasRegisteredPaymentData($record)),
                 Action::make('upload_files')
                     ->label('Cargar Soportes')
                     ->icon('heroicon-m-cloud-arrow-up')
@@ -210,7 +362,8 @@ class OperationServiceOrdersTable
                             ->success()
                             ->send();
                     })
-                    ->hidden(fn ($record) => $record->status === 'FINALIZADO'),
+                    ->hidden(fn (OperationServiceOrder $record): bool => $record->status === 'FINALIZADO'
+                        || ! self::hasRegisteredPaymentData($record)),
                 Action::make('preview_files')
                     ->label('Vista previa')
                     ->icon('heroicon-m-eye')
