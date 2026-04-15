@@ -16,6 +16,15 @@ it('el theme admin y el formulario de consulta telemedicina definen el wizard iO
         ->and($form)->toContain('fi-telemedicine-case-status-section');
 });
 
+it('el formulario de consulta no oculta la asignación de servicio ni la prioridad en la página de edición', function (): void {
+    $root = dirname(__DIR__, 2);
+    $form = file_get_contents(
+        $root.'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php'
+    );
+    expect($form)->toContain("Select::make('telemedicine_priority_id')")
+        ->and($form)->not->toContain("hiddenOn('edit')");
+});
+
 it('el widget CaseStats usa contenedor iOS y el theme define sus tarjetas', function (): void {
     $root = dirname(__DIR__, 2);
     $theme = file_get_contents($root.'/resources/css/filament/admin/theme.css');

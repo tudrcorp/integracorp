@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AffiliationBusinessDocumentsController;
+use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
@@ -168,6 +169,10 @@ Route::post('business/affiliations/documents/send-email/{affiliation}', [
 ])
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-documents.send-email');
+
+Route::post('business/helpdesk-tickets/{helpDesk}/mark-in-progress', MarkHelpdeskTicketInProgressController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.helpdesk-ticket.mark-in-progress');
 
 Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');

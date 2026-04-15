@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
@@ -21,6 +22,19 @@ class ViewSupplier extends ViewRecord
     protected static string $resource = SupplierResource::class;
 
     protected static ?string $title = 'Ficha Técnica del Proveedor';
+
+    protected function resolveRecord(int|string $key): Model
+    {
+        /** @var Supplier $record */
+        $record = parent::resolveRecord($key);
+
+        $record->load([
+            'finalizedOperationServiceOrders.telemedicinePriority',
+            'finalizedOperationServiceOrders.operationCoordinationService',
+        ]);
+
+        return $record;
+    }
 
     /**
      * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
@@ -95,7 +109,7 @@ class ViewSupplier extends ViewRecord
                     'class' => self::PRIMARY_BUTTON_CLASS,
                 ]),
             Action::make('print_pdf')
-                ->label('Imprimir PDF')
+                ->label('Ficha Técnica del Proveedor')
                 ->icon('heroicon-o-printer')
                 ->color('success')
                 ->modalHeading('Ficha del proveedor en PDF')
@@ -261,7 +275,7 @@ class ViewSupplier extends ViewRecord
                                 ->multiple()
                                 ->required()
                                 ->maxFiles(10)
-                                ->maxSize(1024),
+                                ->maxSize(2048),
                         ])
                         ->action(function (array $data): void {
                             /** @var Supplier $record */

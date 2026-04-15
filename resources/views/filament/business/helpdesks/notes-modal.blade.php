@@ -63,7 +63,7 @@
         @if ($hasNote)
             <div
                 class="rounded-2xl bg-gray-100/90 px-4 py-3.5 text-sm leading-relaxed text-gray-800 shadow-inner ring-1 ring-black/[0.04] dark:bg-gray-900/60 dark:text-gray-100 dark:ring-white/[0.06]">
-                {!! nl2br(e(trim((string) $observation))) !!}
+                {!! \App\Support\HelpdeskObservationHtmlRenderer::render((string) $observation) !!}
             </div>
         @else
             <div

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Operations\Resources\Suppliers\Schemas;
 
 use App\Models\City;
@@ -29,7 +31,13 @@ use Illuminate\Support\Facades\Auth;
 
 class SupplierForm
 {
-    private const SECTION_CARD = 'rounded-[1.25rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_10px_36px_-12px_rgba(15,23,42,0.1)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_10px_36px_-12px_rgba(0,0,0,0.4)]';
+    private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    private const INNER_CARD = 'rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
+    private const REPEATER_CARD = 'rounded-2xl border border-slate-200/80 bg-white/90 p-2 shadow-sm dark:border-white/10 dark:bg-slate-900/40';
 
     private static function auditHiddenFields(): array
     {
@@ -78,7 +86,11 @@ class SupplierForm
                 ->maxLength(500);
         }
 
-        return Grid::make(2)->schema($components);
+        return Grid::make(2)
+            ->extraAttributes([
+                'class' => self::INNER_CARD,
+            ])
+            ->schema($components);
     }
 
     public static function configure(Schema $schema): Schema
@@ -87,6 +99,9 @@ class SupplierForm
             ->components([
                 Tabs::make('supplierFormTabs')
                     ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
                     ->tabs([
                         Tab::make('Datos principales')
                             ->icon('heroicon-o-building-office-2')
@@ -97,6 +112,9 @@ class SupplierForm
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 TextInput::make('name')
                                                     ->label('Nombre del proveedor')
@@ -127,6 +145,9 @@ class SupplierForm
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 Select::make('status_convenio')
                                                     ->label('Tipo de convenio')
@@ -172,6 +193,9 @@ class SupplierForm
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 Select::make('state_id')
                                                     ->label('Estado')
@@ -208,6 +232,9 @@ class SupplierForm
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 self::phoneField('local_phone', 'Teléfono local'),
                                                 self::phoneField('personal_phone', 'Teléfono celular'),
@@ -227,6 +254,9 @@ class SupplierForm
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 TextInput::make('convenio_pago')
                                                     ->label('Convenio de pago')
@@ -284,37 +314,43 @@ class SupplierForm
                                     ->icon('heroicon-o-map')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Select::make('tipo_servicio')
-                                            ->label('Zona de cobertura')
-                                            ->live()
-                                            ->searchable()
-                                            ->options([
-                                                'LOCAL' => 'Local',
-                                                'MULTI-ESTADO' => 'Multi-estado',
-                                                'A-NIVEL-NACIONAL' => 'A nivel nacional',
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
                                             ])
-                                            ->helperText('En cobertura nacional se incluyen todos los estados automáticamente.')
-                                            ->afterStateUpdated(
-                                                fn (Set $set, ?string $state) => $set(
-                                                    'state_services',
-                                                    $state === 'A-NIVEL-NACIONAL'
-                                                        ? State::query()->orderBy('definition')->pluck('definition')->all()
-                                                        : null
-                                                )
-                                            ),
-                                        Select::make('state_services')
-                                            ->label('Estados incluidos en la cobertura')
-                                            ->multiple()
-                                            ->searchable()
-                                            ->options(State::query()->orderBy('definition')->pluck('definition', 'definition'))
-                                            ->preload()
-                                            ->visible(fn (Get $get): bool => in_array($get('tipo_servicio'), ['LOCAL', 'MULTI-ESTADO'], true))
-                                            ->disabled(fn (Get $get): bool => $get('tipo_servicio') === 'A-NIVEL-NACIONAL')
-                                            ->helperText(fn (Get $get): string => match ($get('tipo_servicio')) {
-                                                'MULTI-ESTADO' => 'Seleccione todos los estados donde opera.',
-                                                'LOCAL' => 'Puede acotar o ampliar estados según su operación.',
-                                                default => '',
-                                            }),
+                                            ->schema([
+                                                Select::make('tipo_servicio')
+                                                    ->label('Zona de cobertura')
+                                                    ->live()
+                                                    ->searchable()
+                                                    ->options([
+                                                        'LOCAL' => 'Local',
+                                                        'MULTI-ESTADO' => 'Multi-estado',
+                                                        'A-NIVEL-NACIONAL' => 'A nivel nacional',
+                                                    ])
+                                                    ->helperText('En cobertura nacional se incluyen todos los estados automáticamente.')
+                                                    ->afterStateUpdated(
+                                                        fn (Set $set, ?string $state) => $set(
+                                                            'state_services',
+                                                            $state === 'A-NIVEL-NACIONAL'
+                                                                ? State::query()->orderBy('definition')->pluck('definition')->all()
+                                                                : null
+                                                        )
+                                                    ),
+                                                Select::make('state_services')
+                                                    ->label('Estados incluidos en la cobertura')
+                                                    ->multiple()
+                                                    ->searchable()
+                                                    ->options(State::query()->orderBy('definition')->pluck('definition', 'definition'))
+                                                    ->preload()
+                                                    ->visible(fn (Get $get): bool => in_array($get('tipo_servicio'), ['LOCAL', 'MULTI-ESTADO'], true))
+                                                    ->disabled(fn (Get $get): bool => $get('tipo_servicio') === 'A-NIVEL-NACIONAL')
+                                                    ->helperText(fn (Get $get): string => match ($get('tipo_servicio')) {
+                                                        'MULTI-ESTADO' => 'Seleccione todos los estados donde opera.',
+                                                        'LOCAL' => 'Puede acotar o ampliar estados según su operación.',
+                                                        default => '',
+                                                    }),
+                                            ]),
                                     ])
                                     ->collapsible(),
                             ]),
@@ -328,6 +364,9 @@ class SupplierForm
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Fieldset::make('Diagnóstico e imagen')
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 self::infrastructureGrid([
                                                     ['key' => 'densitometria_osea', 'desc' => 'descripcion_densitometria_osea', 'label' => 'Densitómetro'],
@@ -341,6 +380,9 @@ class SupplierForm
                                                 ]),
                                             ]),
                                         Fieldset::make('Hospitalización y cirugía')
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 self::infrastructureGrid([
                                                     ['key' => 'quirofanos', 'desc' => 'descripcion_quirofanos', 'label' => 'Quirófanos'],
@@ -350,6 +392,9 @@ class SupplierForm
                                                 ]),
                                             ]),
                                         Fieldset::make('Accesibilidad y comodidades')
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
                                             ->schema([
                                                 self::infrastructureGrid([
                                                     ['key' => 'estacionamiento_propio', 'desc' => 'descripcion_estacionamiento_propio', 'label' => 'Estacionamiento propio'],
@@ -371,6 +416,9 @@ class SupplierForm
                                         Repeater::make('supplierContactPrincipals')
                                             ->label('Contactos principales')
                                             ->relationship()
+                                            ->extraAttributes([
+                                                'class' => self::REPEATER_CARD,
+                                            ])
                                             ->table([
                                                 TableColumn::make('Departamento'),
                                                 TableColumn::make('Cargo'),
@@ -413,6 +461,8 @@ class SupplierForm
                                             ])
                                             ->addActionLabel('Agregar contacto')
                                             ->columnSpanFull()
+                                            ->defaultItems(0)
+                                            ->collapsed()
                                             ->reorderable(),
                                     ])
                                     ->collapsible(),
@@ -429,6 +479,9 @@ class SupplierForm
                                         Repeater::make('supplierRedGlobals')
                                             ->label('Sucursales')
                                             ->relationship()
+                                            ->extraAttributes([
+                                                'class' => self::REPEATER_CARD,
+                                            ])
                                             ->table([
                                                 TableColumn::make('Estado'),
                                                 TableColumn::make('Ciudad'),
@@ -479,6 +532,8 @@ class SupplierForm
                                             ])
                                             ->addActionLabel('Agregar sucursal')
                                             ->columnSpanFull()
+                                            ->defaultItems(0)
+                                            ->collapsed()
                                             ->reorderable(),
                                     ])
                                     ->collapsible(),
@@ -495,6 +550,9 @@ class SupplierForm
                                         Repeater::make('SupplierZonaCoberturas')
                                             ->label('Zonas de cobertura')
                                             ->relationship()
+                                            ->extraAttributes([
+                                                'class' => self::REPEATER_CARD,
+                                            ])
                                             ->table([
                                                 TableColumn::make('Clasificación'),
                                                 TableColumn::make('Tipo de servicio'),
@@ -539,6 +597,8 @@ class SupplierForm
                                             ])
                                             ->addActionLabel('Agregar zona')
                                             ->columnSpanFull()
+                                            ->defaultItems(0)
+                                            ->collapsed()
                                             ->reorderable(),
                                     ])
                                     ->collapsible(),
@@ -555,6 +615,9 @@ class SupplierForm
                                         Repeater::make('supplierObservacions')
                                             ->label('Notas y observaciones')
                                             ->relationship()
+                                            ->extraAttributes([
+                                                'class' => self::REPEATER_CARD,
+                                            ])
                                             ->table([
                                                 TableColumn::make('Nota')->width('90%'),
                                                 TableColumn::make('Responsable')->width('10%'),
@@ -574,6 +637,8 @@ class SupplierForm
                                             ])
                                             ->addActionLabel('Agregar nota')
                                             ->columnSpanFull()
+                                            ->defaultItems(0)
+                                            ->collapsed()
                                             ->reorderable(),
                                     ])
                                     ->collapsible(),

@@ -2,6 +2,11 @@
 
 namespace App\Filament\Administration\Resources\TdevReports\Schemas;
 
+use App\Enums\StatusComision;
+use App\Enums\StatusPago;
+use App\Enums\StatusVaucher;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -44,8 +49,12 @@ class TdevReportForm
                     ->required(),
                 TextInput::make('edad')
                     ->required(),
-                TextInput::make('estatus_del_vaucher')
-                    ->required(),
+                Select::make('estatus_vaucher')
+                    ->label('Estatus del voucher')
+                    ->options(StatusVaucher::options())
+                    ->required()
+                    ->native(false)
+                    ->searchable(),
                 TextInput::make('referencia')
                     ->required(),
                 TextInput::make('plan_familiar')
@@ -76,7 +85,12 @@ class TdevReportForm
                 TextInput::make('monto_abonado_en_cuenta')
                     ->numeric()
                     ->default(0.0),
-                TextInput::make('estatus_pago'),
+                Select::make('estatus_pago')
+                    ->label('Estatus de pago')
+                    ->options(StatusPago::options())
+                    ->nullable()
+                    ->native(false)
+                    ->searchable(),
                 TextInput::make('dias_emision'),
                 TextInput::make('porcen_comision')
                     ->numeric()
@@ -93,11 +107,18 @@ class TdevReportForm
                 TextInput::make('monto_comision')
                     ->numeric()
                     ->default(0.0),
-                TextInput::make('estatus_comision'),
+                Select::make('estatus_comision')
+                    ->label('Estatus de comisión')
+                    ->options(StatusComision::options())
+                    ->nullable()
+                    ->native(false)
+                    ->searchable(),
                 TextInput::make('fecha_pago_comision'),
                 TextInput::make('referencia_bancaria_comision'),
                 TextInput::make('relacion_comision'),
-                TextInput::make('observaciones'),
+                Textarea::make('observaciones')
+                    ->rows(3)
+                    ->columnSpanFull(),
                 TextInput::make('neto_del_servicio')
                     ->numeric()
                     ->default(0.0),

@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Log;
 
 class TelemedicineConsultationPatientController extends Controller
 {
+    /**
+     * Ya no se invoca desde el flujo Filament: crear aquí una segunda consulta duplicaba el servicio
+     * principal. La cadena servicio → derivado se guarda en un solo registro; el derivado pasa a ser
+     * principal al abrir la siguiente consulta (prefill) o al editar el mismo registro.
+     *
+     * @deprecated Reservado por si se reutiliza en otro canal; preferir no duplicar filas automáticamente.
+     */
     public static function createNextConsultation(array $record, array $doctor, array $patient)
     {
         try {

@@ -25,6 +25,13 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
         return ListSuppliers::class;
     }
 
+    protected function getColumns(): array
+    {
+        return [
+            'lg' => '5',
+        ];
+    }
+
     protected function getStats(): array
     {
         $table = (new Supplier)->getTable();
@@ -33,6 +40,18 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
             ->where("{$table}.status_convenio", 'GENERAL');
 
         $estatus = [
+            [
+                'name' => 'CONVENIO GENERAL',
+                'icon' => 'heroicon-m-building-library',
+                'color' => 'info',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500',
+                'labelClass' => 'text-info-600 dark:text-info-400',
+                'badgeClass' => 'bg-info-100/90 text-info-700 dark:bg-info-900/40 dark:text-info-300',
+                'criterion' => 'GENERAL',
+                'apply' => static function (Builder $query) use ($table): Builder {
+                    return $query->where("{$table}.status_convenio", 'GENERAL');
+                },
+            ],
             [
                 'name' => 'PROVEEDORES GENERALES AFILIADOS',
                 'icon' => 'heroicon-m-check-badge',
@@ -95,9 +114,6 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
                         </span>
                         <div class='flex flex-wrap items-center gap-2.5 mt-1.5'>
                             <span class='px-2.5 py-1 text-xs font-bold rounded-lg {$row['badgeClass']} shadow-sm'>
-                                Criterio
-                            </span>
-                            <span class='text-sm font-bold text-gray-900 dark:text-white'>
                                 {$row['criterion']}
                             </span>
                         </div>

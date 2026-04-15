@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('commission_payrolls')) {
+            return;
+        }
+
         Schema::table('commission_payrolls', function (Blueprint $table) {
             $table->string('local_beneficiary_name')->nullable();
             $table->string('local_beneficiary_rif')->nullable();
@@ -37,6 +41,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasTable('commission_payrolls')) {
+            return;
+        }
+
         Schema::table('commission_payrolls', function (Blueprint $table) {
             //
         });

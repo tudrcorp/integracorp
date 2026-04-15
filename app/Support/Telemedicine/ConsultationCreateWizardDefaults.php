@@ -41,7 +41,8 @@ final class ConsultationCreateWizardDefaults
     }
 
     /**
-     * Estado adicional desde la última consulta del mismo caso (clínica, prioridad, servicio derivado).
+     * Estado adicional desde la última consulta del mismo caso (clínica, prioridad, cadena servicio/derivado).
+     * Si hubo servicio derivado, pasa a ser el nuevo `telemedicine_service_list_id`; si no, se conserva el principal.
      * No duplica identidad del paciente: esa viene de {@see formStatePatientStepFromCaseAndPatient}.
      *
      * @return array<string, mixed>
@@ -75,6 +76,8 @@ final class ConsultationCreateWizardDefaults
 
         if (filled($last->telemedicine_service_list_drift_id)) {
             $out['telemedicine_service_list_id'] = (int) $last->telemedicine_service_list_drift_id;
+        } elseif (filled($last->telemedicine_service_list_id)) {
+            $out['telemedicine_service_list_id'] = (int) $last->telemedicine_service_list_id;
         }
 
         return $out;

@@ -9,11 +9,19 @@ it('la vista del modal de consultas del caso prioriza la última consulta y guí
         ->and($blade)->toContain('Última consulta')
         ->and($blade)->toContain('$showUpdateButton')
         ->and($blade)->toContain('Código del caso')
-        ->and($blade)->toContain('Cómo actualizar');
+        ->and($blade)->toContain('Cómo actualizar')
+        ->and($blade)->toContain('Cadena de servicios')
+        ->and($blade)->toContain('telemedicineServiceListDrift')
+        ->and($blade)->toContain('servicio derivado')
+        ->and($blade)->toContain('TRASLADO EN AMBULANCIA')
+        ->and($blade)->toContain('INGRESO A CLINICA')
+        ->and($blade)->toContain('Str::ascii');
 
     $widget = file_get_contents($root.'/app/Filament/Telemedicina/Widgets/TelemedicineCaseTableDash.php');
     expect($widget)->toContain("->orderByDesc('id')")
-        ->and($widget)->toContain('Consultas del caso ');
+        ->and($widget)->toContain('Consultas del caso ')
+        ->and($widget)->toContain('lastConsultation')
+        ->and($widget)->toContain('telemedicineServiceListDrift');
 });
 
 it('el modal de observaciones del dashboard telemedicina usa ventana y botones tematizados', function (): void {

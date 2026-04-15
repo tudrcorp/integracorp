@@ -6,7 +6,6 @@ use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concern
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Http\Controllers\OperationCoordinationServiceController;
-use App\Http\Controllers\TelemedicineConsultationPatientController;
 use App\Http\Controllers\TelemedicineMedicalReportController;
 use App\Jobs\GeneratePdfEspecialista;
 use App\Jobs\GeneratePdfImagenologia;
@@ -98,11 +97,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $formState,
                     ConsultationCreateWizardDefaults::formStatePrefillFromLastConsultation($lastConsultation),
                 );
-            }
-
-            $consultationInSession = session()->get('consultation');
-            if ($consultationInSession instanceof TelemedicineConsultationPatient && filled($consultationInSession->telemedicine_service_list_id)) {
-                $formState['telemedicine_service_list_id'] = (int) $consultationInSession->telemedicine_service_list_id;
             }
 
             $this->form->fill($formState);
@@ -828,19 +822,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                      * * @version 1.0
                      */
                     TelemedicineMedicalReportController::create($record);
-
-                    /**
-                     * Creacion de la siguiente consulta que deriva de la actual
-                     * ----------------------------------------------------------------------------------------------------
-                     *
-                     * array $record, array $doctor, array $patient
-                     * Si el campo del servicio que deriva es null no se crea la siguiente consulta
-                     *
-                     * * @version 1.0
-                     */
-                    if ($record['telemedicine_service_list_drift_id'] != null || $record['telemedicine_service_list_drift_id'] != '') {
-                        TelemedicineConsultationPatientController::createNextConsultation($record, $doctor, $patient);
-                    }
 
                     Notification::make()
                         ->title('Telemedicina creada exitosamente')

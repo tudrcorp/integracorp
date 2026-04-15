@@ -133,7 +133,10 @@ class OperationsPanelProvider extends PanelProvider
                         ->first();
                     $tickets = $colaborador
                         ? \App\Models\HelpDesk::query()
-                            ->where('rrhh_colaborador_id', $colaborador->id)
+                            ->whereHas(
+                                'rrhhColaboradores',
+                                fn (\Illuminate\Database\Eloquent\Builder $q) => $q->where('rrhh_colaboradors.id', $colaborador->id)
+                            )
                             ->whereIn('status', ['PENDIENTE POR INICIAR', 'EN PROCESO'])
                             ->orderByDesc('id')
                             ->limit(30)

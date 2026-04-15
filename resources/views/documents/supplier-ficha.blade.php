@@ -490,160 +490,36 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Densitómetro</td>
-                    <td class="text-center">
-                        @if ($supplier->densitometria_osea ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_densitometria_osea ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Equipo de Diálisis</td>
-                    <td class="text-center">
-                        @if ($supplier->dialisis ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_dialisis ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Electrocardiógrafo</td>
-                    <td class="text-center">
-                        @if ($supplier->electrocardiograma_centro ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_electrocardiograma_centro ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Equipos Especiales de Oftalmología</td>
-                    <td class="text-center">
-                        @if ($supplier->equipos_especiales_oftalmologia ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_equipos_especiales_oftalmologia ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Mamógrafo</td>
-                    <td class="text-center">
-                        @if ($supplier->mamografia ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_mamografia ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Quirófanos</td>
-                    <td class="text-center">
-                        @if ($supplier->quirofanos ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_quirofanos ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Radioterapia Intraoperatoria</td>
-                    <td class="text-center">
-                        @if ($supplier->radioterapia_intraoperatoria ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_radioterapia_intraoperatoria ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Resonador</td>
-                    <td class="text-center">
-                        @if ($supplier->resonancia ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_resonancia ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Tomógrafo</td>
-                    <td class="text-center">
-                        @if ($supplier->tomografo ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_tomografo ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>UCI Pediátrica</td>
-                    <td class="text-center">
-                        @if ($supplier->uci_pediatrica ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_uci_pediatrica ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>UCI Adulto</td>
-                    <td class="text-center">
-                        @if ($supplier->uci_adulto ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_uci_adulto ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Estacionamiento Propio</td>
-                    <td class="text-center">
-                        @if ($supplier->estacionamiento_propio ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_estacionamiento_propio ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Ascensor Operativo</td>
-                    <td class="text-center">
-                        @if ($supplier->ascensor ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_ascensor ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Equipo de Cirugía Robótica</td>
-                    <td class="text-center">
-                        @if ($supplier->robotica ?? false)
-                            <span class="boolean-yes">Sí</span>
-                        @else
-                            <span class="boolean-no">No</span>
-                        @endif
-                    </td>
-                    <td>{{ $supplier->descripcion_robotica ?? '-' }}</td>
-                </tr>
+                @php
+                    $infraSi = static fn (mixed $v): bool => filter_var($v, FILTER_VALIDATE_BOOLEAN);
+                    $infraestructuraCertificada = collect([
+                        ['nombre' => 'Densitómetro', 'dispone' => $infraSi($supplier->densitometria_osea ?? false), 'descripcion' => $supplier->descripcion_densitometria_osea ?? '-'],
+                        ['nombre' => 'Equipo de Diálisis', 'dispone' => $infraSi($supplier->dialisis ?? false), 'descripcion' => $supplier->descripcion_dialisis ?? '-'],
+                        ['nombre' => 'Electrocardiógrafo', 'dispone' => $infraSi($supplier->electrocardiograma_centro ?? false), 'descripcion' => $supplier->descripcion_electrocardiograma_centro ?? '-'],
+                        ['nombre' => 'Equipos Especiales de Oftalmología', 'dispone' => $infraSi($supplier->equipos_especiales_oftalmologia ?? false), 'descripcion' => $supplier->descripcion_equipos_especiales_oftalmologia ?? '-'],
+                        ['nombre' => 'Mamógrafo', 'dispone' => $infraSi($supplier->mamografia ?? false), 'descripcion' => $supplier->descripcion_mamografia ?? '-'],
+                        ['nombre' => 'Quirófanos', 'dispone' => $infraSi($supplier->quirofanos ?? false), 'descripcion' => $supplier->descripcion_quirofanos ?? '-'],
+                        ['nombre' => 'Radioterapia Intraoperatoria', 'dispone' => $infraSi($supplier->radioterapia_intraoperatoria ?? false), 'descripcion' => $supplier->descripcion_radioterapia_intraoperatoria ?? '-'],
+                        ['nombre' => 'Resonador', 'dispone' => $infraSi($supplier->resonancia ?? false), 'descripcion' => $supplier->descripcion_resonancia ?? '-'],
+                        ['nombre' => 'Tomógrafo', 'dispone' => $infraSi($supplier->tomografo ?? false), 'descripcion' => $supplier->descripcion_tomografo ?? '-'],
+                        ['nombre' => 'UCI Pediátrica', 'dispone' => $infraSi($supplier->uci_pediatrica ?? false), 'descripcion' => $supplier->descripcion_uci_pediatrica ?? '-'],
+                        ['nombre' => 'UCI Adulto', 'dispone' => $infraSi($supplier->uci_adulto ?? false), 'descripcion' => $supplier->descripcion_uci_adulto ?? '-'],
+                        ['nombre' => 'Estacionamiento Propio', 'dispone' => $infraSi($supplier->estacionamiento_propio ?? false), 'descripcion' => $supplier->descripcion_estacionamiento_propio ?? '-'],
+                        ['nombre' => 'Ascensor Operativo', 'dispone' => $infraSi($supplier->ascensor ?? false), 'descripcion' => $supplier->descripcion_ascensor ?? '-'],
+                        ['nombre' => 'Equipo de Cirugía Robótica', 'dispone' => $infraSi($supplier->robotica ?? false), 'descripcion' => $supplier->descripcion_robotica ?? '-'],
+                    ])->filter(fn (array $fila): bool => $fila['dispone'])->values();
+                @endphp
+                @forelse ($infraestructuraCertificada as $fila)
+                    <tr>
+                        <td>{{ $fila['nombre'] }}</td>
+                        <td class="text-center"><span class="boolean-yes">Sí</span></td>
+                        <td>{{ $fila['descripcion'] }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="3">Ninguna infraestructura registrada como «Sí» en certificación.</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
