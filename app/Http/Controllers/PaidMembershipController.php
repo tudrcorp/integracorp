@@ -11,6 +11,7 @@ use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Commission;
 use App\Models\Sale;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
@@ -111,6 +112,16 @@ class PaidMembershipController extends Controller
                 $sales->is_payment_link = $record->payment_method == 'LINK DE PAGO' ? true : false;
 
                 $sales->save();
+
+                SecurityAudit::log('AUDIT_SALE_REGISTERED', 'paid-membership.approve-payment', [
+                    'flow' => 'first-register',
+                    'sale_id' => $sales->id,
+                    'invoice_number' => $sales->invoice_number,
+                    'affiliation_code' => $sales->affiliation_code,
+                    'payment_method' => $sales->payment_method,
+                    'payment_frequency' => $sales->payment_frequency,
+                    'total_amount' => $sales->total_amount,
+                ]);
 
                 /**
                  * Actualizacion el registro de pago y le agregamos el nuemro de la factura generada
@@ -436,6 +447,14 @@ class PaidMembershipController extends Controller
                 $record->aproved_by = Auth::user()->name;
                 $record->save();
 
+                SecurityAudit::log('AUDIT_PAYMENT_APPROVED', 'paid-membership.approve-payment', [
+                    'flow' => 'first-register',
+                    'paid_membership_id' => $record->id,
+                    'invoice_number' => $record->invoice_number,
+                    'status' => $record->status,
+                    'approved_by' => $record->aproved_by,
+                ]);
+
                 dispatch(new ReciboDePagoIndividual($array_data));
 
                 /**
@@ -719,6 +738,16 @@ class PaidMembershipController extends Controller
 
                 $sales->save();
 
+                SecurityAudit::log('AUDIT_SALE_REGISTERED', 'paid-membership.approve-payment', [
+                    'flow' => 'next-register',
+                    'sale_id' => $sales->id,
+                    'invoice_number' => $sales->invoice_number,
+                    'affiliation_code' => $sales->affiliation_code,
+                    'payment_method' => $sales->payment_method,
+                    'payment_frequency' => $sales->payment_frequency,
+                    'total_amount' => $sales->total_amount,
+                ]);
+
                 /**
                  * Actualizacion el registro de pago y le agregamos el nuemro de la factura generada
                  * ----------------------------------------------------------------------------------------------------
@@ -767,6 +796,14 @@ class PaidMembershipController extends Controller
                 $record->status = 'APROBADO';
                 $record->aproved_by = Auth::user()->name;
                 $record->save();
+
+                SecurityAudit::log('AUDIT_PAYMENT_APPROVED', 'paid-membership.approve-payment', [
+                    'flow' => 'next-register',
+                    'paid_membership_id' => $record->id,
+                    'invoice_number' => $record->invoice_number,
+                    'status' => $record->status,
+                    'approved_by' => $record->aproved_by,
+                ]);
 
                 ReciboDePagoIndividual::dispatch($array_data);
 
@@ -969,6 +1006,11 @@ class PaidMembershipController extends Controller
             }
 
         } catch (\Throwable $th) {
+            SecurityAudit::log('AUDIT_PAYMENT_APPROVAL_FAILED', 'paid-membership.approve-payment', [
+                'paid_membership_id' => $record->id ?? null,
+                'error' => $th->getMessage(),
+            ]);
+
             dd($th);
             // ERROR DETECTADO: Deshacer todos los cambios en la DB
             DB::rollBack();

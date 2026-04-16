@@ -11,6 +11,7 @@ use App\Filament\Operations\Resources\Suppliers\Widgets\SupplierStatsOverviewFir
 use App\Mail\SupplierReportMail;
 use App\Models\Supplier;
 use App\Services\SupplierReportDownloadZoneService;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
@@ -62,7 +63,28 @@ class ListSuppliers extends ListRecords
             'supplierReportEmail' => ['required', 'email', 'max:255'],
         ]);
 
-        Mail::to($this->supplierReportEmail)->send(new SupplierReportMail);
+        try {
+            Mail::to($this->supplierReportEmail)->send(new SupplierReportMail);
+
+            SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_REPORT_EMAIL_SENT', 'operations.suppliers.report.send-email', [
+                'recipient_email' => $this->supplierReportEmail,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+
+            SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_REPORT_EMAIL_FAILED', 'operations.suppliers.report.send-email', [
+                'recipient_email' => $this->supplierReportEmail,
+                'error' => $e->getMessage(),
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title('Error al enviar correo')
+                ->body('No se pudo enviar el reporte por correo. Intente de nuevo o contacte a sistemas.')
+                ->send();
+
+            return;
+        }
 
         Notification::make()
             ->success()

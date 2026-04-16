@@ -205,9 +205,11 @@ final class AssociateAffiliatesWithCorporatePlanService
      */
     private static function feeMatchesAgeRangeAndCoverage(int $ageRangeId, ?int $coverageId, float $fee): bool
     {
+
         $matchesPrice = static fn (Fee $f): bool => abs((float) $f->price - $fee) < 0.01;
 
         if ($coverageId !== null) {
+
             return Fee::query()
                 ->where('age_range_id', $ageRangeId)
                 ->where('coverage_id', $coverageId)

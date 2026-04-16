@@ -2,18 +2,61 @@
     use Illuminate\Support\Str;
 
     $fullWidth = $fullWidth ?? false;
+    $manualSelectionMode = $tickets->count() >= 6;
     $wrapClass = $fullWidth
         ? 'w-full rounded-2xl'
         : 'shrink-0 w-full min-w-0 max-w-[280px] sm:max-w-[320px] rounded-2xl';
-    $tickerItems = $tickets->count() > 1 ? $tickets->concat($tickets) : $tickets;
+    $tickerItems = $manualSelectionMode
+        ? $tickets
+        : ($tickets->count() > 1 ? $tickets->concat($tickets) : $tickets);
 @endphp
 {{-- Un solo nodo raíz: Livewire + SPA evitan duplicar el bloque al actualizar el DOM --}}
 <div class="w-full" wire:key="business-helpdesk-tickets-ticker-root">
     @if($tickets->isNotEmpty())
         <div
-            x-data="{ paused: false }"
+            x-data="{
+                paused: false,
+                manualMode: @js($manualSelectionMode),
+                hasPrev: false,
+                hasNext: false,
+                initManualScroll() {
+                    if (! this.manualMode) {
+                        return;
+                    }
+
+                    this.$nextTick(() => this.updateArrows());
+                },
+                updateArrows() {
+                    if (! this.manualMode || ! this.$refs.manualTickerRail) {
+                        this.hasPrev = false;
+                        this.hasNext = false;
+
+                        return;
+                    }
+
+                    const rail = this.$refs.manualTickerRail;
+                    const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
+                    this.hasPrev = rail.scrollLeft > 8;
+                    this.hasNext = rail.scrollLeft < (maxScroll - 8);
+                },
+                scrollTickets(direction) {
+                    if (! this.manualMode || ! this.$refs.manualTickerRail) {
+                        return;
+                    }
+
+                    const rail = this.$refs.manualTickerRail;
+                    const amount = Math.max(220, Math.floor(rail.clientWidth * 0.72));
+                    rail.scrollBy({
+                        left: direction === 'next' ? amount : -amount,
+                        behavior: 'smooth',
+                    });
+                    setTimeout(() => this.updateArrows(), 260);
+                },
+            }"
+            x-init="initManualScroll()"
             x-on:mouseenter="paused = true"
             x-on:mouseleave="paused = false"
+            x-on:resize.window.debounce.150ms="updateArrows()"
             class="fi-helpdesk-ticker-ios mt-3 tickets-ticker-wrap {{ $wrapClass }} overflow-hidden border border-slate-200/80 bg-gradient-to-r from-white/95 via-slate-50/90 to-white/95 shadow-[0_14px_36px_-16px_rgba(15,23,42,0.35)] ring-1 ring-black/5 dark:border-slate-700/80 dark:from-slate-900/95 dark:via-slate-950/90 dark:to-slate-900/95 dark:ring-white/10"
             role="region"
             aria-label="Tickets asignados"
@@ -29,18 +72,48 @@
                 </div>
 
                 <div class="fi-helpdesk-ticker-ios-track flex-1 min-w-0 overflow-hidden relative rounded-xl border border-slate-200/70 bg-white/55 dark:border-slate-700/70 dark:bg-slate-900/45">
+                    <button
+                        type="button"
+                        x-cloak
+                        x-show="manualMode"
+                        x-bind:disabled="! hasPrev"
+                        x-on:click="scrollTickets('prev')"
+                        class="absolute left-1 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 p-1.5 text-slate-600 shadow-sm transition sm:inline-flex disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600/90 dark:bg-slate-900/95 dark:text-slate-300"
+                        aria-label="Desplazar tickets a la izquierda"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4">
+                            <path fill-rule="evenodd" d="M11.78 3.22a.75.75 0 0 1 0 1.06L6.06 10l5.72 5.72a.75.75 0 1 1-1.06 1.06l-6.25-6.25a.75.75 0 0 1 0-1.06l6.25-6.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
                     <div
-                        class="absolute inset-y-0 left-0 {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-r from-white dark:from-slate-900/95 to-transparent z-10 pointer-events-none"
+                        class="absolute inset-y-0 left-0 {{ $manualSelectionMode ? 'hidden' : '' }} {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-r from-white dark:from-slate-900/95 to-transparent z-10 pointer-events-none"
                         aria-hidden="true"
                     ></div>
                     <div
-                        class="absolute inset-y-0 right-0 {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-l from-white dark:from-slate-900/95 to-transparent z-10 pointer-events-none"
+                        class="absolute inset-y-0 right-0 {{ $manualSelectionMode ? 'hidden' : '' }} {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-l from-white dark:from-slate-900/95 to-transparent z-10 pointer-events-none"
                         aria-hidden="true"
                     ></div>
-                    <div class="overflow-hidden pl-10 pr-2 sm:pl-6">
+                    <button
+                        type="button"
+                        x-cloak
+                        x-show="manualMode"
+                        x-bind:disabled="! hasNext"
+                        x-on:click="scrollTickets('next')"
+                        class="absolute right-1 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 p-1.5 text-slate-600 shadow-sm transition sm:inline-flex disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600/90 dark:bg-slate-900/95 dark:text-slate-300"
+                        aria-label="Desplazar tickets a la derecha"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4">
+                            <path fill-rule="evenodd" d="M8.22 3.22a.75.75 0 0 1 1.06 0l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 1 1-1.06-1.06L13.94 10 8.22 4.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div
+                        x-ref="manualTickerRail"
+                        x-on:scroll.throttle.100ms="updateArrows()"
+                        class="{{ $manualSelectionMode ? 'fi-helpdesk-ticker-manual-scroll overflow-x-auto overflow-y-hidden px-2 sm:px-8' : 'overflow-hidden pl-10 pr-2 sm:pl-6' }}"
+                    >
                         <div
-                            class="fi-helpdesk-ticker-ios-rail inline-flex items-center {{ $fullWidth ? 'gap-2 py-1' : 'gap-1 py-0.5' }} will-change-transform"
-                            :style="paused ? {} : { animation: 'helpdesk-ticker-scroll 38s linear infinite' }"
+                            class="fi-helpdesk-ticker-ios-rail inline-flex items-center {{ $manualSelectionMode ? 'w-max snap-x snap-mandatory' : '' }} {{ $fullWidth ? 'gap-2 py-1' : 'gap-1 py-0.5' }} will-change-transform"
+                            :style="paused || manualMode ? {} : { animation: 'helpdesk-ticker-scroll 38s linear infinite' }"
                         >
                             @foreach($tickerItems as $ticket)
                                 @php
@@ -76,7 +149,7 @@
                                     wire:loading.attr="disabled"
                                     wire:target="openTicketNotification"
                                     wire:key="business-ticket-chip-{{ $ticket->id }}-{{ $loop->index }}"
-                                    class="group shrink-0 inline-flex items-start gap-1 rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500/50 cursor-pointer text-left disabled:opacity-60 disabled:pointer-events-none {{ $fullWidth ? 'px-2.5 py-1.5 flex-col items-stretch min-w-[13rem] sm:min-w-[15rem]' : 'flex-row items-center rounded-lg px-1.5 py-0.5 min-w-[10rem]' }} {{ $chipBgClasses }}"
+                                    class="group shrink-0 inline-flex items-start gap-1 rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500/50 cursor-pointer text-left disabled:opacity-60 disabled:pointer-events-none {{ $manualSelectionMode ? 'snap-start' : '' }} {{ $fullWidth ? 'px-2.5 py-1.5 flex-col items-stretch min-w-[13rem] sm:min-w-[15rem]' : 'flex-row items-center rounded-lg px-1.5 py-0.5 min-w-[10rem]' }} {{ $chipBgClasses }}"
                                     title="{{ Str::limit(strip_tags($ticket->description ?? ''), 200) }}"
                                     aria-label="Ver resumen del ticket {{ $ticket->id }}"
                                 >
@@ -101,15 +174,18 @@
                                         </span>
                                     @endif
                                 </button>
-                                <span class="shrink-0 text-slate-300 dark:text-slate-600 {{ $fullWidth ? 'text-sm' : 'text-xs' }}" aria-hidden="true">•</span>
+                                @if(! $manualSelectionMode)
+                                    <span class="shrink-0 text-slate-300 dark:text-slate-600 {{ $fullWidth ? 'text-sm' : 'text-xs' }}" aria-hidden="true">•</span>
+                                @endif
                             @endforeach
                         </div>
                     </div>
                 </div>
                 @if($fullWidth)
                     <p class="shrink-0 hidden lg:block text-[10px] text-slate-500 dark:text-slate-400" title="Pasa el mouse para pausar • Clic para ver resumen">
-                        <span x-show="! paused">Auto-scroll activo</span>
-                        <span x-show="paused">Ticker pausado</span>
+                        <span x-show="manualMode">Desliza horizontalmente para elegir ticket</span>
+                        <span x-show="! manualMode && ! paused">Auto-scroll activo</span>
+                        <span x-show="! manualMode && paused">Ticker pausado</span>
                     </p>
                 @endif
             </div>

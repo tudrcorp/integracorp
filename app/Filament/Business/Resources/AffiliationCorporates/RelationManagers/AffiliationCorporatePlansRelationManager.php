@@ -353,8 +353,18 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                     ->label('Eliminar')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
-                    ->action(function (array $data): void {
-                        $this->getOwnerRecord()->affiliationCorporatePlans()->whereIn('id', $data['ids'])->delete();
+                    ->action(function (Collection $records): void {
+                        $ids = $records
+                            ->pluck('id')
+                            ->filter()
+                            ->values()
+                            ->all();
+
+                        if ($ids === []) {
+                            return;
+                        }
+
+                        $this->getOwnerRecord()->affiliationCorporatePlans()->whereIn('id', $ids)->delete();
                     }),
                 BulkAction::make('associate_and_recalculate')
                     ->label('Asociar y recalcular')

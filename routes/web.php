@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\AffiliationBusinessDocumentsController;
+use App\Http\Controllers\AffiliationCorporateBusinessDocumentsController;
 use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
@@ -112,6 +114,19 @@ Route::get('operations/suppliers/{supplier}/ficha/download', [SupplierFichaPdfCo
     ->middleware(['web', 'auth'])
     ->name('operations.suppliers.ficha.download');
 
+Route::get('operations/suppliers/{supplier}/documents/{index}/download', [SupplierDocumentAuditController::class, 'downloadAffiliationDocument'])
+    ->middleware(['web', 'auth'])
+    ->whereNumber('index')
+    ->name('operations.suppliers.documents.download');
+
+Route::get('operations/suppliers/{supplier}/carta-acceptance/preview', [SupplierDocumentAuditController::class, 'previewCartaAcceptance'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.suppliers.carta-acceptance.preview');
+
+Route::get('operations/suppliers/{supplier}/carta-acceptance/download', [SupplierDocumentAuditController::class, 'downloadCartaAcceptance'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.suppliers.carta-acceptance.download');
+
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
     $quote = \App\Models\DressTylorQuote::findOrFail($record);
     $structure = $quote->quote_structure;
@@ -169,6 +184,27 @@ Route::post('business/affiliations/documents/send-email/{affiliation}', [
 ])
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-documents.send-email');
+
+Route::post('business/affiliation-corporates/documents/regenerate-async/{affiliationCorporate}', [
+    AffiliationCorporateBusinessDocumentsController::class,
+    'regenerateAsync',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-documents.regenerate-async');
+
+Route::get('business/affiliation-corporates/documents/status/{affiliationCorporate}/{taskId}', [
+    AffiliationCorporateBusinessDocumentsController::class,
+    'status',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-documents.status');
+
+Route::post('business/affiliation-corporates/documents/send-email/{affiliationCorporate}', [
+    AffiliationCorporateBusinessDocumentsController::class,
+    'sendEmail',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-documents.send-email');
 
 Route::post('business/helpdesk-tickets/{helpDesk}/mark-in-progress', MarkHelpdeskTicketInProgressController::class)
     ->middleware(['web', 'auth'])

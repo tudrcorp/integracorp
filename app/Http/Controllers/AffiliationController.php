@@ -6,6 +6,7 @@ use App\Mail\SendMailKitBienvenida;
 use App\Models\Affiliate;
 use App\Models\User;
 use App\Support\DomPdfBatchRenderOptions;
+use App\Support\SecurityAudit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -433,11 +434,25 @@ class AffiliationController extends Controller
                 }
             }
 
-            // dd($data);
+            SecurityAudit::log('AUDIT_AFFILIATION_PAYMENT_VOUCHER_UPLOADED', 'affiliations.upload-payment', [
+                'affiliation_id' => $record->id,
+                'affiliation_code' => $record->code,
+                'payment_frequency' => $record['payment_frequency'] ?? null,
+                'payment_method' => $data['payment_method'] ?? null,
+                'type_roll' => $type_roll,
+                'latest_paid_membership_id' => $record->paid_memberships()->latest('id')->value('id'),
+            ]);
+
             return true;
 
             // code...
         } catch (\Throwable $th) {
+            SecurityAudit::log('AUDIT_AFFILIATION_PAYMENT_VOUCHER_UPLOAD_FAILED', 'affiliations.upload-payment', [
+                'affiliation_id' => $record->id ?? null,
+                'affiliation_code' => $record->code ?? null,
+                'error' => $th->getMessage(),
+            ]);
+
             dd($th);
             Log::error($th->getMessage());
             Notification::make()
@@ -864,10 +879,21 @@ class AffiliationController extends Controller
                 }
             }
 
+            SecurityAudit::log('AUDIT_AFFILIATION_PAYMENT_VOUCHER_UPLOADED_BULK', 'affiliations.upload-payment-multiple', [
+                'records_count' => count($records),
+                'payment_method' => $data['payment_method'] ?? null,
+                'type_roll' => $type_roll,
+            ]);
+
             return true;
 
             // code...
         } catch (\Throwable $th) {
+            SecurityAudit::log('AUDIT_AFFILIATION_PAYMENT_VOUCHER_UPLOAD_BULK_FAILED', 'affiliations.upload-payment-multiple', [
+                'records_count' => count($records ?? []),
+                'error' => $th->getMessage(),
+            ]);
+
             dd($th);
             Log::error($th->getMessage());
             Notification::make()
