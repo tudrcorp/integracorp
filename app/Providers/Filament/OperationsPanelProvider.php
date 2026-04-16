@@ -127,27 +127,9 @@ class OperationsPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::CONTENT_START,
-                function () {
-                    $colaborador = \App\Models\RrhhColaborador::query()
-                        ->where('user_id', auth()->id())
-                        ->first();
-                    $tickets = $colaborador
-                        ? \App\Models\HelpDesk::query()
-                            ->whereHas(
-                                'rrhhColaboradores',
-                                fn (\Illuminate\Database\Eloquent\Builder $q) => $q->where('rrhh_colaboradors.id', $colaborador->id)
-                            )
-                            ->whereIn('status', ['PENDIENTE POR INICIAR', 'EN PROCESO'])
-                            ->orderByDesc('id')
-                            ->limit(30)
-                            ->get()
-                        : collect();
-
-                    return view('filament.tickets-ticker', [
-                        'tickets' => $tickets,
-                        'fullWidth' => true,
-                    ]);
-                }
+                fn () => view('filament.hooks.business-helpdesk-tickets-ticker-wrapper', [
+                    'fullWidth' => true,
+                ])
             )
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');

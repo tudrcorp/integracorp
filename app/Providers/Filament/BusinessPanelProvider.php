@@ -6,7 +6,6 @@ use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
-use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -158,10 +157,6 @@ class BusinessPanelProvider extends PanelProvider
                             ->directory('backgroundBusenissPanelLogin')
                     ),
             ])
-            // ->renderHook(
-            //     PanelsRenderHook::TOPBAR_END,
-            //     fn() => view('filament.name-user')
-            // )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.menu-user')

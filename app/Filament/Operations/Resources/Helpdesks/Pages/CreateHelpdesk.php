@@ -8,8 +8,8 @@ use App\Filament\Concerns\PreparesHelpdeskColaboradorAssigneesOnCreate;
 use App\Filament\Operations\Resources\Helpdesks\HelpdeskResource;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\HelpDesk;
-use App\Models\RrhhColaborador;
 use App\Services\HelpdeskTicketAssigneeMailService;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -128,15 +128,13 @@ class CreateHelpdesk extends CreateRecord
         HelpdeskTicketAssigneeMailService::sendToEachAssignee($this->getRecord());
         $this->sendNotificationToColaboradorWhatsApp($this->getRecord());
 
-        $colaborador = RrhhColaborador::query()->where('user_id', Auth::id())->first();
-        if ($colaborador !== null) {
-            $ticket = $this->getRecord();
-            $colaborador->sendNotification(
-                title: 'NUEVO TICKET DE SOPORTE CREADO',
-                body: 'Ticket N.º '.$ticket->getKey().' registrado. Conéctese a INTEGRACORP con su usuario y contraseña para dar seguimiento.',
-                icon: 'heroicon-m-ticket',
-                iconColor: 'success',
-            );
-        }
+        $ticket = $this->getRecord();
+        Notification::make()
+            ->title('NUEVO TICKET DE SOPORTE CREADO')
+            ->body('Ticket N.º '.$ticket->getKey().' registrado. Conéctese a INTEGRACORP con su usuario y contraseña para dar seguimiento.')
+            ->icon('heroicon-m-ticket')
+            ->iconColor('success')
+            ->success()
+            ->send();
     }
 }

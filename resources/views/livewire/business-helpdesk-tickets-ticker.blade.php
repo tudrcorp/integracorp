@@ -3,8 +3,9 @@
 
     $fullWidth = $fullWidth ?? false;
     $wrapClass = $fullWidth
-        ? 'w-full rounded-lg'
-        : 'shrink-0 w-full min-w-0 max-w-[280px] sm:max-w-[320px] rounded-lg';
+        ? 'w-full rounded-2xl'
+        : 'shrink-0 w-full min-w-0 max-w-[280px] sm:max-w-[320px] rounded-2xl';
+    $tickerItems = $tickets->count() > 1 ? $tickets->concat($tickets) : $tickets;
 @endphp
 {{-- Un solo nodo raíz: Livewire + SPA evitan duplicar el bloque al actualizar el DOM --}}
 <div class="w-full" wire:key="business-helpdesk-tickets-ticker-root">
@@ -13,34 +14,35 @@
             x-data="{ paused: false }"
             x-on:mouseenter="paused = true"
             x-on:mouseleave="paused = false"
-            class="mt-3 tickets-ticker-wrap {{ $wrapClass }} overflow-hidden bg-gradient-to-r from-slate-100 via-white to-slate-100 dark:from-slate-800/90 dark:via-gray-800/95 dark:to-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-lg ring-1 ring-black/5 dark:ring-white/10"
+            class="fi-helpdesk-ticker-ios mt-3 tickets-ticker-wrap {{ $wrapClass }} overflow-hidden border border-slate-200/80 bg-gradient-to-r from-white/95 via-slate-50/90 to-white/95 shadow-[0_14px_36px_-16px_rgba(15,23,42,0.35)] ring-1 ring-black/5 dark:border-slate-700/80 dark:from-slate-900/95 dark:via-slate-950/90 dark:to-slate-900/95 dark:ring-white/10"
             role="region"
             aria-label="Tickets asignados"
         >
-            <div class="flex items-center {{ $fullWidth ? 'gap-2 px-2.5 py-1' : 'gap-1.5 px-2 py-0.5' }}">
-                <div class="shrink-0 flex items-center {{ $fullWidth ? 'gap-1 rounded-md px-2 py-0.5' : 'gap-1 rounded px-1.5 py-0.5' }} bg-primary-500/10 dark:bg-primary-500/20">
+            <div class="{{ $fullWidth ? 'flex flex-col gap-2 px-2.5 py-2 sm:flex-row sm:items-center' : 'flex items-center gap-1.5 px-2 py-1.5' }}">
+                <div class="shrink-0 flex items-center {{ $fullWidth ? 'gap-1.5 rounded-xl px-2.5 py-1.5' : 'gap-1 rounded-md px-1.5 py-0.5' }} border border-primary-200/65 bg-primary-500/10 dark:border-primary-500/30 dark:bg-primary-500/20">
+                    <span class="inline-flex size-2 rounded-full bg-primary-500 shadow-[0_0_0_4px_rgba(59,130,246,0.18)]"></span>
                     <svg class="{{ $fullWidth ? 'size-3.5' : 'size-3' }} text-primary-600 dark:text-primary-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 0 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
                     </svg>
-                    <span class="{{ $fullWidth ? 'text-[10px]' : 'text-[9px]' }} font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">Tickets</span>
-                    <span class="rounded-full bg-primary-500/20 dark:bg-primary-400/30 {{ $fullWidth ? 'px-1.5 py-0.5 text-[10px]' : 'px-1 py-0.5 text-[9px]' }} font-semibold tabular-nums text-primary-700 dark:text-primary-300">{{ $tickets->count() }}</span>
+                    <span class="{{ $fullWidth ? 'text-[10px]' : 'text-[9px]' }} font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">Tickets activos</span>
+                    <span class="rounded-full border border-primary-300/50 bg-primary-500/20 dark:border-primary-300/20 dark:bg-primary-400/30 {{ $fullWidth ? 'px-2 py-0.5 text-[10px]' : 'px-1 py-0.5 text-[9px]' }} font-semibold tabular-nums text-primary-700 dark:text-primary-300">{{ $tickets->count() }}</span>
                 </div>
 
-                <div class="flex-1 min-w-0 overflow-hidden relative">
+                <div class="fi-helpdesk-ticker-ios-track flex-1 min-w-0 overflow-hidden relative rounded-xl border border-slate-200/70 bg-white/55 dark:border-slate-700/70 dark:bg-slate-900/45">
                     <div
-                        class="absolute inset-y-0 left-0 {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-r from-white dark:from-gray-800/95 to-transparent z-10 pointer-events-none"
+                        class="absolute inset-y-0 left-0 {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-r from-white dark:from-slate-900/95 to-transparent z-10 pointer-events-none"
                         aria-hidden="true"
                     ></div>
                     <div
-                        class="absolute inset-y-0 right-0 {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-l from-white dark:from-gray-800/95 to-transparent z-10 pointer-events-none"
+                        class="absolute inset-y-0 right-0 {{ $fullWidth ? 'w-10 sm:w-14' : 'w-4 sm:w-6' }} bg-gradient-to-l from-white dark:from-slate-900/95 to-transparent z-10 pointer-events-none"
                         aria-hidden="true"
                     ></div>
-                    <div class="overflow-hidden pl-10 sm:pl-5">
+                    <div class="overflow-hidden pl-10 pr-2 sm:pl-6">
                         <div
-                            class="inline-flex items-center {{ $fullWidth ? 'gap-1.5 py-0.5' : 'gap-1 py-0.5' }} will-change-transform"
-                            :style="paused ? {} : { animation: 'tickets-ticker-scroll 50s linear infinite' }"
+                            class="fi-helpdesk-ticker-ios-rail inline-flex items-center {{ $fullWidth ? 'gap-2 py-1' : 'gap-1 py-0.5' }} will-change-transform"
+                            :style="paused ? {} : { animation: 'helpdesk-ticker-scroll 38s linear infinite' }"
                         >
-                            @foreach($tickets as $ticket)
+                            @foreach($tickerItems as $ticket)
                                 @php
                                     $descLen = $fullWidth ? 80 : 50;
                                     $desc = Str::limit(strip_tags($ticket->description ?? ''), $descLen);
@@ -73,8 +75,8 @@
                                     wire:click.prevent="openTicketNotification({{ $ticket->id }})"
                                     wire:loading.attr="disabled"
                                     wire:target="openTicketNotification"
-                                    wire:key="business-ticket-chip-{{ $ticket->id }}"
-                                    class="group shrink-0 inline-flex items-start gap-1 rounded-lg border shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500/50 cursor-pointer text-left disabled:opacity-60 disabled:pointer-events-none {{ $fullWidth ? 'px-2 py-1 flex-col items-stretch' : 'flex-row items-center rounded-md px-1.5 py-0.5' }} {{ $chipBgClasses }}"
+                                    wire:key="business-ticket-chip-{{ $ticket->id }}-{{ $loop->index }}"
+                                    class="group shrink-0 inline-flex items-start gap-1 rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500/50 cursor-pointer text-left disabled:opacity-60 disabled:pointer-events-none {{ $fullWidth ? 'px-2.5 py-1.5 flex-col items-stretch min-w-[13rem] sm:min-w-[15rem]' : 'flex-row items-center rounded-lg px-1.5 py-0.5 min-w-[10rem]' }} {{ $chipBgClasses }}"
                                     title="{{ Str::limit(strip_tags($ticket->description ?? ''), 200) }}"
                                     aria-label="Ver resumen del ticket {{ $ticket->id }}"
                                 >
@@ -105,16 +107,12 @@
                     </div>
                 </div>
                 @if($fullWidth)
-                    <p class="shrink-0 hidden sm:block text-[10px] text-slate-400 dark:text-slate-500" title="Pasa el mouse para pausar • Clic para ver resumen">Pausa al pasar</p>
+                    <p class="shrink-0 hidden lg:block text-[10px] text-slate-500 dark:text-slate-400" title="Pasa el mouse para pausar • Clic para ver resumen">
+                        <span x-show="! paused">Auto-scroll activo</span>
+                        <span x-show="paused">Ticker pausado</span>
+                    </p>
                 @endif
             </div>
-
-            <style>
-                @keyframes tickets-ticker-scroll {
-                    0% { transform: translateX(0); }
-                    100% { transform: translateX(-100%); }
-                }
-            </style>
         </div>
     @endif
 </div>

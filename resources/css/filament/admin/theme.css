@@ -3,6 +3,64 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
+@layer base {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+}
+
+@layer components {
+  .fi-layout,
+  .fi-main,
+  .fi-main-ctn,
+  .fi-page,
+  .fi-topbar,
+  .fi-topbar nav,
+  .fi-global-search,
+  .fi-sidebar-layout {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .tickets-ticker-wrap {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .fi-helpdesk-ticker-ios {
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+  }
+
+  .fi-helpdesk-ticker-ios-track {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+  }
+
+  .fi-helpdesk-ticker-ios .group:focus-visible {
+    outline: none;
+  }
+
+  @keyframes helpdesk-ticker-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fi-helpdesk-ticker-ios-rail {
+      animation: none !important;
+      transform: translateX(0) !important;
+    }
+  }
+}
+
 
 /* .fi-simple-main {
     background-color: color-mix(in oklab,#ffffff47 20%,transparent);

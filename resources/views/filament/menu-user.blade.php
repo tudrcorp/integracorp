@@ -14,7 +14,7 @@
 @endphp
 
 {{-- Contenedor: botón visible para todos; pastilla de módulos solo SUPERADMIN --}}
-<div class="hidden sm:flex sm:items-center sm:gap-4 sm:py-3">
+<div class="hidden sm:flex sm:min-w-0 sm:max-w-full sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 sm:py-3">
     {{-- Crear Ticket: visible para todos los usuarios autenticados --}}
     <a
         href="{{ $helpdeskCreateUrl }}"
@@ -29,7 +29,7 @@
     </a>
 
     @if ($visible)
-    <nav class="px-1 shrink-0 flex items-center" role="navigation" aria-label="Módulos">
+    <nav class="min-w-0 max-w-full px-1 flex items-center" role="navigation" aria-label="Módulos">
 
         {{-- Una sola pastilla tipo iOS / Dynamic Island --}}
         <div
@@ -57,14 +57,13 @@
             }"
             @mouseleave="reset()"
             class="
-                inline-flex items-center gap-3 rounded-full px-4 py-2
+                inline-flex min-w-0 max-w-full items-center gap-2 rounded-full px-3 py-2 sm:gap-3 sm:px-4
                 bg-white shadow-lg ring-1 ring-gray-200/80
                 dark:bg-black dark:shadow-black/40 dark:ring-white/10
-                min-w-0
             "
         >
             {{-- Zona de etiqueta: escribe el nombre del módulo al hacer hover + nombre del usuario --}}
-            <div class="min-w-[7rem] shrink-0 flex flex-col items-start gap-0.5 text-xs font-medium text-gray-500 dark:text-gray-500">
+            <div class="min-w-0 max-w-[9.25rem] sm:max-w-[10.5rem] flex-1 flex flex-col items-start gap-0.5 text-xs font-medium text-gray-500 dark:text-gray-500">
                 <div class="flex items-center gap-0.5">
                     <span x-text="typedText || defaultLabel"></span>
                     <span
@@ -76,7 +75,7 @@
                     ></span>
                 </div>
                 @if($userName)
-                    <span class="text-[0.8rem] leading-tight text-gray-700 dark:text-gray-300 truncate max-w-full font-medium" title="{{ $userName }}">{{ $userName }}</span>
+                    <span class="hidden md:block text-[0.8rem] leading-tight text-gray-700 dark:text-gray-300 truncate max-w-full font-medium" title="{{ $userName }}">{{ $userName }}</span>
                 @endif
             </div>
 
