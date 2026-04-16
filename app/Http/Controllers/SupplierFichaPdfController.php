@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use App\Services\SupplierFichaPdfService;
+use App\Support\SecurityAudit;
 use Symfony\Component\HttpFoundation\Response;
 
 class SupplierFichaPdfController extends Controller
@@ -16,6 +17,12 @@ class SupplierFichaPdfController extends Controller
 
         $binary = SupplierFichaPdfService::outputBinaryCached($supplier);
         $filename = SupplierFichaPdfService::downloadFilename($supplier);
+
+        SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_FICHA_DOWNLOADED', 'operations.suppliers.ficha.download', [
+            'supplier_id' => $supplier->id,
+            'supplier_name' => $supplier->name,
+            'filename' => $filename,
+        ]);
 
         return response($binary, 200)
             ->header('Content-Type', 'application/pdf')
@@ -28,6 +35,12 @@ class SupplierFichaPdfController extends Controller
 
         $binary = SupplierFichaPdfService::outputBinaryCached($supplier);
         $filename = SupplierFichaPdfService::downloadFilename($supplier);
+
+        SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_FICHA_VIEWED', 'operations.suppliers.ficha.preview', [
+            'supplier_id' => $supplier->id,
+            'supplier_name' => $supplier->name,
+            'filename' => $filename,
+        ]);
 
         return response($binary, 200)
             ->header('Content-Type', 'application/pdf')

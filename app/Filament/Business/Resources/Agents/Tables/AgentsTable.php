@@ -13,6 +13,7 @@ use App\Models\Agent;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -293,6 +294,13 @@ class AgentsTable
                                     $record->sendCartaBienvenida($record->id, $record->name, $record->email);
                                 }
 
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_WELCOME_EMAIL_SENT', 'business.agents.activate.send-welcome-email', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                    'agent_role' => $record->role,
+                                ]);
+
                                 // 4. Notificación de WhatsApp/SMS vía Controller
                                 $path = ($record->agent_type_id == 2)
                                     ? config('parameters.PATH_AGENT')
@@ -307,6 +315,14 @@ class AgentsTable
                                 // Confirmamos los cambios en la base de datos
                                 \Illuminate\Support\Facades\DB::commit();
 
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_ACTIVATED', 'business.agents.activate', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                    'created_user_id' => $user->id,
+                                    'notification_success' => (bool) $notificationSuccess,
+                                ]);
+
                                 // 5. Notificación visual al usuario en la interfaz
                                 Notification::make()
                                     ->title('¡AGENTE ACTIVADO!')
@@ -317,6 +333,20 @@ class AgentsTable
                             } catch (\Throwable $th) {
                                 // Revertimos cualquier cambio en la BD si algo falló
                                 \Illuminate\Support\Facades\DB::rollBack();
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_ACTIVATE_FAILED', 'business.agents.activate', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_WELCOME_EMAIL_FAILED', 'business.agents.activate.send-welcome-email', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
 
                                 // Registro profesional del error para el administrador
                                 \Illuminate\Support\Facades\Log::error("Fallo crítico al activar agente ID: {$record->id}", [
@@ -411,6 +441,13 @@ class AgentsTable
                             try {
 
                                 if ($record->status != 'ACTIVO') {
+                                    SecurityAudit::log('AUDIT_BUSINESS_AGENT_HIERARCHY_UPDATE_FAILED', 'business.agents.edit-hierarchy', [
+                                        'agent_id' => $record->id,
+                                        'agent_name' => $record->name,
+                                        'reason' => 'agent_not_active',
+                                        'requested_type_agency' => $data['type_agency'] ?? null,
+                                    ]);
+
                                     Notification::make()
                                         ->title('EXCEPCIÓN DE ACTUALIZACIÓN')
                                         ->body('El agente no se encuentra activo. Por favor debe activar el agente primero.')
@@ -520,7 +557,22 @@ class AgentsTable
                                             $corp->save();
                                         }
 
+                                        SecurityAudit::log('AUDIT_BUSINESS_AGENT_HIERARCHY_UPDATED', 'business.agents.edit-hierarchy', [
+                                            'agent_id' => $record->id,
+                                            'agent_name' => $record->name,
+                                            'target_agency_type' => $data['type_agency'] ?? null,
+                                            'owner_code' => $user->code_agency,
+                                            'new_user_id' => $user->id,
+                                        ]);
+
                                     } else {
+                                        SecurityAudit::log('AUDIT_BUSINESS_AGENT_HIERARCHY_UPDATE_FAILED', 'business.agents.edit-hierarchy', [
+                                            'agent_id' => $record->id,
+                                            'agent_name' => $record->name,
+                                            'reason' => 'user_not_found_by_email',
+                                            'agent_email' => $record->email,
+                                        ]);
+
                                         Notification::make()
                                             ->title('EXCEPCION')
                                             ->body('El correo del agente es diferente al correo del usuario. Por favor comuníquese con el administrador.')
@@ -630,7 +682,22 @@ class AgentsTable
                                             $corp->code_agency = $user->code_agency;
                                             $corp->save();
                                         }
+
+                                        SecurityAudit::log('AUDIT_BUSINESS_AGENT_HIERARCHY_UPDATED', 'business.agents.edit-hierarchy', [
+                                            'agent_id' => $record->id,
+                                            'agent_name' => $record->name,
+                                            'target_agency_type' => $data['type_agency'] ?? null,
+                                            'owner_code' => $data['owner_code'] ?? null,
+                                            'new_user_id' => $user->id,
+                                        ]);
                                     } else {
+                                        SecurityAudit::log('AUDIT_BUSINESS_AGENT_HIERARCHY_UPDATE_FAILED', 'business.agents.edit-hierarchy', [
+                                            'agent_id' => $record->id,
+                                            'agent_name' => $record->name,
+                                            'reason' => 'user_not_found_by_email',
+                                            'agent_email' => $record->email,
+                                        ]);
+
                                         Notification::make()
                                             ->title('EXCEPCION')
                                             ->body('El correo del agente es diferente al correo del usuario. Por favor comuníquese con el administrador.')
@@ -646,6 +713,12 @@ class AgentsTable
                                 // elimino al agente
                                 $record->delete();
 
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_PROMOTED_AND_REMOVED', 'business.agents.edit-hierarchy', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'target_agency_type' => $data['type_agency'] ?? null,
+                                ]);
+
                                 Notification::make()
                                     ->title('ASCENSO EXITOSO')
                                     ->body('El agente acaba de ser ascendido al rol de agencias de forma exitosa.')
@@ -655,7 +728,13 @@ class AgentsTable
                                     ->send();
 
                             } catch (\Throwable $th) {
-                                dd($th);
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_HIERARCHY_UPDATE_FAILED', 'business.agents.edit-hierarchy', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'requested_type_agency' => $data['type_agency'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
+
                                 Notification::make()
                                     ->title('EXCEPCION')
                                     ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
@@ -669,11 +748,56 @@ class AgentsTable
                     Action::make('Inactivate')
                         ->label('Inactivar')
                         ->requiresConfirmation()
-                        ->action(fn (Agent $record) => $record->update(['status' => 'INACTIVO']))
+                        ->action(function (Agent $record): void {
+                            try {
+                                $record->update(['status' => 'INACTIVO']);
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_INACTIVATED', 'business.agents.inactivate', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                ]);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_INACTIVATE_FAILED', 'business.agents.inactivate', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('EXCEPCION')
+                                    ->body('No se pudo inactivar el agente.')
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->color('danger')
+                                    ->send();
+                            }
+                        })
                         ->icon('heroicon-s-x-circle')
                         ->color('danger')
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteAction::make()
+                        ->action(function (Agent $record): void {
+                            try {
+                                $record->delete();
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_DELETED', 'business.agents.delete', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                ]);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENT_DELETE_FAILED', 'business.agents.delete', [
+                                    'agent_id' => $record->id,
+                                    'agent_name' => $record->name,
+                                    'agent_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                throw $th;
+                            }
+                        })
                         ->color('danger')
                         ->label('Eliminar')
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
@@ -698,6 +822,7 @@ class AgentsTable
                         ])
                         ->action(function (Collection $records, array $data) {
 
+                            $recordIds = $records->pluck('id')->values()->all();
                             $records = $records->toArray();
 
                             try {
@@ -758,7 +883,20 @@ class AgentsTable
                                         }
                                     }
                                 }
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENTS_ACCOUNT_MANAGER_ASSIGNED', 'business.agents.bulk-assign-account-manager', [
+                                    'agents_ids' => $recordIds,
+                                    'agents_count' => count($recordIds),
+                                    'owner_account_manager_id' => $data['ownerAccountManagers'] ?? null,
+                                ]);
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENTS_ACCOUNT_MANAGER_ASSIGN_FAILED', 'business.agents.bulk-assign-account-manager', [
+                                    'agents_ids' => $recordIds,
+                                    'agents_count' => count($recordIds),
+                                    'owner_account_manager_id' => $data['ownerAccountManagers'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
+
                                 Notification::make()
                                     ->title('EXCEPCION')
                                     ->body($th->getMessage())
@@ -780,6 +918,7 @@ class AgentsTable
                         ->color('danger')
                         ->action(function (Collection $records) {
                             try {
+                                $recordIds = $records->pluck('id')->values()->all();
 
                                 if (empty($records)) {
                                     return;
@@ -808,7 +947,16 @@ class AgentsTable
                                     ->success()
                                     ->send();
 
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENTS_BULK_DELETED', 'business.agents.bulk-delete', [
+                                    'agents_ids' => $recordIds,
+                                    'agents_count' => count($recordIds),
+                                ]);
+
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENTS_BULK_DELETE_FAILED', 'business.agents.bulk-delete', [
+                                    'error' => $th->getMessage(),
+                                ]);
+
                                 Log::error('Error en eliminación masiva de agentes', [
                                     'message' => $th->getMessage(),
                                     'trace' => $th->getTraceAsString(),

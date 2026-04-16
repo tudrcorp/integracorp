@@ -59,16 +59,16 @@ class BusinessHelpdeskTicketsTicker extends Component
             : '—';
         $priority = trim((string) ($ticket->priority ?? 'MEDIA')) !== '' ? (string) $ticket->priority : 'MEDIA';
         $status = trim((string) ($ticket->status ?? 'PENDIENTE POR INICIAR')) !== '' ? (string) $ticket->status : 'PENDIENTE POR INICIAR';
-        $priorityPalette = match ($priority) {
-            'ALTA' => ['bg' => '#FEE2E2', 'text' => '#9F1239', 'border' => '#FECACA'],
-            'BAJA' => ['bg' => '#DCFCE7', 'text' => '#065F46', 'border' => '#BBF7D0'],
-            default => ['bg' => '#FEF3C7', 'text' => '#92400E', 'border' => '#FDE68A'],
+        $priorityClasses = match ($priority) {
+            'ALTA' => 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/35 dark:bg-rose-500/15 dark:text-rose-200',
+            'BAJA' => 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/35 dark:bg-emerald-500/15 dark:text-emerald-200',
+            default => 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/35 dark:bg-amber-500/15 dark:text-amber-200',
         };
-        $statusPalette = match ($status) {
-            'EN PROCESO' => ['bg' => '#DBEAFE', 'text' => '#1D4ED8', 'border' => '#BFDBFE'],
-            'TERMINADO' => ['bg' => '#DCFCE7', 'text' => '#166534', 'border' => '#BBF7D0'],
-            'CANCELADO' => ['bg' => '#FEE2E2', 'text' => '#B91C1C', 'border' => '#FECACA'],
-            default => ['bg' => '#F3F4F6', 'text' => '#374151', 'border' => '#E5E7EB'],
+        $statusClasses = match ($status) {
+            'EN PROCESO' => 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/35 dark:bg-sky-500/15 dark:text-sky-200',
+            'TERMINADO' => 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/35 dark:bg-emerald-500/15 dark:text-emerald-200',
+            'CANCELADO' => 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/35 dark:bg-rose-500/15 dark:text-rose-200',
+            default => 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-500/35 dark:bg-slate-500/15 dark:text-slate-200',
         };
         $descriptionPlain = trim(strip_tags((string) ($ticket->description ?? '')));
         $descriptionInner = $descriptionPlain !== ''
@@ -76,18 +76,18 @@ class BusinessHelpdeskTicketsTicker extends Component
             : 'Sin descripción registrada.';
         $createdAt = $ticket->created_at?->format('d/m/Y H:i') ?? '—';
 
-        $bodyHtml = '<div style="display:flex;flex-direction:column;gap:0.75rem;min-width:min(100%,30rem);font-size:0.9375rem;line-height:1.35;">'
-            .'<div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">'
-            .'<span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.25rem 0.65rem;border-radius:9999px;font-size:0.72rem;font-weight:700;letter-spacing:0.02em;background:'.$priorityPalette['bg'].';color:'.$priorityPalette['text'].';border:1px solid '.$priorityPalette['border'].';">Prioridad: '.e($priority).'</span>'
-            .'<span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.25rem 0.65rem;border-radius:9999px;font-size:0.72rem;font-weight:700;letter-spacing:0.02em;background:'.$statusPalette['bg'].';color:'.$statusPalette['text'].';border:1px solid '.$statusPalette['border'].';">'.e($status).'</span>'
+        $bodyHtml = '<div class="flex min-w-0 max-w-[30rem] flex-col gap-3 text-[0.9375rem] leading-[1.35]">'
+            .'<div class="flex flex-wrap items-center justify-between gap-2">'
+            .'<span class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.72rem] font-bold tracking-[0.02em] '.$priorityClasses.'">Prioridad: '.e($priority).'</span>'
+            .'<span class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.72rem] font-bold tracking-[0.02em] '.$statusClasses.'">'.e($status).'</span>'
             .'</div>'
-            .'<div style="display:grid;grid-template-columns:auto 1fr;gap:0.35rem 0.6rem;font-size:0.9rem;">'
-            .'<span style="font-weight:700;color:#111827;">Registrado por:</span><span style="color:#374151;">'.$creatorName.'</span>'
-            .'<span style="font-weight:700;color:#111827;">Fecha:</span><span style="color:#374151;">'.e($createdAt).'</span>'
+            .'<div class="grid grid-cols-[auto,1fr] gap-x-2.5 gap-y-1 text-[0.9rem]">'
+            .'<span class="font-semibold text-slate-900 dark:text-slate-100">Registrado por:</span><span class="text-slate-700 dark:text-slate-300">'.$creatorName.'</span>'
+            .'<span class="font-semibold text-slate-900 dark:text-slate-100">Fecha:</span><span class="text-slate-700 dark:text-slate-300">'.e($createdAt).'</span>'
             .'</div>'
-            .'<div style="border:1px solid #FDE68A;background:linear-gradient(180deg,#FFF9DB 0%,#FFFBEB 100%);border-radius:0.85rem;padding:0.7rem 0.8rem;">'
-            .'<div style="font-size:0.78rem;font-weight:800;letter-spacing:0.02em;text-transform:uppercase;color:#B45309;margin-bottom:0.35rem;">Descripción</div>'
-            .'<div style="font-weight:600;color:#92400E;line-height:1.45;">'.$descriptionInner.'</div>'
+            .'<div class="rounded-xl border border-amber-200 bg-gradient-to-b from-amber-50 to-amber-50/60 px-3 py-2.5 dark:border-amber-500/35 dark:from-amber-500/15 dark:to-amber-500/10">'
+            .'<div class="mb-1 text-[0.78rem] font-extrabold uppercase tracking-[0.02em] text-amber-700 dark:text-amber-200">Descripción</div>'
+            .'<div class="font-semibold leading-[1.45] text-amber-800 dark:text-amber-100">'.$descriptionInner.'</div>'
             .'</div>'
             .'</div>';
 

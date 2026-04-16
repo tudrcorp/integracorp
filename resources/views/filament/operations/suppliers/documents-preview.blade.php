@@ -100,7 +100,7 @@
                                 Abrir
                             </a>
                             <a
-                                href="{{ $document['url'] }}"
+                                href="{{ $document['download_url'] ?? $document['url'] }}"
                                 download
                                 class="inline-flex items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
                             >

@@ -23,6 +23,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
@@ -78,6 +79,9 @@ class AdministrationPanelProvider extends PanelProvider
                     ->label('ADMINISTRACIÓN')
                     ->icon('heroicon-o-calculator'),
                 NavigationGroup::make()
+                    ->label('COMPENSACION TDEV')
+                    ->icon('heroicon-o-banknotes'),
+                NavigationGroup::make()
                     ->label('RRHH')
                     ->icon('heroicon-o-user-group')
                     ->collapsed(),
@@ -102,8 +106,8 @@ class AdministrationPanelProvider extends PanelProvider
                     ->icon('heroicon-o-building-office-2')
                     ->color('warning')
                     ->hidden(function () {
-                        $user = auth()->user()->departament;
-                        if (in_array('SUPERADMIN', $user)) {
+                        $departaments = (array) (Auth::user()?->departament ?? []);
+                        if (in_array('SUPERADMIN', $departaments, true)) {
                             return false;
                         }
 

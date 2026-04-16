@@ -1,6 +1,7 @@
 @props([
     'exists' => false,
     'url' => null,
+    'downloadUrl' => null,
     'extension' => '',
     'supplier' => null,
 ])
@@ -33,7 +34,7 @@
             @if ($isPdf)
                 <iframe
                     title="Vista previa PDF — carta de aceptación"
-                    src="{{ $url }}#toolbar=1"
+                    src="{{ $url }}#toolbar=0"
                     class="h-[min(72vh,800px)] w-full border-0 bg-gray-100 dark:bg-gray-900"
                     loading="lazy"
                 ></iframe>
@@ -80,7 +81,7 @@
                     Abrir en pestaña
                 </a>
                 <a
-                    href="{{ $url }}"
+                    href="{{ $downloadUrl ?? $url }}"
                     download
                     class="fi-btn fi-btn-size-md inline-flex items-center justify-center gap-x-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm outline-none transition duration-75 hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500"
                 >

@@ -34,10 +34,12 @@ use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 
 class AffiliationCorporatesTable
 {
@@ -399,6 +401,23 @@ class AffiliationCorporatesTable
             )
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('regenerate')
+                        ->label('Regenerar Documentos')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('info')
+                        ->modalHeading('Certificado y tarjetas corporativas')
+                        ->modalWidth(Width::SevenExtraLarge)
+                        ->modalIcon('heroicon-o-arrow-path')
+                        ->modalDescription('Se genera el certificado corporativo con la lista de afiliados y una tarjeta por afiliado. Si hay más de 3 afiliados, el proceso se divide por lotes para mantener el rendimiento.')
+                        ->modalContent(function (AffiliationCorporate $record): ViewContract {
+                            return View::make('filament.business.affiliation-corporates.affiliation-corporate-documents-preview-modal', [
+                                'affiliationCorporate' => $record,
+                            ]);
+                        })
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Cerrar')
+                        ->action(fn () => null)
+                        ->hidden(fn () => ! in_array('SUPERADMIN', (array) (Auth::user()?->departament ?? []))),
 
                     Action::make('upload')
                         ->label('Comprobante de Pago')
@@ -1037,7 +1056,7 @@ class AffiliationCorporatesTable
                                 ->success()
                                 ->send();
                         })
-                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', (array) (Auth::user()?->departament ?? []))),
                 ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([

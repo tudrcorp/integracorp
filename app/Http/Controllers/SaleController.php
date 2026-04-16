@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commission;
+use App\Support\SecurityAudit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,44 +20,43 @@ class SaleController extends Controller
             $data = $records->toArray();
             // dd($data, $desde, $hasta);
 
-            $code = 'TDEC-PCC-' . date('mY') . '-' . rand(11111, 99999);
+            $code = 'TDEC-PCC-'.date('mY').'-'.rand(11111, 99999);
 
             for ($i = 0; $i < count($data); $i++) {
 
-                //Si la comision fue pagada no la toma en cuenta
+                // Si la comision fue pagada no la toma en cuenta
                 if ($data[$i]['status_payment_commission'] != 'COMISION PAGADA') {
 
-                    $commission = new Commission();
+                    $commission = new Commission;
                     /**Datos principales de la tabla commission */
-                    $commission->code                   = $code;
+                    $commission->code = $code;
                     $commission->date_payment_affiliate = $data[$i]['date_activation'];
-                    $commission->sale_id                = $data[$i]['id'];
-                    $commission->plan_id                = $data[$i]['plan_id'];
-                    $commission->coverage_id            = $data[$i]['coverage_id'] ?? null;
-                    $commission->agent_id               = $data[$i]['agent_id'] ?? null;
-                    $commission->code_agency            = $data[$i]['code_agency'] ?? null;
-                    $commission->owner_code             = $data[$i]['owner_code'] ?? null;
-                    $commission->amount                 = $data[$i]['total_amount'];
-                    $commission->payment_frequency      = $data[$i]['payment_frequency'];
-                    $commission->payment_method         = $data[$i]['payment_method'];
-                    $commission->invoice_number         = $data[$i]['invoice_number'];
-                    $commission->affiliate_full_name    = $data[$i]['affiliate_full_name'];
-                    $commission->pay_amount_usd         = $data[$i]['pay_amount_usd'];
-                    $commission->pay_amount_ves         = $data[$i]['pay_amount_ves'];
-                    $commission->payment_method_usd     = $data[$i]['payment_method_usd'];
-                    $commission->payment_method_ves     = $data[$i]['payment_method_ves'];
-                    $commission->date_ini               = $desde;
-                    $commission->date_end               = $hasta;
-
+                    $commission->sale_id = $data[$i]['id'];
+                    $commission->plan_id = $data[$i]['plan_id'];
+                    $commission->coverage_id = $data[$i]['coverage_id'] ?? null;
+                    $commission->agent_id = $data[$i]['agent_id'] ?? null;
+                    $commission->code_agency = $data[$i]['code_agency'] ?? null;
+                    $commission->owner_code = $data[$i]['owner_code'] ?? null;
+                    $commission->amount = $data[$i]['total_amount'];
+                    $commission->payment_frequency = $data[$i]['payment_frequency'];
+                    $commission->payment_method = $data[$i]['payment_method'];
+                    $commission->invoice_number = $data[$i]['invoice_number'];
+                    $commission->affiliate_full_name = $data[$i]['affiliate_full_name'];
+                    $commission->pay_amount_usd = $data[$i]['pay_amount_usd'];
+                    $commission->pay_amount_ves = $data[$i]['pay_amount_ves'];
+                    $commission->payment_method_usd = $data[$i]['payment_method_usd'];
+                    $commission->payment_method_ves = $data[$i]['payment_method_ves'];
+                    $commission->date_ini = $desde;
+                    $commission->date_end = $hasta;
 
                     /** 1-. Preguntamos si el pago esta a nombre de un agente */
                     if ($data[$i]['agent'] != null) {
 
-                        $commission->commission_agent       = ($data[$i]['total_amount'] * $data[$i]['agent']['commission_tdec']) / 100; //Calculo de la comision del agente
-                        $commission->commission_agent_tdec  = $data[$i]['agent']['commission_tdec'];
+                        $commission->commission_agent = ($data[$i]['total_amount'] * $data[$i]['agent']['commission_tdec']) / 100; // Calculo de la comision del agente
+                        $commission->commission_agent_tdec = $data[$i]['agent']['commission_tdec'];
 
                         /**Calculo de la comision segun el tipo de pago */
-                        $commission->commission_agent_usd       = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agent']['commission_tdec']) / 100 : 0;
+                        $commission->commission_agent_usd = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agent']['commission_tdec']) / 100 : 0;
 
                         /** ?? Validamos si el agente pertenece a una agencia master/general o pertenece a TDG-100 */
                         /**
@@ -69,30 +68,30 @@ class SaleController extends Controller
                             if ($data[$i]['agency']['agency_type_id'] == 1) {
 
                                 /** Pertenece a una agencia MASTER */
-                                $commission->commission_agency_master       = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia master
-                                $commission->commission_agency_master_tdec  = $data[$i]['agency']['commission_tdec'];
+                                $commission->commission_agency_master = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; // Calculo de la comision de la agencia master
+                                $commission->commission_agency_master_tdec = $data[$i]['agency']['commission_tdec'];
 
                                 /**Calculo de la comision segun el tipo de pago */
-                                $commission->commission_agency_master_usd       = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
-                                $commission->commission_agency_master_ves       = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
+                                $commission->commission_agency_master_usd = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
+                                $commission->commission_agency_master_ves = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
                             }
 
                             /** ?? Pregunta a que tipo de agencia pertenece general */
                             if ($data[$i]['agency']['agency_type_id'] == 3) {
 
                                 /** Pertenece a una agencia GENERAL */
-                                $commission->commission_agency_general  = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia general
-                                $commission->commission_agency_master   = ($data[$i]['total_amount'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec) / 100; //Calculo de la comision de la agencia general
+                                $commission->commission_agency_general = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; // Calculo de la comision de la agencia general
+                                $commission->commission_agency_master = ($data[$i]['total_amount'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec) / 100; // Calculo de la comision de la agencia general
 
                                 $commission->commission_agency_general_tdec = $data[$i]['agency']['commission_tdec'];
-                                $commission->commission_agency_master_tdec  = DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec;
+                                $commission->commission_agency_master_tdec = DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec;
 
                                 /**Calculo de la comision segun el tipo de pago */
-                                $commission->commission_agency_general_usd  = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
-                                $commission->commission_agency_general_ves  = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
+                                $commission->commission_agency_general_usd = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
+                                $commission->commission_agency_general_ves = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
 
-                                $commission->commission_agency_master_usd   = $data[$i]['pay_amount_usd'] > 0 ? $data[$i]['pay_amount_usd'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
-                                $commission->commission_agency_master_ves   = $data[$i]['pay_amount_ves'] > 0 ? $data[$i]['pay_amount_ves'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
+                                $commission->commission_agency_master_usd = $data[$i]['pay_amount_usd'] > 0 ? $data[$i]['pay_amount_usd'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
+                                $commission->commission_agency_master_ves = $data[$i]['pay_amount_ves'] > 0 ? $data[$i]['pay_amount_ves'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
                             }
                         }
                     }
@@ -104,35 +103,35 @@ class SaleController extends Controller
                         if ($data[$i]['agency']['agency_type_id'] == 1) {
 
                             /** Pertenece a una agencia MASTER */
-                            $commission->commission_agency_master       = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia master
-                            $commission->commission_agency_master_tdec  = $data[$i]['agency']['commission_tdec'];
+                            $commission->commission_agency_master = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; // Calculo de la comision de la agencia master
+                            $commission->commission_agency_master_tdec = $data[$i]['agency']['commission_tdec'];
 
                             /**Calculo de la comision segun el tipo de pago */
-                            $commission->commission_agency_master_usd       = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
-                            $commission->commission_agency_master_ves       = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
+                            $commission->commission_agency_master_usd = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
+                            $commission->commission_agency_master_ves = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0;
                         }
 
                         if ($data[$i]['agency']['agency_type_id'] == 3) {
 
                             /** Pertenece a una agencia GENERAL */
-                            $commission->commission_agency_general  = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; //Calculo de la comision de la agencia general
-                            $commission->commission_agency_master   = ($data[$i]['total_amount'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec) / 100; //Calculo de la comision de la agencia general
+                            $commission->commission_agency_general = ($data[$i]['total_amount'] * $data[$i]['agency']['commission_tdec']) / 100; // Calculo de la comision de la agencia general
+                            $commission->commission_agency_master = ($data[$i]['total_amount'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec) / 100; // Calculo de la comision de la agencia general
 
                             $commission->commission_agency_general_tdec = $data[$i]['agency']['commission_tdec'];
-                            $commission->commission_agency_master_tdec  = DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec;
+                            $commission->commission_agency_master_tdec = DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec;
 
                             /**Calculo de la comision segun el tipo de pago */
-                            $commission->commission_agency_general_usd  = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
-                            $commission->commission_agency_general_ves  = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
+                            $commission->commission_agency_general_usd = $data[$i]['pay_amount_usd'] > 0 ? ($data[$i]['pay_amount_usd'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
+                            $commission->commission_agency_general_ves = $data[$i]['pay_amount_ves'] > 0 ? ($data[$i]['pay_amount_ves'] * $data[$i]['agency']['commission_tdec']) / 100 : 0.00;
 
-                            $commission->commission_agency_master_usd   = $data[$i]['pay_amount_usd'] > 0 ? $data[$i]['pay_amount_usd'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
-                            $commission->commission_agency_master_ves   = $data[$i]['pay_amount_ves'] > 0 ? $data[$i]['pay_amount_ves'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
+                            $commission->commission_agency_master_usd = $data[$i]['pay_amount_usd'] > 0 ? $data[$i]['pay_amount_usd'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
+                            $commission->commission_agency_master_ves = $data[$i]['pay_amount_ves'] > 0 ? $data[$i]['pay_amount_ves'] * DB::table('agencies')->select('commission_tdec')->where('code', $data[$i]['code_agency'])->where('owner_code', $data[$i]['owner_code'])->first()->commission_tdec / 100 : 0.00;
                         }
                     }
 
-                    $commission->total_payment_commission   = $data[$i]['agency'] != null ? $commission->commission_agent + $commission->commission_agency_master + $commission->commission_agency_general : $commission->commission_agent;
-                    $commission->date_payment_commission    = Carbon::now()->format('d/m/Y');
-                    $commission->created_by                 = Auth::user()->name;
+                    $commission->total_payment_commission = $data[$i]['agency'] != null ? $commission->commission_agent + $commission->commission_agency_master + $commission->commission_agency_general : $commission->commission_agent;
+                    $commission->date_payment_commission = Carbon::now()->format('d/m/Y');
+                    $commission->created_by = Auth::user()->name;
                     $commission->save();
                 } else {
                     Notification::make()
@@ -173,16 +172,27 @@ class SaleController extends Controller
 
             ini_set('memory_limit', '2048M');
 
-            $name_pdf = 'RDP-' . $data['invoice_number'] . '.pdf';
+            $name_pdf = 'RDP-'.$data['invoice_number'].'.pdf';
 
             $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago', compact('data'));
-            $pdf->save(public_path('storage/reciboDePago/' . $name_pdf));
+            $pdf->save(public_path('storage/reciboDePago/'.$name_pdf));
+
+            SecurityAudit::log('AUDIT_SALE_PAYMENT_PDF_REGENERATED', 'sales.regenerate-aviso-de-pago', [
+                'invoice_number' => $data['invoice_number'] ?? null,
+                'pdf_name' => $name_pdf,
+                'type' => 'AFILIACION INDIVIDUAL',
+            ]);
 
             return true;
 
         } catch (\Throwable $th) {
+            SecurityAudit::log('AUDIT_SALE_PAYMENT_PDF_REGENERATE_FAILED', 'sales.regenerate-aviso-de-pago', [
+                'invoice_number' => $data['invoice_number'] ?? null,
+                'error' => $th->getMessage(),
+            ]);
 
-            Log::error('AVISO DE PAGO NO REGENERADO' . $name_pdf . ' ' . $th->getMessage());
+            Log::error('AVISO DE PAGO NO REGENERADO'.$name_pdf.' '.$th->getMessage());
+
             return false;
         }
     }
@@ -194,16 +204,28 @@ class SaleController extends Controller
 
             ini_set('memory_limit', '2048M');
 
-            $name_pdf = 'RDP-' . $data['invoice_number'] . '.pdf';
+            $name_pdf = 'RDP-'.$data['invoice_number'].'.pdf';
 
             $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago-corporativo', compact('data'));
-            $pdf->save(public_path('storage/reciboDePago/' . $name_pdf));
+            $pdf->save(public_path('storage/reciboDePago/'.$name_pdf));
 
-            Log::info('AVISO DE PAGO CORPORATIVO REGENERADO' . $name_pdf);
+            SecurityAudit::log('AUDIT_SALE_PAYMENT_PDF_REGENERATED', 'sales.regenerate-aviso-de-pago-corporativo', [
+                'invoice_number' => $data['invoice_number'] ?? null,
+                'pdf_name' => $name_pdf,
+                'type' => 'AFILIACION CORPORATIVA',
+            ]);
+
+            Log::info('AVISO DE PAGO CORPORATIVO REGENERADO'.$name_pdf);
 
             return true;
         } catch (\Throwable $th) {
-            Log::error('AVISO DE PAGO CORPORATIVO NO REGENERADO' . $name_pdf . ' ' . $th->getMessage());
+            SecurityAudit::log('AUDIT_SALE_PAYMENT_PDF_REGENERATE_FAILED', 'sales.regenerate-aviso-de-pago-corporativo', [
+                'invoice_number' => $data['invoice_number'] ?? null,
+                'error' => $th->getMessage(),
+            ]);
+
+            Log::error('AVISO DE PAGO CORPORATIVO NO REGENERADO'.$name_pdf.' '.$th->getMessage());
+
             return false;
         }
     }

@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\Suppliers\Pages;
 
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Models\Supplier;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -145,6 +146,14 @@ class ViewSupplier extends ViewRecord
                 ->action(function (Supplier $record, array $data) {
                     $record->carta_acceptance = $data['carta_acceptance'];
                     $record->save();
+
+                    SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_DOCUMENT_UPLOADED', 'operations.suppliers.carta-acceptance.upload', [
+                        'supplier_id' => $record->id,
+                        'supplier_name' => $record->name,
+                        'document_type' => 'CARTA_ACEPTACION',
+                        'path' => $record->carta_acceptance,
+                    ]);
+
                     Notification::make()
                         ->title('Carta de Aceptación agregada correctamente')
                         ->icon('heroicon-s-check-circle')
@@ -179,7 +188,8 @@ class ViewSupplier extends ViewRecord
 
                     return View::make('filament.operations.suppliers.carta-acceptance-preview', [
                         'exists' => true,
-                        'url' => asset('storage/'.Str::ltrim($path, '/')),
+                        'url' => route('operations.suppliers.carta-acceptance.preview', ['supplier' => $record]),
+                        'downloadUrl' => route('operations.suppliers.carta-acceptance.download', ['supplier' => $record]),
                         'extension' => $extension,
                         'supplier' => $record,
                     ]);
@@ -192,42 +202,6 @@ class ViewSupplier extends ViewRecord
                     'class' => self::TICKET_BUTTON_CLASS,
                 ]),
 
-            // Carga de documentos de afiliación del proveedor
-            // Action::make('add_documents')
-            //     ->label('Agregar Documentos de Afiliación')
-            //     ->icon('heroicon-s-document-text')
-            //     ->color('warning')
-            //     ->tooltip('Aqui puede cargar uno o varios documentos del proveedor, por ejemplo RIF, Registro Mercantil, Baremos u otros soportes necesarios.')
-            //     ->form([
-            //         FileUpload::make('documents')
-            //             ->directory('suppliers/documents')
-            //             ->label('Documentos de Afiliación')
-            //             ->multiple()
-            //             ->required()
-            //             ->maxFiles(10)
-            //             ->maxSize(1024),
-            //     ])
-            //     ->action(function (Supplier $record, array $data) {
-            //         $existing = $this->normalizeAffiliationDocumentPaths($record->documents ?? []);
-            //         $incoming = $this->normalizeAffiliationDocumentPaths($data['documents'] ?? []);
-            //         $record->documents = array_values(array_merge($existing, $incoming));
-            //         $record->save();
-            //         Notification::make()
-            //             ->title('Documentos de afiliación actualizados')
-            //             ->body(count($incoming) > 1
-            //                 ? 'Se agregaron '.count($incoming).' documentos.'
-            //                 : 'Se agregó 1 documento.')
-            //             ->icon('heroicon-s-check-circle')
-            //             ->iconColor('success')
-            //             ->success()
-            //             ->send();
-            //     })
-            //     ->extraAttributes([
-            //         'class' => self::WARNING_BUTTON_CLASS,
-            //         'data-tippy-placement' => 'left',
-            //     ])
-            //     ->hidden(fn (Supplier $record) => $record->documents != null),
-
             // Vista previa y gestión de documentos de afiliación del proveedor
             Action::make('view_documents')
                 ->label('Documentos de Afiliación')
@@ -239,7 +213,7 @@ class ViewSupplier extends ViewRecord
                 ->modalIcon('heroicon-o-document-magnifying-glass')
                 ->modalContent(function (Supplier $record): ViewContract {
                     $documents = collect($record->documents ?? [])
-                        ->map(function (mixed $path, int $index): array {
+                        ->map(function (mixed $path, int $index) use ($record): array {
                             $path = is_string($path) ? trim($path) : '';
                             $exists = filled($path) && Storage::disk('public')->exists($path);
                             $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
@@ -252,6 +226,9 @@ class ViewSupplier extends ViewRecord
                                 'extension' => $extension,
                                 'name' => $path !== '' ? basename($path) : 'Documento sin nombre',
                                 'url' => $exists ? asset('storage/'.Str::ltrim($path, '/')) : null,
+                                'download_url' => $exists
+                                    ? route('operations.suppliers.documents.download', ['supplier' => $record, 'index' => $index])
+                                    : null,
                             ];
                         })
                         ->values()
@@ -285,6 +262,15 @@ class ViewSupplier extends ViewRecord
                             $incoming = $this->normalizeAffiliationDocumentPaths($data['new_documents'] ?? []);
                             $record->documents = array_values(array_merge($existing, $incoming));
                             $record->save();
+
+                            SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_DOCUMENT_UPLOADED', 'operations.suppliers.documents.upload', [
+                                'supplier_id' => $record->id,
+                                'supplier_name' => $record->name,
+                                'document_type' => 'AFILIACION',
+                                'uploaded_count' => count($incoming),
+                                'uploaded_paths' => $incoming,
+                                'total_documents' => count($record->documents ?? []),
+                            ]);
 
                             Notification::make()
                                 ->title('Documentos agregados')

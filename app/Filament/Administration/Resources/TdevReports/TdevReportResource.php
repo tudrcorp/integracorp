@@ -22,7 +22,7 @@ class TdevReportResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static string|UnitEnum|null $navigationGroup = 'ADMINISTRACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'COMPENSACION TDEV';
 
     protected static ?string $navigationLabel = 'Reporte de TDEV';
 

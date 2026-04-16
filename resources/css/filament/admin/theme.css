@@ -40,8 +40,62 @@
       inset 0 -1px 0 rgba(0, 0, 0, 0.03);
   }
 
+  .fi-helpdesk-ticker-manual-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.45) rgba(148, 163, 184, 0.22);
+  }
+
+  .fi-helpdesk-ticker-manual-scroll::-webkit-scrollbar {
+    height: 0.4rem;
+  }
+
+  .fi-helpdesk-ticker-manual-scroll::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 9999px;
+  }
+
+  .fi-helpdesk-ticker-manual-scroll::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 9999px;
+  }
+
+  .dark .fi-helpdesk-ticker-manual-scroll {
+    scrollbar-color: rgba(147, 197, 253, 0.45) rgba(71, 85, 105, 0.3);
+  }
+
+  .dark .fi-helpdesk-ticker-manual-scroll::-webkit-scrollbar-track {
+    background: rgba(71, 85, 105, 0.28);
+  }
+
+  .dark .fi-helpdesk-ticker-manual-scroll::-webkit-scrollbar-thumb {
+    background: rgba(147, 197, 253, 0.5);
+  }
+
   .fi-helpdesk-ticker-ios .group:focus-visible {
     outline: none;
+  }
+
+  /* Evita parpadeo al cerrar notificaciones con la X */
+  .fi-no-notification {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: opacity, transform;
+    contain: layout paint;
+    transition-property: opacity, transform !important;
+  }
+
+  .fi-no-notification-main,
+  .fi-no-notification-body {
+    transform: translateZ(0);
+  }
+
+  .fi-no-notification:not(.fi-inline).fi-transition-leave-end {
+    transform: translateY(2px) translateZ(0) !important;
+  }
+
+  .fi-no-notification-close-btn {
+    transform: translateZ(0);
   }
 
   @keyframes helpdesk-ticker-scroll {
