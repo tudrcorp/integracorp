@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Agents\Widgets;
 
+use App\Filament\Widgets\Concerns\HasYearMonthChartFilters;
 use App\Filament\Widgets\Concerns\IosLiquidGlassBarChartWidget;
 use App\Models\Sale;
 use Carbon\Carbon;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class TotalSaleForAgent extends ChartWidget
 {
+    use HasYearMonthChartFilters;
     use IosLiquidGlassBarChartWidget;
 
     protected string $view = 'filament.widgets.ios-liquid-glass-bar-chart-widget';
@@ -23,11 +25,20 @@ class TotalSaleForAgent extends ChartWidget
 
     protected ?string $heading = 'Total de ventas por agente';
 
-    public ?string $filter = 'year';
+    public function mount(): void
+    {
+        $this->applyDefaultYearMonthForMount();
+        parent::mount();
+    }
 
     public function getDescription(): ?string
     {
-        return 'Suma de total_amount (US$) por agente según el periodo seleccionado.';
+        [$y, $m] = $this->resolveSelectedYearMonth();
+        $label = $m === null
+            ? "Todo el año {$y}"
+            : ucfirst(Carbon::createFromDate($y, $m, 1)->translatedFormat('F Y'));
+
+        return "Suma de total_amount (US$) por agente en {$label}. Usa los filtros de año y mes.";
     }
 
     public function getIosBarChartEmptyTitle(): string
@@ -37,52 +48,38 @@ class TotalSaleForAgent extends ChartWidget
 
     public function getIosBarChartEmptyBody(): string
     {
-        return 'No hay ventas registradas para los agentes en el rango de fechas seleccionado.';
-    }
+        [$y, $m] = $this->resolveSelectedYearMonth();
+        $label = $m === null
+            ? "Todo el año {$y}"
+            : ucfirst(Carbon::createFromDate($y, $m, 1)->translatedFormat('F Y'));
 
-    protected function getFilters(): ?array
-    {
-        return [
-            'year' => 'Este año',
-            'month' => 'Este mes',
-            'week' => 'Esta semana',
-            'last_5_days' => 'Últimos 5 días',
-        ];
+        return "No hay ventas registradas para los agentes en {$label}. Prueba otro mes o año.";
     }
 
     protected function getData(): array
     {
-        $now = Carbon::now();
+        [$year, $month] = $this->resolveSelectedYearMonth();
+        if ($month === null) {
+            $start = Carbon::createFromDate($year, 1, 1)->startOfDay();
+            $end = Carbon::createFromDate($year, 12, 31)->endOfDay();
+        } else {
+            $start = Carbon::createFromDate($year, $month, 1)->startOfDay();
+            $end = Carbon::createFromDate($year, $month, 1)->endOfMonth()->endOfDay();
+        }
 
         $salesQuery = Sale::query()
             ->select([
                 'agents.name as label',
                 DB::raw('COALESCE(SUM(sales.total_amount), 0) as total'),
             ])
-            ->join('agents', 'agents.id', '=', 'sales.agent_id');
-
-        if ($this->filter === 'month') {
-            $salesQuery
-                ->whereMonth('sales.created_at', $now->month)
-                ->whereYear('sales.created_at', $now->year);
-        } elseif ($this->filter === 'week') {
-            $salesQuery->whereBetween('sales.created_at', [
-                $now->copy()->startOfWeek(),
-                $now->copy()->endOfWeek(),
-            ]);
-        } elseif ($this->filter === 'last_5_days') {
-            $salesQuery->whereBetween('sales.created_at', [
-                $now->copy()->subDays(4)->startOfDay(),
-                $now->copy()->endOfDay(),
-            ]);
-        } elseif ($this->filter === 'year') {
-            $salesQuery->whereYear('sales.created_at', $now->year);
-        }
+            ->join('agents', 'agents.id', '=', 'sales.agent_id')
+            ->whereBetween('sales.created_at', [$start, $end]);
 
         $salesData = $salesQuery
             ->groupBy('agents.id', 'agents.name')
             ->havingRaw('COALESCE(SUM(sales.total_amount), 0) > 0')
             ->orderByDesc('total')
+            ->limit(30)
             ->get();
 
         $labels = $salesData->pluck('label')->all();
@@ -93,9 +90,14 @@ class TotalSaleForAgent extends ChartWidget
         $hoverBackgroundColors = [];
 
         foreach (array_keys($labels) as $index) {
-            $backgroundColors[] = $this->glassColorAt($index);
-            $borderColors[] = $this->glassStrokeAt($index);
-            $hoverBackgroundColors[] = $this->brighterGlassFill($this->glassColorAt($index));
+            // Color principal solicitado
+            $backgroundColors[] = '#2d89ca';
+
+            // Borde ligeramente más oscuro para dar definición
+            $borderColors[] = '#246da2';
+
+            // Efecto hover (puedes usar tu función existente o un color fijo)
+            $hoverBackgroundColors[] = '#3b9ad9';
         }
 
         return [

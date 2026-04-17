@@ -5,36 +5,91 @@
     $color = $this->getColor();
     $heading = $this->getHeading();
     $description = $this->getDescription();
-    $filters = $this->getFilters();
+    $filters = method_exists($this, 'getFilters') ? $this->getFilters() : null;
     $isCollapsible = $this->isCollapsible();
     $type = $this->getType();
 @endphp
 
-<x-filament-widgets::widget class="fi-wi-chart fi-agent-charts-like-suppliers">
+<x-filament-widgets::widget class="fi-wi-chart fi-agent-charts-like-suppliers fi-agency-registrations-chart-like-suppliers">
     <x-filament::section
         :description="$description"
         :heading="$heading"
         :collapsible="$isCollapsible"
     >
-        @if ($filters || method_exists($this, 'getFiltersSchema'))
+        @if ($filters || method_exists($this, 'getFiltersSchema') || (method_exists($this, 'getChartYearOptions') && method_exists($this, 'getChartMonthOptions')))
             <x-slot name="afterHeader">
-                @if ($filters)
-                    <x-filament::input.wrapper
-                        inline-prefix
-                        wire:target="filter"
-                        class="fi-wi-chart-filter"
-                    >
-                        <x-filament::input.select
-                            inline-prefix
-                            wire:model.live="filter"
-                        >
-                            @foreach ($filters as $value => $label)
-                                <option value="{{ $value }}">
-                                    {{ $label }}
-                                </option>
-                            @endforeach
-                        </x-filament::input.select>
-                    </x-filament::input.wrapper>
+                @if ($filters || (method_exists($this, 'getChartYearOptions') && method_exists($this, 'getChartMonthOptions')))
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($filters)
+                            <x-filament::input.wrapper
+                                inline-prefix
+                                wire:target="filter"
+                                class="fi-wi-chart-filter"
+                            >
+                                <x-filament::input.select
+                                    inline-prefix
+                                    wire:model.live="filter"
+                                >
+                                    @foreach ($filters as $value => $label)
+                                        <option value="{{ $value }}">
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                        @endif
+
+                        @if (method_exists($this, 'getChartYearOptions') && method_exists($this, 'getChartMonthOptions'))
+                            <x-filament::input.wrapper
+                                inline-prefix
+                                wire:target="filterYear"
+                                class="fi-wi-chart-filter"
+                            >
+                                <x-filament::input.select
+                                    inline-prefix
+                                    wire:model.live="filterYear"
+                                    aria-label="Año"
+                                >
+                                    @foreach ($this->getChartYearOptions() as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                            <x-filament::input.wrapper
+                                inline-prefix
+                                wire:target="filterMonth"
+                                class="fi-wi-chart-filter"
+                            >
+                                <x-filament::input.select
+                                    inline-prefix
+                                    wire:model.live="filterMonth"
+                                    aria-label="Mes"
+                                >
+                                    @foreach ($this->getChartMonthOptions() as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                        @endif
+
+                        @if (method_exists($this, 'getChartStateOptions') && filled($this->getChartStateOptions()))
+                            <x-filament::input.wrapper
+                                inline-prefix
+                                wire:target="filterState"
+                                class="fi-wi-chart-filter"
+                            >
+                                <x-filament::input.select
+                                    inline-prefix
+                                    wire:model.live="filterState"
+                                    aria-label="Estado"
+                                >
+                                    @foreach ($this->getChartStateOptions() as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                        @endif
+                    </div>
                 @endif
 
                 @if (method_exists($this, 'getFiltersSchema'))

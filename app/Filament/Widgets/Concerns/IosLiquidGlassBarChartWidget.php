@@ -21,7 +21,13 @@ trait IosLiquidGlassBarChartWidget
 
     public function getIosBarChartWireKey(): string
     {
-        $suffix = property_exists($this, 'filter') ? (string) ($this->filter ?? 'default') : 'default';
+        if (property_exists($this, 'filterYear') && property_exists($this, 'filterMonth')) {
+            $suffix = ((string) ($this->filterYear ?? '')).'-'.((string) ($this->filterMonth ?? ''));
+        } elseif (property_exists($this, 'filter')) {
+            $suffix = (string) ($this->filter ?? 'default');
+        } else {
+            $suffix = 'default';
+        }
 
         return 'ios-bar-'.str_replace('\\', '-', static::class).'-'.$suffix;
     }

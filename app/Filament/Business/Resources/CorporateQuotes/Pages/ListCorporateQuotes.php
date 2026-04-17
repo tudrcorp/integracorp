@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\CorporateQuotes\Pages;
 
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
+use App\Filament\Business\Resources\CorporateQuotes\Widgets\CorporateQuotesQuotesByUserPerMonthChart;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -27,6 +28,13 @@ class ListCorporateQuotes extends ListRecords
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_CLASS,
                 ]),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            CorporateQuotesQuotesByUserPerMonthChart::class,
         ];
     }
 }

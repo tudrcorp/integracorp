@@ -4,10 +4,14 @@ namespace App\Filament\Business\Resources\Agencies\Widgets;
 
 use App\Models\Agency;
 use Carbon\Carbon;
+use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class NewRegisterAgencyForMountChart extends ChartWidget
 {
+    use InteractsWithPageFilters;
+
     protected static ?int $sort = 2;
 
     protected string $view = 'filament.widgets.new-register-agency-month-chart';
@@ -16,39 +20,50 @@ class NewRegisterAgencyForMountChart extends ChartWidget
 
     protected ?string $maxHeight = '440px';
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
     protected string $color = 'gray';
 
-    public ?string $filter = '12m';
+    public ?string $filter = null;
 
-    public function updatedFilter(?string $value): void
+    public function mount(): void
     {
-        $this->cachedData = null;
+        $this->filter = (string) now()->year;
     }
 
-    /**
-     * Suma de registros mostrados en el periodo seleccionado (para estado vacío).
-     */
+    protected function getFilters(): ?array
+    {
+        $currentYear = (int) now()->year;
+        $years = range($currentYear, $currentYear - 5);
+
+        return collect($years)
+            ->mapWithKeys(fn (int $year): array => [(string) $year => (string) $year])
+            ->all();
+    }
+
+    public function updatedFilter(): void
+    {
+        $this->updateChartData();
+    }
+
     public function getRegistrationsTotalInCurrentView(): int
     {
-        $data = $this->getCachedData();
+        $activeFilter = $this->filter ?: (string) now()->year;
+        $year = (int) $activeFilter;
+        $total = 0;
 
-        return (int) collect($data['datasets'][0]['data'] ?? [])->sum();
+        for ($month = 1; $month <= 12; $month++) {
+            $total += $this->countAgenciesRegisteredForMonth(Carbon::create($year, $month, 1));
+        }
+
+        return $total;
     }
 
     public function getEmptyRegistrationsMessage(): string
     {
-        return ($this->filter ?? '12m') === 'year'
-            ? 'No hay agencias registradas en el año en curso.'
-            : 'No hay agencias registradas en los últimos 12 meses.';
+        return 'No hay agencias registradas en '.($this->filter ?: now()->year).'.';
     }
 
-    /**
-     * Misma paleta y borde que App\Filament\Operations\Resources\Suppliers\Widgets\SupplierClasificationChart::glassColorAt().
-     *
-     * @return array{fill: string, stroke: string}
-     */
     private function glassColorAt(int $index): array
     {
         $palette = [
@@ -76,14 +91,6 @@ class NewRegisterAgencyForMountChart extends ChartWidget
         return $rgba;
     }
 
-    protected function getFilters(): ?array
-    {
-        return [
-            '12m' => 'Últimos 12 meses',
-            'year' => 'Año en curso',
-        ];
-    }
-
     public function getDescription(): ?string
     {
         return 'Por fecha de registro de la agencia; si no existe, se usa la fecha de creación del registro.';
@@ -91,32 +98,22 @@ class NewRegisterAgencyForMountChart extends ChartWidget
 
     protected function getData(): array
     {
-        $mode = $this->filter ?? '12m';
+        $activeFilter = $this->filter ?: (string) now()->year;
+        $year = (int) $activeFilter;
+
         $labels = [];
         $values = [];
 
-        if ($mode === 'year') {
-            $year = (int) now()->year;
-            for ($month = 1; $month <= 12; $month++) {
-                $monthStart = Carbon::create($year, $month, 1)->startOfMonth();
-                $labels[] = $monthStart->locale('es')->translatedFormat('M');
-                if ($monthStart->isFuture()) {
-                    $values[] = 0;
-                } else {
-                    $values[] = $this->countAgenciesRegisteredForMonth($monthStart);
-                }
-            }
-        } else {
-            for ($i = 11; $i >= 0; $i--) {
-                $monthStart = now()->copy()->subMonths($i)->startOfMonth();
-                $labels[] = $monthStart->locale('es')->translatedFormat('M y');
-                $values[] = $this->countAgenciesRegisteredForMonth($monthStart);
-            }
+        for ($month = 1; $month <= 12; $month++) {
+            $monthStart = Carbon::create($year, $month, 1)->startOfMonth();
+            $labels[] = ucfirst($monthStart->locale('es')->translatedFormat('M'));
+            $values[] = $this->countAgenciesRegisteredForMonth($monthStart);
         }
 
         $fills = [];
         $strokes = [];
         $hovers = [];
+
         foreach (array_keys($values) as $i) {
             $c = $this->glassColorAt((int) $i);
             $fills[] = $c['fill'];
@@ -131,7 +128,7 @@ class NewRegisterAgencyForMountChart extends ChartWidget
                     'data' => $values,
                     'backgroundColor' => $fills,
                     'borderColor' => $strokes,
-                    'borderWidth' => 1.25,
+                    'borderWidth' => 1.75,
                     'borderRadius' => 8,
                     'borderSkipped' => false,
                     'hoverBackgroundColor' => $hovers,
@@ -141,130 +138,62 @@ class NewRegisterAgencyForMountChart extends ChartWidget
         ];
     }
 
-    /**
-     * Alineado con SupplierClasificationChart::getOptions() (barras verticales: meses en eje X).
-     *
-     * @return array<string, mixed>
-     */
-    protected function getOptions(): array
+    protected function getOptions(): RawJs
     {
-        $iosFont = '-apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-
-        return [
-            'responsive' => true,
-            'maintainAspectRatio' => false,
-            'layout' => [
-                'padding' => [
-                    'top' => 8,
-                    'right' => 8,
-                    'bottom' => 4,
-                    'left' => 4,
-                ],
-            ],
-            'interaction' => [
-                'mode' => 'nearest',
-                'intersect' => true,
-                'axis' => 'xy',
-            ],
-            'datasets' => [
-                'bar' => [
-                    'categoryPercentage' => 0.92,
-                    'barPercentage' => 0.98,
-                ],
-            ],
-            'elements' => [
-                'bar' => [
-                    'borderWidth' => 1.25,
-                    'borderRadius' => 10,
-                    'inflateAmount' => 0.6,
-                    'hoverBorderWidth' => 2.5,
-                    'hoverBorderColor' => 'rgba(255, 255, 255, 0.92)',
-                ],
-            ],
-            'plugins' => [
-                'legend' => [
-                    'display' => false,
-                ],
-                'tooltip' => [
-                    'enabled' => true,
-                    'position' => 'nearest',
-                    'xAlign' => 'center',
-                    'yAlign' => 'bottom',
-                    'backgroundColor' => 'rgba(22, 22, 24, 0.56)',
-                    'titleColor' => '#f5f5f7',
-                    'bodyColor' => 'rgba(235, 235, 245, 0.88)',
-                    'footerColor' => 'rgba(235, 235, 245, 0.7)',
-                    'borderColor' => 'rgba(255, 255, 255, 0.2)',
-                    'borderWidth' => 1,
-                    'padding' => 10,
-                    'cornerRadius' => 12,
-                    'caretSize' => 6,
-                    'caretPadding' => 8,
-                    'titleFont' => [
-                        'size' => 14,
-                        'weight' => '700',
-                        'family' => $iosFont,
-                    ],
-                    'bodyFont' => [
-                        'size' => 13,
-                        'weight' => '500',
-                        'family' => $iosFont,
-                    ],
-                    'titleSpacing' => 0,
-                    'titleMarginBottom' => 8,
-                    'bodySpacing' => 6,
-                    'footerSpacing' => 8,
-                    'displayColors' => true,
-                    'usePointStyle' => true,
-                    'boxWidth' => 12,
-                    'boxHeight' => 12,
-                    'boxPadding' => 8,
-                    'multiKeyBackground' => 'rgba(255, 255, 255, 0.08)',
-                ],
-            ],
-            'scales' => [
-                'x' => [
-                    'offset' => true,
-                    'stacked' => false,
-                    'grid' => [
-                        'display' => true,
-                        'drawBorder' => false,
-                        'color' => 'rgba(120, 120, 128, 0.1)',
-                    ],
-                    'ticks' => [
-                        'maxRotation' => 45,
-                        'minRotation' => 0,
-                        'color' => '#8e8e93',
-                        'font' => [
-                            'size' => 10,
-                            'family' => $iosFont,
-                        ],
-                    ],
-                ],
-                'y' => [
-                    'stacked' => false,
-                    'beginAtZero' => true,
-                    'grid' => [
-                        'display' => true,
-                        'drawBorder' => false,
-                        'color' => 'rgba(120, 120, 128, 0.12)',
-                    ],
-                    'ticks' => [
-                        'precision' => 0,
-                        'stepSize' => 1,
-                        'color' => '#8e8e93',
-                        'font' => [
-                            'size' => 10,
-                            'family' => $iosFont,
-                        ],
-                    ],
-                ],
-            ],
-            'animation' => [
-                'duration' => 900,
-                'easing' => 'easeOutQuart',
-            ],
-        ];
+        return RawJs::make(<<<'JS'
+{
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+        legend: { display: false },
+        tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(22, 22, 24, 0.56)',
+            titleColor: 'rgba(255, 255, 255, 0.92)',
+            bodyColor: 'rgba(255, 255, 255, 0.86)',
+            borderColor: 'rgba(255, 255, 255, 0.14)',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: false,
+            callbacks: {
+                label: (ctx) => {
+                    const v = ctx.parsed?.y;
+                    if (v === null || v === undefined) return '';
+                    return ` ${Number(v).toLocaleString()} agencias`;
+                }
+            }
+        }
+    },
+    scales: {
+        x: {
+            grid: { display: false },
+            ticks: {
+                color: '#8e8e93',
+                maxRotation: 0,
+                autoSkip: false
+            },
+            border: { display: false }
+        },
+        y: {
+            beginAtZero: true,
+            ticks: {
+                precision: 0,
+                color: '#8e8e93',
+                callback: (value) => Number(value).toLocaleString()
+            },
+            grid: {
+                color: 'rgba(142, 142, 147, 0.18)',
+                drawBorder: false
+            },
+            border: { display: false }
+        }
+    },
+    animation: {
+        duration: 900,
+        easing: 'easeOutQuart'
+    }
+}
+JS);
     }
 
     protected function getType(): string

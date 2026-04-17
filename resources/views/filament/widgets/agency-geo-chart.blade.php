@@ -6,20 +6,21 @@
     $heading = $this->getHeading();
     $description = $this->getDescription();
     $filters = $this->getFilters();
-    $monthFilterOptions = method_exists($this, 'getMonthFilterOptions') ? $this->getMonthFilterOptions() : [];
     $isCollapsible = $this->isCollapsible();
     $type = $this->getType();
+    $maxHeight = $this->getMaxHeight();
 @endphp
 
-<x-filament-widgets::widget class="fi-wi-chart fi-agency-registrations-chart-like-suppliers">
+<x-filament-widgets::widget class="fi-wi-chart fi-agent-charts-like-suppliers h-full">
     <x-filament::section
         :description="$description"
         :heading="$heading"
         :collapsible="$isCollapsible"
+        class="min-h-[32rem] flex flex-col"
     >
-        @if ($filters || method_exists($this, 'getFiltersSchema') || filled($monthFilterOptions) || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
+        @if ($filters || method_exists($this, 'getFiltersSchema') || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
             <x-slot name="afterHeader">
-                @if ($filters || filled($monthFilterOptions) || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
+                @if ($filters || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
                     <div class="flex flex-wrap items-center gap-2">
                         @if ($filters)
                             <x-filament::input.wrapper
@@ -40,26 +41,7 @@
                             </x-filament::input.wrapper>
                         @endif
 
-                        @if (filled($monthFilterOptions))
-                            <x-filament::input.wrapper
-                                inline-prefix
-                                wire:target="monthFilter"
-                                class="fi-wi-chart-filter"
-                            >
-                                <x-filament::input.select
-                                    inline-prefix
-                                    wire:model.live="monthFilter"
-                                >
-                                    @foreach ($monthFilterOptions as $value => $label)
-                                        <option value="{{ $value }}">
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
-                        @endif
-
-                        @include('filament.widgets.partials.chart-agency-time-state-filters')
+                        @include('filament.widgets.partials.chart-agency-time-filters')
                     </div>
                 @endif
 
@@ -101,15 +83,17 @@
                 x-load
                 x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
                 wire:ignore
-                wire:key="total-sale-estructure-{{ $this->chartKey }}"
+                wire:key="agency-geo-{{ $this->chartYear ?? '' }}-{{ $this->chartMonth ?? '' }}"
                 data-chart-type="{{ $type }}"
                 x-data="chart({
                             cachedData: @js($this->getCachedData()),
-                            maxHeight: @js($maxHeight = $this->getMaxHeight()),
+                            maxHeight: @js($maxHeight),
                             options: @js($this->getOptions()),
                             type: @js($type),
                         })"
-                style="height: {{ $this->getMaxHeight() ?? '440px' }}; width: 100%; box-sizing: border-box;"
+                @if (filled($maxHeight))
+                    style="height: {{ $maxHeight }}; width: 100%; box-sizing: border-box;"
+                @endif
                 {{
                     (new ComponentAttributeBag)
                         ->color(ChartWidgetComponent::class, $color)
@@ -122,9 +106,6 @@
                 <canvas
                     x-ref="canvas"
                     class="block max-w-full"
-                    @if ($maxHeight)
-                        style="max-height: {{ $maxHeight }}"
-                    @endif
                 ></canvas>
 
                 <span

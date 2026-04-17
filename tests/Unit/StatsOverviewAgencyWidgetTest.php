@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 use App\Filament\Business\Resources\Agencies\Widgets\StatsOverviewAgency;
 
-it('usa la vista glass morphism para el panel de agencias', function (): void {
-    $view = (new ReflectionClass(StatsOverviewAgency::class))->getDefaultProperties()['view'] ?? null;
+it('no declara vista propia: hereda el stats overview estándar de Filament como el escritorio', function (): void {
+    $prop = (new ReflectionClass(StatsOverviewAgency::class))->getProperty('view');
 
-    expect($view)->toBe('filament.widgets.stats-overview-agency-glass');
+    expect($prop->getDeclaringClass()->getName())->toBe(\Filament\Widgets\StatsOverviewWidget::class);
 });
 
-it('renderiza solo las stats sin Section envolvente', function (): void {
+it('envuelve las stats en Section con filtros año/mes en afterHeader', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agencies/Widgets/StatsOverviewAgency.php';
     $code = file_get_contents($path);
     expect($code)->not->toBeFalse()
         ->and($code)->toContain('function content(Schema $schema): Schema')
-        ->and($code)->toContain('->components($this->getCachedStats())');
+        ->and($code)->toContain('$this->getSectionContentComponent()');
 });
 
 it('usa tres columnas para mantener las stats en una fila', function (): void {

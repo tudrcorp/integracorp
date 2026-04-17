@@ -44,6 +44,6 @@ final class TopFiveAgentSalesMonthComparison
                 return $b['previous'] <=> $a['previous'];
             })
             ->values()
-            ->take(5);
+            ->take(10);
     }
 }

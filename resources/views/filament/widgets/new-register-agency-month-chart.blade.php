@@ -10,11 +10,12 @@
     $type = $this->getType();
 @endphp
 
-<x-filament-widgets::widget class="fi-wi-chart fi-agency-registrations-chart-like-suppliers">
+<x-filament-widgets::widget class="fi-wi-chart fi-agent-charts-like-suppliers h-full">
     <x-filament::section
         :description="$description"
         :heading="$heading"
         :collapsible="$isCollapsible"
+        class="min-h-[32rem] flex flex-col"
     >
         @if ($filters || method_exists($this, 'getFiltersSchema'))
             <x-slot name="afterHeader">

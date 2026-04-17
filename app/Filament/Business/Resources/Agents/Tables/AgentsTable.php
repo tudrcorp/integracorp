@@ -13,6 +13,7 @@ use App\Models\Agent;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
+use App\Support\AgentActivity\AgentActivityQuery;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -48,16 +49,44 @@ class AgentsTable
             ->query(function (Builder $query) {
                 if (Auth::user()->is_accountManagers) {
                     // dd(Auth::user()->id);
-                    return Agent::query()->where('ownerAccountManagers', Auth::user()->id);
+                    return AgentActivityQuery::applyToAgentsQuery(
+                        Agent::query()->where('ownerAccountManagers', Auth::user()->id)
+                    );
                 }
 
-                return Agent::query();
+                return AgentActivityQuery::applyToAgentsQuery(Agent::query());
             })
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('last_interaction_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
             ->heading('Agentes')
             ->description('Listado de agentes registrados en el sistema. Todas las columnas están visibles por defecto; puedes reorganizarlas desde el selector de columnas.')
             ->columns([
+                TextColumn::make('last_interaction_at')
+                    ->label('Días de inactividad')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn (Agent $record): string => self::trafficLightColor($record))
+                    ->state(function (Agent $record): string {
+                        $days = self::daysSinceLastInteraction($record);
+
+                        return $days === null ? '—' : (string) $days.' dias';
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('last_interaction_at', $direction);
+                    }),
+                TextColumn::make('technical_status')
+                    ->label('Estatus técnico')
+                    ->alignCenter()
+                    ->badge()
+                    ->icon(fn (Agent $record): string => self::trafficLightIcon($record))
+                    ->color(fn (Agent $record): string => self::trafficLightColor($record))
+                    ->state(fn (Agent $record): string => self::trafficLightLabel($record)),
+                TextColumn::make('technical_action')
+                    ->label('Acción')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn (Agent $record): string => self::trafficLightLabel($record) === 'Inactivo' ? 'danger' : 'gray')
+                    ->state(fn (Agent $record): string => self::trafficLightLabel($record) === 'Inactivo' ? 'ALERTA GERENCIA' : 'No requiere acción'),
                 TextColumn::make('owner_code')
                     ->label('Pertenece a')
                     ->prefix(function ($record) {
@@ -974,5 +1003,77 @@ class AgentsTable
                 ]),
             ])
             ->striped();
+    }
+
+    private static function daysSinceLastInteraction(Agent $record): ?int
+    {
+        $raw = $record->last_interaction_at ?? null;
+        if ($raw === null) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($raw)->diffInDays(now());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private static function daysSinceLastSale(Agent $record): ?int
+    {
+        $raw = $record->last_sale_at ?? null;
+        if ($raw === null) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($raw)->diffInDays(now());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private static function trafficLightLabel(Agent $record): string
+    {
+        $daysInteraction = self::daysSinceLastInteraction($record);
+        $daysSale = self::daysSinceLastSale($record);
+
+        // 🟢 Activo: cotización o venta en últimos 30 días.
+        if ($daysInteraction !== null && $daysInteraction <= 30) {
+            return 'Activo';
+        }
+
+        // 🔴 Inactivo: > 91 días sin interacción.
+        if ($daysInteraction === null || $daysInteraction >= 91) {
+            return 'Inactivo';
+        }
+
+        // 🟡 En Riesgo: sin ventas entre 45 y 90 días (si existe historial de ventas).
+        if ($daysSale !== null && $daysSale >= 45 && $daysSale <= 90) {
+            return 'En Riesgo';
+        }
+
+        // Fallback: si no está activo y aún no es inactivo, lo consideramos en riesgo operativo.
+        return 'En Riesgo';
+    }
+
+    private static function trafficLightColor(Agent $record): string
+    {
+        return match (self::trafficLightLabel($record)) {
+            'Activo' => 'success',
+            'En Riesgo' => 'warning',
+            'Inactivo' => 'danger',
+            default => 'gray',
+        };
+    }
+
+    private static function trafficLightIcon(Agent $record): string
+    {
+        return match (self::trafficLightLabel($record)) {
+            'Activo' => 'heroicon-m-check-circle',
+            'En Riesgo' => 'heroicon-m-exclamation-triangle',
+            'Inactivo' => 'heroicon-m-x-circle',
+            default => 'heroicon-m-minus-circle',
+        };
     }
 }

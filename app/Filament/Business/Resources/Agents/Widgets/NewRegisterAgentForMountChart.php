@@ -265,7 +265,7 @@ JS);
             ->count();
     }
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
     protected function getMaxHeight(): ?string
     {
