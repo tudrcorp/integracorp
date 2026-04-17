@@ -2,27 +2,34 @@
 
 namespace App\Filament\Business\Resources\Agents\Widgets;
 
-use App\Filament\Business\Resources\Agents\Pages\ListAgents;
-use App\Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Filament\Widgets\Concerns\HasYearMonthChartFilters;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Gráfico de dona: agentes agrupados por estado para un único mes/año.
+ *
+ * A diferencia de un widget enlazado a la tabla ({@see \App\Filament\Widgets\Concerns\InteractsWithPageTable}),
+ * esta vista **no** aplica búsqueda, filtros ni orden de la lista de agentes: solo el período elegido en el
+ * selector del propio widget (registros filtrados por la columna `created_at` del modelo {@see \App\Models\Agent}).
+ *
+ * Período: dos desplegables (año y mes). Si el año elegido es el actual, el mes solo lista meses ya transcurridos
+ * (enero hasta el mes en curso).
+ */
 class TotalForStateAgent extends ChartWidget
 {
-    use InteractsWithPageTable;
+    use HasYearMonthChartFilters;
 
     protected string $view = 'filament.widgets.total-for-state-agent-chart';
 
-    protected function getTablePage(): string
-    {
-        return ListAgents::class;
-    }
-
     public function mount(): void
     {
+        $this->applyDefaultYearMonthForMount();
+
         parent::mount();
 
         FilamentAsset::register([
@@ -36,46 +43,28 @@ class TotalForStateAgent extends ChartWidget
 
     protected ?string $heading = 'Agentes por estado';
 
-    protected ?string $description = 'Distribución de agentes registrados por estado. El gráfico respeta los filtros de la tabla.';
+    protected ?string $description = 'Distribución por estado de los agentes creados en el período seleccionado. No usa los filtros de la tabla.';
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
     /**
-     * Paleta tipo iOS (alineada con NewRegisterAgentForMountChart).
+     * Misma paleta que {@see \App\Filament\Business\Resources\Agencies\Widgets\AgencyGeoChart} (distribución por estado).
      *
      * @var list<string>
      */
-    private const SLICE_FILL = [
-        'rgba(59, 130, 246, 0.94)',
-        'rgba(16, 185, 129, 0.94)',
-        'rgba(249, 115, 22, 0.94)',
-        'rgba(244, 63, 94, 0.94)',
-        'rgba(168, 85, 247, 0.94)',
-        'rgba(14, 165, 233, 0.94)',
-        'rgba(234, 179, 8, 0.94)',
-        'rgba(139, 92, 246, 0.94)',
-        'rgba(34, 197, 94, 0.94)',
-        'rgba(245, 158, 11, 0.94)',
-        'rgba(6, 182, 212, 0.94)',
-        'rgba(217, 70, 239, 0.94)',
-    ];
-
-    /**
-     * @var list<string>
-     */
-    private const SLICE_BORDER = [
-        'rgba(29, 78, 216, 1)',
-        'rgba(5, 150, 105, 1)',
-        'rgba(194, 65, 12, 1)',
-        'rgba(225, 29, 72, 1)',
-        'rgba(126, 34, 206, 1)',
-        'rgba(3, 105, 161, 1)',
-        'rgba(161, 98, 7, 1)',
-        'rgba(109, 40, 217, 1)',
-        'rgba(21, 128, 61, 1)',
-        'rgba(180, 83, 9, 1)',
-        'rgba(8, 145, 178, 1)',
-        'rgba(162, 28, 175, 1)',
+    private const VIBRANT_PALETTE = [
+        '#FF2D55',
+        '#5856D6',
+        '#34C759',
+        '#FF9500',
+        '#007AFF',
+        '#AF52DE',
+        '#FFCC00',
+        '#5AC8FA',
+        '#FF3B30',
+        '#2dd4bf',
+        '#f472b6',
+        '#a78bfa',
     ];
 
     /**
@@ -90,44 +79,39 @@ class TotalForStateAgent extends ChartWidget
 
     public function getEmptyStateMessage(): string
     {
-        return 'No hay agentes que coincidan con los filtros de la tabla. Ajusta la búsqueda o los filtros para ver la distribución por estado.';
+        [$year, $month] = $this->resolveSelectedYearMonth();
+        $label = $month === null
+            ? "Todo el año {$year}"
+            : Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
+
+        return "No hay agentes registrados en {$label}. Prueba otro período en los filtros del gráfico.";
     }
 
     /**
-     * Fuerza recreación del canvas Alpine cuando cambian filtros / orden de la tabla.
+     * Clave estable para el canvas: año y mes del widget (no depende de la tabla).
      */
     public function getStateDistributionChartWireKey(): string
     {
-        $payload = [
-            'search' => $this->tableSearch ?? '',
-            'filters' => $this->tableFilters,
-            'sort' => $this->tableSort,
-            'grouping' => $this->tableGrouping,
-            'tab' => $this->activeTab,
-            'columnSearches' => $this->tableColumnSearches,
-            'perPage' => $this->tableRecordsPerPage,
-            'parentRecord' => $this->parentRecord?->getKey(),
-        ];
+        [$y, $m] = $this->resolveSelectedYearMonth();
 
-        return 'agent-state-pie-'.hash('xxh128', (string) json_encode($payload));
+        return 'agent-state-pie-'.hash('xxh128', json_encode([$y, $m]));
     }
 
+    /**
+     * Agrega agentes por estado usando solo `created_at` en el mes/año del filtro.
+     */
     protected function getData(): array
     {
-        $baseQuery = $this->getPageTableQuery();
-        $table = $baseQuery->getModel()->getTable();
+        [$year, $month] = $this->resolveSelectedYearMonth();
 
-        $subQuery = clone $baseQuery;
-        $subQuery->reorder();
-        $subQuery->select("{$table}.id", "{$table}.state_id");
-
-        $results = DB::table(DB::raw('('.$subQuery->toSql().') as '.$table))
-            ->mergeBindings($subQuery->getQuery())
-            ->leftJoin('states', "{$table}.state_id", '=', 'states.id')
+        $results = DB::table('agents')
+            ->leftJoin('states', 'agents.state_id', '=', 'states.id')
+            ->whereYear('agents.created_at', $year)
+            ->when($month, fn ($q) => $q->whereMonth('agents.created_at', $month))
             ->select(
-                DB::raw('COALESCE(states.definition, "Sin estado") as state_name'),
+                DB::raw("COALESCE(states.definition, 'Sin estado') as state_name"),
                 DB::raw('states.id as state_id'),
-                DB::raw("count({$table}.id) as total")
+                DB::raw('count(agents.id) as total')
             )
             ->groupBy('states.id', 'states.definition')
             ->orderByDesc('total')
@@ -142,7 +126,12 @@ class TotalForStateAgent extends ChartWidget
                         'data' => [],
                         'percentages' => [],
                         'backgroundColor' => [],
-                        'borderColor' => [],
+                        'borderWidth' => 0,
+                        'borderColor' => 'transparent',
+                        'hoverOffset' => 35,
+                        'hoverBorderWidth' => 0,
+                        'hoverBorderColor' => 'transparent',
+                        'borderRadius' => 4,
                     ],
                 ],
             ];
@@ -156,10 +145,8 @@ class TotalForStateAgent extends ChartWidget
             : [];
 
         $fills = [];
-        $borders = [];
         foreach (array_keys($labels) as $index) {
-            $fills[] = self::SLICE_FILL[$index % count(self::SLICE_FILL)];
-            $borders[] = self::SLICE_BORDER[$index % count(self::SLICE_BORDER)];
+            $fills[] = self::VIBRANT_PALETTE[$index % count(self::VIBRANT_PALETTE)];
         }
 
         return [
@@ -170,11 +157,12 @@ class TotalForStateAgent extends ChartWidget
                     'data' => $dataCounts,
                     'percentages' => array_values($percentages),
                     'backgroundColor' => $fills,
-                    'hoverOffset' => 14,
-                    'borderColor' => $borders,
-                    'borderWidth' => 2.5,
-                    'hoverBorderWidth' => 3.5,
-                    'hoverBorderColor' => 'rgba(255, 255, 255, 0.92)',
+                    'borderWidth' => 0,
+                    'borderColor' => 'transparent',
+                    'hoverOffset' => 35,
+                    'hoverBorderWidth' => 0,
+                    'hoverBorderColor' => 'transparent',
+                    'borderRadius' => 4,
                 ],
             ],
         ];
@@ -183,116 +171,117 @@ class TotalForStateAgent extends ChartWidget
     protected function getOptions(): RawJs
     {
         return RawJs::make(<<<'JS'
-            {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                    animateScale: true,
-                    animateRotate: true,
-                    duration: 900,
-                    easing: 'easeOutQuart'
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'nearest'
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'right',
-                        align: 'center',
-                        onClick: function(e, legendItem, legend) {
-                            const idx = legendItem.index;
-                            const chart = legend.chart;
-                            const meta = chart.getDatasetMeta(0);
-                            meta.data[idx].hidden = !meta.data[idx].hidden;
-                            chart.update();
-                        },
-                        labels: {
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            padding: 12,
-                            boxWidth: 11,
-                            boxHeight: 11,
-                            font: {
-                                size: 12,
-                                weight: '600',
-                                family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
-                            },
-                            color: function(context) {
-                                const isDark = document.documentElement.classList.contains('dark');
-                                return isDark ? 'rgba(241, 245, 249, 0.95)' : 'rgba(15, 23, 42, 0.92)';
-                            },
-                            generateLabels: function(chart) {
-                                const data = chart.data;
-                                const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                return data.labels.map((label, i) => {
-                                    const value = data.datasets[0].data[i];
-                                    const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                                    const agentes = value === 1 ? ' agente' : ' agentes';
-                                    return {
-                                        text: label + ': ' + value + agentes + ' (' + pct + '%)',
-                                        fillStyle: data.datasets[0].backgroundColor[i],
-                                        strokeStyle: data.datasets[0].borderColor[i],
-                                        hidden: chart.getDatasetMeta(0).data[i].hidden,
-                                        index: i
-                                    };
-                                });
-                            }
-                        }
-                    },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: 'rgba(22, 22, 24, 0.56)',
-                        titleColor: 'rgba(255, 255, 255, 0.92)',
-                        bodyColor: 'rgba(255, 255, 255, 0.86)',
-                        borderColor: 'rgba(255, 255, 255, 0.14)',
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 12,
-                        displayColors: true,
-                        boxPadding: 6,
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.raw || 0;
-                                const pct = context.dataset.percentages[context.dataIndex];
-                                return ' ' + value + ' agente(s) (' + pct + '%)';
-                            },
-                            afterLabel: function() {
-                                return ' Clic en la leyenda para mostrar/ocultar';
-                            }
-                        }
-                    },
-                    datalabels: {
-                        display: function(context) {
-                            const pct = context.dataset.percentages[context.dataIndex];
-                            return pct >= 4;
-                        },
-                        color: '#ffffff',
-                        anchor: 'center',
-                        align: 'center',
+        {
+            responsive: true,
+            maintainAspectRatio: false,
+            borderWidth: 0,
+            elements: {
+                arc: {
+                    borderWidth: 0,
+                    borderColor: 'transparent'
+                }
+            },
+            cutout: '52%',
+            layout: {
+                padding: { top: 16, right: 8, bottom: 6, left: 8 }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    align: 'center',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 18,
+                        boxWidth: 10,
+                        boxHeight: 10,
                         font: {
                             size: 12,
-                            weight: '700',
-                            family: 'ui-sans-serif, -apple-system, system-ui, sans-serif'
+                            weight: '600',
+                            family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
                         },
-                        formatter: function(value, context) {
-                            const pct = context.dataset.percentages[context.dataIndex];
-                            return pct + '%';
-                        },
-                        textShadowColor: 'rgba(0, 0, 0, 0.55)',
-                        textShadowBlur: 3
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const ds = data.datasets[0];
+                            const meta = chart.getDatasetMeta(0);
+                            return data.labels.map((label, i) => {
+                                const value = ds.data[i];
+                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
+                                    ? ds.percentages[i]
+                                    : 0;
+                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+                                const agentes = value === 1 ? ' agente' : ' agentes';
+                                return {
+                                    text: String(label) + ': ' + value + agentes + ' (' + pct + '%)',
+                                    fillStyle: fill,
+                                    strokeStyle: fill,
+                                    lineWidth: 0,
+                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
+                                    index: i,
+                                    datasetIndex: 0
+                                };
+                            });
+                        }
                     }
                 },
-                layout: {
-                    padding: { top: 12, bottom: 12, left: 8, right: 8 }
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#1e293b',
+                    bodyColor: '#1e293b',
+                    borderColor: '#e2e8f0',
+                    borderWidth: 1,
+                    padding: 12,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: (context) => {
+                            const value = context.raw || 0;
+                            const pct = context.dataset.percentages[context.dataIndex];
+                            return ` ${context.label}: ${value} agente(s) (${pct}%)`;
+                        }
+                    }
+                },
+                datalabels: {
+                    display: function(context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct >= 4;
+                    },
+                    color: '#ffffff',
+                    anchor: 'center',
+                    align: 'center',
+                    font: {
+                        size: 12,
+                        weight: '700',
+                        family: 'ui-sans-serif, -apple-system, system-ui, sans-serif'
+                    },
+                    formatter: function(value, context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct + '%';
+                    },
+                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+                    textShadowBlur: 3
                 }
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            animation: {
+                animateScale: true,
+                animateRotate: true,
+                duration: 1500,
+                easing: 'easeOutQuart'
+            },
+            onHover: (event, chartElement) => {
+                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
             }
+        }
         JS);
     }
 
     protected function getType(): string
     {
-        return 'pie';
+        return 'doughnut';
     }
 }

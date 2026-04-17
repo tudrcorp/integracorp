@@ -6,6 +6,8 @@ use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\User;
 use Carbon\Carbon;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
@@ -13,26 +15,118 @@ use Illuminate\Support\HtmlString;
 
 class TwoStatsOverview extends StatsOverviewWidget
 {
+    /**
+     * @var array{year?: int, month?: int}
+     */
+    public array $statsFilters = [];
+
     protected ?string $heading = 'Estructura Cuantificadas';
 
-    protected ?string $description = 'Total de registros y nuevos registros en el mes en curso.';
+    protected ?string $description = 'Totales del año seleccionado y del mes elegido dentro de ese año.';
+
+    public function mount(): void
+    {
+        if ($this->statsFilters === []) {
+            $now = Carbon::now();
+            $this->statsFilters = [
+                'year' => $now->year,
+                'month' => $now->month,
+            ];
+        }
+    }
+
+    public function getSectionContentComponent(): Section
+    {
+        return Section::make()
+            ->heading($this->getHeading())
+            ->description($this->getDescription())
+            ->afterHeader(
+                View::make('filament.widgets.stats-overview-filters')
+                    ->viewData(fn (): array => [
+                        'yearOptions' => $this->getYearSelectOptions(),
+                        'monthOptions' => $this->getMonthSelectOptions((int) ($this->statsFilters['year'] ?? Carbon::now()->year)),
+                        'year' => (int) ($this->statsFilters['year'] ?? Carbon::now()->year),
+                    ])
+            )
+            ->schema($this->getCachedStats())
+            ->columns($this->getColumns())
+            ->contained(false)
+            ->gridContainer();
+    }
+
+    public function updatedStatsFiltersYear($value): void
+    {
+        $year = (int) $value;
+        $now = Carbon::now();
+        $maxMonth = ($year === (int) $now->year) ? (int) $now->month : 12;
+
+        $month = (int) ($this->statsFilters['month'] ?? $maxMonth);
+        $this->statsFilters['month'] = max(1, min($maxMonth, $month));
+
+        $this->cachedStats = null;
+    }
+
+    public function updatedStatsFiltersMonth($value): void
+    {
+        $this->statsFilters['month'] = (int) $value;
+        $this->cachedStats = null;
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    protected function getYearSelectOptions(): array
+    {
+        $current = (int) Carbon::now()->year;
+        $options = [];
+        for ($y = $current; $y >= $current - 5; $y--) {
+            $options[$y] = (string) $y;
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    protected function getMonthSelectOptions(?int $year = null): array
+    {
+        $year ??= (int) Carbon::now()->year;
+        $now = Carbon::now();
+        $maxMonth = ($year === (int) $now->year) ? (int) $now->month : 12;
+
+        $options = [];
+        $locale = app()->getLocale();
+        for ($m = 1; $m <= $maxMonth; $m++) {
+            $options[$m] = ucfirst(Carbon::createFromDate(2000, $m, 1)->locale($locale)->translatedFormat('F'));
+        }
+
+        return $options;
+    }
 
     protected function getStats(): array
     {
-        $now = Carbon::now();
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth();
-        $nombreMes = ucfirst($now->translatedFormat('F'));
+        $year = (int) ($this->statsFilters['year'] ?? Carbon::now()->year);
+        $month = (int) ($this->statsFilters['month'] ?? Carbon::now()->month);
+        $month = max(1, min(12, $month));
+
+        $ref = Carbon::createFromDate($year, $month, 1);
+        $startOfYear = $ref->copy()->startOfYear();
+        $endOfYear = $ref->copy()->endOfYear();
+        $startOfMonth = $ref->copy()->startOfMonth();
+        $endOfMonth = $ref->copy()->endOfMonth();
+        $nombreMes = ucfirst($ref->locale(app()->getLocale())->translatedFormat('F'));
+        $anioActual = $year;
 
         $scope = fn ($q) => Auth::user()->is_accountManagers == 1
             ? $q->where('ownerAccountManagers', Auth::user()->id)
             : $q;
 
-        $agenciesMaster = $scope(Agency::query()->where('agency_type_id', 1))->count();
+        $agenciesMaster = (clone $scope(Agency::query()->where('agency_type_id', 1)))->whereBetween('created_at', [$startOfYear, $endOfYear])->count();
         $agenciesMasterMes = (clone $scope(Agency::query()->where('agency_type_id', 1)))->whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
-        $agenciesGeneral = $scope(Agency::query()->where('agency_type_id', 3))->count();
+        $agenciesGeneral = (clone $scope(Agency::query()->where('agency_type_id', 3)))->whereBetween('created_at', [$startOfYear, $endOfYear])->count();
         $agenciesGeneralMes = (clone $scope(Agency::query()->where('agency_type_id', 3)))->whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
-        $agents = $scope(Agent::query())->count();
+        $agents = (clone $scope(Agent::query()))->whereBetween('created_at', [$startOfYear, $endOfYear])->count();
         $agentsMes = (clone $scope(Agent::query()))->whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
 
         $statConfigs = [
@@ -69,7 +163,7 @@ class TwoStatsOverview extends StatsOverviewWidget
         foreach ($statConfigs as $config) {
             $stats[] = Stat::make($config['label'], (string) $config['value'])
                 ->icon('fontisto-person')
-                ->description(self::descriptionHtml($config['value'], $config['mes'], $nombreMes, $config['labelClass'], $config['badgeClass']))
+                ->description(self::descriptionHtml($anioActual, $config['mes'], $nombreMes, $config['labelClass'], $config['badgeClass']))
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color($config['color'])
                 ->extraAttributes([
@@ -79,11 +173,11 @@ class TwoStatsOverview extends StatsOverviewWidget
         }
 
         if (Auth::user()->is_business_admin == 1) {
-            $accountManagers = User::query()->where('is_accountManagers', 1)->count();
+            $accountManagers = User::query()->where('is_accountManagers', 1)->whereBetween('created_at', [$startOfYear, $endOfYear])->count();
             $accountManagersMes = User::query()->where('is_accountManagers', 1)->whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
             $stats[] = Stat::make('ACCOUNT MANAGERS', (string) $accountManagers)
                 ->icon('fontisto-person')
-                ->description(self::descriptionHtml($accountManagers, $accountManagersMes, $nombreMes, 'text-success-600 dark:text-success-400', 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300'))
+                ->description(self::descriptionHtml($anioActual, $accountManagersMes, $nombreMes, 'text-success-600 dark:text-success-400', 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300'))
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('planCorp')
                 ->extraAttributes([
@@ -95,19 +189,19 @@ class TwoStatsOverview extends StatsOverviewWidget
         return $stats;
     }
 
-    protected static function descriptionHtml(int $totalRegistros, int $nuevosMes, string $nombreMes, string $labelClass, string $badgeClass): HtmlString
+    protected static function descriptionHtml(int $anioActual, int $totalMes, string $nombreMes, string $labelClass, string $badgeClass): HtmlString
     {
         $html = <<<HTML
         <div class="flex flex-col mt-1">
             <span class="text-xs font-semibold uppercase tracking-wide {$labelClass}">
-                Total registros
+                TOTAL AÑO {$anioActual}
             </span>
             <div class="flex items-center gap-2.5 mt-1.5">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-lg {$badgeClass} shadow-sm">
-                    Mes actual ({$nombreMes}):
+                    Mes seleccionado ({$nombreMes}):
                 </span>
                 <span class="text-sm font-bold text-gray-900 dark:text-white">
-                    {$nuevosMes}
+                    {$totalMes}
                 </span>
             </div>
         </div>

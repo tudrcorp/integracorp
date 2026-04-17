@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Filament\Business\Resources\Agents\Widgets\TotalForStateAgent;
 
-it('es un ChartWidget con vista dedicada para pie por estado', function () {
+it('es un ChartWidget con vista dedicada para dona por estado', function () {
     expect(class_exists(TotalForStateAgent::class))->toBeTrue()
         ->and(is_subclass_of(TotalForStateAgent::class, \Filament\Widgets\ChartWidget::class))->toBeTrue();
 

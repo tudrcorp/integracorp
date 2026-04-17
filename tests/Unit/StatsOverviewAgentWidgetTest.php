@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 use App\Filament\Business\Resources\Agents\Widgets\StatsOverviewAgent;
 
-it('usa la vista con contenedor liquid glass iOS', function () {
-    $view = (new ReflectionClass(StatsOverviewAgent::class))->getDefaultProperties()['view'] ?? null;
+it('calcula el porcentaje YoY (variación) y maneja división por cero', function (): void {
+    $method = new ReflectionMethod(StatsOverviewAgent::class, 'calculateYearOverYearPercentChange');
+    $method->setAccessible(true);
 
-    expect($view)->toBe('filament.widgets.stats-overview-agent-ios');
+    expect($method->invoke(null, 120, 100))->toBe(20.0)
+        ->and($method->invoke(null, 80, 100))->toBe(-20.0)
+        ->and($method->invoke(null, 10, 0))->toBeNull();
 });
 
-it('define grid de 2 columnas desde md para que la tarjeta ocupe mitad del ancho', function () {
-    $method = new ReflectionMethod(StatsOverviewAgent::class, 'getColumns');
+it('declara estilos para sparkline de fondo en el tema', function (): void {
+    $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
 
-    expect($method->invoke(new StatsOverviewAgent))->toBe([
-        'default' => 1,
-        'md' => 2,
-    ]);
+    expect($css)->not->toBeFalse()
+        ->and($css)->toContain('.fi-agent-subagent-yoy-spark .fi-wi-stats-overview-stat-chart');
 });

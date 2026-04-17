@@ -2,18 +2,23 @@
 
 namespace App\Filament\Business\Resources\Agencies\Widgets;
 
+use App\Filament\Business\Resources\Agencies\Concerns\HasAgencyResourceChartTimeStateFilters;
 use App\Models\Agency;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\Cache;
 
 class AgencyGeoChart extends ChartWidget
 {
+    use HasAgencyResourceChartTimeStateFilters;
+
+    protected string $view = 'filament.widgets.agency-geo-chart';
+
     public function mount(): void
     {
         parent::mount();
+        $this->bootAgencyChartFilters();
 
         FilamentAsset::register([
             Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'),
@@ -22,15 +27,16 @@ class AgencyGeoChart extends ChartWidget
 
     protected ?string $heading = 'Distribución de Agencias por Estado';
 
-    protected ?string $description = 'Análisis porcentual de agencias activas por estado.';
+    protected ?string $description = 'Altas de agencias activas por estado (año y mes de registro).';
 
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
     protected ?string $pollingInterval = null;
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
-    protected ?string $maxHeight = '400px';
+    /** Misma altura de área de gráfico que {@see NewRegisterAgencyForMountChart}. */
+    protected ?string $maxHeight = '440px';
 
     protected function getType(): string
     {
@@ -39,16 +45,19 @@ class AgencyGeoChart extends ChartWidget
 
     protected function getData(): array
     {
-        $distribution = Cache::remember('agency_geo_distribution:v10', 3600, function () {
-            return Agency::query()
-                ->join('states', 'agencies.state_id', '=', 'states.id')
-                ->selectRaw('states.definition as state_name, COUNT(*) as total')
-                ->where('agencies.status', 'ACTIVO')
-                ->groupBy('states.definition')
-                ->orderByDesc('total')
-                ->pluck('total', 'state_name')
-                ->toArray();
-        });
+        $year = $this->resolvedChartYear();
+        $month = $this->resolvedChartMonth();
+
+        $distribution = Agency::query()
+            ->join('states', 'agencies.state_id', '=', 'states.id')
+            ->selectRaw('states.definition as state_name, COUNT(*) as total')
+            ->where('agencies.status', 'ACTIVO')
+            ->whereYear('agencies.created_at', $year)
+            ->when($month, fn ($q) => $q->whereMonth('agencies.created_at', $month))
+            ->groupBy('states.definition')
+            ->orderByDesc('total')
+            ->pluck('total', 'state_name')
+            ->toArray();
 
         $vibrantPalette = [
             '#FF2D55', // Rosa Apple
@@ -88,10 +97,11 @@ class AgencyGeoChart extends ChartWidget
                     'data' => $data,
                     'percentages' => array_values($percentages),
                     'backgroundColor' => $backgroundColors,
+                    'borderWidth' => 0,
                     'borderColor' => 'transparent',
-                    'hoverOffset' => 35, // Aumentado para resaltar más la pieza al frente
-                    'hoverBorderWidth' => 3,
-                    'hoverBorderColor' => '#ffffff',
+                    'hoverOffset' => 35,
+                    'hoverBorderWidth' => 0,
+                    'hoverBorderColor' => 'transparent',
                     'borderRadius' => 4,
                 ],
             ],
@@ -104,23 +114,54 @@ class AgencyGeoChart extends ChartWidget
         {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '65%',
+            borderWidth: 0,
+            elements: {
+                arc: {
+                    borderWidth: 0,
+                    borderColor: 'transparent'
+                }
+            },
+            cutout: '52%',
             layout: {
-                padding: 40 // Espacio extra para permitir que el segmento resalte sin cortarse
+                padding: { top: 16, right: 8, bottom: 6, left: 8 }
             },
             plugins: {
                 legend: {
                     display: true,
-                    position: 'right',
+                    position: 'bottom',
+                    align: 'center',
                     labels: {
                         usePointStyle: true,
                         pointStyle: 'circle',
-                        padding: 16,
+                        padding: 18,
+                        boxWidth: 10,
+                        boxHeight: 10,
                         font: {
-                            size: 11,
-                            weight: '600'
+                            size: 12,
+                            weight: '600',
+                            family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
                         },
-                        color: 'gray'
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const ds = data.datasets[0];
+                            const meta = chart.getDatasetMeta(0);
+                            return data.labels.map((label, i) => {
+                                const value = ds.data[i];
+                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
+                                    ? ds.percentages[i]
+                                    : 0;
+                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+                                return {
+                                    text: String(label) + ': ' + value + ' agencias (' + pct + '%)',
+                                    fillStyle: fill,
+                                    strokeStyle: fill,
+                                    lineWidth: 0,
+                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
+                                    index: i,
+                                    datasetIndex: 0
+                                };
+                            });
+                        }
                     }
                 },
                 tooltip: {
@@ -178,12 +219,5 @@ class AgencyGeoChart extends ChartWidget
             }
         }
         JS);
-    }
-
-    protected function getExtraAttributes(): array
-    {
-        return [
-            'class' => 'fi-geo-chart-widget shadow-2xl rounded-[32px] overflow-hidden border-none bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6',
-        ];
     }
 }

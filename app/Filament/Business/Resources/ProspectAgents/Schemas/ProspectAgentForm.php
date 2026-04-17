@@ -53,7 +53,7 @@ class ProspectAgentForm
                     ->description('Nombre completo y canales de contacto.')
                     ->schema([
                         TextInput::make('name')
-                            ->label('Nombre y apellido')
+                            ->label('Nombre y apellido / Razon social')
                             ->required()
                             ->maxLength(255)
                             ->autocomplete('name')

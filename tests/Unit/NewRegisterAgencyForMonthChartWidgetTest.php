@@ -26,7 +26,7 @@ it('alinea gráfico de agencias por mes con SupplierClasificationChart (paleta y
     $blade = file_get_contents($root.'/resources/views/filament/widgets/new-register-agency-month-chart.blade.php');
     expect($blade)
         ->toContain('getMaxHeight()')
-        ->and($blade)->toContain('fi-agency-registrations-chart-like-suppliers')
+        ->and($blade)->toContain('fi-agent-charts-like-suppliers')
         ->and($blade)->not->toContain('fi-glassmorphism-agency-chart')
         ->and($blade)->toContain('getRegistrationsTotalInCurrentView')
         ->and($blade)->toContain('getEmptyRegistrationsMessage')
@@ -36,8 +36,8 @@ it('alinea gráfico de agencias por mes con SupplierClasificationChart (paleta y
 
     $css = file_get_contents($root.'/resources/css/filament/admin/theme.css');
     expect($css)
-        ->toContain('.fi-agency-registrations-chart-like-suppliers .fi-wi-chart-canvas-ctn canvas')
-        ->and($css)->toContain('.dark .fi-agency-registrations-chart-like-suppliers .fi-wi-chart-canvas-ctn canvas');
+        ->toContain('.fi-agent-charts-like-suppliers .fi-wi-chart-canvas-ctn canvas')
+        ->and($css)->toContain('.dark .fi-agent-charts-like-suppliers .fi-wi-chart-canvas-ctn canvas');
 
     $list = file_get_contents($root.'/app/Filament/Business/Resources/Agencies/Pages/ListAgencies.php');
     expect($list)->toContain('NewRegisterAgencyForMountChart::class');

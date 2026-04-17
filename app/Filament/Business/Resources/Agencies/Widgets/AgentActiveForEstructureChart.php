@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Agencies\Widgets;
 
+use App\Filament\Business\Resources\Agencies\Concerns\HasAgencyResourceChartTimeStateFilters;
 use App\Models\Agency;
 use App\Models\Agent;
 use Filament\Notifications\Notification;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class AgentActiveForEstructureChart extends ChartWidget
 {
+    use HasAgencyResourceChartTimeStateFilters;
+
     protected string $view = 'filament.widgets.agent-active-for-estructure-chart';
 
     protected string $color = 'gray';
@@ -29,17 +32,37 @@ class AgentActiveForEstructureChart extends ChartWidget
     // Clave para forzar el refresco del componente
     public int $chartKey = 0;
 
+    public function mount(): void
+    {
+        parent::mount();
+        $this->bootAgencyChartFilters();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getChartStateSelectOptions(): array
+    {
+        return [];
+    }
+
     protected function getData(): array
     {
+        $year = $this->resolvedChartYear();
+        $month = $this->resolvedChartMonth();
+
         // CASO: Vista de Detalle (Activos vs Inactivos de la agencia seleccionada)
         if ($this->selectedAgencyCode) {
             $stats = Agent::query()
                 ->select([
-                    'status',
+                    'agents.status',
                     DB::raw('COUNT(*) as total'),
                 ])
-                ->where('owner_code', $this->selectedAgencyCode)
-                ->groupBy('status')
+                ->join('agencies', 'agencies.code', '=', 'agents.owner_code')
+                ->where('agents.owner_code', $this->selectedAgencyCode)
+                ->whereYear('agents.created_at', $year)
+                ->when($month, fn ($q) => $q->whereMonth('agents.created_at', $month))
+                ->groupBy('agents.status')
                 ->get()
                 ->pluck('total', 'status');
 
@@ -70,14 +93,19 @@ class AgentActiveForEstructureChart extends ChartWidget
                 'agencies.name_corporative',
                 DB::raw('COUNT(agents.id) as total_agents'),
             ])
-            ->leftJoin('agents', function ($join): void {
+            ->leftJoin('agents', function ($join) use ($year, $month): void {
                 $join
                     ->on('agents.owner_code', '=', 'agencies.code')
-                    ->where('agents.status', 'ACTIVO');
+                    ->where('agents.status', 'ACTIVO')
+                    ->whereYear('agents.created_at', $year);
+                if ($month) {
+                    $join->whereMonth('agents.created_at', $month);
+                }
             })
             ->groupBy('agencies.code', 'agencies.name_corporative')
             ->having('total_agents', '>', 0)
             ->orderByDesc('total_agents')
+            ->limit(20)
             ->get();
 
         $labels = $agenciesWithActiveAgents

@@ -7,6 +7,8 @@ use App\Models\AffiliationCorporate;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use Carbon\Carbon;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
@@ -14,20 +16,109 @@ use Illuminate\Support\HtmlString;
 
 class StatsOverview extends StatsOverviewWidget
 {
+    /**
+     * @var array{year?: int, month?: int}
+     */
+    public array $statsFilters = [];
 
     protected ?string $heading = 'Dashboard de Indicadores de gestión';
 
-    protected ?string $description = 'Vista consolidada del desempeño estratégico (año y mes en curso).';
+    protected ?string $description = 'Vista consolidada del desempeño estratégico. Filtra por año y mes para ver totales del periodo.';
+
+    public function mount(): void
+    {
+        if ($this->statsFilters === []) {
+            $now = Carbon::now();
+            $this->statsFilters = [
+                'year' => $now->year,
+                'month' => $now->month,
+            ];
+        }
+    }
+
+    public function getSectionContentComponent(): Section
+    {
+        return Section::make()
+            ->heading($this->getHeading())
+            ->description($this->getDescription())
+            ->afterHeader(
+                View::make('filament.widgets.stats-overview-filters')
+                    ->viewData(fn (): array => [
+                        'yearOptions' => $this->getYearSelectOptions(),
+                        'monthOptions' => $this->getMonthSelectOptions((int) ($this->statsFilters['year'] ?? Carbon::now()->year)),
+                        'year' => (int) ($this->statsFilters['year'] ?? Carbon::now()->year),
+                    ])
+            )
+            ->schema($this->getCachedStats())
+            ->columns($this->getColumns())
+            ->contained(false)
+            ->gridContainer();
+    }
+
+    public function updatedStatsFiltersYear($value): void
+    {
+        $year = (int) $value;
+        $now = Carbon::now();
+        $maxMonth = ($year === (int) $now->year) ? (int) $now->month : 12;
+
+        $month = (int) ($this->statsFilters['month'] ?? $maxMonth);
+        $this->statsFilters['month'] = max(1, min($maxMonth, $month));
+
+        $this->cachedStats = null;
+    }
+
+    public function updatedStatsFiltersMonth($value): void
+    {
+        $this->statsFilters['month'] = (int) $value;
+        $this->cachedStats = null;
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    protected function getYearSelectOptions(): array
+    {
+        $current = (int) Carbon::now()->year;
+        $options = [];
+        for ($y = $current; $y >= $current - 5; $y--) {
+            $options[$y] = (string) $y;
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    protected function getMonthSelectOptions(?int $year = null): array
+    {
+        $year ??= (int) Carbon::now()->year;
+        $now = Carbon::now();
+        $maxMonth = ($year === (int) $now->year) ? (int) $now->month : 12;
+
+        $options = [];
+        $locale = app()->getLocale();
+        for ($m = 1; $m <= $maxMonth; $m++) {
+            $label = ucfirst(Carbon::createFromDate(2000, $m, 1)->locale($locale)->translatedFormat('F'));
+            $options[$m] = $label;
+        }
+
+        return $options;
+    }
 
     protected function getStats(): array
     {
-        $now = Carbon::now();
-        $startOfYear = $now->copy()->startOfYear();
-        $endOfYear = $now->copy()->endOfYear();
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth();
-        $nombreMes = ucfirst($now->translatedFormat('F'));
-        $anioActual = $now->year;
+        $year = (int) ($this->statsFilters['year'] ?? Carbon::now()->year);
+        $month = (int) ($this->statsFilters['month'] ?? Carbon::now()->month);
+        $month = max(1, min(12, $month));
+
+        $ref = Carbon::createFromDate($year, $month, 1);
+        $startOfYear = $ref->copy()->startOfYear();
+        $endOfYear = $ref->copy()->endOfYear();
+        $startOfMonth = $ref->copy()->startOfMonth();
+        $endOfMonth = $ref->copy()->endOfMonth();
+        $nombreMes = ucfirst($ref->locale(app()->getLocale())->translatedFormat('F'));
+        $anioActual = $year;
 
         $scope = fn ($q) => Auth::user()->is_accountManagers == 1
             ? $q->where('ownerAccountManagers', Auth::user()->id)
@@ -106,7 +197,7 @@ class StatsOverview extends StatsOverviewWidget
             </span>
             <div class="flex items-center gap-2.5 mt-1.5">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-lg {$badgeClass} shadow-sm">
-                    Mes actual ({$nombreMes}):
+                    Mes seleccionado ({$nombreMes}):
                 </span>
                 <span class="text-sm font-bold text-gray-900 dark:text-white">
                     {$totalMes}

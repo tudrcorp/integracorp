@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Agencies\Widgets;
 
+use App\Filament\Business\Resources\Agencies\Concerns\HasAgencyResourceChartTimeStateFilters;
 use App\Models\Agency;
 use App\Models\Sale;
 use Carbon\Carbon;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class TotalSaleForEstructureChart extends ChartWidget
 {
+    use HasAgencyResourceChartTimeStateFilters;
+
     protected string $view = 'filament.widgets.total-sale-for-estructure-chart';
 
     protected string $color = 'gray';
@@ -31,19 +34,18 @@ class TotalSaleForEstructureChart extends ChartWidget
     // Propiedad para forzar el refresco reactivo
     public int $chartKey = 0;
 
-    /**
-     * Define los filtros de tiempo en la parte superior del widget
-     */
-    protected function getFilters(): ?array
+    public function mount(): void
     {
-        return [
-            'today' => 'Hoy',
-            'week' => 'Esta Semana',
-            'month' => 'Este Mes',
-            'last_month' => 'Mes Pasado',
-            'year' => 'Este Año',
-            'all' => 'Todo el tiempo',
-        ];
+        parent::mount();
+        $this->bootAgencyChartFilters();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getChartStateSelectOptions(): array
+    {
+        return [];
     }
 
     /**
@@ -55,7 +57,7 @@ class TotalSaleForEstructureChart extends ChartWidget
      * Genera los datos del gráfico. Puede invocarse estáticamente con valores por defecto
      * o desde la instancia usando el estado del widget.
      *
-     * @param  array{filter?: string, selectedAgencyCode?: string|null, selectedAgencyName?: string|null, chartKey?: int}  $params
+     * @param  array{filter?: string, year?: int, month?: int|null, selectedAgencyCode?: string|null, selectedAgencyName?: string|null, chartKey?: int}  $params
      */
     public static function buildChartData(array $params = []): array
     {
@@ -63,8 +65,11 @@ class TotalSaleForEstructureChart extends ChartWidget
         $selectedAgencyCode = $params['selectedAgencyCode'] ?? null;
         $chartKey = $params['chartKey'] ?? 0;
         $year = (int) ($params['year'] ?? Carbon::now()->year);
+        $month = $params['month'] ?? null;
+        $month = is_numeric($month) ? (int) $month : null;
+        $month = ($month !== null && $month >= 1 && $month <= 12) ? $month : null;
 
-        $querySales = function ($query) use ($activeFilter, $year) {
+        $querySales = function ($query) use ($activeFilter, $year, $month) {
             if ($activeFilter === 'today') {
                 $query->whereDate('sales.created_at', Carbon::today());
             } elseif ($activeFilter === 'week') {
@@ -77,6 +82,9 @@ class TotalSaleForEstructureChart extends ChartWidget
                     ->whereYear('sales.created_at', Carbon::now()->subMonth()->year);
             } elseif ($activeFilter === 'year') {
                 $query->whereYear('sales.created_at', $year);
+                if ($month !== null) {
+                    $query->whereMonth('sales.created_at', $month);
+                }
             }
         };
 
@@ -88,6 +96,7 @@ class TotalSaleForEstructureChart extends ChartWidget
                     DB::raw('COALESCE(SUM(sales.total_amount), 0) as total'),
                 ])
                 ->join('agents', 'agents.id', '=', 'sales.agent_id')
+                ->join('agencies', 'agencies.code', '=', 'sales.code_agency')
                 ->where('agents.owner_code', $selectedAgencyCode)
                 ->where($querySales)
                 ->groupBy('agents.name')
@@ -151,8 +160,15 @@ class TotalSaleForEstructureChart extends ChartWidget
 
     protected function getData(): array
     {
+        $month = null;
+        if ($this->filter === 'year') {
+            $month = $this->resolvedChartMonth();
+        }
+
         return self::buildChartData([
             'filter' => $this->filter,
+            'year' => $this->resolvedChartYear(),
+            'month' => $month,
             'selectedAgencyCode' => $this->selectedAgencyCode,
             'selectedAgencyName' => $this->selectedAgencyName,
             'chartKey' => $this->chartKey,

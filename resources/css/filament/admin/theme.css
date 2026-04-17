@@ -189,6 +189,25 @@
 }
 
 @layer components {
+  /* Sparkline de fondo (minimalista) para "Agentes y Subagentes" */
+  .fi-agent-subagent-yoy-spark .fi-wi-stats-overview-stat-chart {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.40;
+    overflow: hidden;
+    mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 55%, rgba(0, 0, 0, 0) 100%);
+  }
+
+  .fi-agent-subagent-yoy-spark .fi-wi-stats-overview-stat-chart > canvas {
+    height: 100% !important;
+    width: 100% !important;
+  }
+}
+
+@layer components {
   .fi-wi-chart {
     @apply rounded-xl shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)];
   }
