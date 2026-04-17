@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 it('usa una ruta de PDF definida para la vista previa de cotizaciones', function () {
-    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/DressTylorQuotes/Tables/DressTylorQuotesTable.php';
+    $path = dirname(__DIR__, 2) . '/app/Filament/Business/Resources/DressTylorQuotes/Tables/DressTylorQuotesTable.php';
     $contents = file_get_contents($path);
 
     expect($contents)
@@ -13,7 +13,7 @@ it('usa una ruta de PDF definida para la vista previa de cotizaciones', function
 });
 
 it('la ruta de pdf maneja preview inline por query param', function () {
-    $path = dirname(__DIR__, 2).'/routes/web.php';
+    $path = dirname(__DIR__, 2) . '/routes/web.php';
     $contents = file_get_contents($path);
 
     expect($contents)
