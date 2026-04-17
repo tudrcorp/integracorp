@@ -19,5 +19,9 @@ it('la ruta de pdf maneja preview inline por query param', function () {
     expect($contents)
         ->toContain('business/dress-tylor-quotes/{record}/pdf')
         ->toContain("request()->boolean('preview')")
-        ->toContain('generateInlinePdfFromQuoteStructure');
+        ->toContain('generateInlinePdfFromQuoteStructure')
+        ->toContain('AUDIT_BUSINESS_DRESS_TYLOR_QUOTE_PDF_VIEWED')
+        ->toContain('AUDIT_BUSINESS_DRESS_TYLOR_QUOTE_PDF_DOWNLOADED')
+        ->toContain('AUDIT_BUSINESS_DRESS_TYLOR_QUOTE_PDF_FAILED')
+        ->toContain('SecurityAudit::log');
 });

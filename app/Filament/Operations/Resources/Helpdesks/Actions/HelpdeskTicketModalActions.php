@@ -6,6 +6,7 @@ use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Support\HelpdeskObservationAppender;
 use App\Support\HelpdeskTaskStatusOptions;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -141,6 +142,12 @@ final class HelpdeskTicketModalActions
                 $noteHtml = (string) ($data['note'] ?? '');
                 $plainLength = mb_strlen(trim(html_entity_decode(strip_tags($noteHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
                 if ($plainLength < 3) {
+                    SecurityAudit::log('AUDIT_HELPDESK_NOTE_ADD_FAILED', 'operations.helpdesks.add-note', [
+                        'panel' => 'operations',
+                        'helpdesk_id' => $record->getKey(),
+                        'reason' => 'note_too_short',
+                    ]);
+
                     Notification::make()
                         ->title('Nota demasiado corta')
                         ->body('Escribe al menos 3 caracteres de contenido (sin contar solo formato vacío).')
@@ -151,6 +158,13 @@ final class HelpdeskTicketModalActions
                 }
 
                 HelpdeskObservationAppender::append($record, $noteHtml, $user->name);
+
+                SecurityAudit::log('AUDIT_HELPDESK_NOTE_ADDED', 'operations.helpdesks.add-note', [
+                    'panel' => 'operations',
+                    'helpdesk_id' => $record->getKey(),
+                    'status' => $record->status,
+                    'added_by' => $user->name,
+                ]);
 
                 Notification::make()
                     ->title('Nota guardada')
@@ -218,10 +232,19 @@ final class HelpdeskTicketModalActions
                     return;
                 }
 
+                $previousStatus = (string) $record->status;
                 $newStatus = (string) ($data['status'] ?? $record->status);
                 $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, $newStatus, $user->name);
 
                 if ($sanitized === $record->status) {
+                    SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATE_SKIPPED', 'operations.helpdesks.update-status', [
+                        'panel' => 'operations',
+                        'helpdesk_id' => $record->getKey(),
+                        'status' => $record->status,
+                        'updated_by' => $user->name,
+                        'reason' => 'no_changes',
+                    ]);
+
                     Notification::make()
                         ->title('Sin cambios')
                         ->body('El estado del ticket no se modificó.')
@@ -234,6 +257,14 @@ final class HelpdeskTicketModalActions
                 $record->status = $sanitized;
                 $record->updated_by = $user->name;
                 $record->save();
+
+                SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATED', 'operations.helpdesks.update-status', [
+                    'panel' => 'operations',
+                    'helpdesk_id' => $record->getKey(),
+                    'old_status' => $previousStatus,
+                    'new_status' => $sanitized,
+                    'updated_by' => $user->name,
+                ]);
 
                 Notification::make()
                     ->title('Estado actualizado')

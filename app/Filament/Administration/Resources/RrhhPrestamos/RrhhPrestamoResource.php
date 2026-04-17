@@ -11,7 +11,6 @@ use App\Models\RrhhPrestamo;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -19,11 +18,11 @@ class RrhhPrestamoResource extends Resource
 {
     protected static ?string $model = RrhhPrestamo::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'RRHH';
+    protected static string|UnitEnum|null $navigationGroup = 'RRHH';
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-c-arrows-right-left';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'Prestamos';
+    protected static ?string $navigationLabel = 'Préstamos';
 
     protected static ?int $navigationSort = 6;
 

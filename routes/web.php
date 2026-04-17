@@ -18,6 +18,7 @@ use App\Models\Benefit;
 use App\Models\BirthdayNotification;
 use App\Models\Collection;
 use App\Models\Guest;
+use App\Support\SecurityAudit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
@@ -128,17 +129,51 @@ Route::get('operations/suppliers/{supplier}/carta-acceptance/download', [Supplie
     ->name('operations.suppliers.carta-acceptance.download');
 
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
-    $quote = \App\Models\DressTylorQuote::findOrFail($record);
-    $structure = $quote->quote_structure;
-    if (empty($structure)) {
-        abort(404, 'Esta cotización no tiene estructura guardada para generar el PDF.');
-    }
+    $isPreview = request()->boolean('preview');
+    $auditRoute = $isPreview
+        ? 'business.dress-tylor-quotes.pdf.preview'
+        : 'business.dress-tylor-quotes.pdf.download';
 
-    if (request()->boolean('preview')) {
-        return \App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm::generateInlinePdfFromQuoteStructure($structure);
-    }
+    try {
+        $quote = \App\Models\DressTylorQuote::findOrFail($record);
+        $structure = $quote->quote_structure;
+        if (empty($structure)) {
+            abort(404, 'Esta cotización no tiene estructura guardada para generar el PDF.');
+        }
 
-    return \App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm::generatePdfFromQuoteStructure($structure);
+        SecurityAudit::log(
+            $isPreview
+                ? 'AUDIT_BUSINESS_DRESS_TYLOR_QUOTE_PDF_VIEWED'
+                : 'AUDIT_BUSINESS_DRESS_TYLOR_QUOTE_PDF_DOWNLOADED',
+            $auditRoute,
+            [
+                'panel' => 'business',
+                'dress_tylor_quote_id' => $quote->id,
+                'status' => $quote->status,
+                'email' => $quote->email,
+                'requested_record' => $record,
+            ]
+        );
+
+        if ($isPreview) {
+            return \App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm::generateInlinePdfFromQuoteStructure($structure);
+        }
+
+        return \App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm::generatePdfFromQuoteStructure($structure);
+    } catch (\Throwable $exception) {
+        SecurityAudit::log(
+            'AUDIT_BUSINESS_DRESS_TYLOR_QUOTE_PDF_FAILED',
+            $auditRoute,
+            [
+                'panel' => 'business',
+                'requested_record' => $record,
+                'is_preview' => $isPreview,
+                'reason' => $exception->getMessage(),
+            ]
+        );
+
+        throw $exception;
+    }
 })
     ->middleware(['web', 'auth'])
     ->name('business.dress-tylor-quotes.pdf');
@@ -278,7 +313,6 @@ Route::get('/pp', function () {
         // Send Notificacion via Whatsapp
         NotificationController::documentUploadReminder($agents[$i]->phone, $agents[$i]->name, $string);
     }
-
 });
 
 Route::get('/pdf', [PdfController::class, 'generatePdf_aviso_de_pago']);
@@ -293,7 +327,6 @@ Route::get('/d', function () {
     dd($path);
 
     return response()->download($path);
-
 })->name('panel.notification.download.file');
 
 Route::get('/flux/{name}', function ($name) {
@@ -353,13 +386,11 @@ Route::get('/notify', function () {
 
         Log::info($response);
         Log::error($err);
-
     }
 
     curl_close($curl);
 
     dd($response);
-
 });
 
 Route::get('/notification', function () {
@@ -367,7 +398,6 @@ Route::get('/notification', function () {
     NotificationController::notificationImage();
     // NotificationController::notificationVideo();
     dd('listo');
-
 });
 
 Route::get('/truncate', function () {
@@ -377,7 +407,6 @@ Route::get('/truncate', function () {
 
     // Reiniciar el auto-increment
     DB::statement('ALTER TABLE users AUTO_INCREMENT = 3;');
-
 });
 
 Route::get('/rp', function () {
@@ -396,7 +425,6 @@ Route::get('/inter', function () {
     $pdf = Pdf::loadView('documents.referencia-especialista');
 
     return $pdf->stream();
-
 });
 
 Route::get('/lab', function () {
@@ -404,7 +432,6 @@ Route::get('/lab', function () {
     $pdf = Pdf::loadView('documents.laboratorios');
 
     return $pdf->stream();
-
 });
 
 Route::get('/imag', function () {
@@ -412,7 +439,6 @@ Route::get('/imag', function () {
     $pdf = Pdf::loadView('documents.imagenologia');
 
     return $pdf->stream();
-
 });
 
 Route::get('/tarjeta', function () {
@@ -469,7 +495,6 @@ Route::get('/largo', function () {
                     $dataAgency = DB::table('agencies')->select('name_corporative', 'email')->where('code', $dates[$i]->code_agency)->first();
                     Mail::to($dataAgency->email)->queue((new NotificationRenewAffiliationMail($dates[$i]->code, 30))->onQueue('renew'));
                 }
-
             }
 
             // Faltan 20 dias?
@@ -626,7 +651,6 @@ Route::get('/largo', function () {
             }
 
             dd($effectiveDate, $today, $diasFaltantes);
-
         }
 
         if ($effectiveDate < $today) {
@@ -637,7 +661,6 @@ Route::get('/largo', function () {
             ]);
         }
     }
-
 });
 
 Route::get('/generar-qr', function () {
@@ -761,7 +784,6 @@ Route::get('/r4/banesco', function () {
 
         Log::info($resultOperacion);
     }
-
 });
 
 Route::get('/r4/vzla', function () {
@@ -1469,15 +1491,12 @@ Route::get('/pr/cumple', function () {
 
                                     // Ejecuto el envio de la notificacion
                                     self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
-
                                 } else {
                                     continue;
                                 }
-
                             } else {
                                 continue;
                             }
-
                         }
                     }
                 }
@@ -1492,7 +1511,6 @@ Route::get('/pr/cumple', function () {
     } catch (\Throwable $th) {
         Log::error($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile());
     }
-
 });
 
 Route::get('/formulario-externo', function () {

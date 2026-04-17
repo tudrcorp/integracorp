@@ -7,6 +7,7 @@ use App\Jobs\ResendEmailPropuestaEconomica;
 use App\Models\Agency;
 use App\Models\Bitacora;
 use App\Models\IndividualQuote;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -379,6 +380,14 @@ class IndividualQuotesTable
                                 $job = ResendEmailPropuestaEconomica::dispatch($record, $email, $phone);
 
                                 if ($job) {
+                                    SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_FORWARD_SENT', 'business.individual-quotes.forward', [
+                                        'panel' => 'business',
+                                        'individual_quote_id' => $record->id,
+                                        'code' => $record->code,
+                                        'email' => $email,
+                                        'phone' => $phone,
+                                    ]);
+
                                     Notification::make()
                                         ->title('RE-ENVIADO EXITOSO')
                                         ->body('La información fue reenviada correctamente.')
@@ -388,6 +397,15 @@ class IndividualQuotesTable
                                         ->send();
                                 }
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_FORWARD_FAILED', 'business.individual-quotes.forward', [
+                                    'panel' => 'business',
+                                    'individual_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'email' => $data['email'] ?? null,
+                                    'phone' => $data['phone'] ?? null,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -412,6 +430,12 @@ class IndividualQuotesTable
                             try {
 
                                 if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
+                                    SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_PDF_DOWNLOAD_FAILED', 'business.individual-quotes.download', [
+                                        'panel' => 'business',
+                                        'individual_quote_id' => $record->id,
+                                        'code' => $record->code,
+                                        'reason' => 'file_not_found',
+                                    ]);
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
@@ -429,9 +453,23 @@ class IndividualQuotesTable
                                  */
                                 $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
+                                SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_PDF_DOWNLOADED', 'business.individual-quotes.download', [
+                                    'panel' => 'business',
+                                    'individual_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'path' => $path,
+                                ]);
+
                                 return response()->download($path);
 
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_PDF_DOWNLOAD_FAILED', 'business.individual-quotes.download', [
+                                    'panel' => 'business',
+                                    'individual_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -495,6 +533,13 @@ class IndividualQuotesTable
                                  * LOG
                                  */
                                 LogController::log(Auth::user()->id, 'Actualizacion de estatus', 'Modulo Cotizacion Individual', 'ACTUALIZAR ESTATUS');
+                                SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_STATUS_UPDATED', 'business.individual-quotes.change-status', [
+                                    'panel' => 'business',
+                                    'individual_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'status' => $record->status,
+                                    'description' => $data['description'] ?? null,
+                                ]);
 
                                 Notification::make()
                                     ->title('ESTATUS ACTUALIZADO EXITOSAMENTE')
@@ -504,6 +549,15 @@ class IndividualQuotesTable
                                     ->success()
                                     ->send();
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_STATUS_UPDATE_FAILED', 'business.individual-quotes.change-status', [
+                                    'panel' => 'business',
+                                    'individual_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'status' => $data['status'] ?? null,
+                                    'description' => $data['description'] ?? null,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')

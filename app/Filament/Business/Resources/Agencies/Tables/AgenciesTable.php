@@ -12,6 +12,7 @@ use App\Models\Agent;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -285,7 +286,24 @@ class AgenciesTable
 
                                 }
 
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_ACTIVATED', 'business.agencies.activate', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                    'created_user_id' => $user->id,
+                                    'notification_sent' => (bool) $nofitication,
+                                ]);
+
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_ACTIVATE_FAILED', 'business.agencies.activate', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
+
                                 Log::error($th->getMessage());
                                 Notification::make()
                                     ->title('EXCEPCION')
@@ -348,6 +366,19 @@ class AgenciesTable
                                     $corp->save();
                                 }
 
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_HIERARCHY_UPDATED', 'business.agencies.edit-hierarchy', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'updated_user_agency_type_to' => 'MASTER',
+                                    'updated_related_counts' => [
+                                        'individual_quotes' => count($individualQuote),
+                                        'corporate_quotes' => count($corporateQuote),
+                                        'affiliations' => count($afiliacionIndividual),
+                                        'affiliation_corporates' => count($afiliacionCorporativa),
+                                    ],
+                                ]);
+
                                 Notification::make()
                                     ->title('ASCENSO EXITOSO')
                                     ->icon('heroicon-s-check-circle')
@@ -356,6 +387,12 @@ class AgenciesTable
                                     ->send();
 
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_HIERARCHY_UPDATE_FAILED', 'business.agencies.edit-hierarchy', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'error' => $th->getMessage(),
+                                ]);
 
                                 Notification::make()
                                     ->title('EXCEPCION')
@@ -369,12 +406,61 @@ class AgenciesTable
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     Action::make('Inactivate')
                         ->label('Inactivar')
-                        ->action(fn (Agency $record) => $record->update(['status' => 'INACTIVO']))
+                        ->action(function (Agency $record): void {
+                            try {
+                                $record->update(['status' => 'INACTIVO']);
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_INACTIVATED', 'business.agencies.inactivate', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                ]);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_INACTIVATE_FAILED', 'business.agencies.inactivate', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('EXCEPCION')
+                                    ->body('No se pudo inactivar la agencia.')
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->color('danger')
+                                    ->send();
+                            }
+                        })
                         ->icon('heroicon-s-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteAction::make()
+                        ->action(function (Agency $record): void {
+                            try {
+                                $record->delete();
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_DELETED', 'business.agencies.delete', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                ]);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_DELETE_FAILED', 'business.agencies.delete', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                throw $th;
+                            }
+                        })
                         ->color('danger')
                         ->label('Eliminar')
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
@@ -400,7 +486,7 @@ class AgenciesTable
                                 ])->columnSpanFull()->columns(1),
                         ])
                         ->action(function (Collection $records, array $data) {
-
+                            $recordIds = $records->pluck('id')->values()->all();
                             $records = $records->toArray();
                             // dd($records);
                             try {
@@ -528,7 +614,20 @@ class AgenciesTable
 
                                 }
 
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCIES_ACCOUNT_MANAGER_ASSIGNED', 'business.agencies.bulk-assign-account-manager', [
+                                    'agencies_ids' => $recordIds,
+                                    'agencies_count' => count($recordIds),
+                                    'owner_account_manager_id' => $data['ownerAccountManagers'] ?? null,
+                                ]);
+
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCIES_ACCOUNT_MANAGER_ASSIGN_FAILED', 'business.agencies.bulk-assign-account-manager', [
+                                    'agencies_ids' => $recordIds,
+                                    'agencies_count' => count($recordIds),
+                                    'owner_account_manager_id' => $data['ownerAccountManagers'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
+
                                 Notification::make()
                                     ->title('EXCEPCION')
                                     ->body($th->getMessage())
@@ -542,6 +641,28 @@ class AgenciesTable
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            $recordIds = $records->pluck('id')->values()->all();
+
+                            try {
+                                foreach ($records as $record) {
+                                    $record->delete();
+                                }
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCIES_BULK_DELETED', 'business.agencies.bulk-delete', [
+                                    'agencies_ids' => $recordIds,
+                                    'agencies_count' => count($recordIds),
+                                ]);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCIES_BULK_DELETE_FAILED', 'business.agencies.bulk-delete', [
+                                    'agencies_ids' => $recordIds,
+                                    'agencies_count' => count($recordIds),
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                throw $th;
+                            }
+                        })
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),

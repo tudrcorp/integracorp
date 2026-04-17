@@ -11,6 +11,7 @@ use App\Jobs\SendNotificacionUploadDataCorporate;
 use App\Mail\MailLinkIndividualQuote;
 use App\Models\CorporateQuote;
 use App\Models\User;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -264,44 +265,61 @@ class CorporateQuotesTable
                                 ])->columns(1),
                         ])
                         ->action(function (array $data, $record): void {
+                            try {
+                                $record->update([
+                                    'status' => 'APROBADA-DATA-ENVIADA',
+                                    'data_doc' => $data['data_doc'],
+                                ]);
 
-                            $record->update([
-                                'status' => 'APROBADA-DATA-ENVIADA',
-                                'data_doc' => $data['data_doc'],
-                            ]);
-
-                            Notification::make()
-                                ->title('Data cargada')
-                                ->body('La data se registró correctamente.')
-                                ->success()
-                                ->send();
-
-                            $recipient = User::where('is_admin', 1)->get();
-                            foreach ($recipient as $user) {
-                                $recipient_for_user = User::find($user->id);
                                 Notification::make()
-                                    ->title('COTIZACION CORPORATIVA')
-                                    ->body('El agente '.Auth::user()->name.' cargo el modelo de data para la cotización Nro. '.$record->code)
-                                    ->icon('heroicon-m-tag')
-                                    ->iconColor('success')
+                                    ->title('Data cargada')
+                                    ->body('La data se registró correctamente.')
                                     ->success()
-                                    ->actions([
-                                        Action::make('view')
-                                            ->label('Ver Cotización Corporativa')
-                                            ->button()
-                                            ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'business')),
-                                    ])
-                                    ->sendToDatabase($recipient_for_user);
+                                    ->send();
+
+                                $recipient = User::where('is_admin', 1)->get();
+                                foreach ($recipient as $user) {
+                                    Notification::make()
+                                        ->title('COTIZACION CORPORATIVA')
+                                        ->body('El agente '.Auth::user()->name.' cargo el modelo de data para la cotización Nro. '.$record->code)
+                                        ->icon('heroicon-m-tag')
+                                        ->iconColor('success')
+                                        ->success()
+                                        ->actions([
+                                            Action::make('view')
+                                                ->label('Ver Cotización Corporativa')
+                                                ->button()
+                                                ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'business')),
+                                        ])
+                                        ->sendToDatabase($user);
+                                }
+
+                                NotificationController::sendUploadDataCorporate(Auth::user()->name, $record->code);
+                                SendNotificacionUploadDataCorporate::dispatch($record->data_doc, Auth::user()->name, $record->code);
+
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_DATA_UPLOADED', 'business.corporate-quotes.upload-data', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'status' => $record->status,
+                                    'data_doc' => $record->data_doc,
+                                ]);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_DATA_UPLOAD_FAILED', 'business.corporate-quotes.upload-data', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id ?? null,
+                                    'code' => $record->code ?? null,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
                             }
-
-                            // Notificacion por whatsapp
-                            NotificationController::sendUploadDataCorporate(Auth::user()->name, $record->code);
-
-                            /**
-                             * Notificacion via email
-                             * JOB
-                             */
-                            SendNotificacionUploadDataCorporate::dispatch($record->data_doc, Auth::user()->name, $record->code);
                         })
                         ->hidden(fn ($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor == null),
 
@@ -443,6 +461,14 @@ class CorporateQuotesTable
                                 $job = ResendEmailPropuestaEconomica::dispatch($record, $email, $phone);
 
                                 if ($job) {
+                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_FORWARD_SENT', 'business.corporate-quotes.forward', [
+                                        'panel' => 'business',
+                                        'corporate_quote_id' => $record->id,
+                                        'code' => $record->code,
+                                        'email' => $email,
+                                        'phone' => $phone,
+                                    ]);
+
                                     Notification::make()
                                         ->title('RE-ENVIADO EXITOSO')
                                         ->body('La información fue reenviada correctamente.')
@@ -452,6 +478,15 @@ class CorporateQuotesTable
                                         ->send();
                                 }
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_FORWARD_FAILED', 'business.corporate-quotes.forward', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'email' => $data['email'] ?? null,
+                                    'phone' => $data['phone'] ?? null,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -479,6 +514,12 @@ class CorporateQuotesTable
                             try {
 
                                 if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
+                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
+                                        'panel' => 'business',
+                                        'corporate_quote_id' => $record->id,
+                                        'code' => $record->code,
+                                        'reason' => 'file_not_found',
+                                    ]);
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
@@ -496,8 +537,22 @@ class CorporateQuotesTable
                                  */
                                 $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOADED', 'business.corporate-quotes.download', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'path' => $path,
+                                ]);
+
                                 return response()->download($path);
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -567,26 +622,37 @@ class CorporateQuotesTable
                                 $link = config('parameters.INTEGRACORP_URL').'/in/'.Crypt::encryptString($record->id).'/w';
 
                                 if (isset($data['email'])) {
-
                                     $email = $data['email'];
+                                    Mail::to($email)->send(new MailLinkIndividualQuote($link));
 
-                                    $email = Mail::to($email)->send(new MailLinkIndividualQuote($link));
+                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_EMAIL_SENT', 'business.corporate-quotes.interactive-link', [
+                                        'panel' => 'business',
+                                        'corporate_quote_id' => $record->id,
+                                        'code' => $record->code,
+                                        'email' => $email,
+                                        'link' => $link,
+                                    ]);
 
-                                    if ($email) {
-                                        Notification::make()
-                                            ->title('ENVIADO EXITOSO')
-                                            ->body('El link fue enviado por email exitosamente.')
-                                            ->icon('heroicon-s-check-circle')
-                                            ->iconColor('verde')
-                                            ->success()
-                                            ->send();
-                                    }
+                                    Notification::make()
+                                        ->title('ENVIADO EXITOSO')
+                                        ->body('El link fue enviado por email exitosamente.')
+                                        ->icon('heroicon-s-check-circle')
+                                        ->iconColor('verde')
+                                        ->success()
+                                        ->send();
                                 }
 
                                 if (isset($data['phone'])) {
                                     $phone = $data['phone'];
                                     $wp = NotificationController::sendLinkIndividualQuote($phone, $link);
                                     if ($wp) {
+                                        SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_WHATSAPP_SENT', 'business.corporate-quotes.interactive-link', [
+                                            'panel' => 'business',
+                                            'corporate_quote_id' => $record->id,
+                                            'code' => $record->code,
+                                            'phone' => $phone,
+                                            'link' => $link,
+                                        ]);
 
                                         Notification::make()
                                             ->title('ENVIADO EXITOSO')
@@ -604,9 +670,27 @@ class CorporateQuotesTable
                                             ->iconColor('danger')
                                             ->danger()
                                             ->send();
+
+                                        SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_WHATSAPP_FAILED', 'business.corporate-quotes.interactive-link', [
+                                            'panel' => 'business',
+                                            'corporate_quote_id' => $record->id,
+                                            'code' => $record->code,
+                                            'phone' => $phone,
+                                            'link' => $link,
+                                            'reason' => 'whatsapp_delivery_failed',
+                                        ]);
                                     }
                                 }
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_FAILED', 'business.corporate-quotes.interactive-link', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'email' => $data['email'] ?? null,
+                                    'phone' => $data['phone'] ?? null,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -641,6 +725,13 @@ class CorporateQuotesTable
                                 $record->observations = $data['description'];
                                 $record->save();
 
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_OBSERVATION_ADDED', 'business.corporate-quotes.observations', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'description' => $data['description'] ?? null,
+                                ]);
+
                                 Notification::make()
                                     ->body('Las observaciones fueron registradas exitosamente.')
                                     ->success()
@@ -648,6 +739,13 @@ class CorporateQuotesTable
 
                                 $notoficationWp = NotificationController::saddObervationToCorporateQuote($record->code, Auth::user()->name, $data['description']);
                             } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_OBSERVATION_ADD_FAILED', 'business.corporate-quotes.observations', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
                                     ->title('ERROR')
@@ -665,6 +763,12 @@ class CorporateQuotesTable
                         ->color('info')
                         ->action(function (CorporateQuote $record, array $data) {
                             $path = public_path('storage/files/poblacion_ejemplo.xlsx');
+                            SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_POPULATION_FORMAT_DOWNLOADED', 'business.corporate-quotes.download-population-format', [
+                                'panel' => 'business',
+                                'corporate_quote_id' => $record->id,
+                                'code' => $record->code,
+                                'path' => $path,
+                            ]);
 
                             return response()->download($path);
                         })
