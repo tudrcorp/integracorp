@@ -8,7 +8,6 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\Agent;
-
 use App\Models\User;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -17,20 +16,21 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\HtmlString;
 
 class AgentsTable
 {
@@ -41,6 +41,7 @@ class AgentsTable
                 if (Auth::user()->is_accountManagers) {
                     return Agent::query()->where('ownerAccountManagers', Auth::user()->id);
                 }
+
                 return Agent::query();
             })
             ->heading('AGENTES')
@@ -54,7 +55,7 @@ class AgentsTable
                             ->with('typeAgency')
                             ->first();
 
-                        return isset($agency_type) ? $agency_type->typeAgency->definition . ' - ' : 'MASTER - ';
+                        return isset($agency_type) ? $agency_type->typeAgency->definition.' - ' : 'MASTER - ';
                     })
                     ->alignCenter()
                     ->badge()
@@ -77,7 +78,27 @@ class AgentsTable
                     ->label('Razon Social')
                     ->searchable()
                     ->badge()
-                    ->color('verde'),
+                    ->color('verde')
+                    ->tooltip('Ver perfil del agente')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer',
+                    ])
+                    ->action(
+                        Action::make('view_agent_profile')
+                            ->label('Ver perfil')
+                            ->icon('heroicon-o-eye')
+                            ->color('primary')
+                            ->modalHeading('Perfil del Agente')
+                            ->modalDescription('Vista principal del agente con estilo iOS.')
+                            ->modalWidth('4xl')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Cerrar')
+                            ->modalContent(function (Agent $record): ViewContract {
+                                return View::make('filament.administration.agents.agent-quick-profile', [
+                                    'agent' => $record->loadMissing(['typeAgent', 'agency', 'country', 'state', 'city']),
+                                ]);
+                            }),
+                    ),
                 TextColumn::make('ci')
                     ->label('CI:')
                     ->searchable()
@@ -102,6 +123,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -116,6 +138,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -130,6 +153,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -144,6 +168,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -152,14 +177,8 @@ class AgentsTable
 
                 TextColumn::make('status')
                     ->label('Estatus')
-                    ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'ACTIVO' => 'success',
-                            'INACTIVO' => 'danger',
-                            'POR REVISION' => 'warning',
-                        };
-                    })
+                    ->formatStateUsing(fn (mixed $state): HtmlString => self::iosStatusPill((string) $state))
+                    ->html()
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_by')
@@ -187,20 +206,20 @@ class AgentsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -218,7 +237,7 @@ class AgentsTable
                     ]),
             ])
             ->filtersTriggerAction(
-                fn(Action $action) => $action
+                fn (Action $action) => $action
                     ->button()
                     ->label('Filtros'),
             )
@@ -245,15 +264,15 @@ class AgentsTable
                                 $record->save();
                                 LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
 
-                                //4. creamos el usuario en la tabla users (AGENTES)
-                                $user = new User();
+                                // 4. creamos el usuario en la tabla users (AGENTES)
+                                $user = new User;
                                 $user->name = $record->name;
                                 $user->email = $record->email;
                                 $user->password = Hash::make('12345678');
                                 $user->is_agent = true;
                                 $user->code_agency = $record->code_agency;
-                                $user->code_agent = 'AGT-000' . $record->id;
-                                $user->link_agent = env('APP_URL') . '/at/lk/' . Crypt::encryptString($record->code_agent);
+                                $user->code_agent = 'AGT-000'.$record->id;
+                                $user->link_agent = env('APP_URL').'/at/lk/'.Crypt::encryptString($record->code_agent);
                                 $user->agent_id = $record->id;
                                 $user->status = 'ACTIVO';
                                 $user->save();
@@ -261,10 +280,10 @@ class AgentsTable
                                 /**
                                  * Notificacion por correo electronico
                                  * CARTA DE BIENVENIDA
-                                 * @param Agent $record
+                                 *
+                                 * @param  Agent  $record
                                  */
                                 $record->sendCartaBienvenida($record->id, $record->name, $record->email);
-
 
                                 $phone = $record->phone;
                                 $email = $record->email;
@@ -301,12 +320,12 @@ class AgentsTable
                         ->color('success')
                         ->requiresConfirmation(),
                     Action::make('Inactivate')
-                        ->action(fn(Agent $record) => $record->update(['status' => 'INACTIVO']))
+                        ->action(fn (Agent $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger'),
                     DeleteAction::make()
-                        ->color('danger')
-                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+                        ->color('danger'),
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -321,10 +340,38 @@ class AgentsTable
                         ->requiresConfirmation()
                         ->color('azulOscuro'),
 
-
                     DeleteBulkAction::make(),
                     ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
                 ]),
             ]);
+    }
+
+    private static function iosStatusPill(string $state): HtmlString
+    {
+        $normalized = strtoupper(trim($state));
+
+        [$wrapperClass, $dotClass] = match ($normalized) {
+            'ACTIVO' => [
+                'border-emerald-500/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,.18),0_10px_18px_-12px_rgba(16,185,129,.85)]',
+                'bg-emerald-300',
+            ],
+            'INACTIVO' => [
+                'border-rose-500/35 bg-rose-500/15 text-rose-300 shadow-[0_0_0_1px_rgba(244,63,94,.18),0_10px_18px_-12px_rgba(244,63,94,.85)]',
+                'bg-rose-300',
+            ],
+            default => [
+                'border-amber-500/35 bg-amber-500/15 text-amber-300 shadow-[0_0_0_1px_rgba(245,158,11,.18),0_10px_18px_-12px_rgba(245,158,11,.85)]',
+                'bg-amber-300',
+            ],
+        };
+
+        $label = $normalized !== '' ? e($normalized) : 'SIN ESTATUS';
+
+        return new HtmlString(
+            '<span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide '.$wrapperClass.'">'.
+                '<span class="h-1.5 w-1.5 rounded-full '.$dotClass.'"></span>'.
+                '<span>'.$label.'</span>'.
+            '</span>'
+        );
     }
 }

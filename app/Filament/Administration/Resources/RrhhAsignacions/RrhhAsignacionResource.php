@@ -11,7 +11,6 @@ use App\Models\RrhhAsignacion;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -19,9 +18,9 @@ class RrhhAsignacionResource extends Resource
 {
     protected static ?string $model = RrhhAsignacion::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'RRHH';
+    protected static string|UnitEnum|null $navigationGroup = 'RRHH';
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-plus-small';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-plus-circle';
 
     protected static ?string $navigationLabel = 'Asignaciones';
 

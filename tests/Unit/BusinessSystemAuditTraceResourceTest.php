@@ -24,5 +24,19 @@ it('expone recurso de trazas de seguridad en panel business', function (): void 
         ->toContain("->heading('Trazabilidad de Seguridad')")
         ->toContain("Action::make('view_trace')")
         ->toContain("SelectFilter::make('category')")
-        ->toContain("'Registro de ventas'");
+        ->toContain("'Registro de ventas'")
+        ->toContain("'Agentes (Business)'")
+        ->toContain("'Agencias (Business)'")
+        ->toContain("'Viajes (Agencias y Agentes)'")
+        ->toContain("'Cotizador y Cotizaciones'")
+        ->toContain("'Tickets Helpdesk'")
+        ->toContain("'Sesiones de usuario'")
+        ->toContain("SelectFilter::make('module')")
+        ->toContain("'Marketing'")
+        ->toContain("'Envíos de correo'")
+        ->toContain("SelectFilter::make('severity')")
+        ->toContain("TextColumn::make('severity')")
+        ->toContain("'Éxito'")
+        ->toContain("'Advertencia'")
+        ->toContain("'Error'");
 });

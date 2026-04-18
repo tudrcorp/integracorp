@@ -19,7 +19,7 @@ class SystemAuditTracesTable
     {
         return $table
             ->heading('Trazabilidad de Seguridad')
-            ->description('Monitoreo de acciones clave: ventas, vouchers, aprobaciones, regeneración de PDF y compensación.')
+            ->description('Monitoreo centralizado por módulo y tipo de evento para acciones clave del sistema.')
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('created_at')
@@ -27,6 +27,14 @@ class SystemAuditTracesTable
                     ->dateTime('d/m/Y H:i')
                     ->description(fn ($record): ?string => $record->created_at?->diffForHumans())
                     ->sortable(),
+                TextColumn::make('module')
+                    ->label('Módulo')
+                    ->state(fn ($record): string => self::resolveModuleLabel((string) ($record->action ?? '')))
+                    ->badge()
+                    ->color(fn ($record): string => self::resolveModuleColor((string) ($record->action ?? '')))
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('action', $direction);
+                    }),
                 TextColumn::make('action')
                     ->label('Acción')
                     ->badge()
@@ -38,6 +46,27 @@ class SystemAuditTracesTable
                                 ? 'info'
                                 : (str_contains($state, 'UPLOADED') ? 'warning' : 'primary'))))
                     ->searchable(),
+                TextColumn::make('event_kind')
+                    ->label('Evento')
+                    ->state(fn ($record): string => self::resolveEventKindLabel((string) ($record->action ?? '')))
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Fallido' => 'danger',
+                        'Envío de correo' => 'info',
+                        'Carga' => 'warning',
+                        'Descarga' => 'gray',
+                        'Visualización' => 'gray',
+                        default => 'primary',
+                    }),
+                TextColumn::make('severity')
+                    ->label('Severidad')
+                    ->state(fn ($record): string => self::resolveSeverityLabel((string) ($record->action ?? '')))
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Error' => 'danger',
+                        'Advertencia' => 'warning',
+                        default => 'success',
+                    }),
                 TextColumn::make('user.name')
                     ->label('Usuario')
                     ->badge()
@@ -71,8 +100,15 @@ class SystemAuditTracesTable
                         'approval' => 'Aprobación de pagos',
                         'pdf' => 'Regeneración PDF',
                         'suppliers' => 'Proveedores (Operaciones)',
+                        'agents' => 'Agentes (Business)',
+                        'agencies' => 'Agencias (Business)',
+                        'travel' => 'Viajes (Agencias y Agentes)',
+                        'quotes' => 'Cotizador y Cotizaciones',
+                        'helpdesk' => 'Tickets Helpdesk',
+                        'sessions' => 'Sesiones de usuario',
                         'tdev' => 'Compensación TDEV',
                         'failed' => 'Eventos fallidos',
+                        'email' => 'Envíos de correo',
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $value = $data['value'] ?? null;
@@ -83,8 +119,97 @@ class SystemAuditTracesTable
                             'approval' => $query->where('action', 'like', '%APPROV%'),
                             'pdf' => $query->where('action', 'like', '%PDF%'),
                             'suppliers' => $query->where('action', 'like', 'AUDIT_OPERATIONS_SUPPLIER_%'),
+                            'agents' => $query->where(function (Builder $builder): Builder {
+                                return $builder
+                                    ->where('action', 'like', 'AUDIT_BUSINESS_AGENT_%')
+                                    ->orWhere('action', 'like', 'AUDIT_BUSINESS_AGENTS_%');
+                            }),
+                            'agencies' => $query->where(function (Builder $builder): Builder {
+                                return $builder
+                                    ->where('action', 'like', 'AUDIT_BUSINESS_AGENCY_%')
+                                    ->orWhere('action', 'like', 'AUDIT_BUSINESS_AGENCIES_%');
+                            }),
+                            'travel' => $query->where(function (Builder $builder): Builder {
+                                return $builder
+                                    ->where('action', 'like', 'AUDIT_%_TRAVEL_AGENCY_%')
+                                    ->orWhere('action', 'like', 'AUDIT_%_TRAVEL_AGENT_%');
+                            }),
+                            'quotes' => $query->where(function (Builder $builder): Builder {
+                                return $builder
+                                    ->where('action', 'like', 'AUDIT_%_COTIZADOR_%')
+                                    ->orWhere('action', 'like', 'AUDIT_%_INDIVIDUAL_QUOTE_%')
+                                    ->orWhere('action', 'like', 'AUDIT_%_CORPORATE_QUOTE_%')
+                                    ->orWhere('action', 'like', 'AUDIT_%_DRESS_TYLOR_QUOTE_%');
+                            }),
+                            'helpdesk' => $query->where('action', 'like', 'AUDIT_HELPDESK_%'),
+                            'sessions' => $query->where('action', 'like', 'AUDIT_USER_SESSION_%'),
                             'tdev' => $query->where('action', 'like', 'TDEV_COMPENSACION_%'),
                             'failed' => $query->where('action', 'like', '%FAILED%'),
+                            'email' => $query->where('action', 'like', '%EMAIL%'),
+                            default => $query,
+                        };
+                    }),
+                SelectFilter::make('module')
+                    ->label('Módulo')
+                    ->options([
+                        'operations' => 'Operaciones',
+                        'business' => 'Business',
+                        'marketing' => 'Marketing',
+                        'administration' => 'Administración',
+                        'tdev' => 'Compensación TDEV',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        return match ($value) {
+                            'operations' => $query->where('action', 'like', 'AUDIT_OPERATIONS_%'),
+                            'business' => $query->where('action', 'like', 'AUDIT_BUSINESS_%'),
+                            'marketing' => $query->where('action', 'like', 'AUDIT_MARKETING_%'),
+                            'administration' => $query->where(function (Builder $builder): Builder {
+                                return $builder
+                                    ->where('action', 'like', 'AUDIT_AFFILIATION_%')
+                                    ->orWhere('action', 'like', 'AUDIT_PAYMENT_%')
+                                    ->orWhere('action', 'like', 'AUDIT_SALE_%');
+                            }),
+                            'tdev' => $query->where('action', 'like', 'TDEV_COMPENSACION_%'),
+                            default => $query,
+                        };
+                    }),
+                SelectFilter::make('severity')
+                    ->label('Severidad')
+                    ->options([
+                        'success' => 'Éxito',
+                        'warning' => 'Advertencia',
+                        'danger' => 'Error',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        return match ($value) {
+                            'danger' => $query->where('action', 'like', '%FAILED%'),
+                            'warning' => $query->where(function (Builder $builder): Builder {
+                                return $builder
+                                    ->where('action', 'like', '%UPLOADED%')
+                                    ->orWhere('action', 'like', '%INACTIVATED%');
+                            }),
+                            'success' => $query->where(function (Builder $builder): Builder {
+                                return $builder
+                                    ->where('action', 'not like', '%FAILED%')
+                                    ->where(function (Builder $inner): Builder {
+                                        return $inner
+                                            ->where('action', 'like', '%APPROVED%')
+                                            ->orWhere('action', 'like', '%REGISTERED%')
+                                            ->orWhere('action', 'like', '%CREATED%')
+                                            ->orWhere('action', 'like', '%UPDATED%')
+                                            ->orWhere('action', 'like', '%ACTIVATED%')
+                                            ->orWhere('action', 'like', '%SENT%')
+                                            ->orWhere('action', 'like', '%ASSIGNED%')
+                                            ->orWhere('action', 'like', '%DELETED%')
+                                            ->orWhere('action', 'like', '%DOWNLOADED%')
+                                            ->orWhere('action', 'like', '%VIEWED%')
+                                            ->orWhere('action', 'like', '%PROMOTED%');
+                                    });
+                            }),
                             default => $query,
                         };
                     }),
@@ -172,5 +297,86 @@ class SystemAuditTracesTable
         }
 
         return $parts === [] ? 'Detalles disponibles en modal' : implode(' | ', $parts);
+    }
+
+    private static function resolveModuleLabel(string $action): string
+    {
+        if (str_starts_with($action, 'AUDIT_OPERATIONS_')) {
+            return 'Operaciones';
+        }
+
+        if (str_starts_with($action, 'AUDIT_BUSINESS_')) {
+            return 'Business';
+        }
+
+        if (str_starts_with($action, 'AUDIT_MARKETING_')) {
+            return 'Marketing';
+        }
+
+        if (str_starts_with($action, 'TDEV_COMPENSACION_')) {
+            return 'Compensación TDEV';
+        }
+
+        return 'Administración';
+    }
+
+    private static function resolveModuleColor(string $action): string
+    {
+        return match (self::resolveModuleLabel($action)) {
+            'Operaciones' => 'warning',
+            'Business' => 'success',
+            'Compensación TDEV' => 'info',
+            default => 'primary',
+        };
+    }
+
+    private static function resolveEventKindLabel(string $action): string
+    {
+        if (str_contains($action, 'FAILED')) {
+            return 'Fallido';
+        }
+
+        if (str_contains($action, 'EMAIL')) {
+            return 'Envío de correo';
+        }
+
+        if (str_contains($action, 'UPLOADED')) {
+            return 'Carga';
+        }
+
+        if (str_contains($action, 'DOWNLOADED')) {
+            return 'Descarga';
+        }
+
+        if (str_contains($action, 'VIEWED')) {
+            return 'Visualización';
+        }
+
+        if (str_contains($action, 'UPDATED')) {
+            return 'Actualización';
+        }
+
+        if (str_contains($action, 'CREATED')) {
+            return 'Creación';
+        }
+
+        if (str_contains($action, 'DELETED')) {
+            return 'Eliminación';
+        }
+
+        return 'Acción';
+    }
+
+    private static function resolveSeverityLabel(string $action): string
+    {
+        if (str_contains($action, 'FAILED')) {
+            return 'Error';
+        }
+
+        if (str_contains($action, 'UPLOADED') || str_contains($action, 'INACTIVATED')) {
+            return 'Advertencia';
+        }
+
+        return 'Éxito';
     }
 }

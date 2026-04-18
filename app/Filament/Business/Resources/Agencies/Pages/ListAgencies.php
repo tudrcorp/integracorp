@@ -10,6 +10,7 @@ use App\Filament\Business\Resources\Agencies\Widgets\StatsOverviewAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalEstructureAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalSaleForEstructureChart;
 use App\Http\Controllers\NotificationController;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\TextInput;
@@ -64,6 +65,10 @@ class ListAgencies extends ListRecords
                     try {
 
                         if ($data['phone'] == null && $data['email'] == null) {
+                            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
+                                'reason' => 'missing_email_and_phone',
+                            ]);
+
                             Notification::make()
                                 ->title('NOTIFICACION')
                                 ->body('La notificacion no pudo ser enviada debido a que no se proporcionaron datos de contacto(Email y/o Teléfono).')
@@ -79,6 +84,9 @@ class ListAgencies extends ListRecords
                             $link = config('parameters.REGISTER_AGENCY');
                             $sendEmail = NotificationController::send_email_agency_register($link, $data['email']);
                             if ($sendEmail == true) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_EMAIL_SENT', 'business.agencies.send-register-link', [
+                                    'recipient_email' => $data['email'],
+                                ]);
 
                                 Notification::make()
                                     ->title('NOTIFICACION ENVIADA')
@@ -87,6 +95,9 @@ class ListAgencies extends ListRecords
                                     ->color('success')
                                     ->send();
                             } else {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_EMAIL_FAILED', 'business.agencies.send-register-link', [
+                                    'recipient_email' => $data['email'],
+                                ]);
 
                                 Notification::make()
                                     ->title('ENVIO FALLIDO')
@@ -102,6 +113,10 @@ class ListAgencies extends ListRecords
                             $link = config('parameters.REGISTER_AGENCY');
                             $response = NotificationController::send_link_agency_register_wp($link, $data['phone']);
                             if ($response) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_WHATSAPP_SENT', 'business.agencies.send-register-link', [
+                                    'recipient_phone' => $data['phone'],
+                                ]);
+
                                 Notification::make()
                                     ->title('NOTIFICACION ENVIADA')
                                     ->body('La notificación via whatsapp fue enviada con exito.')
@@ -109,6 +124,10 @@ class ListAgencies extends ListRecords
                                     ->color('success')
                                     ->send();
                             } else {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_WHATSAPP_FAILED', 'business.agencies.send-register-link', [
+                                    'recipient_phone' => $data['phone'],
+                                ]);
+
                                 Notification::make()
                                     ->title('ENVIO FALLIDO')
                                     ->body('La notificación via email NO fue enviada con exito.')
@@ -118,6 +137,12 @@ class ListAgencies extends ListRecords
                             }
                         }
                     } catch (\Throwable $th) {
+                        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
+                            'error' => $th->getMessage(),
+                            'recipient_email' => $data['email'] ?? null,
+                            'recipient_phone' => $data['phone'] ?? null,
+                        ]);
+
                         Notification::make()
                             ->title('ENVIO FALLIDO')
                             ->body($th->getMessage())

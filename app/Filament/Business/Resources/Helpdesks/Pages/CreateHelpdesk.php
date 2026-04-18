@@ -9,6 +9,7 @@ use App\Filament\Concerns\PreparesHelpdeskColaboradorAssigneesOnCreate;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\HelpDesk;
 use App\Services\HelpdeskTicketAssigneeMailService;
+use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
@@ -125,10 +126,27 @@ class CreateHelpdesk extends CreateRecord
 
     protected function afterCreate(): void
     {
-        HelpdeskTicketAssigneeMailService::sendToEachAssignee($this->getRecord());
-        $this->sendNotificationToColaboradorWhatsApp($this->getRecord());
-
         $ticket = $this->getRecord();
+        try {
+            HelpdeskTicketAssigneeMailService::sendToEachAssignee($ticket);
+            $whatsAppSent = $this->sendNotificationToColaboradorWhatsApp($ticket);
+
+            SecurityAudit::log('AUDIT_HELPDESK_TICKET_CREATED', 'business.helpdesks.create', [
+                'panel' => 'business',
+                'helpdesk_id' => $ticket->getKey(),
+                'created_by' => $ticket->created_by,
+                'status' => $ticket->status,
+                'whatsapp_sent' => $whatsAppSent,
+            ]);
+        } catch (Throwable $th) {
+            SecurityAudit::log('AUDIT_HELPDESK_TICKET_CREATE_FAILED', 'business.helpdesks.create', [
+                'panel' => 'business',
+                'helpdesk_id' => $ticket->getKey(),
+                'created_by' => $ticket->created_by,
+                'error' => $th->getMessage(),
+            ]);
+        }
+
         Notification::make()
             ->title('NUEVO TICKET DE SOPORTE CREADO')
             ->body('Ticket N.º '.$ticket->getKey().' registrado y asignado de forma exitosa.')

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Support\HelpdeskTaskStatusOptions;
+use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,12 @@ final class MarkHelpdeskTicketInProgressController extends Controller
 
         $colaborador = RrhhColaborador::query()->where('user_id', $user->id)->first();
         if (! $colaborador) {
+            SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATE_FAILED', 'business.helpdesk-ticket.mark-in-progress', [
+                'panel' => 'business',
+                'helpdesk_id' => $helpDesk->getKey(),
+                'reason' => 'missing_colaborador_profile',
+            ], $user);
+
             Notification::make()
                 ->title('No se pudo actualizar')
                 ->danger()
@@ -37,6 +44,12 @@ final class MarkHelpdeskTicketInProgressController extends Controller
             ->exists();
 
         if (! $isAssignee) {
+            SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATE_FAILED', 'business.helpdesk-ticket.mark-in-progress', [
+                'panel' => 'business',
+                'helpdesk_id' => $helpDesk->getKey(),
+                'reason' => 'user_not_assignee',
+            ], $user);
+
             Notification::make()
                 ->title('No se pudo actualizar')
                 ->danger()
@@ -53,6 +66,13 @@ final class MarkHelpdeskTicketInProgressController extends Controller
         );
 
         if ($sanitized !== 'EN PROCESO') {
+            SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATE_FAILED', 'business.helpdesk-ticket.mark-in-progress', [
+                'panel' => 'business',
+                'helpdesk_id' => $helpDesk->getKey(),
+                'reason' => 'status_transition_not_allowed',
+                'sanitized' => $sanitized,
+            ], $user);
+
             Notification::make()
                 ->title('Acción no permitida')
                 ->warning()
@@ -63,6 +83,12 @@ final class MarkHelpdeskTicketInProgressController extends Controller
         }
 
         if ($helpDesk->status === 'EN PROCESO') {
+            SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATE_SKIPPED', 'business.helpdesk-ticket.mark-in-progress', [
+                'panel' => 'business',
+                'helpdesk_id' => $helpDesk->getKey(),
+                'reason' => 'already_in_progress',
+            ], $user);
+
             Notification::make()
                 ->title('Ticket ya en proceso')
                 ->success()
@@ -75,6 +101,13 @@ final class MarkHelpdeskTicketInProgressController extends Controller
         $helpDesk->status = 'EN PROCESO';
         $helpDesk->updated_by = $user->name;
         $helpDesk->save();
+
+        SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATED', 'business.helpdesk-ticket.mark-in-progress', [
+            'panel' => 'business',
+            'helpdesk_id' => $helpDesk->getKey(),
+            'new_status' => 'EN PROCESO',
+            'updated_by' => $user->name,
+        ], $user);
 
         Notification::make()
             ->title('Estatus actualizado')

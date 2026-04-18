@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Http\Controllers\LogController;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -13,9 +14,9 @@ class SecurityAudit
     /**
      * @param  array<string, mixed>  $details
      */
-    public static function log(string $action, string $route, array $details = []): void
+    public static function log(string $action, string $route, array $details = [], ?Authenticatable $authUser = null): void
     {
-        $user = Auth::user();
+        $user = $authUser ?? Auth::user();
 
         $payload = [
             'trace_id' => (string) Str::uuid(),
