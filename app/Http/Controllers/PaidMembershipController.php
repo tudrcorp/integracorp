@@ -1011,7 +1011,6 @@ class PaidMembershipController extends Controller
                 'error' => $th->getMessage(),
             ]);
 
-            dd($th);
             // ERROR DETECTADO: Deshacer todos los cambios en la DB
             DB::rollBack();
 

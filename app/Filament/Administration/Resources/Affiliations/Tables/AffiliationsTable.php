@@ -95,14 +95,14 @@ class AffiliationsTable
                             ->label('Ver ficha')
                             ->icon('heroicon-o-eye')
                             ->color('primary')
-                            ->modalHeading('Afiliación Individual')
-                            ->modalDescription('Ficha principal con información clave en estilo iOS.')
-                            ->modalWidth('5xl')
+                            ->modalHeading('Afiliación Individual · Workspace')
+                            ->modalDescription('Consulta, carga de comprobante y aprobación de pagos en una sola experiencia.')
+                            ->modalWidth('7xl')
                             ->modalSubmitAction(false)
                             ->modalCancelActionLabel('Cerrar')
                             ->modalContent(function (Affiliation $record): ViewContract {
-                                return View::make('filament.administration.affiliations.affiliation-quick-profile', [
-                                    'affiliation' => $record->loadMissing(['agency', 'agent', 'plan', 'coverage', 'country', 'state', 'city']),
+                                return View::make('filament.administration.affiliations.affiliation-workspace-modal-wrapper', [
+                                    'affiliation' => $record,
                                 ]);
                             }),
                     )
