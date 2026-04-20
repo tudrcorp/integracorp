@@ -13,6 +13,7 @@ use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -114,6 +115,7 @@ class AffiliationWorkspaceModal extends Component
     {
         $this->affiliationId = $affiliation instanceof Affiliation ? (int) $affiliation->getKey() : (int) $affiliation;
         $this->hydrateDefaults();
+        $this->auditWorkspaceAction('AUDIT_ADMIN_AFFILIATION_WORKSPACE_OPENED');
     }
 
     public function updatedPaymentFormPaymentMethod(string $value): void
@@ -167,7 +169,17 @@ class AffiliationWorkspaceModal extends Component
             'payment_method' => $this->paymentForm['payment_method'] ?? null,
         ]);
 
-        $this->validate($this->paymentValidationRules(), $this->paymentValidationMessages());
+        try {
+            $this->validate($this->paymentValidationRules(), $this->paymentValidationMessages());
+        } catch (ValidationException $exception) {
+            $this->auditWorkspaceAction('AUDIT_ADMIN_AFFILIATION_WORKSPACE_PAYMENT_UPLOAD_FAILED', [
+                'payment_method' => $this->paymentForm['payment_method'] ?? null,
+                'reason' => 'validation_failed',
+                'error_fields' => array_keys($exception->errors()),
+            ]);
+
+            throw $exception;
+        }
 
         $authUser = Auth::user();
         $affiliation = $this->resolveAffiliation();
@@ -592,6 +604,17 @@ class AffiliationWorkspaceModal extends Component
                 'value' => $term,
             ]);
         }
+    }
+
+    /**
+     * @param  array<int>  $value
+     */
+    public function updatedApproveCollections(array $value): void
+    {
+        $this->auditWorkspaceAction('AUDIT_ADMIN_AFFILIATION_WORKSPACE_APPROVAL_SELECTION_UPDATED', [
+            'selected_collections_count' => count($value),
+            'selected_collection_ids' => array_slice(array_values(array_map('intval', $value)), 0, 50),
+        ]);
     }
 
     /**

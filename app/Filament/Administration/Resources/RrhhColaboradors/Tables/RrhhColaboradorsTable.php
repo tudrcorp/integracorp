@@ -2,6 +2,8 @@
 
 namespace App\Filament\Administration\Resources\RrhhColaboradors\Tables;
 
+use App\Models\RrhhColaborador;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -10,6 +12,8 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Support\Facades\View;
 
 class RrhhColaboradorsTable
 {
@@ -43,7 +47,27 @@ class RrhhColaboradorsTable
                     ->weight(FontWeight::Bold)
                     ->icon('heroicon-m-user')
                     ->badge()
-                    ->color('primary'),
+                    ->color('primary')
+                    ->tooltip('Ver perfil del colaborador')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer',
+                    ])
+                    ->action(
+                        Action::make('view_colaborador_profile')
+                            ->label('Ver perfil')
+                            ->icon('heroicon-o-eye')
+                            ->color('primary')
+                            ->modalHeading('Perfil del Colaborador')
+                            ->modalDescription('Vista principal del colaborador con estilo iOS.')
+                            ->modalWidth('4xl')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Cerrar')
+                            ->modalContent(function (RrhhColaborador $record): ViewContract {
+                                return View::make('filament.administration.rrhh-colaboradors.colaborador-quick-profile', [
+                                    'colaborador' => $record->loadMissing(['departamento', 'cargo']),
+                                ]);
+                            }),
+                    ),
 
                 TextColumn::make('departamento.description')
                     ->label('Departamento')
