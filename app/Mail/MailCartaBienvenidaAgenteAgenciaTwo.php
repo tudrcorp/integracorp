@@ -5,17 +5,19 @@ namespace App\Mail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\SerializesModels;
 
 class MailCartaBienvenidaAgenteAgenciaTwo extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $name;
+
     public $name_pdf;
+
     public $code;
 
     /**
@@ -36,7 +38,7 @@ class MailCartaBienvenidaAgenteAgenciaTwo extends Mailable
     {
         return new Envelope(
             from: new Address('comercial@tudrencasa.com', 'TuDrEnCasa. Registro de Agencia!. (INTEGRACORP)'),
-            subject: 'Bienvenida.! Agencia: ' . $this->name
+            subject: 'Bienvenida.! Agencia: '.$this->name
         );
     }
 
@@ -58,7 +60,9 @@ class MailCartaBienvenidaAgenteAgenciaTwo extends Mailable
     public function attachments(): array
     {
         return [
-            public_path('storage/' . $this->name_pdf),
+            Attachment::fromPath(public_path('storage/'.$this->name_pdf))
+                ->as($this->name_pdf)
+                ->withMime('application/pdf'),
         ];
     }
 }
