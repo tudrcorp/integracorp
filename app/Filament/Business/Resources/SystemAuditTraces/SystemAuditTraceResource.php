@@ -27,6 +27,21 @@ class SystemAuditTraceResource extends Resource
 
     protected static ?int $navigationSort = 90;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return self::userCanAccessResource();
+    }
+
+    public static function canAccess(): bool
+    {
+        return self::userCanAccessResource();
+    }
+
+    public static function canViewAny(): bool
+    {
+        return self::userCanAccessResource();
+    }
+
     public static function table(Table $table): Table
     {
         return SystemAuditTracesTable::configure($table);
@@ -34,6 +49,10 @@ class SystemAuditTraceResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        if (! self::userCanAccessResource()) {
+            return parent::getEloquentQuery()->whereRaw('1 = 0');
+        }
+
         $query = parent::getEloquentQuery()
             ->with(['user'])
             ->where(function (Builder $builder): void {
@@ -41,12 +60,6 @@ class SystemAuditTraceResource extends Resource
                     ->where('action', 'like', 'AUDIT_%')
                     ->orWhere('action', 'like', 'TDEV_COMPENSACION_%');
             });
-
-        $user = Auth::user();
-        $departments = (array) ($user?->departament ?? []);
-        if (! in_array('SUPERADMIN', $departments, true)) {
-            $query->where('user_id', (int) ($user?->id ?? 0));
-        }
 
         return $query;
     }
@@ -71,5 +84,12 @@ class SystemAuditTraceResource extends Resource
         return [
             'index' => ListSystemAuditTraces::route('/'),
         ];
+    }
+
+    private static function userCanAccessResource(): bool
+    {
+        $departments = (array) (Auth::user()?->departament ?? []);
+
+        return in_array('SUPERADMIN', $departments, true);
     }
 }
