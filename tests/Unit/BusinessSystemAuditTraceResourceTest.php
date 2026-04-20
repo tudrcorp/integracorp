@@ -17,6 +17,11 @@ it('expone recurso de trazas de seguridad en panel business', function (): void 
     expect($resourceContents)
         ->toContain("protected static ?string \$navigationLabel = 'Trazas de Seguridad';")
         ->toContain("protected static string|UnitEnum|null \$navigationGroup = 'CONFIGURACIÓN';")
+        ->toContain('public static function shouldRegisterNavigation(): bool')
+        ->toContain('public static function canAccess(): bool')
+        ->toContain('public static function canViewAny(): bool')
+        ->toContain("return in_array('SUPERADMIN', \$departments, true);")
+        ->toContain("return parent::getEloquentQuery()->whereRaw('1 = 0');")
         ->toContain("->where('action', 'like', 'AUDIT_%')")
         ->toContain("->orWhere('action', 'like', 'TDEV_COMPENSACION_%')");
 

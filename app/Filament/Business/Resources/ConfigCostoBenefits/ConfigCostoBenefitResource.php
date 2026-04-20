@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class ConfigCostoBenefitResource extends Resource
@@ -49,5 +50,14 @@ class ConfigCostoBenefitResource extends Resource
             'create' => CreateConfigCostoBenefit::route('/create'),
             'edit' => EditConfigCostoBenefit::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
+        if (in_array('SUPERADMIN', auth()->user()->departament)) {
+            return true;
+        }
+        return false;
     }
 }
