@@ -525,6 +525,23 @@
     </div>
 
     <div class="section-block">
+        <div class="section-title">Otros servicios</div>
+
+        <table class="info-table">
+            <tr>
+                <td class="label">Detalle:</td>
+                <td class="value">
+                    @if (! empty($supplier->otros_servicios))
+                        {!! nl2br(e((string) $supplier->otros_servicios)) !!}
+                    @else
+                        No posee otros servicios.
+                    @endif
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section-block">
         <div class="section-title">Bitácora de Notas y/o Observaciones</div>
 
         <table class="table">
