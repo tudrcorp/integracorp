@@ -404,6 +404,61 @@ class AgenciesTable
                             }
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
+                    Action::make('resend_welcome_letter')
+                        ->label('Reenviar carta de bienvenida')
+                        ->icon('heroicon-o-envelope')
+                        ->color('info')
+                        ->requiresConfirmation()
+                        ->modalHeading('Reenviar carta de bienvenida')
+                        ->modalDescription('Se enviará nuevamente la carta de bienvenida al correo principal de la agencia.')
+                        ->action(function (Agency $record): void {
+                            try {
+                                if (! filled($record->email)) {
+                                    Notification::make()
+                                        ->title('Sin correo configurado')
+                                        ->body('La agencia no tiene un correo principal registrado.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('warning')
+                                        ->color('warning')
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $record->sendCartaBienvenida($record->code, $record->name_corporative, $record->email);
+
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_WELCOME_LETTER_RESENT', 'business.agencies.resend-welcome-letter', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                ]);
+
+                                Notification::make()
+                                    ->title('Carta de bienvenida reenviada')
+                                    ->body('Se despachó el envío al correo '.$record->email.'.')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->iconColor('success')
+                                    ->color('success')
+                                    ->send();
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_WELCOME_LETTER_RESEND_FAILED', 'business.agencies.resend-welcome-letter', [
+                                    'agency_id' => $record->id,
+                                    'agency_code' => $record->code,
+                                    'agency_name' => $record->name_corporative,
+                                    'agency_email' => $record->email,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('No se pudo reenviar la carta')
+                                    ->body('Ocurrió un error al despachar el envío. Intente nuevamente.')
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('error')
+                                    ->color('error')
+                                    ->send();
+                            }
+                        }),
                     Action::make('Inactivate')
                         ->label('Inactivar')
                         ->action(function (Agency $record): void {
