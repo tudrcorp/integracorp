@@ -17,7 +17,16 @@ it('registra auditoría en acciones modales de helpdesk para todos los paneles',
             ->toContain('AUDIT_HELPDESK_NOTE_ADDED')
             ->and($contents)->toContain('AUDIT_HELPDESK_NOTE_ADD_FAILED')
             ->and($contents)->toContain('AUDIT_HELPDESK_STATUS_UPDATED')
-            ->and($contents)->toContain('AUDIT_HELPDESK_STATUS_UPDATE_SKIPPED');
+            ->and($contents)->toContain('AUDIT_HELPDESK_STATUS_UPDATE_SKIPPED')
+            ->and($contents)->toContain('HelpdeskTicketAssigneeWhatsAppService::dispatchCustomMessageToEachAssigneeWithReport')
+            ->and($contents)->toContain('HelpdeskTicketAssigneeWhatsAppService::dispatchToTicketCreatorWithReport')
+            ->and($contents)->toContain('buildNoteAddedBody')
+            ->and($contents)->toContain('buildStatusUpdatedBody')
+            ->and($contents)->toContain('buildTicketClosedByCreatorBody')
+            ->and($contents)->toContain('notify_target')
+            ->and($contents)->toContain('whatsapp_dispatched_count')
+            ->and($contents)->toContain('notifications.whatsapp.note')
+            ->and($contents)->toContain('notifications.whatsapp.status');
     }
 });
 

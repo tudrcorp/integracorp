@@ -8,6 +8,7 @@ use App\Exceptions\HelpdeskTicketMailException;
 use App\Mail\SendEmailCreateTicketAndAssigned;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
+use App\Support\SecurityAudit;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -72,25 +73,67 @@ final class HelpdeskTicketAssigneeMailService
      */
     public static function sendToEachAssignee(HelpDesk $ticket): int
     {
+        $report = self::sendToEachAssigneeWithReport($ticket);
+
+        return (int) ($report['sent'] ?? 0);
+    }
+
+    /**
+     * Envía correo a cada asignado y retorna un reporte detallado para auditoría operativa.
+     *
+     * @return array{
+     *     total_assignees:int,
+     *     attempted:int,
+     *     sent:int,
+     *     failed:int,
+     *     skipped_no_email:int,
+     *     failures:list<array<string,mixed>>,
+     *     recipients:list<array<string,mixed>>
+     * }
+     */
+    public static function sendToEachAssigneeWithReport(HelpDesk $ticket, string $panel = 'unknown'): array
+    {
         $ticket = self::loadTicketWithAssigneesForNotifications($ticket);
 
-        if ($ticket->rrhhColaboradores->isEmpty()) {
-            return 0;
-        }
+        $report = [
+            'total_assignees' => (int) $ticket->rrhhColaboradores->count(),
+            'attempted' => 0,
+            'sent' => 0,
+            'failed' => 0,
+            'skipped_no_email' => 0,
+            'failures' => [],
+            'recipients' => [],
+        ];
 
-        $sentCount = 0;
+        if ($ticket->rrhhColaboradores->isEmpty()) {
+            return $report;
+        }
 
         foreach ($ticket->rrhhColaboradores as $colaborador) {
             $emailCorporativo = $colaborador->emailCorporativo;
 
             if (blank($emailCorporativo)) {
+                $report['skipped_no_email']++;
+
                 Log::warning('Helpdesk: colaborador asignado sin correo corporativo; no se envía notificación.', [
                     'help_desk_id' => $ticket->getKey(),
                     'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'where' => 'HelpdeskTicketAssigneeMailService::sendToEachAssigneeWithReport',
+                ]);
+
+                SecurityAudit::log('AUDIT_HELPDESK_EMAIL_SKIPPED', $panel.'.helpdesks.notifications.email', [
+                    'panel' => $panel,
+                    'helpdesk_id' => $ticket->getKey(),
+                    'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'rrhh_colaborador_name' => $colaborador->fullName,
+                    'reason' => 'missing_corporate_email',
+                    'where' => 'service.email.skip.no-email',
                 ]);
 
                 continue;
             }
+
+            $report['attempted']++;
 
             try {
                 $ccList = self::buildCcEmailListForAssigneeMessage($ticket, $emailCorporativo);
@@ -98,27 +141,81 @@ final class HelpdeskTicketAssigneeMailService
                 Mail::to($emailCorporativo)
                     ->cc($ccList)
                     ->send(SendEmailCreateTicketAndAssigned::fromTicket($ticket, $colaborador));
-                $sentCount++;
+                $report['sent']++;
+                $report['recipients'][] = [
+                    'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'email' => $emailCorporativo,
+                ];
+
+                SecurityAudit::log('AUDIT_HELPDESK_EMAIL_SENT', $panel.'.helpdesks.notifications.email', [
+                    'panel' => $panel,
+                    'helpdesk_id' => $ticket->getKey(),
+                    'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'rrhh_colaborador_name' => $colaborador->fullName,
+                    'to' => $emailCorporativo,
+                    'cc_count' => count($ccList),
+                    'where' => 'service.email.send',
+                ]);
 
             } catch (HelpdeskTicketMailException $e) {
+                $report['failed']++;
+                $report['failures'][] = [
+                    'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'email' => $emailCorporativo,
+                    'error' => $e->getMessage(),
+                    'exception' => $e::class,
+                    'where' => 'service.email.prepare',
+                ];
+
                 Log::error('Helpdesk: no se pudo preparar o enviar correo a un asignado.', array_merge(
                     $e->context,
                     [
                         'message' => $e->getMessage(),
                         'help_desk_id' => $ticket->getKey(),
                         'rrhh_colaborador_id' => $colaborador->getKey(),
+                        'where' => 'HelpdeskTicketAssigneeMailService::sendToEachAssigneeWithReport',
                     ],
                 ));
+
+                SecurityAudit::log('AUDIT_HELPDESK_EMAIL_FAILED', $panel.'.helpdesks.notifications.email', [
+                    'panel' => $panel,
+                    'helpdesk_id' => $ticket->getKey(),
+                    'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'to' => $emailCorporativo,
+                    'error' => $e->getMessage(),
+                    'exception' => $e::class,
+                    'where' => 'service.email.prepare',
+                ]);
             } catch (Throwable $e) {
+                $report['failed']++;
+                $report['failures'][] = [
+                    'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'email' => $emailCorporativo,
+                    'error' => $e->getMessage(),
+                    'exception' => $e::class,
+                    'where' => 'service.email.send',
+                ];
+
                 Log::error('Helpdesk: error al enviar correo a un asignado.', [
                     'message' => $e->getMessage(),
                     'help_desk_id' => $ticket->getKey(),
                     'rrhh_colaborador_id' => $colaborador->getKey(),
                     'exception' => $e::class,
+                    'where' => 'HelpdeskTicketAssigneeMailService::sendToEachAssigneeWithReport',
+                ]);
+
+                SecurityAudit::log('AUDIT_HELPDESK_EMAIL_FAILED', $panel.'.helpdesks.notifications.email', [
+                    'panel' => $panel,
+                    'helpdesk_id' => $ticket->getKey(),
+                    'rrhh_colaborador_id' => $colaborador->getKey(),
+                    'to' => $emailCorporativo,
+                    'error' => $e->getMessage(),
+                    'exception' => $e::class,
+                    'where' => 'service.email.send',
                 ]);
             }
         }
 
-        return $sentCount;
+        return $report;
     }
 }

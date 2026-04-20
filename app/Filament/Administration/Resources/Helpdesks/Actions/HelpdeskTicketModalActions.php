@@ -4,6 +4,7 @@ namespace App\Filament\Administration\Resources\Helpdesks\Actions;
 
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
+use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\HelpdeskObservationAppender;
 use App\Support\HelpdeskTaskStatusOptions;
 use App\Support\SecurityAudit;
@@ -158,12 +159,37 @@ final class HelpdeskTicketModalActions
                 }
 
                 HelpdeskObservationAppender::append($record, $noteHtml, $user->name);
+                $isCreatorUpdating = trim((string) $record->created_by) === trim((string) $user->name);
+                $whatsAppReport = [
+                    'attempted' => 0,
+                    'dispatched' => 0,
+                    'failed' => 0,
+                    'skipped_no_phone' => 0,
+                    'failures' => [],
+                    'recipient' => null,
+                ];
+
+                if (! $isCreatorUpdating) {
+                    $whatsAppReport = HelpdeskTicketAssigneeWhatsAppService::dispatchToTicketCreatorWithReport(
+                        ticket: $record,
+                        requestedByUserId: Auth::id(),
+                        panel: 'administration',
+                        body: HelpdeskTicketAssigneeWhatsAppService::buildNoteAddedBody($record, $user->name, $noteHtml),
+                        source: 'helpdesk.ticket.note-added.creator-followup',
+                        auditRoute: 'administration.helpdesks.notifications.whatsapp.note',
+                    );
+                }
 
                 SecurityAudit::log('AUDIT_HELPDESK_NOTE_ADDED', 'administration.helpdesks.add-note', [
                     'panel' => 'administration',
                     'helpdesk_id' => $record->getKey(),
                     'status' => $record->status,
                     'added_by' => $user->name,
+                    'notify_target' => $isCreatorUpdating ? 'none_updater_is_creator' : 'ticket_creator',
+                    'whatsapp_dispatched_count' => $whatsAppReport['dispatched'],
+                    'whatsapp_failed_count' => $whatsAppReport['failed'],
+                    'whatsapp_skipped_no_phone_count' => $whatsAppReport['skipped_no_phone'],
+                    'whatsapp_failures' => array_slice($whatsAppReport['failures'], 0, 10),
                 ]);
 
                 Notification::make()
@@ -257,6 +283,29 @@ final class HelpdeskTicketModalActions
                 $record->status = $sanitized;
                 $record->updated_by = $user->name;
                 $record->save();
+                $isCreatorUpdating = trim((string) $record->created_by) === trim((string) $user->name);
+                $closedByCreator = $isCreatorUpdating && $sanitized === 'TERMINADO';
+                $notifyTarget = $closedByCreator ? 'ticket_assignees' : ($isCreatorUpdating ? 'none_updater_is_creator' : 'ticket_creator');
+
+                if ($closedByCreator) {
+                    $whatsAppReport = HelpdeskTicketAssigneeWhatsAppService::dispatchCustomMessageToEachAssigneeWithReport(
+                        ticket: $record,
+                        requestedByUserId: Auth::id(),
+                        panel: 'administration',
+                        body: HelpdeskTicketAssigneeWhatsAppService::buildTicketClosedByCreatorBody($record, $user->name),
+                        source: 'helpdesk.ticket.closed-by-creator',
+                        auditRoute: 'administration.helpdesks.notifications.whatsapp.status',
+                    );
+                } elseif (! $isCreatorUpdating) {
+                    $whatsAppReport = HelpdeskTicketAssigneeWhatsAppService::dispatchToTicketCreatorWithReport(
+                        ticket: $record,
+                        requestedByUserId: Auth::id(),
+                        panel: 'administration',
+                        body: HelpdeskTicketAssigneeWhatsAppService::buildStatusUpdatedBody($record, $previousStatus, $sanitized, $user->name),
+                        source: 'helpdesk.ticket.status-updated.creator-followup',
+                        auditRoute: 'administration.helpdesks.notifications.whatsapp.status',
+                    );
+                }
 
                 SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATED', 'administration.helpdesks.update-status', [
                     'panel' => 'administration',
@@ -264,6 +313,11 @@ final class HelpdeskTicketModalActions
                     'old_status' => $previousStatus,
                     'new_status' => $sanitized,
                     'updated_by' => $user->name,
+                    'notify_target' => $notifyTarget,
+                    'whatsapp_dispatched_count' => $whatsAppReport['dispatched'],
+                    'whatsapp_failed_count' => $whatsAppReport['failed'],
+                    'whatsapp_skipped_no_phone_count' => $whatsAppReport['skipped_no_phone'],
+                    'whatsapp_failures' => array_slice($whatsAppReport['failures'], 0, 10),
                 ]);
 
                 Notification::make()
