@@ -2,27 +2,30 @@
 
 namespace App\Filament\Administration\Resources\Commissions\Tables;
 
-use Carbon\Carbon;
+use App\Filament\Exports\CommissionExporter;
+use App\Http\Controllers\CommissionController;
 use App\Models\Agency;
 use App\Models\Commission;
-use Filament\Tables\Table;
+use App\Tables\Columns\CommissionGeneral;
+use App\Tables\Columns\CommissionMaster;
+use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\ExportBulkAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Grouping\Group;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ExportBulkAction;
-use Filament\Tables\Columns\TextColumn;
-use App\Tables\Columns\CommissionMaster;
-use Filament\Notifications\Notification;
-use Filament\Tables\Columns\ColumnGroup;
-use App\Tables\Columns\CommissionGeneral;
-use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
-use App\Filament\Exports\CommissionExporter;
-use Filament\Tables\Columns\Summarizers\Sum;
-use App\Http\Controllers\CommissionController;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Facades\View;
 
 class CommissionsTable
 {
@@ -41,11 +44,41 @@ class CommissionsTable
                     ->badge()
                     ->icon('heroicon-s-document-text')
                     ->label('Nro. Venta')
-                    ->searchable(),
+                    ->searchable()
+                    ->tooltip('Clic para ver detalle jerárquico de comisiones')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer',
+                    ])
+                    ->action(
+                        Action::make('view_commission_hierarchy_detail')
+                            ->label('Ver detalle de comisiones')
+                            ->icon('heroicon-o-chart-bar-square')
+                            ->color('info')
+                            ->modalHeading(fn (Commission $record): string => 'Comisiones de venta #'.($record->code ?: 'N/A'))
+                            ->modalDescription('Desglose detallado por jerarquía comercial para facilitar validación y auditoría operativa.')
+                            ->modalWidth(Width::FiveExtraLarge)
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Cerrar')
+                            ->modalContent(function (Commission $record): ViewContract {
+                                $commission = $record->loadMissing(['sale.plan', 'sale.coverage', 'agency.accountManager', 'agent.accountManager']);
+
+                                $masterAgency = null;
+                                if (filled($commission->agency?->owner_code)) {
+                                    $masterAgency = Agency::query()
+                                        ->where('code', $commission->agency->owner_code)
+                                        ->first();
+                                }
+
+                                return View::make('filament.administration.commissions.modals.commission-hierarchy-details-modal', [
+                                    'commission' => $commission,
+                                    'masterAgency' => $masterAgency,
+                                ]);
+                            })
+                    ),
                 TextColumn::make('agency.name_corporative')
                     ->label('Agencia')
                     ->badge()
-                    ->default(fn($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
+                    ->default(fn ($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
                     ->color('success')
                     ->sortable()
                     ->searchable(),
@@ -91,11 +124,11 @@ class CommissionsTable
                         ->label('Metodo de pago')->badge()->color('info')
                         ->searchable(),
                 ]),
-                
-                //ESTRUCTURA DE COMISIONES COMPLETA EN USD
+
+                // ESTRUCTURA DE COMISIONES COMPLETA EN USD
                 ColumnGroup::make('COMISIONES MASTER USD - VES')->columns([
                     TextColumn::make('porcent_agency_master')
-                        ->default(fn($record): string => $record->porcent_agency_master == 0 || $record->porcent_agency_master == NULL ? 0 : $record->porcent_agency_master)
+                        ->default(fn ($record): string => $record->porcent_agency_master == 0 || $record->porcent_agency_master == null ? 0 : $record->porcent_agency_master)
                         ->label('%')
                         ->badge()
                         ->color('info')
@@ -129,7 +162,7 @@ class CommissionsTable
 
                 ColumnGroup::make('COMISIONES GENERAL USD - VES')->columns([
                     TextColumn::make('porcent_agency_general')
-                        ->default(fn($record): string => $record->porcent_agency_general == 0 || $record->porcent_agency_general == NULL ? 0 : $record->porcent_agency_general)
+                        ->default(fn ($record): string => $record->porcent_agency_general == 0 || $record->porcent_agency_general == null ? 0 : $record->porcent_agency_general)
                         ->label('%')
                         ->badge()
                         ->color('info')
@@ -163,7 +196,7 @@ class CommissionsTable
 
                 ColumnGroup::make('COMISIONES AGENTE USD - VES')->columns([
                     TextColumn::make('porcent_agente')
-                        ->default(fn($record): string => $record->porcent_agente == 0 || $record->porcent_agente == NULL ? 0 : $record->porcent_agente)
+                        ->default(fn ($record): string => $record->porcent_agente == 0 || $record->porcent_agente == null ? 0 : $record->porcent_agente)
                         ->label('%')
                         ->badge()
                         ->color('info')
@@ -224,20 +257,20 @@ class CommissionsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -281,5 +314,4 @@ class CommissionsTable
                 ]),
             ]);
     }
-
 }
