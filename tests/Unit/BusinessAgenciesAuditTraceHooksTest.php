@@ -15,6 +15,8 @@ it('registra auditoría en acciones de tabla de agencias en business', function 
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCY_INACTIVATE_FAILED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCY_DELETED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCY_DELETE_FAILED')
+        ->and($contents)->toContain('AUDIT_BUSINESS_AGENCY_WELCOME_LETTER_RESENT')
+        ->and($contents)->toContain('AUDIT_BUSINESS_AGENCY_WELCOME_LETTER_RESEND_FAILED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_ACCOUNT_MANAGER_ASSIGNED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_ACCOUNT_MANAGER_ASSIGN_FAILED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_BULK_DELETED')
