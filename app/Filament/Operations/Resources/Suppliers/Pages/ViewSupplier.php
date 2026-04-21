@@ -99,6 +99,40 @@ class ViewSupplier extends ViewRecord
         }
     }
 
+    public function deleteCartaAcceptance(): void
+    {
+        /** @var Supplier $supplier */
+        $supplier = $this->getRecord();
+
+        $path = $supplier->carta_acceptance;
+        $pathForAudit = is_string($path) ? trim($path) : null;
+
+        if (is_string($path) && filled(trim($path))) {
+            $trimmed = trim($path);
+            if (Storage::disk('public')->exists($trimmed)) {
+                Storage::disk('public')->delete($trimmed);
+            }
+        }
+
+        $supplier->carta_acceptance = null;
+        $supplier->save();
+
+        SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_DOCUMENT_DELETED', 'operations.suppliers.carta-acceptance.delete', [
+            'supplier_id' => $supplier->id,
+            'supplier_name' => $supplier->name,
+            'document_type' => 'CARTA_ACEPTACION',
+            'path' => $pathForAudit,
+        ]);
+
+        Notification::make()
+            ->title('Carta de aceptación eliminada')
+            ->body('Seleccione el nuevo archivo en el formulario que se muestra a continuación.')
+            ->success()
+            ->send();
+
+        $this->replaceMountedAction('add_carta_acceptance');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -135,6 +169,8 @@ class ViewSupplier extends ViewRecord
                 ->label('Agregar Carta de Aceptación')
                 ->icon('heroicon-s-document-text')
                 ->color('warning')
+                ->modalHeading('Cargar carta de aceptación')
+                ->modalDescription('Seleccione el archivo. Se guardará al confirmar.')
                 ->form([
                     FileUpload::make('carta_acceptance')
                         ->directory('suppliers/carta-acceptance')
@@ -194,6 +230,17 @@ class ViewSupplier extends ViewRecord
                         'supplier' => $record,
                     ]);
                 })
+                ->extraModalFooterActions([
+                    Action::make('delete_carta_acceptance')
+                        ->label('Eliminar carta')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('¿Eliminar la carta de aceptación?')
+                        ->modalDescription('Se quitará la referencia y, si el archivo existe en el servidor, se borrará. A continuación se abrirá el formulario para cargar la nueva carta.')
+                        ->modalSubmitActionLabel('Sí, eliminar')
+                        ->action(fn () => $this->deleteCartaAcceptance()),
+                ])
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Cerrar')
                 ->action(fn () => null)

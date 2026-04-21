@@ -11,6 +11,7 @@ use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\Agent;
 use App\Models\User;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -867,7 +868,6 @@ class AffiliationsTable
                                     // Notificacion para Admin
                                     $recipient = User::where('is_admin', 1)->get();
                                     foreach ($recipient as $user) {
-                                        $recipient_for_user = User::find($user->id);
                                         Notification::make()
                                             ->title('REGISTRO DE COMPROBANTE')
                                             ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. '.$record->code)
@@ -880,7 +880,7 @@ class AffiliationsTable
                                                     ->button()
                                                     ->url(AffiliationResource::getUrl('edit', ['record' => $record->id], panel: 'admin').'?activeRelationManager=1'),
                                             ])
-                                            ->sendToDatabase($recipient_for_user);
+                                            ->sendToDatabase($user);
                                     }
                                 }
 
@@ -895,8 +895,28 @@ class AffiliationsTable
                                 ];
                                 // dd($info);
                                 Mail::to($info['email'])->send(new UploadPayment($info));
+
+                                Log::info('NEGOCIOS-AFILIACIONES: Comprobante cargado desde tabla de afiliaciones.', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'uploaded' => (bool) $upload,
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                    'updated_by' => Auth::user()?->id,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_PAYMENT_UPLOAD', 'business.affiliations.upload-payment', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'uploaded' => (bool) $upload,
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                ]);
                             } catch (\Throwable $th) {
                                 Log::error($th);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_PAYMENT_UPLOAD_FAILED', 'business.affiliations.upload-payment', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body('Ocurrio un error al registrar el comprobante de pago')
@@ -941,8 +961,24 @@ class AffiliationsTable
                                  */
                                 $path = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
 
+                                Log::info('NEGOCIOS-AFILIACIONES: Descarga de certificado iniciada.', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CERTIFICATE_DOWNLOADED', 'business.affiliations.download-certificate', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+
                                 return response()->download($path);
                             } catch (\Throwable $th) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CERTIFICATE_DOWNLOAD_FAILED', 'business.affiliations.download-certificate', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'error' => $th->getMessage(),
+                                ]);
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA')
                                     ->body($th->getMessage())
@@ -973,8 +1009,24 @@ class AffiliationsTable
                                  */
                                 $path = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
 
+                                Log::info('NEGOCIOS-AFILIACIONES: Descarga de tarjeta iniciada.', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CARD_DOWNLOADED', 'business.affiliations.download-card', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+
                                 return response()->download($path);
                             } catch (\Throwable $th) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CARD_DOWNLOAD_FAILED', 'business.affiliations.download-card', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'error' => $th->getMessage(),
+                                ]);
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA')
                                     ->body($th->getMessage())
@@ -1002,7 +1054,7 @@ class AffiliationsTable
                         ->modalSubmitAction(false)
                         ->modalCancelActionLabel('Cerrar')
                         ->action(fn () => null)
-                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()->departament)),
 
                     /**DESCARGAR O REENVIAR KIT DE AFILIACION */
                     Action::make('download_resend_kit')
@@ -1046,11 +1098,30 @@ class AffiliationsTable
                                 if ($data['option'] == 'DESCARGAR') {
                                     $path = AffiliationController::downloadResendKit($record, $data);
 
+                                    self::audit('AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_DOWNLOADED', 'business.affiliations.welcome-kit', [
+                                        'affiliation_id' => $record->id,
+                                        'affiliation_code' => $record->code,
+                                        'option' => $data['option'],
+                                    ]);
+
                                     return response()->download($path);
                                 } else {
                                     AffiliationController::downloadResendKit($record, $data);
+                                    self::audit('AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_RESENT', 'business.affiliations.welcome-kit', [
+                                        'affiliation_id' => $record->id,
+                                        'affiliation_code' => $record->code,
+                                        'option' => $data['option'],
+                                        'email' => $data['email'] ?? null,
+                                    ]);
                                 }
                             } catch (\Throwable $th) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_FAILED', 'business.affiliations.welcome-kit', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'option' => $data['option'] ?? null,
+                                    'email' => $data['email'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
 
                                 Notification::make()
                                     ->title('ERROR EN LA DESCARGA O ENVIO DEL KIT')
@@ -1112,6 +1183,13 @@ class AffiliationsTable
 
                                 $record->save();
 
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_PAYMENT_FREQUENCY_UPDATED', 'business.affiliations.edit-frequency', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'payment_frequency' => $data['payment_frequency'] ?? null,
+                                    'total_amount' => $record->total_amount,
+                                ]);
+
                                 Notification::make()
                                     ->title('ACTUALIACION EXITOSA')
                                     ->body('La frecuencia de pago se ha actualizado con exito.')
@@ -1120,6 +1198,12 @@ class AffiliationsTable
                                     ->send();
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_PAYMENT_FREQUENCY_UPDATE_FAILED', 'business.affiliations.edit-frequency', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'payment_frequency' => $data['payment_frequency'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
                                 Notification::make()
                                     ->title('ERROR AL ACTUALIZAR FRECUENCIA DE PAGO')
                                     ->body($th->getMessage())
@@ -1129,7 +1213,7 @@ class AffiliationsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
+                        ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()->departament)),
 
                     Action::make('change_status')
                         ->label('Actualizar Estatus')
@@ -1204,6 +1288,12 @@ class AffiliationsTable
                                     'observation' => $data['description'],
                                     'updated_by' => Auth::user()->name,
                                 ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_OBSERVATION_ADDED', 'business.affiliations.change-status', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'action' => $data['action'],
+                                    'description' => $data['description'] ?? null,
+                                ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
                                     ->success()
@@ -1221,6 +1311,13 @@ class AffiliationsTable
                                     'action' => 'CAMBIO ESTATUS A: '.$data['status'],
                                     'observation' => $data['description'],
                                     'updated_by' => Auth::user()->name,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_STATUS_UPDATED', 'business.affiliations.change-status', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'action' => $data['action'],
+                                    'status' => $data['status'] ?? null,
+                                    'description' => $data['description'] ?? null,
                                 ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
@@ -1246,6 +1343,13 @@ class AffiliationsTable
                                     'action' => 'EXCLUYO AFILIACION, FECHA DE EGRESO: '.$data['date_egress'],
                                     'observation' => $data['description'],
                                     'updated_by' => Auth::user()->name,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_EXCLUDED', 'business.affiliations.change-status', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'action' => $data['action'],
+                                    'date_egress' => $data['date_egress'] ?? null,
+                                    'description' => $data['description'] ?? null,
                                 ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
@@ -1277,6 +1381,7 @@ class AffiliationsTable
                         ->action(function (Collection $records) {
 
                             try {
+                                $recordIds = $records->pluck('id')->values()->all();
 
                                 foreach ($records as $record) {
 
@@ -1292,7 +1397,15 @@ class AffiliationsTable
                                     $record->affiliates()->delete();
                                     Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino el afiliado: '.$record->affiliates()->first()->id);
                                 }
+
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_DELETED', 'business.affiliations.bulk-delete', [
+                                    'record_ids' => $recordIds,
+                                    'total' => count($recordIds),
+                                ]);
                             } catch (\Throwable $th) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_DELETE_FAILED', 'business.affiliations.bulk-delete', [
+                                    'error' => $th->getMessage(),
+                                ]);
                                 Notification::make()
                                     ->title('REGISTRO NO ELIMINADO')
                                     ->body($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile())
@@ -1747,18 +1860,35 @@ class AffiliationsTable
                             ];
                         })
                         ->action(function (Collection $records, array $data) {
+                            $recordIds = $records->pluck('id')->values()->all();
+                            try {
+                                $upload = AffiliationController::uploadPaymentMultipleAffiliations($records, $data, 'AGENTE');
 
-                            $upload = AffiliationController::uploadPaymentMultipleAffiliations($records, $data, 'AGENTE');
+                                if ($upload) {
+                                    Notification::make()
+                                        ->title('NOTIFICACION')
+                                        ->body('El comprobante de pago se ha registrado con exito')
+                                        ->icon('heroicon-m-user-plus')
+                                        ->iconColor('success')
+                                        ->success()
+                                        ->seconds(5)
+                                        ->send();
+                                }
 
-                            if ($upload) {
-                                Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('El comprobante de pago se ha registrado con exito')
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->seconds(5)
-                                    ->send();
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_PAYMENT_UPLOAD', 'business.affiliations.bulk-upload-payment', [
+                                    'record_ids' => $recordIds,
+                                    'total' => count($recordIds),
+                                    'uploaded' => (bool) $upload,
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                ]);
+                            } catch (\Throwable $th) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_PAYMENT_UPLOAD_FAILED', 'business.affiliations.bulk-upload-payment', [
+                                    'record_ids' => $recordIds,
+                                    'total' => count($recordIds),
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
+                                throw $th;
                             }
                         }),
 
@@ -1786,6 +1916,7 @@ class AffiliationsTable
                         ->action(function (Collection $records, array $data) {
 
                             try {
+                                $recordIds = $records->pluck('id')->values()->all();
 
                                 // Actualizamos el registro para cambiar la frecuencia de pago
                                 foreach ($records as $record) {
@@ -1816,8 +1947,18 @@ class AffiliationsTable
                                     ->iconColor('success')
                                     ->success()
                                     ->send();
+
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_FREQUENCY_UPDATED', 'business.affiliations.bulk-edit-frequency', [
+                                    'record_ids' => $recordIds,
+                                    'total' => count($recordIds),
+                                    'frequency_payment' => $data['frequency_payment'] ?? null,
+                                ]);
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_FREQUENCY_UPDATE_FAILED', 'business.affiliations.bulk-edit-frequency', [
+                                    'frequency_payment' => $data['frequency_payment'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
                                 Notification::make()
                                     ->title('¡ERROR!')
                                     ->icon('heroicon-m-exclamation-triangle')
@@ -1883,6 +2024,7 @@ class AffiliationsTable
                         ->action(function (Collection $records, array $data) {
 
                             try {
+                                $recordIds = $records->pluck('id')->values()->all();
 
                                 // 1.- Master
                                 if ($data['owner_code'] != null && $data['code_agency'] == null && $data['agent_id'] == null) {
@@ -1967,6 +2109,14 @@ class AffiliationsTable
                                     ->body('Los códigos han sido actualizados correctamente.')
                                     ->success()
                                     ->send();
+
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_REASSIGNED', 'business.affiliations.bulk-reassign', [
+                                    'record_ids' => $recordIds,
+                                    'total' => count($recordIds),
+                                    'owner_code' => $data['owner_code'] ?? null,
+                                    'code_agency' => $data['code_agency'] ?? null,
+                                    'agent_id' => $data['agent_id'] ?? null,
+                                ]);
                             } catch (\Throwable $th) {
 
                                 // 4. Registro de error con contexto para debugging senior
@@ -1975,6 +2125,12 @@ class AffiliationsTable
                                     'exception_message' => $th->getMessage(),
                                     'file' => $th->getFile(),
                                     'line' => $th->getLine(),
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_REASSIGN_FAILED', 'business.affiliations.bulk-reassign', [
+                                    'owner_code' => $data['owner_code'] ?? null,
+                                    'code_agency' => $data['code_agency'] ?? null,
+                                    'agent_id' => $data['agent_id'] ?? null,
+                                    'error' => $th->getMessage(),
                                 ]);
 
                                 // 5. Notificación de error amigable y persistente
@@ -2018,5 +2174,17 @@ class AffiliationsTable
         return [
             'bg-[#34C759]/14 dark:bg-[#34C759]/18 border-l-[3px] border-[#34C759] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-[#30D158] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private static function audit(string $event, string $route, array $context = []): void
+    {
+        SecurityAudit::log($event, $route, [
+            'panel' => 'business',
+            'module' => 'affiliations',
+            ...$context,
+        ]);
     }
 }
