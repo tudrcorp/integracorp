@@ -133,7 +133,7 @@ class MarketingPanelProvider extends PanelProvider
                     ->icon('heroicon-o-users'),
                 NavigationGroup::make()
                     ->label('MARKETING')
-                    ->icon('heroicon-m-cursor-arrow-rays'),
+                    ->collapsed(),
                 NavigationGroup::make()
                     ->label('ZONA DE DESCARGA')
                     ->icon('heroicon-o-cloud-arrow-down'),

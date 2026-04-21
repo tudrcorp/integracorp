@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AffiliationBusinessDocumentsController;
 use App\Http\Controllers\AffiliationCorporateBusinessDocumentsController;
+use App\Http\Controllers\Business\CorporateAgendaInvitationResponseController;
 use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
@@ -244,6 +245,14 @@ Route::post('business/affiliation-corporates/documents/send-email/{affiliationCo
 Route::post('business/helpdesk-tickets/{helpDesk}/mark-in-progress', MarkHelpdeskTicketInProgressController::class)
     ->middleware(['web', 'auth'])
     ->name('business.helpdesk-ticket.mark-in-progress');
+
+Route::get('agenda/invitacion/{participant}', [CorporateAgendaInvitationResponseController::class, 'show'])
+    ->middleware(['web', 'signed'])
+    ->name('agenda.invitation.show');
+
+Route::post('agenda/invitacion/{participant}/responder', [CorporateAgendaInvitationResponseController::class, 'respond'])
+    ->middleware(['web', 'signed'])
+    ->name('agenda.invitation.respond');
 
 Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');
