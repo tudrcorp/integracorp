@@ -19,11 +19,14 @@
             background: radial-gradient(circle at top, #5ddcf5 0%, #0b2048 44%, #030a1a 100%);
             color: #eff6ff;
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .safe-wrapper {
             max-width: 430px;
-            margin: 0 auto;
+            width: 100%;
             padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
         }
 
