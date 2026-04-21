@@ -385,10 +385,27 @@ class SupplierForm
                                             ])
                                             ->schema([
                                                 self::infrastructureGrid([
+                                                    ['key' => 'urgen_care', 'desc' => 'descripcion_urgen_care', 'label' => 'Urgencias'],
+                                                    ['key' => 'consulta_aps', 'desc' => 'descripcion_consulta_aps', 'label' => 'Consultas APS'],
+                                                    ['key' => 'amd', 'desc' => 'descripcion_amd', 'label' => 'Asistencia médica domiciliaria'],
+                                                    ['key' => 'laboratorio_centro', 'desc' => 'descripcion_laboratorio_centro', 'label' => 'Laboratorio en centro'],
+                                                    ['key' => 'laboratorio_domicilio', 'desc' => 'descripcion_laboratorio_domicilio', 'label' => 'Laboratorio en domicilio'],
+                                                    ['key' => 'rx_centro', 'desc' => 'descripcion_rx_centro', 'label' => 'Rayos X en centro'],
+                                                    ['key' => 'rx_domicilio', 'desc' => 'descripcion_rx_domicilio', 'label' => 'Rayos X en domicilio'],
+                                                    ['key' => 'eco_abdominal_centro', 'desc' => 'descripcion_eco_abdominal_centro', 'label' => 'Ecografía abdominal en centro'],
+                                                    ['key' => 'eco_abdominal_domicilio', 'desc' => 'descripcion_eco_abdominal_domicilio', 'label' => 'Ecografía abdominal en domicilio'],
+                                                    ['key' => 'electrocardiograma_domicilio', 'desc' => 'descripcion_electrocardiograma_domicilio', 'label' => 'Electrocardiograma en domicilio'],
+                                                    ['key' => 'oncologia', 'desc' => 'descripcion_oncologia', 'label' => 'Oncología'],
+                                                    ['key' => 'uci_uten', 'desc' => 'descripcion_uci_uten', 'label' => 'UCI UTE'],
+                                                    ['key' => 'neonatal', 'desc' => 'descripcion_neonatal', 'label' => 'Neonatal'],
+                                                    ['key' => 'ambulancias', 'desc' => 'descripcion_ambulancias', 'label' => 'Ambulancias'],
+                                                    ['key' => 'odontologia', 'desc' => 'descripcion_odontologia', 'label' => 'Odontología'],
+                                                    ['key' => 'oftalmologia', 'desc' => 'descripcion_oftalmologia', 'label' => 'Oftalmología'],
                                                     ['key' => 'quirofanos', 'desc' => 'descripcion_quirofanos', 'label' => 'Quirófanos'],
                                                     ['key' => 'uci_pediatrica', 'desc' => 'descripcion_uci_pediatrica', 'label' => 'UCI pediátrica'],
                                                     ['key' => 'uci_adulto', 'desc' => 'descripcion_uci_adulto', 'label' => 'UCI adulto'],
                                                     ['key' => 'robotica', 'desc' => 'descripcion_robotica', 'label' => 'Cirugía robótica'],
+                                                    ['key' => 'otras_unidades_especiales', 'desc' => 'descripcion_otras_unidades_especiales', 'label' => 'Otras unidades especiales'],
                                                 ]),
                                             ]),
                                         Fieldset::make('Accesibilidad y comodidades')

@@ -8,6 +8,7 @@ use App\Http\Controllers\AffiliationCorporateController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -874,7 +875,6 @@ class AffiliationCorporatesTable
                                     // Notificacion para Admin
                                     $recipient = User::where('is_admin', 1)->get();
                                     foreach ($recipient as $user) {
-                                        $recipient_for_user = User::find($user->id);
                                         Notification::make()
                                             ->title('REGISTRO DE COMPROBANTE')
                                             ->body('Se ha registrado un nuevo comprobante de pago de forma exitosa. Afiliacion Nro. '.$record->code)
@@ -887,7 +887,7 @@ class AffiliationCorporatesTable
                                                     ->button()
                                                     ->url(AffiliationCorporateResource::getUrl('edit', ['record' => $record->id], panel: 'admin').'?activeRelationManager=1'),
                                             ])
-                                            ->sendToDatabase($recipient_for_user);
+                                            ->sendToDatabase($user);
                                     }
                                 }
 
@@ -902,8 +902,28 @@ class AffiliationCorporatesTable
                                 ];
                                 // dd($info);
                                 Mail::to($info['email'])->send(new UploadPayment($info));
+
+                                Log::info('NEGOCIOS-AFILIACIONES-CORP: Comprobante cargado desde tabla de afiliaciones corporativas.', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'uploaded' => (bool) $upload,
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                    'updated_by' => Auth::user()?->id,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_PAYMENT_UPLOAD', 'business.affiliation-corporates.upload-payment', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'uploaded' => (bool) $upload,
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                ]);
                             } catch (\Throwable $th) {
                                 Log::error($th);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_PAYMENT_UPLOAD_FAILED', 'business.affiliation-corporates.upload-payment', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'payment_method' => $data['payment_method'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body('Ocurrio un error al registrar el comprobante de pago')
@@ -999,6 +1019,12 @@ class AffiliationCorporatesTable
                                     'observation' => $data['description'],
                                     'updated_by' => Auth::user()->name,
                                 ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_OBSERVATION_ADDED', 'business.affiliation-corporates.change-status', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'action' => $data['action'],
+                                    'description' => $data['description'] ?? null,
+                                ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
                                     ->success()
@@ -1016,6 +1042,13 @@ class AffiliationCorporatesTable
                                     'action' => 'CAMBIO ESTATUS A: '.$data['status'],
                                     'observation' => $data['description'],
                                     'updated_by' => Auth::user()->name,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_STATUS_UPDATED', 'business.affiliation-corporates.change-status', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'action' => $data['action'],
+                                    'status' => $data['status'] ?? null,
+                                    'description' => $data['description'] ?? null,
                                 ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
@@ -1043,6 +1076,13 @@ class AffiliationCorporatesTable
                                     'observation' => $data['description'],
                                     'updated_by' => Auth::user()->name,
                                 ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_EXCLUDED', 'business.affiliation-corporates.change-status', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'action' => $data['action'],
+                                    'date_egress' => $data['date_egress'] ?? null,
+                                    'description' => $data['description'] ?? null,
+                                ]);
                                 Notification::make()
                                     ->title('AFILIACION ACTUALIZADA')
                                     ->success()
@@ -1066,5 +1106,17 @@ class AffiliationCorporatesTable
                 ]),
             ])
             ->striped();
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private static function audit(string $event, string $route, array $context = []): void
+    {
+        SecurityAudit::log($event, $route, [
+            'panel' => 'business',
+            'module' => 'affiliation_corporates',
+            ...$context,
+        ]);
     }
 }

@@ -34,9 +34,11 @@ it('registra auditoría para carga y descarga de documentos de proveedor', funct
 
     expect($viewContents)
         ->toContain('AUDIT_OPERATIONS_SUPPLIER_DOCUMENT_UPLOADED')
+        ->and($viewContents)->toContain('AUDIT_OPERATIONS_SUPPLIER_DOCUMENT_DELETED')
         ->and($viewContents)->toContain('operations.suppliers.documents.download')
         ->and($viewContents)->toContain('operations.suppliers.carta-acceptance.preview')
-        ->and($viewContents)->toContain('operations.suppliers.carta-acceptance.download');
+        ->and($viewContents)->toContain('operations.suppliers.carta-acceptance.download')
+        ->and($viewContents)->toContain('operations.suppliers.carta-acceptance.delete');
 
     expect($controllerContents)
         ->toContain('AUDIT_OPERATIONS_SUPPLIER_DOCUMENT_DOWNLOADED')

@@ -26,7 +26,7 @@
                 No se encontró el archivo en el almacenamiento.
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Compruebe que la carta esté cargada correctamente o vuelva a subirla desde «Editar».
+                Use «Eliminar carta» al pie de este modal; al confirmar se abrirá el formulario para subir un archivo nuevo.
             </p>
         </div>
     @else
