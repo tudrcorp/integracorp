@@ -22,13 +22,7 @@ final class HelpdeskTicketAssigneeWhatsAppService
             ? $ticket->created_at->timezone($tz)->format('d/m/Y H:i')
             : '—';
         $creator = filled($ticket->created_by) ? (string) $ticket->created_by : '—';
-        $priorityRaw = strtoupper((string) $ticket->priority);
-        $priorityLabel = match ($priorityRaw) {
-            'BAJA' => 'Baja — puede esperar',
-            'MEDIA' => 'Media — flujo normal',
-            'ALTA' => 'Alta — bloquea trabajo',
-            default => filled($ticket->priority) ? (string) $ticket->priority : '—',
-        };
+        $priorityLabel = self::priorityLabelForWhatsApp((string) $ticket->priority);
         $description = trim(html_entity_decode(strip_tags((string) $ticket->description), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         if (mb_strlen($description) > 900) {
             $description = mb_substr($description, 0, 897).'...';
@@ -151,6 +145,50 @@ final class HelpdeskTicketAssigneeWhatsAppService
 
         Si necesitas ampliar la gestión, debes comunicarte con el creador del ticket.
         TEXT;
+    }
+
+    public static function buildPriorityUpdatedByCreatorBody(
+        HelpDesk $ticket,
+        string $previousPriority,
+        string $newPriority,
+        string $updatedBy,
+    ): string {
+        $tz = (string) config('app.timezone');
+        $updatedAt = now()->timezone($tz)->format('d/m/Y H:i');
+        $ticketNo = (string) $ticket->getKey();
+        $prevLabel = self::priorityLabelForWhatsApp($previousPriority);
+        $newLabel = self::priorityLabelForWhatsApp($newPriority);
+        $description = trim(html_entity_decode(strip_tags((string) $ticket->description), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if (mb_strlen($description) > 350) {
+            $description = mb_substr($description, 0, 347).'...';
+        }
+
+        return <<<TEXT
+        El creador del ticket ha actualizado la prioridad en INTEGRACORP.
+
+        Ticket N.º {$ticketNo}
+        Prioridad anterior: {$prevLabel}
+        Prioridad nueva: {$newLabel}
+        Estado del ticket: {$ticket->status}
+        Actualizado por: {$updatedBy}
+        Fecha y hora: {$updatedAt}
+
+        {$description}
+
+        Conéctese al sistema INTEGRACORP para revisar el ticket.
+        TEXT;
+    }
+
+    private static function priorityLabelForWhatsApp(string $priority): string
+    {
+        $priorityRaw = strtoupper(trim($priority));
+
+        return match ($priorityRaw) {
+            'BAJA' => 'Baja — puede esperar',
+            'MEDIA' => 'Media — flujo normal',
+            'ALTA' => 'Alta — bloquea trabajo',
+            default => filled($priority) ? $priority : '—',
+        };
     }
 
     /**

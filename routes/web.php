@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\AffiliationBusinessDocumentsController;
 use App\Http\Controllers\AffiliationCorporateBusinessDocumentsController;
+use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\Business\CorporateAgendaInvitationResponseController;
 use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Operations\SupplierDocumentAuditController;
+use App\Http\Controllers\OperationServiceOrderPdfController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
@@ -128,6 +130,14 @@ Route::get('operations/suppliers/{supplier}/carta-acceptance/preview', [Supplier
 Route::get('operations/suppliers/{supplier}/carta-acceptance/download', [SupplierDocumentAuditController::class, 'downloadCartaAcceptance'])
     ->middleware(['web', 'auth'])
     ->name('operations.suppliers.carta-acceptance.download');
+
+Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/preview', [OperationServiceOrderPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.operation-service-orders.pdf.preview');
+
+Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/download', [OperationServiceOrderPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.operation-service-orders.pdf');
 
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
     $isPreview = request()->boolean('preview');
@@ -1575,6 +1585,15 @@ Route::prefix('api')->name('api.')->group(function () {
 Route::get('/ldi', function () {
     return view('link-debito-inmediato');
 });
+
+Route::get('/tasa-bcv', function () {
+    $tasaBcv = ApiBcvController::getTasaBcv();
+    $statusApiBcv = ApiBcvController::statusApiBcv();
+    return response()->json([
+        'tasaBcv' => $tasaBcv,
+        'statusApiBcv' => $statusApiBcv,
+    ]);
+})->name('tasa-bcv');
 
 /**
  * OPTIMIZACIÓN DE SEGURIDAD PARA LINK DE PAGO

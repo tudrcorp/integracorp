@@ -31,6 +31,7 @@ class OperationServiceOrder extends Model
         'total_items',
         'total_items_unit',
         'files',
+        'status_payment',
     ];
 
     protected function casts(): array

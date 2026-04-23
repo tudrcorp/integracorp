@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ProspectAgent extends Model
 {
     protected $table = 'prospect_agents';
+
     protected $fillable = [
         'name',
         'type',
@@ -20,6 +21,10 @@ class ProspectAgent extends Model
         'created_by',
         'updated_by',
         'reference_by',
+        'initial_observ',
+        'instagram',
+        'classification',
+
     ];
 
     public function prospect_agent_observations()

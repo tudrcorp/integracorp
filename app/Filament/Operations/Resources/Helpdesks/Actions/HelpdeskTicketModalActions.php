@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\Helpdesks\Actions;
 
+use App\Filament\Operations\Resources\Helpdesks\HelpdeskResource;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
@@ -15,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 final class HelpdeskTicketModalActions
 {
@@ -283,9 +285,20 @@ final class HelpdeskTicketModalActions
                 $record->status = $sanitized;
                 $record->updated_by = $user->name;
                 $record->save();
+                $record->refresh();
+                $statusNote = '<p>Estado del ticket actualizado de <strong>'.e($previousStatus).'</strong> a <strong>'.e($sanitized).'</strong>.</p>';
+                HelpdeskObservationAppender::append($record, $statusNote, $user->name);
+
                 $isCreatorUpdating = trim((string) $record->created_by) === trim((string) $user->name);
                 $closedByCreator = $isCreatorUpdating && $sanitized === 'TERMINADO';
                 $notifyTarget = $closedByCreator ? 'ticket_assignees' : ($isCreatorUpdating ? 'none_updater_is_creator' : 'ticket_creator');
+
+                $whatsAppReport = [
+                    'dispatched' => 0,
+                    'failed' => 0,
+                    'skipped_no_phone' => 0,
+                    'failures' => [],
+                ];
 
                 if ($closedByCreator) {
                     $whatsAppReport = HelpdeskTicketAssigneeWhatsAppService::dispatchCustomMessageToEachAssigneeWithReport(
@@ -327,5 +340,169 @@ final class HelpdeskTicketModalActions
                     ->send();
             })
             ->hidden(fn (HelpDesk $record): bool => $record->status === 'TERMINADO');
+    }
+
+    public static function makeUpdatePriorityAction(): Action
+    {
+        return Action::make('updatePriority')
+            ->label('Cambiar prioridad')
+            ->icon('heroicon-m-bolt')
+            ->color('warning')
+            ->slideOver()
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalHeading('Cambiar prioridad del ticket')
+            ->modalDescription(fn (HelpDesk $record): string => 'Solo el creador puede ajustar la urgencia · Ticket #'.$record->getKey().' · '.$record->created_by)
+            ->modalSubmitActionLabel('Guardar prioridad')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => self::IOS_SUCCESS_BTN,
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->label('Cancelar')
+                    ->extraAttributes([
+                        'class' => self::IOS_GRAY_BTN,
+                    ])
+            )
+            ->fillForm(fn (HelpDesk $record): array => [
+                'priority' => $record->priority,
+            ])
+            ->form([
+                Section::make('Prioridad')
+                    ->description('Indica la urgencia con la que deben atender el caso quienes están asignados.')
+                    ->icon('heroicon-m-bolt')
+                    ->schema([
+                        Select::make('priority')
+                            ->label('Prioridad')
+                            ->prefixIcon('heroicon-m-bolt')
+                            ->options([
+                                'BAJA' => 'Baja — puede esperar',
+                                'MEDIA' => 'Media — flujo normal',
+                                'ALTA' => 'Alta — bloquea trabajo',
+                            ])
+                            ->required()
+                            ->native(false)
+                            ->extraInputAttributes([
+                                'class' => 'helpdesk-status-native-select w-full max-w-full min-h-11 text-base sm:text-sm',
+                            ]),
+                    ])
+                    ->columns(1)
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ]),
+            ])
+            ->successNotification(null)
+            ->action(function (HelpDesk $record, array $data): void {
+                $user = Auth::user();
+                if ($user === null) {
+                    return;
+                }
+
+                if (! HelpdeskResource::currentUserIsHelpdeskTicketCreator($record)) {
+                    SecurityAudit::log('AUDIT_HELPDESK_PRIORITY_UPDATE_DENIED', 'operations.helpdesks.update-priority', [
+                        'panel' => 'operations',
+                        'helpdesk_id' => $record->getKey(),
+                        'reason' => 'not_ticket_creator',
+                    ]);
+
+                    Notification::make()
+                        ->title('No autorizado')
+                        ->body('Solo quien creó el ticket puede cambiar la prioridad.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                $allowed = ['BAJA', 'MEDIA', 'ALTA'];
+                $newPriority = strtoupper(trim((string) ($data['priority'] ?? '')));
+                if (! in_array($newPriority, $allowed, true)) {
+                    SecurityAudit::log('AUDIT_HELPDESK_PRIORITY_UPDATE_FAILED', 'operations.helpdesks.update-priority', [
+                        'panel' => 'operations',
+                        'helpdesk_id' => $record->getKey(),
+                        'reason' => 'invalid_priority',
+                        'submitted' => (string) ($data['priority'] ?? ''),
+                    ]);
+
+                    Notification::make()
+                        ->title('Prioridad no válida')
+                        ->body('Selecciona Baja, Media o Alta.')
+                        ->warning()
+                        ->send();
+
+                    return;
+                }
+
+                $previousPriority = (string) $record->priority;
+                if ($newPriority === $previousPriority) {
+                    SecurityAudit::log('AUDIT_HELPDESK_PRIORITY_UPDATE_SKIPPED', 'operations.helpdesks.update-priority', [
+                        'panel' => 'operations',
+                        'helpdesk_id' => $record->getKey(),
+                        'priority' => $record->priority,
+                        'updated_by' => $user->name,
+                        'reason' => 'no_changes',
+                    ]);
+
+                    Notification::make()
+                        ->title('Sin cambios')
+                        ->body('La prioridad del ticket no se modificó.')
+                        ->info()
+                        ->send();
+
+                    return;
+                }
+
+                $record->priority = $newPriority;
+                $noteHtml = '<p>Prioridad actualizada de <strong>'.$previousPriority.'</strong> a <strong>'.$newPriority.'</strong>.</p>';
+                HelpdeskObservationAppender::append($record, $noteHtml, $user->name);
+                $record->refresh();
+
+                $whatsAppReport = HelpdeskTicketAssigneeWhatsAppService::dispatchCustomMessageToEachAssigneeWithReport(
+                    ticket: $record,
+                    requestedByUserId: Auth::id(),
+                    panel: 'operations',
+                    body: HelpdeskTicketAssigneeWhatsAppService::buildPriorityUpdatedByCreatorBody(
+                        $record,
+                        $previousPriority,
+                        $newPriority,
+                        $user->name,
+                    ),
+                    source: 'helpdesk.ticket.priority-updated-by-creator',
+                    auditRoute: 'operations.helpdesks.notifications.whatsapp.priority',
+                );
+
+                Log::info('Helpdesk: prioridad actualizada por el creador del ticket.', [
+                    'panel' => 'operations',
+                    'helpdesk_id' => $record->getKey(),
+                    'old_priority' => $previousPriority,
+                    'new_priority' => $newPriority,
+                    'updated_by' => $user->name,
+                    'whatsapp_dispatched' => $whatsAppReport['dispatched'],
+                ]);
+
+                SecurityAudit::log('AUDIT_HELPDESK_PRIORITY_UPDATED', 'operations.helpdesks.update-priority', [
+                    'panel' => 'operations',
+                    'helpdesk_id' => $record->getKey(),
+                    'old_priority' => $previousPriority,
+                    'new_priority' => $newPriority,
+                    'updated_by' => $user->name,
+                    'notify_target' => 'ticket_assignees',
+                    'whatsapp_dispatched_count' => $whatsAppReport['dispatched'],
+                    'whatsapp_failed_count' => $whatsAppReport['failed'],
+                    'whatsapp_skipped_no_phone_count' => $whatsAppReport['skipped_no_phone'],
+                    'whatsapp_failures' => array_slice($whatsAppReport['failures'], 0, 10),
+                ]);
+
+                Notification::make()
+                    ->title('Prioridad actualizada')
+                    ->body('El ticket #'.$record->getKey().' quedó en prioridad '.$newPriority.'. Se notificó por WhatsApp a quienes están asignados cuando hay teléfono válido.')
+                    ->success()
+                    ->send();
+            })
+            ->hidden(fn (HelpDesk $record): bool => ! HelpdeskResource::currentUserIsHelpdeskTicketCreator($record)
+                || in_array($record->status, ['TERMINADO', 'CANCELADO'], true));
     }
 }

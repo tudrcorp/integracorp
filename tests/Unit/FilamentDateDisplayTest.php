@@ -9,6 +9,10 @@ it('formatea cadenas d/m/Y sin volver a parsear con Carbon', function () {
     expect(FilamentDateDisplay::toDmy('15/01/2017'))->toBe('15/01/2017');
 });
 
+it('acepta fechas de nacimiento históricas en texto d/m/Y', function () {
+    expect(FilamentDateDisplay::toDmy('17/11/1939'))->toBe('17/11/1939');
+});
+
 it('formatea instancias Carbon a d/m/Y', function () {
     expect(FilamentDateDisplay::toDmy(Carbon::parse('2017-01-15')))->toBe('15/01/2017');
 });

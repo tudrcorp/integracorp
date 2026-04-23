@@ -7,6 +7,7 @@ use App\Filament\Marketing\Resources\Helpdesks\HelpdeskResource;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Support\HelpdeskDocumentPaths;
+use App\Support\HelpdeskTimelineBuilder;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -41,6 +42,39 @@ class HelpdesksTable
                     });
             })
             ->columns([
+                TextColumn::make('uid')
+                    ->label('UID')
+                    ->icon('heroicon-m-identification')
+                    ->searchable()
+                    ->copyable()
+                    ->weight('semiBold')
+                    ->color('primary')
+                    ->toggleable()
+                    ->action(
+                        Action::make('viewTimeline')
+                            ->label('Bitácora')
+                            ->icon('heroicon-m-clock')
+                            ->slideOver()
+                            ->modalWidth(Width::FiveExtraLarge)
+                            ->extraModalWindowAttributes([
+                                'class' => 'fi-helpdesk-timeline-modal-window',
+                            ])
+                            ->modalHeading(fn (HelpDesk $record): string => 'Bitácora del ticket '.$record->uid)
+                            ->modalDescription(fn (HelpDesk $record): string => 'Traza completa · Ticket #'.$record->getKey().' · '.$record->created_by)
+                            ->modalContent(fn (HelpDesk $record) => view('filament.business.helpdesks.timeline-modal', [
+                                'record' => $record,
+                                'timeline' => HelpdeskTimelineBuilder::fromTicket($record),
+                            ]))
+                            ->modalSubmitAction(false)
+                            ->modalCancelAction(
+                                fn (Action $action): Action => $action
+                                    ->label('Cerrar')
+                                    ->extraAttributes([
+                                        'class' => HelpdeskTicketModalActions::IOS_SUCCESS_BTN,
+                                    ])
+                            )
+                            ->action(fn (): null => null)
+                    ),
                 TextColumn::make('description')
                     ->label('Descripción')
                     ->icon('heroicon-m-document-text')
@@ -158,6 +192,7 @@ class HelpdesksTable
                 ActionGroup::make([
                     HelpdeskTicketModalActions::makeAddNoteAction(),
                     HelpdeskTicketModalActions::makeUpdateStatusAction(),
+                    HelpdeskTicketModalActions::makeUpdatePriorityAction(),
                     Action::make('viewNotes')
                         ->label('Ver notas')
                         ->icon('heroicon-m-clipboard-document-list')

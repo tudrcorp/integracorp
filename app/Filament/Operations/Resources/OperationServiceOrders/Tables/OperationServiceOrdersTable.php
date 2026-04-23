@@ -2,8 +2,10 @@
 
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Tables;
 
+use App\Http\Controllers\ApiBcvController;
 use App\Models\OperationServiceOrder;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\FileUpload;
@@ -29,6 +31,20 @@ class OperationServiceOrdersTable
     private const IOS_SUCCESS_BTN = 'aviso-btn-ios-success shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     private const IOS_GRAY_BTN = 'ticket-btn-ios-gray shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    /** Valor de referencia de la API BCV para el formulario (una petición por request). */
+    private static function referenciaTasaBcvDesdeApi(): ?float
+    {
+        static $resolved = false;
+        static $tasa = null;
+
+        if (! $resolved) {
+            $resolved = true;
+            $tasa = ApiBcvController::getTasaBcv();
+        }
+
+        return $tasa;
+    }
 
     /** @return array<string, string> */
     private static function paymentMethodOptions(): array
@@ -160,6 +176,16 @@ class OperationServiceOrdersTable
                     ->searchable()
                     ->toggleable()
                     ->formatStateUsing(fn (?string $state): string => $state ? (self::paymentMethodOptions()[$state] ?? $state) : '—'),
+                TextColumn::make('status_payment')
+                    ->label('Estado de pago')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'PAGADO' => 'success',
+                        'PENDIENTE' => 'danger',
+                        default => 'gray',
+                    })
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable(),
@@ -199,195 +225,204 @@ class OperationServiceOrdersTable
             ->recordActions([
                 // ViewAction::make(),
                 // EditAction::make(),
-                Action::make('registerPayment')
-                    ->label('Datos de pago')
-                    ->icon('heroicon-m-banknotes')
-                    ->color('primary')
-                    ->slideOver()
-                    ->modalWidth(Width::ThreeExtraLarge)
-                    ->modalIcon('heroicon-m-banknotes')
-                    ->modalHeading('Registrar datos de pago')
-                    ->modalDescription('Completa la tasa BCV, los montos y el método de pago para actualizar la orden. Usa el botón «Guardar» al finalizar: los totales en dólares y bolívares se sincronizan según la tasa (si indicas ambos montos, prevalece el total en US$).')
-                    ->modalSubmitActionLabel('Guardar datos de pago')
-                    ->modalSubmitAction(
-                        fn (Action $action): Action => $action
-                            ->extraAttributes([
-                                'class' => self::IOS_SUCCESS_BTN,
-                            ])
-                    )
-                    ->modalCancelAction(
-                        fn (Action $action): Action => $action
-                            ->label('Cancelar')
-                            ->extraAttributes([
-                                'class' => self::IOS_GRAY_BTN,
-                            ])
-                    )
-                    ->fillForm(fn (OperationServiceOrder $record): array => [
-                        'tasa_bcv' => $record->tasa_bcv,
-                        'total_amount_usd' => $record->total_amount_usd,
-                        'total_amount_ves' => $record->total_amount_ves,
-                        'payment_method' => $record->payment_method,
-                    ])
-                    ->form([
-                        Section::make('Información de pago')
-                            ->description('Indica la tasa del día y al menos un monto (US$ o Bs.); el otro se calcula al guardar. El método de pago es obligatorio.')
-                            ->icon('heroicon-m-currency-dollar')
-                            ->schema([
-                                Grid::make(['default' => 1, 'lg' => 2])
-                                    ->schema([
-                                        TextInput::make('tasa_bcv')
-                                            ->label('Tasa BCV')
-                                            ->prefix('VES')
-                                            ->placeholder('Ej. 36,50')
-                                            ->numeric()
-                                            ->required()
-                                            ->minValue(0.000001)
-                                            ->helperText('Tipo de cambio oficial o acordado para esta orden.'),
-                                        Select::make('payment_method')
-                                            ->label('Método de pago')
-                                            ->prefixIcon('heroicon-m-credit-card')
-                                            ->options(self::paymentMethodOptions())
-                                            ->required()
-                                            ->native(false)
-                                            ->searchable(),
-                                        TextInput::make('total_amount_usd')
-                                            ->label('Total en US$')
-                                            ->prefix('US$')
-                                            ->placeholder('0,00')
-                                            ->numeric()
-                                            ->helperText('Opcional si ya ingresaste el total en bolívares.'),
-                                        TextInput::make('total_amount_ves')
-                                            ->label('Total en bolívares')
-                                            ->prefix('Bs.')
-                                            ->placeholder('0,00')
-                                            ->numeric()
-                                            ->helperText('Opcional si ya ingresaste el total en US$.'),
-                                    ]),
-                            ])
-                            ->columns(1)
-                            ->columnSpanFull()
-                            ->extraAttributes([
-                                'class' => self::IOS_SECTION_CLASS,
-                            ]),
-                    ])
-                    ->successNotification(null)
-                    ->action(function (OperationServiceOrder $record, array $data): void {
-                        $tasa = (float) ($data['tasa_bcv'] ?? 0);
-                        if ($tasa <= 0) {
+                ActionGroup::make([
+                    Action::make('registerPayment')
+                        ->label('Datos de pago')
+                        ->icon('heroicon-m-banknotes')
+                        ->color('primary')
+                        ->slideOver()
+                        ->modalWidth(Width::ThreeExtraLarge)
+                        ->modalIcon('heroicon-m-banknotes')
+                        ->modalHeading('Registrar datos de pago')
+                        ->modalDescription('Completa la tasa BCV, los montos y el método de pago para actualizar la orden. Usa el botón «Guardar» al finalizar: los totales en dólares y bolívares se sincronizan según la tasa (si indicas ambos montos, prevalece el total en US$).')
+                        ->modalSubmitActionLabel('Guardar datos de pago')
+                        ->modalSubmitAction(
+                            fn (Action $action): Action => $action
+                                ->extraAttributes([
+                                    'class' => self::IOS_SUCCESS_BTN,
+                                ])
+                        )
+                        ->modalCancelAction(
+                            fn (Action $action): Action => $action
+                                ->label('Cancelar')
+                                ->extraAttributes([
+                                    'class' => self::IOS_GRAY_BTN,
+                                ])
+                        )
+                        ->fillForm(fn (OperationServiceOrder $record): array => [
+                            'tasa_bcv' => filled($record->tasa_bcv)
+                                ? $record->tasa_bcv
+                                : self::referenciaTasaBcvDesdeApi(),
+                            'total_amount_usd' => $record->total_amount_usd,
+                            'total_amount_ves' => $record->total_amount_ves,
+                            'payment_method' => $record->payment_method,
+                        ])
+                        ->form([
+                            Section::make('Información de pago')
+                                ->description('Indica la tasa del día y al menos un monto (US$ o Bs.); el otro se calcula al guardar. El método de pago es obligatorio.')
+                                ->icon('heroicon-m-currency-dollar')
+                                ->schema([
+                                    Grid::make(['default' => 1, 'lg' => 2])
+                                        ->schema([
+                                            TextInput::make('tasa_bcv')
+                                                ->label('Tasa BCV')
+                                                ->prefix('VES')
+                                                ->placeholder('Ej. 36,50')
+                                                ->numeric()
+                                                ->required()
+                                                ->minValue(0.000001)
+                                                ->helperText(function (): string {
+                                                    $tasa = self::referenciaTasaBcvDesdeApi();
+
+                                                    return $tasa !== null
+                                                        ? 'Tipo de cambio oficial o acordado para esta orden. Tasa referencial: '.number_format((float) $tasa, 2, ',', '.').' Bs./US$.'
+                                                        : 'La API BCV no está disponible; ingresa la tasa manualmente.';
+                                                }),
+                                            Select::make('payment_method')
+                                                ->label('Método de pago')
+                                                ->prefixIcon('heroicon-m-credit-card')
+                                                ->options(self::paymentMethodOptions())
+                                                ->required()
+                                                ->native(false)
+                                                ->searchable(),
+                                            TextInput::make('total_amount_usd')
+                                                ->label('Total en US$')
+                                                ->prefix('US$')
+                                                ->placeholder('0,00')
+                                                ->numeric()
+                                                ->helperText('Opcional si ya ingresaste el total en bolívares.'),
+                                            TextInput::make('total_amount_ves')
+                                                ->label('Total en bolívares')
+                                                ->prefix('Bs.')
+                                                ->placeholder('0,00')
+                                                ->numeric()
+                                                ->helperText('Opcional si ya ingresaste el total en US$.'),
+                                        ]),
+                                ])
+                                ->columns(1)
+                                ->columnSpanFull()
+                                ->extraAttributes([
+                                    'class' => self::IOS_SECTION_CLASS,
+                                ]),
+                        ])
+                        ->successNotification(null)
+                        ->action(function (OperationServiceOrder $record, array $data): void {
+                            $tasa = (float) ($data['tasa_bcv'] ?? 0);
+                            if ($tasa <= 0) {
+                                Notification::make()
+                                    ->title('Tasa inválida')
+                                    ->body('La tasa BCV debe ser mayor que cero.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $usdRaw = $data['total_amount_usd'] ?? null;
+                            $vesRaw = $data['total_amount_ves'] ?? null;
+                            $usd = ($usdRaw !== null && $usdRaw !== '') ? (float) $usdRaw : null;
+                            $ves = ($vesRaw !== null && $vesRaw !== '') ? (float) $vesRaw : null;
+
+                            if ($usd === null && $ves === null) {
+                                Notification::make()
+                                    ->title('Montos requeridos')
+                                    ->body('Indica al menos el total en US$ o el total en bolívares.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            if ($usd !== null && $ves !== null) {
+                                $ves = $usd * $tasa;
+                            } elseif ($usd !== null) {
+                                $ves = $usd * $tasa;
+                            } else {
+                                $usd = $ves / $tasa;
+                            }
+
+                            $record->update([
+                                'tasa_bcv' => $tasa,
+                                'total_amount_usd' => round($usd, 4),
+                                'total_amount_ves' => round($ves, 4),
+                                'payment_method' => (string) $data['payment_method'],
+                                'updated_by' => Auth::user()?->name ?? 'sistema',
+                                'status_payment' => 'PAGADO',
+                            ]);
+
                             Notification::make()
-                                ->title('Tasa inválida')
-                                ->body('La tasa BCV debe ser mayor que cero.')
-                                ->warning()
+                                ->title('Datos de pago guardados')
+                                ->body('La orden #'.($record->order_number ?: $record->getKey()).' se actualizó correctamente.')
+                                ->success()
                                 ->send();
-
-                            return;
-                        }
-
-                        $usdRaw = $data['total_amount_usd'] ?? null;
-                        $vesRaw = $data['total_amount_ves'] ?? null;
-                        $usd = ($usdRaw !== null && $usdRaw !== '') ? (float) $usdRaw : null;
-                        $ves = ($vesRaw !== null && $vesRaw !== '') ? (float) $vesRaw : null;
-
-                        if ($usd === null && $ves === null) {
+                        })
+                        ->hidden(fn (OperationServiceOrder $record): bool => $record->status_payment === 'PAGADO'),
+                    Action::make('upload_files')
+                        ->label('Cargar Soportes')
+                        ->icon('heroicon-m-cloud-arrow-up')
+                        ->color('warning')
+                        // ->button()
+                        // ->extraAttributes([
+                        //     'x-on:click.stop' => '',
+                        //     'class' => 'rounded-full border-b-2 border-warning-600 dark:border-warning-500 bg-warning-500/15 dark:bg-warning-500/25 text-warning-700 dark:text-warning-300 font-semibold shadow-sm hover:bg-warning-500/25 dark:hover:bg-warning-500/35',
+                        // ])
+                        ->modalHeading('Cargar Soportes')
+                        ->modalDescription('Cargue los soportes de la orden de servicio')
+                        ->modalSubmitActionLabel('Cargar')
+                        ->modalCancelActionLabel('Cancelar')
+                        ->modalIcon('heroicon-m-cloud-arrow-up')
+                        ->form([
+                            FileUpload::make('files')
+                                ->label('Soportes')
+                                ->disk('public')
+                                ->directory('operation-service-orders-files')
+                                ->visibility('public')
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                                ->maxSize(2048)
+                                ->helperText('Formatos: JPG, PNG, WebP o PDF. Máximo 2 MB.')
+                                ->multiple()
+                                ->required()
+                                ->validationMessages([
+                                    'required' => 'El campo es requerido',
+                                ]),
+                        ])
+                        ->action(function ($record, array $data) {
+                            $record->update([
+                                'files' => $data['files'],
+                                'updated_by' => Auth::user()->name,
+                                'status' => 'FINALIZADO',
+                            ]);
                             Notification::make()
-                                ->title('Montos requeridos')
-                                ->body('Indica al menos el total en US$ o el total en bolívares.')
-                                ->warning()
+                                ->title('¡TAREA COMPLETADA!')
+                                ->body('Los soportes han sido cargados correctamente.')
+                                ->success()
                                 ->send();
-
-                            return;
-                        }
-
-                        if ($usd !== null && $ves !== null) {
-                            $ves = $usd * $tasa;
-                        } elseif ($usd !== null) {
-                            $ves = $usd * $tasa;
-                        } else {
-                            $usd = $ves / $tasa;
-                        }
-
-                        $record->update([
-                            'tasa_bcv' => $tasa,
-                            'total_amount_usd' => round($usd, 4),
-                            'total_amount_ves' => round($ves, 4),
-                            'payment_method' => (string) $data['payment_method'],
-                            'updated_by' => Auth::user()?->name ?? 'sistema',
-                        ]);
-
-                        Notification::make()
-                            ->title('Datos de pago guardados')
-                            ->body('La orden #'.($record->order_number ?: $record->getKey()).' se actualizó correctamente.')
-                            ->success()
-                            ->send();
-                    })
-                    ->hidden(fn (OperationServiceOrder $record): bool => self::hasRegisteredPaymentData($record)),
-                Action::make('upload_files')
-                    ->label('Cargar Soportes')
-                    ->icon('heroicon-m-cloud-arrow-up')
-                    ->color('warning')
-                    ->button()
-                    ->extraAttributes([
-                        'x-on:click.stop' => '',
-                        'class' => 'rounded-full border-b-2 border-warning-600 dark:border-warning-500 bg-warning-500/15 dark:bg-warning-500/25 text-warning-700 dark:text-warning-300 font-semibold shadow-sm hover:bg-warning-500/25 dark:hover:bg-warning-500/35',
-                    ])
-                    ->modalHeading('Cargar Soportes')
-                    ->modalDescription('Cargue los soportes de la orden de servicio')
-                    ->modalSubmitActionLabel('Cargar')
-                    ->modalCancelActionLabel('Cancelar')
-                    ->modalIcon('heroicon-m-cloud-arrow-up')
-                    ->form([
-                        FileUpload::make('files')
-                            ->label('Soportes')
-                            ->disk('public')
-                            ->directory('operation-service-orders-files')
-                            ->visibility('public')
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                            ->maxSize(2048)
-                            ->helperText('Formatos: JPG, PNG, WebP o PDF. Máximo 2 MB.')
-                            ->multiple()
-                            ->required()
-                            ->validationMessages([
-                                'required' => 'El campo es requerido',
-                            ]),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->update([
-                            'files' => $data['files'],
-                            'updated_by' => Auth::user()->name,
-                            'status' => 'FINALIZADO',
-                        ]);
-                        Notification::make()
-                            ->title('¡TAREA COMPLETADA!')
-                            ->body('Los soportes han sido cargados correctamente.')
-                            ->success()
-                            ->send();
-                    })
-                    ->hidden(fn (OperationServiceOrder $record): bool => $record->status === 'FINALIZADO'
-                        || ! self::hasRegisteredPaymentData($record)),
-                Action::make('preview_files')
-                    ->label('Vista previa')
-                    ->icon('heroicon-m-eye')
-                    ->color('success')
-                    ->button()
-                    ->extraAttributes([
-                        'x-on:click.stop' => '',
-                        'class' => 'rounded-full border-b-2 border-success-600 dark:border-success-500 bg-success-500/15 dark:bg-success-500/25 text-success-700 dark:text-success-300 font-semibold shadow-sm hover:bg-success-500/25 dark:hover:bg-success-500/35',
-                    ])
-                    ->modalHeading('Vista previa de soportes')
-                    ->modalDescription('Previsualiza los archivos cargados y descárgalos individualmente.')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Cerrar')
-                    ->modalIcon('heroicon-m-eye')
-                    ->form(fn ($record): array => [
-                        Section::make('Soportes cargados')
-                            ->schema([
-                                Placeholder::make('files_preview')
-                                    ->label('')
-                                    ->content(fn () => self::renderFilesPreview($record, self::buildDownloadAllUrl($record))),
-                            ]),
-                    ])
-                    ->hidden(fn ($record) => empty($record->files)),
-
+                        })
+                        ->hidden(fn (OperationServiceOrder $record): bool => $record->status === 'FINALIZADO'),
+                    Action::make('preview_files')
+                        ->label('Vista previa')
+                        ->icon('heroicon-m-eye')
+                        ->color('success')
+                        // ->button()
+                        // ->extraAttributes([
+                        //     'x-on:click.stop' => '',
+                        //     'class' => 'rounded-full border-b-2 border-success-600 dark:border-success-500 bg-success-500/15 dark:bg-success-500/25 text-success-700 dark:text-success-300 font-semibold shadow-sm hover:bg-success-500/25 dark:hover:bg-success-500/35',
+                        // ])
+                        ->modalHeading('Vista previa de soportes')
+                        ->modalDescription('Previsualiza los archivos cargados y descárgalos individualmente.')
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Cerrar')
+                        ->modalIcon('heroicon-m-eye')
+                        ->form(fn ($record): array => [
+                            Section::make('Soportes cargados')
+                                ->schema([
+                                    Placeholder::make('files_preview')
+                                        ->label('')
+                                        ->content(fn () => self::renderFilesPreview($record, self::buildDownloadAllUrl($record))),
+                                ]),
+                        ])
+                        ->hidden(fn ($record) => empty($record->files)),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
