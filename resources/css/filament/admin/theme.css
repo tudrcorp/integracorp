@@ -1824,6 +1824,17 @@
     @apply gap-3 border-t border-emerald-200/30 bg-emerald-50/25 px-4 py-4 dark:border-emerald-500/15 dark:bg-emerald-950/20 sm:px-6;
   }
 
+  /* Helpdesk — bitácora (UID): el scroll del contenido no debe pintar avatares encima del pie fijo */
+  .fi-helpdesk-timeline-modal-window .fi-modal-content {
+    @apply overflow-x-hidden;
+    isolation: isolate;
+    padding-bottom: max(6.5rem, calc(env(safe-area-inset-bottom, 0px) + 5rem));
+  }
+
+  .fi-helpdesk-timeline-modal-window .fi-modal-footer {
+    @apply relative z-30 gap-3 border-t border-gray-200/90 bg-white px-4 py-4 shadow-[0_-12px_32px_-6px_rgba(15,23,42,0.14)] backdrop-blur-md dark:border-white/10 dark:bg-gray-950 dark:shadow-[0_-14px_40px_-8px_rgba(0,0,0,0.65)] sm:px-6;
+  }
+
   /*
    * Wizard crear consulta telemedicina — agrupación tipo Ajustes iOS, tipografía SF,
    * pasos con separación clara y controles táctiles.

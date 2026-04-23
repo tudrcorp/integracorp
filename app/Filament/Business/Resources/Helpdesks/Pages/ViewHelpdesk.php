@@ -12,7 +12,7 @@ class ViewHelpdesk extends ViewRecord
 {
     protected static string $resource = HelpdeskResource::class;
 
-    protected static ?string $title = 'Ver ticket';
+    protected static ?string $title = 'Detalles del ticket';
 
     protected function getHeaderActions(): array
     {
@@ -23,6 +23,11 @@ class ViewHelpdesk extends ViewRecord
                     $this->getRecord()->refresh();
                 }),
             HelpdeskTicketModalActions::makeUpdateStatusAction()
+                ->record(fn (): HelpDesk => $this->getRecord())
+                ->after(function (): void {
+                    $this->getRecord()->refresh();
+                }),
+            HelpdeskTicketModalActions::makeUpdatePriorityAction()
                 ->record(fn (): HelpDesk => $this->getRecord())
                 ->after(function (): void {
                     $this->getRecord()->refresh();

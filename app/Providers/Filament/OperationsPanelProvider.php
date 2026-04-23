@@ -3,6 +3,10 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Operations\Widgets\AffiliationChart;
+use App\Filament\Operations\Widgets\StatsOverview;
+use App\Filament\Operations\Widgets\StatsOverviewPlan;
+use App\Filament\Operations\Widgets\TotalAfiliacionesPorEstado;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
@@ -58,7 +62,11 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Operations/Widgets'), for: 'App\Filament\Operations\Widgets')
             ->widgets([
-                AccountWidget::class,
+                // AccountWidget::class,
+                StatsOverview::class,
+                StatsOverviewPlan::class,
+                TotalAfiliacionesPorEstado::class,
+                AffiliationChart::class,
                 // FilamentInfoWidget::class,
             ])
             ->middleware([
@@ -117,6 +125,9 @@ class OperationsPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('COORDINACIÓN DE SERVICIOS')
                     ->icon('heroicon-o-square-3-stack-3d'),
+                NavigationGroup::make()
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-o-cloud-arrow-down'),
                 NavigationGroup::make()
                     ->label('CONFIGURACION')
                     ->icon('heroicon-o-cog-8-tooth'),

@@ -27,6 +27,11 @@ class ViewHelpdesk extends ViewRecord
                 ->after(function (): void {
                     $this->getRecord()->refresh();
                 }),
+            HelpdeskTicketModalActions::makeUpdatePriorityAction()
+                ->record(fn (): HelpDesk => $this->getRecord())
+                ->after(function (): void {
+                    $this->getRecord()->refresh();
+                }),
             EditAction::make()
                 ->visible(fn (): bool => HelpdeskResource::canEdit($this->getRecord())),
         ];

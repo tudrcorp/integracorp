@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\TelemedicinePatients\Schemas;
 
 use App\Models\Benefit;
 use App\Models\TelemedicinePatient;
+use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -115,7 +116,7 @@ class TelemedicinePatientInfolist
                                 TextEntry::make('birth_date')
                                     ->label('Fecha de nacimiento')
                                     ->icon(Heroicon::OutlinedCalendar)
-                                    ->date()
+                                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                                     ->placeholder('—'),
                                 TextEntry::make('age')
                                     ->label('Edad')
@@ -254,7 +255,7 @@ class TelemedicinePatientInfolist
                                 TextEntry::make('date_affiliation')
                                     ->label('Fecha de afiliación')
                                     ->icon(Heroicon::OutlinedCalendarDays)
-                                    ->date()
+                                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                                     ->placeholder('—'),
                                 TextEntry::make('name_corporate')
                                     ->label('Empresa / corporativo')

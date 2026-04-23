@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Business;
 use App\Http\Controllers\Controller;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
+use App\Support\HelpdeskObservationAppender;
 use App\Support\HelpdeskTaskStatusOptions;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
@@ -98,9 +99,13 @@ final class MarkHelpdeskTicketInProgressController extends Controller
             return redirect()->back();
         }
 
+        $previousStatus = (string) $helpDesk->status;
         $helpDesk->status = 'EN PROCESO';
         $helpDesk->updated_by = $user->name;
         $helpDesk->save();
+        $helpDesk->refresh();
+        $statusNote = '<p>Estado del ticket actualizado de <strong>'.e($previousStatus).'</strong> a <strong>EN PROCESO</strong>.</p>';
+        HelpdeskObservationAppender::append($helpDesk, $statusNote, $user->name);
 
         SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATED', 'business.helpdesk-ticket.mark-in-progress', [
             'panel' => 'business',
