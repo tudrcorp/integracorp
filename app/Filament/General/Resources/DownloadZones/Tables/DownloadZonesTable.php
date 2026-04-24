@@ -2,16 +2,14 @@
 
 namespace App\Filament\General\Resources\DownloadZones\Tables;
 
-use Filament\Tables\Table;
+use App\Models\DownloadZone;
+use App\Support\DownloadZoneDocumentDownloader;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Support\Enums\FontWeight;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\Layout\Stack;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class DownloadZonesTable
 {
@@ -38,12 +36,13 @@ class DownloadZonesTable
                     ->label('Descargar')
                     ->icon('heroicon-o-folder-open')
                     ->color('verdeOpaco')
-                    ->url(function ($record) {
-                        return asset('storage/' . $record->document);
-                    })
                     ->button()
-                    ->openUrlInNewTab(),
+                    ->action(fn (DownloadZone $record): ?\Symfony\Component\HttpFoundation\StreamedResponse => DownloadZoneDocumentDownloader::download(
+                        $record,
+                        'general',
+                    )),
             ])
-            ->toolbarActions([])->striped();
+            ->toolbarActions([])
+            ->striped();
     }
 }

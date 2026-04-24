@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Agents\Tables;
 
+use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Exports\AgentExporter;
 use App\Http\Controllers\AgencyController;
 use App\Http\Controllers\NotificationController;
@@ -10,10 +11,12 @@ use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\Agent;
+use App\Models\AgentNoteBlog;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
 use App\Support\AgentActivity\AgentActivityQuery;
+use App\Support\HelpdeskObservationHtmlRenderer;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -25,9 +28,11 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
@@ -40,6 +45,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class AgentsTable
 {
@@ -119,7 +126,8 @@ class AgentsTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->action(self::makeAgentCommandCenterAction()),
                 TextColumn::make('typeAgent.definition')
                     ->label('Tipo de agente')
                     ->searchable()
@@ -806,6 +814,60 @@ class AgentsTable
                         ->icon('heroicon-s-x-circle')
                         ->color('danger')
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
+                    ...(self::agentNoteBlogsTableExists() ? [
+                        Action::make('add_agent_observation')
+                            ->label('Registrar nota u observación')
+                            ->icon('heroicon-o-pencil-square')
+                            ->color('info')
+                            ->modalHeading('Nota u observación del agente')
+                            ->modalWidth(Width::Large)
+                            ->form([
+                                Section::make()
+                                    ->schema([
+                                        Textarea::make('note')
+                                            ->label('Nota u observación')
+                                            ->required()
+                                            ->rows(5)
+                                            ->maxLength(255)
+                                            ->helperText('Texto interno de seguimiento (máx. 255 caracteres).'),
+                                    ]),
+                            ])
+                            ->action(function (Agent $record, array $data): void {
+                                try {
+                                    $note = Str::limit(trim($data['note'] ?? ''), 255, '');
+
+                                    AgentNoteBlog::create([
+                                        'agent_id' => $record->id,
+                                        'note' => $note,
+                                        'created_by' => Auth::user()->name ?? (string) Auth::id(),
+                                    ]);
+
+                                    SecurityAudit::log('AUDIT_BUSINESS_AGENT_OBSERVATION_ADDED', 'business.agents.add-observation', [
+                                        'agent_id' => $record->id,
+                                        'agent_name' => $record->name,
+                                        'note_length' => strlen($note),
+                                    ]);
+
+                                    Notification::make()
+                                        ->title('Nota registrada')
+                                        ->body('La observación quedó guardada en el historial del agente.')
+                                        ->success()
+                                        ->send();
+                                } catch (\Throwable $th) {
+                                    SecurityAudit::log('AUDIT_BUSINESS_AGENT_OBSERVATION_ADD_FAILED', 'business.agents.add-observation', [
+                                        'agent_id' => $record->id,
+                                        'agent_name' => $record->name,
+                                        'error' => $th->getMessage(),
+                                    ]);
+
+                                    Notification::make()
+                                        ->title('No se pudo guardar la nota')
+                                        ->body('Intente de nuevo o contacte a soporte si el problema continúa.')
+                                        ->danger()
+                                        ->send();
+                                }
+                            }),
+                    ] : []),
                     DeleteAction::make()
                         ->action(function (Agent $record): void {
                             try {
@@ -1003,6 +1065,140 @@ class AgentsTable
                 ]),
             ])
             ->striped();
+    }
+
+    /**
+     * En bases sin migración aplicada (p. ej. respaldos antiguos) la tabla puede no existir.
+     */
+    private static function agentNoteBlogsTableExists(): bool
+    {
+        try {
+            return Schema::hasTable((new AgentNoteBlog)->getTable());
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @return array{events: list<array<string, mixed>>, total: int, loaded: int, limited: bool, max_id: int}
+     */
+    private static function agentNoteTimelinePayload(int $agentId): array
+    {
+        $limit = 100;
+        $base = AgentNoteBlog::query()->where('agent_id', $agentId);
+        $total = (clone $base)->count();
+        $maxId = (int) ((clone $base)->max('id') ?? 0);
+        $notes = (clone $base)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->sortBy(function (AgentNoteBlog $n): float {
+                $ts = $n->created_at?->getTimestamp() ?? 0;
+
+                return (float) $ts + ($n->id / 1_000_000);
+            })
+            ->values();
+
+        $tz = (string) config('app.timezone');
+        $events = [];
+        foreach ($notes as $index => $n) {
+            $at = $n->created_at?->timezone($tz);
+            $noteText = (string) ($n->note ?? '');
+            $events[] = [
+                'side' => $index % 2 === 0 ? 'left' : 'right',
+                'type' => 'note',
+                'title' => 'Nota interna del agente',
+                'summary' => Str::limit(trim(str_replace(["\r\n", "\r", "\n"], ' ', strip_tags($noteText))), 160, '…'),
+                'display_name' => $n->created_by ?? '—',
+                'actor' => $n->created_by,
+                'initials' => self::initialsForAgentNoteAuthor($n->created_by),
+                'avatar_url' => null,
+                'datetime_full' => $at
+                    ? $at->format('d/m/Y \a \l\a\s H:i').' ('.$tz.')'
+                    : '—',
+                'relative' => $at?->diffForHumans() ?? '—',
+                'body_html' => HelpdeskObservationHtmlRenderer::render($noteText),
+            ];
+        }
+
+        return [
+            'events' => $events,
+            'total' => $total,
+            'loaded' => $notes->count(),
+            'limited' => $total > $notes->count(),
+            'max_id' => $maxId,
+        ];
+    }
+
+    private static function initialsForAgentNoteAuthor(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '?';
+        }
+
+        $parts = preg_split('/\s+/u', $name) ?: [];
+        $parts = array_values(array_filter($parts, fn (string $p): bool => $p !== ''));
+        if (count($parts) >= 2) {
+            return Str::upper(Str::substr($parts[0], 0, 1).Str::substr($parts[1], 0, 1));
+        }
+
+        return Str::upper(Str::substr($name, 0, min(2, Str::length($name))));
+    }
+
+    private static function makeAgentCommandCenterAction(): Action
+    {
+        return Action::make('agentCommandCenter')
+            ->label('Centro de acciones')
+            ->icon('heroicon-m-squares-2x2')
+            ->slideOver()
+            ->formWrapper(false)
+            ->modalWidth(Width::FiveExtraLarge)
+            ->extraModalWindowAttributes([
+                'class' => 'fi-agent-command-center-window',
+            ])
+            ->modalHeading(fn (Agent $record): string => 'Gestión rápida · '.$record->name)
+            ->modalDescription(fn (Agent $record): string => 'Código AGT-000'.$record->id.' · Acciones y notas internas.')
+            ->modalContent(function (Agent $record) {
+                SecurityAudit::log('AUDIT_BUSINESS_AGENT_COMMAND_CENTER_OPENED', 'business.agents.command-center.open', [
+                    'agent_id' => $record->id,
+                    'agent_name' => $record->name,
+                    'agent_code' => 'AGT-000'.$record->id,
+                ]);
+
+                $record->loadMissing(['affiliations.plan', 'typeAgent']);
+
+                $sortedAffiliations = $record->affiliations->sortByDesc(function ($aff): int {
+                    return $aff->created_at?->getTimestamp() ?? (int) $aff->getKey();
+                })->values();
+                $record->setRelation('affiliations', $sortedAffiliations);
+
+                $noteTimeline = self::agentNoteBlogsTableExists()
+                    ? self::agentNoteTimelinePayload($record->id)
+                    : null;
+
+                $isSuperadmin = in_array('SUPERADMIN', Auth::user()->departament ?? []);
+
+                return view('filament.business.agents.agent-command-center', [
+                    'record' => $record,
+                    'noteTimeline' => $noteTimeline,
+                    'canActivate' => $record->status !== 'ACTIVO',
+                    'canEditHierarchy' => $isSuperadmin,
+                    'canInactivate' => $isSuperadmin,
+                    'canDelete' => $isSuperadmin,
+                    'canAddObservation' => self::agentNoteBlogsTableExists(),
+                ]);
+            })
+            ->modalSubmitAction(false)
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->label('Cerrar')
+                    ->extraAttributes([
+                        'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
+                    ]),
+            )
+            ->action(fn (): null => null);
     }
 
     private static function daysSinceLastInteraction(Agent $record): ?int

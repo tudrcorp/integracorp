@@ -10,6 +10,10 @@ use App\Filament\Business\Resources\Agents\Widgets\TotalForStateAgent;
 use App\Filament\Business\Resources\Agents\Widgets\TotalSaleForAgent;
 use App\Filament\Business\Resources\Agents\Widgets\TotalSaleMonthlyNowVsLastAgent;
 use App\Http\Controllers\NotificationController;
+use App\Models\Agent;
+use App\Models\AgentNoteBlog;
+use App\Support\AgentActivity\AgentActivityQuery;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\TextInput;
@@ -18,6 +22,9 @@ use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class ListAgents extends ListRecords
 {
@@ -147,5 +154,81 @@ class ListAgents extends ListRecords
         return [
 
         ];
+    }
+
+    /**
+     * Guarda una nota desde el slide-over del centro de acciones sin cerrar el panel (re-render de Livewire).
+     */
+    public function saveAgentCommandCenterNoteFromSlideover(string $recordKey, string $note): void
+    {
+        try {
+            if (! Schema::hasTable((new AgentNoteBlog)->getTable())) {
+                Notification::make()
+                    ->title('No disponible')
+                    ->body('El historial de notas no está disponible en esta base de datos.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
+            $note = Str::limit(trim($note), 255, '');
+            if ($note === '') {
+                Notification::make()
+                    ->title('Nota vacía')
+                    ->body('Escriba el texto de la observación antes de guardar.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
+            $base = Agent::query();
+            if (Auth::user()?->is_accountManagers) {
+                $base->where('ownerAccountManagers', Auth::id());
+            }
+
+            $agent = AgentActivityQuery::applyToAgentsQuery($base)->whereKey($recordKey)->first();
+            if ($agent === null) {
+                Notification::make()
+                    ->title('No autorizado o no encontrado')
+                    ->body('No se pudo localizar el agente o no tiene permisos para registrar la nota.')
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+
+            AgentNoteBlog::create([
+                'agent_id' => $agent->id,
+                'note' => $note,
+                'created_by' => Auth::user()->name ?? (string) Auth::id(),
+            ]);
+
+            SecurityAudit::log('AUDIT_BUSINESS_AGENT_OBSERVATION_ADDED', 'business.agents.add-observation', [
+                'agent_id' => $agent->id,
+                'agent_name' => $agent->name,
+                'note_length' => strlen($note),
+                'source' => 'command_center_slideover',
+            ]);
+
+            Notification::make()
+                ->title('Nota guardada con éxito')
+                ->body('La nota se guardó correctamente y ya aparece en la bitácora.')
+                ->success()
+                ->send();
+        } catch (\Throwable $th) {
+            SecurityAudit::log('AUDIT_BUSINESS_AGENT_OBSERVATION_ADD_FAILED', 'business.agents.add-observation', [
+                'agent_id' => $recordKey,
+                'error' => $th->getMessage(),
+                'source' => 'command_center_slideover',
+            ]);
+
+            Notification::make()
+                ->title('No se pudo guardar la nota')
+                ->body('Intente de nuevo o contacte a soporte si el problema continúa.')
+                ->danger()
+                ->send();
+        }
     }
 }

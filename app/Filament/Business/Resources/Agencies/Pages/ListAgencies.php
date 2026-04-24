@@ -10,15 +10,22 @@ use App\Filament\Business\Resources\Agencies\Widgets\StatsOverviewAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalEstructureAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalSaleForEstructureChart;
 use App\Http\Controllers\NotificationController;
+use App\Models\Agency;
+use App\Models\AgencyNoteBlog;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class ListAgencies extends ListRecords
 {
@@ -44,8 +51,31 @@ class ListAgencies extends ListRecords
                 ->modalWidth(Width::ExtraLarge)
                 ->form([
                     Section::make()
-                        ->description('El link puede sera enviado por email y/o telefono!')
+                        ->description('Elija la agencia cuyo código viajará cifrado en la URL de registro (misma lógica que el panel General: dominio Integracorp + /agency/c/ + código encriptado). El enlace puede enviarse por correo y/o WhatsApp.')
                         ->schema([
+                            Select::make('agency_code')
+                                ->label('Agencia / código en el enlace')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->options(function (): array {
+                                    $query = Agency::query()
+                                        ->where('status', 'ACTIVO')
+                                        ->orderBy('name_corporative');
+
+                                    if (Auth::user()->is_accountManagers) {
+                                        $query->where('ownerAccountManagers', Auth::id());
+                                    }
+
+                                    return $query
+                                        ->get()
+                                        ->mapWithKeys(fn (Agency $agency): array => [
+                                            $agency->code => $agency->name_corporative.' · '.$agency->code,
+                                        ])
+                                        ->all();
+                                })
+                                ->default(fn () => Auth::user()?->code_agency)
+                                ->helperText('El receptor completará el registro bajo esta estructura comercial.'),
                             TextInput::make('email')
                                 ->label('Correo Electrónico')
                                 ->email()
@@ -63,10 +93,53 @@ class ListAgencies extends ListRecords
                 ->action(function (array $data) {
 
                     try {
+                        $agencyCode = $data['agency_code'] ?? null;
+                        if (blank($agencyCode)) {
+                            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
+                                'reason' => 'missing_agency_code',
+                            ]);
+
+                            Notification::make()
+                                ->title('NOTIFICACION')
+                                ->body('Debe seleccionar la agencia cuyo código se usará en el enlace de registro.')
+                                ->icon('heroicon-c-shield-exclamation')
+                                ->color('warning')
+                                ->send();
+
+                            return false;
+                        }
+
+                        $allowedAgencyQuery = Agency::query()
+                            ->where('status', 'ACTIVO')
+                            ->where('code', $agencyCode);
+
+                        if (Auth::user()->is_accountManagers) {
+                            $allowedAgencyQuery->where('ownerAccountManagers', Auth::id());
+                        }
+
+                        if (! $allowedAgencyQuery->exists()) {
+                            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
+                                'reason' => 'invalid_or_unauthorized_agency_code',
+                                'agency_code' => $agencyCode,
+                            ]);
+
+                            Notification::make()
+                                ->title('NOTIFICACION')
+                                ->body('El código de agencia seleccionado no es válido o no tiene permisos para usarlo.')
+                                ->icon('heroicon-c-shield-exclamation')
+                                ->color('danger')
+                                ->send();
+
+                            return false;
+                        }
+
+                        $baseUrl = rtrim((string) config('parameters.INTEGRACORP_URL'), '/');
+                        $link = $baseUrl.'/agency/c/'.Crypt::encryptString($agencyCode);
 
                         if ($data['phone'] == null && $data['email'] == null) {
                             SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
                                 'reason' => 'missing_email_and_phone',
+                                'agency_code' => $agencyCode,
                             ]);
 
                             Notification::make()
@@ -81,11 +154,11 @@ class ListAgencies extends ListRecords
 
                         if ($data['email'] != null) {
 
-                            $link = config('parameters.REGISTER_AGENCY');
                             $sendEmail = NotificationController::send_email_agency_register($link, $data['email']);
                             if ($sendEmail == true) {
                                 SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_EMAIL_SENT', 'business.agencies.send-register-link', [
                                     'recipient_email' => $data['email'],
+                                    'agency_code' => $agencyCode,
                                 ]);
 
                                 Notification::make()
@@ -97,6 +170,7 @@ class ListAgencies extends ListRecords
                             } else {
                                 SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_EMAIL_FAILED', 'business.agencies.send-register-link', [
                                     'recipient_email' => $data['email'],
+                                    'agency_code' => $agencyCode,
                                 ]);
 
                                 Notification::make()
@@ -110,11 +184,11 @@ class ListAgencies extends ListRecords
 
                         if ($data['phone'] != null) {
 
-                            $link = config('parameters.REGISTER_AGENCY');
                             $response = NotificationController::send_link_agency_register_wp($link, $data['phone']);
                             if ($response) {
                                 SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_WHATSAPP_SENT', 'business.agencies.send-register-link', [
                                     'recipient_phone' => $data['phone'],
+                                    'agency_code' => $agencyCode,
                                 ]);
 
                                 Notification::make()
@@ -126,11 +200,12 @@ class ListAgencies extends ListRecords
                             } else {
                                 SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_WHATSAPP_FAILED', 'business.agencies.send-register-link', [
                                     'recipient_phone' => $data['phone'],
+                                    'agency_code' => $agencyCode,
                                 ]);
 
                                 Notification::make()
                                     ->title('ENVIO FALLIDO')
-                                    ->body('La notificación via email NO fue enviada con exito.')
+                                    ->body('La notificación vía WhatsApp no pudo enviarse. Verifique el número e intente de nuevo.')
                                     ->icon('heroicon-c-shield-check')
                                     ->color('danger')
                                     ->send();
@@ -141,6 +216,7 @@ class ListAgencies extends ListRecords
                             'error' => $th->getMessage(),
                             'recipient_email' => $data['email'] ?? null,
                             'recipient_phone' => $data['phone'] ?? null,
+                            'agency_code' => $data['agency_code'] ?? null,
                         ]);
 
                         Notification::make()
@@ -165,5 +241,81 @@ class ListAgencies extends ListRecords
             AgentActiveForEstructureChart::class,
             TotalSaleForEstructureChart::class,
         ];
+    }
+
+    /**
+     * Guarda una nota desde el slide-over del centro de acciones (sin cerrar el panel).
+     */
+    public function saveAgencyCommandCenterNoteFromSlideover(string $recordKey, string $note): void
+    {
+        try {
+            if (! Schema::hasTable((new AgencyNoteBlog)->getTable())) {
+                Notification::make()
+                    ->title('No disponible')
+                    ->body('El historial de notas no está disponible en esta base de datos.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
+            $note = Str::limit(trim($note), 255, '');
+            if ($note === '') {
+                Notification::make()
+                    ->title('Nota vacía')
+                    ->body('Escriba el texto de la observación antes de guardar.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
+            $base = Agency::query();
+            if (Auth::user()?->is_accountManagers) {
+                $base->where('ownerAccountManagers', Auth::id());
+            }
+
+            $agency = $base->whereKey($recordKey)->first();
+            if ($agency === null) {
+                Notification::make()
+                    ->title('No autorizado o no encontrado')
+                    ->body('No se pudo localizar la agencia o no tiene permisos para registrar la nota.')
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+
+            AgencyNoteBlog::create([
+                'agency_id' => $agency->id,
+                'note' => $note,
+                'created_by' => Auth::user()->name ?? (string) Auth::id(),
+            ]);
+
+            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_OBSERVATION_ADDED', 'business.agencies.add-observation', [
+                'agency_id' => $agency->id,
+                'agency_code' => $agency->code,
+                'note_length' => strlen($note),
+                'source' => 'command_center_slideover',
+            ]);
+
+            Notification::make()
+                ->title('Nota guardada con éxito')
+                ->body('La nota se guardó correctamente y ya aparece en la bitácora.')
+                ->success()
+                ->send();
+        } catch (\Throwable $th) {
+            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_OBSERVATION_ADD_FAILED', 'business.agencies.add-observation', [
+                'agency_id' => $recordKey,
+                'error' => $th->getMessage(),
+                'source' => 'command_center_slideover',
+            ]);
+
+            Notification::make()
+                ->title('No se pudo guardar la nota')
+                ->body('Intente de nuevo o contacte a soporte si el problema continúa.')
+                ->danger()
+                ->send();
+        }
     }
 }

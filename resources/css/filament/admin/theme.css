@@ -1835,6 +1835,28 @@
     @apply relative z-30 gap-3 border-t border-gray-200/90 bg-white px-4 py-4 shadow-[0_-12px_32px_-6px_rgba(15,23,42,0.14)] backdrop-blur-md dark:border-white/10 dark:bg-gray-950 dark:shadow-[0_-14px_40px_-8px_rgba(0,0,0,0.65)] sm:px-6;
   }
 
+  /* Business — agentes: centro de acciones (slide-over) */
+  .fi-agent-command-center-window .fi-modal-content {
+    @apply overflow-x-hidden;
+    isolation: isolate;
+    padding-bottom: max(6.5rem, calc(env(safe-area-inset-bottom, 0px) + 5rem));
+  }
+
+  .fi-agent-command-center-window .fi-modal-footer {
+    @apply relative z-30 gap-3 border-t border-gray-200/90 bg-white px-4 py-4 shadow-[0_-12px_32px_-6px_rgba(15,23,42,0.14)] backdrop-blur-md dark:border-white/10 dark:bg-gray-950 dark:shadow-[0_-14px_40px_-8px_rgba(0,0,0,0.65)] sm:px-6;
+  }
+
+  /* Business — agencias: centro de acciones (slide-over), mismo patrón que agentes */
+  .fi-agency-command-center-window .fi-modal-content {
+    @apply overflow-x-hidden;
+    isolation: isolate;
+    padding-bottom: max(6.5rem, calc(env(safe-area-inset-bottom, 0px) + 5rem));
+  }
+
+  .fi-agency-command-center-window .fi-modal-footer {
+    @apply relative z-30 gap-3 border-t border-gray-200/90 bg-white px-4 py-4 shadow-[0_-12px_32px_-6px_rgba(15,23,42,0.14)] backdrop-blur-md dark:border-white/10 dark:bg-gray-950 dark:shadow-[0_-14px_40px_-8px_rgba(0,0,0,0.65)] sm:px-6;
+  }
+
   /*
    * Wizard crear consulta telemedicina — agrupación tipo Ajustes iOS, tipografía SF,
    * pasos con separación clara y controles táctiles.
