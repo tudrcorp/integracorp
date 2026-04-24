@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-it('abre la bitácora desde la columna uid en todos los paneles helpdesk', function (): void {
+it('abre la bitácora desde la columna id en todos los paneles helpdesk', function (): void {
     foreach (['Business', 'Administration', 'Marketing', 'Operations'] as $panel) {
         $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Tables/HelpdesksTable.php";
         $contents = file_get_contents($path);

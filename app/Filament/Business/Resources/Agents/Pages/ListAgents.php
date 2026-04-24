@@ -10,9 +10,11 @@ use App\Filament\Business\Resources\Agents\Widgets\TotalForStateAgent;
 use App\Filament\Business\Resources\Agents\Widgets\TotalSaleForAgent;
 use App\Filament\Business\Resources\Agents\Widgets\TotalSaleMonthlyNowVsLastAgent;
 use App\Http\Controllers\NotificationController;
+use App\Jobs\SendBusinessAgentFichaPdfMailJob;
 use App\Models\Agent;
 use App\Models\AgentNoteBlog;
 use App\Support\AgentActivity\AgentActivityQuery;
+use App\Support\BusinessAgentFichaPdfAccess;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -184,7 +186,7 @@ class ListAgents extends ListRecords
             }
 
             $base = Agent::query();
-            if (Auth::user()?->is_accountManagers) {
+            if (! empty(Auth::user()?->is_accountManagers)) {
                 $base->where('ownerAccountManagers', Auth::id());
             }
 
@@ -230,5 +232,61 @@ class ListAgents extends ListRecords
                 ->danger()
                 ->send();
         }
+    }
+
+    public function queueAgentFichaPdfEmail(int $agentId, string $email): void
+    {
+        $email = trim($email);
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Notification::make()
+                ->title('Correo inválido')
+                ->body('Indique una dirección de correo válida.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $agent = Agent::query()->find($agentId);
+        if ($agent === null) {
+            Notification::make()
+                ->title('Agente no encontrado')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if (! BusinessAgentFichaPdfAccess::userCanAccess($agent)) {
+            SecurityAudit::log('AUDIT_BUSINESS_AGENT_FICHA_ACCESS_DENIED', 'business.agents.ficha-pdf.email.livewire', [
+                'agent_id' => $agentId,
+                'reason' => 'forbidden',
+            ]);
+            Notification::make()
+                ->title('Sin permiso')
+                ->body('No puede enviar la ficha de este agente.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        SendBusinessAgentFichaPdfMailJob::dispatch(
+            (int) $agent->getKey(),
+            $email,
+            (int) Auth::id(),
+        );
+
+        SecurityAudit::log('AUDIT_BUSINESS_AGENT_FICHA_EMAIL_QUEUED', 'business.agents.ficha-pdf.email.livewire', [
+            'agent_id' => $agent->getKey(),
+            'agent_name' => $agent->name,
+            'recipient_email' => $email,
+        ]);
+
+        Notification::make()
+            ->title('Correo encolado')
+            ->body('El envío con el PDF adjunto se procesará en segundo plano.')
+            ->success()
+            ->send();
     }
 }

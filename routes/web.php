@@ -5,6 +5,8 @@ use App\Http\Controllers\AffiliationCorporateBusinessDocumentsController;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\Business\CorporateAgendaInvitationResponseController;
 use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
+use App\Http\Controllers\BusinessAgencyFichaPdfController;
+use App\Http\Controllers\BusinessAgentFichaPdfController;
 use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
@@ -138,6 +140,22 @@ Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/prev
 Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/download', [OperationServiceOrderPdfController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.pdf');
+
+Route::get('business/agents/{agent}/ficha-pdf/preview', [BusinessAgentFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.agents.ficha-pdf.preview');
+
+Route::get('business/agents/{agent}/ficha-pdf/download', [BusinessAgentFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.agents.ficha-pdf.download');
+
+Route::get('business/agencies/{agency}/ficha-pdf/preview', [BusinessAgencyFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.agencies.ficha-pdf.preview');
+
+Route::get('business/agencies/{agency}/ficha-pdf/download', [BusinessAgencyFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.agencies.ficha-pdf.download');
 
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
     $isPreview = request()->boolean('preview');
@@ -1589,6 +1607,7 @@ Route::get('/ldi', function () {
 Route::get('/tasa-bcv', function () {
     $tasaBcv = ApiBcvController::getTasaBcv();
     $statusApiBcv = ApiBcvController::statusApiBcv();
+
     return response()->json([
         'tasaBcv' => $tasaBcv,
         'statusApiBcv' => $statusApiBcv,
