@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-it('muestra la columna uid en todas las tablas de helpdesk por panel', function (): void {
+it('muestra la columna id en todas las tablas de helpdesk por panel', function (): void {
     foreach (['Business', 'Administration', 'Marketing', 'Operations'] as $panel) {
         $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Tables/HelpdesksTable.php";
         $contents = file_get_contents($path);
 
-        expect($contents)->toContain("TextColumn::make('uid')")
-            ->toContain("->label('UID')");
+        expect($contents)->toContain("TextColumn::make('id')")
+            ->toContain("->label('ID')")
+            ->toContain('->action(self::makeViewTimelineAction())');
     }
 });
 
