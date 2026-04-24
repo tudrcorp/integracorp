@@ -2,29 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Guest;
-use App\Models\Capemiac;
-use App\Mail\MyTestEmail;
-use App\Mail\ExampleCsvEmail;
-use App\Mail\AgentRegisterEmail;
-use App\Models\DataNotification;
+use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\AgencyRegisterEmail;
+use App\Mail\AgentRegisterEmail;
+use App\Mail\ExampleCsvEmail;
+use App\Mail\MyTestEmail;
+use App\Mail\SendNotificationMailSingle;
+use App\Models\DataNotification;
+use App\Models\Guest;
+use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use App\Jobs\SendNotificacionWhatsApp;
-use App\Mail\SendNotificationMailSingle;
-use Filament\Notifications\Notification;
-use App\Http\Controllers\UtilsController;
 
 class NotificationController extends Controller
 {
-    static function agency_activated($phone, $email, $path_panel)
+    public static function agency_activated($phone, $email, $path_panel)
     {
         try {
 
-            $path = config('parameters.INTEGRACORP_URL') . $path_panel;
+            $path = config('parameters.INTEGRACORP_URL').$path_panel;
             $body = <<<HTML
 
             🌟¡Bienvenido/a a Tu Dr. Group! 
@@ -46,27 +44,27 @@ class NotificationController extends Controller
 
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -75,21 +73,22 @@ class NotificationController extends Controller
 
             if ($err) {
                 Log::error($err);
+
                 return false;
-            } 
+            }
 
             return true;
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function agent_activated($phone, $email, $path_panel)
+    public static function agent_activated($phone, $email, $path_panel)
     {
         try {
 
-            $path = config('parameters.INTEGRACORP_URL') . $path_panel;
+            $path = config('parameters.INTEGRACORP_URL').$path_panel;
             $body = <<<HTML
 
             ¿Listo para transformar tus herramientas como asesor?  
@@ -127,27 +126,27 @@ class NotificationController extends Controller
             return [
                 'success' => true,
                 'message' => 'La notificación de activación ha sido enviada a la cola de procesamiento con éxito.',
-                'color'   => 'success'
+                'color' => 'success',
             ];
 
         } catch (\Throwable $th) {
-            Log::error("Error crítico en NotififcacionController::send_link_preAffiliation", [
+            Log::error('Error crítico en NotififcacionController::send_link_preAffiliation', [
                 'user_id' => auth()->id() ?? 'Guest',
                 'message' => $th->getMessage(),
-                'file'    => $th->getFile(),
-                'line'    => $th->getLine(),
-                'phone'   => $phone ?? 'N/A'
+                'file' => $th->getFile(),
+                'line' => $th->getLine(),
+                'phone' => $phone ?? 'N/A',
             ]);
 
             return $response = [
                 'success' => false,
                 'message' => 'La Notificacion de activacion no fue enviada, por favor comunicarse con el administrador del sistema',
-                'color' => 'danger'
+                'color' => 'danger',
             ];
         }
     }
 
-    static function send_link_preAffiliation($phone, $fullname)
+    public static function send_link_preAffiliation($phone, $fullname)
     {
         try {
 
@@ -159,27 +158,27 @@ class NotificationController extends Controller
 
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -189,19 +188,21 @@ class NotificationController extends Controller
 
             if (isset($res['sent']) and $res['sent'] == 'true') {
                 LogController::log(Auth::user()->id, 'NOTIFICACION-WP-PRE-AFILIACION', 'NotififcacionController::send_link_preAffiliation()', $response);
+
                 return $response = [
                     'success' => true,
                     'message' => 'El link de pre-afiliacion fue enviado con exito',
-                    'color' => 'success'
+                    'color' => 'success',
                 ];
             }
 
             if (isset($res['error'])) {
                 LogController::log(Auth::user()->id, 'NOTIFICACION-WP-PRE-AFILIACION', 'NotififcacionController::send_link_preAffiliation()', $response);
+
                 return $response = [
                     'success' => false,
                     'message' => 'Falla al enviar el link de pre-afiliacion, por favor comunicarse con el administrador del sistema',
-                    'color' => 'danger'
+                    'color' => 'danger',
                 ];
             }
 
@@ -213,7 +214,7 @@ class NotificationController extends Controller
         }
     }
 
-    static function sendEmail_propuesta_economica($email, $record, $data)
+    public static function sendEmail_propuesta_economica($email, $record, $data)
     {
         try {
 
@@ -221,7 +222,7 @@ class NotificationController extends Controller
                 'name' => $record->full_name,
                 'message' => 'Este es un correo de prueba enviado desde Laravel.',
                 'date' => now()->format('d-m-Y'),
-                'data' => $data
+                'data' => $data,
             ];
             // dd($details);
 
@@ -234,13 +235,14 @@ class NotificationController extends Controller
         }
     }
 
-    static function send_email_agency_register($link, $email)
+    public static function send_email_agency_register($link, $email)
     {
         try {
 
             // Validamos que el email sea válido antes de intentar el envío
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 Log::warning("NEGOCIOS-AGENCIA: Intento de envío de correo a dirección inválida: {$email}");
+
                 return false;
             }
 
@@ -251,12 +253,12 @@ class NotificationController extends Controller
 
             // Se recomienda que AgencyRegisterEmail implemente ShouldQueue para no bloquear la ejecución
             Mail::to($email)
-            ->cc('tudrgroup.info@gmail.com')
-            ->send(new AgencyRegisterEmail($content));
+                ->cc('tudrgroup.info@gmail.com')
+                ->send(new AgencyRegisterEmail($content));
 
             return true;
 
-            //code...
+            // code...
         } catch (\Throwable $th) {
 
             // Obtenemos el ID del usuario de forma segura (soporta null si no hay sesión)
@@ -264,25 +266,26 @@ class NotificationController extends Controller
 
             // Logging enriquecido para debugging experto
             // Usamos el Log nativo de Laravel o tu LogController personalizado
-            Log::error("Error crítico en envío de email de registro", [
+            Log::error('Error crítico en envío de email de registro', [
                 'user_id' => $userId,
-                'method'  => __METHOD__,
-                'email'   => $email,
+                'method' => __METHOD__,
+                'email' => $email,
                 'message' => $th->getMessage(),
-                'trace'   => $th->getTraceAsString() // Útil para entornos de desarrollo/staging
+                'trace' => $th->getTraceAsString(), // Útil para entornos de desarrollo/staging
             ]);
 
             return false;
         }
     }
 
-    static function send_email_agent_register($link, $email)
+    public static function send_email_agent_register($link, $email)
     {
         try {
 
             // Validamos que el email sea válido antes de intentar el envío
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 Log::warning("NEGOCIOS-AGENCIA: Intento de envío de correo a dirección inválida: {$email}");
+
                 return false;
             }
 
@@ -297,112 +300,117 @@ class NotificationController extends Controller
                 ->send(new AgentRegisterEmail($content));
 
             return true;
-            //code...
+            // code...
         } catch (\Throwable $th) {
 
             // Obtenemos el ID del usuario de forma segura (soporta null si no hay sesión)
             $userId = Auth::id() ?? 'System/Guest';
-            
+
             // Logging enriquecido para debugging experto
             // Usamos el Log nativo de Laravel o tu LogController personalizado
-            Log::error("Error crítico en envío de email de registro", [
+            Log::error('Error crítico en envío de email de registro', [
                 'user_id' => $userId,
-                'method'  => __METHOD__,
-                'email'   => $email,
+                'method' => __METHOD__,
+                'email' => $email,
                 'message' => $th->getMessage(),
-                'trace'   => $th->getTraceAsString() // Útil para entornos de desarrollo/staging
+                'trace' => $th->getTraceAsString(), // Útil para entornos de desarrollo/staging
             ]);
 
             return false;
         }
     }
 
-    static function send_link_agency_register_wp($link, $phone)
+    public static function send_link_agency_register_wp($link, $phone)
     {
         try {
+            // Mismo formato que helpdesk (`SendNotificacionWhatsApp`): API imagen + cabecera en storage público.
+            $toPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone)
+                ?? preg_replace('/\D+/', '', (string) $phone);
 
-            // 1. Sanitización del teléfono para asegurar compatibilidad
-            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+            if ($toPhone === null || $toPhone === '') {
+                Log::warning('NEGOCIOS-AGENCIA: teléfono inválido para WhatsApp (registro agencia)', [
+                    'raw_phone' => $phone,
+                ]);
 
-            $body = <<<HTML
+                return false;
+            }
 
-                ¡Hola! 👋   
+            $body = <<<TEXT
+¡Hola! 👋
 
-                ✨ Bienvenido/a a Integracorp-TDC  ✨   
+✨ Bienvenido/a a Integracorp-TDC ✨
 
-                Estamos encantados de tenerte aquí. Para comenzar a disfrutar de todos nuestros beneficios y servicios, te invitamos a completar tu registro haciendo clic en el siguiente enlace:   
+Estamos encantados de tenerte aquí. Para comenzar a disfrutar de todos nuestros beneficios y servicios, te invitamos a completar tu registro haciendo clic en el siguiente enlace:
 
-                👉 {$link}     
+👉 {$link}
 
-                Si tienes dudas o necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀   
+Si tienes dudas o necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀
 
-                Equipo Integracorp-TDC 
-                📱 WhatsApp: (+58) 424 227 1498
-                ✉️ Email: comercial@tudrencasa.com    
+Equipo Integracorp-TDC
+📱 WhatsApp: (+58) 424 227 1498
+✉️ Email: comercial@tudrencasa.com
 
-                ¡Esperamos que sea el inicio de una gran experiencia! 💼💡 
+¡Esperamos que sea el inicio de una gran experiencia! 💼💡
+TEXT;
 
-            HTML;
-
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
-                'to' => $cleanPhone,
-                'body' => $body
-            );
+                'image' => config('parameters.PUBLIC_URL').'/images-whatsapp/integracorp.png',
+                'to' => $toPhone,
+                'caption' => $body,
+            ];
+
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
-            $err      = curl_error($curl);
+            $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
-            // 4. Manejo experto de errores de la respuesta
             if ($err) {
-                Log::error("NEGOCIOS-AGENCIA: Error de conexión cURL en WhatsApp API", [
+                Log::error('NEGOCIOS-AGENCIA: Error de conexión cURL en WhatsApp API (registro agencia, formato helpdesk)', [
                     'error' => $err,
-                    'phone' => $cleanPhone
+                    'phone' => $toPhone,
                 ]);
+
                 return false;
             }
 
-            // Validar si el código HTTP es de éxito (200-299)
             if ($httpCode >= 200 && $httpCode < 300) {
                 return true;
             }
 
-            // Log de error si el API responde con un código de falla
-            Log::warning("NEGOCIOS-AGENCIA: WhatsApp API respondió con error", [
+            Log::warning('NEGOCIOS-AGENCIA: WhatsApp API (registro agencia, formato helpdesk) respondió con error', [
                 'status_code' => $httpCode,
-                'response'    => $response,
-                'phone'       => $cleanPhone
+                'response' => $response,
+                'phone' => $toPhone,
             ]);
 
             return false;
 
-            
         } catch (\Throwable $th) {
 
-            Log::critical("NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_link_agency_register_wp", [
+            Log::critical('NEGOCIOS-AGENCIA: Excepción crítica en NotificationController@send_link_agency_register_wp', [
                 'message' => $th->getMessage(),
-                'file'    => $th->getFile(),
-                'line'    => $th->getLine(),
-                'trace'   => $th->getTraceAsString()
+                'file' => $th->getFile(),
+                'line' => $th->getLine(),
+                'trace' => $th->getTraceAsString(),
             ]);
 
             return false;
@@ -411,14 +419,15 @@ class NotificationController extends Controller
 
     /**
      * Notificacion de link de registro de agente
-     * Canal: Whatsapp   
-     * 
+     * Canal: Whatsapp
+     *
      * @author TuDrEnCasa
+     *
      * @version 4.0
-     * 
-     * @return boolean
+     *
+     * @return bool
      */
-    static function send_link_agent_register_wp($link, $phone)
+    public static function send_link_agent_register_wp($link, $phone)
     {
 
         try {
@@ -452,40 +461,41 @@ class NotificationController extends Controller
 
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $cleanPhone,
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
-            $err      = curl_error($curl);
+            $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
             // 4. Manejo experto de errores de la respuesta
             if ($err) {
-                Log::error("NEGOCIOS-AGENCIA: Error de conexión cURL en WhatsApp API", [
+                Log::error('NEGOCIOS-AGENCIA: Error de conexión cURL en WhatsApp API', [
                     'error' => $err,
-                    'phone' => $cleanPhone
+                    'phone' => $cleanPhone,
                 ]);
+
                 return false;
             }
 
@@ -495,39 +505,38 @@ class NotificationController extends Controller
             }
 
             // Log de error si el API responde con un código de falla
-            Log::warning("NEGOCIOS-AGENCIA: WhatsApp API respondió con error", [
+            Log::warning('NEGOCIOS-AGENCIA: WhatsApp API respondió con error', [
                 'status_code' => $httpCode,
-                'response'    => $response,
-                'phone'       => $cleanPhone
+                'response' => $response,
+                'phone' => $cleanPhone,
             ]);
 
             return false;
-            
+
         } catch (\Throwable $th) {
 
-            Log::critical("NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_link_agency_register_wp", [
+            Log::critical('NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_link_agency_register_wp', [
                 'message' => $th->getMessage(),
-                'file'    => $th->getFile(),
-                'line'    => $th->getLine(),
-                'trace'   => $th->getTraceAsString()
+                'file' => $th->getFile(),
+                'line' => $th->getLine(),
+                'trace' => $th->getTraceAsString(),
             ]);
 
             return false;
         }
     }
 
-
-
     /**
      * Notificacion de link de registro de agente
      * Canal: Email
-     * 
+     *
      * @author TuDrEnCasa
+     *
      * @version 1.0
-     * 
-     * @return boolean
+     *
+     * @return bool
      */
-    static function send_email_example_file_csv($email)
+    public static function send_email_example_file_csv($email)
     {
         try {
 
@@ -539,7 +548,7 @@ class NotificationController extends Controller
             Mail::to($email)->send(new ExampleCsvEmail($content));
 
             return true;
-            //code...
+            // code...
         } catch (\Throwable $th) {
             LogController::log(Auth::user()->id, 'EXCEPTION', 'NotififcacionController::send_email_agency_register()', $th->getMessage());
         }
@@ -549,39 +558,37 @@ class NotificationController extends Controller
      * NOTOFICACIONES:
      * MODULO: Cotizaciones Individuales
      * -----------------------------------
-     * 
+     *
      * Gripo de Notificaciones que se envian via Whatsapp
      * desde el modulo de Cotizaciones Individuales
-     * 
+     *
      * @version 1.0
+     *
      * @since 1.0
-     * 
-     * @param $phone
-     * @param $message
+     *
+     * @param  $message
      * @return bool
      */
-
-    static function sendQuote($phone, $nameDoc)
+    public static function sendQuote($phone, $nameDoc)
     {
         try {
 
             // 1. Limpieza de entrada
             $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
-            $filePath = public_path('storage/quotes/' . $nameDoc);
-
+            $filePath = public_path('storage/quotes/'.$nameDoc);
 
             // 2. Verificación específica de existencia del documento (Requerimiento)
-            if (!file_exists($filePath)) {
-                Log::error("AGENTE: WhatsApp Doc Error: El archivo no existe en la ruta especificada.", [
+            if (! file_exists($filePath)) {
+                Log::error('AGENTE: WhatsApp Doc Error: El archivo no existe en la ruta especificada.', [
                     'path' => $filePath,
                     'file' => $nameDoc,
-                    'phone' => $cleanPhone
+                    'phone' => $cleanPhone,
                 ]);
+
                 return false;
             }
 
-
-            $body = <<<HTML
+            $body = <<<'HTML'
 
             *Estimado(a)*.
 
@@ -600,60 +607,62 @@ class NotificationController extends Controller
             Gerencia Comercial Tu Dr. Group 🫱🏼‍🫲🏼 
 
             HTML;
-            
-            $params = array(
-                'token'     => config('parameters.TOKEN'),
-                'to'        => $phone,
-                'filename'  => $nameDoc,
-                'document'  => config('parameters.PUBLIC_URL') . '/quotes/' . $nameDoc,
-                'caption'   => $body
-            );
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'to' => $phone,
+                'filename' => $nameDoc,
+                'document' => config('parameters.PUBLIC_URL').'/quotes/'.$nameDoc,
+                'caption' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
+            curl_setopt_array($curl, [
                 CURLOPT_URL => config('parameters.CURLOPT_URL_DOCUMENT'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
-            $err      = curl_error($curl);
+            $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
             // 6. Manejo de Errores de Conexión o Respuesta
             if ($err) {
-                Log::error("AGENTE: Error de conexión cURL al enviar cotización", [
+                Log::error('AGENTE: Error de conexión cURL al enviar cotización', [
                     'error' => $err,
-                    'to'    => $cleanPhone
+                    'to' => $cleanPhone,
                 ]);
+
                 return false;
             }
 
             // Registro de éxito o advertencia según código HTTP
             if ($httpCode >= 200 && $httpCode < 300) {
-                Log::info("AGENTE: Cotización enviada con éxito.", [
+                Log::info('AGENTE: Cotización enviada con éxito.', [
                     'phone' => $cleanPhone,
-                    'doc'   => $nameDoc,
-                    'api_response' => $response
+                    'doc' => $nameDoc,
+                    'api_response' => $response,
                 ]);
+
                 return true;
             }
 
-            Log::warning("AGENTE: API respondió con error al enviar documento", [
+            Log::warning('AGENTE: API respondió con error al enviar documento', [
                 'http_code' => $httpCode,
-                'response'  => $response,
-                'phone'     => $cleanPhone
+                'response' => $response,
+                'phone' => $cleanPhone,
             ]);
 
             return false;
@@ -661,9 +670,9 @@ class NotificationController extends Controller
         } catch (\Throwable $th) {
 
             // Manejo de excepciones inesperadas
-            Log::critical("AGENTE: Fallo crítico en el proceso de envío de cotización", [
+            Log::critical('AGENTE: Fallo crítico en el proceso de envío de cotización', [
                 'message' => $th->getMessage(),
-                'trace'   => $th->getTraceAsString()
+                'trace' => $th->getTraceAsString(),
             ]);
 
             return false;
@@ -675,20 +684,20 @@ class NotificationController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    static function massNotificacionSend($record)
+    public static function massNotificacionSend($record)
     {
 
         try {
 
             $infoArray = $record->toArray();
-            
+
             $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
 
             for ($i = 0; $i < count($array); $i++) {
 
                 if ($infoArray['header_title'] != null) {
 
-                    $record->heading = $infoArray['header_title'] . ' ' . $array[$i]['fullName'];
+                    $record->heading = $infoArray['header_title'].' '.$array[$i]['fullName'];
                     $body = <<<HTML
     
                     *{$record->heading}* 
@@ -697,28 +706,28 @@ class NotificationController extends Controller
     
                     HTML;
 
-                    $params = array(
+                    $params = [
                         'token' => 'yuvh9eq5kn8bt666',
                         'to' => $array[$i],
-                        'image' => config('parameters.INTEGRACORP_URL') . '/storage/'.$infoArray['image'],
-                        'caption' => $body
-                    );
+                        'image' => config('parameters.INTEGRACORP_URL').'/storage/'.$infoArray['image'],
+                        'caption' => $body,
+                    ];
                     $curl = curl_init();
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                    curl_setopt_array($curl, [
+                        CURLOPT_URL => 'https://api.ultramsg.com/instance117518/messages/image',
                         CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => "",
+                        CURLOPT_ENCODING => '',
                         CURLOPT_MAXREDIRS => 10,
                         CURLOPT_TIMEOUT => 30,
                         CURLOPT_SSL_VERIFYHOST => 0,
                         CURLOPT_SSL_VERIFYPEER => 0,
                         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => "POST",
+                        CURLOPT_CUSTOMREQUEST => 'POST',
                         CURLOPT_POSTFIELDS => http_build_query($params),
-                        CURLOPT_HTTPHEADER => array(
-                            "content-type: application/x-www-form-urlencoded"
-                        ),
-                    ));
+                        CURLOPT_HTTPHEADER => [
+                            'content-type: application/x-www-form-urlencoded',
+                        ],
+                    ]);
 
                     $response = curl_exec($curl);
                     $err = curl_error($curl);
@@ -736,29 +745,29 @@ class NotificationController extends Controller
     
                     HTML;
 
-                    $params = array(
+                    $params = [
                         'token' => 'yuvh9eq5kn8bt666',
                         'to' => $array[$i],
                         // 'image' => 'https://tudrenviajes.com/images/logo_3.png',14986
                         'image' => 'https://tudrgroup.com/images/logoTDG.png',
-                        'caption' => $body
-                    );
+                        'caption' => $body,
+                    ];
                     $curl = curl_init();
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/image",
+                    curl_setopt_array($curl, [
+                        CURLOPT_URL => 'https://api.ultramsg.com/instance117518/messages/image',
                         CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => "",
+                        CURLOPT_ENCODING => '',
                         CURLOPT_MAXREDIRS => 10,
                         CURLOPT_TIMEOUT => 30,
                         CURLOPT_SSL_VERIFYHOST => 0,
                         CURLOPT_SSL_VERIFYPEER => 0,
                         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => "POST",
+                        CURLOPT_CUSTOMREQUEST => 'POST',
                         CURLOPT_POSTFIELDS => http_build_query($params),
-                        CURLOPT_HTTPHEADER => array(
-                            "content-type: application/x-www-form-urlencoded"
-                        ),
-                    ));
+                        CURLOPT_HTTPHEADER => [
+                            'content-type: application/x-www-form-urlencoded',
+                        ],
+                    ]);
 
                     $response = curl_exec($curl);
                     $err = curl_error($curl);
@@ -768,11 +777,11 @@ class NotificationController extends Controller
 
                     curl_close($curl);
                 }
-                
+
             }
 
             return true;
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
@@ -782,19 +791,19 @@ class NotificationController extends Controller
      * NOTOFICACIONES:
      * MODULO: Cotizaciones Corporativas
      * -----------------------------------
-     * 
+     *
      * Gripo de Notificaciones que se envian via Whatsapp
      * desde el modulo de Cotizaciones Corporativas
-     * 
+     *
      * @version 1.0
+     *
      * @since 1.0
-     * 
-     * @param $phone
-     * @param $message
+     *
+     * @param  $phone
+     * @param  $message
      * @return bool
      */
-
-    static function sendUploadDataCorporate($agent, $code)
+    public static function sendUploadDataCorporate($agent, $code)
     {
         try {
 
@@ -808,27 +817,27 @@ class NotificationController extends Controller
 
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -837,6 +846,7 @@ class NotificationController extends Controller
 
             if ($err) {
                 Log::error($err);
+
                 return false;
             } else {
                 $array = json_decode($response, true);
@@ -846,15 +856,16 @@ class NotificationController extends Controller
                         'action' => 'N-WApp => Envio de link interactivo de Cotizacion Individual',
                         'objeto' => 'NotificationController::sendUploadDataCorporate',
                         'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s')
+                        'created_at' => date('Y-m-d H:i:s'),
                     ];
                     UtilsController::notificacionToAdmin($data);
+
                     return false;
                 }
 
                 return true;
             }
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
@@ -864,22 +875,20 @@ class NotificationController extends Controller
      * NOTOFICACIONES:
      * MODULO: Cotizaciones Individuales
      * -----------------------------------
-     * 
+     *
      * Gripo de Notificaciones que se envian via Whatsapp
      * desde el modulo de Cotizaciones Individuales
      * con un link interactivo para el agente o el cliente
      * donde podra encontrar la cotizacion solicitada
      * en formato blade.php
-     * 
+     *
      * @version 1.0
+     *
      * @since 1.0
-     * 
-     * @param $phone
-     * @param $link
+     *
      * @return bool
      */
-
-    static function sendLinkIndividualQuote($phone, $link)
+    public static function sendLinkIndividualQuote($phone, $link)
     {
         try {
 
@@ -898,27 +907,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -933,9 +942,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::sendLinkIndividualQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -947,18 +957,19 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::assignedCase',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function createdIndividualQuote($code, $agent)
+    public static function createdIndividualQuote($code, $agent)
     {
         try {
 
@@ -976,27 +987,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1011,9 +1022,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::createdIndividualQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1025,18 +1037,19 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::assignedCase',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function uploadVoucherOfPayment($code, $agent)
+    public static function uploadVoucherOfPayment($code, $agent)
     {
         try {
 
@@ -1054,27 +1067,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1089,9 +1102,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::uploadVoucherOfPayment',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1103,18 +1117,19 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::uploadVoucherOfPayment',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function createdIndividualPreAfilliation($code, $agent)
+    public static function createdIndividualPreAfilliation($code, $agent)
     {
         try {
 
@@ -1130,27 +1145,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1165,9 +1180,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::createdIndividualPreAfilliation',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1179,18 +1195,19 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::createdIndividualPreAfilliation',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function createdCorporateQuote($code, $agent)
+    public static function createdCorporateQuote($code, $agent)
     {
         try {
 
@@ -1208,27 +1225,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1243,9 +1260,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::createdCorporateQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1257,18 +1275,19 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::assignedCase',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function createdRequestDressTaylor($code, $agent, $observations)
+    public static function createdRequestDressTaylor($code, $agent, $observations)
     {
         try {
 
@@ -1289,29 +1308,29 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 // 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
                 'to' => '+584241869168',
 
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1326,9 +1345,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::createdIndividualQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1340,9 +1360,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::assignedCase',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
         } catch (\Throwable $th) {
@@ -1350,7 +1371,7 @@ class NotificationController extends Controller
         }
     }
 
-    static function saddObervationToIndividualQuote($code, $agent, $observation)
+    public static function saddObervationToIndividualQuote($code, $agent, $observation)
     {
         try {
 
@@ -1371,27 +1392,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1406,9 +1427,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::saddObervationToIndividualQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1420,9 +1442,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::saddObervationToIndividualQuote',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
         } catch (\Throwable $th) {
@@ -1430,7 +1453,7 @@ class NotificationController extends Controller
         }
     }
 
-    static function saddObervationToCorporateQuote($code, $agent, $observation)
+    public static function saddObervationToCorporateQuote($code, $agent, $observation)
     {
         try {
 
@@ -1451,27 +1474,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1486,9 +1509,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::saddObervationToCorporateQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1500,9 +1524,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::saddObervationToCorporateQuote',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
         } catch (\Throwable $th) {
@@ -1510,7 +1535,7 @@ class NotificationController extends Controller
         }
     }
 
-    static function documentUploadReminder($phone, $agent, $document_list)
+    public static function documentUploadReminder($phone, $agent, $document_list)
     {
         try {
 
@@ -1532,27 +1557,27 @@ class NotificationController extends Controller
                 
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1567,9 +1592,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::saddObervationToCorporateQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -1581,22 +1607,22 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::saddObervationToCorporateQuote',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function assignedCase($phone, $doctor, $code, $reason, $name_patient, $address)
+    public static function assignedCase($phone, $doctor, $code, $reason, $name_patient, $address)
     {
         // dd($phone, $doctor, $code, $reason);
         try {
-            
 
             $body = <<<HTML
 
@@ -1621,27 +1647,27 @@ class NotificationController extends Controller
                 
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -1656,32 +1682,34 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::assignedCase',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
             if ($err) {
-                
+
                 Log::error($err);
                 $data = [
                     'action' => 'assignedCase',
                     'objeto' => 'NotificationController::assignedCase',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
-            } 
+            }
 
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function notificationVideo()
+    public static function notificationVideo()
     {
         set_time_limit(0);
 
@@ -1755,10 +1783,10 @@ class NotificationController extends Controller
             // $array = [
             //     '+584120208119'
             // ];
-            
+
             for ($i = 0; $i < count($array); $i++) {
 
-                $body = <<<HTML
+                $body = <<<'HTML'
 
                 Estamos a solo horas de nuestro encuentro 🔥
 
@@ -1775,28 +1803,28 @@ class NotificationController extends Controller
     
                 HTML;
 
-                $params = array(
+                $params = [
                     'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i],
                     'video' => 'https://tudrgroup.com/images/ultimo.mp4',
-                    'caption' => $body
-                );
+                    'caption' => $body,
+                ];
                 $curl = curl_init();
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+                curl_setopt_array($curl, [
+                    CURLOPT_URL => 'https://api.ultramsg.com/instance117518/messages/video',
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
+                    CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_SSL_VERIFYPEER => 0,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_CUSTOMREQUEST => 'POST',
                     CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
 
                 $response = curl_exec($curl);
                 $err = curl_error($curl);
@@ -1808,13 +1836,12 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
-
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function notificationImage()
+    public static function notificationImage()
     {
 
         set_time_limit(0);
@@ -1824,7 +1851,7 @@ class NotificationController extends Controller
             $array = DB::table('new_table_agent')->select('*')->get()->toArray();
 
             for ($i = 0; $i < count($array); $i++) {
-                
+
                 $body = <<<HTML
 
                 ¡Hola!
@@ -1844,27 +1871,27 @@ class NotificationController extends Controller
     
                 HTML;
 
-                $params=array(
+                $params = [
                     'token' => 'yuvh9eq5kn8bt666',
                     'to' => $array[$i]->telefono,
-                    'body' => $body
-                    );
-                    $curl = curl_init();
-                    curl_setopt_array($curl, array(
-                      CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/chat",
-                      CURLOPT_RETURNTRANSFER => true,
-                      CURLOPT_ENCODING => "",
-                      CURLOPT_MAXREDIRS => 10,
-                      CURLOPT_TIMEOUT => 30,
-                      CURLOPT_SSL_VERIFYHOST => 0,
-                      CURLOPT_SSL_VERIFYPEER => 0,
-                      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                      CURLOPT_CUSTOMREQUEST => "POST",
-                      CURLOPT_POSTFIELDS => http_build_query($params),
-                      CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                      ),
-                    ));
+                    'body' => $body,
+                ];
+                $curl = curl_init();
+                curl_setopt_array($curl, [
+                    CURLOPT_URL => 'https://api.ultramsg.com/instance117518/messages/chat',
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'POST',
+                    CURLOPT_POSTFIELDS => http_build_query($params),
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
 
                 $response = curl_exec($curl);
                 $err = curl_error($curl);
@@ -1874,21 +1901,20 @@ class NotificationController extends Controller
                 Log::info($response);
                 Log::info($array[$i]->telefono);
                 Log::error($err);
-            
+
             }
 
             curl_close($curl);
-            
+
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
 
-    static function notificationBirthday($name, $phone, $content, $file, $type)
+    public static function notificationBirthday($name, $phone, $content, $file, $type)
     {
-        
-        try {
 
+        try {
 
             $body = <<<HTML
 
@@ -1899,95 +1925,95 @@ class NotificationController extends Controller
             HTML;
 
             if ($type == 'image') {
-                Log::info("es imagen");
-                $params = array(
+                Log::info('es imagen');
+                $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'image' => config('parameters.PUBLIC_URL') . '/' . $file,
-                    'caption' => $body
-                );
+                    'image' => config('parameters.PUBLIC_URL').'/'.$file,
+                    'caption' => $body,
+                ];
                 $curl = curl_init();
-                curl_setopt_array($curl, array(
+                curl_setopt_array($curl, [
                     CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
+                    CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_SSL_VERIFYPEER => 0,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_CUSTOMREQUEST => 'POST',
                     CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
             }
 
             if ($type == 'video') {
-                Log::info("es video");
-                $params = array(
+                Log::info('es video');
+                $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'video' => config('parameters.PUBLIC_URL') . '/' . $file,
-                    'caption' => $body
-                );
+                    'video' => config('parameters.PUBLIC_URL').'/'.$file,
+                    'caption' => $body,
+                ];
                 $curl = curl_init();
-                curl_setopt_array($curl, array(
+                curl_setopt_array($curl, [
                     CURLOPT_URL => config('parameters.CURLOPT_URL_VIDEO'),
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
+                    CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_SSL_VERIFYPEER => 0,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_CUSTOMREQUEST => 'POST',
                     CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
             }
 
             if ($type == 'url') {
-                Log::info("es url");
-                $params = array(
+                Log::info('es url');
+                $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'body' => $body
-                );
+                    'body' => $body,
+                ];
                 $curl = curl_init();
-                curl_setopt_array($curl, array(
+                curl_setopt_array($curl, [
                     CURLOPT_URL => config('parameters.CURLOPT_URL'),
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
+                    CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_SSL_VERIFYPEER => 0,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_CUSTOMREQUEST => 'POST',
                     CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
             }
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            
+
             curl_close($curl);
 
             // --- Manejo de Errores y Logs ---
 
             if ($err) {
                 // Error de conexión cURL
-                Log::error("API ENVÍO FALLIDO: Error de conexión cURL.", [
+                Log::error('API ENVÍO FALLIDO: Error de conexión cURL.', [
                     'telefono' => $phone,
-                    'error'    => $err,
+                    'error' => $err,
                 ]);
 
                 return ['status' => 'error', 'message' => "Error de conexión: $err"];
@@ -1995,42 +2021,40 @@ class NotificationController extends Controller
 
             if ($httpCode >= 200 && $httpCode < 300) {
                 // Envío satisfactorio (Código HTTP 2xx)
-                Log::info("API ENVÍO EXITOSO: Mensaje entregado correctamente.", [
+                Log::info('API ENVÍO EXITOSO: Mensaje entregado correctamente.', [
                     'telefono' => $phone,
-                    'respuesta' => json_decode($response, true) ?? $response
+                    'respuesta' => json_decode($response, true) ?? $response,
                 ]);
 
                 return ['status' => 'success', 'data' => $response];
             }
 
             // Error devuelto por la API (Código HTTP != 2xx)
-            Log::warning("API ENVÍO FALLIDO: La API devolvió un error.", [
-                'telefono'  => $phone,
+            Log::warning('API ENVÍO FALLIDO: La API devolvió un error.', [
+                'telefono' => $phone,
                 'http_code' => $httpCode,
-                'respuesta' => $response
+                'respuesta' => $response,
             ]);
 
-        
-            //code...
+            // code...
         } catch (\Throwable $th) {
             dd($th);
         }
     }
 
-
-    public static function sendNotificationWpSingle($record, $data) 
+    public static function sendNotificationWpSingle($record, $data)
     {
 
         try {
 
-            if($record->header_title == null){
+            if ($record->header_title == null) {
                 $header = '';
             }
 
-            if($record->header_title != null){
-                $header = $record->header_title . ': ' . $data['name'];
+            if ($record->header_title != null) {
+                $header = $record->header_title.': '.$data['name'];
             }
-            
+
             $body = <<<HTML
     
             {$header} 
@@ -2039,78 +2063,78 @@ class NotificationController extends Controller
 
             HTML;
 
-            if($record->type == 'image') {
-                $params = array(
+            if ($record->type == 'image') {
+                $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $data['phone'],
-                    'image' => config('parameters.PUBLIC_URL') . '/' . $record->file,
-                    'caption' => $body
-                );
+                    'image' => config('parameters.PUBLIC_URL').'/'.$record->file,
+                    'caption' => $body,
+                ];
                 $curl = curl_init();
-                curl_setopt_array($curl, array(
+                curl_setopt_array($curl, [
                     CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
+                    CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_SSL_VERIFYPEER => 0,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_CUSTOMREQUEST => 'POST',
                     CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
             }
-            
+
             if ($record->type == 'video') {
-                $params = array(
+                $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $data['phone'],
-                    'video' => config('parameters.PUBLIC_URL') . '/' . $record->file,
-                    'caption' => $body
-                );
+                    'video' => config('parameters.PUBLIC_URL').'/'.$record->file,
+                    'caption' => $body,
+                ];
                 $curl = curl_init();
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.ultramsg.com/instance117518/messages/video",
+                curl_setopt_array($curl, [
+                    CURLOPT_URL => 'https://api.ultramsg.com/instance117518/messages/video',
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
+                    CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_SSL_VERIFYPEER => 0,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_CUSTOMREQUEST => 'POST',
                     CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
             }
-            
+
             if ($record->type == 'url') {
-                $params = array(
+                $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $data['phone'],
-                    'body' => $body
-                );
+                    'body' => $body,
+                ];
                 $curl = curl_init();
-                curl_setopt_array($curl, array(
+                curl_setopt_array($curl, [
                     CURLOPT_URL => config('parameters.CURLOPT_URL'),
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
+                    CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_SSL_VERIFYPEER => 0,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_CUSTOMREQUEST => 'POST',
                     CURLOPT_POSTFIELDS => http_build_query($params),
-                    CURLOPT_HTTPHEADER => array(
-                        "content-type: application/x-www-form-urlencoded"
-                    ),
-                ));
+                    CURLOPT_HTTPHEADER => [
+                        'content-type: application/x-www-form-urlencoded',
+                    ],
+                ]);
             }
 
             $response = curl_exec($curl);
@@ -2120,29 +2144,30 @@ class NotificationController extends Controller
             Log::error($err);
 
             curl_close($curl);
-            
+
             return true;
-            
+
         } catch (\Throwable $th) {
-            //throw $th;
+            // throw $th;
         }
-        
+
     }
 
-    public static function sendNotificationEmailSingle($record, $data) {
+    public static function sendNotificationEmailSingle($record, $data)
+    {
 
         try {
 
             Mail::to($data['email'])->send(new SendNotificationMailSingle($record));
-            
+
             return true;
-        //...
+            // ...
         } catch (\Throwable $th) {
-            //throw $th;
+            // throw $th;
         }
     }
 
-    static function rememberMedication($name, $phone, $medicine, $indications, $duration)
+    public static function rememberMedication($name, $phone, $medicine, $indications, $duration)
     {
         try {
 
@@ -2165,27 +2190,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $phone,
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
-                CURLOPT_URL =>  config('parameters.CURLOPT_URL'),
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -2200,9 +2225,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::createdCorporateQuote',
                     'message' => $response,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success'
+                    'icon' => 'success',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return true;
             }
 
@@ -2214,9 +2240,10 @@ class NotificationController extends Controller
                     'objeto' => 'NotificationController::assignedCase',
                     'message' => $err,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error'
+                    'icon' => 'error',
                 ];
                 UtilsController::notificacionToAdmin($data);
+
                 return false;
             }
         } catch (\Throwable $th) {
@@ -2224,11 +2251,11 @@ class NotificationController extends Controller
         }
     }
 
-    static function previewMessage($phone)
+    public static function previewMessage($phone)
     {
         try {
 
-            $body = <<<HTML
+            $body = <<<'HTML'
 
             ¡Hola! 👋 Esperamos que tu consulta de Telemedicina haya sido de gran ayuda.
 
@@ -2241,27 +2268,27 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => '04127018390',
-                'body' => $body
-            );
+                'body' => $body,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
+            curl_setopt_array($curl, [
                 CURLOPT_URL => config('parameters.CURLOPT_URL'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -2270,9 +2297,11 @@ class NotificationController extends Controller
 
             if ($err) {
                 Log::error($err);
+
                 return false;
             } else {
                 Log::info($response);
+
                 return true;
             }
         } catch (\Throwable $th) {
@@ -2280,7 +2309,7 @@ class NotificationController extends Controller
         }
     }
 
-    static function sendDocumentsToPatient($phone, $type_document, $name_pdf)
+    public static function sendDocumentsToPatient($phone, $type_document, $name_pdf)
     {
 
         try {
@@ -2301,29 +2330,29 @@ class NotificationController extends Controller
 
             }
 
-            $params = array(
+            $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => '04127018390',
                 'filename' => $name_pdf,
-                'document' => config('parameters.PUBLIC_URL_DOC_TELEMEDICINA') .$name_pdf,
-                'caption' => $name_doc
-            );
+                'document' => config('parameters.PUBLIC_URL_DOC_TELEMEDICINA').$name_pdf,
+                'caption' => $name_doc,
+            ];
             $curl = curl_init();
-            curl_setopt_array($curl, array(
+            curl_setopt_array($curl, [
                 CURLOPT_URL => config('parameters.CURLOPT_URL_DOCUMENT'),
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
+                CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => array(
-                    "content-type: application/x-www-form-urlencoded"
-                ),
-            ));
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
@@ -2332,15 +2361,15 @@ class NotificationController extends Controller
 
             if ($err) {
                 Log::error($err);
+
                 return false;
             } else {
                 Log::info($response);
+
                 return true;
             }
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
     }
-
-    
 }

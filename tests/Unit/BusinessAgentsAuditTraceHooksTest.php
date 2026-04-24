@@ -20,7 +20,9 @@ it('registra auditoría en acciones de tabla de agentes en business', function (
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENTS_ACCOUNT_MANAGER_ASSIGNED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENTS_ACCOUNT_MANAGER_ASSIGN_FAILED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENTS_BULK_DELETED')
-        ->and($contents)->toContain('AUDIT_BUSINESS_AGENTS_BULK_DELETE_FAILED');
+        ->and($contents)->toContain('AUDIT_BUSINESS_AGENTS_BULK_DELETE_FAILED')
+        ->and($contents)->toContain('AUDIT_BUSINESS_AGENT_OBSERVATION_ADDED')
+        ->and($contents)->toContain('AUDIT_BUSINESS_AGENT_OBSERVATION_ADD_FAILED');
 });
 
 it('registra auditoría en creación y edición de agentes en business', function (): void {
@@ -39,4 +41,13 @@ it('registra auditoría en creación y edición de agentes en business', functio
         ->toContain('AUDIT_BUSINESS_AGENT_UPDATED')
         ->and($editContents)->toContain('business.agents.edit')
         ->and($editContents)->toContain('changed_fields');
+});
+
+it('registra auditoría al abrir el centro de acciones del agente en business', function (): void {
+    $tablePath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Tables/AgentsTable.php';
+    $contents = file_get_contents($tablePath);
+
+    expect($contents)
+        ->toContain('AUDIT_BUSINESS_AGENT_COMMAND_CENTER_OPENED')
+        ->and($contents)->toContain('business.agents.command-center.open');
 });
