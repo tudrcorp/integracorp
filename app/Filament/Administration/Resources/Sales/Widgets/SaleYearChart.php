@@ -3,19 +3,24 @@
 namespace App\Filament\Administration\Resources\Sales\Widgets;
 
 use App\Models\Sale;
+use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
-use Filament\Support\RawJs;
 
 class SaleYearChart extends ChartWidget
 {
+    protected string $view = 'filament.widgets.sale-year-chart';
+
+    protected string $color = 'gray';
+
     protected ?string $heading = 'RESUMEN DE VENTAS ANUAL';
 
     protected ?string $description = 'Visualización mensual de ingresos totales con desglose por periodos.';
 
     protected ?string $maxHeight = '350px';
 
+    public int $chartKey = 0;
 
     protected function getData(): array
     {
@@ -29,11 +34,6 @@ class SaleYearChart extends ChartWidget
 
         $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
-        foreach ($labels as $label) {
-            $backgroundColors[] = $this->getRandomVibrantColor();
-        }
-
-        // Paleta de colores minimalista (uno por mes)
         $minimalistColors = [
             '#94a3b8',
             '#93c5fd',
@@ -46,31 +46,20 @@ class SaleYearChart extends ChartWidget
             '#64748b',
             '#475569',
             '#334155',
-            '#0f172a'
+            '#0f172a',
         ];
 
         return [
             'datasets' => [
                 [
                     'label' => 'Total Ventas (US$)',
-                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
-                    'backgroundColor' => $backgroundColors,
-                    'borderRadius' => 8, // Barras redondeadas modernas
-                    // Se elimina el color fijo negro para permitir que JS gestione el hover dinámicamente
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
+                    'backgroundColor' => $minimalistColors,
                 ],
             ],
             'labels' => $labels,
         ];
     }
-
-    protected function getRandomVibrantColor(): string
-    {
-        $r = mt_rand(50, 200);
-        $g = mt_rand(50, 200);
-        $b = mt_rand(50, 200);
-        return sprintf('#%02X%02X%02X', $r, $g, $b);
-    }
-
 
     protected function getType(): string
     {
@@ -79,76 +68,123 @@ class SaleYearChart extends ChartWidget
 
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<JS
-            {
-                animation: {
-                    animateScale: true,
-                    animateRotate: true,
-                    duration: 1500,
-                    easing: 'easeOutQuart'
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 25,
-                            font: { size: 12 }
-                        },
-                    },
-                    tooltip: {
-                        enabled: true,
-                        callbacks: {
-                            label: function(context) {
-                                return ' ' + context.label + ': ' + context.raw + '%';
-                            }
-                        }
-                    },
-                    // Configuración para mostrar texto DENTRO de las porciones
-                    datalabels: {
-                        display: true,
-                        color: '#ffffff',
-                        anchor: 'center',
-                        align: 'center',
-                        offset: 0,
-                        font: {
-                            size: 18,
-                            weight: 'bold',
-                            family: 'sans-serif'
-                        },
-                        formatter: (value) => {
-                            return value > 0 ? value + '%' : '';
-                        },
-                        // Sombra para mejorar legibilidad sobre colores claros
-                        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-                        textShadowBlur: 4
-                    }
-                },
-                //cuadricula
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { stepSize: 1 },
-                        grid: {
-                            display: true,
-                            color: 'rgba(156, 163, 175, 0.2)', // Gris suave adaptable
-                            drawBorder: false
-                        }
-                    },
-                    x: { 
-                        grid: { 
-                            display: true,
-                            color: 'rgba(156, 163, 175, 0.1)', // Líneas verticales más tenues
-                            drawBorder: false
-                        } 
-                    }
-                },
-                // Optimización de espacio
-                layout: {
-                    padding: 20
+        return RawJs::make(<<<'JS'
+        {
+            onHover: (event, chartElement) => {
+                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: { top: 8, right: 8, bottom: 4, left: 4 }
+            },
+            interaction: {
+                mode: 'nearest',
+                intersect: true,
+                axis: 'xy'
+            },
+            datasets: {
+                bar: {
+                    categoryPercentage: 0.92,
+                    barPercentage: 0.98
                 }
+            },
+            elements: {
+                bar: {
+                    borderWidth: 1.25,
+                    borderRadius: 10,
+                    inflateAmount: 0.6,
+                    hoverBorderWidth: 2.5,
+                    hoverBorderColor: 'rgba(255, 255, 255, 0.92)'
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    enabled: true,
+                    position: 'nearest',
+                    xAlign: 'center',
+                    yAlign: 'bottom',
+                    backgroundColor: 'rgba(22, 22, 24, 0.56)',
+                    titleColor: '#f5f5f7',
+                    bodyColor: 'rgba(235, 235, 245, 0.88)',
+                    footerColor: 'rgba(235, 235, 245, 0.7)',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 12,
+                    caretSize: 6,
+                    caretPadding: 8,
+                    titleFont: {
+                        size: 14,
+                        weight: '700',
+                        family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    },
+                    bodyFont: {
+                        size: 13,
+                        weight: '500',
+                        family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    },
+                    titleSpacing: 0,
+                    titleMarginBottom: 8,
+                    bodySpacing: 6,
+                    footerSpacing: 8,
+                    displayColors: true,
+                    usePointStyle: true,
+                    boxWidth: 12,
+                    boxHeight: 12,
+                    boxPadding: 8,
+                    multiKeyBackground: 'rgba(255, 255, 255, 0.08)',
+                    callbacks: {
+                        label: (context) => {
+                            const raw = Number(context.raw ?? 0);
+                            return ` ${context.label}: $${raw.toLocaleString()}`;
+                        },
+                        footer: () => ''
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(120, 120, 128, 0.1)'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        color: '#8e8e93',
+                        font: {
+                            size: 10,
+                            family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                        }
+                    }
+                },
+                y: {
+                    stacked: false,
+                    beginAtZero: true,
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(120, 120, 128, 0.12)'
+                    },
+                    ticks: {
+                        color: '#8e8e93',
+                        font: {
+                            size: 10,
+                            family: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                        },
+                        callback: (value) => '$' + Number(value).toLocaleString()
+                    }
+                }
+            },
+            animation: {
+                duration: 900,
+                easing: 'easeOutQuart'
             }
+        }
         JS);
     }
 }

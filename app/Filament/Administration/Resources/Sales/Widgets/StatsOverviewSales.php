@@ -63,11 +63,11 @@ class StatsOverviewSales extends StatsOverviewWidget
             return Stat::make($plan['name'], $valAnio)
                 ->description(new HtmlString("
                     <div class='flex flex-col mt-1'>
-                        <span class='text-xs font-medium text-gray-500 dark:text-gray-400'>
+                        <span class='text-xs font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-400'>
                             TOTAL AÑO {$anioActual}
                         </span>
-                        <div class='flex items-center gap-2.5 mt-1'>
-                            <span class='px-2 py-0.5 text-xs font-bold rounded-full bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'>
+                        <div class='flex items-center gap-2.5 mt-1.5'>
+                            <span class='px-2.5 py-1 text-xs font-bold rounded-lg bg-orange-100/90 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm'>
                                 Mes actual ({$nombreMes}):
                             </span>
                             <span class='text-sm font-bold text-gray-900 dark:text-white'>
@@ -79,8 +79,8 @@ class StatsOverviewSales extends StatsOverviewWidget
                 ->descriptionIcon($plan['icon'])
                 ->color($plan['color'])
                 ->extraAttributes([
-                    'class' => 'cursor-default transition-all duration-300 hover:ring-2 hover:ring-primary-500',
-                    'style' => 'border-radius: 16px; min-height: 120px;',
+                    'class' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-orange-200/60 dark:border-orange-700/50 bg-gradient-to-br from-orange-50/90 via-white to-orange-50/50 dark:from-orange-950/40 dark:via-gray-900/80 dark:to-orange-900/20 hover:shadow-lg hover:shadow-orange-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-orange-400/50 hover:border-orange-300 dark:hover:border-orange-500',
+                    'style' => 'min-height: 130px;',
                 ]);
         }, $plans);
     }

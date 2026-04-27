@@ -14,6 +14,12 @@ class SalePlanChart extends ChartWidget
 {
     use InteractsWithPageTable;
 
+    protected string $view = 'filament.widgets.sale-plan-chart';
+
+    protected string $color = 'gray';
+
+    public int $chartKey = 0;
+
     protected function getTablePage(): string
     {
         return ListSales::class;
@@ -48,6 +54,7 @@ class SalePlanChart extends ChartWidget
         $salesData = $this->getPageTableQuery()
             ->reorder()
             ->select('plan_id', DB::raw('count(*) as total'))
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->groupBy('plan_id')
             ->get();
 
@@ -61,14 +68,6 @@ class SalePlanChart extends ChartWidget
             ];
         }
 
-        // Mapeo de IDs a nombres de planes
-        $plans = [
-            1 => ['label' => 'Plan Inicial', 'color' => '#9ce1ff'], // Esmeralda
-            2 => ['label' => 'Plan Ideal', 'color' => '#25b4e7'],   // Ámbar
-            3 => ['label' => 'Plan Especial', 'color' => '#2d89ca'], // Rojo
-            'corp' => ['label' => 'Corporativo', 'color' => '#3b82f6'], // Azul
-        ];
-
         $counts = [
             'inicial' => $salesData->firstWhere('plan_id', 1)->total ?? 0,
             'ideal' => $salesData->firstWhere('plan_id', 2)->total ?? 0,
@@ -76,33 +75,54 @@ class SalePlanChart extends ChartWidget
             'corp' => $salesData->whereNull('plan_id')->first()->total ?? 0,
         ];
 
-        // Cálculo de porcentajes
+        $labels = ['Plan Inicial', 'Plan Ideal', 'Plan Especial', 'Corporativo'];
         $data = [
-            round(($counts['inicial'] * 100) / $totalSales),
-            round(($counts['ideal'] * 100) / $totalSales),
-            round(($counts['especial'] * 100) / $totalSales),
-            round(($counts['corp'] * 100) / $totalSales),
+            (int) $counts['inicial'],
+            (int) $counts['ideal'],
+            (int) $counts['especial'],
+            (int) $counts['corp'],
         ];
 
+        $percentages = $totalSales > 0
+            ? array_map(
+                static fn (mixed $n): float => round(((float) $n / (float) $totalSales) * 100, 1),
+                $data
+            )
+            : [];
+
+        $vibrantPalette = [
+            '#FF2D55', // Rosa Apple
+            '#5856D6', // Púrpura Apple
+            '#34C759', // Verde Apple
+            '#FF9500', // Naranja Apple
+            '#007AFF', // Azul Apple
+            '#AF52DE', // Índigo
+            '#FFCC00', // Amarillo
+            '#5AC8FA', // Cian
+            '#FF3B30', // Rojo
+            '#2dd4bf', // Teal
+            '#f472b6', // Rosa fuerte
+            '#a78bfa', // Violeta claro
+        ];
+
+        $backgroundColors = array_map(function ($index) use ($vibrantPalette) {
+            return $vibrantPalette[$index % count($vibrantPalette)];
+        }, array_keys($data));
+
         return [
-            'labels' => [$plans[1]['label'], $plans[2]['label'], $plans[3]['label'], $plans['corp']['label']],
+            'labels' => $labels,
             'datasets' => [
                 [
-                    'label' => 'Porcentaje',
                     'data' => $data,
-                    'backgroundColor' => [
-                        $plans[1]['color'],
-                        $plans[2]['color'],
-                        $plans[3]['color'],
-                        $plans['corp']['color'],
-                    ],
-                    'label' => 'Dataset 1',
-                    // Efectos de interacción mejorados
-                    'hoverOffset' => 30, // El segmento sobresale significativamente al pasar el mouse
-                    'borderColor' => '#ffffff',
-                    'borderWidth' => 3,
-                    'hoverBorderColor' => '#ffffff',
-                    'hoverBorderWidth' => 5,
+                    'label' => 'Ventas por plan',
+                    'percentages' => array_values($percentages),
+                    'backgroundColor' => $backgroundColors,
+                    'borderWidth' => 0,
+                    'borderColor' => 'transparent',
+                    'hoverOffset' => 35,
+                    'hoverBorderWidth' => 0,
+                    'hoverBorderColor' => 'transparent',
+                    'borderRadius' => 4,
                 ],
             ],
         ];
@@ -112,79 +132,116 @@ class SalePlanChart extends ChartWidget
     protected function getOptions(): RawJs
     {
         return RawJs::make(<<<'JS'
-            {
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { stepSize: 1 },
-                        grid: {
-                            display: true,
-                            color: 'rgba(156, 163, 175, 0.2)', // Gris suave adaptable
-                            drawBorder: false
-                        }
-                    },
-                    x: { 
-                        grid: { 
-                            display: true,
-                            color: 'rgba(156, 163, 175, 0.1)', // Líneas verticales más tenues
-                            drawBorder: false
-                        } 
-                    }
-                },
-                animation: {
-                    animateScale: true,
-                    animateRotate: true,
-                    duration: 1500,
-                    easing: 'easeOutQuart'
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 25,
-                            font: { size: 12 }
-                        },
-                    },
-                    tooltip: {
-                        enabled: true,
-                        callbacks: {
-                            label: function(context) {
-                                return ' ' + context.label + ': ' + context.raw + '%';
-                            }
-                        }
-                    },
-                    // Configuración para mostrar texto DENTRO de las porciones
-                    datalabels: {
-                        display: true,
-                        color: '#ffffff',
-                        anchor: 'center',
-                        align: 'center',
-                        offset: 0,
-                        font: {
-                            size: 18,
-                            weight: 'bold',
-                            family: 'sans-serif'
-                        },
-                        formatter: (value) => {
-                            return value > 0 ? value + '%' : '';
-                        },
-                        // Sombra para mejorar legibilidad sobre colores claros
-                        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-                        textShadowBlur: 4
-                    }
-                },
-                // Optimización de espacio
-                layout: {
-                    padding: 20
+        {
+            responsive: true,
+            maintainAspectRatio: false,
+            borderWidth: 0,
+            elements: {
+                arc: {
+                    borderWidth: 0,
+                    borderColor: 'transparent'
                 }
+            },
+            cutout: '52%',
+            layout: {
+                padding: { top: 16, right: 8, bottom: 6, left: 8 }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    align: 'center',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 18,
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        font: {
+                            size: 13,
+                            weight: '600',
+                            family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                        },
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const ds = data.datasets[0];
+                            const meta = chart.getDatasetMeta(0);
+                            return data.labels.map((label, i) => {
+                                const value = ds.data[i];
+                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
+                                    ? ds.percentages[i]
+                                    : 0;
+                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+                                return {
+                                    text: String(label) + ': ' + value + ' ventas (' + pct + '%)',
+                                    fillStyle: fill,
+                                    strokeStyle: fill,
+                                    lineWidth: 0,
+                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
+                                    index: i,
+                                    datasetIndex: 0
+                                };
+                            });
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#1e293b',
+                    bodyColor: '#1e293b',
+                    borderColor: '#e2e8f0',
+                    borderWidth: 1,
+                    padding: 12,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: (context) => {
+                            const value = context.raw || 0;
+                            const pct = context.dataset.percentages?.[context.dataIndex] ?? 0;
+                            return ` ${context.label}: ${value} ventas (${pct}%)`;
+                        }
+                    }
+                },
+                datalabels: {
+                    display: function(context) {
+                        const pct = context.dataset.percentages?.[context.dataIndex] ?? 0;
+                        return pct >= 4;
+                    },
+                    color: '#ffffff',
+                    anchor: 'center',
+                    align: 'center',
+                    font: {
+                        size: 12,
+                        weight: '700',
+                        family: 'ui-sans-serif, -apple-system, system-ui, sans-serif'
+                    },
+                    formatter: function(value, context) {
+                        const pct = context.dataset.percentages?.[context.dataIndex] ?? 0;
+                        return pct + '%';
+                    },
+                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+                    textShadowBlur: 3
+                }
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            animation: {
+                animateScale: true,
+                animateRotate: true,
+                duration: 1500,
+                easing: 'easeOutQuart'
+            },
+            onHover: (event, chartElement) => {
+                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
             }
+        }
         JS);
     }
 
     protected function getType(): string
     {
-        return 'pie';
+        return 'doughnut';
     }
 }

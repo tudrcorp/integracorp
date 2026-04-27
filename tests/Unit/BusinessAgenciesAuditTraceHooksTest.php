@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Filament\Business\Resources\Agencies\Tables\AgenciesTable;
+
 it('registra auditoría en acciones de tabla de agencias en business', function (): void {
     $tablePath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agencies/Tables/AgenciesTable.php';
     $contents = file_get_contents($tablePath);
@@ -20,7 +22,19 @@ it('registra auditoría en acciones de tabla de agencias en business', function 
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_ACCOUNT_MANAGER_ASSIGNED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_ACCOUNT_MANAGER_ASSIGN_FAILED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_BULK_DELETED')
-        ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_BULK_DELETE_FAILED');
+        ->and($contents)->toContain('AUDIT_BUSINESS_AGENCIES_BULK_DELETE_FAILED')
+        ->and($contents)->toContain('AUDIT_BUSINESS_AGENCY_COMMAND_CENTER_OPENED')
+        ->and($contents)->toContain('makeAgencyCommandCenterAction')
+        ->and($contents)->toContain('agencyNoteBlogsTableExists');
+});
+
+it('expone métodos privados del centro de acciones en la tabla de agencias business', function (): void {
+    $ref = new \ReflectionClass(AgenciesTable::class);
+
+    expect($ref->hasMethod('makeAgencyCommandCenterAction'))->toBeTrue()
+        ->and($ref->getMethod('makeAgencyCommandCenterAction')->isPrivate())->toBeTrue()
+        ->and($ref->hasMethod('agencyNoteBlogsTableExists'))->toBeTrue()
+        ->and($ref->getMethod('agencyNoteBlogsTableExists')->isPrivate())->toBeTrue();
 });
 
 it('registra auditoría en creación y edición de agencias en business', function (): void {

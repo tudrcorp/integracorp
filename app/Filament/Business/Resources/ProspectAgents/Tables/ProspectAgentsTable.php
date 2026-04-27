@@ -54,6 +54,15 @@ class ProspectAgentsTable
                         ->searchable()
                         ->sortable()
                         ->formatStateUsing(fn (?string $state): string => ProspectAgentLabels::typeLabel($state)),
+                    TextColumn::make('classification')
+                        ->label('Clasificación')
+                        ->icon(Heroicon::OutlinedTag)
+                        ->searchable()
+                        ->sortable()
+                        ->limit(32)
+                        ->tooltip(fn (ProspectAgent $record): string => (string) ($record->classification ?? ''))
+                        ->placeholder('—')
+                        ->toggleable(),
                     TextColumn::make('status')
                         ->label('Estatus')
                         ->badge()
@@ -61,6 +70,13 @@ class ProspectAgentsTable
                         ->sortable()
                         ->formatStateUsing(fn (?string $state): string => ProspectAgentLabels::statusLabel($state))
                         ->color(fn (?string $state): string => ProspectAgentLabels::statusColor($state)),
+                    TextColumn::make('initial_observ')
+                        ->label('Observaciones iniciales')
+                        ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                        ->limit(48)
+                        ->tooltip(fn (ProspectAgent $record): string => (string) ($record->initial_observ ?? ''))
+                        ->placeholder('—')
+                        ->toggleable(isToggledHiddenByDefault: true),
                 ]),
                 ColumnGroup::make('Contacto', [
                     TextColumn::make('phone_1')
@@ -79,6 +95,17 @@ class ProspectAgentsTable
                         ->copyMessage('Correo copiado')
                         ->copyMessageDuration(1500)
                         ->placeholder('—'),
+                    TextColumn::make('instagram')
+                        ->label('Instagram')
+                        ->icon(Heroicon::OutlinedAtSymbol)
+                        ->searchable()
+                        ->copyable()
+                        ->copyMessage('Usuario copiado')
+                        ->copyMessageDuration(1500)
+                        ->limit(28)
+                        ->tooltip(fn (ProspectAgent $record): string => (string) ($record->instagram ?? ''))
+                        ->placeholder('—')
+                        ->toggleable(),
                     TextColumn::make('phone_2')
                         ->label('Teléfono alternativo')
                         ->icon(Heroicon::OutlinedPhone)
