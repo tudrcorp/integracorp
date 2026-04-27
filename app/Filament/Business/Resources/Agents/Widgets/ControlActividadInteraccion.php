@@ -140,18 +140,25 @@ class ControlActividadInteraccion extends Widget
             $lastInteractionAt = $agent->last_interaction_at ? Carbon::parse($agent->last_interaction_at) : null;
             $daysSinceInteraction = $lastInteractionAt ? $lastInteractionAt->diffInDays($asOf) : 9999;
 
+            $lastSaleAt = $agent->last_sale_at ? Carbon::parse($agent->last_sale_at) : null;
+            $daysSinceSale = $lastSaleAt ? $lastSaleAt->diffInDays($asOf) : 9999;
+
+            // 🟢 Activo: cotización o venta en últimos 30 días (interacción con el sistema).
             if ($daysSinceInteraction <= 30) {
                 $activo++;
 
                 continue;
             }
 
-            if ($daysSinceInteraction >= 91) {
+            // 🔴 Inactivo: > 91 días sin producción (ventas) y sin interacción.
+            if ($daysSinceInteraction >= 91 && $daysSinceSale >= 91) {
                 $inactivo++;
 
                 continue;
             }
 
+            // 🟡 En Riesgo: sin ventas registradas en un período de entre 31 y 90 días.
+            // (Si no está activo y no es inactivo, se considera en riesgo).
             $enRiesgo++;
         }
 

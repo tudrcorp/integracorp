@@ -10,11 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 class IndividualQuotesAgentAverageChart extends ChartWidget
 {
+    protected string $view = 'filament.widgets.individual-quotes-agent-average-chart';
+
     protected ?string $heading = 'TOP 10 AGENTES - MAYOR VOLUMEN DE COTIZACIONES';
 
     protected ?string $description = 'Ranking de los 10 agentes con más cotizaciones generadas.';
 
-    protected ?string $maxHeight = '320px';
+    protected ?string $maxHeight = '440px';
 
     /**
      * Filtro de años: Año actual + 4 anteriores.
@@ -90,6 +92,8 @@ class IndividualQuotesAgentAverageChart extends ChartWidget
     {
         return RawJs::make(<<<'JS'
         {
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     display: false

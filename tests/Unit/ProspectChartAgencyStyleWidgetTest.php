@@ -2,14 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Filament\Business\Resources\ProspectAgents\Widgets\ClassificationProspect;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ReferenceProspect;
+use App\Filament\Business\Resources\ProspectAgents\Widgets\StatusChangesByMonth;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspect;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspectForState;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TypeProspect;
 
 it('los gráficos de barras de prospectos usan la vista y clase CSS al estilo agencias', function (): void {
     $view = 'filament.widgets.prospect-chart-agency-style';
-    foreach ([TopRegisterProspect::class, ReferenceProspect::class, TypeProspect::class] as $class) {
+    foreach ([TopRegisterProspect::class, ReferenceProspect::class, TypeProspect::class, ClassificationProspect::class, StatusChangesByMonth::class] as $class) {
         $ref = new ReflectionClass($class);
         expect($ref->getDefaultProperties()['view'] ?? null)->toBe($view);
     }

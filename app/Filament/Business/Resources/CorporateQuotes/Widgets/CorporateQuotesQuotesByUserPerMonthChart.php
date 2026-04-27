@@ -12,9 +12,9 @@ class CorporateQuotesQuotesByUserPerMonthChart extends ChartWidget
 {
     protected string $view = 'filament.widgets.corporate-quotes-quotes-by-user-per-month-chart';
 
-    protected ?string $heading = 'COTIZACIONES CORPORATIVAS POR USUARIO POR MES';
+    protected ?string $heading = 'TOP 20 COTIZACIONES CORPORATIVAS POR USUARIO POR MES';
 
-    protected ?string $description = 'Cantidad de cotizaciones agrupadas por usuario (created_by) y mes. Solo se incluyen usuarios con más de 1 cotización en el año seleccionado.';
+    protected ?string $description = 'Cantidad de cotizaciones agrupadas por usuario y mes. Solo se incluyen usuarios con más de 1 cotización en el año seleccionado.';
 
     protected ?string $maxHeight = '440px';
 
@@ -65,7 +65,8 @@ class CorporateQuotesQuotesByUserPerMonthChart extends ChartWidget
                 ->groupBy('created_by')
                 ->having('total', '>', 1)
                 ->orderByDesc('total')
-                ->limit(10)
+                ->orderBy('created_by')
+                ->limit(20)
                 ->get();
         }
 
@@ -108,6 +109,7 @@ class CorporateQuotesQuotesByUserPerMonthChart extends ChartWidget
                         'label' => "Cotizaciones ($year)",
                         'data' => array_fill(0, 12, 0),
                         'backgroundColor' => 'rgba(148, 163, 184, 0.35)',
+                        'borderWidth' => 0,
                         'borderRadius' => 8,
                         'barPercentage' => 0.8,
                         'categoryPercentage' => 0.9,
@@ -147,6 +149,7 @@ class CorporateQuotesQuotesByUserPerMonthChart extends ChartWidget
                 'label' => $userName,
                 'data' => array_values($matrix[$userName]),
                 'backgroundColor' => $color,
+                'borderWidth' => 0,
                 'borderRadius' => 8,
                 'barPercentage' => 0.8,
                 'categoryPercentage' => 0.9,

@@ -36,7 +36,7 @@
     <link rel="apple-touch-icon" sizes="120x120" href="{{ asset('image/ico_Android_IOS.png') }}">
     <link rel="icon" type="image/jpeg" sizes="32x32" href="{{ asset('image/ico_Android_IOS.png') }}">
     <link rel="icon" type="image/jpeg" sizes="16x16" href="{{ asset('image/ico_Android_IOS.png') }}">
-    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
 
 
 
@@ -265,6 +265,12 @@
             </div>
         </div>
     </div>
+
+    @includeWhen(
+        request()->routeIs('home'),
+        'pwa.install-login',
+        ['showInstallTrigger' => true]
+    )
 
    <!-- Footer Full Width - Centrado en la parte inferior -->
    <footer class="absolute bottom-0 left-0 w-full z-20">

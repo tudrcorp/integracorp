@@ -3,8 +3,11 @@
 namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
+use App\Filament\Business\Resources\ProspectAgents\Widgets\ClassificationProspect;
+use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ReferenceProspect;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\StatsOverviewCapacitacion;
+use App\Filament\Business\Resources\ProspectAgents\Widgets\StatusChangesByMonth;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspect;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspectForState;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TypeProspect;
@@ -28,12 +31,23 @@ class ListProspectAgents extends ListRecords
 
     protected static ?string $title = 'Prospectos TuDrGroup';
 
+    /**
+     * @return int|array<string, int|null>
+     */
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return [
+            'default' => 1,
+            'lg' => 2,
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-            ->label('Nuevo prospecto')
-            ->icon('heroicon-o-plus'),
+                ->label('Nuevo prospecto')
+                ->icon('heroicon-o-plus'),
             Action::make('tascks')
                 ->label('Nueva Tarea')
                 ->icon('heroicon-o-puzzle-piece')
@@ -45,7 +59,7 @@ class ListProspectAgents extends ListRecords
                 ->form([
                     Fieldset::make('Formulario de Notas')
                         ->schema([
-                            Grid::make(2)->schema([                            
+                            Grid::make(2)->schema([
                                 Select::make('prospect_agent_id')
                                     ->label('Selecciona el Prospecto')
                                     ->preload()
@@ -74,8 +88,8 @@ class ListProspectAgents extends ListRecords
                         ProspectAgentTask::create([
                             'prospect_agent_id' => $data['prospect_agent_id'],
                             'rrhh_colaborador_id' => $data['rrhh_colaborador_id'],
-                            'task'              => $data['task'],
-                            'created_by'        => $data['created_by'],
+                            'task' => $data['task'],
+                            'created_by' => $data['created_by'],
                         ]);
 
                         Notification::make()
@@ -94,14 +108,17 @@ class ListProspectAgents extends ListRecords
         ];
     }
 
-    public function getHeaderWidgets(): array
+    protected function getHeaderWidgets(): array
     {
         return [
             StatsOverviewCapacitacion::class,
             TopRegisterProspect::class,
+            ProspectAgentTasksByUserChart::class,
+            StatusChangesByMonth::class,
             TopRegisterProspectForState::class,
             TypeProspect::class,
             ReferenceProspect::class,
+            ClassificationProspect::class,
         ];
     }
 }

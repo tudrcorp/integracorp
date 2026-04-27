@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ProspectAgent extends Model
 {
     protected $table = 'prospect_agents';
+
     protected $fillable = [
         'name',
         'type',
@@ -19,6 +20,9 @@ class ProspectAgent extends Model
         'status',
         'created_by',
         'updated_by',
+        'classification',
+        'instagram',
+        'initial_observ',
         'reference_by',
     ];
 

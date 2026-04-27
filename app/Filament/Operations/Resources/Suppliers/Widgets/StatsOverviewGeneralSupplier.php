@@ -43,10 +43,10 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
             [
                 'name' => 'CONVENIO GENERAL',
                 'icon' => 'heroicon-m-building-library',
-                'color' => 'info',
-                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500',
-                'labelClass' => 'text-info-600 dark:text-info-400',
-                'badgeClass' => 'bg-info-100/90 text-info-700 dark:bg-info-900/40 dark:text-info-300',
+                'color' => 'primary',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-primary-200/60 dark:border-primary-700/50 bg-gradient-to-br from-primary-50/90 via-white to-primary-50/50 dark:from-primary-950/40 dark:via-gray-900/80 dark:to-primary-900/20 hover:shadow-lg hover:shadow-primary-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-primary-400/50 hover:border-primary-300 dark:hover:border-primary-500',
+                'labelClass' => 'text-primary-600 dark:text-primary-400',
+                'badgeClass' => 'bg-primary-100/90 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
                 'criterion' => 'GENERAL',
                 'apply' => static function (Builder $query) use ($table): Builder {
                     return $query->where("{$table}.status_convenio", 'GENERAL');
@@ -55,10 +55,10 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
             [
                 'name' => 'PROVEEDORES GENERALES AFILIADOS',
                 'icon' => 'heroicon-m-check-badge',
-                'color' => 'success',
-                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500',
-                'labelClass' => 'text-success-600 dark:text-success-400',
-                'badgeClass' => 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300',
+                'color' => 'primary',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-primary-200/60 dark:border-primary-700/50 bg-gradient-to-br from-primary-50/90 via-white to-primary-50/50 dark:from-primary-950/40 dark:via-gray-900/80 dark:to-primary-900/20 hover:shadow-lg hover:shadow-primary-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-primary-400/50 hover:border-primary-300 dark:hover:border-primary-500',
+                'labelClass' => 'text-primary-600 dark:text-primary-400',
+                'badgeClass' => 'bg-primary-100/90 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
                 'criterion' => 'GENERAL · AFILIADO',
                 'apply' => static function (Builder $query) use ($table): Builder {
                     return $query->where("{$table}.status_sistema", 'AFILIADO');
@@ -67,10 +67,10 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
             [
                 'name' => 'ACTIVO AFILIADO',
                 'icon' => 'heroicon-m-shield-check',
-                'color' => 'primary',
-                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-primary-200/60 dark:border-primary-700/50 bg-gradient-to-br from-primary-50/90 via-white to-primary-50/50 dark:from-primary-950/40 dark:via-gray-900/80 dark:to-primary-900/20 hover:shadow-lg hover:shadow-primary-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-primary-400/50 hover:border-primary-300 dark:hover:border-primary-500',
-                'labelClass' => 'text-primary-600 dark:text-primary-400',
-                'badgeClass' => 'bg-primary-100/90 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
+                'color' => 'success',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500',
+                'labelClass' => 'text-success-600 dark:text-success-400',
+                'badgeClass' => 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300',
                 'criterion' => 'GENERAL · ACTIVO AFILIADO',
                 'apply' => static function (Builder $query) use ($table): Builder {
                     return $query->where("{$table}.status_sistema", 'ACTIVO AFILIADO');
@@ -79,10 +79,10 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
             [
                 'name' => 'ACTIVO EN PROCESO',
                 'icon' => 'heroicon-m-arrow-path',
-                'color' => 'warning',
-                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-warning-200/60 dark:border-warning-700/50 bg-gradient-to-br from-warning-50/90 via-white to-warning-50/50 dark:from-warning-950/40 dark:via-gray-900/80 dark:to-warning-900/20 hover:shadow-lg hover:shadow-warning-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-warning-400/50 hover:border-warning-300 dark:hover:border-warning-500',
-                'labelClass' => 'text-warning-600 dark:text-warning-400',
-                'badgeClass' => 'bg-warning-100/90 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300',
+                'color' => 'success',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500',
+                'labelClass' => 'text-success-600 dark:text-success-400',
+                'badgeClass' => 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300',
                 'criterion' => 'GENERAL · ACTIVO EN PROCESO',
                 'apply' => static function (Builder $query) use ($table): Builder {
                     return $query->where("{$table}.status_sistema", 'ACTIVO EN PROCESO');
@@ -91,10 +91,10 @@ class StatsOverviewGeneralSupplier extends StatsOverviewWidget
             [
                 'name' => 'EN PROCESO',
                 'icon' => 'heroicon-m-clock',
-                'color' => 'info',
-                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500',
-                'labelClass' => 'text-info-600 dark:text-info-400',
-                'badgeClass' => 'bg-info-100/90 text-info-700 dark:bg-info-900/40 dark:text-info-300',
+                'color' => 'success',
+                'cardClass' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500',
+                'labelClass' => 'text-success-600 dark:text-success-400',
+                'badgeClass' => 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300',
                 'criterion' => 'GENERAL · EN PROCESO',
                 'apply' => static function (Builder $query) use ($table): Builder {
                     return $query->where("{$table}.status_sistema", 'EN PROCESO');

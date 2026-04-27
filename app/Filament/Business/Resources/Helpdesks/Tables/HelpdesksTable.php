@@ -39,7 +39,16 @@ class HelpdesksTable
                                 fn (Builder $sub): Builder => $sub->where('rrhh_colaboradors.id', $colaborador->id)
                             );
                         }
-                    });
+                    })
+                    ->orderByRaw(
+                        "CASE status
+                            WHEN 'PENDIENTE POR INICIAR' THEN 1
+                            WHEN 'EN PROCESO' THEN 2
+                            WHEN 'TERMINADO' THEN 3
+                            ELSE 4
+                        END"
+                    )
+                    ->orderByDesc('updated_at');
             })
             ->columns([
                 TextColumn::make('description')

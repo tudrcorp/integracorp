@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion as AgenciesControlActividadInteraccion;
 use App\Filament\Business\Resources\Agents\Widgets\ControlActividadInteraccion;
+use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
@@ -26,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Registro explícito para evitar fallos de auto-descubrimiento en Livewire (widgets fuera de rutas discoverWidgets).
         Livewire::component('app.filament.business.resources.agents.widgets.control-actividad-interaccion', ControlActividadInteraccion::class);
+        Livewire::component('app.filament.business.resources.agencies.widgets.control-actividad-interaccion', AgenciesControlActividadInteraccion::class);
+        Livewire::component('app.filament.business.resources.prospect-agents.widgets.prospect-agent-tasks-by-user-chart', ProspectAgentTasksByUserChart::class);
 
         FilamentTimezone::set('America/Caracas');
 

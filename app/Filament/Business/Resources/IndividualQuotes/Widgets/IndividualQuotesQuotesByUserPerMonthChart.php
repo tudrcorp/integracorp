@@ -12,7 +12,7 @@ class IndividualQuotesQuotesByUserPerMonthChart extends ChartWidget
 {
     protected string $view = 'filament.widgets.individual-quotes-quotes-by-user-per-month-chart';
 
-    protected ?string $heading = 'COTIZACIONES POR USUARIO POR MES';
+    protected ?string $heading = 'TOP 20 COTIZACIONES POR USUARIO POR MES';
 
     protected ?string $description = 'Cantidad de cotizaciones agrupadas por usuario (created_by) y mes. Solo se incluyen usuarios con más de 1 cotización en el año seleccionado.';
 
@@ -65,7 +65,8 @@ class IndividualQuotesQuotesByUserPerMonthChart extends ChartWidget
                 ->groupBy('created_by')
                 ->having('total', '>', 1)
                 ->orderByDesc('total')
-                ->limit(10)
+                ->orderBy('created_by')
+                ->limit(20)
                 ->get();
         }
 
@@ -108,6 +109,7 @@ class IndividualQuotesQuotesByUserPerMonthChart extends ChartWidget
                         'label' => "Cotizaciones ($year)",
                         'data' => array_fill(0, 12, 0),
                         'backgroundColor' => 'rgba(148, 163, 184, 0.35)',
+                        'borderWidth' => 0,
                         'borderRadius' => 8,
                         'barPercentage' => 0.8,
                         'categoryPercentage' => 0.9,
@@ -147,6 +149,7 @@ class IndividualQuotesQuotesByUserPerMonthChart extends ChartWidget
                 'label' => $userName,
                 'data' => array_values($matrix[$userName]),
                 'backgroundColor' => $color,
+                'borderWidth' => 0,
                 'borderRadius' => 8,
                 'barPercentage' => 0.8,
                 'categoryPercentage' => 0.9,
@@ -163,6 +166,7 @@ class IndividualQuotesQuotesByUserPerMonthChart extends ChartWidget
     {
         return RawJs::make(<<<'JS'
         {
+            borderWidth: 0,
             responsive: true,
             maintainAspectRatio: false,
             plugins: {

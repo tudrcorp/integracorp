@@ -22,7 +22,7 @@ class ProspectAgentInfolist
             ->components([
                 Section::make('Resumen del prospecto')
                     ->icon(Heroicon::OutlinedUserCircle)
-                    ->description('Identificación, tipo y origen del contacto.')
+                    ->description('Identificación, tipo, clasificación y origen del contacto.')
                     ->schema([
                         Grid::make()
                             ->columns(['default' => 1, 'lg' => 2])
@@ -41,18 +41,26 @@ class ProspectAgentInfolist
                                     ->badge()
                                     ->color('info')
                                     ->formatStateUsing(fn (?string $state): string => ProspectAgentLabels::referenceLabel($state)),
+                                TextEntry::make('classification')
+                                    ->label('Clasificación')
+                                    ->icon(Heroicon::OutlinedTag)
+                                    ->placeholder('—'),
                                 TextEntry::make('status')
                                     ->label('Estatus en el embudo')
                                     ->badge()
                                     ->formatStateUsing(fn (?string $state): string => ProspectAgentLabels::statusLabel($state))
-                                    ->color(fn (?string $state): string => ProspectAgentLabels::statusColor($state))
-                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                    ->color(fn (?string $state): string => ProspectAgentLabels::statusColor($state)),
+                                TextEntry::make('initial_observ')
+                                    ->label('Observaciones iniciales')
+                                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                                    ->columnSpan(['default' => 1, 'lg' => 2])
+                                    ->placeholder('—'),
                             ]),
                     ])
                     ->columnSpanFull(),
                 Section::make('Contacto')
                     ->icon(Heroicon::OutlinedPhone)
-                    ->description('Teléfonos y correo (puedes copiar o abrir enlace).')
+                    ->description('Teléfonos, correo e Instagram (puedes copiar o abrir enlace).')
                     ->schema([
                         Grid::make()
                             ->columns(['default' => 1, 'lg' => 2])
@@ -80,6 +88,29 @@ class ProspectAgentInfolist
                                     ->copyMessage('Correo copiado')
                                     ->url(fn (ProspectAgent $record): ?string => filled($record->email) ? 'mailto:'.$record->email : null)
                                     ->openUrlInNewTab(false)
+                                    ->columnSpan(['default' => 1, 'lg' => 2])
+                                    ->placeholder('—'),
+                                TextEntry::make('instagram')
+                                    ->label('Instagram')
+                                    ->icon(Heroicon::OutlinedAtSymbol)
+                                    ->copyable()
+                                    ->copyMessage('Copiado')
+                                    ->url(function (ProspectAgent $record): ?string {
+                                        $ig = trim((string) ($record->instagram ?? ''));
+
+                                        if ($ig === '') {
+                                            return null;
+                                        }
+
+                                        if (str_starts_with(strtolower($ig), 'http')) {
+                                            return $ig;
+                                        }
+
+                                        $handle = ltrim($ig, '@');
+
+                                        return $handle !== '' ? 'https://instagram.com/'.$handle : null;
+                                    })
+                                    ->openUrlInNewTab()
                                     ->columnSpan(['default' => 1, 'lg' => 2])
                                     ->placeholder('—'),
                             ]),
