@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
+use App\Filament\Business\Resources\ProspectAgents\Concerns\HasProspectResourceChartTimeStateFilters;
 use App\Models\ProspectAgent;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
@@ -12,9 +13,12 @@ use Filament\Widgets\ChartWidget;
 
 class TopRegisterProspectForState extends ChartWidget
 {
+    use HasProspectResourceChartTimeStateFilters;
+
     public function mount(): void
     {
         parent::mount();
+        $this->bootProspectChartFilters();
 
         FilamentAsset::register([
             Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'),
@@ -25,7 +29,7 @@ class TopRegisterProspectForState extends ChartWidget
 
     protected string $color = 'gray';
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
     protected ?string $heading = 'Prospectos registrados por estado';
 
@@ -40,9 +44,14 @@ class TopRegisterProspectForState extends ChartWidget
 
     protected function getData(): array
     {
+        $year = $this->resolvedChartYear();
+        $month = $this->resolvedChartMonth();
+
         $distribution = ProspectAgent::query()
             ->join('states', 'prospect_agents.state_id', '=', 'states.id')
             ->selectRaw('states.definition as state_name, COUNT(*) as total')
+            ->whereYear('prospect_agents.created_at', $year)
+            ->when($month, fn ($q) => $q->whereMonth('prospect_agents.created_at', $month))
             ->groupBy('states.definition')
             ->orderByDesc('total')
             ->pluck('total', 'state_name')
@@ -115,10 +124,32 @@ class TopRegisterProspectForState extends ChartWidget
                         pointStyle: 'circle',
                         padding: 16,
                         font: {
-                            size: 11,
+                            size: 13,
                             weight: '600'
                         },
-                        color: 'gray'
+                        color: 'gray',
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const ds = data.datasets[0];
+                            const meta = chart.getDatasetMeta(0);
+                            return data.labels.map((label, i) => {
+                                const value = ds.data[i];
+                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
+                                    ? ds.percentages[i]
+                                    : 0;
+                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+                                const prospectos = value === 1 ? ' prospecto' : ' prospectos';
+                                return {
+                                    text: String(label) + ': ' + value + prospectos + ' (' + pct + '%)',
+                                    fillStyle: fill,
+                                    strokeStyle: fill,
+                                    lineWidth: 0,
+                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
+                                    index: i,
+                                    datasetIndex: 0
+                                };
+                            });
+                        }
                     }
                 },
                 tooltip: {

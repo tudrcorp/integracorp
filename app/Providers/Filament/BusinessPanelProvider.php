@@ -172,6 +172,10 @@ class BusinessPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.business.partials.affiliation-documents-panel-script')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.business.helpdesks.helpdesk-tour-script')
             );
         // ->defaultThemeMode(ThemeMode::Light);
     }

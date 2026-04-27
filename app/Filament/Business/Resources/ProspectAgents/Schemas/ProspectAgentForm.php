@@ -10,6 +10,7 @@ use App\Models\Country;
 use App\Models\State;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -23,31 +24,6 @@ class ProspectAgentForm
     {
         return $schema
             ->components([
-                Section::make('Clasificación')
-                    ->icon(Heroicon::OutlinedTag)
-                    ->description('Define el tipo de prospecto y el canal por el que llegó.')
-                    ->schema([
-                        Grid::make()
-                            ->columns(['default' => 1, 'lg' => 2])
-                            ->schema([
-                                Select::make('type')
-                                    ->label('Tipo de prospecto')
-                                    ->options(ProspectAgentLabels::typeOptions())
-                                    ->required()
-                                    ->preload()
-                                    ->searchable()
-                                    ->native(false)
-                                    ->placeholder('Selecciona un tipo'),
-                                Select::make('reference_by')
-                                    ->label('Referido por')
-                                    ->options(ProspectAgentLabels::referenceOptions())
-                                    ->required()
-                                    ->preload()
-                                    ->searchable()
-                                    ->native(false)
-                                    ->placeholder('Selecciona el origen'),
-                            ]),
-                    ]),
                 Section::make('Datos del prospecto')
                     ->icon(Heroicon::OutlinedUser)
                     ->description('Nombre completo y canales de contacto.')
@@ -98,6 +74,26 @@ class ProspectAgentForm
                             ->placeholder('correo@ejemplo.com')
                             ->autocomplete('email')
                             ->columnSpanFull(),
+                    ]),
+                Section::make('Embudo comercial')
+                    ->icon(Heroicon::OutlinedChartBar)
+                    ->description('Etapa actual del prospecto en el proceso de captación.')
+                    ->schema([
+                        Select::make('status')
+                            ->label('Estatus')
+                            ->options(ProspectAgentLabels::statusOptions())
+                            ->required()
+                            ->preload()
+                            ->searchable()
+                            ->native(false)
+                            ->placeholder('Selecciona el estatus')
+                            ->columnSpanFull(),
+                        Textarea::make('initial_observ')
+                            ->label('Observaciones iniciales')
+                            ->maxLength(100)
+                            ->rows(6)
+                            ->columnSpanFull()
+                            ->placeholder('Notas breves sobre el primer contacto o contexto.'),
                     ]),
                 Section::make('Ubicación')
                     ->icon(Heroicon::OutlinedMapPin)
@@ -174,20 +170,45 @@ class ProspectAgentForm
                                     ->native(false),
                             ]),
                     ]),
-                Section::make('Embudo comercial')
-                    ->icon(Heroicon::OutlinedChartBar)
-                    ->description('Etapa actual del prospecto en el proceso de captación.')
+
+                Section::make('Segmentación')
+                    ->icon(Heroicon::OutlinedTag)
+                    ->description('Define el tipo de prospecto y el canal por el que llegó.')
                     ->schema([
-                        Select::make('status')
-                            ->label('Estatus')
-                            ->options(ProspectAgentLabels::statusOptions())
-                            ->required()
-                            ->preload()
-                            ->searchable()
-                            ->native(false)
-                            ->placeholder('Selecciona el estatus')
-                            ->columnSpanFull(),
+                        Grid::make()
+                            ->columns(['default' => 1, 'lg' => 2])
+                            ->schema([
+                                Select::make('type')
+                                    ->label('Tipo de prospecto')
+                                    ->options(ProspectAgentLabels::typeOptions())
+                                    ->required()
+                                    ->preload()
+                                    ->searchable()
+                                    ->native(false)
+                                    ->placeholder('Selecciona un tipo'),
+                                Select::make('reference_by')
+                                    ->label('Referido por')
+                                    ->options(ProspectAgentLabels::referenceOptions())
+                                    ->required()
+                                    ->preload()
+                                    ->searchable()
+                                    ->native(false)
+                                    ->placeholder('Selecciona el origen'),
+                            ]),
+                        Grid::make()
+                            ->columns(['default' => 1, 'lg' => 2])
+                            ->schema([
+                                TextInput::make('classification')
+                                    ->label('Clasificación')
+                                    ->maxLength(100)
+                                    ->placeholder('Ej. VIP, retail, etc.'),
+                                TextInput::make('instagram')
+                                    ->label('Usuario de Instagram')
+                                    ->maxLength(100)
+                                    ->placeholder('@usuario o enlace del perfil'),
+                            ]),
                     ]),
+
                 Hidden::make('created_by')
                     ->default(fn (): ?string => auth()->user()?->name)
                     ->hiddenOn('edit')

@@ -2,15 +2,9 @@
 
 namespace App\Providers;
 
+use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion as AgenciesControlActividadInteraccion;
 use App\Filament\Business\Resources\Agents\Widgets\ControlActividadInteraccion;
-use App\Models\CorporateQuote;
-use App\Models\CorporateQuoteRequest;
-use App\Models\DressTylorQuote;
-use App\Models\IndividualQuote;
-use App\Models\TravelAgency;
-use App\Models\TravelAgent;
-use App\Support\SecurityAudit;
-use App\Support\UserSessionAuditTracker;
+use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
@@ -38,10 +32,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Registro explícito para evitar fallos de auto-descubrimiento en Livewire (widgets fuera de rutas discoverWidgets).
         Livewire::component('app.filament.business.resources.agents.widgets.control-actividad-interaccion', ControlActividadInteraccion::class);
-        Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);
-        Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
-        $this->registerTravelResourcesSecurityAudits();
-        $this->registerQuoteResourcesSecurityAudits();
+        Livewire::component('app.filament.business.resources.agencies.widgets.control-actividad-interaccion', AgenciesControlActividadInteraccion::class);
+        Livewire::component('app.filament.business.resources.prospect-agents.widgets.prospect-agent-tasks-by-user-chart', ProspectAgentTasksByUserChart::class);
 
         FilamentTimezone::set('America/Caracas');
 

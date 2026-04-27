@@ -4,57 +4,59 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
+use App\Filament\Business\Resources\ProspectAgents\Concerns\HasProspectResourceChartTimeStateFilters;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\Concerns\AgencyLikeBarChartStyling;
-use App\Models\ProspectAgent;
+use App\Support\ProspectAgents\ProspectCollaboratorLabels;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
 
 class TopRegisterProspect extends ChartWidget
 {
     use AgencyLikeBarChartStyling;
+    use HasProspectResourceChartTimeStateFilters;
 
     protected string $view = 'filament.widgets.prospect-chart-agency-style';
 
     protected string $color = 'gray';
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
     protected ?string $pollingInterval = null;
 
-    protected ?string $heading = 'Top 10 colaboradores por prospectos registrados';
+    protected ?string $heading = 'Prospectos registrados por colaborador';
 
-    protected ?string $maxHeight = '320px';
+    protected ?string $description = 'Prospectos registrados agrupados por colaborador (creador del registro).';
+
+    protected ?string $maxHeight = '400px';
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->bootProspectChartFilters();
+    }
 
     protected function getData(): array
     {
-        $topColaboradores = ProspectAgent::query()
-            ->select([
-                'created_by as label',
-                DB::raw('COUNT(*) as total'),
-            ])
-            ->whereNotNull('created_by')
-            ->where('created_by', '!=', '')
-            ->groupBy('created_by')
-            ->orderByDesc('total')
-            ->limit(10)
-            ->get();
+        $year = $this->resolvedChartYear();
+        $month = $this->resolvedChartMonth();
 
-        $labels = $topColaboradores->pluck('label')->map(fn (?string $name): string => $name ?? 'Sin nombre')->toArray();
-        $values = $topColaboradores->pluck('total')->map(fn (mixed $v): int => (int) $v)->toArray();
-
-        $colors = $this->glassBarColorsForValues($values);
+        $ordered = ProspectCollaboratorLabels::prospectCountsOrdered($year, $month);
+        $labels = $ordered['labels'];
+        $prospectCounts = $ordered['counts'];
+        $n = count($labels);
+        $blueFill = 'rgba(10, 132, 255, 0.88)';
+        $stroke = 'rgba(255, 255, 255, 0.82)';
 
         return [
             'datasets' => [
                 [
                     'label' => 'Prospectos registrados',
-                    'data' => $values,
-                    'backgroundColor' => $colors['fills'],
-                    'borderColor' => $colors['strokes'],
+                    'data' => $prospectCounts,
+                    'backgroundColor' => array_fill(0, $n, $blueFill),
+                    'borderColor' => array_fill(0, $n, $stroke),
                     'borderWidth' => 1.25,
                     'borderRadius' => 8,
                     'borderSkipped' => false,
-                    'hoverBackgroundColor' => $colors['hovers'],
+                    'hoverBackgroundColor' => array_fill(0, $n, $this->brighterGlassFill($blueFill)),
                 ],
             ],
             'labels' => $labels,
@@ -63,7 +65,18 @@ class TopRegisterProspect extends ChartWidget
 
     protected function getOptions(): array
     {
-        return $this->agencyStyleVerticalBarChartOptions();
+        return array_replace_recursive($this->agencyStyleVerticalBarChartOptions(), [
+            'scales' => [
+                'x' => [
+                    'ticks' => [
+                        'color' => '#000000',
+                        'font' => [
+                            'size' => 13,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
     }
 
     protected function getType(): string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
+use App\Filament\Business\Resources\ProspectAgents\Concerns\HasProspectResourceChartTimeStateFilters;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\Concerns\AgencyLikeBarChartStyling;
 use App\Models\ProspectAgent;
 use Filament\Widgets\ChartWidget;
@@ -11,12 +12,13 @@ use Filament\Widgets\ChartWidget;
 class ReferenceProspect extends ChartWidget
 {
     use AgencyLikeBarChartStyling;
+    use HasProspectResourceChartTimeStateFilters;
 
     protected string $view = 'filament.widgets.prospect-chart-agency-style';
 
     protected string $color = 'gray';
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
     protected ?string $pollingInterval = null;
 
@@ -24,7 +26,13 @@ class ReferenceProspect extends ChartWidget
 
     protected ?string $description = 'Total de prospectos registrados por canal de referencia.';
 
-    protected ?string $maxHeight = '320px';
+    protected ?string $maxHeight = '400px';
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->bootProspectChartFilters();
+    }
 
     private const REFERENCE_LABELS = [
         'directiva-TDG' => 'Directiva TDG',
@@ -42,8 +50,13 @@ class ReferenceProspect extends ChartWidget
 
     protected function getData(): array
     {
+        $year = $this->resolvedChartYear();
+        $month = $this->resolvedChartMonth();
+
         $distribution = ProspectAgent::query()
             ->selectRaw('reference_by, COUNT(*) as total')
+            ->whereYear('created_at', $year)
+            ->when($month, fn ($q) => $q->whereMonth('created_at', $month))
             ->groupBy('reference_by')
             ->orderByDesc('total')
             ->pluck('total', 'reference_by')
@@ -77,6 +90,17 @@ class ReferenceProspect extends ChartWidget
 
     protected function getOptions(): array
     {
-        return $this->agencyStyleVerticalBarChartOptions();
+        return array_replace_recursive($this->agencyStyleVerticalBarChartOptions(), [
+            'scales' => [
+                'x' => [
+                    'ticks' => [
+                        'color' => '#000000',
+                        'font' => [
+                            'size' => 13,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
     }
 }

@@ -12,11 +12,13 @@ use Flowframe\Trend\TrendValue;
 
 class TotalIndividualQuoteChart extends ChartWidget
 {
+    protected string $view = 'filament.widgets.total-individual-quote-chart';
+
     protected ?string $heading = 'RESUMEN DE COTIZACIONES INDIVIDUALES';
 
     protected ?string $description = 'Visualización mensual de cotizaciones con desglose por días del mes. Haz clic en las barras para observar el detalle de las cotizaciones por dia de acuerdo al mes seleccionado.';
 
-    protected ?string $maxHeight = '300px';
+    protected ?string $maxHeight = '440px';
 
     /**
      * Estado para controlar los filtros.
@@ -148,6 +150,8 @@ class TotalIndividualQuoteChart extends ChartWidget
     {
         return RawJs::make(<<<'JS'
         {
+            responsive: true,
+            maintainAspectRatio: false,
             onClick: (event, elements, chart) => {
                 if (elements && elements.length > 0) {
                     const activeElement = elements[0];

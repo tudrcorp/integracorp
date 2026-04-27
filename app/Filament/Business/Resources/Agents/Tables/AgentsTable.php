@@ -1239,17 +1239,15 @@ class AgentsTable
             return 'Activo';
         }
 
-        // 🔴 Inactivo: > 91 días sin interacción.
-        if ($daysInteraction === null || $daysInteraction >= 91) {
+        // 🔴 Inactivo: > 91 días sin producción (ventas) y sin interacción.
+        $interactionIsStale = $daysInteraction === null || $daysInteraction >= 91;
+        $saleIsStale = $daysSale === null || $daysSale >= 91;
+        if ($interactionIsStale && $saleIsStale) {
             return 'Inactivo';
         }
 
-        // 🟡 En Riesgo: sin ventas entre 45 y 90 días (si existe historial de ventas).
-        if ($daysSale !== null && $daysSale >= 45 && $daysSale <= 90) {
-            return 'En Riesgo';
-        }
-
-        // Fallback: si no está activo y aún no es inactivo, lo consideramos en riesgo operativo.
+        // 🟡 En Riesgo: sin ventas registradas entre 31 y 90 días.
+        // Si no está activo y no cumple inactividad, lo consideramos en riesgo.
         return 'En Riesgo';
     }
 

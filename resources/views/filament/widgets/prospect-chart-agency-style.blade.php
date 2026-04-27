@@ -17,25 +17,31 @@
         :heading="$heading"
         :collapsible="$isCollapsible"
     >
-        @if ($filters || method_exists($this, 'getFiltersSchema'))
+        @if ($filters || method_exists($this, 'getFiltersSchema') || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
             <x-slot name="afterHeader">
-                @if ($filters)
-                    <x-filament::input.wrapper
-                        inline-prefix
-                        wire:target="filter"
-                        class="fi-wi-chart-filter"
-                    >
-                        <x-filament::input.select
-                            inline-prefix
-                            wire:model.live="filter"
-                        >
-                            @foreach ($filters as $value => $label)
-                                <option value="{{ $value }}">
-                                    {{ $label }}
-                                </option>
-                            @endforeach
-                        </x-filament::input.select>
-                    </x-filament::input.wrapper>
+                @if ($filters || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($filters)
+                            <x-filament::input.wrapper
+                                inline-prefix
+                                wire:target="filter"
+                                class="fi-wi-chart-filter"
+                            >
+                                <x-filament::input.select
+                                    inline-prefix
+                                    wire:model.live="filter"
+                                >
+                                    @foreach ($filters as $value => $label)
+                                        <option value="{{ $value }}">
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                        @endif
+
+                        @include('filament.widgets.partials.chart-agency-time-filters')
+                    </div>
                 @endif
 
                 @if (method_exists($this, 'getFiltersSchema'))
@@ -76,7 +82,7 @@
                 x-load
                 x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
                 wire:ignore
-                wire:key="prospect-agency-style-chart"
+                wire:key="prospect-agency-style-chart-{{ $this->chartYear ?? '' }}-{{ $this->chartMonth ?? '' }}"
                 data-chart-type="{{ $type }}"
                 x-data="chart({
                             cachedData: @js($this->getCachedData()),

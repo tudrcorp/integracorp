@@ -14,8 +14,7 @@ use App\Models\Agent;
 use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
-use App\Support\HelpdeskObservationHtmlRenderer;
-use App\Support\SecurityAudit;
+use App\Support\AgencyActivity\AgencyActivityQuery;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -51,16 +50,44 @@ class AgenciesTable
         return $table
             ->query(function (Builder $query) {
                 if (Auth::user()->is_accountManagers) {
-                    return Agency::query()->where('ownerAccountManagers', Auth::user()->id);
+                    return AgencyActivityQuery::applyToAgenciesQuery(
+                        Agency::query()->where('ownerAccountManagers', Auth::user()->id)
+                    );
                 }
 
-                return Agency::query();
+                return AgencyActivityQuery::applyToAgenciesQuery(Agency::query());
             })
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('last_interaction_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
             ->heading('Agencias')
             ->description('Listado de agencias registradas en el sistema. Todas las columnas están visibles por defecto; puedes reorganizarlas desde el selector de columnas.')
             ->columns([
+                TextColumn::make('last_interaction_at')
+                    ->label('Días de inactividad')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn (Agency $record): string => self::trafficLightColor($record))
+                    ->state(function (Agency $record): string {
+                        $days = self::daysSinceLastInteraction($record);
+
+                        return $days === null ? '—' : (string) $days.' dias';
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('last_interaction_at', $direction);
+                    }),
+                TextColumn::make('technical_status')
+                    ->label('Estatus técnico')
+                    ->alignCenter()
+                    ->badge()
+                    ->icon(fn (Agency $record): string => self::trafficLightIcon($record))
+                    ->color(fn (Agency $record): string => self::trafficLightColor($record))
+                    ->state(fn (Agency $record): string => self::trafficLightLabel($record)),
+                TextColumn::make('technical_action')
+                    ->label('Acción')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn (Agency $record): string => self::trafficLightLabel($record) === 'Inactivo' ? 'danger' : 'gray')
+                    ->state(fn (Agency $record): string => self::trafficLightLabel($record) === 'Inactivo' ? 'ALERTA GERENCIA' : 'No requiere acción'),
                 TextColumn::make('owner_code')
                     ->label('Pertenece a')
                     ->badge()
@@ -786,123 +813,69 @@ class AgenciesTable
             ->striped();
     }
 
-    /**
-     * @return array{events: list<array<string, mixed>>, total: int, loaded: int, limited: bool, max_id: int}
-     */
-    private static function agencyNoteTimelinePayload(int $agencyId): array
+    private static function daysSinceLastInteraction(Agency $record): ?int
     {
-        $limit = 100;
-        $base = AgencyNoteBlog::query()->where('agency_id', $agencyId);
-        $total = (clone $base)->count();
-        $maxId = (int) ((clone $base)->max('id') ?? 0);
-        $notes = (clone $base)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->limit($limit)
-            ->get()
-            ->sortBy(function (AgencyNoteBlog $n): float {
-                $ts = $n->created_at?->getTimestamp() ?? 0;
-
-                return (float) $ts + ($n->id / 1_000_000);
-            })
-            ->values();
-
-        $tz = (string) config('app.timezone');
-        $events = [];
-        foreach ($notes as $index => $n) {
-            $at = $n->created_at?->timezone($tz);
-            $noteText = (string) ($n->note ?? '');
-            $events[] = [
-                'side' => $index % 2 === 0 ? 'left' : 'right',
-                'type' => 'note',
-                'title' => 'Nota interna de la agencia',
-                'summary' => Str::limit(trim(str_replace(["\r\n", "\r", "\n"], ' ', strip_tags($noteText))), 160, '…'),
-                'display_name' => $n->created_by ?? '—',
-                'actor' => $n->created_by,
-                'initials' => self::initialsForAgencyNoteAuthor($n->created_by),
-                'avatar_url' => null,
-                'datetime_full' => $at
-                    ? $at->format('d/m/Y \a \l\a\s H:i').' ('.$tz.')'
-                    : '—',
-                'relative' => $at?->diffForHumans() ?? '—',
-                'body_html' => HelpdeskObservationHtmlRenderer::render($noteText),
-            ];
+        $raw = $record->last_interaction_at ?? null;
+        if ($raw === null) {
+            return null;
         }
 
-        return [
-            'events' => $events,
-            'total' => $total,
-            'loaded' => $notes->count(),
-            'limited' => $total > $notes->count(),
-            'max_id' => $maxId,
-        ];
-    }
-
-    private static function initialsForAgencyNoteAuthor(?string $name): string
-    {
-        $name = trim((string) $name);
-        if ($name === '') {
-            return '?';
-        }
-
-        $parts = preg_split('/\s+/u', $name) ?: [];
-        $parts = array_values(array_filter($parts, fn (string $p): bool => $p !== ''));
-        if (count($parts) >= 2) {
-            return Str::upper(Str::substr($parts[0], 0, 1).Str::substr($parts[1], 0, 1));
-        }
-
-        return Str::upper(Str::substr($name, 0, min(2, Str::length($name))));
-    }
-
-    private static function agencyNoteBlogsTableExists(): bool
-    {
         try {
-            return Schema::hasTable((new AgencyNoteBlog)->getTable());
+            return Carbon::parse($raw)->diffInDays(now());
         } catch (\Throwable) {
-            return false;
+            return null;
         }
     }
 
-    private static function makeAgencyCommandCenterAction(): Action
+    private static function daysSinceLastSale(Agency $record): ?int
     {
-        return Action::make('agencyCommandCenter')
-            ->label('Centro de acciones')
-            ->icon('heroicon-m-squares-2x2')
-            ->slideOver()
-            ->formWrapper(false)
-            ->modalWidth(Width::FiveExtraLarge)
-            ->extraModalWindowAttributes([
-                'class' => 'fi-agency-command-center-window',
-            ])
-            ->modalHeading(fn (Agency $record): string => 'Gestión rápida · '.$record->name_corporative)
-            ->modalDescription(fn (Agency $record): string => 'Código '.$record->code.' · Datos de la agencia y notas internas.')
-            ->modalContent(function (Agency $record) {
-                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_COMMAND_CENTER_OPENED', 'business.agencies.command-center.open', [
-                    'agency_id' => $record->id,
-                    'agency_code' => $record->code,
-                    'agency_name' => $record->name_corporative,
-                ]);
+        $raw = $record->last_sale_at ?? null;
+        if ($raw === null) {
+            return null;
+        }
 
-                $record->loadMissing(['typeAgency']);
+        try {
+            return Carbon::parse($raw)->diffInDays(now());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 
-                $noteTimeline = self::agencyNoteBlogsTableExists()
-                    ? self::agencyNoteTimelinePayload($record->id)
-                    : null;
+    private static function trafficLightLabel(Agency $record): string
+    {
+        $daysInteraction = self::daysSinceLastInteraction($record);
+        $daysSale = self::daysSinceLastSale($record);
 
-                return view('filament.business.agencies.agency-command-center', [
-                    'record' => $record,
-                    'noteTimeline' => $noteTimeline,
-                    'canAddObservation' => self::agencyNoteBlogsTableExists(),
-                ]);
-            })
-            ->modalSubmitAction(false)
-            ->modalCancelAction(
-                fn (Action $action): Action => $action
-                    ->label('Cerrar')
-                    ->extraAttributes([
-                        'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
-                    ]),
-            )
-            ->action(fn (): null => null);
+        if ($daysInteraction !== null && $daysInteraction <= 30) {
+            return 'Activo';
+        }
+
+        $interactionIsStale = $daysInteraction === null || $daysInteraction >= 91;
+        $saleIsStale = $daysSale === null || $daysSale >= 91;
+        if ($interactionIsStale && $saleIsStale) {
+            return 'Inactivo';
+        }
+
+        return 'En Riesgo';
+    }
+
+    private static function trafficLightColor(Agency $record): string
+    {
+        return match (self::trafficLightLabel($record)) {
+            'Activo' => 'success',
+            'En Riesgo' => 'warning',
+            'Inactivo' => 'danger',
+            default => 'gray',
+        };
+    }
+
+    private static function trafficLightIcon(Agency $record): string
+    {
+        return match (self::trafficLightLabel($record)) {
+            'Activo' => 'heroicon-m-check-circle',
+            'En Riesgo' => 'heroicon-m-exclamation-triangle',
+            'Inactivo' => 'heroicon-m-x-circle',
+            default => 'heroicon-m-minus-circle',
+        };
     }
 }
