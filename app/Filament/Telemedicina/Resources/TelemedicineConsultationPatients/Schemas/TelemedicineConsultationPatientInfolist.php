@@ -4,6 +4,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\S
 
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
@@ -66,24 +67,8 @@ class TelemedicineConsultationPatientInfolist
                                 TextEntry::make('telemedicinePriority.name')
                                     ->label('Prioridad')
                                     ->badge()
-                                    ->color(function (string $state): string {
-                                        return match ($state) {
-                                            'NO URGENTE' => 'NO URGENTE',
-                                            'ESTANDAR' => 'ESTANDAR',
-                                            'URGENCIA' => 'URGENCIA',
-                                            'EMERGENCIA' => 'EMERGENCIA',
-                                            'CRITICO' => 'CRITICO',
-                                        };
-                                    })
-                                    ->icon(function (string $state): string {
-                                        return match ($state) {
-                                            'NO URGENTE' => 'healthicons-f-health',
-                                            'ESTANDAR' => 'healthicons-f-health',
-                                            'URGENCIA' => 'healthicons-f-health',
-                                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
-                                            'CRITICO' => 'heroicon-c-shield-exclamation',
-                                        };
-                                    }),
+                                    ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
+                                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state)),
                                 TextEntry::make('updated_at')
                                     ->label('Ultima Actualización')
                                     ->default(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans()),

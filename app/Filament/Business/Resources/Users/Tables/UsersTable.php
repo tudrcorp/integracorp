@@ -8,8 +8,6 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\IconColumn;
@@ -37,14 +35,14 @@ class UsersTable
                         $record->save();
                     }),
                 TextInputColumn::make('phone')
-                        ->label('Telefono')
-                        ->searchable()
-                        ->afterStateUpdated(function ($record, $state) {
-                            // Runs after the state is saved to the database.
-                            Log::info("Usuario: ID {$record->id} phone changed to: {$state}");
-                            $record->updated_by = Auth::user()->name;
-                            $record->save();
-                        }),
+                    ->label('Telefono')
+                    ->searchable()
+                    ->afterStateUpdated(function ($record, $state) {
+                        // Runs after the state is saved to the database.
+                        Log::info("Usuario: ID {$record->id} phone changed to: {$state}");
+                        $record->updated_by = Auth::user()->name;
+                        $record->save();
+                    }),
                 TextInputColumn::make('birth_date')
                     ->label('Fecha de Nacimiento')
                     ->searchable()
@@ -63,10 +61,10 @@ class UsersTable
                         $record->updated_by = Auth::user()->name;
                         $record->save();
                     }),
-                    
+
                 TextColumn::make('code_agency')
                     ->label('UID Agencia')
-                    ->default(fn($record) => $record->code_agency == null ? '-----' : $record->code_agency)
+                    ->default(fn ($record) => $record->code_agency == null ? '-----' : $record->code_agency)
                     ->badge()
                     ->color('primary')
                     ->searchable(),
@@ -77,7 +75,7 @@ class UsersTable
                     ->searchable(),
                 TextColumn::make('code_agent')
                     ->label('UID Agente')
-                    ->default(fn($record) => $record->code_agent == null ? '-----' : $record->code_agent)
+                    ->default(fn ($record) => $record->code_agent == null ? '-----' : $record->code_agent)
                     ->searchable(),
                 TextColumn::make('departament')
                     ->label('Departamento')
@@ -94,11 +92,9 @@ class UsersTable
                     ->sortable(),
                 TextColumn::make('doctor_id')
                     ->label('ID Doctor')
-                    ->default(fn($record) => $record->code_agent == null ? 'N/A' : $record->code_agent)
+                    ->default(fn ($record) => $record->code_agent == null ? 'N/A' : $record->code_agent)
                     ->numeric()
                     ->sortable(),
-                
-
                 ColumnGroup::make('Roles de Usuario')
                     ->columns([
                         // ...
@@ -114,7 +110,7 @@ class UsersTable
                         IconColumn::make('is_subagent')
                             ->label('Subagente')
                             ->boolean(),
-                        
+
                         IconColumn::make('is_doctor')
                             ->label('Doctor')
                             ->boolean(),
@@ -133,7 +129,7 @@ class UsersTable
                     ])
                     ->alignCenter()
                     ->wrapHeader(),
-                
+
             ])
             ->filters([
                 //

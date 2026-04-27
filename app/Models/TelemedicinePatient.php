@@ -38,6 +38,7 @@ class TelemedicinePatient extends Model
         'business_unit_id',
         'business_line_id',
         'name_corporate',
+        'managed_by',
     ];
 
     public function businessLine()

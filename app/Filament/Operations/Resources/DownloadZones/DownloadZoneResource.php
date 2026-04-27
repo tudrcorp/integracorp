@@ -8,9 +8,12 @@ use App\Filament\Operations\Resources\DownloadZones\Pages\ListDownloadZones;
 use App\Filament\Operations\Resources\DownloadZones\Schemas\DownloadZoneForm;
 use App\Filament\Operations\Resources\DownloadZones\Tables\DownloadZonesTable;
 use App\Models\DownloadZone;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class DownloadZoneResource extends Resource
@@ -46,4 +49,23 @@ class DownloadZoneResource extends Resource
             'edit' => EditDownloadZone::route('/{record}/edit'),
         ];
     }
+
+    // public static function canAccess(): bool
+    // {
+    //     $module = 'OPERACIONES';
+    //     $permission = Permission::where('module', $module)->where('slug', 'documentos-descarga')->first();
+
+    //     // si es superadmin, retornar true
+    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
+    //         return true;
+    //     }
+
+    //     if (in_array($module, Auth::user()->departament)) {
+    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+    //             return true;
+    //         }
+    //     }
+
+    //     return false;
+    // }
 }

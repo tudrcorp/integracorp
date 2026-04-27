@@ -14,6 +14,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,13 @@ class TelemedicineDoctorsTable
             ->defaultSort('full_name', 'asc')
             ->heading('Directorio médico')
             ->description('Datos de contacto, identificación profesional y especialidad. Use «Editar» para actualizar ficha o firma.')
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
+                    $query->where('managed_by', 'ATENMEDI');
+                }
+
+                return $query;
+            })
             ->columns([
                 ImageColumn::make('image')
                     ->label('')
@@ -43,6 +51,13 @@ class TelemedicineDoctorsTable
                     ->sortable()
                     ->description(fn (TelemedicineDoctor $record): string => $record->email ?? '')
                     ->wrap(),
+                TextColumn::make('managed_by')
+                    ->label('Pertenece a')
+                    ->icon('heroicon-o-building-office-2')
+                    ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('nro_identificacion')
                     ->label('Identificación')
                     ->icon('heroicon-o-identification')

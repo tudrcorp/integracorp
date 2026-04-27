@@ -7,12 +7,14 @@ use App\Filament\Operations\Resources\TelemedicineDoctors\Pages\EditTelemedicine
 use App\Filament\Operations\Resources\TelemedicineDoctors\Pages\ListTelemedicineDoctors;
 use App\Filament\Operations\Resources\TelemedicineDoctors\Schemas\TelemedicineDoctorForm;
 use App\Filament\Operations\Resources\TelemedicineDoctors\Tables\TelemedicineDoctorsTable;
+use App\Models\Permission;
 use App\Models\TelemedicineDoctor;
+use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class TelemedicineDoctorResource extends Resource
@@ -21,7 +23,7 @@ class TelemedicineDoctorResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-doctor';
 
-    protected static string | UnitEnum | null $navigationGroup = 'TELEMEDICINA';
+    protected static string|UnitEnum|null $navigationGroup = 'TELEMEDICINA';
 
     protected static ?string $navigationLabel = 'Doctores';
 
@@ -52,4 +54,23 @@ class TelemedicineDoctorResource extends Resource
             'edit' => EditTelemedicineDoctor::route('/{record}/edit'),
         ];
     }
+
+    // public static function canAccess(): bool
+    // {
+    //     $module = 'OPERACIONES';
+    //     $permission = Permission::where('module', $module)->where('slug', 'doctores-telemedicina')->first();
+
+    //     // si es superadmin, retornar true
+    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
+    //         return true;
+    //     }
+
+    //     if (in_array($module, Auth::user()->departament)) {
+    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+    //             return true;
+    //         }
+    //     }
+
+    //     return false;
+    // }
 }

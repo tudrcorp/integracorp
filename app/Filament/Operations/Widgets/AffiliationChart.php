@@ -30,6 +30,11 @@ class AffiliationChart extends ChartWidget
 
     public ?int $selectedMonth = null;
 
+    public static function canView(): bool
+    {
+        return true;
+    }
+
     public function __construct()
     {
         $this->filter = (string) now()->year;

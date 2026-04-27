@@ -10,12 +10,14 @@ use App\Filament\Operations\Resources\Affiliates\Schemas\AffiliateForm;
 use App\Filament\Operations\Resources\Affiliates\Schemas\AffiliateInfolist;
 use App\Filament\Operations\Resources\Affiliates\Tables\AffiliatesTable;
 use App\Models\Affiliate;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class AffiliateResource extends Resource
@@ -26,7 +28,7 @@ class AffiliateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user';
 
-    protected static string | UnitEnum | null $navigationGroup = 'AFILIADOS';
+    protected static string|UnitEnum|null $navigationGroup = 'AFILIADOS';
 
     protected static ?int $navigationSort = 1;
 
@@ -82,4 +84,23 @@ class AffiliateResource extends Resource
             'edit' => EditAffiliate::route('/{record}/edit'),
         ];
     }
+
+    // public static function canAccess(): bool
+    // {
+    //     $module = 'OPERACIONES';
+    //     $permission = Permission::where('module', $module)->where('slug', 'afiliados-individuales')->first();
+
+    //     // si es superadmin, retornar true
+    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
+    //         return true;
+    //     }
+
+    //     if (in_array($module, Auth::user()->departament)) {
+    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+    //             return true;
+    //         }
+    //     }
+
+    //     return false;
+    // }
 }

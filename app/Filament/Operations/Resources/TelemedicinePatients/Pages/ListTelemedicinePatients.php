@@ -10,12 +10,14 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class ListTelemedicinePatients extends ListRecords
 {
@@ -29,7 +31,7 @@ class ListTelemedicinePatients extends ListRecords
 
     protected static string $resource = TelemedicinePatientResource::class;
 
-    protected static ?string $title = 'Pacientes';
+    protected static ?string $title = 'Lista de Pacientes';
 
     protected function getHeaderActions(): array
     {
@@ -40,7 +42,8 @@ class ListTelemedicinePatients extends ListRecords
                 ->color('success')
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_CLASS,
-                ]),
+                ])
+                ->hidden(fn () => in_array('ATENMEDI', Auth::user()?->departament ?? [], true)),
             Action::make('asociate_affiliate')
                 ->label('Asociar Afiliado')
                 ->color('success')
@@ -151,26 +154,22 @@ class ListTelemedicinePatients extends ListRecords
                                 ]),
                         ])->columnSpanFull(),
                 ])
-                ->action(function (array $data) {
-
+                ->action(function (array $data): void {
                     if ($data['type_affiliate'] == 'inv') {
-
                         $affiliation = Affiliate::where('id', $data['affiliate_id'])
                             ->with('affiliation')
                             ->get()
                             ->toArray();
 
-                        $patient = TelemedicinePatient::create([
+                        $emailTitular = Str::lower(trim((string) ($affiliation[0]['affiliation']['email_ti'] ?? '')));
 
-                            // Informacion de la Afiliacion
+                        $attributes = [
                             'plan_id' => $affiliation[0]['affiliation']['plan_id'],
                             'coverage_id' => $affiliation[0]['affiliation']['coverage_id'],
                             'afilliation_id' => $affiliation[0]['affiliation']['id'],
                             'code_affiliation' => $affiliation[0]['affiliation']['code'],
                             'status_affiliation' => 'ACTIVO',
                             'type_affiliation' => 'INDIVIDUAL',
-
-                            // Informacion del Afiliado -> Paciente
                             'full_name' => $affiliation[0]['full_name'],
                             'nro_identificacion' => $affiliation[0]['nro_identificacion'],
                             'birth_date' => $affiliation[0]['birth_date'],
@@ -182,26 +181,37 @@ class ListTelemedicinePatients extends ListRecords
                             'country_id' => $affiliation[0]['country_id'],
                             'region' => $affiliation[0]['region'],
                             'state_id' => $affiliation[0]['state_id'],
-
-                            // Informacion del titular
-                            'email' => $affiliation[0]['affiliation']['email_ti'],
-                            'phone_contact' => $affiliation[0]['affiliation']['email_ti'],
-                            'email_contact' => $affiliation[0]['affiliation']['phone_ti'],
+                            'email' => $emailTitular !== '' ? $emailTitular : ($affiliation[0]['affiliation']['email_ti'] ?? null),
+                            'phone_contact' => $affiliation[0]['affiliation']['phone_ti'] ?? null,
+                            'email_contact' => filled($affiliation[0]['affiliation']['email_payer'] ?? null)
+                                ? Str::lower(trim((string) $affiliation[0]['affiliation']['email_payer']))
+                                : null,
                             'created_by' => Auth::user()->name,
-
-                            // Unidad de Negocios
                             'business_unit_id' => $affiliation[0]['affiliation']['business_unit_id'] == null ? '----' : $affiliation[0]['affiliation']['business_unit_id'],
                             'business_line_id' => $affiliation[0]['affiliation']['business_line_id'] == null ? '----' : $affiliation[0]['affiliation']['business_line_id'],
-                        ]);
+                        ];
+
+                        $patient = $emailTitular !== ''
+                            ? TelemedicinePatient::updateOrCreate(['email' => $emailTitular], $attributes)
+                            : TelemedicinePatient::create($attributes);
+
+                        Notification::make()
+                            ->title($patient->wasRecentlyCreated ? 'Paciente registrado' : 'Paciente actualizado')
+                            ->body(
+                                $patient->wasRecentlyCreated
+                                    ? 'El afiliado se asoció como paciente de telemedicina.'
+                                    : 'Ya existía un paciente con ese correo; se actualizaron los datos con la afiliación seleccionada.'
+                            )
+                            ->success()
+                            ->send();
                     }
 
                     if ($data['type_affiliate'] == 'cor') {
-
                         $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->get()->toArray();
 
-                        $patient = TelemedicinePatient::create([
+                        $emailKey = Str::lower(trim((string) ($affiliation[0]['email'] ?? '')));
 
-                            // Informacion de la Afiliacion
+                        $attributes = [
                             'name_corporate' => $affiliation[0]['affiliation_corporate']['name_corporate'],
                             'plan_id' => $affiliation[0]['plan_id'],
                             'coverage_id' => $affiliation[0]['coverage_id'],
@@ -209,8 +219,6 @@ class ListTelemedicinePatients extends ListRecords
                             'code_affiliation' => $affiliation[0]['affiliation_corporate']['code'],
                             'status_affiliation' => 'ACTIVO',
                             'type_affiliation' => 'CORPORATIVO',
-
-                            // Informacion del Afiliado -> Paciente
                             'full_name' => $affiliation[0]['first_name'],
                             'nro_identificacion' => $affiliation[0]['nro_identificacion'],
                             'birth_date' => $affiliation[0]['birth_date'],
@@ -222,19 +230,30 @@ class ListTelemedicinePatients extends ListRecords
                             'country_id' => $affiliation[0]['affiliation_corporate']['country_id'],
                             'region' => $affiliation[0]['affiliation_corporate']['region_id'],
                             'state_id' => $affiliation[0]['affiliation_corporate']['state_id'],
-
-                            // Informacion del titular
-                            'email' => $affiliation[0]['email'],
+                            'email' => $emailKey !== '' ? $emailKey : ($affiliation[0]['email'] ?? null),
                             'phone_contact' => $affiliation[0]['affiliation_corporate']['phone'],
                             'email_contact' => $affiliation[0]['affiliation_corporate']['email'],
                             'created_by' => Auth::user()->name,
-
-                            // Unidad de Negocios
                             'business_unit_id' => $affiliation[0]['affiliation_corporate']['business_unit_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_unit_id'],
                             'business_line_id' => $affiliation[0]['affiliation_corporate']['business_line_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_line_id'],
-                        ]);
+                        ];
+
+                        $patient = $emailKey !== ''
+                            ? TelemedicinePatient::updateOrCreate(['email' => $emailKey], $attributes)
+                            : TelemedicinePatient::create($attributes);
+
+                        Notification::make()
+                            ->title($patient->wasRecentlyCreated ? 'Paciente registrado' : 'Paciente actualizado')
+                            ->body(
+                                $patient->wasRecentlyCreated
+                                    ? 'El afiliado corporativo se asoció como paciente de telemedicina.'
+                                    : 'Ya existía un paciente con ese correo; se actualizaron los datos con la afiliación seleccionada.'
+                            )
+                            ->success()
+                            ->send();
                     }
-                }),
+                })
+                ->hidden(fn () => in_array('ATENMEDI', Auth::user()?->departament ?? [], true)),
         ];
     }
 }

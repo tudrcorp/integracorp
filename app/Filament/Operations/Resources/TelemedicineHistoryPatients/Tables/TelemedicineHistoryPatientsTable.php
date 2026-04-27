@@ -27,6 +27,13 @@ class TelemedicineHistoryPatientsTable
             ->defaultSort('created_at', 'desc')
             ->heading('Historias clínicas')
             ->description('Resumen por registro: código, fechas y médico/paciente. Use «Ver» para el detalle completo o los filtros para acotar la lista.')
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
+                    $query->whereHas('telemedicinePatient', fn (Builder $q): Builder => $q->where('managed_by', 'ATENMEDI'));
+                }
+
+                return $query;
+            })
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')

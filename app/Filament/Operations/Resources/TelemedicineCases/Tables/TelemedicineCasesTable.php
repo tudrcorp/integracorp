@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\TelemedicineCases\Tables;
 
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
+use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -12,7 +13,9 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class TelemedicineCasesTable
 {
@@ -24,10 +27,24 @@ class TelemedicineCasesTable
                     ->where('status', '!=', 'ALTA MEDICA')
                     ->orderBy('created_at', 'desc')
             )
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
+                    $query->where('managed_by', 'ATENMEDI');
+                }
+
+                return $query;
+            })
             ->heading('Casos de Telemedicina')
             ->description('Listado de casos de Telemedicina, desde aqui puedes ver el detalle del caso registrar y seguimientos')
             ->defaultSort('created_at', 'desc')
             ->columns([
+                TextColumn::make('managed_by')
+                    ->label('Pertenece a')
+                    ->icon('heroicon-o-building-office-2')
+                    ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('code')
                     ->label('Numero de Caso')
                     ->badge()
@@ -73,24 +90,8 @@ class TelemedicineCasesTable
                 TextColumn::make('priority.name')
                     ->label('Prioridad')
                     ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'no-urgente',
-                            'ESTANDAR' => 'estandar',
-                            'URGENCIA' => 'urgencia',
-                            'EMERGENCIA' => 'emergencia',
-                            'CRITICO' => 'critico',
-                        };
-                    })
-                    ->icon(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'healthicons-f-health',
-                            'ESTANDAR' => 'healthicons-f-health',
-                            'URGENCIA' => 'healthicons-f-health',
-                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
-                            'CRITICO' => 'heroicon-c-shield-exclamation',
-                        };
-                    })
+                    ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
+                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Fecha de Registro')
@@ -105,19 +106,7 @@ class TelemedicineCasesTable
                     ->description(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
             ])
-            ->recordClasses(function ($record): array {
-                $name = $record->priority?->name;
-                $classes = match ($name) {
-                    'NO URGENTE' => 'bg-[#005ca9]/10 dark:bg-[#005ca9]/20 border-l-4 border-[#005ca9]',
-                    'ESTANDAR' => 'bg-[#02976d]/10 dark:bg-[#02976d]/20 border-l-4 border-[#02976d]',
-                    'URGENCIA' => 'bg-[#eab527]/10 dark:bg-[#eab527]/20 border-l-4 border-[#eab527]',
-                    'EMERGENCIA' => 'bg-[#f17f29]/10 dark:bg-[#f17f29]/20 border-l-4 border-[#f17f29]',
-                    'CRITICO' => 'bg-[#e4003b]/10 dark:bg-[#e4003b]/20 border-l-4 border-[#e4003b]',
-                    default => 'border-l-4 border-gray-200 dark:border-gray-700',
-                };
-
-                return [$classes];
-            })
+            ->recordClasses(fn ($record): array => [TelemedicinePriorityFilamentBadge::recordRowClasses($record->priority?->name)])
             ->filters([
                 //
             ])
