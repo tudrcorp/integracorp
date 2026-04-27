@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Tables
 use App\Models\OperationTypeNegotiation;
 use App\Models\OperationTypeService;
 use App\Models\Supplier;
+use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
@@ -75,24 +76,8 @@ class OperationCoordinationServicesTable
                 TextColumn::make('telemedicinePriority.name')
                     ->label('Prioridad')
                     ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'no-urgente',
-                            'ESTANDAR' => 'estandar',
-                            'URGENCIA' => 'urgencia',
-                            'EMERGENCIA' => 'emergencia',
-                            'CRITICO' => 'critico',
-                        };
-                    })
-                    ->icon(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'healthicons-f-health',
-                            'ESTANDAR' => 'healthicons-f-health',
-                            'URGENCIA' => 'healthicons-f-health',
-                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
-                            'CRITICO' => 'heroicon-c-shield-exclamation',
-                        };
-                    })
+                    ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
+                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
                     ->searchable(),
                 TextColumn::make('holder')
                     ->label('Titular')
@@ -328,20 +313,7 @@ class OperationCoordinationServicesTable
                     ->datetime('d/m/Y')
                     ->sortable(),
             ])
-            ->recordClasses(function ($record): array {
-                /** Paleta alineada con AppServiceProvider (no-urgente, estandar, urgencia, emergencia, critico) */
-                $name = $record->telemedicinePriority?->name;
-                $classes = match ($name) {
-                    'NO URGENTE' => 'bg-[#005ca9]/10 dark:bg-[#005ca9]/25 border-l-4 border-[#005ca9]',
-                    'ESTANDAR' => 'bg-[#02976d]/10 dark:bg-[#02976d]/25 border-l-4 border-[#02976d]',
-                    'URGENCIA' => 'bg-[#eab527]/10 dark:bg-[#eab527]/25 border-l-4 border-[#eab527]',
-                    'EMERGENCIA' => 'bg-[#f17f29]/10 dark:bg-[#f17f29]/25 border-l-4 border-[#f17f29]',
-                    'CRITICO' => 'bg-[#e4003b]/10 dark:bg-[#e4003b]/25 border-l-4 border-[#e4003b]',
-                    default => 'border-l-4 border-gray-200 bg-gray-50/50 dark:border-gray-600 dark:bg-gray-950/20',
-                };
-
-                return [$classes];
-            })
+            ->recordClasses(fn ($record): array => [TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name)])
             ->filters([
                 //
             ])

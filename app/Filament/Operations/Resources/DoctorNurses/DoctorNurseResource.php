@@ -10,11 +10,14 @@ use App\Filament\Operations\Resources\DoctorNurses\Schemas\DoctorNurseForm;
 use App\Filament\Operations\Resources\DoctorNurses\Schemas\DoctorNurseInfolist;
 use App\Filament\Operations\Resources\DoctorNurses\Tables\DoctorNursesTable;
 use App\Models\DoctorNurse;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class DoctorNurseResource extends Resource
 {
@@ -64,4 +67,23 @@ class DoctorNurseResource extends Resource
             'edit' => EditDoctorNurse::route('/{record}/edit'),
         ];
     }
+
+    // public static function canAccess(): bool
+    // {
+    //     $module = 'OPERACIONES';
+    //     $permission = Permission::where('module', $module)->where('slug', 'proveedores-naturales')->first();
+
+    //     // si es superadmin, retornar true
+    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
+    //         return true;
+    //     }
+
+    //     if (in_array($module, Auth::user()->departament)) {
+    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+    //             return true;
+    //         }
+    //     }
+
+    //     return false;
+    // }
 }

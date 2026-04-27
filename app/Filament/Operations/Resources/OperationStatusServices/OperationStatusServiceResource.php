@@ -10,10 +10,13 @@ use App\Filament\Operations\Resources\OperationStatusServices\Schemas\OperationS
 use App\Filament\Operations\Resources\OperationStatusServices\Schemas\OperationStatusServiceInfolist;
 use App\Filament\Operations\Resources\OperationStatusServices\Tables\OperationStatusServicesTable;
 use App\Models\OperationStatusService;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class OperationStatusServiceResource extends Resource
@@ -57,4 +60,23 @@ class OperationStatusServiceResource extends Resource
             'edit' => EditOperationStatusService::route('/{record}/edit'),
         ];
     }
+
+    // public static function canAccess(): bool
+    // {
+    //     $module = 'OPERACIONES';
+    //     $permission = Permission::where('module', $module)->where('slug', 'estados-de-servicio')->first();
+
+    //     // si es superadmin, retornar true
+    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
+    //         return true;
+    //     }
+
+    //     if (in_array($module, Auth::user()->departament)) {
+    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+    //             return true;
+    //         }
+    //     }
+
+    //     return false;
+    // }
 }

@@ -14,11 +14,14 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\Schemas\Oper
 use App\Filament\Operations\Resources\OperationCoordinationServices\Schemas\OperationCoordinationServiceInfolist;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Models\OperationCoordinationService;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class OperationCoordinationServiceResource extends Resource
@@ -76,4 +79,23 @@ class OperationCoordinationServiceResource extends Resource
             'edit' => EditOperationCoordinationService::route('/{record}/edit'),
         ];
     }
+
+    // public static function canAccess(): bool
+    // {
+    //     $module = 'OPERACIONES';
+    //     $permission = Permission::where('module', $module)->where('slug', 'coordinacion-de-servicios')->first();
+
+    //     // si es superadmin, retornar true
+    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
+    //         return true;
+    //     }
+
+    //     if (in_array($module, Auth::user()->departament)) {
+    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+    //             return true;
+    //         }
+    //     }
+
+    //     return false;
+    // }
 }

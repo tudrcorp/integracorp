@@ -10,10 +10,13 @@ use App\Filament\Operations\Resources\OperationOnCallUsers\Schemas\OperationOnCa
 use App\Filament\Operations\Resources\OperationOnCallUsers\Schemas\OperationOnCallUserInfolist;
 use App\Filament\Operations\Resources\OperationOnCallUsers\Tables\OperationOnCallUsersTable;
 use App\Models\OperationOnCallUser;
+use App\Models\Permission;
+use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class OperationOnCallUserResource extends Resource
@@ -57,4 +60,23 @@ class OperationOnCallUserResource extends Resource
             'edit' => EditOperationOnCallUser::route('/{record}/edit'),
         ];
     }
+
+    // public static function canAccess(): bool
+    // {
+    //     $module = 'OPERACIONES';
+    //     $permission = Permission::where('module', $module)->where('slug', 'roles-de-guardia')->first();
+
+    //     // si es superadmin, retornar true
+    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
+    //         return true;
+    //     }
+
+    //     if (in_array($module, Auth::user()->departament)) {
+    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
+    //             return true;
+    //         }
+    //     }
+
+    //     return false;
+    // }
 }

@@ -21,6 +21,7 @@ class TelemedicineDoctor extends Model
         'signature',
         'code',
         'status',
+        'managed_by',
         'created_by',
         'updated_by',
     ];

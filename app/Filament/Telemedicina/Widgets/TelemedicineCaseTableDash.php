@@ -9,6 +9,7 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -187,7 +188,23 @@ class TelemedicineCaseTableDash extends TableWidget
             ->emptyStateDescription('Cuando te asignen pacientes, aparecerán aquí con el mismo estilo de lista de iOS.')
             ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
             ->recordActionsColumnLabel('')
-            ->query(fn (): Builder => TelemedicineCase::query()->where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', '!=', 'ALTA MEDICA'))
+            ->query(function (): Builder {
+                $user = Auth::user();
+                $departments = $user?->departament;
+                if (! is_array($departments)) {
+                    $departments = [];
+                }
+
+                $query = TelemedicineCase::query()
+                    ->where('telemedicine_doctor_id', $user->doctor_id)
+                    ->where('status', '!=', 'ALTA MEDICA');
+
+                if (in_array('ATENMEDI', $departments, true)) {
+                    $query->where('managed_by', 'ATENMEDI');
+                }
+
+                return $query;
+            })
             ->extraAttributes([
                 'class' => 'telemedicine-case-table-ios',
             ])
@@ -254,25 +271,8 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->label('Prioridad')
                     ->badge()
                     ->extraCellAttributes(['class' => 'py-3'])
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'no-urgente',
-                            'ESTANDAR' => 'estandar',
-                            'URGENCIA' => 'urgencia',
-                            'EMERGENCIA' => 'emergencia',
-                            'CRITICO' => 'critico',
-                        };
-                    })
-                    ->icon(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'healthicons-f-health',
-                            'ESTANDAR' => 'healthicons-f-health',
-                            'URGENCIA' => 'healthicons-f-health',
-                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
-                            'CRITICO' => 'heroicon-c-shield-exclamation',
-
-                        };
-                    })
+                    ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
+                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
                     ->searchable()
                     ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('updated_at')

@@ -11,6 +11,7 @@ use App\Models\State;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicinePatient;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -43,21 +44,43 @@ class TelemedicinePatientsTable
 {
     public static function configure(Table $table): Table
     {
+        // dd(Auth::user()?->departament ?? []);
         return $table
             ->heading('Listado de pacientes')
             ->description('Pacientes afiliados y externos. Use columnas ocultas para ver domicilio y datos de afiliación.')
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'businessUnit',
-                'businessLine',
-                'plan',
-                'coverage',
-                'country',
-                'city',
-                'state',
-                'createdBy',
-            ]))
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $query->with([
+                    'businessUnit',
+                    'businessLine',
+                    'plan',
+                    'coverage',
+                    'country',
+                    'city',
+                    'state',
+                    'createdBy',
+                ]);
+
+                if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
+                    $query->where('managed_by', 'ATENMEDI');
+                }
+
+                return $query;
+            })
             ->columns([
+                TextColumn::make('managed_by')
+                    ->label('Gestionado por')
+                    ->icon('heroicon-o-user')
+                    ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
+                    ->badge()
+                    ->color(fn (?string $state): string => match (mb_strtoupper((string) $state)) {
+                        'ATENMEDI' => 'success',
+                        'TDG' => 'info',
+                        default => 'gray',
+                    })
+                    ->searchable()
+                    ->weight('medium')
+                    ->description(fn (TelemedicinePatient $record): string => $record->managed_by ?? ''),
                 TextColumn::make('full_name')
                     ->label('Paciente')
                     ->icon('heroicon-o-user')
@@ -194,7 +217,7 @@ class TelemedicinePatientsTable
                             ->searchable()
                             ->toggleable(isToggledHiddenByDefault: true),
                     ]),
-                TextColumn::make('createdBy.name')
+                TextColumn::make('created_by')
                     ->label('Asociado por')
                     ->placeholder('—')
                     ->toggleable(),
@@ -236,18 +259,12 @@ class TelemedicinePatientsTable
                     }),
             ])
             ->recordActions([
-                ViewAction::make()
-                    ->label('Ver'),
-                EditAction::make()
-                    ->label('Editar'),
                 ActionGroup::make([
-                    // ...
-                    // Action::make('view_history')
-                    //     ->label('Historia Clínica')
-                    //     ->icon('healthicons-f-cardiogram-e')
-                    //     ->color('info')
-                    //     ->url(fn(TelemedicinePatient $record): string => TelemedicineHistoryPatientResource::getUrl('create', ['record' => $record]),),
-                    // ...
+                    ViewAction::make()
+                        ->label('Ver Detalle'),
+                    EditAction::make()
+                        ->label('Editar')
+                        ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI'),
                     Action::make('asigned_doctor')
                         ->label('Asignar doctor')
                         ->icon('healthicons-f-i-exam-qualification')
@@ -263,7 +280,26 @@ class TelemedicinePatientsTable
                                     Select::make('doctor_id')
                                         ->label('Doctor')
                                         ->required()
-                                        ->options(TelemedicineDoctor::all()->pluck('full_name', 'id')),
+                                        ->helperText('Entre paréntesis se muestra el grupo (managed_by) de cada médico.')
+                                        ->options(function (): array {
+                                            $departments = Auth::user()?->departament ?? [];
+
+                                            $doctorQuery = TelemedicineDoctor::query()->orderBy('full_name');
+                                            if (in_array('ATENMEDI', $departments, true)) {
+                                                $doctorQuery->where('managed_by', 'ATENMEDI');
+                                            }
+
+                                            return $doctorQuery
+                                                ->get()
+                                                ->mapWithKeys(fn (TelemedicineDoctor $doctor): array => [
+                                                    $doctor->id => sprintf(
+                                                        '%s (%s)',
+                                                        $doctor->full_name,
+                                                        filled($doctor->managed_by) ? $doctor->managed_by : 'Sin grupo'
+                                                    ),
+                                                ])
+                                                ->all();
+                                        }),
                                     Grid::make()
                                         ->schema([
                                             Textarea::make('reason')
@@ -413,163 +449,272 @@ class TelemedicinePatientsTable
 
                         ])
                         ->action(function (TelemedicinePatient $record, array $data) {
-                            /**
-                             * CASO 1: El paciente tiene la misma ubicacion que la registrada en la afiliacion
-                             */
-                            if ($data['feedback'] == true) {
+                            try {
 
-                                $case = TelemedicineCase::create([
-                                    'code' => UtilsController::generateCaseCode(),
+                                SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNMENT_STARTED', 'operations.telemedicine-patients.assign-doctor', [
                                     'telemedicine_patient_id' => $record->id,
-                                    'telemedicine_doctor_id' => $data['doctor_id'],
                                     'patient_name' => $record->full_name,
-                                    'patient_age' => $record->age,
-                                    'patient_sex' => $record->sex,
-                                    'patient_phone' => $record->phone,
-                                    'patient_address' => $record->address,
-                                    'patient_country_id' => $record->country_id,
-                                    'patient_state_id' => $record->state_id,
-                                    'patient_city_id' => $record->city_id,
-                                    'reason' => $data['reason'],
-                                    'ambulanceParking' => $data['ambulanceParking'],
-                                    'status' => 'ASIGNADO',
-                                    'assigned_by' => Auth::user()->name,
+                                    'doctor_id' => $data['doctor_id'] ?? null,
+                                    'feedback' => $data['feedback'] ?? null,
+                                    'address_id' => $data['address_id'] ?? null,
+                                ]);
+                                /**
+                                 * CASO 1: El paciente tiene la misma ubicacion que la registrada en la afiliacion
+                                 */
+                                if ($data['feedback'] == true) {
+
+                                    $case = TelemedicineCase::create([
+                                        'code' => UtilsController::generateCaseCode(),
+                                        'telemedicine_patient_id' => $record->id,
+                                        'telemedicine_doctor_id' => $data['doctor_id'],
+                                        'patient_name' => $record->full_name,
+                                        'patient_age' => $record->age,
+                                        'patient_sex' => $record->sex,
+                                        'patient_phone' => $record->phone,
+                                        'patient_address' => $record->address,
+                                        'patient_country_id' => $record->country_id,
+                                        'patient_state_id' => $record->state_id,
+                                        'patient_city_id' => $record->city_id,
+                                        'reason' => $data['reason'],
+                                        'ambulanceParking' => $data['ambulanceParking'],
+                                        'status' => 'ASIGNADO',
+                                        'assigned_by' => Auth::user()->name,
+                                        'managed_by' => $record->managed_by,
+                                    ]);
+
+                                    if ($case) {
+
+                                        $doctor = TelemedicineDoctor::find($data['doctor_id']);
+                                        $name_patient = $case['patient_name'];
+                                        $name = $doctor->full_name;
+                                        $phone = $doctor->phone;
+                                        $address = $record->address;
+                                        $code = $case->code;
+                                        $reason = $data['reason'];
+                                        $email = $doctor->email;
+
+                                        AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+
+                                        SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNED', 'operations.telemedicine-patients.assign-doctor', [
+                                            'telemedicine_patient_id' => $record->id,
+                                            'telemedicine_case_id' => $case->id,
+                                            'telemedicine_case_code' => $case->code,
+                                            'doctor_id' => $data['doctor_id'] ?? null,
+                                            'flow' => 'same_registered_address',
+                                            'job' => AssignedCase::class,
+                                        ]);
+
+                                        Notification::make()
+                                            ->title('Paciente Asignado')
+                                            ->body('El paciente ha sido asignado exitosamente.')
+                                            ->success()
+                                            ->send();
+                                    }
+                                }
+
+                                /**
+                                 * CASO 2: El paciente selecciono una ubicacion de la lista
+                                 */
+                                if ($data['feedback'] == false && $data['address_id'] != null) {
+
+                                    /**Tomo la informacion de la tabla de ubicaciones registradas */
+                                    $address = AnotherAddress::find($data['address_id']);
+
+                                    $case = TelemedicineCase::create([
+
+                                        'code' => UtilsController::generateCaseCode(),
+                                        'telemedicine_patient_id' => $record->id,
+                                        'telemedicine_doctor_id' => $data['doctor_id'],
+                                        'patient_name' => $record->full_name,
+                                        'patient_age' => $record->age,
+                                        'patient_sex' => $record->sex,
+                                        'patient_phone' => $address['phone_1'],
+                                        'patient_phone_2' => $address['phone_2'],
+                                        'patient_address' => $address['address'],
+                                        'patient_country_id' => $address['country_id'],
+                                        'patient_state_id' => $address['state_id'],
+                                        'patient_city_id' => $address['city_id'],
+                                        'reason' => $data['reason'],
+                                        'ambulanceParking' => $data['ambulanceParking'],
+                                        'status' => 'ASIGNADO',
+                                        'assigned_by' => Auth::user()->name,
+                                        'managed_by' => $record->managed_by,
+                                    ]);
+
+                                    if ($case) {
+
+                                        $doctor = TelemedicineDoctor::find($data['doctor_id']);
+                                        $name_patient = $case['patient_name'];
+                                        $name = $doctor->full_name;
+                                        $phone = $doctor->phone;
+                                        $address = $address['address'];
+                                        $code = $case->code;
+                                        $reason = $data['reason'];
+                                        $email = $doctor->email;
+
+                                        AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+
+                                        SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNED', 'operations.telemedicine-patients.assign-doctor', [
+                                            'telemedicine_patient_id' => $record->id,
+                                            'telemedicine_case_id' => $case->id,
+                                            'telemedicine_case_code' => $case->code,
+                                            'doctor_id' => $data['doctor_id'] ?? null,
+                                            'flow' => 'selected_registered_address',
+                                            'address_id' => $data['address_id'] ?? null,
+                                            'job' => AssignedCase::class,
+                                        ]);
+
+                                        Notification::make()
+                                            ->title('Paciente Asignado')
+                                            ->body('El paciente ha sido asignado exitosamente.')
+                                            ->success()
+                                            ->send();
+                                    }
+                                }
+
+                                /**
+                                 * CASO 3: El paciente registro una NUEVA ubicacion
+                                 */
+                                if ($data['feedback'] == false && $data['address_id'] == null) {
+
+                                    // ...Creo la nueva ubicacion en la tabla de ubicaciones
+                                    $address = new AnotherAddress;
+                                    $address->address = $data['address'];
+                                    $address->phone_1 = $data['phone_1'];
+                                    $address->phone_2 = $data['phone_2'];
+                                    $address->city_id = $data['city_id'];
+                                    $address->state_id = $data['state_id'];
+                                    $address->country_id = $data['country_id'];
+                                    $address->ambulanceParking = $data['ambulanceParking'];
+                                    $address->relationship = $data['relationship'];
+                                    $address->telemedicine_patient_id = $record->id;
+                                    $address->save();
+
+                                    $case = TelemedicineCase::create([
+
+                                        'code' => UtilsController::generateCaseCode(),
+                                        'telemedicine_patient_id' => $record->id,
+                                        'telemedicine_doctor_id' => $data['doctor_id'],
+                                        'patient_name' => $record->full_name,
+                                        'patient_age' => $record->age,
+                                        'patient_sex' => $record->sex,
+                                        'patient_phone' => $address->phone_1,
+                                        'patient_phone_2' => $address->phone_2,
+                                        'patient_address' => $address->address,
+                                        'patient_country_id' => $address->country_id,
+                                        'patient_state_id' => $address->state_id,
+                                        'patient_city_id' => $address->city_id,
+                                        'reason' => $data['reason'],
+                                        'ambulanceParking' => $data['ambulanceParking'],
+                                        'status' => 'ASIGNADO',
+                                        'assigned_by' => Auth::user()->name,
+                                        'managed_by' => $record->managed_by,
+                                    ]);
+
+                                    if ($case) {
+
+                                        $doctor = TelemedicineDoctor::find($data['doctor_id']);
+                                        $name_patient = $case['patient_name'];
+                                        $name = $doctor->full_name;
+                                        $phone = $doctor->phone;
+                                        $newAddressId = $address->id;
+                                        $address = $address->address;
+                                        $code = $case->code;
+                                        $reason = $data['reason'];
+                                        $email = $doctor->email;
+
+                                        AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+
+                                        SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNED', 'operations.telemedicine-patients.assign-doctor', [
+                                            'telemedicine_patient_id' => $record->id,
+                                            'telemedicine_case_id' => $case->id,
+                                            'telemedicine_case_code' => $case->code,
+                                            'doctor_id' => $data['doctor_id'] ?? null,
+                                            'flow' => 'new_address',
+                                            'new_address_id' => $newAddressId,
+                                            'job' => AssignedCase::class,
+                                        ]);
+
+                                        Notification::make()
+                                            ->title('Paciente Asignado')
+                                            ->body('El paciente ha sido asignado exitosamente.')
+                                            ->success()
+                                            ->send();
+                                    }
+                                }
+
+                            } catch (\Throwable $exception) {
+                                SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNMENT_FAILED', 'operations.telemedicine-patients.assign-doctor', [
+                                    'telemedicine_patient_id' => $record->id,
+                                    'patient_name' => $record->full_name,
+                                    'doctor_id' => $data['doctor_id'] ?? null,
+                                    'feedback' => $data['feedback'] ?? null,
+                                    'address_id' => $data['address_id'] ?? null,
+                                    'error' => $exception->getMessage(),
                                 ]);
 
-                                if ($case) {
-
-                                    $doctor = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                    $name_patient = $case['patient_name'];
-                                    $name = $doctor->full_name;
-                                    $phone = $doctor->phone;
-                                    $address = $record->address;
-                                    $code = $case->code;
-                                    $reason = $data['reason'];
-                                    $email = $doctor->email;
-
-                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
-
-                                    Notification::make()
-                                        ->title('Paciente Asignado')
-                                        ->body('El paciente ha sido asignado exitosamente.')
-                                        ->success()
-                                        ->send();
-                                }
-                            }
-
-                            /**
-                             * CASO 2: El paciente selecciono una ubicacion de la lista
-                             */
-                            if ($data['feedback'] == false && $data['address_id'] != null) {
-
-                                /**Tomo la informacion de la tabla de ubicaciones registradas */
-                                $address = AnotherAddress::find($data['address_id'])->first();
-
-                                $case = TelemedicineCase::create([
-
-                                    'code' => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id' => $record->id,
-                                    'telemedicine_doctor_id' => $data['doctor_id'],
-                                    'patient_name' => $record->full_name,
-                                    'patient_age' => $record->age,
-                                    'patient_sex' => $record->sex,
-                                    'patient_phone' => $address['phone_1'],
-                                    'patient_phone_2' => $address['phone_2'],
-                                    'patient_address' => $address['address'],
-                                    'patient_country_id' => $address['country_id'],
-                                    'patient_state_id' => $address['state_id'],
-                                    'patient_city_id' => $address['city_id'],
-                                    'reason' => $data['reason'],
-                                    'ambulanceParking' => $data['ambulanceParking'],
-                                    'status' => 'ASIGNADO',
-                                    'assigned_by' => Auth::user()->name,
-                                ]);
-
-                                if ($case) {
-
-                                    $doctor = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                    $name_patient = $case['patient_name'];
-                                    $name = $doctor->full_name;
-                                    $phone = $doctor->phone;
-                                    $address = $address['address'];
-                                    $code = $case->code;
-                                    $reason = $data['reason'];
-                                    $email = $doctor->email;
-
-                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
-
-                                    Notification::make()
-                                        ->title('Paciente Asignado')
-                                        ->body('El paciente ha sido asignado exitosamente.')
-                                        ->success()
-                                        ->send();
-                                }
-                            }
-
-                            /**
-                             * CASO 3: El paciente registro una NUEVA ubicacion
-                             */
-                            if ($data['feedback'] == false && $data['address_id'] == null) {
-
-                                // ...Creo la nueva ubicacion en la tabla de ubicaciones
-                                $address = new AnotherAddress;
-                                $address->address = $data['address'];
-                                $address->phone_1 = $data['phone_1'];
-                                $address->phone_2 = $data['phone_2'];
-                                $address->city_id = $data['city_id'];
-                                $address->state_id = $data['state_id'];
-                                $address->country_id = $data['country_id'];
-                                $address->ambulanceParking = $data['ambulanceParking'];
-                                $address->relationship = $data['relationship'];
-                                $address->telemedicine_patient_id = $record->id;
-                                $address->save();
-
-                                $case = TelemedicineCase::create([
-
-                                    'code' => UtilsController::generateCaseCode(),
-                                    'telemedicine_patient_id' => $record->id,
-                                    'telemedicine_doctor_id' => $data['doctor_id'],
-                                    'patient_name' => $record->full_name,
-                                    'patient_age' => $record->age,
-                                    'patient_sex' => $record->sex,
-                                    'patient_phone' => $address->phone_1,
-                                    'patient_phone_2' => $address->phone_2,
-                                    'patient_address' => $address->address,
-                                    'patient_country_id' => $address->country_id,
-                                    'patient_state_id' => $address->state_id,
-                                    'patient_city_id' => $address->city_id,
-                                    'reason' => $data['reason'],
-                                    'ambulanceParking' => $data['ambulanceParking'],
-                                    'status' => 'ASIGNADO',
-                                    'assigned_by' => Auth::user()->name,
-                                ]);
-
-                                if ($case) {
-
-                                    $doctor = TelemedicineDoctor::find($data['doctor_id'])->first();
-                                    $name_patient = $case['patient_name'];
-                                    $name = $doctor->full_name;
-                                    $phone = $doctor->phone;
-                                    $address = $address->address;
-                                    $code = $case->code;
-                                    $reason = $data['reason'];
-                                    $email = $doctor->email;
-
-                                    AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
-
-                                    Notification::make()
-                                        ->title('Paciente Asignado')
-                                        ->body('El paciente ha sido asignado exitosamente.')
-                                        ->success()
-                                        ->send();
-                                }
+                                Notification::make()
+                                    ->title('Asignación fallida')
+                                    ->body('No se pudo asignar el caso. Intente nuevamente.')
+                                    ->danger()
+                                    ->send();
                             }
                         }),
-                ])
-                    ->label('Más')
-                    ->icon('heroicon-m-ellipsis-vertical')
-                    ->button(),
+                    Action::make('assign_atenmedi')
+                        ->label('Asignar ATENMEDI')
+                        ->icon('heroicon-o-user')
+                        ->color('primary')
+                        ->requiresConfirmation()
+                        ->modalWidth(Width::ThreeExtraLarge)
+                        ->modalHeading('Asignación ATENMEDINA')
+                        ->modalDescription('¿Está seguro de asignar el paciente a ATENMEDI?.')
+                        ->modalIcon('heroicon-o-user')
+                        ->action(function (TelemedicinePatient $record) {
+                            try {
+                                $record->managed_by = 'ATENMEDI';
+                                $record->save();
+
+                                SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_PATIENT_ASSIGNED_ATENMEDI', 'operations.telemedicine-patients.assign-atenmedi', [
+                                    'telemedicine_patient_id' => $record->id,
+                                    'patient_name' => $record->full_name,
+                                    'managed_by' => $record->managed_by,
+                                ]);
+
+                                Notification::make()
+                                    ->title('Paciente Asignado')
+                                    ->body('El paciente ha sido asignado a ATENMEDINA exitosamente.')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $exception) {
+                                SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_PATIENT_ASSIGN_ATENMEDI_FAILED', 'operations.telemedicine-patients.assign-atenmedi', [
+                                    'telemedicine_patient_id' => $record->id,
+                                    'patient_name' => $record->full_name,
+                                    'error' => $exception->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('Asignación fallida')
+                                    ->body('No se pudo asignar el paciente a ATENMEDINA.')
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI'),
+                ]),
             ])
+            ->recordClasses(function (TelemedicinePatient $record): array {
+                return match (mb_strtoupper((string) $record->managed_by)) {
+                    'ATENMEDI' => [
+                        'bg-emerald-50/60 dark:bg-emerald-950/20',
+                        'ring-1 ring-emerald-100/70 dark:ring-emerald-900/40',
+                    ],
+                    'TDG' => [
+                        'bg-sky-50/60 dark:bg-sky-950/20',
+                        'ring-1 ring-sky-100/70 dark:ring-sky-900/40',
+                    ],
+                    default => [],
+                };
+            })
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
@@ -583,6 +728,10 @@ class TelemedicinePatientsTable
                         ->action(function (Collection $records) {
                             foreach ($records as $record) {
                                 Log::info('OPERACIONES: El usuario '.Auth::user()->name.' elimino el paciente: '.$record->full_name);
+                                SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_PATIENT_DELETED', 'operations.telemedicine-patients.bulk-delete', [
+                                    'telemedicine_patient_id' => $record->id,
+                                    'patient_name' => $record->full_name,
+                                ]);
                                 $record->delete();
                             }
                         }),
