@@ -308,9 +308,12 @@ class EditTelemedicineConsultationPatient extends EditRecord
             // Actualizo el estatus del
 
             if (isset($feedbackOne) && $feedbackOne == true) {
+                dd($record);
                 // Actualizamos la informacion en la tabla de casos
                 $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
                 $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
+                // $case->telemedicine_service_list_id = isset($record['telemedicine_service_list_id']) ? $record['telemedicine_service_list_id'] : null;
+                $case->telemedicine_service_list_id = isset($record['telemedicine_service_list_drift_id']) ? $record['telemedicine_service_list_drift_id'] : null;
                 $case->updated_at = now();
                 $case->status = 'ALTA MEDICA';
                 $case->save();

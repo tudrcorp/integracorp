@@ -364,6 +364,8 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
         if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {
             session()->put('feedbackOne', $data['feedbackOne']);
+            $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $data['telemedicine_case_id'])->latest()->first();
+            $data['telemedicine_service_list_id'] = $consult->telemedicine_service_list_drift_id;
         }
         // ...Asignamos los valores a la variable de sesion
         // Medicamentos
@@ -660,6 +662,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     // Actualizo el estatus del
 
                     if (isset($feedbackOne) && $feedbackOne == true) {
+                        // dd($record);
                         // Actualizamos la informacion en la tabla de casos
                         $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
                         $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
@@ -668,7 +671,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         $case->save();
 
                         // Actualizamos la informacion en la tabla de consultas
-                        $consult = TelemedicineConsultationPatient::where('id', $record['id'])->first();
+                        $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $record['telemedicine_case_id'])->latest()->first();
                         $consult->updated_at = now();
                         $consult->status = 'ALTA MEDICA';
                         $consult->save();
@@ -844,6 +847,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 ->where('status', 'PENDIENTE')
                 ->latest()
                 ->get();
+
             if ($registeredOperationCoordinationService->isNotEmpty()) {
                 foreach ($registeredOperationCoordinationService as $operationCoordinationService) {
                     if ($operationCoordinationService->specific_service == 'MEDICAMENTOS') {
