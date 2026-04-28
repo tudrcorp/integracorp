@@ -177,9 +177,9 @@
         footer {
             display: flex;
             position: fixed;
-            bottom: 0px;
-            left: 0px;
-            right: 0px;
+            bottom: 50px;
+            left: 50px;
+            right: 50px;
             align-items: center;
             text-align: center;
         }
@@ -190,50 +190,51 @@
 </head>
 <body>
     <!-- Content here -->
-    <div style="position: absolute; top: 0px; left: 33px; margin-top: 15px; padding: 20px; margin-left: 20px">
-        <p class="sin-margen" style="margin-bottom: 5px; font-size: 30px;">
-            <span style="font-weight: bold; color: #052F60; font-size: 25px; font-style: italic;">CARTA DE
-            </span>
-            <span style="font-weight: bold; color: #7ab2db; font-size: 25px; font-style: italic;">BIENVENIDA
-            </span>
-        </p>
-        <p class="sin-margen" style=" margin-bottom: 3px; font-size: 1.2rem;">
-            <span style="font-weight: normal; color: #000000; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-                Agencia:
-            </span>
-        </p>
-        <p class="sin-margen" style="font-size: 1.2rem;">
-            <span style="font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-                {{ $name }}
-            </span>
-        </p>
+    <div style="position: absolute; top: 50px; left: 50px; width: 650px;">
+        <table style="width: 650px; border-collapse: collapse; border-spacing: 0; box-shadow: none; max-width: none;">
+            <tr>
+                <td style="width: 460px; vertical-align: top; text-align: left; padding: 0; background-color: transparent;">
+                    <p class="sin-margen" style="margin: 0 0 5px; font-size: 30px;">
+                        <span style="font-weight: bold; color: #052F60; font-size: 25px; font-style: italic;">CARTA DE
+                        </span>
+                        <span style="font-weight: bold; color: #7ab2db; font-size: 25px; font-style: italic;">BIENVENIDA
+                        </span>
+                    </p>
+                    <p class="sin-margen" style="margin: 0 0 3px; font-size: 1.2rem;">
+                        <span style="font-weight: normal; color: #000000; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
+                            Agencia:
+                        </span>
+                    </p>
+                    <p class="sin-margen" style="margin: 0; font-size: 1.2rem;">
+                        <span style="font-family: 'Century Regular', Century, sans-serif; font-style: italic">
+                            {{ $name }}
+                        </span>
+                    </p>
+                </td>
+                <td style="width: 210px; vertical-align: top; text-align: right; padding: 0; background-color: transparent;">
+                    <img src="{{ public_path('image/logo-tdg-carta-bienvenida.png') }}" style="display: block; width: 210px; height: auto; margin-top: 2px; margin-left: auto;" alt="">
+                </td>
+            </tr>
+        </table>
     </div>
 
 
-    <div style="position: absolute; top: 0px; left: 530px; margin-top: 15px; padding: 20px; margin-left: 20px">
-        <div>
-            <img class="logo-bottom-left" src="{{ public_path('storage/logo1-pdf.png') }}" style="width: 150px; height: 70px;" alt="">
-        </div>
-    </div>
-
-
-    <div style="position: absolute; top: 120px; left: 50px; margin-top: 40px; padding: 20px; width: 650px;">
-        <p style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
+    <div style="position: absolute; top: 210px; left: 50px; width: 650px;">
+        <p style="margin: 0 0 14px; text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
             En nombre de todo el equipo que integra Tu Doctor Group queremos agradecerles por permitirnos formar parte de su portafolio de productos, y a través de ustedes poder brindar cuidados especializados a nuestros clientes en común.
         </p>
-        <p style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-            Le informamos que ha sido registrador satisfactoriamente y puede identificarse con el código <span style="font-size: bold; color: #014886">{{ $code }}</span>.
+        <p style="margin: 0 0 14px; text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
+            Le informamos que ha sido registrado satisfactoriamente y puede identificarse con el código <span style="font-weight: bold; color: #014886">{{ $code }}</span>.
         </p>
-        <p style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-            Puede contar con nuestro apoyo para cualquier inquietud que le pueda surgir
+        <p style="margin: 0; text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
+            Puede contar con nuestro apoyo para cualquier inquietud que le pueda surgir.
         </p>
     </div>
 
     <footer>
         <img src="{{ public_path('storage/firma_sol_dos.png') }}" style="width: 35%; margin-bottom: 20px" alt="">
-        <img src="{{ public_path('storage/footer-carta-bienvenida.png') }}" style="width: 100%; margin-top: 5px" alt="">
+        <img src="{{ public_path('storage/footer-carta-de-bienvenida.png') }}" style="width: 100%; margin-top: 5px" alt="">
     </footer>
-
 
     <script type="text/php">
         if ( isset($pdf) ) {

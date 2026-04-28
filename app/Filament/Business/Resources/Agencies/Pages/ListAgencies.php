@@ -230,7 +230,6 @@ class ListAgencies extends ListRecords
                             ->send();
                     }
                 }),
-
         ];
     }
 

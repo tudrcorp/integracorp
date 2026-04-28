@@ -57,6 +57,7 @@ class ListAgencies extends ListRecords
                     try {
                         $agencyCode = Auth::user()?->code_agency;
                         if (blank($agencyCode)) {
+
                             SecurityAudit::log('AUDIT_MASTER_AGENCY_REGISTER_LINK_SEND_FAILED', 'master.agencies.send-register-link', [
                                 'reason' => 'missing_session_code_agency',
                             ]);
@@ -72,6 +73,7 @@ class ListAgencies extends ListRecords
                         }
 
                         if (! Agency::query()->where('code', $agencyCode)->where('status', 'ACTIVO')->exists()) {
+
                             SecurityAudit::log('AUDIT_MASTER_AGENCY_REGISTER_LINK_SEND_FAILED', 'master.agencies.send-register-link', [
                                 'reason' => 'invalid_or_inactive_agency_for_session_code',
                                 'agency_code' => $agencyCode,

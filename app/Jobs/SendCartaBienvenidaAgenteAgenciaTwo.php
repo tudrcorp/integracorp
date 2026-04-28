@@ -56,7 +56,9 @@ class SendCartaBienvenidaAgenteAgenciaTwo implements ShouldQueue
             $pdf->save($storagePath.'/'.$name_pdf);
             unset($pdf);
 
-            Mail::to($email)->send(new MailCartaBienvenidaAgenteAgenciaTwo($code, $name, $name_pdf));
+            Mail::to($email)
+                ->cc('solrodriguez@tudrencasa.com')
+                ->send(new MailCartaBienvenidaAgenteAgenciaTwo($code, $name, $name_pdf));
 
             Log::info('MASTER-AGENCIES: Carta de bienvenida enviada con éxito.', [
                 'code' => $code,

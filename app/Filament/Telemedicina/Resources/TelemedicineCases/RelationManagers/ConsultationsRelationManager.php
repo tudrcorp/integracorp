@@ -4,6 +4,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers
 
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use BackedEnum;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ViewAction;
@@ -52,6 +53,16 @@ class ConsultationsRelationManager extends RelationManager
                     ->badge()
                     ->color('success')
                     ->icon('heroicon-s-check')
+                    ->searchable()
+                    ->sortable(),
+                // Derivado
+                TextColumn::make('telemedicineServiceListDrift.name')
+                    ->label('ServicioDerivado')
+                    ->badge()
+                    ->color(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state) ? 'danger' : 'info')
+                    ->icon(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
+                        ? 'heroicon-m-exclamation-triangle'
+                        : 'heroicon-m-information-circle')
                     ->searchable()
                     ->sortable(),
                 ColumnGroup::make('LABORATORIOS Y ESTUDIOS CUBIERTOS', [

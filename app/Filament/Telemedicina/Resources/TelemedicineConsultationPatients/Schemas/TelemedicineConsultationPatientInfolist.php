@@ -4,6 +4,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\S
 
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
@@ -43,6 +44,13 @@ class TelemedicineConsultationPatientInfolist
                                     ->label('SERVICIO:')
                                     ->badge()
                                     ->color('success'),
+                                TextEntry::make('telemedicineServiceListDrift.name')
+                                    ->label('SERVICIO DERIVADO:')
+                                    ->badge()
+                                    ->color(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state) ? 'danger' : 'info')
+                                    ->icon(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
+                                        ? 'heroicon-m-exclamation-triangle'
+                                        : 'heroicon-m-information-circle'),
 
                                 TextEntry::make('telemedicineDoctor.full_name')
                                     ->label('ATENIDO POR:')

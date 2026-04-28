@@ -7,8 +7,13 @@ it('filtra casos por managed_by ATENMEDI en el dashboard de telemedicina para us
     $contents = file_get_contents($path);
 
     expect($contents)
-        ->toContain('is_array($departments)')
-        ->toContain("in_array('ATENMEDI', \$departments, true)")
+        ->toContain('userDepartmentsIncludeAtenmedi')
         ->toContain("->where('managed_by', 'ATENMEDI')")
-        ->toContain('->where(\'telemedicine_doctor_id\', $user->doctor_id)');
+        ->toContain('telemedicine_doctor_follow_up_id')
+        ->toContain('excludeCasesWhereLatestConsultationDriftIsTrasladoAmbulanciaForAtenmediDoctor')
+        ->and($contents)->toContain('atenmediUserBlockedFromUpdatingConsultation')
+        ->and($contents)->toContain('ATENMEDI_BLOCK_UPDATE_DRIFT_SERVICE_LIST_ID')
+        ->and($contents)->toContain('userIsInAtenmediTelemedicinaContext')
+        ->and($contents)->toContain('driftServiceNameIndicatesTrasladoAmbulancia')
+        ->and($contents)->toContain('última consulta tenga derivado');
 });

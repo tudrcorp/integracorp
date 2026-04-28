@@ -13,5 +13,9 @@ it('OperationServiceOrdersTable incluye acción modal de datos de pago con estil
         ->toContain('ticket-btn-ios-gray')
         ->toContain('paymentMethodOptions')
         ->toContain('hasRegisteredPaymentData')
-        ->toContain('OperationServiceOrder $record');
+        ->toContain('OperationServiceOrder $record')
+        ->toContain('use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;')
+        ->toContain('TelemedicinePriorityFilamentBadge::color')
+        ->toContain('TelemedicinePriorityFilamentBadge::icon')
+        ->toContain('TelemedicinePriorityFilamentBadge::recordRowClasses');
 });
