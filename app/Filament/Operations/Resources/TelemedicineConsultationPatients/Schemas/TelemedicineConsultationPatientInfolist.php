@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\TelemedicineConsultationPatients\Schemas;
 
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -159,6 +160,13 @@ class TelemedicineConsultationPatientInfolist
                                     ->badge()
                                     ->color('success')
                                     ->placeholder('—'),
+                                TextEntry::make('telemedicineServiceListDrift.name')
+                                    ->label('Servicio Derivado:')
+                                    ->badge()
+                                    ->color(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state) ? 'danger' : 'info')
+                                    ->icon(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
+                                        ? 'heroicon-m-exclamation-triangle'
+                                        : 'heroicon-m-information-circle'),
                                 TextEntry::make('telemedicineDoctor.full_name')
                                     ->label('Atendido por')
                                     ->icon(Heroicon::OutlinedUserCircle)

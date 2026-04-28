@@ -3,83 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notificación</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-            /* Centra todo el contenido */
-        }
-
-
-        .header {
-            /* background-color: #00539C; */
-            /* Azul oscuro */
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .content {
-            margin-top: 20px;
-            text-align: justify;
-            /* Justifica el texto */
-        }
-
-
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            font-size: 0.9em;
-            color: #555;
-
-        }
-
-        .social-icons {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .social-icons img {
-            width: 40px;
-            height: 40px;
-        }
-
-        ul {
-            list-style-type: disc;
-            padding-left: 20px;
-        }
-
-        li {
-            margin-bottom: 10px;
-        }
-
-    </style>
+    <title>Carta de bienvenida</title>
 </head>
-<body>
-    <div class="header">
-        <img src="https://tudrenviajes.com/images/bannerCartaBienvenidaTop.png" alt="Logo Bancamiga" style="max-width: 100%;">
-    </div>
+<body style="margin:0; padding:0; background:#f3f6fb; font-family:Arial, Helvetica, sans-serif;">
+    @php
+        $logoPath = public_path('image/logoNewPdf.png');
+        $logoSrc = isset($message) && file_exists($logoPath)
+            ? $message->embed($logoPath)
+            : asset('image/logoNewPdf.png');
+    @endphp
 
-    <div style="margin: auto; width: 600px; padding: 10px; text-align: center;">
-        <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrGroup! 🌟</span> </p>
-        <p>Estimado(a), {{ $name }}</p>
-        <p>Como nueva agencia, te unes a una labor vital, la de ser el pilar que nuestros clientes necesitan para proteger lo más valioso, su salud y la de su grupo familiar.</p>
-        <p>Tu compromiso será fundamental para guiar a las personas hacia la mejor protección y darles la tranquilidad que necesitan.</p>
-        <p>Te extendemos todo nuestro apoyo, recursos y la experiencia de nuestro equipo para que no solo alcances tus metas, sino que las superes. ¡Juntos, transformamos el mundo!</p>
-        <p>En este correo encontrarás adjunta tu carta de bienvenida , donde te damos la recepción oficial y te presentamos como parte del equipo.</p>
-        <p>Atentamente,</p>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f6fb; padding:24px 12px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px; background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden;">
+                    <tr>
+                        <td align="center" style="padding:28px 24px 18px 24px; background:linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);">
+                            <img
+                                src="{{ $logoSrc }}"
+                                alt="{{ config('app.name') }}"
+                                width="220"
+                                style="max-width:220px; width:100%; height:auto; display:block; margin:0 auto; border:0; outline:none; text-decoration:none;"
+                            >
+                        </td>
+                    </tr>
 
-    <div class="footer">
-        <img src="https://app.piedy.com/images/BANER-GUSTAVO-2.png" alt="Logo Tubanca" style="max-width: 100%;">
-        <p style="font-size: 0.8em; font-style: italic;">Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa</p>
-    </div>
+                    <tr>
+                        <td align="center" style="padding:10px 28px 4px 28px;">
+                            <h1 style="margin:0; font-size:24px; line-height:1.25; color:#0f172a; font-weight:700;">
+                                ¡Bienvenido(a) a TuDrGroup!
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td align="center" style="padding:10px 28px 24px 28px; color:#334155; font-size:15px; line-height:1.65;">
+                            <p style="margin:0 0 12px 0;">Estimado(a), {{ $name }}</p>
+                            <p style="margin:0 0 12px 0;">
+                                Como nueva agencia, te unes a una labor vital: ser el pilar que nuestros clientes necesitan
+                                para proteger lo mas valioso, su salud y la de su grupo familiar.
+                            </p>
+                            <p style="margin:0 0 12px 0;">
+                                Tu compromiso sera fundamental para guiar a las personas hacia la mejor proteccion
+                                y darles la tranquilidad que necesitan.
+                            </p>
+                            <p style="margin:0 0 12px 0;">
+                                Te extendemos todo nuestro apoyo, recursos y la experiencia de nuestro equipo para que no
+                                solo alcances tus metas, sino que las superes. Juntos, transformamos el mundo.
+                            </p>
+                            <p style="margin:0 0 12px 0;">
+                                En este correo encontraras adjunta tu carta de bienvenida, donde te damos la recepcion oficial
+                                y te presentamos como parte del equipo.
+                            </p>
+                            <p style="margin:0;">Atentamente,</p>
+                        </td>
+                    </tr>
+                </table>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
+                    <tr>
+                        <td align="center" style="padding:12px 18px 0 18px; color:#94a3b8; font-size:12px; line-height:1.5;">
+                            Gracias por confiar en nosotros para gestionar las necesidades medicas de tu empresa.
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 

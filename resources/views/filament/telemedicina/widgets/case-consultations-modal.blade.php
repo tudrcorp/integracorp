@@ -42,6 +42,142 @@
         </div>
     </div>
 
+    <section
+        class="rounded-2xl border border-violet-200/80 bg-gradient-to-b from-violet-50/90 via-white/95 to-white/90 shadow-sm ring-1 ring-violet-500/10 dark:border-violet-500/25 dark:from-violet-950/35 dark:via-zinc-900/85 dark:to-zinc-950/80 dark:ring-violet-400/15"
+        aria-labelledby="telemedicine-case-modal-actions-title"
+    >
+        <div class="border-b border-violet-200/70 px-4 py-3 dark:border-violet-500/20">
+            <h2
+                id="telemedicine-case-modal-actions-title"
+                class="text-sm font-semibold tracking-tight text-violet-950 dark:text-violet-50"
+            >
+                Acciones del caso
+            </h2>
+            <p class="mt-1 text-xs leading-relaxed text-violet-900/85 dark:text-violet-100/80">
+                Atajos al mismo flujo del menú <span class="font-semibold">⋯</span> de la tabla. La tarjeta
+                <span class="font-semibold">Consulta inicial</span> solo aparece si el caso está
+                <span class="font-semibold">asignado</span> y aún no hay consultas registradas.
+            </p>
+        </div>
+
+        <div
+            @class([
+                'grid gap-3 p-4',
+                'sm:grid-cols-3' => $showConsultaInicialCardInModal,
+                'sm:grid-cols-2' => ! $showConsultaInicialCardInModal,
+            ])
+        >
+            {{-- Historia clínica --}}
+            <div
+                class="flex min-h-[11.5rem] flex-col gap-2 rounded-xl border border-zinc-200/90 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-zinc-950/50"
+            >
+                <div class="flex items-start gap-2">
+                    <span
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-100"
+                        aria-hidden="true"
+                    >
+                        <x-filament::icon icon="heroicon-s-book-open" class="h-5 w-5" />
+                    </span>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Historia clínica</h3>
+                        <p class="mt-0.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                            Abre el expediente del paciente o el asistente para crearlo si aún no existe.
+                        </p>
+                    </div>
+                </div>
+                <x-filament::button
+                    color="primary"
+                    size="sm"
+                    class="mt-auto w-full justify-center"
+                    wire:click="openHistoriaClinicaFromCaseModal({{ $caseId }})"
+                >
+                    Abrir historia
+                </x-filament::button>
+            </div>
+
+            @if ($showConsultaInicialCardInModal)
+                {{-- Consulta inicial: solo caso ASIGNADO sin ninguna consulta registrada --}}
+                <div
+                    class="flex min-h-[11.5rem] flex-col gap-2 rounded-xl border border-zinc-200/90 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-zinc-950/50"
+                >
+                    <div class="flex items-start gap-2">
+                        <span
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-100"
+                            aria-hidden="true"
+                        >
+                            <x-filament::icon icon="healthicons-f-call-centre" class="h-5 w-5" />
+                        </span>
+                        <div class="min-w-0">
+                            <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Consulta inicial</h3>
+                            <p class="mt-0.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                Primer contacto clínico: el caso está <span class="font-semibold">asignado</span> y aún
+                                no hay consultas en el historial de este caso.
+                            </p>
+                        </div>
+                    </div>
+                    <x-filament::button
+                        color="success"
+                        size="sm"
+                        class="mt-auto w-full justify-center"
+                        wire:click="openConsultaInicialFromCaseModal({{ $caseId }})"
+                    >
+                        Iniciar consulta inicial
+                    </x-filament::button>
+                </div>
+            @endif
+
+            {{-- Observaciones --}}
+            <div
+                class="flex min-h-[11.5rem] flex-col gap-2 rounded-xl border border-zinc-200/90 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-zinc-950/50"
+            >
+                <div class="flex items-start gap-2">
+                    <span
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100"
+                        aria-hidden="true"
+                    >
+                        <x-filament::icon icon="heroicon-s-hand-raised" class="h-5 w-5" />
+                    </span>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Nota al equipo</h3>
+                        <p class="mt-0.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                            Aviso breve para clínica u operaciones (queda en el historial del caso).
+                        </p>
+                    </div>
+                </div>
+                @if ($showAddObservationInModal)
+                    <label class="sr-only" for="telemedicine-case-modal-observation">Texto de la observación</label>
+                    <textarea
+                        id="telemedicine-case-modal-observation"
+                        wire:model.live.debounce.400ms="consultationsModalObservationDraft"
+                        wire:key="case-modal-obs-{{ $caseId }}"
+                        rows="3"
+                        maxlength="5000"
+                        placeholder="Ej. acuerdo con paciente, pendiente de estudio, coordinación…"
+                        class="min-h-[4.5rem] w-full resize-y rounded-lg border border-zinc-200/90 bg-white px-2.5 py-2 text-xs text-zinc-900 shadow-inner outline-none ring-0 transition placeholder:text-zinc-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-amber-500 dark:focus:ring-amber-500/25"
+                    ></textarea>
+                    <x-filament::button
+                        color="warning"
+                        size="sm"
+                        class="w-full justify-center"
+                        wire:click="saveObservationFromConsultationsModal({{ $caseId }})"
+                        wire:loading.attr="disabled"
+                        wire:target="saveObservationFromConsultationsModal"
+                    >
+                        <span wire:loading.remove wire:target="saveObservationFromConsultationsModal">
+                            Registrar observación
+                        </span>
+                        <span wire:loading wire:target="saveObservationFromConsultationsModal">Guardando…</span>
+                    </x-filament::button>
+                @else
+                    <p class="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                        No disponible cuando el caso está en <span class="font-semibold">Ejecutada</span> o
+                        <span class="font-semibold">Aprobada</span> (cierre administrativo).
+                    </p>
+                @endif
+            </div>
+        </div>
+    </section>
+
     @if (! $canEditLast)
         <div
             class="flex gap-3 rounded-2xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 dark:border-amber-500/35 dark:bg-amber-500/10"
@@ -316,8 +452,13 @@
             >
                 <p class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Sin consultas todavía</p>
                 <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                    Cuando registres la primera consulta para este caso, aparecerá aquí. Puedes iniciar el flujo desde el
-                    menú de acciones de la fila en la tabla principal.
+                    Cuando registres la primera consulta para este caso, aparecerá aquí.
+                    @if ($showConsultaInicialCardInModal)
+                        Arriba tienes la acción <span class="font-semibold">Consulta inicial</span>; también puedes usar
+                        el menú <span class="font-semibold">⋯</span> de la fila.
+                    @else
+                        Puedes usar el menú <span class="font-semibold">⋯</span> de la fila en la tabla principal.
+                    @endif
                 </p>
             </li>
         @endforelse

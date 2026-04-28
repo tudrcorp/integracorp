@@ -253,7 +253,7 @@ class NotificationController extends Controller
 
             // Se recomienda que AgencyRegisterEmail implemente ShouldQueue para no bloquear la ejecución
             Mail::to($email)
-                ->cc('tudrgroup.info@gmail.com')
+                ->cc('solrodriguez@tudrencasa.com')
                 ->send(new AgencyRegisterEmail($content));
 
             return true;

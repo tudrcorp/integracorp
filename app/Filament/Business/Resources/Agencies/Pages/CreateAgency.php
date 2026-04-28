@@ -67,6 +67,7 @@ class CreateAgency extends CreateRecord
     protected function afterCreate(): void
     {
         try {
+
             $record = $this->getRecord();
 
             // Si el usuario logueado es un administrador de cuentas
@@ -74,6 +75,10 @@ class CreateAgency extends CreateRecord
                 // Actualizo el registro y le agrego el id del administrador de cuenta que realizo el registro
                 $record->ownerAccountManagers = Auth::user()->id;
                 $record->save();
+            }
+
+            if (filled($record->email)) {
+                $record->sendCartaBienvenida($record->code, $record->name_corporative, $record->email);
             }
 
             SecurityAudit::log('AUDIT_BUSINESS_AGENCY_CREATED', 'business.agencies.create', [
