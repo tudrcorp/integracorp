@@ -298,35 +298,39 @@
             </thead>
             <tbody>
                 @for ($i = 0; $i < count($data['plan']); $i++)
-                                                    @php
-    //PLAN
-    $plan = \App\Models\Plan::where('id', $data['plan'][$i]['plan_id'])->first()->description;
+                    @php
+                        $planRow = $data['plan'][$i];
 
-    //COBERTURA
-    if ($plan == 'PLAN INICIAL') {
-        $coverage = '';
-    } else {
-        $coverage = \App\Models\Coverage::where('id', $data['plan'][$i]['coverage_id'])->first()->price;
-    }
+                        // PLAN
+                        $plan = \App\Models\Plan::where('id', $planRow['plan_id'])->first()->description;
 
-    if ($data['plan'][$i]['payment_frequency'] == 'ANUAL') {
-        $total_amount = $data['plan'][$i]['subtotal_anual'];
-    }
-    if ($data['plan'][$i]['payment_frequency'] == 'TRIMESTRAL') {
-        $total_amount = $data['plan'][$i]['subtotal_quarterly'];
-    }
-    if ($data['plan'][$i]['payment_frequency'] == 'SEMESTRAL') {
-        $total_amount = $data['plan'][$i]['subtotal_semestral'];
-    }
-    if ($data['plan'][$i]['payment_frequency'] == 'MENSUAL') {
-        $total_amount = $data['plan'][$i]['subtotal_anual'] / 12;
-    }
+                        // COBERTURA
+                        if ($plan == 'PLAN INICIAL') {
+                            $coverage = '';
+                        } else {
+                            $coverage = \App\Models\Coverage::where('id', $planRow['coverage_id'])->first()->price;
+                        }
 
-    //rango de edad
-    $age_range = \App\Models\AgeRange::where('id', $data['plan'][$i]['age_range_id'])->first()->range;
-    // $full_name_ti = $data['plan'][$i]['full_name_ti'];
-    // $total_amount = $data['plan'][$i]['total_amount'];
-    // $payment_frequency = $data['plan'][$i]['payment_frequency'];
+                        $paymentFrequency = $planRow['payment_frequency'];
+                        $subtotalAnual = (float) data_get($planRow, 'subtotal_anual', 0);
+                        $subtotalQuarterly = (float) data_get($planRow, 'subtotal_quarterly', 0);
+                        $subtotalSemestral = (float) data_get($planRow, 'subtotal_semestral', $subtotalQuarterly);
+
+                        if ($paymentFrequency == 'ANUAL') {
+                            $total_amount = $subtotalAnual;
+                        }
+                        if ($paymentFrequency == 'TRIMESTRAL') {
+                            $total_amount = $subtotalQuarterly;
+                        }
+                        if ($paymentFrequency == 'SEMESTRAL') {
+                            $total_amount = $subtotalSemestral;
+                        }
+                        if ($paymentFrequency == 'MENSUAL') {
+                            $total_amount = $subtotalAnual / 12;
+                        }
+
+                        // Rango de edad
+                        $age_range = \App\Models\AgeRange::where('id', $planRow['age_range_id'])->first()->range;
                     @endphp
                     <tr>
                         <td style="font-weight: normal; padding: 2px">
