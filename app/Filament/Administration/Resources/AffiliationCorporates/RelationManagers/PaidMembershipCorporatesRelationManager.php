@@ -223,7 +223,7 @@ class PaidMembershipCorporatesRelationManager extends RelationManager
                                 ->send();
                         }
 
-                        redirect()->route('filament.admin.resources.affiliation-corporates.index');
+                        redirect()->route('filament.administration.resources.affiliation-corporates.index');
                     }),
             ])
             ->headerActions([
