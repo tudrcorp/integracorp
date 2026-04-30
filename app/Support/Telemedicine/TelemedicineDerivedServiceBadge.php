@@ -37,4 +37,18 @@ final class TelemedicineDerivedServiceBadge
 
         return $normalized === 'TRASLADO EN AMBULANCIA';
     }
+
+    /**
+     * Servicio derivado «Ingreso a clínica» (tolerante a acentos y mayúsculas).
+     */
+    public static function specificServiceIsIngresoAClinica(?string $name): bool
+    {
+        if ($name === null || trim($name) === '') {
+            return false;
+        }
+
+        $normalized = strtoupper(Str::ascii(trim($name)));
+
+        return str_contains($normalized, 'INGRESO A CLINICA');
+    }
 }

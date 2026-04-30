@@ -28,6 +28,7 @@ class TelemedicineCase extends Model
         'ambulanceParking',
         'directionAmbulance',
         'managed_by',
+        'doctor_id_first_accompaniment',
     ];
 
     public function telemedicinePatient()

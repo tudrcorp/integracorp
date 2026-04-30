@@ -29,3 +29,38 @@ it('OperationCoordinationServicesTable define la acción modal de doctor TDG par
         ->and($contents)->toContain('Width::TwoExtraLarge')
         ->and($contents)->toContain('FilamentIosButton::extraClassForFilamentColor');
 });
+
+it('OperationCoordinationServicesTable define acción de documentos de ingreso y egreso a clínica', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    $livewirePath = dirname(__DIR__, 2).'/app/Livewire/Operations/ClinicCoordinationDocumentsManager.php';
+
+    expect($contents)->toBeString()
+        ->and($contents)->toContain('clinicCoordinationDocuments')
+        ->and($contents)->toContain('filament.operations.coordination.clinic-documents-modal')
+        ->and(file_exists($livewirePath))->toBeTrue()
+        ->and(file_get_contents($livewirePath))->toContain('class ClinicCoordinationDocumentsManager');
+
+    $uploaderPartial = dirname(__DIR__, 2).'/resources/views/livewire/operations/partials/clinic-document-uploader-zone.blade.php';
+    $partialContents = file_get_contents($uploaderPartial);
+    expect($partialContents)->toContain('assignFilesFromDrop')
+        ->and($partialContents)->toContain('wire:model="ingresoUploads"')
+        ->and($partialContents)->toContain('removeIngresoUpload');
+});
+
+it('OperationCoordinationServicesTable define acción modal de negociación y precios', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Action::make('editNegotiationAndPricing')")
+        ->and($contents)->toContain('Negociación, cotización y facturación')
+        ->and($contents)->toContain('Width::FiveExtraLarge')
+        ->and($contents)->toContain('quote_price_preview')
+        ->and($contents)->toContain('->steps([')
+        ->and($contents)->toContain("Step::make('Servicio')")
+        ->and($contents)->toContain('stickyModalFooter()')
+        ->and($contents)->toContain('fi-modal-content]:overflow-y-auto')
+        ->and($contents)->not->toContain("SelectColumn::make('type_service')");
+});

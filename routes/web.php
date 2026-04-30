@@ -10,6 +10,7 @@ use App\Http\Controllers\BusinessAgentFichaPdfController;
 use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Operations\OperationCoordinationClinicDocumentDownloadController;
 use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\OperationServiceOrderPdfController;
 use App\Http\Controllers\PdfController;
@@ -140,6 +141,10 @@ Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/prev
 Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/download', [OperationServiceOrderPdfController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.pdf');
+
+Route::get('operations/coordination/clinic-documents/{document}/download', [OperationCoordinationClinicDocumentDownloadController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.coordination.clinic-documents.download');
 
 Route::get('business/agents/{agent}/ficha-pdf/preview', [BusinessAgentFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])

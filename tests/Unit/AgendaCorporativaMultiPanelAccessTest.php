@@ -47,3 +47,13 @@ it('restringe visibilidad para no superadmin y mantiene edicion por creador o su
         ->toContain('@if ($isCreatingActivity || $this->canCurrentUserEdit($selectedActivity))')
         ->toContain('Solo el creador o un usuario SUPERADMIN puede editarla');
 });
+
+it('alinea la vista semanal con el fondo claro de la vista mensual', function (): void {
+    $viewPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/agenda-corporativa.blade.php';
+    $viewContents = file_get_contents($viewPath);
+
+    expect($viewContents)
+        ->toContain('min-w-[980px] rounded-[1.65rem] border border-slate-200/80 bg-slate-50/70 p-3')
+        ->not->toContain('from-cyan-500/90 via-sky-600/85 to-cyan-700/90')
+        ->and($viewContents)->toContain('border-slate-200/70 bg-slate-50/90 px-2 py-1 dark:border-white/10 dark:bg-slate-950/50');
+});

@@ -573,6 +573,259 @@
     ) !important;
   }
 
+  /**
+   * Navegación tipo stepper iOS (panel Negocios): segmentos superpuestos, paleta blanco → cyan → azul → navy.
+   * Vista: resources/views/filament/panels/internal-quick-nav.blade.php
+   */
+  .fi-business-panel-stepper-root {
+    --fi-bps-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .fi-business-panel-stepper-scroll {
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 0.32rem 0.1rem;
+    border-radius: 9999px;
+    background: rgb(248 250 252 / 0.92);
+    border: 1px solid rgb(203 213 225 / 0.65);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 8px 24px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .dark .fi-business-panel-stepper-scroll {
+    background: rgb(2 6 23 / 0.78);
+    border-color: rgb(51 65 85 / 0.65);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 10px 28px rgba(0, 0, 0, 0.45);
+  }
+
+  .fi-business-panel-stepper-track {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: max-content;
+    min-width: 100%;
+    gap: 0;
+    padding: 0.2rem 0.22rem;
+  }
+
+  .fi-business-panel-stepper-segment {
+    position: relative;
+    display: inline-flex;
+    min-height: 2.45rem;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.42rem;
+    border-radius: 9999px;
+    padding: 0.3rem 0.62rem 0.3rem 0.48rem;
+    text-decoration: none;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 6px 18px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    transition:
+      transform 0.28s var(--fi-bps-ease),
+      box-shadow 0.24s ease,
+      filter 0.22s ease,
+      border-color 0.2s ease;
+    will-change: transform;
+  }
+
+  .fi-business-panel-stepper-segment:not(:first-child) {
+    margin-left: -1.12rem;
+  }
+
+  .fi-business-panel-stepper-segment:hover {
+    z-index: 60 !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+      0 2px 6px rgba(15, 23, 42, 0.1),
+      0 14px 32px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    filter: saturate(1.05);
+  }
+
+  .fi-business-panel-stepper-segment:active {
+    transform: translateY(0) scale(0.985);
+    transition-duration: 0.12s;
+  }
+
+  .fi-business-panel-stepper-segment:focus-visible {
+    outline: 2px solid rgb(56 189 248 / 0.95);
+    outline-offset: 3px;
+  }
+
+  .fi-business-panel-stepper-segment--current {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.85),
+      0 2px 8px rgba(14, 165, 233, 0.35),
+      0 12px 28px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+
+  .dark .fi-business-panel-stepper-segment--current {
+    box-shadow:
+      0 0 0 2px rgba(56, 189, 248, 0.45),
+      0 2px 10px rgba(0, 0, 0, 0.45),
+      0 14px 32px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .fi-business-panel-stepper-badge {
+    display: inline-flex;
+    height: 1.82rem;
+    width: 1.82rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    color: #fff;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .fi-business-panel-stepper-segment--ticket .fi-business-panel-stepper-badge {
+    background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.12),
+      0 4px 12px rgba(22, 163, 74, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+
+  .dark .fi-business-panel-stepper-segment--ticket .fi-business-panel-stepper-badge {
+    background: linear-gradient(180deg, #16a34a 0%, #14532d 100%);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.45),
+      0 4px 14px rgba(34, 197, 94, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .fi-business-panel-stepper-text {
+    display: flex;
+    min-width: 0;
+    max-width: 9.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    line-height: 1.15;
+  }
+
+  @media (min-width: 1280px) {
+    .fi-business-panel-stepper-text {
+      max-width: 11rem;
+    }
+  }
+
+  .fi-business-panel-stepper-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+
+  .fi-business-panel-stepper-sub {
+    font-size: 0.625rem;
+    font-weight: 500;
+    opacity: 0.82;
+  }
+
+  /* Tono 0: entrada clara (ticket / resalte) */
+  .fi-business-panel-stepper-segment--tone-0 {
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+    color: #0f172a;
+    border-color: rgba(148, 163, 184, 0.45);
+  }
+
+  .dark .fi-business-panel-stepper-segment--tone-0 {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    color: #f8fafc;
+    border-color: rgba(148, 163, 184, 0.22);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 8px 22px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* Tono 1: cyan / sky */
+  .fi-business-panel-stepper-segment--tone-1 {
+    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+    color: #0c4a6e;
+    border-color: rgba(125, 211, 252, 0.65);
+  }
+
+  .fi-business-panel-stepper-segment--tone-1 .fi-business-panel-stepper-sub {
+    color: #075985;
+    opacity: 0.88;
+  }
+
+  .dark .fi-business-panel-stepper-segment--tone-1 {
+    background: linear-gradient(180deg, #0c4a6e 0%, #075985 100%);
+    color: #ecfeff;
+    border-color: rgba(56, 189, 248, 0.25);
+  }
+
+  .dark .fi-business-panel-stepper-segment--tone-1 .fi-business-panel-stepper-sub {
+    color: #cffafe;
+    opacity: 0.9;
+  }
+
+  /* Tono 2: azul medio */
+  .fi-business-panel-stepper-segment--tone-2 {
+    background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+    color: #fff;
+    border-color: rgba(191, 219, 254, 0.35);
+  }
+
+  .fi-business-panel-stepper-segment--tone-2 .fi-business-panel-stepper-sub {
+    color: #dbeafe;
+    opacity: 0.92;
+  }
+
+  .dark .fi-business-panel-stepper-segment--tone-2 {
+    background: linear-gradient(180deg, #2563eb 0%, #1e3a8a 100%);
+    border-color: rgba(147, 197, 253, 0.22);
+  }
+
+  /* Tono 3: navy */
+  .fi-business-panel-stepper-segment--tone-3 {
+    background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+    color: #f8fafc;
+    border-color: rgba(148, 163, 184, 0.22);
+  }
+
+  .fi-business-panel-stepper-segment--tone-3 .fi-business-panel-stepper-sub {
+    color: #cbd5e1;
+    opacity: 0.9;
+  }
+
+  .dark .fi-business-panel-stepper-segment--tone-3 {
+    background: linear-gradient(180deg, #020617 0%, #000 100%);
+    border-color: rgba(71, 85, 105, 0.45);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fi-business-panel-stepper-segment {
+      transition: none;
+    }
+
+    .fi-business-panel-stepper-segment:hover {
+      z-index: 60 !important;
+      transform: none;
+      filter: none;
+    }
+
+    .fi-business-panel-stepper-segment:active {
+      transform: none;
+    }
+  }
+
   /* Contenedor de botones Aviso de cobro: espacio para sombras sin recorte */
   .aviso-actions-wrap {
     display: flex;
@@ -1548,6 +1801,15 @@
       0 24px 56px -14px color-mix(in oklch, black 12%, transparent);
   }
 
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--transport-ambulance:hover {
+    border-color: color-mix(in oklch, #dc2626 40%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      0 0 0 1px color-mix(in oklch, #dc2626 24%, transparent),
+      0 16px 48px -8px color-mix(in oklch, #dc2626 32%, transparent),
+      0 24px 56px -14px color-mix(in oklch, black 12%, transparent);
+  }
+
   .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat::before {
     content: "";
     position: absolute;
@@ -1629,6 +1891,28 @@
       0 20px 50px -16px color-mix(in oklch, black 10%, transparent);
   }
 
+  /* Tinte — TRASLADO EN AMBULANCIA / danger (#dc2626) */
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--transport-ambulance::before {
+    background:
+      radial-gradient(120% 90% at 10% -20%, color-mix(in oklch, #dc2626 52%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, #dc2626 26%, transparent) 0%,
+        color-mix(in oklch, #dc2626 9%, transparent) 42%,
+        transparent 68%
+      );
+    box-shadow: inset 0 0 60px -20px color-mix(in oklch, #dc2626 32%, transparent);
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--transport-ambulance {
+    border-color: color-mix(in oklch, #dc2626 30%, white);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 72%, transparent),
+      0 0 0 1px color-mix(in oklch, #dc2626 18%, transparent),
+      0 12px 40px -10px color-mix(in oklch, #dc2626 26%, transparent),
+      0 20px 50px -16px color-mix(in oklch, black 10%, transparent);
+  }
+
   .dark .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat {
     border-color: color-mix(in oklch, white 14%, transparent);
     background-color: color-mix(in oklch, oklch(0.2 0.02 280) 45%, transparent);
@@ -1666,6 +1950,11 @@
     text-shadow: 0 1px 0 color-mix(in oklch, white 40%, transparent);
   }
 
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--transport-ambulance .fi-wi-stats-overview-stat-value {
+    @apply text-rose-950 dark:text-rose-100;
+    text-shadow: 0 1px 0 color-mix(in oklch, white 40%, transparent);
+  }
+
   .fi-telemedicine-case-stats-ios .fi-wi-stats-overview-stat-description {
     @apply text-[0.8125rem] font-medium text-zinc-600/85 dark:text-zinc-400/95;
   }
@@ -1680,6 +1969,14 @@
 
   .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--discharge .fi-wi-stats-overview-stat-description {
     @apply text-emerald-900/75 dark:text-emerald-200/85;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--transport-ambulance .fi-wi-stats-overview-stat-description {
+    @apply text-rose-900/80 dark:text-rose-200/85;
+  }
+
+  .fi-telemedicine-case-stats-ios .fi-telemedicine-case-stat-ios--transport-ambulance .fi-wi-stats-overview-stat-label {
+    @apply text-rose-900/90 dark:text-rose-100/90;
   }
 
   @supports not (backdrop-filter: blur(1px)) {

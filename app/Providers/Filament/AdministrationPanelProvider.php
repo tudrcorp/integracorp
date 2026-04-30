@@ -131,7 +131,7 @@ class AdministrationPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn () => view('filament.menu-user')
+                fn () => view('filament.panels.internal-quick-nav')
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,

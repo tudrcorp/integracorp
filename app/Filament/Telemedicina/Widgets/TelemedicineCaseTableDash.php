@@ -6,12 +6,11 @@ use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Telemed
 use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
-use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
-use App\Models\TelemedicineServiceList;
 use App\Models\User;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -29,7 +28,6 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class TelemedicineCaseTableDash extends TableWidget
 {
@@ -37,11 +35,6 @@ class TelemedicineCaseTableDash extends TableWidget
 
     /** Borrador del campo «Observación» dentro del modal de consultas del caso (misma lógica que el menú ⋯). */
     public string $consultationsModalObservationDraft = '';
-
-    /**
-     * Servicio derivado «Traslado en ambulancia» en base de datos. ATENMEDI no debe abrir seguimiento desde el modal.
-     */
-    private const ATENMEDI_BLOCK_UPDATE_DRIFT_SERVICE_LIST_ID = 3;
 
     /**
      * Última consulta del caso: abre el asistente de creación (mismo flujo que «Hacer seguimiento»),
@@ -85,7 +78,7 @@ class TelemedicineCaseTableDash extends TableWidget
             return null;
         }
 
-        if (self::atenmediUserBlockedFromUpdatingConsultation($user, $consultation)) {
+        if (TelemedicineCaseFilamentListQuery::atenmediUserBlockedFromUpdatingConsultation($user, $consultation)) {
             Notification::make()
                 ->title('Seguimiento no disponible para ATENMEDI')
                 ->body('Con servicio derivado «Traslado en ambulancia» solo puede revisar el detalle de la consulta.')
@@ -352,7 +345,7 @@ class TelemedicineCaseTableDash extends TableWidget
                 $modalUser = Auth::user();
                 $canEditLast = $record->status !== 'ALTA MEDICA';
                 $canShowLastConsultationUpdate = $canEditLast
-                    && ! self::atenmediUserBlockedFromUpdatingConsultation($modalUser, $lastConsultation);
+                    && ! TelemedicineCaseFilamentListQuery::atenmediUserBlockedFromUpdatingConsultation($modalUser, $lastConsultation);
 
                 return view('filament.telemedicina.widgets.case-consultations-modal', [
                     'caseId' => $record->id,
@@ -375,33 +368,15 @@ class TelemedicineCaseTableDash extends TableWidget
 
         return $table
             ->defaultSort('created_at', 'desc')
-            ->heading('Pacientes asignados')
-            ->description('Toca el número de caso: modal con consultas, historia, consulta inicial y seguimiento. El menú ⋯ mantiene el resto de acciones. Si eres ATENMEDI, aquí no aparecen casos en alta médica ni aquellos cuya última consulta tenga derivado «Traslado en ambulancia».')
+            ->heading('Casos Asignados')
+            // ->description('Toca el número de caso: modal con consultas, historia, consulta inicial y seguimiento. El menú ⋯ mantiene el resto de acciones. Si eres ATENMEDI, aquí no aparecen casos en alta médica ni aquellos cuya última consulta tenga derivado «Traslado en ambulancia».')
             ->emptyStateHeading('Sin casos asignados')
             ->emptyStateDescription('Cuando te asignen pacientes, aparecerán aquí con el mismo estilo de lista de iOS.')
             ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
             ->recordActionsColumnLabel('')
-            ->query(function (): Builder {
-                $user = Auth::user();
-                if ($user === null || $user->doctor_id === null) {
-                    return TelemedicineCase::query()->whereRaw('0 = 1');
-                }
-
-                $query = TelemedicineCase::query()
-                    ->where(function (Builder $q) use ($user): void {
-                        $q->where('telemedicine_doctor_id', $user->doctor_id)
-                            ->orWhere('telemedicine_doctor_follow_up_id', $user->doctor_id);
-                    })
-                    ->where('status', '!=', 'ALTA MEDICA');
-
-                if (self::userDepartmentsIncludeAtenmedi($user)) {
-                    $query->where('managed_by', 'ATENMEDI');
-                }
-
-                self::excludeCasesWhereLatestConsultationDriftIsTrasladoAmbulanciaForAtenmediDoctor($query);
-
-                return $query;
-            })
+            ->query(fn (): Builder => TelemedicineCaseFilamentListQuery::applyDashboardWidgetCaseConstraints(
+                TelemedicineCase::query()
+            ))
             ->extraAttributes([
                 'class' => 'telemedicine-case-table-ios',
             ])
@@ -652,8 +627,7 @@ class TelemedicineCaseTableDash extends TableWidget
         $record = TelemedicineCase::query()
             ->whereKey($caseId)
             ->where(function (Builder $q) use ($user): void {
-                $q->where('telemedicine_doctor_id', $user->doctor_id)
-                    ->orWhere('telemedicine_doctor_follow_up_id', $user->doctor_id);
+                $q->where('telemedicine_doctor_id', $user->doctor_id);
             })
             ->first();
 
@@ -677,122 +651,5 @@ class TelemedicineCaseTableDash extends TableWidget
             ->exists();
 
         return $hasConsultation && $record->status === 'ATENDIDO';
-    }
-
-    private static function atenmediUserBlockedFromUpdatingConsultation(mixed $user, ?TelemedicineConsultationPatient $consultation): bool
-    {
-        if ($consultation === null) {
-            return false;
-        }
-
-        if (! self::userIsInAtenmediTelemedicinaContext($user)) {
-            return false;
-        }
-
-        if ((int) ($consultation->telemedicine_service_list_drift_id ?? 0) === self::ATENMEDI_BLOCK_UPDATE_DRIFT_SERVICE_LIST_ID) {
-            return true;
-        }
-
-        if (! $consultation->relationLoaded('telemedicineServiceListDrift')) {
-            $consultation->loadMissing('telemedicineServiceListDrift');
-        }
-
-        return self::driftServiceNameIndicatesTrasladoAmbulancia($consultation->telemedicineServiceListDrift?->name);
-    }
-
-    /**
-     * Usuario ATENMEDI: por departamento en el usuario, o por doctor vinculado con managed_by ATENMEDI
-     * (varios doctores solo tienen el segundo dato poblado).
-     */
-    private static function userIsInAtenmediTelemedicinaContext(mixed $user): bool
-    {
-        if (self::userDepartmentsIncludeAtenmedi($user)) {
-            return true;
-        }
-
-        if (! $user instanceof User || $user->doctor_id === null) {
-            return false;
-        }
-
-        return TelemedicineDoctor::query()
-            ->whereKey($user->doctor_id)
-            ->where('managed_by', 'ATENMEDI')
-            ->exists();
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function normalizedUserDepartments(mixed $user): array
-    {
-        if (! is_object($user)) {
-            return [];
-        }
-
-        $raw = data_get($user, 'departament');
-        if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            $raw = is_array($decoded) ? $decoded : [];
-        }
-        if (! is_array($raw)) {
-            return [];
-        }
-
-        $out = [];
-        foreach ($raw as $item) {
-            if (is_string($item) && trim($item) !== '') {
-                $out[] = strtoupper(trim($item));
-            }
-        }
-
-        return $out;
-    }
-
-    private static function userDepartmentsIncludeAtenmedi(mixed $user): bool
-    {
-        return in_array('ATENMEDI', self::normalizedUserDepartments($user), true);
-    }
-
-    private static function driftServiceNameIndicatesTrasladoAmbulancia(?string $name): bool
-    {
-        if ($name === null || trim($name) === '') {
-            return false;
-        }
-
-        $normalized = strtoupper(Str::ascii(trim($name)));
-
-        return str_contains($normalized, 'TRASLADO EN AMBULANCIA');
-    }
-
-    /**
-     * Para doctores en contexto ATENMEDI: no listar el caso si la última consulta tiene derivado
-     * «Traslado en ambulancia» (id 3 o nombre en catálogo), igual que se excluye ALTA MEDICA.
-     */
-    private static function excludeCasesWhereLatestConsultationDriftIsTrasladoAmbulanciaForAtenmediDoctor(Builder $query): void
-    {
-        $user = Auth::user();
-        if (! self::userIsInAtenmediTelemedicinaContext($user)) {
-            return;
-        }
-
-        $caseTable = (new TelemedicineCase)->getTable();
-        $consultTable = (new TelemedicineConsultationPatient)->getTable();
-        $driftTable = (new TelemedicineServiceList)->getTable();
-
-        $query->whereNotExists(function ($sub) use ($caseTable, $consultTable, $driftTable): void {
-            $sub->selectRaw('1')
-                ->from("{$consultTable} as lc")
-                ->whereColumn('lc.telemedicine_case_id', "{$caseTable}.id")
-                ->whereRaw("lc.id = (select max(cmx.id) from {$consultTable} cmx where cmx.telemedicine_case_id = {$caseTable}.id)")
-                ->where(function ($w) use ($driftTable): void {
-                    $w->where('lc.telemedicine_service_list_drift_id', self::ATENMEDI_BLOCK_UPDATE_DRIFT_SERVICE_LIST_ID)
-                        ->orWhereExists(function ($ex) use ($driftTable): void {
-                            $ex->selectRaw('1')
-                                ->from("{$driftTable} as tsl")
-                                ->whereColumn('tsl.id', 'lc.telemedicine_service_list_drift_id')
-                                ->whereRaw('UPPER(tsl.name) LIKE ?', ['%TRASLADO%AMBULANCIA%']);
-                        });
-                });
-        });
     }
 }

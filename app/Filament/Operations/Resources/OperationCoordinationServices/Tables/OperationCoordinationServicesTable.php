@@ -3,6 +3,9 @@
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Tables;
 
 use App\Models\OperationCoordinationService;
+use App\Models\OperationTypeNegotiation;
+use App\Models\OperationTypeService;
+use App\Models\Supplier;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
 use App\Support\Filament\FilamentIosButton;
@@ -11,10 +14,17 @@ use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -147,6 +157,388 @@ class OperationCoordinationServicesTable
             })
             ->visible(fn (OperationCoordinationService $record): bool => TelemedicineDerivedServiceBadge::specificServiceIsTrasladoEnAmbulancia($record->specific_service));
 
+        $clinicCoordinationDocumentsAction = Action::make('clinicCoordinationDocuments')
+            ->label(fn (OperationCoordinationService $record): string => $record->status === 'FINALIZADO'
+                ? 'Documentos clínica'
+                : 'Documentos ingreso / egreso clínica')
+            ->icon(Heroicon::OutlinedDocumentArrowUp)
+            ->color('info')
+            ->modalHeading('Documentos de ingreso y egreso a clínica')
+            ->modalDescription(function (OperationCoordinationService $record): Htmlable {
+                return new HtmlString(
+                    '<p class="text-sm text-gray-600 dark:text-gray-300">'
+                    .'Gestione los soportes del servicio derivado <span class="font-semibold">Ingreso a clínica</span> para la referencia '
+                    .e($record->reference_number ?? '—').'. Las cargas y eliminaciones quedan auditadas.</p>'
+                );
+            })
+            ->modalIcon(Heroicon::OutlinedDocumentArrowUp)
+            ->modalIconColor('info')
+            ->modalWidth(Width::FiveExtraLarge)
+            ->stickyModalHeader()
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ])
+            )
+            ->closeModalByClickingAway(false)
+            ->modalContent(fn (OperationCoordinationService $record): Htmlable => new HtmlString(
+                view('filament.operations.coordination.clinic-documents-modal', [
+                    'serviceId' => $record->id,
+                    'readOnly' => $record->status === 'FINALIZADO',
+                ])->render()
+            ))
+            ->visible(fn (OperationCoordinationService $record): bool => TelemedicineDerivedServiceBadge::specificServiceIsIngresoAClinica($record->specific_service)
+                && ! in_array((string) $record->status, ['CANCELADA', 'CANCELADO'], true));
+
+        $editNegotiationAndPricingAction = Action::make('editNegotiationAndPricing')
+            ->label('Negociación y precios')
+            ->icon(Heroicon::OutlinedRectangleStack)
+            ->color('primary')
+            ->modalHeading('Negociación, cotización y facturación')
+            ->modalDescription(function (OperationCoordinationService $record): Htmlable {
+                return new HtmlString(
+                    '<div class="space-y-2 text-sm text-gray-600 dark:text-gray-300">'
+                    .'<p><span class="font-medium text-gray-900 dark:text-white">Paciente:</span> '.e($record->patient ?? '—').'</p>'
+                    .'<p><span class="font-medium text-gray-900 dark:text-white">Referencia:</span> '.e($record->reference_number ?? '—').' · <span class="font-medium text-gray-900 dark:text-white">ID:</span> '.e((string) $record->id).'</p>'
+                    .'<p class="rounded-lg border border-primary-200/80 bg-primary-50/80 px-3 py-2 text-xs text-primary-950 dark:border-primary-500/30 dark:bg-primary-950/40 dark:text-primary-50">'
+                    .'<span class="font-semibold">Asistente por pasos:</span> use <strong>Siguiente</strong> y <strong>Anterior</strong> para revisar todo. El área central hace scroll si no cabe en pantalla. Al final pulse <strong>Guardar cambios</strong>. '
+                    .'El precio de cotización se recalcula al guardar: <span class="font-mono">neto + (neto × % TDEC ÷ 100)</span>.'
+                    .'</p>'
+                    .'</div>'
+                );
+            })
+            ->modalIcon(Heroicon::OutlinedCurrencyDollar)
+            ->modalIconColor('primary')
+            ->modalWidth(Width::FiveExtraLarge)
+            ->stickyModalHeader()
+            ->stickyModalFooter()
+            ->modalSubmitActionLabel('Guardar cambios')
+            ->modalCancelActionLabel('Cerrar')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->color('primary')
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ])
+            )
+            ->extraModalWindowAttributes([
+                'class' => implode(' ', [
+                    'fi-coordination-pricing-modal',
+                    'max-h-[min(92vh,56rem)]',
+                    'rounded-2xl',
+                    'ring-1',
+                    'ring-gray-950/5',
+                    'dark:ring-white/10',
+                    '[&_.fi-modal-content]:min-h-0',
+                    '[&_.fi-modal-content]:max-h-[min(calc(92vh-10rem),48rem))]',
+                    '[&_.fi-modal-content]:overflow-y-auto',
+                    '[&_.fi-modal-content]:overscroll-contain',
+                ]),
+            ], merge: true)
+            ->closeModalByClickingAway(false)
+            ->fillForm(fn (OperationCoordinationService $record): array => [
+                'type_service' => $record->type_service,
+                'supplier_service' => $record->supplier_service,
+                'farmadoc' => $record->farmadoc,
+                'type_negotiation' => $record->type_negotiation,
+                'status_negotiation' => $record->status_negotiation,
+                'neto' => $record->neto,
+                'porcen_tdec' => $record->porcen_tdec,
+                'negotiation' => $record->negotiation,
+                'porcen_discount' => $record->porcen_discount,
+                'price_discount' => $record->price_discount,
+                'quote_number' => $record->quote_number,
+                'approved_number' => $record->approved_number,
+                'service_order_number' => $record->service_order_number,
+                'bill_number' => $record->bill_number,
+                'bill_price' => $record->bill_price,
+                'bill_date' => $record->bill_date,
+                'incidence' => $record->incidence,
+                'negotiation_description' => $record->negotiation_description,
+                'qc_description' => $record->qc_description,
+            ])
+            ->modifyWizardUsing(function (Wizard $wizard): Wizard {
+                return $wizard
+                    ->extraAttributes([
+                        'class' => implode(' ', [
+                            'fi-coordination-service-wizard',
+                            'w-full',
+                            'min-h-0',
+                            '[&_.fi-sc-wizard-step]:max-h-[min(58vh,32rem)]',
+                            '[&_.fi-sc-wizard-step]:overflow-y-auto',
+                            '[&_.fi-sc-wizard-step]:overscroll-contain',
+                            '[&_.fi-sc-wizard-step]:pe-1',
+                            '[&_.fi-sc-wizard-header]:sticky',
+                            '[&_.fi-sc-wizard-header]:top-0',
+                            '[&_.fi-sc-wizard-header]:z-10',
+                            '[&_.fi-sc-wizard-header]:bg-white/95',
+                            '[&_.fi-sc-wizard-header]:pb-2',
+                            'dark:[&_.fi-sc-wizard-header]:bg-gray-950/95',
+                        ]),
+                    ], merge: true)
+                    ->nextAction(
+                        fn (Action $action): Action => $action
+                            ->label('Siguiente')
+                            ->icon(Heroicon::OutlinedArrowRight)
+                            ->iconPosition(IconPosition::After)
+                    )
+                    ->previousAction(
+                        fn (Action $action): Action => $action
+                            ->label('Anterior')
+                            ->icon(Heroicon::OutlinedArrowLeft)
+                    );
+            })
+            ->steps([
+                Step::make('Servicio')
+                    ->description('Tipo, proveedor, Farmadoc')
+                    ->icon(Heroicon::OutlinedCube)
+                    ->completedIcon(Heroicon::OutlinedCheckCircle)
+                    ->schema([
+                        Section::make('Clasificación del servicio')
+                            ->description('Seleccione el tipo de servicio y el proveedor. Puede buscar por nombre o RIF.')
+                            ->icon(Heroicon::OutlinedCube)
+                            ->iconColor('primary')
+                            ->schema([
+                                Select::make('type_service')
+                                    ->label('Tipo de Servicio')
+                                    ->placeholder('Seleccione…')
+                                    ->options(
+                                        OperationTypeService::query()
+                                            ->orderBy('description')
+                                            ->pluck('description', 'description')
+                                            ->all()
+                                    )
+                                    ->searchable()
+                                    ->native(false)
+                                    ->columnSpanFull(),
+                                Select::make('supplier_service')
+                                    ->label('Proveedor de Servicio')
+                                    ->placeholder('Busque por nombre o RIF…')
+                                    ->searchable()
+                                    ->getSearchResultsUsing(
+                                        fn (string $search): array => Supplier::query()
+                                            ->where(function ($query) use ($search): void {
+                                                $query->where('name', 'like', "%{$search}%")
+                                                    ->orWhere('rif', 'like', "%{$search}%");
+                                            })
+                                            ->orderBy('name')
+                                            ->limit(50)
+                                            ->pluck('name', 'name')
+                                            ->all()
+                                    )
+                                    ->getOptionLabelUsing(fn ($value): ?string => filled($value) ? (string) $value : null)
+                                    ->native(false)
+                                    ->columnSpanFull(),
+                                TextInput::make('farmadoc')
+                                    ->label('Farmadoc')
+                                    ->maxLength(255)
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
+                Step::make('Negociación')
+                    ->description('Tipo y estatus')
+                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                    ->completedIcon(Heroicon::OutlinedCheckCircle)
+                    ->schema([
+                        Section::make('Parámetros de negociación')
+                            ->description('Indicadores SI/NO y estatus (se guardará en mayúsculas).')
+                            ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                            ->iconColor('warning')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        Select::make('type_negotiation')
+                                            ->label('Tipo de Negociación')
+                                            ->placeholder('Seleccione…')
+                                            ->options(
+                                                OperationTypeNegotiation::query()
+                                                    ->orderBy('description')
+                                                    ->pluck('description', 'description')
+                                                    ->all()
+                                            )
+                                            ->searchable()
+                                            ->native(false),
+                                        TextInput::make('status_negotiation')
+                                            ->label('Estatus de Negociación')
+                                            ->maxLength(255)
+                                            ->helperText('Se guardará en mayúsculas.'),
+                                        Select::make('negotiation')
+                                            ->label('Negociación')
+                                            ->options(['SI' => 'SI', 'NO' => 'NO'])
+                                            ->native(false),
+                                        Select::make('incidence')
+                                            ->label('Incidencia')
+                                            ->options(['SI' => 'SI', 'NO' => 'NO'])
+                                            ->native(false),
+                                        Select::make('negotiation_description')
+                                            ->label('Descripción de Negociación')
+                                            ->options(['SI' => 'SI', 'NO' => 'NO'])
+                                            ->native(false)
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+                    ]),
+                Step::make('Precios')
+                    ->description('Neto, TDEC, descuentos')
+                    ->icon(Heroicon::OutlinedBanknotes)
+                    ->completedIcon(Heroicon::OutlinedCheckCircle)
+                    ->schema([
+                        Section::make('Precios y cotización')
+                            ->description('Vista previa en vivo. Al guardar se persiste el precio de cotización con la fórmula indicada arriba.')
+                            ->icon(Heroicon::OutlinedBanknotes)
+                            ->iconColor('success')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextInput::make('neto')
+                                            ->label('Precio Neto')
+                                            ->numeric()
+                                            ->prefix('US$')
+                                            ->live(onBlur: true),
+                                        TextInput::make('porcen_tdec')
+                                            ->label('% TDEC')
+                                            ->numeric()
+                                            ->prefix('%')
+                                            ->live(onBlur: true),
+                                        Placeholder::make('quote_price_preview')
+                                            ->label('Precio de cotización (vista previa)')
+                                            ->content(function (Get $get): HtmlString {
+                                                $neto = (float) ($get('neto') ?? 0);
+                                                $pct = (float) ($get('porcen_tdec') ?? 0);
+                                                $quote = $neto + ($neto * $pct / 100);
+
+                                                return new HtmlString(
+                                                    '<div class="rounded-xl border border-gray-200/90 bg-gray-50/95 px-4 py-3 dark:border-white/10 dark:bg-white/5">'
+                                                    .'<span class="text-lg font-bold tracking-tight text-gray-950 dark:text-white">US$ '
+                                                    .e(number_format($quote, 2, '.', ','))
+                                                    .'</span>'
+                                                    .'<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Vista previa; se confirma al guardar.</p>'
+                                                    .'</div>'
+                                                );
+                                            })
+                                            ->columnSpanFull(),
+                                        TextInput::make('porcen_discount')
+                                            ->label('Porcentaje de Descuento')
+                                            ->numeric()
+                                            ->prefix('%'),
+                                        TextInput::make('price_discount')
+                                            ->label('Precio de Descuento')
+                                            ->numeric()
+                                            ->prefix('US$')
+                                            ->helperText('Puede ajustar el importe manualmente si difiere del porcentaje.'),
+                                    ]),
+                            ]),
+                    ]),
+                Step::make('Documentos')
+                    ->description('Cotización, OS, factura')
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->completedIcon(Heroicon::OutlinedCheckCircle)
+                    ->schema([
+                        Section::make('Referencias y facturación')
+                            ->description('Números administrativos y datos de factura.')
+                            ->icon(Heroicon::OutlinedDocumentText)
+                            ->iconColor('gray')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextInput::make('quote_number')
+                                            ->label('Número de Cotización')
+                                            ->maxLength(255),
+                                        TextInput::make('approved_number')
+                                            ->label('Número de Aprobación')
+                                            ->maxLength(255),
+                                        TextInput::make('service_order_number')
+                                            ->label('Número Orden de Servicio')
+                                            ->maxLength(255)
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+                        Section::make('Facturación')
+                            ->description('Opcional: complete cuando exista factura.')
+                            ->icon(Heroicon::OutlinedReceiptPercent)
+                            ->iconColor('danger')
+                            ->collapsed()
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextInput::make('bill_number')
+                                            ->label('Número de Factura')
+                                            ->maxLength(255),
+                                        TextInput::make('bill_price')
+                                            ->label('Precio de Factura')
+                                            ->numeric()
+                                            ->prefix('US$'),
+                                        TextInput::make('bill_date')
+                                            ->label('Fecha de Factura')
+                                            ->maxLength(255)
+                                            ->helperText('Texto o fecha tal como debe figurar en reportes.')
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+                    ]),
+                Step::make('Calidad')
+                    ->description('QC — último paso')
+                    ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+                    ->completedIcon(Heroicon::OutlinedCheckCircle)
+                    ->schema([
+                        Section::make('Control de calidad')
+                            ->description('Revise el texto y pulse «Guardar cambios» en la barra inferior.')
+                            ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+                            ->iconColor('info')
+                            ->schema([
+                                Textarea::make('qc_description')
+                                    ->label('Descripción de QC')
+                                    ->rows(6)
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
+            ])
+            ->action(function (OperationCoordinationService $record, array $data): void {
+                $neto = (float) ($data['neto'] ?? 0);
+                $porcenTdec = (float) ($data['porcen_tdec'] ?? 0);
+                $quotePrice = $neto + ($neto * $porcenTdec / 100);
+
+                $record->type_service = $data['type_service'] ?? null;
+                $record->supplier_service = $data['supplier_service'] ?? null;
+                $record->farmadoc = $data['farmadoc'] ?? null;
+                $record->type_negotiation = $data['type_negotiation'] ?? null;
+                $record->status_negotiation = isset($data['status_negotiation'])
+                    ? mb_strtoupper((string) $data['status_negotiation'])
+                    : null;
+                $record->neto = $data['neto'] ?? null;
+                $record->porcen_tdec = $data['porcen_tdec'] ?? null;
+                $record->quote_price = $quotePrice;
+                $record->negotiation = $data['negotiation'] ?? null;
+                $record->porcen_discount = $data['porcen_discount'] ?? null;
+                $record->price_discount = $data['price_discount'] ?? null;
+                $record->quote_number = $data['quote_number'] ?? null;
+                $record->approved_number = $data['approved_number'] ?? null;
+                $record->service_order_number = $data['service_order_number'] ?? null;
+                $record->bill_number = $data['bill_number'] ?? null;
+                $record->bill_price = $data['bill_price'] ?? null;
+                $record->bill_date = $data['bill_date'] ?? null;
+                $record->incidence = $data['incidence'] ?? null;
+                $record->negotiation_description = $data['negotiation_description'] ?? null;
+                $record->qc_description = $data['qc_description'] ?? null;
+                $record->updated_by = Auth::user()?->name;
+                $record->save();
+
+                Notification::make()
+                    ->title('Coordinación actualizada')
+                    ->body('Los datos de negociación, precios y facturación se guardaron correctamente.')
+                    ->success()
+                    ->send();
+            });
+
         return $table
 
             ->heading('Listado de Coordinacion de Servicios')
@@ -267,7 +659,7 @@ class OperationCoordinationServicesTable
                         : 'heroicon-m-information-circle')
                     ->searchable(),
                 TextColumn::make('specific_service')
-                    ->label('Servicio Específico')
+                    ->label('Servicio Derivado')
                     ->badge()
                     ->color(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state) ? 'danger' : 'info')
                     ->icon(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
@@ -292,158 +684,98 @@ class OperationCoordinationServicesTable
                         ]
                         : [])
                     ->searchable(),
-                // SelectColumn::make('type_service')
-                //     ->label('Tipo de Servicio')
-                //     ->options(OperationTypeService::all()->pluck('description', 'description'))
-                //     ->searchableOptions()
-                //     ->searchable()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     }),
-                // SelectColumn::make('supplier_service')
-                //     ->label('Proveedor de Servicio')
-                //     ->options(Supplier::all()->pluck('name', 'name'))
-                //     ->searchableOptions()
-                //     ->getOptionsSearchResultsUsing(fn (string $search): array => Supplier::query()
-                //         // prueba 502091882
-                //         ->where('name', 'like', "%{$search}%")
-                //         ->orWhere('rif', 'like', "%{$search}%")
-                //         ->limit(50)
-                //         ->pluck('name', 'name')
-                //         ->all()
-                //     )
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     })
-                //     ->searchable(),
-                // TextColumn::make('farmadoc')
-                //     ->label('Farmadoc')
-                //     ->searchable(),
-                // SelectColumn::make('type_negotiation')
-                //     ->label('Tipo de Negociación')
-                //     ->options(OperationTypeNegotiation::all()->pluck('description', 'description'))
-                //     ->searchableOptions()
-                //     ->searchable(),
-                // TextInputColumn::make('status_negotiation')
-                //     ->label('Estatus de Negociación')
-                //     ->searchable()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->status_negotiation = strtoupper($state);
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     }),
-                // TextInputColumn::make('neto')
-                //     ->label('Precio Neto')
-                //     ->type('number')
-                //     ->inputMode('decimal')
-                //     ->prefix('US$')
-                //     ->sortable(),
-                // TextInputColumn::make('porcen_tdec')
-                //     ->type('number')
-                //     ->inputMode('decimal')
-                //     ->prefix('%')
-                //     ->label('% TDEC')
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->quote_price = ($record->neto * $state / 100) + $record->neto;
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     })
-                //     ->sortable(),
-                // TextColumn::make('quote_price')
-                //     ->money()
-                //     ->badge()
-                //     ->color(fn ($record) => $record->quote_price > 0 ? 'success' : 'gray')
-                //     ->icon('heroicon-s-currency-dollar')
-                //     ->label('Precio de Cotización')
-                //     ->sortable(),
-                // SelectColumn::make('negotiation')
-                //     ->label('Negociación')
-                //     ->options(['SI' => 'SI', 'NO' => 'NO'])
-                //     ->searchableOptions()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     })
-                //     ->searchable(),
-                // TextInputColumn::make('porcen_discount')
-                //     ->type('number')
-                //     ->inputMode('decimal')
-                //     ->prefix('%')
-                //     ->label('Porcentaje de Descuento')
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->price_discount = ($record->quote_price * $state / 100);
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     })
-                //     ->sortable(),
-                // TextInputColumn::make('price_discount')
-                //     ->type('number')
-                //     ->inputMode('decimal')
-                //     ->prefix('US$')
-                //     ->label('Precio de Descuento')
-                //     ->sortable()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     }),
-                // TextInputColumn::make('quote_number')
-                //     ->label('Número de Cotización')
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     })
-                //     ->searchable(),
-                // TextInputColumn::make('approved_number')
-                //     ->label('Número de Aprobación')
-                //     ->searchable()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     }),
-                // TextInputColumn::make('service_order_number')
-                //     ->label('Número Orden de Servicio')
-                //     ->searchable()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     }),
-                // TextColumn::make('bill_number')
-                //     ->label('Número de Factura')
-                //     ->searchable(),
-                // TextColumn::make('bill_price')
-                //     ->money()
-                //     ->badge()
-                //     ->color(fn ($record) => $record->bill_price > 0 ? 'success' : 'gray')
-                //     ->icon('heroicon-s-currency-dollar')
-                //     ->prefix('US$')
-                //     ->label('Precio de Factura')
-                //     ->sortable(),
-                // TextColumn::make('bill_date')
-                //     ->label('Fecha de Factura')
-                //     ->searchable(),
-                // SelectColumn::make('incidence')
-                //     ->label('Incidencia')
-                //     ->options(['SI' => 'SI', 'NO' => 'NO'])
-                //     ->searchableOptions()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     })
-                //     ->searchable(),
-                // SelectColumn::make('negotiation_description')
-                //     ->label('Descripción de Negociación')
-                //     ->options(['SI' => 'SI', 'NO' => 'NO'])
-                //     ->searchableOptions()
-                //     ->afterStateUpdated(function ($record, $state) {
-                //         $record->updated_by = Auth::user()->name;
-                //         $record->save();
-                //     })
-                //     ->searchable(),
-                // TextColumn::make('qc_description')
-                //     ->label('Descripción de QC')
-                //     ->searchable(),
+                TextColumn::make('type_service')
+                    ->label('Tipo de Servicio')
+                    ->badge()
+                    ->color('gray')
+                    ->searchable()
+                    ->tooltip('Edite en la acción «Negociación y precios».'),
+                TextColumn::make('supplier_service')
+                    ->label('Proveedor de Servicio')
+                    ->searchable()
+                    ->limit(28)
+                    ->tooltip(fn (?string $state): ?string => $state),
+                TextColumn::make('farmadoc')
+                    ->label('Farmadoc')
+                    ->searchable(),
+                TextColumn::make('type_negotiation')
+                    ->label('Tipo de Negociación')
+                    ->badge()
+                    ->color('gray')
+                    ->searchable(),
+                TextColumn::make('status_negotiation')
+                    ->label('Estatus de Negociación')
+                    ->searchable(),
+                TextColumn::make('neto')
+                    ->label('Precio Neto')
+                    ->money('USD')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('porcen_tdec')
+                    ->label('% TDEC')
+                    ->suffix('%')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('quote_price')
+                    ->money()
+                    ->badge()
+                    ->color(fn ($record) => $record->quote_price > 0 ? 'success' : 'gray')
+                    ->icon('heroicon-s-currency-dollar')
+                    ->label('Precio de Cotización')
+                    ->sortable(),
+                TextColumn::make('negotiation')
+                    ->label('Negociación')
+                    ->badge()
+                    ->color(fn (?string $state): string => $state === 'SI' ? 'success' : 'gray')
+                    ->searchable(),
+                TextColumn::make('porcen_discount')
+                    ->label('% Descuento')
+                    ->suffix('%')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('price_discount')
+                    ->label('Precio de Descuento')
+                    ->money('USD')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('quote_number')
+                    ->label('Número de Cotización')
+                    ->searchable(),
+                TextColumn::make('approved_number')
+                    ->label('Número de Aprobación')
+                    ->searchable(),
+                TextColumn::make('service_order_number')
+                    ->label('Número Orden de Servicio')
+                    ->searchable(),
+                TextColumn::make('bill_number')
+                    ->label('Número de Factura')
+                    ->searchable(),
+                TextColumn::make('bill_price')
+                    ->money()
+                    ->badge()
+                    ->color(fn ($record) => $record->bill_price > 0 ? 'success' : 'gray')
+                    ->icon('heroicon-s-currency-dollar')
+                    ->prefix('US$')
+                    ->label('Precio de Factura')
+                    ->sortable(),
+                TextColumn::make('bill_date')
+                    ->label('Fecha de Factura')
+                    ->searchable(),
+                TextColumn::make('incidence')
+                    ->label('Incidencia')
+                    ->badge()
+                    ->color(fn (?string $state): string => $state === 'SI' ? 'warning' : 'gray')
+                    ->searchable(),
+                TextColumn::make('negotiation_description')
+                    ->label('Descripción de Negociación')
+                    ->badge()
+                    ->color('gray')
+                    ->searchable(),
+                TextColumn::make('qc_description')
+                    ->label('Descripción de QC')
+                    ->limit(40)
+                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->searchable(),
                 TextColumn::make('observations')
                     ->label('Observaciones')
                     ->searchable(),
@@ -482,6 +814,8 @@ class OperationCoordinationServicesTable
                 //
             ])
             ->recordActions([
+                $editNegotiationAndPricingAction,
+                $clinicCoordinationDocumentsAction,
                 $selectTdgDoctorForAmbulanceAction,
             ])
             ->toolbarActions([

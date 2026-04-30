@@ -112,6 +112,16 @@ class OperationCoordinationServiceController extends Controller
         return self::create($record, $doctor, $patient, 'ESPECIALISTA');
     }
 
+    public static function createServiceTransportAmbulance(array $record, array $doctor, array $patient)
+    {
+        return self::create($record, $doctor, $patient, 'TRASLADO EN AMBULANCIA');
+    }
+
+    public static function createServiceEnterClinic(array $record, array $doctor, array $patient)
+    {
+        return self::create($record, $doctor, $patient, 'INGRESO A CLINICA');
+    }
+
     public static function updateStatus(int $id, string $status)
     {
         DB::transaction(function () use ($id, $status) {

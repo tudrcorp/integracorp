@@ -93,8 +93,8 @@
                         ];
                     @endphp
 
-                    <div class="min-w-[980px] rounded-[1.65rem] border border-cyan-300/35 bg-gradient-to-b from-cyan-500/90 via-sky-600/85 to-cyan-700/90 p-4 text-white shadow-[0_20px_50px_rgba(8,145,178,0.38)] dark:border-cyan-300/20 dark:from-slate-900 dark:via-cyan-900/70 dark:to-slate-950/95">
-                        <div class="mb-4 grid grid-cols-7 gap-2">
+                    <div class="min-w-[980px] rounded-[1.65rem] border border-slate-200/80 bg-slate-50/70 p-3 shadow-[0_2px_16px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/40">
+                        <div class="mb-3 grid grid-cols-7 gap-2">
                             @foreach ($this->currentWeekDays as $day)
                                 <button
                                     type="button"
@@ -103,34 +103,34 @@
                                     wire:target="selectWeekDate"
                                     class="group rounded-2xl border px-2 py-2 text-center transition-all duration-200
                                     {{ $day['is_selected']
-                                        ? 'border-white/85 bg-white text-cyan-700 shadow-[0_10px_25px_rgba(15,23,42,0.2)]'
-                                        : 'border-white/20 bg-white/5 text-white/90 hover:border-white/45 hover:bg-white/10' }}"
+                                        ? 'border-cyan-400/55 bg-white text-slate-900 shadow-[0_8px_22px_rgba(15,23,42,0.12)] ring-2 ring-cyan-400/45 dark:border-cyan-400/40 dark:bg-slate-900/90 dark:text-slate-100 dark:shadow-[0_12px_28px_rgba(0,0,0,0.45)] dark:ring-cyan-300/50'
+                                        : 'border-slate-200/80 bg-white/90 text-slate-700 shadow-[0_1px_6px_rgba(15,23,42,0.04)] hover:border-cyan-200/70 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:border-cyan-500/30 dark:hover:bg-slate-800/80' }}"
                                 >
-                                    <p class="text-[11px] font-semibold tracking-[0.14em] {{ $day['is_selected'] ? 'text-cyan-500' : 'text-white/75' }}">
+                                    <p class="text-[11px] font-semibold tracking-[0.14em] {{ $day['is_selected'] ? 'text-cyan-600 dark:text-cyan-300' : 'text-slate-500 dark:text-slate-400' }}">
                                         {{ $day['day_label'] }}
                                     </p>
-                                    <p class="mt-1 text-2xl font-semibold leading-none">{{ $day['day_number'] }}</p>
-                                    <div class="mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $day['is_selected'] ? 'bg-cyan-100 text-cyan-700' : 'bg-white/15 text-white/90' }}">
+                                    <p class="mt-1 text-2xl font-semibold leading-none {{ $day['is_selected'] ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-100' }}">{{ $day['day_number'] }}</p>
+                                    <div class="mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $day['is_selected'] ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/25 dark:text-cyan-100' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }}">
                                         {{ $day['activity_count'] }} actividades
                                     </div>
                                 </button>
                             @endforeach
                         </div>
 
-                        <div class="rounded-[1.4rem] border border-white/20 bg-white/8 p-3 backdrop-blur-xl">
+                        <div class="rounded-[1.4rem] border border-slate-200/80 bg-white p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:border-white/10 dark:bg-slate-900/50 dark:shadow-none">
                             <div class="grid grid-cols-[84px_minmax(0,1fr)] gap-3">
                                 <div class="pt-1">
                                     @foreach ($timelineHours as $hour)
-                                        <div class="flex h-14 items-start justify-end pr-2 text-[11px] font-semibold text-white/70">
+                                        <div class="flex h-14 items-start justify-end pr-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                                             {{ \Carbon\Carbon::createFromTime($hour)->format('g A') }}
                                         </div>
                                     @endforeach
                                 </div>
 
-                                <div class="relative min-h-[{{ $timelineHeight }}px] rounded-2xl border border-white/15 bg-slate-900/20 px-2 py-1">
+                                <div class="relative min-h-[{{ $timelineHeight }}px] rounded-2xl border border-slate-200/70 bg-slate-50/90 px-2 py-1 dark:border-white/10 dark:bg-slate-950/50">
                                     @foreach (range(0, count($timelineHours) - 1) as $index)
                                         <div
-                                            class="pointer-events-none absolute left-0 right-0 border-t border-white/15"
+                                            class="pointer-events-none absolute left-0 right-0 border-t border-slate-200/80 dark:border-white/10"
                                             style="top: {{ $index * $hourRowHeight }}px;"
                                         ></div>
                                     @endforeach
@@ -209,9 +209,9 @@
                                         </button>
                                     @empty
                                         <div class="absolute inset-0 flex items-center justify-center">
-                                            <div class="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-center">
-                                                <p class="text-sm font-semibold text-white/90">Sin actividades en este día</p>
-                                                <p class="mt-1 text-xs text-white/75">Selecciona otra fecha de la semana actual.</p>
+                                            <div class="rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 text-center shadow-sm dark:border-white/10 dark:bg-slate-900/80">
+                                                <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Sin actividades en este día</p>
+                                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Selecciona otra fecha de la semana actual.</p>
                                             </div>
                                         </div>
                                     @endforelse
