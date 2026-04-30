@@ -3,6 +3,7 @@
 namespace App\Filament\Telemedicina\Widgets;
 
 use App\Models\TelemedicineCase;
+use App\Models\TelemedicineDoctor;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Widgets\StatsOverviewWidget;
@@ -33,9 +34,10 @@ class CaseStats extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        // dd($this->getTotalCasesTransportAmbulance());
         return [
             Stat::make('CASOS ASIGNADOS', $this->getTotalCasesAssigned())
-                ->description('Estado ASIGNADO')
+                ->description('ASIGNADO')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('warning')
                 ->extraAttributes([
@@ -47,7 +49,7 @@ class CaseStats extends StatsOverviewWidget
                     'wire:click' => "\$dispatch('setStatusFilter', { filter: 'processed' })",
                 ]),
             Stat::make('CASOS EN SEGUIMIENTO', $this->getTotalCasesFollowUp())
-                ->description('Estado EN SEGUIMIENTO')
+                ->description('EN SEGUIMIENTO')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('info')
                 ->extraAttributes([
@@ -58,7 +60,7 @@ class CaseStats extends StatsOverviewWidget
                     ]),
                 ]),
             Stat::make('ALTA MEDICA', $this->getTotalCasesAttended())
-                ->description('Estado ALTA MÉDICA')
+                ->description('ALTA MÉDICA')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success')
                 ->extraAttributes([
@@ -68,11 +70,27 @@ class CaseStats extends StatsOverviewWidget
                         'transition-[transform,box-shadow] duration-200 active:scale-[0.98]',
                     ]),
                 ]),
+            Stat::make('TRASLADO EN AMBULANCIA', $this->getTotalCasesTransportAmbulance())
+                ->description('TRASLADO EN AMBULANCIA')
+                ->descriptionIcon('heroicon-m-arrow-trending-up')
+                ->color('danger')
+                ->extraAttributes([
+                    'class' => implode(' ', [
+                        'fi-telemedicine-case-stat-ios',
+                        'fi-telemedicine-case-stat-ios--transport-ambulance',
+                        'transition-[transform,box-shadow] duration-200 active:scale-[0.98]',
+                    ]),
+                ])
+                ->visible(fn () => TelemedicineDoctor::where('id', Auth::user()->doctor_id)->first()->managed_by == 'ATENMEDI'),
         ];
     }
 
     public function getColumns(): int|array
     {
+        if (TelemedicineDoctor::where('id', Auth::user()->doctor_id)->first()->managed_by == 'ATENMEDI') {
+            return 4;
+        }
+
         return 3;
     }
 
@@ -86,13 +104,21 @@ class CaseStats extends StatsOverviewWidget
         return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', 'ASIGNADO')->count();
     }
 
+    public function getTotalCasesFollowUp(): int
+    {
+        return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', 'EN SEGUIMIENTO')->count();
+    }
+
     public function getTotalCasesAttended(): int
     {
         return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', 'ALTA MEDICA')->count();
     }
 
-    public function getTotalCasesFollowUp(): int
+    /**
+     * Cantidad de casos donde el servicio devuelto es diferente a 'TRASLADO EN AMBULANCIA'
+     */
+    public function getTotalCasesTransportAmbulance(): int
     {
-        return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', 'EN SEGUIMIENTO')->count();
+        return TelemedicineCase::where('doctor_id_first_accompaniment', Auth::user()->doctor_id)->count();
     }
 }

@@ -190,10 +190,14 @@
 </head>
 <body>
     <!-- Content here -->
+    <div style="position: absolute; top: 44px; right: 50px; width: 250px; text-align: right;">
+        <img src="{{ public_path('image/logo-tdg-carta-bienvenida.png') }}" style="display: block; width: 250px; height: auto; margin-left: auto;" alt="">
+    </div>
+
     <div style="position: absolute; top: 50px; left: 50px; width: 650px;">
         <table style="width: 650px; border-collapse: collapse; border-spacing: 0; box-shadow: none; max-width: none;">
             <tr>
-                <td style="width: 460px; vertical-align: top; text-align: left; padding: 0; background-color: transparent;">
+                <td style="width: 650px; vertical-align: top; text-align: left; padding: 0; background-color: transparent;">
                     <p class="sin-margen" style="margin: 0 0 5px; font-size: 30px;">
                         <span style="font-weight: bold; color: #052F60; font-size: 25px; font-style: italic;">CARTA DE
                         </span>
@@ -211,15 +215,12 @@
                         </span>
                     </p>
                 </td>
-                <td style="width: 210px; vertical-align: top; text-align: right; padding: 0; background-color: transparent;">
-                    <img src="{{ public_path('image/logo-tdg-carta-bienvenida.png') }}" style="display: block; width: 210px; height: auto; margin-top: 2px; margin-left: auto;" alt="">
-                </td>
             </tr>
         </table>
     </div>
 
 
-    <div style="position: absolute; top: 210px; left: 50px; width: 650px;">
+    <div style="position: absolute; top: 210px; left: 50px; width: 610px;">
         <p style="margin: 0 0 14px; text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
             En nombre de todo el equipo que integra Tu Doctor Group queremos agradecerles por permitirnos formar parte de su portafolio de productos, y a través de ustedes poder brindar cuidados especializados a nuestros clientes en común.
         </p>

@@ -139,4 +139,9 @@ class OperationCoordinationService extends Model
     {
         return $this->belongsTo(TelemedicinePriority::class);
     }
+
+    public function clinicDocuments()
+    {
+        return $this->hasMany(OperationCoordinationClinicDocument::class);
+    }
 }
