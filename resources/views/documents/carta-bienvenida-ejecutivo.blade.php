@@ -344,7 +344,7 @@
 
         <div style="position: absolute; top: 0px; left: 530px; margin-top: 15px; padding: 20px; margin-left: 20px">
             <div>
-                <img class="logo-bottom-left" src="{{ public_path('storage/logo1-pdf.png') }}"
+                <img class="logo-bottom-left" src="{{ public_path('image/logo-tdg-carta-bienvenida.png') }}"
                     style="width: 150px; height: 70px;" alt="">
             </div>
         </div>
@@ -370,7 +370,7 @@
 
         <footer>
             <img src="{{ public_path('storage/firma_sol_dos.png') }}" style="width: 35%; margin-bottom: 20px" alt="">
-            <img src="{{ public_path('storage/footer-carta-bienvenida.png') }}" style="width: 100%; margin-top: 5px"
+            <img src="{{ public_path('storage/footer-carta-de-bienvenida.png') }}" style="width: 100%; margin-top: 5px"
                 alt="">
         </footer>
 
