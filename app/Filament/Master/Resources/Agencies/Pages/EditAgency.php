@@ -2,27 +2,51 @@
 
 namespace App\Filament\Master\Resources\Agencies\Pages;
 
+use App\Filament\Master\Resources\Agencies\AgencyResource;
 use App\Models\Agency;
-use Livewire\Component;
 use Filament\Actions\Action;
-use Filament\Actions\ViewAction;
-use Filament\Support\Enums\Width;
-use Filament\Actions\DeleteAction;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Fieldset;
-use App\Filament\Master\Resources\Agencies\AgencyResource;
-use App\Filament\Master\Resources\IndividualQuotes\IndividualQuoteResource;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
+use Livewire\Component;
 
 class EditAgency extends EditRecord
 {
     protected static string $resource = AgencyResource::class;
 
-    protected static ?string $title = 'Perfil de la Agencia';
+    public function getTitle(): string|Htmlable
+    {
+        /** @var Agency $record */
+        $record = $this->getRecord();
+
+        $displayName = trim((string) ($record->name_corporative ?? ''));
+
+        if ($displayName === '') {
+            $displayName = trim((string) ($record->code ?? ''));
+        }
+
+        if ($displayName === '') {
+            return 'Perfil de la agencia';
+        }
+
+        return sprintf('Perfil de la agencia · %s', e($displayName));
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return new HtmlString(
+            '<span class="block max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">'
+            .'Revisa y actualiza la información de tu perfil. '
+            .'</span>'
+        );
+    }
 
     protected function getHeaderActions(): array
     {
@@ -42,10 +66,10 @@ class EditAgency extends EditRecord
                                 ->label('Selecciona el tipo de Gráfico')
                                 ->helperText('Por default se muestran los gráficos tipo barras.')
                                 ->options([
-                                    'bar'   => 'Barras',
-                                    'line'  => 'Lineas',
+                                    'bar' => 'Barras',
+                                    'line' => 'Lineas',
                                 ])
-                                ->default(fn() => Agency::where('code', Auth::user()->code_agency)->first()->type_chart),
+                                ->default(fn () => Agency::where('code', Auth::user()->code_agency)->first()->type_chart),
 
                         ])->columns(1),
                 ])
@@ -60,7 +84,7 @@ class EditAgency extends EditRecord
                         return redirect()->route('filament.master.pages.dashboard');
                     }
                 }),
-            
+
             Action::make('preferences_menu')
                 ->label('Preferencias de Menú')
                 ->icon('heroicon-s-cog')
@@ -79,7 +103,7 @@ class EditAgency extends EditRecord
                                 ->offIcon('heroicon-m-arrow-small-left')
                                 ->onColor('success')
                                 ->offColor('danger')
-                                ->default(fn() => Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu == true ? true : false),
+                                ->default(fn () => Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu == true ? true : false),
 
                         ])->columns(1),
                 ])
@@ -94,7 +118,7 @@ class EditAgency extends EditRecord
                         return redirect('/master');
                     }
                 }),
-                
+
             Action::make('back')
                 ->label('Dashboard')
                 ->icon(Heroicon::Home)
@@ -116,5 +140,4 @@ class EditAgency extends EditRecord
             ->title('PERFIL ACTUALIZADO!')
             ->body('La informacion de tu perfel ha sido actualizada de forma exitosa.');
     }
-
 }
