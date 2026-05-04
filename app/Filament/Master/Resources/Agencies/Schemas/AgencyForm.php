@@ -378,6 +378,7 @@ class AgencyForm
                     Step::make('Comisiones')
                     ->description('Comisiones de Agencia')
                     ->completedIcon(Heroicon::Check)
+                        ->hidden(fn (Get $get): bool => (int) $get('agency_type_id') === 1)
                         ->schema([
                             Grid::make(2)
                                 ->schema([

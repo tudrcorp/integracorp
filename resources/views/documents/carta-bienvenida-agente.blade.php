@@ -332,7 +332,7 @@
             </p>
             <p class="sin-margen" style=" margin-bottom: 3px; font-size: 1.2rem;">
                 <span style="font-weight: normal; color: #000000; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-                    Ejecutivo: {{ $name }}
+                    Agente: {{ $name }}
                 </span>
             </p>
         </div>
