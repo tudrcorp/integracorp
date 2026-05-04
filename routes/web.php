@@ -1631,3 +1631,33 @@ Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
         'signed',           // Verifica que la firma de la URL sea válida
         'throttle:10,1',    // Máximo 10 intentos por minuto por IP
     ]);
+
+/**
+ * Rutas para pruebas de documentos PDF
+ * - Carta de bienvenida de la agencia
+ * - Carta de bienvenida del ejecutivo
+ * - Carta de bienvenida del agente
+ *
+ * @version 1.0.0
+ *
+ * @author Gustavo Camacho
+ *
+ * @return void
+ */
+Route::get('/carta-bienvenida-agencia', function () {
+    //Doc en PDF
+    $pdf = Pdf::loadView('documents.carta-bienvenida-agencia');
+    return $pdf->download('carta-bienvenida-agencia.pdf');
+})->name('carta-bienvenida-agencia');
+
+Route::get('/carta-bienvenida-ejecutivo', function () {
+    //Doc en PDF
+    $pdf = Pdf::loadView('documents.carta-bienvenida-ejecutivo');
+    return $pdf->download('carta-bienvenida-ejecutivo.pdf');
+})->name('carta-bienvenida-ejecutivo');
+
+Route::get('/carta-bienvenida-agente', function () {
+    //Doc en PDF
+    $pdf = Pdf::loadView('documents.carta-bienvenida-agente');
+    return $pdf->download('carta-bienvenida-agente.pdf');
+})->name('carta-bienvenida-agente');

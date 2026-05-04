@@ -16,7 +16,9 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use UnitEnum;
 
 class OperationOnCallUserResource extends Resource
@@ -61,22 +63,76 @@ class OperationOnCallUserResource extends Resource
         ];
     }
 
-    // public static function canAccess(): bool
-    // {
-    //     $module = 'OPERACIONES';
-    //     $permission = Permission::where('module', $module)->where('slug', 'roles-de-guardia')->first();
+    public static function canViewAny(): bool
+    {
+        return self::userMayAccessGuardDutyRoles();
+    }
 
-    //     // si es superadmin, retornar true
-    //     if (in_array('SUPERADMIN', Auth::user()->departament)) {
-    //         return true;
-    //     }
+    public static function canView(Model $record): bool
+    {
+        return self::userMayAccessGuardDutyRoles();
+    }
 
-    //     if (in_array($module, Auth::user()->departament)) {
-    //         if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
-    //             return true;
-    //         }
-    //     }
+    public static function canCreate(): bool
+    {
+        return self::userMayAccessGuardDutyRoles();
+    }
 
-    //     return false;
-    // }
+    public static function canEdit(Model $record): bool
+    {
+        return self::userMayAccessGuardDutyRoles();
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return self::userMayAccessGuardDutyRoles();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return self::userMayAccessGuardDutyRoles();
+    }
+
+    /**
+     * Permiso `OPERACIONES` / slug `roles-de-guardia` + entrada en `user_permissions`,
+     * o usuario con departamento SUPERADMIN. Requiere fila en `permissions` (semilla).
+     */
+    protected static function userMayAccessGuardDutyRoles(): bool
+    {
+        $user = Auth::user();
+        if ($user === null) {
+            return false;
+        }
+
+        $departments = $user->departament ?? [];
+        if (! is_array($departments)) {
+            $departments = filled($departments) ? [$departments] : [];
+        }
+
+        if (in_array('SUPERADMIN', $departments, true)) {
+            return true;
+        }
+
+        $permission = Permission::query()
+            ->where('module', 'OPERACIONES')
+            ->where('slug', 'roles-de-guardia')
+            ->first();
+
+        if ($permission === null) {
+            Log::warning('OPERACIONES: permiso «roles-de-guardia» ausente; acceso a Roles de Guardia denegado.', [
+                'user_id' => $user->id,
+            ]);
+
+            return false;
+        }
+
+        if (! in_array('OPERACIONES', $departments, true)) {
+            return false;
+        }
+
+        return UserPermission::query()
+            ->where('user_id', $user->id)
+            ->where('permission_id', $permission->id)
+            ->exists();
+    }
 }

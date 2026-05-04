@@ -321,7 +321,7 @@
     <body>
 
         <!-- Content here -->
-        <div style="position: absolute; top: 0px; left: 33px; margin-top: 15px; padding: 20px; margin-left: 20px">
+        <div style="position: absolute; top: 80px; left: 33px; margin-top: 15px; padding: 20px; margin-left: 20px">
             <p class="sin-margen" style="margin-bottom: 5px; font-size: 30px;">
                 <span style="font-weight: bold; color: #052F60; font-size: 25px; font-style: italic;">CARTA DE
                 </span>
@@ -331,29 +331,24 @@
             <p class="sin-margen" style=" margin-bottom: 3px; font-size: 1.2rem;">
                 <span
                     style="font-weight: normal; color: #000000; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-                    Ejecutivo:
-                </span>
-            </p>
-            <p class="sin-margen" style="font-size: 1.2rem;">
-                <span style="font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-                    {{ $name }}
+                    Ejecutivo: {{ $name }}
                 </span>
             </p>
         </div>
 
 
-        <div style="position: absolute; top: 0px; left: 530px; margin-top: 15px; padding: 20px; margin-left: 20px">
+        <div style="position: absolute; top: -90px; left: 480px; margin-top: 15px; padding: 20px; margin-left: 20px">
             <div>
                 <img class="logo-bottom-left" src="{{ public_path('image/logo-tdg-carta-bienvenida.png') }}"
-                    style="width: 150px; height: 70px;" alt="">
+                    style="width: 250px; height: auto;" alt="">
             </div>
         </div>
 
 
-        <div style="position: absolute; top: 120px; left: 50px; margin-top: 40px; padding: 20px; width: 650px;">
+        <div style="position: absolute; top: 160px; left: 50px; margin-top: 40px; padding: 20px; width: 650px;">
             <p
                 style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
-                En nombre de todo el equipo que integra Tu Doctor Group queremos agradecerles por permitirnos formar
+                En nombre de todo el equipo que integra Tu Doctor Group, queremos agradecerles por permitirnos formar
                 parte de su portafolio de productos, y a través de ustedes poder brindar cuidados especializados a
                 nuestros clientes en común.
             </p>
@@ -361,6 +356,7 @@
                 style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
                 Le informamos que ha sido registrador satisfactoriamente y puede identificarse con el código <span
                     style="font-size: bold; color: #014886">EJEC-000{{ $id }}</span>.
+
             </p>
             <p
                 style="text-align: justify; font-size: 1.2rem; font-weight: normal; font-family: 'Century Regular', Century, sans-serif; font-style: italic">
@@ -370,8 +366,7 @@
 
         <footer>
             <img src="{{ public_path('storage/firma_sol_dos.png') }}" style="width: 35%; margin-bottom: 20px" alt="">
-            <img src="{{ public_path('storage/footer-carta-de-bienvenida.png') }}" style="width: 100%; margin-top: 5px"
-                alt="">
+            <img src="{{ public_path('storage/footer-carta-de-bienvenida.png') }}" style="width: 100%; margin-top: 5px" alt="">
         </footer>
 
 
