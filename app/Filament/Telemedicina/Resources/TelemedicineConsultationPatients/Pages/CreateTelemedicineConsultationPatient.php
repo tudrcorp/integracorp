@@ -817,6 +817,26 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     }
 
                     /**
+                     * Creacion del servicio de coordinacion
+                     * ----------------------------------------------------------------------------------------------------
+                     *
+                     * @record = Informacion de la consulta
+                     * @doctor = Informacion del doctor
+                     * @patient = Informacion del paciente
+                     *
+                     * * @version 1.0
+                     */
+                    /** TRASLADO EN AMBULANCIA */
+                    if ($record['telemedicine_service_list_drift_id'] == 3) {
+                        $registeredOperationCoordinationService = OperationCoordinationServiceController::createServiceTransportAmbulance($record, $doctor, $patient);
+                    }
+
+                    /** INGRESO A CLINICA */
+                    if($record['telemedicine_service_list_drift_id'] == 8) {
+                        $registeredOperationCoordinationService = OperationCoordinationServiceController::createServiceEnterClinic($record, $doctor, $patient);
+                    }
+
+                    /**
                      * Creacion del informe medico
                      * ----------------------------------------------------------------------------------------------------
                      *

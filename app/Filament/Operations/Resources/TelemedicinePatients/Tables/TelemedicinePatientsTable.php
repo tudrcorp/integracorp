@@ -644,6 +644,7 @@ class TelemedicinePatientsTable
                                 }
 
                             } catch (\Throwable $exception) {
+                                dd($exception);
                                 SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNMENT_FAILED', 'operations.telemedicine-patients.assign-doctor', [
                                     'telemedicine_patient_id' => $record->id,
                                     'patient_name' => $record->full_name,
