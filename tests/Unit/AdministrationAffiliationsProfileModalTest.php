@@ -39,7 +39,7 @@ it('abre modal de perfil al hacer click en codigo de afiliaciones de administrac
         ->toContain('Misma funcionalidad del formulario original');
 
     expect($individualLivewireClass)
-        ->toContain('class AffiliationWorkspaceModal extends Component')
+        ->toContain('class AdministrationAffiliationsProfileModalTest extends Component')
         ->toContain('public function savePayment(): void')
         ->toContain('public function approvePayment(): void')
         ->toContain('public function updatedPaymentFormPaymentMethod(string $value): void')
