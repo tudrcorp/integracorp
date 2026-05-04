@@ -2225,7 +2225,7 @@
 
   .fi-telemedicine-consultation-wizard .fi-input-wrp,
   .fi-telemedicine-consultation-wizard .fi-fo-select-trigger {
-    @apply min-h-11 rounded-xl border-zinc-200/90 shadow-none transition-shadow transition-colors duration-200 dark:border-zinc-600/80;
+    @apply min-h-11 rounded-xl border border-zinc-200/90 shadow-none transition-shadow transition-colors duration-200 dark:border-zinc-600/80;
   }
 
   .fi-telemedicine-consultation-wizard .fi-input-wrp:has(.fi-input:focus),

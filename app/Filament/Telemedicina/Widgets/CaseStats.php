@@ -12,6 +12,28 @@ use Illuminate\Support\Facades\Auth;
 
 class CaseStats extends StatsOverviewWidget
 {
+    private function currentDoctorId(): ?int
+    {
+        $id = Auth::user()?->doctor_id;
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    private function currentTelemedicineDoctor(): ?TelemedicineDoctor
+    {
+        $doctorId = $this->currentDoctorId();
+        if ($doctorId === null) {
+            return null;
+        }
+
+        return TelemedicineDoctor::find($doctorId);
+    }
+
+    private function userDoctorIsAtenmediManaged(): bool
+    {
+        return $this->currentTelemedicineDoctor()?->managed_by === 'ATENMEDI';
+    }
+
     protected int|string|array $columnSpan = 'full';
 
     protected ?string $heading = 'Casos Asignados y Atendidos';
@@ -81,13 +103,13 @@ class CaseStats extends StatsOverviewWidget
                         'transition-[transform,box-shadow] duration-200 active:scale-[0.98]',
                     ]),
                 ])
-                ->visible(fn () => TelemedicineDoctor::where('id', Auth::user()->doctor_id)->first()->managed_by == 'ATENMEDI'),
+                ->visible(fn () => $this->userDoctorIsAtenmediManaged()),
         ];
     }
 
     public function getColumns(): int|array
     {
-        if (TelemedicineDoctor::where('id', Auth::user()->doctor_id)->first()->managed_by == 'ATENMEDI') {
+        if ($this->userDoctorIsAtenmediManaged()) {
             return 4;
         }
 
@@ -96,22 +118,42 @@ class CaseStats extends StatsOverviewWidget
 
     public function getTotalCases(): int
     {
-        return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->count();
+        $doctorId = $this->currentDoctorId();
+        if ($doctorId === null) {
+            return 0;
+        }
+
+        return TelemedicineCase::where('telemedicine_doctor_id', $doctorId)->count();
     }
 
     public function getTotalCasesAssigned(): int
     {
-        return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', 'ASIGNADO')->count();
+        $doctorId = $this->currentDoctorId();
+        if ($doctorId === null) {
+            return 0;
+        }
+
+        return TelemedicineCase::where('telemedicine_doctor_id', $doctorId)->where('status', 'ASIGNADO')->count();
     }
 
     public function getTotalCasesFollowUp(): int
     {
-        return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', 'EN SEGUIMIENTO')->count();
+        $doctorId = $this->currentDoctorId();
+        if ($doctorId === null) {
+            return 0;
+        }
+
+        return TelemedicineCase::where('telemedicine_doctor_id', $doctorId)->where('status', 'EN SEGUIMIENTO')->count();
     }
 
     public function getTotalCasesAttended(): int
     {
-        return TelemedicineCase::where('telemedicine_doctor_id', Auth::user()->doctor_id)->where('status', 'ALTA MEDICA')->count();
+        $doctorId = $this->currentDoctorId();
+        if ($doctorId === null) {
+            return 0;
+        }
+
+        return TelemedicineCase::where('telemedicine_doctor_id', $doctorId)->where('status', 'ALTA MEDICA')->count();
     }
 
     /**
@@ -119,6 +161,11 @@ class CaseStats extends StatsOverviewWidget
      */
     public function getTotalCasesTransportAmbulance(): int
     {
-        return TelemedicineCase::where('doctor_id_first_accompaniment', Auth::user()->doctor_id)->count();
+        $doctorId = $this->currentDoctorId();
+        if ($doctorId === null) {
+            return 0;
+        }
+
+        return TelemedicineCase::where('doctor_id_first_accompaniment', $doctorId)->count();
     }
 }
