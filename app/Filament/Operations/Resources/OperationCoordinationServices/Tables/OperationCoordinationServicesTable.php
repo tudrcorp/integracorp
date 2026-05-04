@@ -12,6 +12,7 @@ use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Placeholder;
@@ -160,7 +161,7 @@ class OperationCoordinationServicesTable
         $clinicCoordinationDocumentsAction = Action::make('clinicCoordinationDocuments')
             ->label(fn (OperationCoordinationService $record): string => $record->status === 'FINALIZADO'
                 ? 'Documentos clínica'
-                : 'Documentos ingreso / egreso clínica')
+                : 'Doc. ingreso / egreso clínica')
             ->icon(Heroicon::OutlinedDocumentArrowUp)
             ->color('info')
             ->modalHeading('Documentos de ingreso y egreso a clínica')
@@ -318,8 +319,7 @@ class OperationCoordinationServicesTable
                                             ->all()
                                     )
                                     ->searchable()
-                                    ->native(false)
-                                    ->columnSpanFull(),
+                                    ->native(false),
                                 Select::make('supplier_service')
                                     ->label('Proveedor de Servicio')
                                     ->placeholder('Busque por nombre o RIF…')
@@ -336,13 +336,11 @@ class OperationCoordinationServicesTable
                                             ->all()
                                     )
                                     ->getOptionLabelUsing(fn ($value): ?string => filled($value) ? (string) $value : null)
-                                    ->native(false)
-                                    ->columnSpanFull(),
+                                    ->native(false),
                                 TextInput::make('farmadoc')
                                     ->label('Farmadoc')
-                                    ->maxLength(255)
-                                    ->columnSpanFull(),
-                            ]),
+                                    ->maxLength(255),
+                            ])->columnSpanFull()->columns(3),
                     ]),
                 Step::make('Negociación')
                     ->description('Tipo y estatus')
@@ -409,23 +407,6 @@ class OperationCoordinationServicesTable
                                             ->numeric()
                                             ->prefix('%')
                                             ->live(onBlur: true),
-                                        Placeholder::make('quote_price_preview')
-                                            ->label('Precio de cotización (vista previa)')
-                                            ->content(function (Get $get): HtmlString {
-                                                $neto = (float) ($get('neto') ?? 0);
-                                                $pct = (float) ($get('porcen_tdec') ?? 0);
-                                                $quote = $neto + ($neto * $pct / 100);
-
-                                                return new HtmlString(
-                                                    '<div class="rounded-xl border border-gray-200/90 bg-gray-50/95 px-4 py-3 dark:border-white/10 dark:bg-white/5">'
-                                                    .'<span class="text-lg font-bold tracking-tight text-gray-950 dark:text-white">US$ '
-                                                    .e(number_format($quote, 2, '.', ','))
-                                                    .'</span>'
-                                                    .'<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Vista previa; se confirma al guardar.</p>'
-                                                    .'</div>'
-                                                );
-                                            })
-                                            ->columnSpanFull(),
                                         TextInput::make('porcen_discount')
                                             ->label('Porcentaje de Descuento')
                                             ->numeric()
@@ -435,6 +416,23 @@ class OperationCoordinationServicesTable
                                             ->numeric()
                                             ->prefix('US$')
                                             ->helperText('Puede ajustar el importe manualmente si difiere del porcentaje.'),
+                                        Placeholder::make('quote_price_preview')
+                                            ->label('Precio de cotización (vista previa)')
+                                            ->content(function (Get $get): HtmlString {
+                                                $neto = (float) ($get('neto') ?? 0);
+                                                $pct = (float) ($get('porcen_tdec') ?? 0);
+                                                $quote = $neto + ($neto * $pct / 100);
+
+                                                return new HtmlString(
+                                                    '<div class="rounded-xl border border-gray-200/90 bg-gray-50/95 px-4 py-3 dark:border-white/10 dark:bg-white/5">'
+                                                        . '<span class="text-lg font-bold tracking-tight text-gray-950 dark:text-white">US$ '
+                                                        . e(number_format($quote, 2, '.', ','))
+                                                        . '</span>'
+                                                        . '<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Vista previa; se confirma al guardar.</p>'
+                                                        . '</div>'
+                                                );
+                                            })
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
                     ]),
@@ -814,9 +812,11 @@ class OperationCoordinationServicesTable
                 //
             ])
             ->recordActions([
-                $editNegotiationAndPricingAction,
-                $clinicCoordinationDocumentsAction,
-                $selectTdgDoctorForAmbulanceAction,
+                ActionGroup::make([
+                    $editNegotiationAndPricingAction,
+                    $clinicCoordinationDocumentsAction,
+                    $selectTdgDoctorForAmbulanceAction,
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

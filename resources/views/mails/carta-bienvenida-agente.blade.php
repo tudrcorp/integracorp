@@ -73,6 +73,25 @@
         <p>Tu compromiso será fundamental para guiar a las personas hacia la mejor protección y darles la tranquilidad que necesitan.</p>
         <p>Te extendemos todo nuestro apoyo, recursos y la experiencia de nuestro equipo para que no solo alcances tus metas, sino que las superes. ¡Juntos, transformamos el mundo!</p>
         <p>En este correo encontrarás adjunta tu carta de bienvenida , donde te damos la recepción oficial y te presentamos como parte del equipo.</p>
+        <!-- 
+            Usuario: soleydarodriguez1@gmail.com
+            Clave: 12345678
+            URL: https://tudrencasa.com
+
+            ¡INGRESE EN LA OPCIÓN DEL MENU COMERCIAL, ASOCIADO A SU ROL DENTRO DE NUESTRA PÁGINA WEB!
+
+            Contáctanos para mayor información.
+            📱 WhatsApp: (+58) 424 227 1498
+            ✉️ Email: comercial@tudrencasa.com
+
+        -->
+        <p>Usuario: soleydarodriguez1@gmail.com</p>
+        <p>Clave: 12345678</p>
+        <p>URL: https://tudrencasa.com</p>
+        <p>¡INGRESE EN LA OPCIÓN DEL MENU COMERCIAL, ASOCIADO A SU ROL DENTRO DE NUESTRA PÁGINA WEB!</p>
+        <p>Contáctanos para mayor información.</p>
+        <p>📱 WhatsApp: (+58) 424 227 1498</p>
+        <p>✉️ Email: comercial@tudrencasa.com</p>
         <p>Atentamente,</p>
     </div>
 

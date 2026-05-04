@@ -336,22 +336,22 @@ class NotificationController extends Controller
             }
 
             $body = <<<TEXT
-¡Hola! 👋
+            ¡Hola! 👋
 
-✨ Bienvenido/a a Integracorp-TDC ✨
+            ✨ Bienvenido(a) a Integracorp-TDC ✨
 
-Estamos encantados de tenerte aquí. Para comenzar a disfrutar de todos nuestros beneficios y servicios, te invitamos a completar tu registro haciendo clic en el siguiente enlace:
+            Estamos encantados de tenerte aquí. Para comenzar a disfrutar de todos nuestros  servicios y beneficios, te invitamos a completar tu registro haciendo clic en el siguiente enlace:
 
-👉 {$link}
+            👉 {$link}
 
-Si tienes dudas o necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀
+            Si necesitas ayuda, no dudes en contactarnos. Estamos para servirte. 🚀
 
-Equipo Integracorp-TDC
-📱 WhatsApp: (+58) 424 227 1498
-✉️ Email: comercial@tudrencasa.com
+            Equipo Integracorp-TDC
+            📱 WhatsApp: (+58) 424 227 1498
+            ✉️ Email: comercial@tudrencasa.com
 
-¡Esperamos que sea el inicio de una gran experiencia! 💼💡
-TEXT;
+            ¡Esperamos que sea el inicio de una gran experiencia! 💼💡
+            TEXT;
 
             $params = [
                 'token' => config('parameters.TOKEN'),

@@ -367,7 +367,7 @@ class AgencyForm
                                     }
                                 }),
                             TextInput::make('email_contact_2')
-                                ->label('Email')
+                                ->label('Correo Electrónico')
                                 ->prefixIcon('heroicon-s-at-symbol')
                                 ->email()
                                 ->validationMessages([
@@ -448,7 +448,7 @@ class AgencyForm
                         ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('local_beneficiary_name')
-                                ->label('Nombre/Razón Social del Beneficiario')
+                                ->label('Nombre/Beneficiario')
                                 ->afterStateUpdatedJs(<<<'JS'
                                         $set('local_beneficiary_name', $state.toUpperCase());
                                     JS)
@@ -463,13 +463,13 @@ class AgencyForm
                                 ])
                                 ->maxLength(255),
                             TextInput::make('local_beneficiary_phone_pm')
-                                ->label('Teléfono Pago Movil del Beneficiario')
+                                ->label('Teléfono Pago Móvil del Beneficiario')
                                 ->prefixIcon('heroicon-s-phone')
                                 ->tel()
                                 ->helperText('Formato: 04121234567, 04241869168')
                                 ->mask('09999999999'),
 
-                            Fieldset::make('Cuenta Nacional, Moneda Nacional(Bs.)')->schema([
+                            Fieldset::make('Cuenta Local, Moneda (VES)')->schema([
                                 TextInput::make('local_beneficiary_account_number')
                                     ->label('Número de Cuenta del Beneficiario')
                                     ->prefixIcon('heroicon-s-identification'),
@@ -507,7 +507,7 @@ class AgencyForm
                                     ]),
                             ])->columnSpanFull()->columns(3),
 
-                            Fieldset::make('Cuenta Nacional, Moneda Intenacional(US$, EUR)')->schema([
+                            Fieldset::make('Cuenta Local, Moneda (US$)')->schema([
                                 TextInput::make('local_beneficiary_account_number_mon_inter')
                                     ->label('Número de Cuenta del Beneficiario')
                                     ->prefixIcon('heroicon-s-identification'),
@@ -552,7 +552,7 @@ class AgencyForm
                     ->completedIcon(Heroicon::Check)
                         ->schema([
                             TextInput::make('extra_beneficiary_name')
-                                ->label('Nombre/Razon Social')
+                                ->label('Nombre/Beneficiario')
                                 ->afterStateUpdated(function (Set $set, $state) {
                                     $set('extra_beneficiary_name', strtoupper($state));
                                 })
@@ -560,12 +560,20 @@ class AgencyForm
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
                             TextInput::make('extra_beneficiary_ci_rif')
-                                ->label('Nro. CI/RIF/ID/PASAPORTE')
+                                ->label('Nro. ID/PASAPORTE')
                                 ->prefixIcon('heroicon-s-identification')
                                 ->numeric()
                                 ->validationMessages([
                                     'numeric'  => 'Campo tipo numeric',
                                 ])
+                                ->maxLength(255),
+                            TextInput::make('extra_beneficiary_address')
+                                ->label('Direccion')
+                                ->afterStateUpdated(function (Set $set, $state) {
+                                    $set('extra_beneficiary_address', strtoupper($state));
+                                })
+                                ->live(onBlur: true)
+                                ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
                             TextInput::make('extra_beneficiary_account_number')
                                 ->label('Número de cuenta')
@@ -576,7 +584,7 @@ class AgencyForm
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
                             Select::make('extra_beneficiary_account_bank')
-                                ->label('Banco')
+                                ->label('Banco del Beneficiario')
                                 ->prefixIcon('heroicon-s-identification')
                                 ->searchable()
                                 ->preload()
@@ -614,16 +622,9 @@ class AgencyForm
                                     'BANCO DEL TESORO'                                  => 'BANCO DEL TESORO',
                                     'PROVINCIAL'                                        => 'PROVINCIAL',
                                 ]),
-                            TextInput::make('extra_beneficiary_address')
-                                ->label('Direccion')
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $set('extra_beneficiary_address', strtoupper($state));
-                                })
-                                ->live(onBlur: true)
-                                ->prefixIcon('heroicon-s-identification')
-                                ->maxLength(255),
+
                             Select::make('extra_beneficiary_account_type')
-                                ->label('Banco del Beneficiario')
+                                ->label('Tipo de Cuenta del Beneficiario')
                                 ->prefixIcon('heroicon-s-identification')
                                 ->searchable()
                                 ->preload()
@@ -643,7 +644,7 @@ class AgencyForm
                                     'CUENTA DE FIDEICOMISO (TRUST ACCOUNT)'                             => 'CUENTA DE FIDEICOMISO (TRUST ACCOUNT)',
                                 ]),
                             TextInput::make('extra_beneficiary_route')
-                                ->label('Ruta')
+                                ->label('Número de Ruta')
                                 ->afterStateUpdated(function (Set $set, $state) {
                                     $set('extra_beneficiary_route', strtoupper($state));
                                 })
@@ -651,9 +652,17 @@ class AgencyForm
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
                             TextInput::make('extra_beneficiary_swift')
-                                ->label('Swift')
+                                ->label('ABA')
                                 ->afterStateUpdated(function (Set $set, $state) {
                                     $set('extra_beneficiary_swift', strtoupper($state));
+                                })
+                                ->live(onBlur: true)
+                                ->prefixIcon('heroicon-s-identification')
+                                ->maxLength(255),
+                            TextInput::make('extra_beneficiary_zelle')
+                                ->label('Código SWIFT')
+                                ->afterStateUpdated(function (Set $set, $state) {
+                                    $set('extra_beneficiary_zelle', strtoupper($state));
                                 })
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
@@ -666,24 +675,14 @@ class AgencyForm
                                 ->live(onBlur: true)
                                 ->prefixIcon('heroicon-s-identification')
                                 ->maxLength(255),
-                        ]),
+                        ])->columnSpanFull()->columns(3),
                     Step::make('Acuerdo y condiciones')
                     ->description('Condiciones de uso')
                     ->completedIcon(Heroicon::Check)
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {
-                                    return 'Este acuerdo establece la relación entre la Agencia o Agente y Tu Dr. Group ( quien en adelante se denominará la Compañía ) los cuales 
-                                            se sujetarán a los siguientes términos: La Compañía le ha asignado a la Agencia o Agente un número de identificación ( arriba mencionado ), 
-                                            bajo el cual se registrará el negocio proveniente de dicha Agencia o Agente. 
-                                            Este Acuerdo será efectivo a partir de la fecha de suscripción en la Compañía. Cualquiera de las partes puede terminar este Acuerdo con un 
-                                            preaviso mínimo de sesenta (60) días, siempre y cuando notique su intención por escrito. 
-                                            La Compañía se reserva el derecho a terminar este Acuerdo por motivo de actos fraudulentos o el incumplimiento de cualquiera de las normas 
-                                            contenidas en el mismo. 
-                                            La Agencia tiene la potestad de de nir la comisión por venta que reciben los agentes bajo su estructura. 
-                                            Forma parte integrante e indivisible de este acuerdo: el Addendum contentivo de las normas particulares que rigen la relación, los documentos 
-                                            complementarios de identicación de la Agencia o el Agente, los datos ociales de identicación de las cuentas bancarias dispuestas para el 
-                                            pago de comisiones y cualquier otro documento que se adjunte en el trascurso de la relación comercial.';
+                                    return 'Este acuerdo establece la relación entre la Agencia o Agente y Tu Dr. Group (quien en adelante se denominará la Compañía) los cuales se sujetarán a los siguientes términos: La Compañía le ha asignado a la Agencia o Agente un número de identificación, bajo el cual se registrará el negocio proveniente de dicha Agencia o Agente. Este Acuerdo será efectivo a partir de la fecha de suscripción en la Compañía. Cualquiera de las partes puede terminar este Acuerdo con un preaviso mínimo de sesenta (60) días, siempre y cuando noti­que su intención por escrito. La Compañía se reserva el derecho a terminar este Acuerdo por motivo de actos fraudulentos o el incumplimiento de los principios universales de ética y profesionalismo. La Agencia tiene la potestad de de­finir la comisión por venta que reciben los agentes bajo su estructura. Forma parte integrante de este acuerdo: los documentos complementarios de identi­ficación de la Agencia o el Agente, los datos ofi­ciales de identi­ficación de las cuentas bancarias dispuestas para el pago de comisiones y cualquier otro documento que se adjunte en el trascurso de la relación comercial.';
                                 })
                                 ->icon('heroicon-m-folder-plus')
                                 ->schema([
