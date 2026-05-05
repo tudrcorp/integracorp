@@ -268,22 +268,22 @@ class StatsOverviewAgency extends StatsOverviewWidget
         $html = <<<HTML
         <div class="flex flex-col mt-1">
             <div class="inline-flex items-center gap-2">
-                <span class="text-xs font-medium uppercase tracking-wide {$labelClass}">
+                <span class="text-sm font-medium uppercase tracking-wide {$labelClass}">
                     TOTAL AÑO {$anioLabel}
                 </span>
-                <span class="tabular-nums text-sm font-medium text-gray-950 dark:text-white">
+                <span class="tabular-nums text-base font-medium text-gray-950 dark:text-white">
                     {$totalYear}
                 </span>
             </div>
             <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span class="rounded-lg bg-gray-100/90 px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm dark:bg-gray-800/60 dark:text-gray-200">
+                <span class="rounded-lg bg-gray-100/90 px-2.5 py-1 text-sm font-medium text-gray-700 shadow-sm dark:bg-gray-800/60 dark:text-gray-200">
                     Mes seleccionado ({$nombreMes})
                 </span>
                 <div class="flex items-center gap-2.5">
-                    <span class="tabular-nums text-sm font-medium text-gray-900 dark:text-white">
+                    <span class="tabular-nums text-base font-medium text-gray-900 dark:text-white">
                         {$valorMes}
                     </span>
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{$unitLabel}</span>
+                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{$unitLabel}</span>
                 </div>
             </div>
         </div>
@@ -297,48 +297,48 @@ class StatsOverviewAgency extends StatsOverviewWidget
         $html = <<<HTML
         <div class="flex flex-col mt-1">
             <div class="inline-flex items-center gap-2">
-                <span class="text-xs font-medium uppercase tracking-wide text-success-600 dark:text-success-400">
+                <span class="text-sm font-medium uppercase tracking-wide text-success-600 dark:text-success-400">
                     TOTAL AÑO {$anioLabel}
                 </span>
-                <span class="tabular-nums text-sm font-medium text-gray-950 dark:text-white">
+                <span class="tabular-nums text-base font-medium text-gray-950 dark:text-white">
                     {$totalYear}
                 </span>
             </div>
             <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div class="flex items-center gap-2.5">
-                    <span class="rounded-lg bg-success-100/90 px-2.5 py-1 text-xs font-medium text-success-700 shadow-sm dark:bg-success-900/40 dark:text-success-300">
+                    <span class="rounded-lg bg-success-100/90 px-2.5 py-1 text-sm font-medium text-success-700 shadow-sm dark:bg-success-900/40 dark:text-success-300">
                         Activas
                     </span>
-                    <span class="tabular-nums text-sm font-medium text-gray-900 dark:text-white">
+                    <span class="tabular-nums text-base font-medium text-gray-900 dark:text-white">
                         {$activasYear}
                     </span>
                 </div>
                 <div class="hidden h-6 w-px shrink-0 bg-zinc-200/80 sm:block dark:bg-white/15" aria-hidden="true"></div>
                 <div class="flex items-center gap-2.5">
-                    <span class="rounded-lg bg-rose-100/90 px-2.5 py-1 text-xs font-medium text-rose-700 shadow-sm dark:bg-rose-900/40 dark:text-rose-300">
+                    <span class="rounded-lg bg-rose-100/90 px-2.5 py-1 text-sm font-medium text-rose-700 shadow-sm dark:bg-rose-900/40 dark:text-rose-300">
                         Inactivas
                     </span>
-                    <span class="tabular-nums text-sm font-medium text-gray-900 dark:text-white">
+                    <span class="tabular-nums text-base font-medium text-gray-900 dark:text-white">
                         {$inactivasYear}
                     </span>
                 </div>
             </div>
             <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span class="rounded-lg bg-gray-100/90 px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm dark:bg-gray-800/60 dark:text-gray-200">
+                <span class="rounded-lg bg-gray-100/90 px-2.5 py-1 text-sm font-medium text-gray-700 shadow-sm dark:bg-gray-800/60 dark:text-gray-200">
                     Mes seleccionado ({$nombreMes})
                 </span>
                 <div class="flex items-center gap-2.5">
-                    <span class="tabular-nums text-sm font-medium text-gray-900 dark:text-white">
+                    <span class="tabular-nums text-base font-medium text-gray-900 dark:text-white">
                         {$activasMes}
                     </span>
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">activas</span>
+                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">activas</span>
                 </div>
                 <div class="hidden h-6 w-px shrink-0 bg-zinc-200/80 sm:block dark:bg-white/15" aria-hidden="true"></div>
                 <div class="flex items-center gap-2.5">
-                    <span class="tabular-nums text-sm font-medium text-gray-900 dark:text-white">
+                    <span class="tabular-nums text-base font-medium text-gray-900 dark:text-white">
                         {$inactivasMes}
                     </span>
-                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">inactivas</span>
+                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">inactivas</span>
                 </div>
             </div>
         </div>

@@ -41,33 +41,21 @@ it('el widget semanal de estatus extiende ChartWidget', function (): void {
         ->and(is_subclass_of(HelpdeskStatusWeeklyChart::class, ChartWidget::class))->toBeTrue();
 });
 
-it('el widget semanal permite seleccionar rangos semanales de lunes a domingo', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Widgets/HelpdeskStatusWeeklyChart.php';
-    $contents = file_get_contents($path);
+it('el widget de estado anual de tickets expone vista chart y filtro por año', function (): void {
+    $widgetPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Widgets/HelpdeskStatusWeeklyChart.php';
+    $viewPath = dirname(__DIR__, 2).'/resources/views/filament/widgets/helpdesk-status-weekly-chart.blade.php';
 
-    expect($contents)
+    expect(file_exists($widgetPath))->toBeTrue()
+        ->and(file_exists($viewPath))->toBeTrue();
+
+    expect(file_get_contents($widgetPath))
         ->not->toBeFalse()
         ->toContain("protected string \$view = 'filament.widgets.helpdesk-status-weekly-chart';")
-        ->toContain('public ?string $fromDate = null;')
-        ->toContain('public ?string $toDate = null;')
-        ->toContain('public function applyWeekRange(): void')
-        ->toContain('public function resetWeekRange(): void')
-        ->toContain('public function updatedFromDate(?string $value): void')
-        ->toContain('startOfWeek(CarbonInterface::MONDAY)')
-        ->toContain('endOfWeek(CarbonInterface::SUNDAY)');
-});
+        ->toContain('protected function getFilters(): ?array');
 
-it('la vista del widget semanal muestra calendario con desde y hasta', function (): void {
-    $path = dirname(__DIR__, 2).'/resources/views/filament/widgets/helpdesk-status-weekly-chart.blade.php';
-    $contents = file_get_contents($path);
-
-    expect($contents)
+    expect(file_get_contents($viewPath))
         ->not->toBeFalse()
-        ->toContain('Resetear los filtros')
-        ->toContain('<x-filament::dropdown')
-        ->toContain('icon="heroicon-m-funnel"')
-        ->toContain('id="helpdesk-from-date"')
-        ->toContain('id="helpdesk-to-date"')
-        ->toContain('readonly')
-        ->toContain('wire:click="applyWeekRange"');
+        ->toContain('$filters = $this->getFilters();')
+        ->toContain('wire:model.live="year"')
+        ->toContain('<x-filament::input.select');
 });

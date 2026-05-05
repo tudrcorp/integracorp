@@ -3,12 +3,17 @@
 namespace App\Filament\Business\Resources\Helpdesks\Pages;
 
 use App\Filament\Business\Resources\Helpdesks\HelpdeskResource;
+use App\Filament\Business\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart;
+use App\Filament\Business\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
 
 class ListHelpdesks extends ListRecords
 {
+    use ExposesTableToWidgets;
+
     protected static string $resource = HelpdeskResource::class;
 
     protected static ?string $title = 'Gestión de Tickets';
@@ -45,6 +50,14 @@ class ListHelpdesks extends ListRecords
                     'data-tour-shape' => 'pill',
                     'class' => self::TICKET_BUTTON_CLASS,
                 ]),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            StatsOverviewHelpdesk::class,
+            HelpdeskStatusWeeklyChart::class,
         ];
     }
 }

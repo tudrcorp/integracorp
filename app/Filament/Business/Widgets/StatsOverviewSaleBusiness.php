@@ -140,21 +140,7 @@ class StatsOverviewSaleBusiness extends StatsOverviewWidget
             $valMes = 'US$ '.number_format($totalMesActual, 2, ',', '.');
 
             return Stat::make($plan['name'], $valAnio)
-                ->description(new HtmlString("
-                    <div class='flex flex-col mt-1'>
-                        <span class='text-xs font-semibold uppercase tracking-wide {$plan['labelClass']}'>
-                            TOTAL AÑO {$anioActual}
-                        </span>
-                        <div class='flex items-center gap-2.5 mt-1.5'>
-                            <span class='px-2.5 py-1 text-xs font-bold rounded-lg {$plan['badgeClass']} shadow-sm'>
-                                Mes seleccionado ({$nombreMes}):
-                            </span>
-                            <span class='text-sm font-bold text-gray-900 dark:text-white'>
-                                {$valMes}
-                            </span>
-                        </div>
-                    </div>
-                "))
+                ->description(self::descriptionHtml($anioActual, $nombreMes, $valMes, $plan['labelClass'], $plan['badgeClass']))
                 ->descriptionIcon($plan['icon'])
                 ->color($plan['color'])
                 ->extraAttributes([
@@ -162,5 +148,26 @@ class StatsOverviewSaleBusiness extends StatsOverviewWidget
                     'style' => 'min-height: 130px;',
                 ]);
         }, $plans);
+    }
+
+    protected static function descriptionHtml(int $anioActual, string $nombreMes, string $valMes, string $labelClass, string $badgeClass): HtmlString
+    {
+        $html = <<<HTML
+        <div class='flex flex-col mt-1'>
+            <span class='text-sm font-semibold uppercase tracking-wide {$labelClass}'>
+                TOTAL AÑO {$anioActual}
+            </span>
+            <div class='flex items-center gap-2.5 mt-1.5'>
+                <span class='px-2.5 py-1 text-sm font-bold rounded-lg {$badgeClass} shadow-sm'>
+                    Mes seleccionado ({$nombreMes}):
+                </span>
+                <span class='text-base font-bold text-gray-900 dark:text-white'>
+                    {$valMes}
+                </span>
+            </div>
+        </div>
+        HTML;
+
+        return new HtmlString($html);
     }
 }

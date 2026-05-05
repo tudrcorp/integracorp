@@ -5,6 +5,7 @@ namespace App\Filament\Administration\Resources\Helpdesks\Pages;
 use App\Filament\Administration\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource;
 use App\Models\HelpDesk;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -17,11 +18,17 @@ class ViewHelpdesk extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('back')
+                ->label('Volver')
+                ->icon('heroicon-o-arrow-left')
+                ->url(HelpdeskResource::getUrl())
+                ->extraAttributes(['class' => 'ticket-btn-ios-shell']),
             HelpdeskTicketModalActions::makeAddNoteAction()
                 ->record(fn (): HelpDesk => $this->getRecord())
                 ->after(function (): void {
                     $this->getRecord()->refresh();
-                }),
+                })
+                ->extraAttributes(['class' => 'ticket-btn-ios-shell']),
             HelpdeskTicketModalActions::makeUpdateStatusAction()
                 ->record(fn (): HelpDesk => $this->getRecord())
                 ->after(function (): void {
