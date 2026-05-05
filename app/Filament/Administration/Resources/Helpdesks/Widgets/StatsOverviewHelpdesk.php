@@ -10,5 +10,6 @@ class StatsOverviewHelpdesk extends BaseStatsOverviewHelpdesk
     protected function getTablePage(): string
     {
         return ListHelpdesks::class;
+
     }
 }

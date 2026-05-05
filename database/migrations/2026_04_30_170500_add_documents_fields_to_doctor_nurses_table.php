@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::table('doctor_nurses', function (Blueprint $table) {
             $table->string('carta_acceptance')->nullable()->after('speciality');
             $table->json('documents')->nullable()->after('carta_acceptance');
+
         });
     }
 

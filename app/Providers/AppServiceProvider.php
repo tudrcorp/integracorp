@@ -2,16 +2,21 @@
 
 namespace App\Providers;
 
+use App\Filament\Administration\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as AdministrationHelpdeskStatusWeeklyChart;
+use App\Filament\Administration\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as AdministrationStatsOverviewHelpdesk;
 use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion as AgenciesControlActividadInteraccion;
 use App\Filament\Business\Resources\Agents\Widgets\ControlActividadInteraccion;
+use App\Filament\Business\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart;
+use App\Filament\Business\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
+use App\Filament\Marketing\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as MarketingHelpdeskStatusWeeklyChart;
+use App\Filament\Marketing\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as MarketingStatsOverviewHelpdesk;
+use App\Filament\Operations\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as OperationsHelpdeskStatusWeeklyChart;
+use App\Filament\Operations\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as OperationsStatsOverviewHelpdesk;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
-use Illuminate\Auth\Events\Login;
-use Illuminate\Auth\Events\Logout;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -34,6 +39,15 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.business.resources.agents.widgets.control-actividad-interaccion', ControlActividadInteraccion::class);
         Livewire::component('app.filament.business.resources.agencies.widgets.control-actividad-interaccion', AgenciesControlActividadInteraccion::class);
         Livewire::component('app.filament.business.resources.prospect-agents.widgets.prospect-agent-tasks-by-user-chart', ProspectAgentTasksByUserChart::class);
+
+        Livewire::component('app.filament.business.resources.helpdesks.widgets.helpdesk-status-weekly-chart', HelpdeskStatusWeeklyChart::class);
+        Livewire::component('app.filament.business.resources.helpdesks.widgets.stats-overview-helpdesk', StatsOverviewHelpdesk::class);
+        Livewire::component('app.filament.administration.resources.helpdesks.widgets.helpdesk-status-weekly-chart', AdministrationHelpdeskStatusWeeklyChart::class);
+        Livewire::component('app.filament.administration.resources.helpdesks.widgets.stats-overview-helpdesk', AdministrationStatsOverviewHelpdesk::class);
+        Livewire::component('app.filament.marketing.resources.helpdesks.widgets.helpdesk-status-weekly-chart', MarketingHelpdeskStatusWeeklyChart::class);
+        Livewire::component('app.filament.marketing.resources.helpdesks.widgets.stats-overview-helpdesk', MarketingStatsOverviewHelpdesk::class);
+        Livewire::component('app.filament.operations.resources.helpdesks.widgets.helpdesk-status-weekly-chart', OperationsHelpdeskStatusWeeklyChart::class);
+        Livewire::component('app.filament.operations.resources.helpdesks.widgets.stats-overview-helpdesk', OperationsStatsOverviewHelpdesk::class);
 
         FilamentTimezone::set('America/Caracas');
 

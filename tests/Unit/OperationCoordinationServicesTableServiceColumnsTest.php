@@ -40,7 +40,7 @@ it('OperationCoordinationServicesTable define acción de documentos de ingreso y
         ->and($contents)->toContain('clinicCoordinationDocuments')
         ->and($contents)->toContain('filament.operations.coordination.clinic-documents-modal')
         ->and(file_exists($livewirePath))->toBeTrue()
-        ->and(file_get_contents($livewirePath))->toContain('class ClinicCoordinationDocumentsManager');
+        ->and(file_get_contents($livewirePath))->toContain('class OperationCoordinationServicesTableServiceColumnsTest');
 
     $uploaderPartial = dirname(__DIR__, 2).'/resources/views/livewire/operations/partials/clinic-document-uploader-zone.blade.php';
     $partialContents = file_get_contents($uploaderPartial);

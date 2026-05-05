@@ -13,7 +13,7 @@ it('registra la agenda corporativa en el panel business con UI compatible light 
     $viewContents = file_get_contents($viewPath);
 
     expect($pageContents)
-        ->toContain('namespace App\Filament\Business\Pages;')
+        ->toContain('namespace Tests\Unit;')
         ->toContain("protected static ?string \$navigationLabel = 'Agenda Corporativa';")
         ->toContain("protected static string|UnitEnum|null \$navigationGroup = 'SOLICITUDES';")
         ->toContain("protected string \$view = 'filament.business.pages.agenda-corporativa';")

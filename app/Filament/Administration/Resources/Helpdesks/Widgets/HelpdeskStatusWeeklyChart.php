@@ -10,5 +10,6 @@ class HelpdeskStatusWeeklyChart extends BaseHelpdeskStatusWeeklyChart
     protected function getTablePage(): string
     {
         return ListHelpdesks::class;
+
     }
 }

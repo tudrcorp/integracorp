@@ -19,6 +19,7 @@ return new class extends Migration
         if (! Schema::hasColumn('operation_on_call_users', 'hrs_init')) {
             Schema::table('operation_on_call_users', function (Blueprint $table) {
                 $table->string('hrs_init')->default('00:00');
+
             });
         }
 

@@ -18,7 +18,7 @@ it('expone la acción masiva asociar y recalcular con formulario de afiliados y 
         ->and($rm)->toContain('fi-ios-affiliation-associate-plan-modal');
 
     expect(file_get_contents($root.'/app/Services/AssociateAffiliatesWithCorporatePlanService.php'))
-        ->toContain('class AssociateAffiliatesWithCorporatePlanService')
+        ->toContain('class AffiliationCorporateAssociatePlanBulkActionTest')
         ->and(file_get_contents($root.'/app/Services/CorporateAffiliatePlanSyncService.php'))
         ->toContain('syncPlanRowTotalsFromAffiliates');
 

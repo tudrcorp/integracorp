@@ -12,7 +12,7 @@ it('mantiene solrodriguez en CC y expone el armado de lista', function (): void 
         ->and($src)->toContain('loadTicketWithAssigneesForNotifications');
 });
 
-it('el trait de creación helpdesk valida correo corporativo de CC', function (): void {
+it('el trait HelpdeskTicketAssigneeMailCcTest creación helpdesk valida correo corporativo de CC', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Concerns/PreparesHelpdeskColaboradorAssigneesOnCreate.php';
     $src = file_get_contents($path);
 
