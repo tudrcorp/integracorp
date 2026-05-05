@@ -22,15 +22,17 @@ class SendCartaBienvenidaAgenteAgenciaTwo implements ShouldQueue
     public $name;
 
     public $email;
+    public $password;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($code, $name, $email)
+    public function __construct($code, $name, $email, $password)
     {
         $this->code = $code;
         $this->name = $name;
         $this->email = $email;
+        $this->password = $password;
         //
     }
 
@@ -44,6 +46,7 @@ class SendCartaBienvenidaAgenteAgenciaTwo implements ShouldQueue
         $code = $this->code;
         $name = $this->name;
         $email = $this->email;
+        $password = $this->password;
         $name_pdf = $code.'.pdf';
 
         try {
@@ -58,7 +61,7 @@ class SendCartaBienvenidaAgenteAgenciaTwo implements ShouldQueue
 
             Mail::to($email)
                 ->cc('solrodriguez@tudrencasa.com')
-                ->send(new MailCartaBienvenidaAgenteAgenciaTwo($code, $name, $name_pdf));
+                ->send(new MailCartaBienvenidaAgenteAgenciaTwo($code, $name, $name_pdf, $email, $password));
 
             Log::info('MASTER-AGENCIES: Carta de bienvenida enviada con éxito.', [
                 'code' => $code,

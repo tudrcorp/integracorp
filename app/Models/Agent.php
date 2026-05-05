@@ -183,13 +183,13 @@ class Agent extends Model
      * @param  array  $details
      * @return void
      */
-    public function sendCartaBienvenida($id, $name, $email)
+    public function sendCartaBienvenida($id, $name, $email, $password)
     {
 
         /**
          * JOB
          */
-        SendCartaBienvenidaAgenteAgencia::dispatch($id, $name, $email);
+        SendCartaBienvenidaAgenteAgencia::dispatch($id, $name, $email, $password);
     }
 
     public function sendCartaBienvenidaEjecutivo($id, $name, $email)

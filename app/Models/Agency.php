@@ -185,12 +185,12 @@ class Agency extends Model
      * 
      * @param array $details
      */
-    public function sendCartaBienvenida($code, $name, $email)
+    public function sendCartaBienvenida($code, $name, $email, $password)
     {
         /**
          * JOB
          */
-        SendCartaBienvenidaAgenteAgenciaTwo::dispatch($code, $name, $email);
+        SendCartaBienvenidaAgenteAgenciaTwo::dispatch($code, $name, $email, $password);
     }
 
     public function accountManager()
