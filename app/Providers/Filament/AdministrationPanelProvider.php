@@ -76,9 +76,6 @@ class AdministrationPanelProvider extends PanelProvider
                     ->label('AFILIACIONES')
                     ->icon('heroicon-o-identification'),
                 NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-                NavigationGroup::make()
                     ->label('ADMINISTRACIÓN')
                     ->icon('heroicon-o-calculator'),
                 NavigationGroup::make()
@@ -92,6 +89,9 @@ class AdministrationPanelProvider extends PanelProvider
                     ->label('NOMINA')
                     ->icon('heroicon-o-currency-dollar')
                     ->collapsed(),
+                NavigationGroup::make()
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-o-cloud-arrow-down'),
             ])
             ->databaseNotifications()
             ->databaseTransactions()

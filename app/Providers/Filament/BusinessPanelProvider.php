@@ -56,12 +56,12 @@ class BusinessPanelProvider extends PanelProvider
                     ->label('AFILIACIONES')
                     ->icon('heroicon-o-identification'),
                 NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-                NavigationGroup::make()
                     ->label('CONFIGURACIÓN')
                     ->icon('heroicon-o-cog-8-tooth')
                     ->collapsed(),
+                NavigationGroup::make()
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-o-cloud-arrow-down'),
 
             ])
             ->sidebarCollapsibleOnDesktop()
