@@ -23,6 +23,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
@@ -46,18 +47,22 @@ class ListAgencies extends ListRecords
                 ->icon('heroicon-s-user-plus')
                 ->color('success'),
             Action::make('send_link')
-                ->label('Enviar link')
-                ->icon('heroicon-m-link')
-                ->color('warning')
-                ->modalHeading('Envio de link para registro externo')
+                ->label('Enviar enlace de registro')
+                ->icon('heroicon-m-paper-airplane')
+                ->color('primary')
+                ->modalHeading('Enviar enlace de registro externo')
+                ->modalDescription('El enlace incluye el código de la agencia cifrado en la URL (Integracorp → /agency/c/…). Indique al menos correo electrónico o WhatsApp para enviarlo.')
                 ->modalIcon('heroicon-m-link')
+                ->modalIconColor('primary')
+                ->modalSubmitActionLabel('Enviar')
+                ->modalCancelActionLabel('Cancelar')
                 ->modalWidth(Width::ExtraLarge)
                 ->form([
-                    Section::make()
-                        ->description('Elija la agencia cuyo código viajará cifrado en la URL de registro (misma lógica que el panel General: dominio Integracorp + /agency/c/ + código encriptado). El enlace puede enviarse por correo y/o WhatsApp.')
+                    Section::make('Agencia en el enlace')
+                        ->description('El destinatario completará el registro bajo la estructura comercial de la agencia que elija; el código viaja cifrado igual que en el panel General.')
                         ->schema([
                             Select::make('agency_code')
-                                ->label('Agencia / código en el enlace')
+                                ->label('Agencia')
                                 ->required()
                                 ->searchable()
                                 ->preload()
@@ -78,19 +83,31 @@ class ListAgencies extends ListRecords
                                         ->all();
                                 })
                                 ->default(fn () => Auth::user()?->code_agency)
-                                ->helperText('El receptor completará el registro bajo esta estructura comercial.'),
-                            TextInput::make('email')
-                                ->label('Correo Electrónico')
-                                ->email()
-                                ->maxLength(255)
-                                ->autocomplete('email')
-                                ->prefixIcon('heroicon-m-envelope')
-                                ->helperText('Use una dirección de correo institucional o personal válida.'),
-                            TextInput::make('phone')
-                                ->prefixIcon('heroicon-s-phone')
-                                ->tel()
-                                ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
-                                ->label('Número de teléfono'),
+                                ->placeholder('Seleccione una agencia')
+                                ->helperText('Nombre corporativo y código que se asociarán al formulario de registro.'),
+                        ]),
+                    Section::make('Destinatarios')
+                        ->description('Opcional por campo: puede usar solo correo, solo WhatsApp o ambos en el mismo envío.')
+                        ->schema([
+                            Grid::make([
+                                'default' => 1,
+                                'lg' => 2,
+                            ])->schema([
+                                TextInput::make('email')
+                                    ->label('Correo electrónico')
+                                    ->email()
+                                    ->maxLength(255)
+                                    ->autocomplete('email')
+                                    ->prefixIcon('heroicon-m-envelope')
+                                    ->placeholder('ejemplo@empresa.com')
+                                    ->helperText('Correo válido donde recibirán el enlace.'),
+                                TextInput::make('phone')
+                                    ->label('WhatsApp')
+                                    ->prefixIcon('heroicon-s-phone')
+                                    ->tel()
+                                    ->placeholder('04127018390 o +584121234567')
+                                    ->helperText('Número con WhatsApp. Venezuela: 0412… sin espacios. Extranjero: código de país (+58…, +1…).'),
+                            ]),
                         ]),
                 ])
                 ->action(function (array $data) {

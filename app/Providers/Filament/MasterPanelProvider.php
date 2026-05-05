@@ -129,6 +129,7 @@ class MasterPanelProvider extends PanelProvider
                             ->directory('backgroundMasterPanelLogin')
                     ),
             ])
-            ->resourceEditPageRedirect('index');
+            ->resourceEditPageRedirect('index')
+            ->viteTheme('resources/css/filament/admin/theme.css');
     }
 }

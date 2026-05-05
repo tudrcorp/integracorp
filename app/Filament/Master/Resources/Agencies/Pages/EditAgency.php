@@ -21,6 +21,12 @@ class EditAgency extends EditRecord
 {
     protected static string $resource = AgencyResource::class;
 
+    /**
+     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
+     */
+    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+
     public function getTitle(): string|Htmlable
     {
         /** @var Agency $record */
@@ -59,6 +65,9 @@ class EditAgency extends EditRecord
                 ->modalHeading('Preferencias de Gráficos')
                 ->modalIcon('fontisto-bar-chart')
                 ->modalWidth(Width::ExtraLarge)
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ])
                 ->form([
                     Fieldset::make('Tipo de Gráficos')
                         ->schema([
@@ -92,6 +101,9 @@ class EditAgency extends EditRecord
                 ->modalHeading('Preferencias')
                 ->modalIcon('heroicon-s-cog')
                 ->modalWidth(Width::ExtraLarge)
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ])
                 ->form([
                     Fieldset::make('Ubicación de Menu')
                         ->schema([
@@ -123,7 +135,10 @@ class EditAgency extends EditRecord
                 ->label('Dashboard')
                 ->icon(Heroicon::Home)
                 ->color('success')
-                ->url(route('filament.master.pages.dashboard')),
+                ->url(route('filament.master.pages.dashboard'))
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ]),
         ];
     }
 
