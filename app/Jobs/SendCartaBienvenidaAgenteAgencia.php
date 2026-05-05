@@ -23,16 +23,19 @@ class SendCartaBienvenidaAgenteAgencia implements ShouldQueue
 
     public $email;
 
+    public $password;
+
     public $type = null;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($id, $name, $email)
+    public function __construct($id, $name, $email, $password)
     {
         $this->id = $id;
         $this->name = $name;
         $this->email = $email;
+        $this->password = $password;
         //
     }
 
@@ -50,7 +53,7 @@ class SendCartaBienvenidaAgenteAgencia implements ShouldQueue
         $id = $this->id;
         $name = $this->name;
         $email = $this->email;
-
+        $password = $this->password;
         $name_pdf = 'AGT-000'.$id.'.pdf';
 
         $pdf = Pdf::loadView('documents.carta-bienvenida-agente', compact('id', 'name'));
@@ -61,7 +64,7 @@ class SendCartaBienvenidaAgenteAgencia implements ShouldQueue
 
         Mail::to($email)
             ->cc('solrodriguez@tudrencasa.com')
-            ->send(new MailCartaBienvenidaAgenteAgencia($id, $name, $name_pdf));
+            ->send(new MailCartaBienvenidaAgenteAgencia($id, $name, $name_pdf, $email, $password));
 
         Log::info('NEGOCIOS-AGENTES: Job CartaBienvenida completado con éxito.', [
             'id' => $this->id,

@@ -20,14 +20,20 @@ class MailCartaBienvenidaAgenteAgenciaTwo extends Mailable
 
     public $code;
 
+    public $email;
+
+    public $password;
+
     /**
      * Create a new message instance.
      */
-    public function __construct($code, $name, $name_pdf)
+    public function __construct($code, $name, $name_pdf, $email, $password)
     {
         $this->code = $code;
         $this->name = $name;
         $this->name_pdf = $name_pdf;
+        $this->email = $email;
+        $this->password = $password;
         //
     }
 

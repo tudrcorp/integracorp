@@ -55,20 +55,8 @@
                                 En este correo encontraras adjunta tu carta de bienvenida, donde te damos la recepcion oficial
                                 y te presentamos como parte del equipo.
                             </p>
-                            <!-- 
-                                Usuario: soleydarodriguez1@gmail.com
-                                Clave: 12345678
-                                URL: https://tudrencasa.com
-
-                                ¡INGRESE EN LA OPCIÓN DEL MENU COMERCIAL, ASOCIADO A SU ROL DENTRO DE NUESTRA PÁGINA WEB!
-
-                                Contáctanos para mayor información.
-                                📱 WhatsApp: (+58) 424 227 1498
-                                ✉️ Email: comercial@tudrencasa.com
-
-                            -->
-                            <p>Usuario: soleydarodriguez1@gmail.com</p>
-                            <p>Clave: 12345678</p>
+                            <p>Usuario: {{ $email }}</p>
+                            <p>Clave: {{ $password }}</p>
                             <p>URL: https://tudrencasa.com</p>
                             <p>¡INGRESE EN LA OPCIÓN DEL MENU COMERCIAL, ASOCIADO A SU ROL DENTRO DE NUESTRA PÁGINA WEB!</p>
                             <p>Contáctanos para mayor información.</p>
