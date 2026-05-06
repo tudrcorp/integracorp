@@ -40,11 +40,11 @@ class ListDownloadZones extends ListRecords
         $zones = Zone::query()->orderBy('position')->get();
 
         foreach ($zones as $zone) {
-            $label = filled($zone->zone) ? $zone->zone : ($zone->code ?: 'Zona #' . $zone->id);
+            $label = filled($zone->zone) ? $zone->zone : ($zone->code ?: 'Zona #'.$zone->id);
             $zoneId = $zone->id;
 
-            $tabs['zone_' . $zoneId] = Tab::make($label)
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', $zoneId))
+            $tabs['zone_'.$zoneId] = Tab::make($label)
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', $zoneId)->orderBy('position')->orderBy('id'))
                 ->badge(DownloadZone::query()->where('zone_id', $zoneId)->count())
                 ->badgeColor('success');
         }

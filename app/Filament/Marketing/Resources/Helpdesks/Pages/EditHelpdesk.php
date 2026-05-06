@@ -7,11 +7,19 @@ use App\Filament\Marketing\Resources\Helpdesks\HelpdeskResource;
 use App\Models\HelpDesk;
 use App\Support\SecurityAudit;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 
 class EditHelpdesk extends EditRecord
 {
     protected static string $resource = HelpdeskResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        $record = $this->getRecord();
+
+        return sprintf('Editar Help Desk #%s', $record->getKey());
+    }
 
     /**
      * @var array<string, array{old:mixed,new:mixed}>
