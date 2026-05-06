@@ -73,6 +73,8 @@ it('genera detalle por colaborador y estatus ordenado por terminados', function 
     expect($rows)->toHaveCount(2);
     expect($rows[0]['colaborador'])->toBe('Luis Ruiz');
     expect($rows[1]['colaborador'])->toBe('Ana Perez');
+    expect($rows[0]['colaborador_label'])->toBe('Luis Ruiz');
+    expect($rows[1]['colaborador_label'])->toBe('Ana Perez');
 
     $byName = collect($rows)->keyBy('colaborador');
 
@@ -120,4 +122,19 @@ it('genera data de chart para detalle ordenado por terminados', function () {
     expect($data['labels'])->toBe(['Ana', 'Bruno']);
     expect($datasetsByLabel['TERMINADO']['data'])->toBe([2, 1]);
     expect($datasetsByLabel['EN PROCESO']['data'])->toBe([1, 0]);
+});
+
+it('acorta etiquetas de colaboradores con nombres muy largos', function () {
+    $records = collect([
+        (object) [
+            'status' => 'TERMINADO',
+            'rrhhColaboradores' => [
+                (object) ['fullName' => 'Maximiliano Superlarguisimo Fernandez'],
+            ],
+        ],
+    ]);
+
+    $data = HelpdeskStatusYearlyChartSeries::detailChartDataFromRecords($records);
+
+    expect($data['labels'])->toBe(['Maximiliano S.']);
 });

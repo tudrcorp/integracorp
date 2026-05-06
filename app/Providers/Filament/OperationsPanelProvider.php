@@ -126,11 +126,11 @@ class OperationsPanelProvider extends PanelProvider
                     ->label('COORDINACIÓN DE SERVICIOS')
                     ->icon('heroicon-o-square-3-stack-3d'),
                 NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-                NavigationGroup::make()
                     ->label('CONFIGURACION')
                     ->icon('heroicon-o-cog-8-tooth'),
+                NavigationGroup::make()
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-o-cloud-arrow-down'),
             ])
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
@@ -141,6 +141,10 @@ class OperationsPanelProvider extends PanelProvider
                 fn () => view('filament.hooks.business-helpdesk-tickets-ticker-wrapper', [
                     'fullWidth' => true,
                 ])
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.operations.helpdesks.helpdesk-tour-script')
             )
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');

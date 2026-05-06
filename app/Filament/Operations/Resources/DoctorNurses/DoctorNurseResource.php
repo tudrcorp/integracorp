@@ -6,6 +6,7 @@ use App\Filament\Operations\Resources\DoctorNurses\Pages\CreateDoctorNurse;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\EditDoctorNurse;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\ListDoctorNurses;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\ViewDoctorNurse;
+use App\Filament\Operations\Resources\DoctorNurses\RelationManagers\DoctorNurseObservacionsRelationManager;
 use App\Filament\Operations\Resources\DoctorNurses\Schemas\DoctorNurseForm;
 use App\Filament\Operations\Resources\DoctorNurses\Schemas\DoctorNurseInfolist;
 use App\Filament\Operations\Resources\DoctorNurses\Tables\DoctorNursesTable;
@@ -27,8 +28,7 @@ class DoctorNurseResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
-    // sort
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {
@@ -48,13 +48,13 @@ class DoctorNurseResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['supplierClasificacion']);
+            ->with(['supplierClasificacion', 'doctorNurseObservacions']);
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            DoctorNurseObservacionsRelationManager::class,
         ];
     }
 

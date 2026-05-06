@@ -17,12 +17,19 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class HelpdeskResource extends Resource
 {
     protected static ?string $model = HelpDesk::class;
 
+    protected static ?string $navigationLabel = 'Helpdesk';
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
+
+    protected static string|UnitEnum|null $navigationGroup = null;
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

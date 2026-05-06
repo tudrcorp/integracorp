@@ -26,6 +26,8 @@ class InfoFreeResource extends Resource
 
     protected static ?string $navigationLabel = 'Data Externa(FREE)';
 
+    protected static ?int $navigationSort = 5;
+
     public static function form(Schema $schema): Schema
     {
         return InfoFreeForm::configure($schema);

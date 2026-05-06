@@ -6,6 +6,7 @@ namespace App\Support;
 
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 final class HelpdeskStatusYearlyChartSeries
 {
@@ -110,7 +111,7 @@ final class HelpdeskStatusYearlyChartSeries
 
     /**
      * @param  \Illuminate\Support\Collection<int, object>  $records
-     * @return array<int, array{colaborador: string, totals: array<string, int>, total: int}>
+     * @return array<int, array{colaborador: string, colaborador_label: string, totals: array<string, int>, total: int}>
      */
     public static function detailRowsFromRecords(Collection $records): array
     {
@@ -130,19 +131,21 @@ final class HelpdeskStatusYearlyChartSeries
             }
 
             foreach ($colaboradores as $colaborador) {
-                $name = trim((string) ($colaborador->fullName ?? ''));
-                $name = $name !== '' ? $name : 'Sin nombre';
+                $fullName = trim((string) ($colaborador->fullName ?? ''));
+                $fullName = $fullName !== '' ? $fullName : 'Sin nombre';
+                $label = self::shortCollaboratorLabel($fullName);
 
-                if (! array_key_exists($name, $rows)) {
-                    $rows[$name] = [
-                        'colaborador' => $name,
+                if (! array_key_exists($fullName, $rows)) {
+                    $rows[$fullName] = [
+                        'colaborador' => $fullName,
+                        'colaborador_label' => $label,
                         'totals' => array_fill_keys($statuses, 0),
                         'total' => 0,
                     ];
                 }
 
-                $rows[$name]['totals'][$status] = (int) ($rows[$name]['totals'][$status] ?? 0) + 1;
-                $rows[$name]['total']++;
+                $rows[$fullName]['totals'][$status] = (int) ($rows[$fullName]['totals'][$status] ?? 0) + 1;
+                $rows[$fullName]['total']++;
             }
         }
 
@@ -177,7 +180,7 @@ final class HelpdeskStatusYearlyChartSeries
         $statuses = self::statuses();
 
         $labels = array_map(
-            static fn (array $row): string => (string) ($row['colaborador'] ?? 'Sin nombre'),
+            static fn (array $row): string => (string) ($row['colaborador_label'] ?? $row['colaborador'] ?? 'Sin nombre'),
             $rows
         );
 
@@ -214,5 +217,24 @@ final class HelpdeskStatusYearlyChartSeries
             'labels' => $labels,
             'datasets' => $datasets,
         ];
+    }
+
+    private static function shortCollaboratorLabel(string $fullName): string
+    {
+        $normalizedName = Str::squish($fullName);
+        $parts = preg_split('/\s+/', $normalizedName) ?: [];
+
+        if (count($parts) <= 1) {
+            return Str::limit($normalizedName, 18, '...');
+        }
+
+        $firstAndSecond = $parts[0].' '.$parts[1];
+        if (mb_strlen($firstAndSecond) <= 18) {
+            return $firstAndSecond;
+        }
+
+        $secondInitial = mb_strtoupper(mb_substr($parts[1], 0, 1));
+
+        return Str::limit($parts[0].' '.$secondInitial.'.', 18, '...');
     }
 }

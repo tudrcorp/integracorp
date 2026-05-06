@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\ProspectAgents\Tables;
 
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
+use App\Http\Controllers\ProspectAgentExportCsvController;
 use App\Models\ProspectAgent;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class ProspectAgentsTable
 {
@@ -189,6 +193,26 @@ class ProspectAgentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un prospecto')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = ProspectAgentExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.prospect-agents.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ]);

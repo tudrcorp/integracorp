@@ -29,3 +29,10 @@ it('rechaza la descarga csv cuando el token no existe o expiro', function (): vo
     expect(fn (): mixed => $controller($request))
         ->toThrow(HttpException::class, 'Token de exportación no válido o expirado.');
 });
+
+it('tiene registradas las rutas nombradas de exportacion csv', function (): void {
+    expect(route('operations.suppliers.export-csv', ['token' => 'x']))->toBeString();
+    expect(route('operations.doctor-nurses.export-csv', ['token' => 'x']))->toBeString();
+    expect(route('business.prospect-agents.export-csv', ['token' => 'x']))->toBeString();
+    expect(route('business.travel-agencies.export-csv', ['token' => 'x']))->toBeString();
+});

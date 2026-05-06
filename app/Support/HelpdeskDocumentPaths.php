@@ -46,18 +46,21 @@ final class HelpdeskDocumentPaths
     /**
      * Metadatos para vista previa en el panel (disco public).
      *
-     * @return list<array{path: string, url: string, extension: string, missing: bool, basename: string}>
+     * @return list<array{path: string, url: string, download_url: string, extension: string, missing: bool, basename: string}>
      */
     public static function forPublicDisk(HelpDesk $record): array
     {
         $disk = Storage::disk('public');
         $out = [];
 
-        foreach (self::paths($record) as $path) {
+        foreach (self::paths($record) as $index => $path) {
             $exists = $disk->exists($path);
             $out[] = [
                 'path' => $path,
                 'url' => $exists ? $disk->url($path) : '',
+                'download_url' => $exists
+                    ? route('helpdesks.attachments.download', ['helpDesk' => $record->getKey(), 'index' => $index])
+                    : '',
                 'extension' => $exists ? strtolower((string) pathinfo($path, PATHINFO_EXTENSION)) : '',
                 'missing' => ! $exists,
                 'basename' => basename($path),

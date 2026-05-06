@@ -130,7 +130,7 @@ class HelpdeskStatusWeeklyChart extends ChartWidget
             responsive: true,
             maintainAspectRatio: false,
             layout: {
-                padding: { top: 8, right: 8, bottom: 4, left: 4 }
+                padding: { top: 8, right: 8, bottom: 14, left: 4 }
             },
             interaction: {
                 mode: 'nearest',
@@ -221,6 +221,7 @@ class HelpdeskStatusWeeklyChart extends ChartWidget
                     ticks: {
                         maxRotation: 0,
                         minRotation: 0,
+                        padding: 6,
                         color: '#000000',
                         font: {
                             size: 13,

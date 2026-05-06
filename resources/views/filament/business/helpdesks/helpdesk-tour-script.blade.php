@@ -1,5 +1,5 @@
 @php
-    $shouldLoad = request()->is('business/helpdesks*');
+    $shouldLoad = request()->is('business/helpdesks*', 'administration/helpdesks*', 'marketing/helpdesks*', 'operations/helpdesks*');
 @endphp
 
 @if ($shouldLoad)
@@ -8,8 +8,7 @@
             position: fixed;
             inset: 0;
             background: radial-gradient(circle at 20% 15%, rgba(59, 130, 246, 0.2), transparent 35%),
-                radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.15), transparent 30%),
-                rgba(15, 23, 42, 0.62);
+                radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.15), transparent 30%), rgba(15, 23, 42, 0.62);
             backdrop-filter: blur(2px);
             z-index: 2147483000;
         }
@@ -25,7 +24,6 @@
             transition: box-shadow 220ms ease, outline-color 220ms ease, outline-offset 220ms ease;
         }
 
-        /* Animación solo al cambiar de paso (no en re-sync por Livewire) */
         .helpdesk-tour-highlight.is-animating {
             animation: helpdesk-tour-focus-in 240ms ease;
         }
@@ -35,13 +33,13 @@
                 box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.1), 0 2px 12px rgba(15, 23, 42, 0.12);
                 outline-offset: 0;
             }
+
             to {
                 box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.22), 0 8px 26px rgba(15, 23, 42, 0.22);
                 outline-offset: 3px;
             }
         }
 
-        /* Botones tipo “pill” (como Crear ticket) se ven mejor con ring */
         .helpdesk-tour-highlight[data-tour-shape='pill'] {
             outline: 0;
             outline-offset: 0;
@@ -52,18 +50,27 @@
         .helpdesk-tour-tooltip {
             position: fixed;
             z-index: 2147483002;
-            width: min(400px, calc(100vw - 28px));
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+            width: min(460px, calc(100vw - 28px));
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.95) 100%);
             color: #0f172a;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            border-radius: 16px;
-            box-shadow: 0 20px 56px rgba(15, 23, 42, 0.28);
-            padding: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+            padding: 16px 16px 14px;
             font-size: 13px;
+            backdrop-filter: blur(20px) saturate(1.15);
             opacity: 0;
             transform: translateY(8px) scale(0.985);
             transition: opacity 220ms ease, transform 220ms ease, left 280ms cubic-bezier(0.22, 1, 0.36, 1),
                 top 280ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .helpdesk-tour-tooltip.is-fixed-top-center {
+            left: 50% !important;
+            top: max(12px, calc(env(safe-area-inset-top, 0px) + 10px)) !important;
+            bottom: auto !important;
+            transform: translate(-50%, -10px) scale(0.985);
+            transition: opacity 220ms ease, transform 220ms ease;
         }
 
         .helpdesk-tour-tooltip.is-visible {
@@ -71,9 +78,21 @@
             transform: translateY(0) scale(1);
         }
 
+        .helpdesk-tour-tooltip.is-fixed-top-center.is-visible {
+            transform: translate(-50%, 0) scale(1);
+        }
+
         .helpdesk-tour-tooltip.is-switching {
             opacity: 0.4;
             transform: translateY(4px) scale(0.992);
+        }
+
+        .helpdesk-tour-tooltip.is-fixed-top-center.is-switching {
+            transform: translate(-50%, -4px) scale(0.992);
+        }
+
+        .helpdesk-tour-tooltip.is-dragging {
+            transition: none !important;
         }
 
         .dark .helpdesk-tour-tooltip {
@@ -83,17 +102,81 @@
             box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
         }
 
+        .helpdesk-tour-tooltip-grabber {
+            width: 44px;
+            height: 5px;
+            border-radius: 9999px;
+            margin: 0 auto 10px auto;
+            background: rgba(148, 163, 184, 0.42);
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        .helpdesk-tour-tooltip.is-dragging .helpdesk-tour-tooltip-grabber {
+            cursor: grabbing;
+        }
+
+        .dark .helpdesk-tour-tooltip-grabber {
+            background: rgba(148, 163, 184, 0.32);
+        }
+
+        .helpdesk-tour-tooltip-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .helpdesk-tour-tooltip-step-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            background: rgba(59, 130, 246, 0.12);
+            color: #1d4ed8;
+            border: 1px solid rgba(59, 130, 246, 0.18);
+        }
+
+        .dark .helpdesk-tour-tooltip-step-pill {
+            background: rgba(59, 130, 246, 0.25);
+            color: #bfdbfe;
+            border-color: rgba(147, 197, 253, 0.25);
+        }
+
+        .helpdesk-tour-tooltip-progress-track {
+            width: 100%;
+            height: 6px;
+            border-radius: 9999px;
+            background: rgba(148, 163, 184, 0.25);
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .helpdesk-tour-tooltip-progress-value {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #3b82f6 0%, #38bdf8 100%);
+            transition: width 220ms ease;
+        }
+
         .helpdesk-tour-tooltip-title {
             font-weight: 800;
             letter-spacing: -0.01em;
-            margin: 0 0 8px 0;
-            font-size: 15px;
+            margin: 0 0 10px 0;
+            font-size: 16px;
         }
 
         .helpdesk-tour-tooltip-body {
             margin: 0 0 12px 0;
             font-size: 13px;
-            line-height: 1.45;
+            line-height: 1.55;
             opacity: 0.95;
         }
 
@@ -106,14 +189,15 @@
 
         .helpdesk-tour-btn {
             border: 1px solid rgba(148, 163, 184, 0.45);
-            background: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.72);
             color: inherit;
-            padding: 8px 12px;
+            min-height: 36px;
+            padding: 8px 13px;
             border-radius: 9999px;
             font-size: 13px;
             font-weight: 700;
             cursor: pointer;
-            transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+            transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
         }
 
         .helpdesk-tour-btn:hover {
@@ -127,12 +211,18 @@
 
         .helpdesk-tour-btn-primary {
             border-color: rgba(59, 130, 246, 0.55);
-            background: linear-gradient(180deg, rgba(59, 130, 246, 0.17), rgba(59, 130, 246, 0.1));
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.18), rgba(14, 165, 233, 0.18));
+            color: #0f172a;
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.24);
         }
 
         .helpdesk-tour-btn-primary:hover {
             border-color: rgba(59, 130, 246, 0.72);
-            background: rgba(59, 130, 246, 0.24);
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.24), rgba(14, 165, 233, 0.22));
+        }
+
+        .dark .helpdesk-tour-btn-primary {
+            color: #e2e8f0;
         }
 
         .helpdesk-tour-btn[disabled] {
@@ -157,6 +247,8 @@
                 highlightedEl: null,
                 syncTimer: null,
                 transitionToken: 0,
+                userTooltipPosition: null,
+                drag: null,
             };
 
             const defaultSteps = [
@@ -192,8 +284,8 @@
                 },
                 {
                     selector: '#helpdesk-tour-btn',
-                    title: '6) Reabrir guía cuando quieras',
-                    body: 'Este botón te permite repetir la explicación para capacitación o para nuevos usuarios del equipo.',
+                    title: '6) Reabrir tutorial de uso cuando quieras',
+                    body: 'Este botón te permite repetir el tutorial de uso para capacitación o para nuevos usuarios del equipo.',
                     placement: 'top',
                 },
             ];
@@ -231,6 +323,8 @@
                     state.syncTimer = null;
                 }
                 state.index = -1;
+                state.userTooltipPosition = null;
+                state.drag = null;
             }
 
             function isActive() {
@@ -241,15 +335,27 @@
                 return Math.min(max, Math.max(min, value));
             }
 
-            function placeTooltip(target, placement) {
+            function placeTooltip(target, step) {
                 const tooltip = state.tooltipEl;
                 if (!tooltip || !target) return;
 
+                if (state.userTooltipPosition) {
+                    applyUserTooltipPosition();
+                    return;
+                }
+
+                if (step?.tooltipPosition === 'top-center') {
+                    placeTooltipTopCenter();
+                    return;
+                }
+
+                tooltip.classList.remove('is-fixed-top-center');
+
                 const rect = target.getBoundingClientRect();
                 const tipRect = tooltip.getBoundingClientRect();
-
                 const margin = 10;
                 const gap = 12;
+                const placement = step?.placement ?? 'bottom';
 
                 let top = rect.bottom + gap;
                 let left = rect.left;
@@ -275,10 +381,30 @@
                 tooltip.style.top = clamp(top, margin, maxTop) + 'px';
             }
 
+            function placeTooltipTopCenter() {
+                const tooltip = state.tooltipEl;
+                if (!tooltip) return;
+
+                tooltip.classList.add('is-fixed-top-center');
+                tooltip.style.left = '50%';
+                tooltip.style.top = '';
+            }
+
+            function applyUserTooltipPosition() {
+                const tooltip = state.tooltipEl;
+                const pos = state.userTooltipPosition;
+                if (!tooltip || !pos) return;
+
+                tooltip.classList.remove('is-fixed-top-center');
+                tooltip.style.left = pos.left + 'px';
+                tooltip.style.top = pos.top + 'px';
+            }
+
             function placeTooltipCentered() {
                 const tooltip = state.tooltipEl;
                 if (!tooltip) return;
 
+                tooltip.classList.remove('is-fixed-top-center');
                 const tipRect = tooltip.getBoundingClientRect();
                 const margin = 10;
                 const maxLeft = window.innerWidth - tipRect.width - margin;
@@ -299,7 +425,13 @@
                 if (!target) {
                     cleanupHighlight();
                     if (state.tooltipEl) {
-                        placeTooltipCentered();
+                        if (state.userTooltipPosition) {
+                            applyUserTooltipPosition();
+                        } else if (step?.tooltipPosition === 'top-center') {
+                            placeTooltipTopCenter();
+                        } else {
+                            placeTooltipCentered();
+                        }
                     }
                     return;
                 }
@@ -313,18 +445,88 @@
                 }
 
                 if (state.tooltipEl) {
-                    placeTooltip(target, step?.placement ?? 'bottom');
+                    placeTooltip(target, step);
                 }
+            }
+
+            function startDraggingTooltip(pointerEvent) {
+                const tooltip = state.tooltipEl;
+                if (!tooltip) return;
+
+                const rect = tooltip.getBoundingClientRect();
+                const margin = 10;
+                const tipRect = tooltip.getBoundingClientRect();
+                const maxLeft = window.innerWidth - tipRect.width - margin;
+                const maxTop = window.innerHeight - tipRect.height - margin;
+
+                state.drag = {
+                    pointerId: pointerEvent.pointerId,
+                    startClientX: pointerEvent.clientX,
+                    startClientY: pointerEvent.clientY,
+                    startLeft: clamp(rect.left, margin, maxLeft),
+                    startTop: clamp(rect.top, margin, maxTop),
+                };
+
+                tooltip.classList.add('is-dragging');
+                tooltip.setPointerCapture(pointerEvent.pointerId);
+
+                const onMove = (e) => {
+                    if (!state.drag || e.pointerId !== state.drag.pointerId) return;
+                    e.preventDefault();
+
+                    const currentTipRect = tooltip.getBoundingClientRect();
+                    const currentMaxLeft = window.innerWidth - currentTipRect.width - margin;
+                    const currentMaxTop = window.innerHeight - currentTipRect.height - margin;
+
+                    const nextLeft = clamp(
+                        state.drag.startLeft + (e.clientX - state.drag.startClientX),
+                        margin,
+                        currentMaxLeft
+                    );
+                    const nextTop = clamp(
+                        state.drag.startTop + (e.clientY - state.drag.startClientY),
+                        margin,
+                        currentMaxTop
+                    );
+
+                    state.userTooltipPosition = { left: nextLeft, top: nextTop };
+                    applyUserTooltipPosition();
+                };
+
+                const onUp = (e) => {
+                    if (!state.drag || e.pointerId !== state.drag.pointerId) return;
+                    tooltip.classList.remove('is-dragging');
+                    try {
+                        tooltip.releasePointerCapture(e.pointerId);
+                    } catch (_) {}
+                    window.removeEventListener('pointermove', onMove, true);
+                    window.removeEventListener('pointerup', onUp, true);
+                    state.drag = null;
+                };
+
+                window.addEventListener('pointermove', onMove, true);
+                window.addEventListener('pointerup', onUp, true);
             }
 
             function renderTooltipContent(step, isFirst, isLast) {
                 if (!state.tooltipEl) return;
+                const currentStep = state.index + 1;
+                const totalSteps = state.steps.length;
+                const progress = Math.round((currentStep / totalSteps) * 100);
 
                 state.tooltipEl.innerHTML = `
+                    <div class="helpdesk-tour-tooltip-grabber"></div>
+                    <div class="helpdesk-tour-tooltip-meta">
+                        <span class="helpdesk-tour-tooltip-step-pill">Paso ${currentStep} de ${totalSteps}</span>
+                        <span>${progress}%</span>
+                    </div>
+                    <div class="helpdesk-tour-tooltip-progress-track">
+                        <div class="helpdesk-tour-tooltip-progress-value" style="width: ${progress}%"></div>
+                    </div>
                     <div class="helpdesk-tour-tooltip-title">${step.title ?? ''}</div>
                     <div class="helpdesk-tour-tooltip-body">${step.body ?? ''}</div>
                     <div class="helpdesk-tour-tooltip-actions">
-                        <button type="button" class="helpdesk-tour-btn" data-tour-action="close">Cerrar</button>
+                        <button type="button" class="helpdesk-tour-btn" data-tour-action="close">Salir</button>
                         <button type="button" class="helpdesk-tour-btn" data-tour-action="prev" ${isFirst ? 'disabled' : ''}>Atrás</button>
                         <button type="button" class="helpdesk-tour-btn helpdesk-tour-btn-primary" data-tour-action="next">${isLast ? 'Finalizar' : 'Siguiente'}</button>
                     </div>
@@ -333,6 +535,11 @@
                 state.tooltipEl.querySelector('[data-tour-action="close"]')?.addEventListener('click', close);
                 state.tooltipEl.querySelector('[data-tour-action="prev"]')?.addEventListener('click', prev);
                 state.tooltipEl.querySelector('[data-tour-action="next"]')?.addEventListener('click', next);
+
+                state.tooltipEl.querySelector('.helpdesk-tour-tooltip-grabber')?.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    startDraggingTooltip(e);
+                });
             }
 
             function renderStep() {
@@ -360,8 +567,6 @@
                 if (!state.overlayEl) {
                     const overlay = document.createElement('div');
                     overlay.className = 'helpdesk-tour-overlay';
-                    // Importante: el tour NO debe cerrarse por clic afuera.
-                    // Solo se controla con "Siguiente" o "Cerrar".
                     overlay.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -373,6 +578,8 @@
                 if (!state.tooltipEl) {
                     const tooltip = document.createElement('div');
                     tooltip.className = 'helpdesk-tour-tooltip';
+                    tooltip.setAttribute('role', 'dialog');
+                    tooltip.setAttribute('aria-modal', 'true');
                     document.body.appendChild(tooltip);
                     state.tooltipEl = tooltip;
                 }
@@ -385,14 +592,17 @@
 
                 const paintStep = () => {
                     if (token !== state.transitionToken || !state.tooltipEl) return;
-
                     renderTooltipContent(step, isFirst, isLast);
 
                     requestAnimationFrame(() => {
                         if (token !== state.transitionToken || !state.tooltipEl) return;
 
-                        if (target) {
-                            placeTooltip(target, step.placement ?? 'bottom');
+                        if (state.userTooltipPosition) {
+                            applyUserTooltipPosition();
+                        } else if (target) {
+                            placeTooltip(target, step);
+                        } else if (step?.tooltipPosition === 'top-center') {
+                            placeTooltipTopCenter();
                         } else {
                             placeTooltipCentered();
                         }
@@ -412,7 +622,11 @@
 
             function start(customSteps) {
                 cleanupUI();
-                state.steps = Array.isArray(customSteps) && customSteps.length ? customSteps : defaultSteps;
+                const baseSteps = Array.isArray(customSteps) && customSteps.length ? customSteps : defaultSteps;
+                state.steps = baseSteps.map((step) => ({
+                    ...step,
+                    tooltipPosition: step?.tooltipPosition ?? 'top-center',
+                }));
                 state.index = 0;
                 renderStep();
                 state.syncTimer = setInterval(syncCurrentStep, 200);
@@ -448,7 +662,6 @@
 
             window.HelpdeskTour = { start, next, prev, close };
 
-            // Bloquear interacción con la UI durante el tour (excepto dentro del tooltip).
             document.addEventListener(
                 'click',
                 (e) => {
@@ -464,10 +677,16 @@
             );
 
             window.addEventListener('resize', () => {
+                if (!state.tooltipEl) return;
+                if (state.userTooltipPosition) {
+                    applyUserTooltipPosition();
+                    return;
+                }
+
                 const step = state.steps[state.index];
                 const target = resolveTarget(step);
-                if (state.tooltipEl && target) {
-                    placeTooltip(target, step?.placement ?? 'bottom');
+                if (target) {
+                    placeTooltip(target, step);
                 }
             });
 
@@ -478,7 +697,6 @@
                 if (e.key === 'ArrowLeft') prev();
             });
 
-            // Filament SPA (Livewire v3): re-enganchar al navegar sin recargar.
             document.addEventListener('livewire:navigated', () => {
                 close();
                 wireButton();

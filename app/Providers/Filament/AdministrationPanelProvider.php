@@ -138,6 +138,10 @@ class AdministrationPanelProvider extends PanelProvider
                 fn (): string => view('filament.administration.partials.aviso-cobro-panel-script')->render(),
             )
             ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.administration.helpdesks.helpdesk-tour-script')
+            )
+            ->renderHook(
                 PanelsRenderHook::CONTENT_START,
                 fn () => view('filament.hooks.business-helpdesk-tickets-ticker-wrapper', [
                     'fullWidth' => true,

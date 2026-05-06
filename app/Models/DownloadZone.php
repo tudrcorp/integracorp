@@ -10,13 +10,14 @@ class DownloadZone extends Model
 
     protected $fillable = [
         'zone_id',
+        'position',
         'document',
         'status',
         'image_icon',
         'description',
     ];
 
-    public function zone()
+    public function zone(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Zone::class);
     }

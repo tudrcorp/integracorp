@@ -117,11 +117,19 @@ class HelpdeskForm
                             ->columnSpanFull(),
 
                         FileUpload::make('image')
-                            ->label('Adjunto (imagen o PDF)')
+                            ->label('Adjunto (imagen, PDF o PowerPoint)')
                             ->directory('helpdesks-documents')
                             ->visibility('public')
                             ->maxSize(2048)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'])
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                                'image/gif',
+                                'application/pdf',
+                                'application/vnd.ms-powerpoint',
+                                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                            ])
                             ->imagePreviewHeight('160')
                             ->panelLayout('grid')
                             ->downloadable()
@@ -129,7 +137,7 @@ class HelpdeskForm
                             ->disabledOn('edit')
                             ->helperText(fn (string $operation): string => $operation === 'edit'
                                 ? 'Solo lectura. Los adjuntos no se pueden cambiar desde la edición.'
-                                : 'Hasta 2 MB. Captura de pantalla, PDF o foto del error.')
+                                : 'Hasta 2 MB. Captura de pantalla, PDF, PPT o PPTX.')
                             ->columnSpanFull(),
                     ])
                     ->columns(1)

@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\DoctorNurses\Tables;
 
+use App\Http\Controllers\DoctorNurseExportCsvController;
 use App\Models\DoctorNurse;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontFamily;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
@@ -18,6 +21,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class DoctorNursesTable
 {
@@ -300,6 +304,26 @@ class DoctorNursesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un proveedor natural')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = DoctorNurseExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('operations.doctor-nurses.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make()
                         ->label('Eliminar')
                         ->icon('heroicon-s-trash')

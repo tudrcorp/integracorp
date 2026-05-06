@@ -8,8 +8,11 @@ use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAgencyFichaPdfController;
 use App\Http\Controllers\BusinessAgentFichaPdfController;
 use App\Http\Controllers\BusinessAppointmentsController;
+use App\Http\Controllers\DoctorNurseFichaPdfController;
 use App\Http\Controllers\FormularioExternoController;
+use App\Http\Controllers\HelpdeskAttachmentDownloadController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Operations\DoctorNurseDocumentAuditController;
 use App\Http\Controllers\Operations\OperationCoordinationClinicDocumentDownloadController;
 use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\OperationServiceOrderPdfController;
@@ -104,6 +107,39 @@ Route::view('dashboard', 'dashboard')
 Route::get('operations/export-suppliers-csv', App\Http\Controllers\SupplierExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('operations.suppliers.export-csv');
+
+Route::get('operations/export-doctor-nurses-csv', App\Http\Controllers\DoctorNurseExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.doctor-nurses.export-csv');
+
+Route::get('operations/doctor-nurses/{doctorNurse}/ficha/preview', [DoctorNurseFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.doctor-nurses.ficha.preview');
+
+Route::get('operations/doctor-nurses/{doctorNurse}/ficha/download', [DoctorNurseFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.doctor-nurses.ficha.download');
+
+Route::get('operations/doctor-nurses/{doctorNurse}/documents/{index}/download', [DoctorNurseDocumentAuditController::class, 'downloadAffiliationDocument'])
+    ->middleware(['web', 'auth'])
+    ->whereNumber('index')
+    ->name('operations.doctor-nurses.documents.download');
+
+Route::get('operations/doctor-nurses/{doctorNurse}/carta-acceptance/preview', [DoctorNurseDocumentAuditController::class, 'previewCartaAcceptance'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.doctor-nurses.carta-acceptance.preview');
+
+Route::get('operations/doctor-nurses/{doctorNurse}/carta-acceptance/download', [DoctorNurseDocumentAuditController::class, 'downloadCartaAcceptance'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.doctor-nurses.carta-acceptance.download');
+
+Route::get('business/export-prospect-agents-csv', App\Http\Controllers\ProspectAgentExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.prospect-agents.export-csv');
+
+Route::get('business/export-travel-agencies-csv', App\Http\Controllers\TravelAgencyExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.travel-agencies.export-csv');
 
 Route::get('operations/suppliers/report/preview', [SupplierReportPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
@@ -278,6 +314,11 @@ Route::post('business/affiliation-corporates/documents/send-email/{affiliationCo
 Route::post('business/helpdesk-tickets/{helpDesk}/mark-in-progress', MarkHelpdeskTicketInProgressController::class)
     ->middleware(['web', 'auth'])
     ->name('business.helpdesk-ticket.mark-in-progress');
+
+Route::get('helpdesks/{helpDesk}/attachments/{index}/download', HelpdeskAttachmentDownloadController::class)
+    ->middleware(['web', 'auth'])
+    ->whereNumber('index')
+    ->name('helpdesks.attachments.download');
 
 Route::get('agenda/invitacion/{participant}', [CorporateAgendaInvitationResponseController::class, 'show'])
     ->middleware(['web', 'signed'])
@@ -1645,19 +1686,22 @@ Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
  * @return void
  */
 Route::get('/carta-bienvenida-agencia', function () {
-    //Doc en PDF
+    // Doc en PDF
     $pdf = Pdf::loadView('documents.carta-bienvenida-agencia');
+
     return $pdf->download('carta-bienvenida-agencia.pdf');
 })->name('carta-bienvenida-agencia');
 
 Route::get('/carta-bienvenida-ejecutivo', function () {
-    //Doc en PDF
+    // Doc en PDF
     $pdf = Pdf::loadView('documents.carta-bienvenida-ejecutivo');
+
     return $pdf->download('carta-bienvenida-ejecutivo.pdf');
 })->name('carta-bienvenida-ejecutivo');
 
 Route::get('/carta-bienvenida-agente', function () {
-    //Doc en PDF
+    // Doc en PDF
     $pdf = Pdf::loadView('documents.carta-bienvenida-agente');
+
     return $pdf->download('carta-bienvenida-agente.pdf');
 })->name('carta-bienvenida-agente');
