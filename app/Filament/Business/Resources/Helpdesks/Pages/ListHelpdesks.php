@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Helpdesks\Pages;
 
 use App\Filament\Business\Resources\Helpdesks\HelpdeskResource;
+use App\Filament\Business\Resources\Helpdesks\Tables\HelpdesksTable;
 use App\Filament\Business\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart;
 use App\Filament\Business\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk;
 use Filament\Actions\Action;
@@ -17,6 +18,8 @@ class ListHelpdesks extends ListRecords
     protected static string $resource = HelpdeskResource::class;
 
     protected static ?string $title = 'Gestión de Tickets';
+
+    public ?string $activeTab = null;
 
     /**
      * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
@@ -59,5 +62,10 @@ class ListHelpdesks extends ListRecords
             StatsOverviewHelpdesk::class,
             HelpdeskStatusWeeklyChart::class,
         ];
+    }
+
+    public function getTabs(): array
+    {
+        return HelpdesksTable::getTabs();
     }
 }
