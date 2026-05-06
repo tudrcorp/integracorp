@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -21,6 +22,19 @@ use Illuminate\Support\Facades\Auth;
 
 class HelpdesksTable
 {
+    public static function getTabs(): array
+    {
+        return [
+            'todos' => Tab::make('Todos'),
+            'pendiente_por_iniciar' => Tab::make('Pendiente por iniciar')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'PENDIENTE POR INICIAR')),
+            'en_proceso' => Tab::make('En proceso')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'EN PROCESO')),
+            'terminado' => Tab::make('Terminado')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'TERMINADO')),
+        ];
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
