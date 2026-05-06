@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Agents\Schemas;
 
 use App\Models\Agent;
+use App\Models\ObservationCommercialStructure;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
 
@@ -106,7 +108,6 @@ class AgentInfolist
                 Section::make('Identificación y ubicación')
                     ->description('Documento, datos personales y domicilio.')
                     ->icon('heroicon-o-map-pin')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -180,7 +181,6 @@ class AgentInfolist
                 Section::make('Contacto alternativo')
                     ->description('Segundo canal de contacto e Instagram.')
                     ->icon('heroicon-o-phone')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -218,7 +218,6 @@ class AgentInfolist
                 Section::make('Banca en moneda local')
                     ->description('Beneficiario, cuenta y pago móvil.')
                     ->icon('heroicon-o-banknotes')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -284,7 +283,6 @@ class AgentInfolist
                 Section::make('Banca en moneda extranjera')
                     ->description('Cuenta internacional, Zelle y datos SWIFT / ACH.')
                     ->icon('heroicon-o-currency-dollar')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -345,7 +343,6 @@ class AgentInfolist
                 Section::make('Comisiones')
                     ->description('TDEC y TDEV: venta nueva y renovación.')
                     ->icon('heroicon-o-calculator')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -398,10 +395,9 @@ class AgentInfolist
                     ])
                     ->columnSpanFull(),
 
-                Section::make('Auditoría')
-                    ->description('Registro de creación, actualización y comentarios.')
-                    ->icon('heroicon-o-clock')
-                    ->collapsed()
+                Section::make('Notas y auditoría')
+                    ->description('Comentarios internos, observaciones de seguimiento y trazabilidad.')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -411,31 +407,42 @@ class AgentInfolist
                                 'class' => self::IOS_INNER_CLASS,
                             ])
                             ->schema([
-                                TextEntry::make('comments')
-                                    ->label('Comentarios')
-                                    ->placeholder('Sin comentarios')
-                                    ->columnSpanFull(),
-                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                Grid::make(1)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_INSET_GROUP_CLASS,
+                                    ])
                                     ->schema([
-                                        TextEntry::make('created_by')
-                                            ->label('Creado por')
-                                            ->icon('heroicon-m-user-plus')
-                                            ->placeholder('—'),
-                                        TextEntry::make('created_at')
-                                            ->label('Fecha de creación')
-                                            ->icon('heroicon-m-calendar')
-                                            ->dateTime('d/m/Y H:i')
-                                            ->placeholder('—'),
-                                        TextEntry::make('updated_at')
-                                            ->label('Última actualización')
-                                            ->icon('heroicon-m-arrow-path')
-                                            ->dateTime('d/m/Y H:i')
-                                            ->placeholder('—'),
-                                        TextEntry::make('date_register')
-                                            ->label('Fecha de registro')
-                                            ->icon('heroicon-m-calendar-days')
-                                            ->placeholder('—'),
-                                    ]),
+                                        Text::make('Historial de observaciones')
+                                            ->icon('heroicon-m-clipboard-document-list')
+                                            ->weight('semibold'),
+                                        RepeatableEntry::make('observationCommercialStructures')
+                                            ->hiddenLabel()
+                                            ->table([
+                                                TableColumn::make('Observación')->width('38%'),
+                                                TableColumn::make('Registrado por')->width('18%'),
+                                                TableColumn::make('Última edición')->width('18%'),
+                                                TableColumn::make('Fecha y hora')->width('26%'),
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('observation')
+                                                    ->placeholder('—')
+                                                    ->limit(180)
+                                                    ->tooltip(fn ($record): ?string => is_string($record->observation ?? null) ? $record->observation : null),
+                                                TextEntry::make('created_by')
+                                                    ->icon('heroicon-m-user')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('updated_by')
+                                                    ->label('Última edición')
+                                                    ->icon('heroicon-m-pencil-square')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('registered_at_display')
+                                                    ->icon('heroicon-m-clock')
+                                                    ->getStateUsing(fn ($record): string => self::formatObservationRegisteredAt($record))
+                                                    ->placeholder('—'),
+                                            ])
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
                             ])
                             ->columnSpanFull(),
                     ])
@@ -490,5 +497,18 @@ class AgentInfolist
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function formatObservationRegisteredAt(mixed $record): string
+    {
+        if (! $record instanceof ObservationCommercialStructure) {
+            return '—';
+        }
+
+        if (filled($record->date)) {
+            return (string) $record->date;
+        }
+
+        return $record->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—';
     }
 }

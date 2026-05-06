@@ -17,6 +17,7 @@ class ObservationCommercialStructure extends Model
         'commercial_structure_id',
         'observation',
         'created_by',
+        'updated_by',
         'date',
     ];
 
@@ -39,5 +40,4 @@ class ObservationCommercialStructure extends Model
     {
         return $this->belongsTo(TravelAgent::class);
     }
-
 }

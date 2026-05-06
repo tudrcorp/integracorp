@@ -13,8 +13,8 @@ use App\Models\Agent;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class AgentResource extends Resource
@@ -25,7 +25,7 @@ class AgentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
+    protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
     protected static ?int $navigationSort = 2;
 
@@ -42,6 +42,14 @@ class AgentResource extends Resource
     public static function table(Table $table): Table
     {
         return AgentsTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'observationCommercialStructures' => fn ($query) => $query->orderByDesc('created_at'),
+            ]);
     }
 
     public static function getRelations(): array

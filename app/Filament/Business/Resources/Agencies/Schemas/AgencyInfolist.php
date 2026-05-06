@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Agencies\Schemas;
 
+use App\Models\ObservationCommercialStructure;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 
 class AgencyInfolist
@@ -188,7 +192,6 @@ class AgencyInfolist
                 Section::make('Contacto alternativo')
                     ->description('Segundo canal de contacto cuando aplica.')
                     ->icon('heroicon-o-phone')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -222,7 +225,6 @@ class AgencyInfolist
                 Section::make('Banca en moneda local')
                     ->description('Beneficiario, cuentas en bolívares y datos de pago móvil.')
                     ->icon('heroicon-o-banknotes')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -288,7 +290,6 @@ class AgencyInfolist
                 Section::make('Banca en moneda extranjera')
                     ->description('Transferencias internacionales y datos SWIFT / ACH.')
                     ->icon('heroicon-o-currency-dollar')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -349,7 +350,6 @@ class AgencyInfolist
                 Section::make('Comisiones')
                     ->description('TDEC, TDEV y porcentajes de comisión y renovación.')
                     ->icon('heroicon-o-calculator')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -395,9 +395,8 @@ class AgencyInfolist
                     ->columnSpanFull(),
 
                 Section::make('Notas y auditoría')
-                    ->description('Comentarios internos y trazabilidad.')
+                    ->description('Comentarios internos, observaciones de seguimiento y trazabilidad.')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                    ->collapsed()
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -407,21 +406,42 @@ class AgencyInfolist
                                 'class' => self::IOS_INNER_CLASS,
                             ])
                             ->schema([
-                                TextEntry::make('comments')
-                                    ->label('Comentarios')
-                                    ->placeholder('Sin comentarios')
-                                    ->columnSpanFull(),
-                                Grid::make(['default' => 1, 'sm' => 2])
+                                Grid::make(1)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_INSET_GROUP_CLASS,
+                                    ])
                                     ->schema([
-                                        TextEntry::make('created_by')
-                                            ->label('Creado por')
-                                            ->icon('heroicon-m-user-plus')
-                                            ->placeholder('—'),
-                                        TextEntry::make('updated_by')
-                                            ->label('Actualizado por')
-                                            ->icon('heroicon-m-arrow-path')
-                                            ->placeholder('—'),
-                                    ]),
+                                        Text::make('Historial de observaciones')
+                                            ->icon('heroicon-m-clipboard-document-list')
+                                            ->weight('semibold'),
+                                        RepeatableEntry::make('observationCommercialStructures')
+                                            ->hiddenLabel()
+                                            ->table([
+                                                TableColumn::make('Observación')->width('38%'),
+                                                TableColumn::make('Registrado por')->width('18%'),
+                                                TableColumn::make('Última edición')->width('18%'),
+                                                TableColumn::make('Fecha y hora')->width('26%'),
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('observation')
+                                                    ->placeholder('—')
+                                                    ->limit(180)
+                                                    ->tooltip(fn ($record): ?string => is_string($record->observation ?? null) ? $record->observation : null),
+                                                TextEntry::make('created_by')
+                                                    ->icon('heroicon-m-user')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('updated_by')
+                                                    ->label('Última edición')
+                                                    ->icon('heroicon-m-pencil-square')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('registered_at_display')
+                                                    ->icon('heroicon-m-clock')
+                                                    ->getStateUsing(fn ($record): string => self::formatObservationRegisteredAt($record))
+                                                    ->placeholder('—'),
+                                            ])
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
                             ])
                             ->columnSpanFull(),
                     ])
@@ -436,5 +456,18 @@ class AgencyInfolist
         }
 
         return number_format((float) $state, 2, ',', '.').' %';
+    }
+
+    private static function formatObservationRegisteredAt(mixed $record): string
+    {
+        if (! $record instanceof ObservationCommercialStructure) {
+            return '—';
+        }
+
+        if (filled($record->date)) {
+            return (string) $record->date;
+        }
+
+        return $record->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—';
     }
 }
