@@ -29,6 +29,12 @@ class DoctorNurse extends Model
         'created_by',
         'updated_by',
         'speciality',
+        'carta_acceptance',
+        'documents',
+    ];
+
+    protected $casts = [
+        'documents' => 'array',
     ];
 
     public function supplierClasificacion()
@@ -44,5 +50,10 @@ class DoctorNurse extends Model
     public function state()
     {
         return $this->belongsTo(State::class);
+    }
+
+    public function doctorNurseObservacions()
+    {
+        return $this->hasMany(DoctorNurseObservacion::class)->orderBy('created_at', 'desc');
     }
 }

@@ -34,13 +34,14 @@
     @forelse ($documents as $doc)
         @include('filament.business.helpdesks.file-preview-card', [
             'url' => $doc['url'] ?? '',
+            'downloadUrl' => $doc['download_url'] ?? '',
             'extension' => $doc['extension'] ?? '',
             'missing' => $doc['missing'] ?? true,
             'storedPath' => $doc['path'] ?? '',
             'basename' => $doc['basename'] ?? '',
         ])
         @if (! ($doc['missing'] ?? true) && filled($doc['url'] ?? null))
-            <div class="-mt-1 flex justify-center pb-2">
+            <div class="-mt-1 flex flex-wrap justify-center gap-2 pb-2">
                 <a
                     href="{{ $doc['url'] }}"
                     target="_blank"
@@ -51,6 +52,15 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                     </svg>
                     Abrir en pestaña
+                </a>
+                <a
+                    href="{{ $doc['download_url'] ?? $doc['url'] }}"
+                    class="ticket-btn-ios-gray inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    Descargar
                 </a>
             </div>
         @endif

@@ -4,6 +4,7 @@
     $isImage = in_array($ext, $imageExtensions, true);
     $isPdf = $ext === 'pdf';
     $storedPath = (string) ($storedPath ?? '');
+    $downloadUrl = (string) ($downloadUrl ?? $url ?? '');
 @endphp
 
 <div class="fi-helpdesk-attachment-preview space-y-4">
@@ -57,17 +58,21 @@
                             Abre el archivo en una nueva pestaña para verlo o descargarlo.
                         </p>
                     </div>
-                    <a
-                        href="{{ $url }}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="aviso-btn-ios-info inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]"
-                    >
-                        Abrir archivo
-                    </a>
                 </div>
             @endif
         </div>
+
+        @if (filled($url ?? null))
+            <div class="flex justify-center">
+                <a
+                    href="{{ $downloadUrl }}"
+                    class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100/70 dark:text-gray-300 dark:hover:text-white dark:hover:bg-white/10 transition"
+                >
+                    <span class="inline-flex h-5 w-5 items-center justify-center rounded-md bg-gray-100 text-gray-600 ring-1 ring-black/5 dark:bg-white/10 dark:text-gray-200 dark:ring-white/10">↓</span>
+                    <span>Descargar</span>
+                </a>
+            </div>
+        @endif
 
         <p class="truncate text-center text-xs font-medium text-gray-500 dark:text-gray-400">
             {{ filled($basename ?? null) ? $basename : basename($storedPath) }}

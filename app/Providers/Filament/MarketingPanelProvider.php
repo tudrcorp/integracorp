@@ -108,6 +108,10 @@ class MarketingPanelProvider extends PanelProvider
                     'fullWidth' => true,
                 ])
             )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.marketing.helpdesks.helpdesk-tour-script')
+            )
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(
@@ -135,11 +139,11 @@ class MarketingPanelProvider extends PanelProvider
                     ->label('MARKETING')
                     ->collapsed(),
                 NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-                NavigationGroup::make()
                     ->label('VENTAS DIRECTAS')
                     ->icon('heroicon-m-cursor-arrow-rays'),
+                NavigationGroup::make()
+                    ->label('ZONA DE DESCARGA')
+                    ->icon('heroicon-o-cloud-arrow-down'),
 
             ]);
     }

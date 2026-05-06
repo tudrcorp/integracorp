@@ -32,7 +32,7 @@ class ListHelpdesks extends ListRecords
     {
         return [
             Action::make('helpdeskTour')
-                ->label('Guía')
+                ->label('Tutorial de uso')
                 ->icon('heroicon-o-question-mark-circle')
                 ->color('gray')
                 ->extraAttributes([

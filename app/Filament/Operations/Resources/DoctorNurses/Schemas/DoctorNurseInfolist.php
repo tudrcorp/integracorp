@@ -216,6 +216,7 @@ class DoctorNurseInfolist
                             ]),
                     ])
                     ->columnSpanFull(),
+
             ]);
     }
 }

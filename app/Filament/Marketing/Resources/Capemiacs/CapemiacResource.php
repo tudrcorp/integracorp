@@ -26,6 +26,8 @@ class CapemiacResource extends Resource
 
     protected static ?string $navigationLabel = 'Capemiac';
 
+    protected static ?int $navigationSort = 3;
+
     public static function form(Schema $schema): Schema
     {
         return CapemiacForm::configure($schema);

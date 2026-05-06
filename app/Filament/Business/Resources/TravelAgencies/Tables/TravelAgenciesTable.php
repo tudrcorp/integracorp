@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\TravelAgencies\Tables;
 
+use App\Http\Controllers\TravelAgencyExportCsvController;
 use App\Models\TravelAgency;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class TravelAgenciesTable
@@ -242,6 +246,26 @@ class TravelAgenciesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una agencia de viaje')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = TravelAgencyExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.travel-agencies.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ]);

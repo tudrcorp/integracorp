@@ -20,5 +20,6 @@ it('renderiza la vista previa de adjunto helpdesk', function (): void {
     ])->render();
 
     expect($html)->toContain('fi-helpdesk-attachment-preview')
-        ->and($html)->toContain('Vista previa del adjunto');
+        ->and($html)->toContain('Vista previa del adjunto')
+        ->and($html)->toContain('Descargar');
 });

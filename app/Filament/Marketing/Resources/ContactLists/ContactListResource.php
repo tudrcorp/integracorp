@@ -26,6 +26,8 @@ class ContactListResource extends Resource
 
     protected static ?string $navigationLabel = 'Contactos';
 
+    protected static ?int $navigationSort = 4;
+
     public static function getNavigationBadge(): ?string
     {
         return 'NEW';
