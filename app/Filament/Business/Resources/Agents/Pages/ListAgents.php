@@ -36,17 +36,33 @@ class ListAgents extends ListRecords
 
     protected static ?string $title = 'Gestión de Agentes';
 
+    /**
+     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
+     */
+    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
                 ->label('Crear agente')
                 ->icon('heroicon-s-user-plus')
-                ->color('success'),
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ]),
             Action::make('send_link')
-                ->label('Enviar link')
-                ->icon('heroicon-m-link')
-                ->color('warning')
+                ->label('Enviar enlace de registro')
+                ->icon('heroicon-m-paper-airplane')
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ])
                 ->modalHeading('Envio de link para registro externo')
                 ->modalIcon('heroicon-m-link')
                 ->modalWidth(Width::ExtraLarge)

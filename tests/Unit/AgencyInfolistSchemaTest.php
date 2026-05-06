@@ -11,3 +11,10 @@ it('configura el infolist de agencia business sin error', function (): void {
 
     expect($configured)->toBeInstanceOf(Schema::class);
 });
+
+it('expone la relación observationCommercialStructures en el infolist', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agencies/Schemas/AgencyInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)->toContain("RepeatableEntry::make('observationCommercialStructures')");
+});
