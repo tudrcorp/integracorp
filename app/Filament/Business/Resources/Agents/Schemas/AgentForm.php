@@ -63,14 +63,6 @@ class AgentForm
                             ->helperText('Si el agente pertenece a nuestra estructura, debes dejar el campo vacio')
                             ->options(function (Get $get, $record) {
                                 Log::info($record);
-
-                                // return Agency::select('code', 'id', 'agency_type_id', 'status')
-                                //     ->where('status', 'ACTIVO')
-                                //     ->get()
-                                //     ->mapWithKeys(function ($agency) {
-                                //         $type = AgencyType::find($agency->agency_type_id)->definition;
-                                //         return [$agency->code => "{$type} - {$agency->code}"];
-                                //     });
                                 return Agency::all()
                                     ->where('status', 'ACTIVO')
                                     ->mapWithKeys(function ($agency) {
@@ -620,10 +612,9 @@ class AgentForm
                             ->label('Observaciones')
                             ->relationship()
                             ->table([
-                                TableColumn::make('Observacion/Notas'),
-                                TableColumn::make('Responsable del Registro'),
-                                TableColumn::make('Última edición por'),
-                                TableColumn::make('Fecha del Registro'),
+                                TableColumn::make('Observacion/Notas')->width('80%'),
+                                TableColumn::make('Responsable del Registro')->width('10%'),
+                                TableColumn::make('Fecha del Registro')->width('10%'),
                             ])
                             ->schema([
                                 Textarea::make('observation')
@@ -634,10 +625,6 @@ class AgentForm
                                     ->default(Auth::user()->name)
                                     ->disabled()
                                     ->dehydrated(),
-                                TextInput::make('updated_by')
-                                    ->label('Última edición por')
-                                    ->disabled()
-                                    ->dehydrated(false),
                                 TextInput::make('date')
                                     ->default(now()->format('d/m/Y H:i:s'))
                                     ->disabled()

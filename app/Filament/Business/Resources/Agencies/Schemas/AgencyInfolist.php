@@ -417,10 +417,9 @@ class AgencyInfolist
                                         RepeatableEntry::make('observationCommercialStructures')
                                             ->hiddenLabel()
                                             ->table([
-                                                TableColumn::make('Observación')->width('38%'),
-                                                TableColumn::make('Registrado por')->width('18%'),
-                                                TableColumn::make('Última edición')->width('18%'),
-                                                TableColumn::make('Fecha y hora')->width('26%'),
+                                                TableColumn::make('Observación')->width('70%'),
+                                                TableColumn::make('Registrado por')->width('15%'),
+                                                TableColumn::make('Fecha y hora')->width('15%'),
                                             ])
                                             ->schema([
                                                 TextEntry::make('observation')
@@ -429,10 +428,6 @@ class AgencyInfolist
                                                     ->tooltip(fn ($record): ?string => is_string($record->observation ?? null) ? $record->observation : null),
                                                 TextEntry::make('created_by')
                                                     ->icon('heroicon-m-user')
-                                                    ->placeholder('—'),
-                                                TextEntry::make('updated_by')
-                                                    ->label('Última edición')
-                                                    ->icon('heroicon-m-pencil-square')
                                                     ->placeholder('—'),
                                                 TextEntry::make('registered_at_display')
                                                     ->icon('heroicon-m-clock')
