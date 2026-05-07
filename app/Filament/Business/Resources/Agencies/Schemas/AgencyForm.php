@@ -742,10 +742,9 @@ class AgencyForm
                             ->label('Observaciones')
                             ->relationship()
                             ->table([
-                                TableColumn::make('Observacion/Notas'),
-                                TableColumn::make('Responsable del Registro'),
-                                TableColumn::make('Última edición por'),
-                                TableColumn::make('Fecha del Registro'),
+                                TableColumn::make('Observacion/Notas')->width('80%'),
+                                TableColumn::make('Responsable del Registro')->width('10%'),
+                                TableColumn::make('Fecha del Registro')->width('10%'),
                             ])
                             ->schema([
                                 Textarea::make('observation')
@@ -756,10 +755,6 @@ class AgencyForm
                                     ->default(Auth::user()->name)
                                     ->disabled()
                                     ->dehydrated(),
-                                TextInput::make('updated_by')
-                                    ->label('Última edición por')
-                                    ->disabled()
-                                    ->dehydrated(false),
                                 TextInput::make('date')
                                     ->default(now()->format('d/m/Y H:i:s'))
                                     ->disabled()
