@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\Agents\Schemas;
 
 use App\Models\Agent;
 use App\Models\ObservationCommercialStructure;
+use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -65,8 +66,20 @@ class AgentInfolist
                                     ->weight('semibold')
                                     ->color('gray')
                                     ->placeholder('Sin nombre'),
-                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                                     ->schema([
+                                        TextEntry::make('ci')
+                                            ->label('C.I.')
+                                            ->icon('heroicon-m-identification')
+                                            ->copyable()
+                                            ->copyMessage('C.I. copiada')
+                                            ->placeholder('—'),
+                                        TextEntry::make('rif')
+                                            ->label('R.I.F.')
+                                            ->icon('heroicon-m-identification')
+                                            ->copyable()
+                                            ->copyMessage('RIF copiado')
+                                            ->placeholder('—'),
                                         TextEntry::make('email')
                                             ->label('Correo')
                                             ->icon('heroicon-m-envelope')
@@ -78,6 +91,17 @@ class AgentInfolist
                                             ->icon('heroicon-m-phone')
                                             ->copyable()
                                             ->copyMessage('Teléfono copiado')
+                                            ->placeholder('—'),
+                                        TextEntry::make('birth_date')
+                                            ->label('Fecha de nacimiento')
+                                            ->icon('heroicon-m-cake')
+                                            ->formatStateUsing(fn(mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                                            ->placeholder('—'),
+                                        TextEntry::make('sex')
+                                            ->label('Sexo')
+                                            ->placeholder('—'),
+                                        TextEntry::make('marital_status')
+                                            ->label('Estado civil')
                                             ->placeholder('—'),
                                         TextEntry::make('owner_code')
                                             ->label('Código propietario')
@@ -100,81 +124,14 @@ class AgentInfolist
                                             ->badge()
                                             ->color(fn (?string $state): string => self::agentStatusColor($state))
                                             ->placeholder('—'),
-                                    ]),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Identificación y ubicación')
-                    ->description('Documento, datos personales y domicilio.')
-                    ->icon('heroicon-o-map-pin')
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'lg' => 2])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                Grid::make(1)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_INSET_GROUP_CLASS,
-                                    ])
-                                    ->schema([
-                                        TextEntry::make('ci')
-                                            ->label('C.I.')
-                                            ->icon('heroicon-m-identification')
-                                            ->copyable()
-                                            ->copyMessage('C.I. copiada')
-                                            ->placeholder('—'),
-                                        TextEntry::make('rif')
-                                            ->label('R.I.F.')
-                                            ->icon('heroicon-m-identification')
-                                            ->copyable()
-                                            ->copyMessage('RIF copiado')
-                                            ->placeholder('—'),
-                                        TextEntry::make('birth_date')
-                                            ->label('Fecha de nacimiento')
-                                            ->icon('heroicon-m-cake')
-                                            ->date('d/m/Y')
-                                            ->placeholder('—'),
-                                        TextEntry::make('sex')
-                                            ->label('Sexo')
-                                            ->placeholder('—'),
-                                        TextEntry::make('marital_status')
-                                            ->label('Estado civil')
-                                            ->placeholder('—'),
-                                    ]),
-                                Grid::make(1)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_INSET_GROUP_CLASS,
-                                    ])
-                                    ->schema([
-                                        TextEntry::make('country.name')
-                                            ->label('País')
-                                            ->icon('heroicon-m-globe-americas')
-                                            ->placeholder('—'),
-                                        TextEntry::make('state.definition')
-                                            ->label('Estado')
-                                            ->icon('heroicon-m-map')
-                                            ->placeholder('—'),
-                                        TextEntry::make('city.definition')
-                                            ->label('Ciudad')
-                                            ->icon('heroicon-m-building-office')
-                                            ->placeholder('—'),
-                                        TextEntry::make('region')
-                                            ->label('Región')
-                                            ->icon('heroicon-m-map-pin')
-                                            ->placeholder('—'),
                                         TextEntry::make('address')
                                             ->label('Dirección')
                                             ->icon('heroicon-m-home')
                                             ->placeholder('—')
                                             ->columnSpanFull(),
+
                                     ]),
-                            ])
-                            ->columnSpanFull(),
+                            ]),
                     ])
                     ->columnSpanFull(),
 
@@ -185,7 +142,7 @@ class AgentInfolist
                         'class' => self::IOS_SECTION_CLASS,
                     ])
                     ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                             ->extraAttributes([
                                 'class' => self::IOS_INNER_CLASS,
                             ])
@@ -287,7 +244,7 @@ class AgentInfolist
                         'class' => self::IOS_SECTION_CLASS,
                     ])
                     ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
                             ->extraAttributes([
                                 'class' => self::IOS_INNER_CLASS,
                             ])
@@ -352,7 +309,7 @@ class AgentInfolist
                                 'class' => self::IOS_INNER_CLASS,
                             ])
                             ->schema([
-                                Grid::make(['default' => 1, 'sm' => 2])
+                                Grid::make(['default' => 1, 'sm' => 4])
                                     ->extraAttributes([
                                         'class' => self::IOS_INSET_GROUP_CLASS.' mb-4',
                                     ])
@@ -370,12 +327,6 @@ class AgentInfolist
                                             ->suffix(' %')
                                             ->weight('medium')
                                             ->placeholder('—'),
-                                    ]),
-                                Grid::make(['default' => 1, 'sm' => 2])
-                                    ->extraAttributes([
-                                        'class' => self::IOS_INSET_GROUP_CLASS,
-                                    ])
-                                    ->schema([
                                         TextEntry::make('commission_tdev')
                                             ->label('TDEV — venta nueva')
                                             ->icon('heroicon-m-calculator')
@@ -425,7 +376,7 @@ class AgentInfolist
                                             ->schema([
                                                 TextEntry::make('observation')
                                                     ->placeholder('—')
-                                                    ->limit(180)
+                                                    ->wrap()
                                                     ->tooltip(fn ($record): ?string => is_string($record->observation ?? null) ? $record->observation : null),
                                                 TextEntry::make('created_by')
                                                     ->icon('heroicon-m-user')

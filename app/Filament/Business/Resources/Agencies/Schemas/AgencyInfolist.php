@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Agencies\Schemas;
 
 use App\Models\ObservationCommercialStructure;
+use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -31,86 +32,83 @@ class AgencyInfolist
         };
     }
 
+    private static function formatYesNo(mixed $state): string
+    {
+        if ($state === null || $state === '') {
+            return '—';
+        }
+
+        return filter_var($state, FILTER_VALIDATE_BOOLEAN) ? 'Sí' : 'No';
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->columns(1)
             ->components([
-                Section::make('Agencia')
-                    ->description('Identidad comercial, tipo y estado operativo.')
-                    ->icon('heroicon-o-building-library')
+                Section::make('Información general de la agencia')
+                    ->description('Razón social, RIF, contacto y representante legal.')
+                    ->icon('heroicon-o-identification')
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
                     ->schema([
-                        Grid::make(1)
+                        Grid::make(4)
                             ->extraAttributes([
                                 'class' => self::IOS_INNER_CLASS,
                             ])
                             ->schema([
+                                TextEntry::make('code')
+                                    ->label('Código')
+                                    ->icon('heroicon-m-qr-code')
+                                    ->badge()
+                                    ->color('success')
+                                    ->placeholder('—'),
+                                TextEntry::make('owner_code')
+                                    ->label('Código jerarquía / pertenece a')
+                                    ->icon('heroicon-m-link')
+                                    ->badge()
+                                    ->color('gray')
+                                    ->placeholder('—'),
+                                TextEntry::make('accountManager.full_name')
+                                    ->label('Account manager')
+                                    ->icon('heroicon-m-user-circle')
+                                    ->weight('medium')
+                                    ->placeholder('Sin asignar'),
+                                TextEntry::make('status')
+                                    ->label('Estatus')
+                                    ->icon('heroicon-m-signal')
+                                    ->badge()
+                                    ->color(fn (?string $state): string => self::agencyStatusColor($state))
+                                    ->placeholder('—'),
                                 TextEntry::make('name_corporative')
                                     ->label('Razón social')
                                     ->size('lg')
                                     ->weight('semibold')
                                     ->color('gray')
                                     ->placeholder('Sin razón social'),
-                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                    ->schema([
-                                        TextEntry::make('code')
-                                            ->label('Código')
-                                            ->icon('heroicon-m-qr-code')
-                                            ->badge()
-                                            ->color('success')
-                                            ->placeholder('—'),
-                                        TextEntry::make('typeAgency.definition')
-                                            ->label('Tipo')
-                                            ->icon('heroicon-m-tag')
-                                            ->badge()
-                                            ->color('info')
-                                            ->placeholder('—'),
-                                        TextEntry::make('status')
-                                            ->label('Estatus')
-                                            ->icon('heroicon-m-signal')
-                                            ->badge()
-                                            ->color(fn (?string $state): string => self::agencyStatusColor($state))
-                                            ->placeholder('—'),
-                                        TextEntry::make('accountManager.full_name')
-                                            ->label('Account manager')
-                                            ->icon('heroicon-m-user-circle')
-                                            ->weight('medium')
-                                            ->placeholder('Sin asignar'),
-                                        TextEntry::make('date_register')
-                                            ->label('Registro')
-                                            ->icon('heroicon-m-calendar-days')
-                                            ->date('d/m/Y')
-                                            ->placeholder('—'),
-                                    ]),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Representación y documentos')
-                    ->description('Representante legal e identificación fiscal.')
-                    ->icon('heroicon-o-identification')
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('name_representative')
-                                    ->label('Representante')
-                                    ->icon('heroicon-m-user')
-                                    ->weight('medium')
-                                    ->placeholder('—'),
                                 TextEntry::make('rif')
                                     ->label('RIF')
                                     ->icon('heroicon-m-identification')
                                     ->copyable()
                                     ->copyMessage('RIF copiado')
+                                    ->placeholder('—'),
+                                TextEntry::make('email')
+                                    ->label('Correo electrónico')
+                                    ->icon('heroicon-m-envelope')
+                                    ->copyable()
+                                    ->copyMessage('Correo copiado al portapapeles')
+                                    ->placeholder('—'),
+                                TextEntry::make('phone')
+                                    ->label('Teléfono')
+                                    ->icon('heroicon-m-phone')
+                                    ->copyable()
+                                    ->copyMessage('Teléfono copiado')
+                                    ->placeholder('—'),
+                                TextEntry::make('name_representative')
+                                    ->label('Representante')
+                                    ->icon('heroicon-m-user')
+                                    ->weight('medium')
                                     ->placeholder('—'),
                                 TextEntry::make('ci_responsable')
                                     ->label('Cédula del responsable')
@@ -118,95 +116,69 @@ class AgencyInfolist
                                     ->copyable()
                                     ->copyMessage('Cédula copiada')
                                     ->placeholder('—'),
-                            ])
-                            ->columnSpanFull(),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Contacto y ubicación')
-                    ->description('Canales directos y domicilio fiscal.')
-                    ->icon('heroicon-o-map-pin')
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'lg' => 2])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                Grid::make(1)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_INSET_GROUP_CLASS,
-                                    ])
-                                    ->schema([
-                                        TextEntry::make('email')
-                                            ->label('Correo')
-                                            ->icon('heroicon-m-envelope')
-                                            ->copyable()
-                                            ->copyMessage('Correo copiado al portapapeles')
-                                            ->placeholder('—'),
-                                        TextEntry::make('phone')
-                                            ->label('Teléfono')
-                                            ->icon('heroicon-m-phone')
-                                            ->copyable()
-                                            ->copyMessage('Teléfono copiado')
-                                            ->placeholder('—'),
-                                        TextEntry::make('user_instagram')
-                                            ->label('Instagram')
-                                            ->icon('heroicon-m-chat-bubble-left-right')
-                                            ->placeholder('—'),
-                                    ]),
-                                Grid::make(1)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_INSET_GROUP_CLASS,
-                                    ])
-                                    ->schema([
-                                        TextEntry::make('country.name')
-                                            ->label('País')
-                                            ->icon('heroicon-m-globe-americas')
-                                            ->placeholder('—'),
-                                        TextEntry::make('state.definition')
-                                            ->label('Estado')
-                                            ->icon('heroicon-m-map')
-                                            ->placeholder('—'),
-                                        TextEntry::make('city.definition')
-                                            ->label('Ciudad')
-                                            ->icon('heroicon-m-building-office')
-                                            ->placeholder('—'),
-                                        TextEntry::make('region')
-                                            ->label('Región')
-                                            ->icon('heroicon-m-map-pin')
-                                            ->placeholder('—'),
-                                        TextEntry::make('address')
-                                            ->label('Dirección')
-                                            ->icon('heroicon-m-home')
-                                            ->placeholder('—')
-                                            ->columnSpanFull(),
-                                    ]),
+                                TextEntry::make('brithday_date')
+                                    ->label('Fecha de nacimiento del representante')
+                                    ->icon('heroicon-m-cake')
+                                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                                    ->placeholder('—'),
+                                TextEntry::make('anniversary_date')
+                                    ->label('Aniversario de la agencia')
+                                    ->icon('heroicon-m-calendar-days')
+                                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                                    ->placeholder('—'),
+                                TextEntry::make('user_instagram')
+                                    ->label('Instagram')
+                                    ->icon('heroicon-m-chat-bubble-left-right')
+                                    ->placeholder('—'),
+                                TextEntry::make('date_register')
+                                    ->label('Fecha de registro')
+                                    ->icon('heroicon-m-calendar-days')
+                                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                                    ->placeholder('—'),
+                                TextEntry::make('country.name')
+                                    ->label('País')
+                                    ->icon('heroicon-m-globe-americas')
+                                    ->placeholder('—'),
+                                TextEntry::make('state.definition')
+                                    ->label('Estado')
+                                    ->icon('heroicon-m-map')
+                                    ->placeholder('—'),
+                                TextEntry::make('city.definition')
+                                    ->label('Ciudad')
+                                    ->icon('heroicon-m-building-office')
+                                    ->placeholder('—'),
+                                TextEntry::make('region')
+                                    ->label('Región')
+                                    ->icon('heroicon-m-map-pin')
+                                    ->placeholder('—'),
+                                TextEntry::make('address')
+                                    ->label('Dirección')
+                                    ->icon('heroicon-m-home')
+                                    ->placeholder('—')
+                                    ->columnSpanFull(),
                             ])
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
 
                 Section::make('Contacto alternativo')
-                    ->description('Segundo canal de contacto cuando aplica.')
-                    ->icon('heroicon-o-phone')
+                    ->description('Datos de una segunda persona o canal de contacto.')
+                    ->icon('heroicon-o-user-plus')
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
                     ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                        Grid::make(5)
                             ->extraAttributes([
                                 'class' => self::IOS_INNER_CLASS,
                             ])
                             ->schema([
                                 TextEntry::make('name_contact_2')
-                                    ->label('Nombre')
+                                    ->label('Nombre / razón social')
                                     ->icon('heroicon-m-user')
                                     ->placeholder('—'),
                                 TextEntry::make('email_contact_2')
-                                    ->label('Correo')
+                                    ->label('Correo secundario')
                                     ->icon('heroicon-m-envelope')
                                     ->copyable()
                                     ->copyMessage('Correo copiado')
@@ -222,8 +194,8 @@ class AgencyInfolist
                     ])
                     ->columnSpanFull(),
 
-                Section::make('Banca en moneda local')
-                    ->description('Beneficiario, cuentas en bolívares y datos de pago móvil.')
+                Section::make('Datos bancarios en moneda nacional')
+                    ->description('Beneficiario y cuentas en bolívares y divisas locales.')
                     ->icon('heroicon-o-banknotes')
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
@@ -234,17 +206,17 @@ class AgencyInfolist
                                 'class' => self::IOS_INNER_CLASS,
                             ])
                             ->schema([
-                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                    ->extraAttributes([
-                                        'class' => self::IOS_INSET_GROUP_CLASS.' mb-4',
-                                    ])
+                                Text::make('Cuenta nacional (Bs.)')
+                                    ->weight('semibold')
+                                    ->color('gray'),
+                                Grid::make(6)
                                     ->schema([
                                         TextEntry::make('local_beneficiary_name')
                                             ->label('Beneficiario')
                                             ->icon('heroicon-m-user')
                                             ->placeholder('—'),
                                         TextEntry::make('local_beneficiary_rif')
-                                            ->label('RIF')
+                                            ->label('CI / RIF')
                                             ->icon('heroicon-m-identification')
                                             ->copyable()
                                             ->placeholder('—'),
@@ -266,20 +238,21 @@ class AgencyInfolist
                                             ->copyable()
                                             ->placeholder('—'),
                                     ]),
-                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                    ->extraAttributes([
-                                        'class' => self::IOS_INSET_GROUP_CLASS,
-                                    ])
+                                Text::make('Cuenta nacional, moneda internacional (US$, EUR)')
+                                    ->weight('semibold')
+                                    ->color('gray')
+                                    ->extraAttributes(['class' => 'mt-4']),
+                                Grid::make(6)
                                     ->schema([
                                         TextEntry::make('local_beneficiary_account_number_mon_inter')
-                                            ->label('Cuenta moneda extranjera (local)')
+                                            ->label('Número de cuenta')
                                             ->copyable()
                                             ->placeholder('—'),
                                         TextEntry::make('local_beneficiary_account_bank_mon_inter')
-                                            ->label('Banco (inter.)')
+                                            ->label('Banco')
                                             ->placeholder('—'),
                                         TextEntry::make('local_beneficiary_account_type_mon_inter')
-                                            ->label('Tipo (inter.)')
+                                            ->label('Tipo de cuenta')
                                             ->placeholder('—'),
                                     ]),
                             ])
@@ -287,14 +260,14 @@ class AgencyInfolist
                     ])
                     ->columnSpanFull(),
 
-                Section::make('Banca en moneda extranjera')
-                    ->description('Transferencias internacionales y datos SWIFT / ACH.')
+                Section::make('Datos bancarios en moneda extranjera')
+                    ->description('Cuenta internacional del beneficiario.')
                     ->icon('heroicon-o-currency-dollar')
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
                     ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                        Grid::make(5)
                             ->extraAttributes([
                                 'class' => self::IOS_INNER_CLASS,
                             ])
@@ -304,7 +277,7 @@ class AgencyInfolist
                                     ->icon('heroicon-m-user')
                                     ->placeholder('—'),
                                 TextEntry::make('extra_beneficiary_ci_rif')
-                                    ->label('CI / RIF')
+                                    ->label('CI / RIF / ID')
                                     ->copyable()
                                     ->placeholder('—'),
                                 TextEntry::make('extra_beneficiary_account_number')
@@ -347,35 +320,25 @@ class AgencyInfolist
                     ])
                     ->columnSpanFull(),
 
-                Section::make('Comisiones')
-                    ->description('TDEC, TDEV y porcentajes de comisión y renovación.')
+                Section::make('Comisiones TDEC / TDEV')
+                    ->description('Porcentajes y activación de esquemas.')
                     ->icon('heroicon-o-calculator')
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
                     ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                        Grid::make(4)
                             ->extraAttributes([
                                 'class' => self::IOS_INNER_CLASS,
                             ])
                             ->schema([
-                                TextEntry::make('tdec')
-                                    ->label('TDEC')
-                                    ->icon('heroicon-m-calculator')
-                                    ->numeric(2)
-                                    ->placeholder('—'),
-                                TextEntry::make('tdev')
-                                    ->label('TDEV')
-                                    ->icon('heroicon-m-calculator')
-                                    ->numeric(2)
-                                    ->placeholder('—'),
                                 TextEntry::make('commission_tdec')
                                     ->label('Comisión TDEC')
                                     ->formatStateUsing(fn ($state): string => self::formatPercent($state))
                                     ->weight('medium')
                                     ->placeholder('—'),
                                 TextEntry::make('commission_tdec_renewal')
-                                    ->label('Comisión TDEC renovación')
+                                    ->label('Comisión renovación TDEC')
                                     ->formatStateUsing(fn ($state): string => self::formatPercent($state))
                                     ->weight('medium')
                                     ->placeholder('—'),
@@ -385,7 +348,7 @@ class AgencyInfolist
                                     ->weight('medium')
                                     ->placeholder('—'),
                                 TextEntry::make('commission_tdev_renewal')
-                                    ->label('Comisión TDEV renovación')
+                                    ->label('Comisión renovación TDEV')
                                     ->formatStateUsing(fn ($state): string => self::formatPercent($state))
                                     ->weight('medium')
                                     ->placeholder('—'),
@@ -394,9 +357,9 @@ class AgencyInfolist
                     ])
                     ->columnSpanFull(),
 
-                Section::make('Notas y auditoría')
-                    ->description('Comentarios internos, observaciones de seguimiento y trazabilidad.')
-                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                Section::make('Bitácora')
+                    ->description('Notas del analista sobre reuniones y contactos con la agencia.')
+                    ->icon('heroicon-o-clipboard-document-list')
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])
@@ -424,7 +387,7 @@ class AgencyInfolist
                                             ->schema([
                                                 TextEntry::make('observation')
                                                     ->placeholder('—')
-                                                    ->limit(180)
+                                                    ->wrap()
                                                     ->tooltip(fn ($record): ?string => is_string($record->observation ?? null) ? $record->observation : null),
                                                 TextEntry::make('created_by')
                                                     ->icon('heroicon-m-user')

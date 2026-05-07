@@ -13,6 +13,10 @@ it('acepta fechas de nacimiento históricas en texto d/m/Y', function () {
     expect(FilamentDateDisplay::toDmy('17/11/1939'))->toBe('17/11/1939');
 });
 
+it('no usa Carbon::parse para cadenas d/m/Y que Carbon rechaza en infolists', function () {
+    expect(FilamentDateDisplay::toDmy('26/09/1969'))->toBe('26/09/1969');
+});
+
 it('formatea instancias Carbon a d/m/Y', function () {
     expect(FilamentDateDisplay::toDmy(Carbon::parse('2017-01-15')))->toBe('15/01/2017');
 });
