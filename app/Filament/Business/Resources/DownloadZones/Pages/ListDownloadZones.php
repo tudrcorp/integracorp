@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\DownloadZones\Pages;
 use App\Filament\Business\Resources\DownloadZones\DownloadZoneResource;
 use App\Models\DownloadZone;
 use App\Models\Zone;
+use App\Support\Filament\DownloadZoneTabIcons;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Hidden;
@@ -141,12 +142,14 @@ class ListDownloadZones extends ListRecords
             $zoneId = $zone->id;
 
             $tabs['zone_'.$zoneId] = Tab::make($label)
+                ->icon(DownloadZoneTabIcons::forZone($zone))
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', $zoneId)->orderBy('position')->orderBy('id'))
                 ->badge(DownloadZone::query()->where('zone_id', $zoneId)->count())
                 ->badgeColor('success');
         }
 
-        $tabs['todos'] = Tab::make('TODOS');
+        $tabs['todos'] = Tab::make('TODOS')
+            ->icon(DownloadZoneTabIcons::forTodosTab());
 
         return $tabs;
     }

@@ -25,7 +25,7 @@
                 @endphp
                 <a
                     href="{{ $item['url'] }}"
-                    class="fi-business-panel-stepper-segment fi-business-panel-stepper-segment--tone-{{ $tone }} @if ($item['kind'] === 'ticket') fi-business-panel-stepper-segment--ticket @endif @if ($isCurrent) fi-business-panel-stepper-segment--current @endif"
+                    class="fi-business-panel-stepper-segment fi-business-panel-stepper-segment--tone-{{ $tone }} @if ($item['kind'] === 'ticket') fi-business-panel-stepper-segment--ticket @endif @if (($item['panel_id'] ?? null) === 'business') fi-business-panel-stepper-segment--business @endif @if (($item['panel_id'] ?? null) === 'operations') fi-business-panel-stepper-segment--operations @endif @if (($item['panel_id'] ?? null) === 'marketing') fi-business-panel-stepper-segment--marketing @endif @if ($isCurrent) fi-business-panel-stepper-segment--current @endif"
                     style="z-index: {{ $z }};"
                     @if ($item['kind'] === 'ticket')
                         title="{{ __('Crear ticket de soporte') }}"

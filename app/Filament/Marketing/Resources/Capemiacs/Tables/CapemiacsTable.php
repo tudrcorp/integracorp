@@ -128,7 +128,7 @@ class CapemiacsTable
                                         ->native(false),
                                 ]),
                         ])
-                        ->action(function (Collection $records, array $data): \Illuminate\Http\RedirectResponse {
+                        ->action(function (Collection $records, array $data) {
                             $rows = $records->all();
 
                             foreach ($rows as $row) {

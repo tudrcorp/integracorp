@@ -532,7 +532,11 @@
                 @forelse ($infraestructuraCertificada as $fila)
                     <tr>
                         <td>{{ $fila['nombre'] }}</td>
-                        <td class="text-center"><span class="boolean-yes">Sí</span></td>
+                        <td class="text-center">
+                            <span class="boolean-yes" style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background-color: #10b981; color: white; border-radius: 50%; font-size: 12px;">
+                                ✓
+                            </span>
+                        </td>
                         <td>{{ $fila['descripcion'] }}</td>
                     </tr>
                 @empty

@@ -250,6 +250,17 @@ class ListAgencies extends ListRecords
         ];
     }
 
+    /**
+     * @return int|array<string, int|null>
+     */
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return [
+            'default' => 1,
+            'lg' => 2,
+        ];
+    }
+
     protected function getHeaderWidgets(): array
     {
         return [
@@ -257,8 +268,8 @@ class ListAgencies extends ListRecords
             ControlActividadInteraccion::class,
             NewRegisterAgencyForMountChart::class,
             AgencyGeoChart::class,
-            TotalEstructureAgency::class,
             AgentActiveForEstructureChart::class,
+            TotalEstructureAgency::class,
             TotalSaleForEstructureChart::class,
         ];
     }

@@ -4,7 +4,6 @@ namespace App\Filament\Business\Resources\Helpdesks\Widgets;
 
 use App\Models\HelpDesk;
 use App\Support\HelpdeskStatusYearlyChartSeries;
-use Filament\Actions\Action;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Database\Eloquent\Builder;
@@ -74,22 +73,6 @@ class HelpdeskStatusWeeklyChart extends ChartWidget
         return $filters;
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('resetAnnualView')
-                ->label('Volver a vista anual')
-                ->icon('heroicon-m-arrow-path')
-                ->size('sm')
-                ->color('gray')
-                ->visible(fn (): bool => $this->selectedMonth !== null)
-                ->action(function (): void {
-                    $this->selectedMonth = null;
-                    $this->updateChartData();
-                }),
-        ];
-    }
-
     protected function getType(): string
     {
         return 'bar';
@@ -125,6 +108,23 @@ class HelpdeskStatusWeeklyChart extends ChartWidget
     {
         $livewireId = (string) $this->getId();
 
+        if ($this->selectedMonth !== null) {
+            $onClickJs = '() => {}';
+        } else {
+            $onClickJs = <<<JS
+(event, elements) => {
+                if (!elements || !elements.length) {
+                    return;
+                }
+
+                const index = elements[0].index;
+                const month = index + 1;
+                const component = window.Livewire?.find('{$livewireId}');
+                component?.call('openMonthDetail', month);
+            }
+JS;
+        }
+
         return RawJs::make(<<<JS
         {
             responsive: true,
@@ -137,16 +137,7 @@ class HelpdeskStatusWeeklyChart extends ChartWidget
                 intersect: true,
                 axis: 'xy'
             },
-            onClick: (event, elements) => {
-                if (!elements || !elements.length) {
-                    return;
-                }
-
-                const index = elements[0].index;
-                const month = index + 1;
-                const component = window.Livewire?.find('{$livewireId}');
-                component?.call('toggleMonthDetail', month);
-            },
+            onClick: {$onClickJs},
             onHover: (event, chartElement) => {
                 event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
             },
@@ -292,17 +283,6 @@ class HelpdeskStatusWeeklyChart extends ChartWidget
     {
         $this->selectedMonth = null;
         $this->updateChartData();
-    }
-
-    public function toggleMonthDetail(int $month): void
-    {
-        if ($this->selectedMonth !== null) {
-            $this->resetToAnnual();
-
-            return;
-        }
-
-        $this->openMonthDetail($month);
     }
 
     private function resolveYear(): int

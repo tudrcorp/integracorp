@@ -2,13 +2,12 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\Schemas;
 
-use Filament\Schemas\Schema;
 use App\Models\MassNotification;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Infolists\Components\IconEntry;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class MassNotificationInfolist
 {
@@ -40,14 +39,14 @@ class MassNotificationInfolist
                                     ->label('Encabezado de la Notificación(Opcional):')
                                     ->badge()
                                     ->color('success'),
-                                
+
                                 TextEntry::make('channels')
                                     ->label('Canales de Envío:')
                                     ->badge()
                                     ->color('success'),
                                 TextEntry::make('date_programed')
                                     ->label('Fecha de Envío Programado:')
-                                    ->default(fn(MassNotification $record) => $record->date_programed ? $record->date_programed : '---')
+                                    ->default(fn (MassNotification $record) => $record->date_programed?->format('d/m/Y H:i') ?? '---')
                                     ->badge()
                                     ->color('success'),
                                 TextEntry::make('status')
@@ -70,10 +69,10 @@ class MassNotificationInfolist
 
                                                 // Only render the tooltip if the entry contents exceeds the length limit.
                                                 return $state;
-                                            })
+                                            }),
                                     ])->columnSpanFull(),
                             ])->columnSpanFull()->columns(3),
                     ])->columnSpanFull(),
-                ]);
+            ]);
     }
 }

@@ -2,22 +2,19 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\Schemas;
 
-use Filament\Schemas\Schema;
-use Illuminate\Support\HtmlString;
+use Carbon\Carbon;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Textarea;
-use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Forms\Components\CheckboxList;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 
 class MassNotificationForm
 {
@@ -51,9 +48,16 @@ class MassNotificationForm
                                         ])
                                         ->label('Canal de notificación')
                                         ->multiple(),
-                                    DatePicker::make('date_programmed')
+                                    TextInput::make('date_programed')
                                         ->label('Fecha programada')
-                                        ->helperText('Selecciona la fecha y hora en la que deseas que se envíe la notificación. Esta sera enviada por el sistema.'),
+                                        ->type('datetime-local')
+                                        ->helperText('Selecciona la fecha y hora en la que deseas que se envíe la notificación. Esta será enviada por el sistema.')
+                                        ->formatStateUsing(fn ($state): ?string => filled($state)
+                                            ? Carbon::parse($state)->format('Y-m-d\TH:i')
+                                            : null)
+                                        ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
+                                            ? Carbon::parse($state)->format('Y-m-d H:i:s')
+                                            : null),
                                     Fieldset::make('Tipo de Envio')
                                         ->schema([
                                             Radio::make('type')
@@ -96,12 +100,12 @@ class MassNotificationForm
                                                     'max' => 'El contenido de la notificación no puede exceder los 1024 caracteres.',
                                                     'min' => 'El contenido de la notificación debe tener al menos 2 caracteres.',
                                                 ]),
-                                        
-                                    ])->columnSpanFull(),
+
+                                        ])->columnSpanFull(),
                                 ])->columnSpanFull()->columns(3),
-                        ])
+                        ]),
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -109,7 +113,7 @@ class MassNotificationForm
                         Crear Notificación
                     </x-filament::button>
                 BLADE)))
-                ->columnSpanFull()
+                    ->columnSpanFull(),
             ]);
     }
 }

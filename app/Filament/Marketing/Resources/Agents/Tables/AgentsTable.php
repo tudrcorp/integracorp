@@ -2,20 +2,16 @@
 
 namespace App\Filament\Marketing\Resources\Agents\Tables;
 
-use Filament\Tables\Table;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
 use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
 class AgentsTable
@@ -23,7 +19,7 @@ class AgentsTable
     public static function configure(Table $table): Table
     {
         return $table
-        ->columns([
+            ->columns([
                 TextColumn::make('id')
                     ->label('Código de agente')
                     ->prefix('AGT-000')
@@ -69,44 +65,47 @@ class AgentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    // BulkAction::make('associateInfo')
-                    //     ->label('Asociar informacion')
-                    //     ->icon('heroicon-s-link')
-                    //     ->form([
-                    //         Fieldset::make('Asociar Información')
-                    //             ->columns(1)
-                    //             ->schema([
-                    //                 Select::make('mass_notification_id')
-                    //                     ->label('Asociar Notificación')
-                    //                     ->options(MassNotification::all()->pluck('title', 'id'))
-                    //                     ->required(),
-                    //             ])
-                    //     ])
-                    //     ->action(function (Collection $records, $data) {
+                    BulkAction::make('associateInfo')
+                        ->label('Asociar información')
+                        ->icon('heroicon-s-link')
+                        ->form([
+                            Fieldset::make('Asociar a notificación masiva')
+                                ->columns(1)
+                                ->schema([
+                                    Select::make('mass_notification_id')
+                                        ->label('Notificación')
+                                        ->options(fn (): array => MassNotification::query()->orderBy('title')->pluck('title', 'id')->all())
+                                        ->searchable()
+                                        ->preload()
+                                        ->required()
+                                        ->native(false),
+                                ]),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $rows = $records->all();
 
-                    //         $info = $records->toArray();
+                            foreach ($rows as $row) {
+                                $dataInfo = new DataNotification;
+                                $dataInfo->mass_notification_id = $data['mass_notification_id'];
+                                $dataInfo->fullName = $row->name;
+                                $dataInfo->email = $row->email;
+                                $dataInfo->phone = $row->phone;
+                                $dataInfo->save();
+                            }
 
-                    //         for ($i = 0; $i < count($info); $i++) {
-                    //             $dataInfo = new DataNotification();
-                    //             $dataInfo->mass_notification_id = $data['mass_notification_id'];
-                    //             $dataInfo->fullName             = $info[$i]['name'];
-                    //             $dataInfo->email                = $info[$i]['email'];
-                    //             $dataInfo->phone                = $info[$i]['phone'];
-                    //             $dataInfo->save();
-                    //         }
+                            Notification::make()
+                                ->title('Información asociada')
+                                ->body(count($rows).' '.(count($rows) === 1 ? 'agente asociado' : 'agentes asociados').' correctamente.')
+                                ->success()
+                                ->send();
 
-                    //         Notification::make()
-                    //             ->title('Información asociada')
-                    //             ->body(count($info) . ' agencias asociados correctamente.')
-                    //             ->success()
-                    //             ->send();
-
-                    //         $id = $data['mass_notification_id'];
-
-                    //         return redirect()->route('filament.marketing.resources.mass-notifications.view', ['record' => $id]);
-                    //     })
-                    //     ->requiresConfirmation()
-                    //     ->color('primary'),
+                            return redirect()->route('filament.marketing.resources.mass-notifications.view', ['record' => $data['mass_notification_id']]);
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('Asociar a notificación')
+                        ->modalDescription('Los agentes seleccionados se vincularán a la notificación masiva elegida.')
+                        ->modalSubmitActionLabel('Asociar')
+                        ->color('primary'),
                 ]),
             ]);
     }

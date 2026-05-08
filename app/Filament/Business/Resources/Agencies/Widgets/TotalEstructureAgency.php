@@ -21,11 +21,11 @@ class TotalEstructureAgency extends ChartWidget
 
     protected ?string $heading = 'Ventas totales por estructura';
 
-    protected ?string $description = 'Por defecto se muestran todas las agencias consolidadas. Elige una Master o General para el detalle. Ajusta año y mes.';
+    protected ?string $description = 'Usa la misma base de ventas por agencia y la desglosa en 3: Master directas, Generales directas y Agentes. Puedes ver consolidado o seleccionar una agencia para detalle. Ajusta año y mes.';
 
     protected ?string $maxHeight = '440px';
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
 
     public ?string $filter = null;
 
@@ -69,24 +69,24 @@ class TotalEstructureAgency extends ChartWidget
 
     protected function getFilters(): ?array
     {
-        $builder = function () {
-            return Agency::query()
-                ->whereIn('agency_type_id', [1, 3])
-                ->where('status', 'ACTIVO')
-                ->orderBy('agency_type_id')
-                ->orderBy('name_corporative')
-                ->get();
-        };
-
         $prepend = ['' => 'Todas las agencias (consolidado)'];
-
-        $agencies = $builder();
+        $agencies = $this->activeBusinessAgenciesQuery()
+            ->orderBy('agency_type_id')
+            ->orderBy('name_corporative')
+            ->get();
 
         return $prepend + $agencies->mapWithKeys(function (Agency $a) {
             $tipo = $a->agency_type_id === 1 ? 'Master' : 'General';
 
             return [$a->code => ($a->name_corporative ?? $a->code)." ({$tipo})"];
         })->all();
+    }
+
+    protected function activeBusinessAgenciesQuery()
+    {
+        return Agency::query()
+            ->whereIn('agency_type_id', [1, 3])
+            ->where('status', 'ACTIVO');
     }
 
     /**
@@ -99,16 +99,50 @@ class TotalEstructureAgency extends ChartWidget
             ->where('status', 'ACTIVO')
             ->get();
 
-        $masters = collect();
-        foreach ($agencies as $a) {
-            if ((int) $a->agency_type_id === 1 && $a->owner_code === $a->code) {
-                $masters->push($a->code);
-            } else {
-                $masters->push($a->owner_code);
-            }
+        return $this->resolveAggregateMasterCodes($agencies);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Agency>  $agencies
+     * @return list<string>
+     */
+    protected function resolveAggregateMasterCodes($agencies): array
+    {
+        $activeMasters = $agencies
+            ->filter(fn (Agency $a): bool => $a->status === 'ACTIVO' && (int) $a->agency_type_id === 1 && $a->owner_code === $a->code)
+            ->pluck('code')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($activeMasters->isEmpty()) {
+            return [];
         }
 
-        return $masters->filter()->unique()->values()->all();
+        $activeMasterSet = $activeMasters->flip();
+
+        $codes = $agencies
+            ->map(function (Agency $a) use ($activeMasterSet): ?string {
+                if ($a->status !== 'ACTIVO') {
+                    return null;
+                }
+
+                if ((int) $a->agency_type_id === 1 && $a->owner_code === $a->code) {
+                    return $a->code;
+                }
+
+                if ((int) $a->agency_type_id === 3 && $a->owner_code && $activeMasterSet->has($a->owner_code)) {
+                    return $a->owner_code;
+                }
+
+                return null;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $codes;
     }
 
     protected function getData(): array
@@ -134,13 +168,7 @@ class TotalEstructureAgency extends ChartWidget
             ];
         }
 
-        $masterCode = $agency->agency_type_id === 1 ? $agency->code : $agency->owner_code;
-
-        return $this->buildStructureDataset(
-            $masterCode,
-            $year,
-            $month
-        );
+        return $this->buildAgencyBreakdownDataset($agency, $year, $month);
     }
 
     /**
@@ -148,9 +176,10 @@ class TotalEstructureAgency extends ChartWidget
      */
     protected function getConsolidatedStructureData(int $year, ?int $month): array
     {
-        $masterCodes = $this->masterOwnerCodesForAggregate();
+        $activeAgencies = $this->activeBusinessAgenciesQuery()->get(['code', 'agency_type_id', 'owner_code']);
+        $allAgencyCodes = $activeAgencies->pluck('code')->filter()->values()->all();
 
-        if ($masterCodes === []) {
+        if ($allAgencyCodes === []) {
             return [
                 'labels' => ['Agencia Master (directas)', 'Agencias Generales (directas)', 'Agentes'],
                 'datasets' => [
@@ -167,33 +196,33 @@ class TotalEstructureAgency extends ChartWidget
             ];
         }
 
+        $generalCodes = $activeAgencies
+            ->where('agency_type_id', 3)
+            ->pluck('code')
+            ->filter()
+            ->values()
+            ->all();
+
         $ventasDirectasMaster = (float) Sale::query()
             ->whereNull('agent_id')
             ->whereColumn('code_agency', 'owner_code')
-            ->whereIn('owner_code', $masterCodes)
+            ->whereIn('code_agency', $allAgencyCodes)
             ->whereYear('created_at', $year)
             ->when($month, fn ($q) => $q->whereMonth('created_at', $month))
             ->sum('total_amount');
-
-        $generalCodes = Agency::query()
-            ->where('agency_type_id', 3)
-            ->whereIn('owner_code', $masterCodes)
-            ->pluck('code')
-            ->all();
 
         $ventasDirectasGenerales = $generalCodes === []
             ? 0.0
             : (float) Sale::query()
                 ->whereNull('agent_id')
                 ->whereIn('code_agency', $generalCodes)
-                ->whereIn('owner_code', $masterCodes)
                 ->whereYear('created_at', $year)
                 ->when($month, fn ($q) => $q->whereMonth('created_at', $month))
                 ->sum('total_amount');
 
         $ventasAgentes = (float) Sale::query()
             ->whereNotNull('agent_id')
-            ->whereIn('owner_code', $masterCodes)
+            ->whereIn('code_agency', $allAgencyCodes)
             ->whereYear('created_at', $year)
             ->when($month, fn ($q) => $q->whereMonth('created_at', $month))
             ->sum('total_amount');
@@ -212,6 +241,56 @@ class TotalEstructureAgency extends ChartWidget
                 ],
             ],
         ];
+    }
+
+    /**
+     * @return array{labels: list<string>, datasets: list<array<string, mixed>>}
+     */
+    protected function buildAgencyBreakdownDataset(Agency $agency, int $year, ?int $month): array
+    {
+        $baseSaleQuery = Sale::query()
+            ->where('code_agency', $agency->code)
+            ->whereYear('created_at', $year)
+            ->when($month, fn ($q) => $q->whereMonth('created_at', $month));
+
+        $ventasDirectas = (float) (clone $baseSaleQuery)
+            ->whereNull('agent_id')
+            ->sum('total_amount');
+
+        $ventasAgentes = (float) (clone $baseSaleQuery)
+            ->whereNotNull('agent_id')
+            ->sum('total_amount');
+
+        [$ventasDirectasMaster, $ventasDirectasGenerales] = $this->splitDirectSalesByAgencyType($agency, $ventasDirectas);
+
+        return [
+            'labels' => ['Agencia Master (directas)', 'Agencias Generales (directas)', 'Agentes'],
+            'datasets' => [
+                [
+                    'label' => $this->datasetLabelForYear($year, $month),
+                    'data' => [$ventasDirectasMaster, $ventasDirectasGenerales, $ventasAgentes],
+                    'backgroundColor' => ['#3b82f6', '#10b981', '#f59e0b'],
+                    'borderColor' => 'rgba(0,0,0,0.08)',
+                    'borderWidth' => 1,
+                    'borderRadius' => 6,
+                    'barPercentage' => 0.7,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array{0: float, 1: float}
+     */
+    protected function splitDirectSalesByAgencyType(Agency $agency, float $ventasDirectas): array
+    {
+        $esMaster = (int) $agency->agency_type_id === 1 && $agency->owner_code === $agency->code;
+
+        if ($esMaster) {
+            return [$ventasDirectas, 0.0];
+        }
+
+        return [0.0, $ventasDirectas];
     }
 
     /**

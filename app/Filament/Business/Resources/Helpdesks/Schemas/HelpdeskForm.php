@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Helpdesks\Schemas;
 
+use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -96,6 +97,9 @@ class HelpdeskForm
                                             return $query;
                                         },
                                     )
+                                    ->saveRelationshipsUsing(function (HelpDesk $record, ?array $state): void {
+                                        $record->rrhhColaboradores()->sync($state ?? []);
+                                    })
                                     ->searchable()
                                     ->required()
                                     ->preload()

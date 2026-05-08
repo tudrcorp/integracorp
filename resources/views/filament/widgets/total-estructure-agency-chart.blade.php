@@ -8,42 +8,36 @@
     $filters = $this->getFilters();
     $isCollapsible = $this->isCollapsible();
     $type = $this->getType();
+    $hasYearSelectFilter = method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions());
+    $hasFiltersSchema = method_exists($this, 'getFiltersSchema');
 @endphp
 
-<x-filament-widgets::widget class="fi-wi-chart fi-agency-registrations-chart-like-suppliers">
-    <x-filament::section
-        :description="$description"
-        :heading="$heading"
-        :collapsible="$isCollapsible"
-    >
-        @if ($filters || method_exists($this, 'getFiltersSchema') || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
-            <x-slot name="afterHeader">
-                @if ($filters || (method_exists($this, 'getChartYearSelectOptions') && filled($this->getChartYearSelectOptions())))
-                    <div class="flex flex-wrap items-center gap-2">
-                        @if ($filters)
-                            <x-filament::input.wrapper
-                                inline-prefix
-                                wire:target="filter"
-                                class="fi-wi-chart-filter"
-                            >
-                                <x-filament::input.select
-                                    inline-prefix
-                                    wire:model.live="filter"
-                                >
-                                    @foreach ($filters as $value => $label)
-                                        <option value="{{ $value }}">
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
-                        @endif
-
-                        @include('filament.widgets.partials.chart-agency-time-state-filters')
-                    </div>
+<x-filament-widgets::widget class="fi-wi-chart fi-agency-registrations-chart-like-suppliers fi-total-estructure-agency-chart">
+    <x-filament::section :collapsible="$isCollapsible">
+        @if ($filters || $hasYearSelectFilter || $hasFiltersSchema)
+            <div class="fi-total-estructure-agency-chart-toolbar mb-3 flex flex-wrap items-center justify-end gap-2">
+                @if ($filters)
+                    <x-filament::input.wrapper
+                        inline-prefix
+                        wire:target="filter"
+                        class="fi-wi-chart-filter"
+                    >
+                        <x-filament::input.select
+                            inline-prefix
+                            wire:model.live="filter"
+                        >
+                            @foreach ($filters as $value => $label)
+                                <option value="{{ $value }}">
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
                 @endif
 
-                @if (method_exists($this, 'getFiltersSchema'))
+                @include('filament.widgets.partials.chart-agency-time-state-filters')
+
+                @if ($hasFiltersSchema)
                     <x-filament::dropdown
                         placement="bottom-end"
                         shift
@@ -69,8 +63,20 @@
                         </div>
                     </x-filament::dropdown>
                 @endif
-            </x-slot>
+            </div>
         @endif
+
+        <div class="fi-total-estructure-agency-chart-header mb-3">
+            <h3 class="fi-section-header-heading text-base font-semibold leading-6 text-gray-950 dark:text-white">
+                {{ $heading }}
+            </h3>
+
+            @if ($description)
+                <p class="fi-section-header-description mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {{ $description }}
+                </p>
+            @endif
+        </div>
 
         <div
             @if ($pollingInterval = $this->getPollingInterval())
