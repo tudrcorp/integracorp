@@ -27,9 +27,17 @@
                         </td>
                     </tr>
                     <tr>
+                        <td align="center" style="padding:10px 28px 4px 28px;">
+                            <h1 style="margin:0; font-size:24px; line-height:1.25; color:#0f172a; font-weight:700;">
+                                ¡Bienvenido(a) a TuDrGroup!
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <tr>
                         <td align="center"
                             style="padding: 15px 10px; color: #333333; font-size: 12px; line-height: 1.6;">
-                            <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrGroup! 🌟</span> </p>
+                            {{-- <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrGroup! 🌟</span> </p> --}}
                             <p>Estimado(a), {{ $name }}</p>
                             <p>Como nuevo Ejecutivo, te unes a una labor vital, la de ser el pilar que nuestros clientes necesitan para proteger lo más
                                 valioso, su salud y la de su grupo familiar.</p>
@@ -60,10 +68,11 @@
                             <p>Atentamente,</p>
                         </td>
                     </tr>
+                </table>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
                     <tr>
-                        <td align="center" style="padding: 20px 10px;">
-                            <img src="https://integracorp.tudrgroup.com/storage/bannerFooter.png"
-                                alt="Banner Tu Dr. en Casa" style="max-width: 100%; height: auto; border-radius: 8px;">
+                        <td align="center" style="padding:12px 18px 0 18px; color:#94a3b8; font-size:12px; line-height:1.5;">
+                            Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa.
                         </td>
                     </tr>
                 </table>

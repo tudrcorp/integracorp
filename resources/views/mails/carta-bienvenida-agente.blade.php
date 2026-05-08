@@ -90,7 +90,7 @@
 
                     <tr>
                         <td align="center" style="padding:10px 28px 24px 28px; color:#334155; font-size:15px; line-height:1.65;">
-                            <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrGroup! 🌟</span> </p>
+                            {{-- <p><span style="font-weight: bold; font-size: 1.2em;">¡Bienvenido(a) a TuDrGroup! 🌟</span> </p> --}}
                             <p>Estimado(a), {{ $name }}</p>
                             <p>Como nuevo agente, te unes a una labor vital, la de ser el pilar que nuestros clientes necesitan para proteger lo más valioso, su salud y la de su grupo familiar.</p>
                             <p>Tu compromiso será fundamental para guiar a las personas hacia la mejor protección y darles la tranquilidad que necesitan.</p>
@@ -111,7 +111,7 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
                     <tr>
                         <td align="center" style="padding:12px 18px 0 18px; color:#94a3b8; font-size:12px; line-height:1.5;">
-                            Gracias por confiar en nosotros para gestionar las necesidades medicas de tu empresa.
+                            Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa.
                         </td>
                     </tr>
                 </table>

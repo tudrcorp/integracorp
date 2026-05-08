@@ -13,6 +13,8 @@ use App\Filament\Marketing\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart
 use App\Filament\Marketing\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as MarketingStatsOverviewHelpdesk;
 use App\Filament\Operations\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as OperationsHelpdeskStatusWeeklyChart;
 use App\Filament\Operations\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as OperationsStatsOverviewHelpdesk;
+use App\Models\ObservationCommercialStructure;
+use App\Observers\ObservationCommercialStructureObserver;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
@@ -50,6 +52,8 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.operations.resources.helpdesks.widgets.stats-overview-helpdesk', OperationsStatsOverviewHelpdesk::class);
 
         FilamentTimezone::set('America/Caracas');
+
+        ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
 
         FilamentColor::register([
             'azulOscuro' => Color::hex('#052F60'),

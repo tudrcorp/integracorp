@@ -71,7 +71,7 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
                     <tr>
                         <td align="center" style="padding:12px 18px 0 18px; color:#94a3b8; font-size:12px; line-height:1.5;">
-                            Gracias por confiar en nosotros para gestionar las necesidades medicas de tu empresa.
+                            Gracias por confiar en nosotros para gestionar las necesidades médicas de tu empresa.
                         </td>
                     </tr>
                 </table>
