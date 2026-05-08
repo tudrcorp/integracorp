@@ -20,7 +20,9 @@ class AgentActiveForEstructureChart extends ChartWidget
 
     protected ?string $heading = 'Agentes activos por agencia';
 
-    protected int|string|array $columnSpan = 'full';
+    protected ?string $description = 'Muestra el top 20 de agencias por cantidad de agentes en estado ACTIVO en el período seleccionado. Haz clic en una barra para ver el detalle de activos vs. inactivos de esa agencia y vuelve a hacer clic para regresar al consolidado. Ajusta año y mes.';
+
+    protected int|string|array $columnSpan = 1;
 
     protected ?string $maxHeight = '440px';
 

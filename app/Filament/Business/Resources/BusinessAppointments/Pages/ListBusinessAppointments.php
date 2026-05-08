@@ -3,12 +3,18 @@
 namespace App\Filament\Business\Resources\BusinessAppointments\Pages;
 
 use App\Filament\Business\Resources\BusinessAppointments\BusinessAppointmentsResource;
+use App\Filament\Business\Resources\BusinessAppointments\Widgets\BusinessAppointmentNotesByUserChart;
+use App\Filament\Business\Resources\BusinessAppointments\Widgets\BusinessAppointmentsByStateChart;
+use App\Filament\Business\Resources\BusinessAppointments\Widgets\BusinessAppointmentsByStatusChart;
+use App\Filament\Business\Resources\BusinessAppointments\Widgets\BusinessAppointmentsKpiOverview;
 use Filament\Actions\CreateAction;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Schemas\Components\Tabs\Tab;
 
 class ListBusinessAppointments extends ListRecords
 {
+    use ExposesTableToWidgets;
+
     protected static string $resource = BusinessAppointmentsResource::class;
 
     protected static ?string $title = 'Citas de Negocios';
@@ -20,4 +26,13 @@ class ListBusinessAppointments extends ListRecords
         ];
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            BusinessAppointmentsKpiOverview::class,
+            BusinessAppointmentsByStatusChart::class,
+            BusinessAppointmentsByStateChart::class,
+            BusinessAppointmentNotesByUserChart::class,
+        ];
+    }
 }

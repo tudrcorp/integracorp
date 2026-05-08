@@ -11,6 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('affiliations')) {
+            return;
+        }
         Schema::table('affiliations', function (Blueprint $table) {
             $table->boolean('feedback')->nullable();
         });
@@ -21,8 +24,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('affiliations', function (Blueprint $table) {
-            //
+        if (! Schema::hasTable('affiliations')) {
+            return;
+        }
+
+        Schema::table('affiliations', function (Blueprint $table): void {
+            if (Schema::hasColumn('affiliations', 'feedback')) {
+                $table->dropColumn('feedback');
+            }
         });
     }
 };

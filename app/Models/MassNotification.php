@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class MassNotification extends Model
 {
     protected $table = 'mass_notifications';
-    
+
     protected $fillable = [
         'title',
         'content',
@@ -28,6 +28,7 @@ class MassNotification extends Model
 
     protected $casts = [
         'channels' => 'array',
+        'date_programed' => 'datetime',
     ];
 
     public function user()

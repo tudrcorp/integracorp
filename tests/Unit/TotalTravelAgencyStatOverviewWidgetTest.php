@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 use App\Filament\Business\Resources\TravelAgencies\Widgets\TotalTravelAgencyStatOverview;
 
-it('usa vista glass iOS y una columna para la stat', function (): void {
+it('usa el mismo layout base que stats overview de agencias', function (): void {
     $ref = new ReflectionClass(TotalTravelAgencyStatOverview::class);
 
-    expect($ref->getDefaultProperties()['view'] ?? null)
-        ->toBe('filament.widgets.stats-overview-travel-agency-glass');
+    expect($ref->getDefaultProperties()['heading'] ?? null)->toBeNull()
+        ->and($ref->getDefaultProperties()['description'] ?? null)->toBeNull();
 
     $columns = (new ReflectionMethod(TotalTravelAgencyStatOverview::class, 'getColumns'))
         ->invoke(new TotalTravelAgencyStatOverview);
 
-    expect($columns)->toBe(1);
+    expect($columns)->toBe(3);
+
+    $method = new ReflectionMethod(TotalTravelAgencyStatOverview::class, 'getSectionContentComponent');
+    expect($method->isPublic())->toBeTrue();
 });
 
 it('ocupa el ancho completo del área de widgets del listado', function (): void {

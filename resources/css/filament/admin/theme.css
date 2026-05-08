@@ -810,6 +810,91 @@
     border-color: rgba(71, 85, 105, 0.45);
   }
 
+  /* Override: segmento "Operaciones" con fondo azul propio */
+  .fi-business-panel-stepper-segment--operations {
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%) !important;
+    color: #ffffff !important;
+    border-color: rgba(34, 197, 94, 0.55) !important;
+  }
+
+  .fi-business-panel-stepper-segment--operations .fi-business-panel-stepper-title {
+    color: #ffffff !important;
+  }
+
+  .fi-business-panel-stepper-segment--operations .fi-business-panel-stepper-sub {
+    color: rgba(255, 255, 255, 0.9) !important;
+    opacity: 1;
+  }
+
+  .dark .fi-business-panel-stepper-segment--operations {
+    background: linear-gradient(180deg, #16a34a 0%, #14532d 100%) !important;
+    color: #ffffff !important;
+    border-color: rgba(34, 197, 94, 0.22) !important;
+  }
+
+  .dark .fi-business-panel-stepper-segment--operations .fi-business-panel-stepper-title {
+    color: #ffffff !important;
+  }
+
+  .dark .fi-business-panel-stepper-segment--operations .fi-business-panel-stepper-sub {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  /* Override: segmento "Marketing" con fondo amarillo */
+  .fi-business-panel-stepper-segment--marketing {
+    background: linear-gradient(180deg, #fde68a 0%, #fbbf24 100%) !important;
+    color: #78350f !important;
+    border-color: rgba(245, 158, 11, 0.55) !important;
+  }
+
+  .fi-business-panel-stepper-segment--marketing .fi-business-panel-stepper-sub {
+    color: rgba(120, 53, 15, 0.85) !important;
+    opacity: 1;
+  }
+
+  .dark .fi-business-panel-stepper-segment--marketing {
+    background: linear-gradient(180deg, #d97706 0%, #92400e 100%) !important;
+    color: #fffbeb !important;
+    border-color: rgba(251, 191, 36, 0.22) !important;
+  }
+
+  .dark .fi-business-panel-stepper-segment--marketing .fi-business-panel-stepper-sub {
+    color: rgba(255, 251, 235, 0.88) !important;
+  }
+
+  /* Texto negro profundo (solo tema claro) para Negocios y Marketing */
+  .fi-business-panel-stepper-segment--business,
+  .fi-business-panel-stepper-segment--marketing {
+    color: #020617;
+  }
+
+  .fi-business-panel-stepper-segment--business .fi-business-panel-stepper-title,
+  .fi-business-panel-stepper-segment--marketing .fi-business-panel-stepper-title {
+    color: #020617 !important;
+  }
+
+  .fi-business-panel-stepper-segment--business .fi-business-panel-stepper-sub,
+  .fi-business-panel-stepper-segment--marketing .fi-business-panel-stepper-sub {
+    color: rgba(2, 6, 23, 0.85) !important;
+  }
+
+  /* En modo oscuro, Negocios y Marketing deben verse en blanco */
+  .dark .fi-business-panel-stepper-segment--business,
+  .dark .fi-business-panel-stepper-segment--marketing {
+    color: #ffffff !important;
+  }
+
+  .dark .fi-business-panel-stepper-segment--business .fi-business-panel-stepper-title,
+  .dark .fi-business-panel-stepper-segment--marketing .fi-business-panel-stepper-title {
+    color: #ffffff !important;
+  }
+
+  .dark .fi-business-panel-stepper-segment--business .fi-business-panel-stepper-sub,
+  .dark .fi-business-panel-stepper-segment--marketing .fi-business-panel-stepper-sub {
+    color: rgba(255, 255, 255, 0.9) !important;
+    opacity: 1;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .fi-business-panel-stepper-segment {
       transition: none;

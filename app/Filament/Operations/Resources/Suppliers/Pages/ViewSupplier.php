@@ -46,6 +46,8 @@ class ViewSupplier extends ViewRecord
 
     private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
+    private const TICKET_BUTTON_GRAY_CLASS = 'ticket-btn-ios-gray shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
     /**
      * @return list<string>
      */
@@ -136,6 +138,14 @@ class ViewSupplier extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('back')
+                ->label('Volver')
+                ->icon('heroicon-o-arrow-left')
+                ->color('gray')
+                ->url(SupplierResource::getUrl('index'))
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_GRAY_CLASS,
+                ]),
             EditAction::make()
                 ->label('Editar')
                 ->icon('heroicon-o-pencil')

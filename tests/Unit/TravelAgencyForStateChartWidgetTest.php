@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 use App\Filament\Business\Resources\TravelAgencies\Pages\ListTravelAgencies;
 use App\Filament\Business\Resources\TravelAgencies\Widgets\TravelAgencyForStateChart;
+use Filament\Support\RawJs;
 
-it('usa barras horizontales estilo proveedores y ancho completo', function (): void {
+it('usa torta (pie) y ancho completo', function (): void {
     $ref = new ReflectionClass(TravelAgencyForStateChart::class);
 
     expect($ref->getDefaultProperties()['columnSpan'] ?? null)->toBe('full');
@@ -14,11 +15,11 @@ it('usa barras horizontales estilo proveedores y ancho completo', function (): v
     $widget = new TravelAgencyForStateChart;
 
     $type = (new ReflectionMethod(TravelAgencyForStateChart::class, 'getType'))->invoke($widget);
-    expect($type)->toBe('bar');
+    expect($type)->toBe('pie');
 
     $tablePage = (new ReflectionMethod(TravelAgencyForStateChart::class, 'getTablePage'))->invoke($widget);
     expect($tablePage)->toBe(ListTravelAgencies::class);
 
     $options = (new ReflectionMethod(TravelAgencyForStateChart::class, 'getOptions'))->invoke($widget);
-    expect($options['indexAxis'] ?? null)->toBe('y');
+    expect($options)->toBeInstanceOf(RawJs::class);
 });

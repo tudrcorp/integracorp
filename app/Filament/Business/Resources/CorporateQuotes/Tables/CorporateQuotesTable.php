@@ -400,6 +400,72 @@ class CorporateQuotesTable
                     //     })
                     //     ->hidden(fn($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor != null),
 
+                    /**DESCARGA DE COTIZACION */
+                    Action::make('download')
+                        ->label('Descargar Cotización')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('verde')
+                        ->requiresConfirmation()
+                        ->modalHeading('DESCARGAR COTIZACION')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                        ->action(function (CorporateQuote $record, array $data) {
+
+                            try {
+
+                                if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
+                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
+                                        'panel' => 'business',
+                                        'corporate_quote_id' => $record->id,
+                                        'code' => $record->code,
+                                        'reason' => 'file_not_found',
+                                    ]);
+
+                                    Notification::make()
+                                        ->title('NOTIFICACIÓN')
+                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                        ->icon('heroicon-s-x-circle')
+                                        ->iconColor('warning')
+                                        ->warning()
+                                        ->send();
+
+                                    return;
+                                }
+                                /**
+                                 * Descargar el documento asociado a la cotizacion
+                                 * ruta: storage/
+                                 */
+                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
+
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOADED', 'business.corporate-quotes.download', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'path' => $path,
+                                ]);
+
+                                return response()->download($path);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
+                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
+
                     /**REEN\VIO DE COTIZACION CORPORATIVA */
                     Action::make('forward')
                         ->label('Reenviar')
@@ -484,72 +550,6 @@ class CorporateQuotesTable
                                     'code' => $record->code,
                                     'email' => $data['email'] ?? null,
                                     'phone' => $data['phone'] ?? null,
-                                    'reason' => $th->getMessage(),
-                                ]);
-
-                                LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
-                                Notification::make()
-                                    ->title('ERROR')
-                                    ->body($th->getMessage())
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                            }
-                        })
-                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
-
-                    /**DESCARGA DE COTIZACION */
-                    Action::make('download')
-                        ->label('Descargar Cotización')
-                        ->icon('heroicon-s-arrow-down-on-square-stack')
-                        ->color('verde')
-                        ->requiresConfirmation()
-                        ->modalHeading('DESCARGAR COTIZACION')
-                        ->modalWidth(Width::ExtraLarge)
-                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
-                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
-                        ->action(function (CorporateQuote $record, array $data) {
-
-                            try {
-
-                                if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
-                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
-                                        'panel' => 'business',
-                                        'corporate_quote_id' => $record->id,
-                                        'code' => $record->code,
-                                        'reason' => 'file_not_found',
-                                    ]);
-
-                                    Notification::make()
-                                        ->title('NOTIFICACIÓN')
-                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
-                                        ->icon('heroicon-s-x-circle')
-                                        ->iconColor('warning')
-                                        ->warning()
-                                        ->send();
-
-                                    return;
-                                }
-                                /**
-                                 * Descargar el documento asociado a la cotizacion
-                                 * ruta: storage/
-                                 */
-                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
-
-                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOADED', 'business.corporate-quotes.download', [
-                                    'panel' => 'business',
-                                    'corporate_quote_id' => $record->id,
-                                    'code' => $record->code,
-                                    'path' => $path,
-                                ]);
-
-                                return response()->download($path);
-                            } catch (\Throwable $th) {
-                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
-                                    'panel' => 'business',
-                                    'corporate_quote_id' => $record->id,
-                                    'code' => $record->code,
                                     'reason' => $th->getMessage(),
                                 ]);
 

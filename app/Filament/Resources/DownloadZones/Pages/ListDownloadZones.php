@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources\DownloadZones\Pages;
 
+use App\Filament\Resources\DownloadZones\DownloadZoneResource;
 use App\Models\DownloadZone;
+use App\Support\Filament\DownloadZoneTabIcons;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use App\Filament\Resources\DownloadZones\DownloadZoneResource;
 
 class ListDownloadZones extends ListRecords
 {
@@ -20,7 +21,7 @@ class ListDownloadZones extends ListRecords
         return [
             CreateAction::make()
                 ->label('Cargar archivo')
-                ->icon('heroicon-m-cloud-arrow-up')
+                ->icon('heroicon-m-cloud-arrow-up'),
         ];
     }
 
@@ -29,22 +30,27 @@ class ListDownloadZones extends ListRecords
 
         return [
             'METODOS DE PAGO' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 4))
+                ->icon(DownloadZoneTabIcons::forLabel('METODOS DE PAGO', 4))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', 4))
                 ->badge(DownloadZone::query()->where('zone_id', 4)->count())
                 ->badgeColor('success'),
             'RECURSOS DEL AGENTE' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 1))
+                ->icon(DownloadZoneTabIcons::forLabel('RECURSOS DEL AGENTE', 1))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', 1))
                 ->badge(DownloadZone::query()->where('zone_id', 1)->count())
                 ->badgeColor('success'),
             'TU DR. EN CASA' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 3))
+                ->icon(DownloadZoneTabIcons::forLabel('TU DR. EN CASA', 3))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', 3))
                 ->badge(DownloadZone::query()->where('zone_id', 3)->count())
                 ->badgeColor('success'),
             'TU DR. EN VIAJES' => Tab::make()
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('zone_id', 2))
+                ->icon(DownloadZoneTabIcons::forLabel('TU DR. EN VIAJES', 2))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', 2))
                 ->badge(DownloadZone::query()->where('zone_id', 2)->count())
                 ->badgeColor('success'),
-            'TODOS' => Tab::make(),
+            'TODOS' => Tab::make()
+                ->icon(DownloadZoneTabIcons::forTodosTab()),
         ];
     }
 }

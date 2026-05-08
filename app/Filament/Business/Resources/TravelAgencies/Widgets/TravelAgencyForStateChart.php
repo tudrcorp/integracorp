@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\TravelAgencies\Widgets;
 
-use App\Filament\Business\Resources\ProspectAgents\Widgets\Concerns\AgencyLikeBarChartStyling;
 use App\Filament\Business\Resources\TravelAgencies\Pages\ListTravelAgencies;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\State;
 use App\Models\TravelAgency;
+use Filament\Support\Assets\Js;
+use Filament\Support\Facades\FilamentAsset;
+use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Str;
 
 class TravelAgencyForStateChart extends ChartWidget
 {
-    use AgencyLikeBarChartStyling;
     use InteractsWithPageTable;
 
     protected static ?int $sort = 5;
@@ -28,6 +29,15 @@ class TravelAgencyForStateChart extends ChartWidget
     protected ?string $maxHeight = '440px';
 
     protected string $color = 'gray';
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        FilamentAsset::register([
+            Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'),
+        ]);
+    }
 
     protected function getTablePage(): string
     {
@@ -66,13 +76,11 @@ class TravelAgencyForStateChart extends ChartWidget
                 'labels' => ['Sin datos'],
                 'datasets' => [
                     [
-                        'label' => '—',
+                        'label' => 'Agencias de viaje',
                         'data' => [0],
                         'backgroundColor' => 'rgba(142, 142, 147, 0.25)',
-                        'borderColor' => 'rgba(255, 255, 255, 0.35)',
-                        'borderWidth' => 1,
-                        'borderRadius' => 10,
-                        'borderSkipped' => false,
+                        'borderWidth' => 0,
+                        'borderColor' => 'transparent',
                     ],
                 ],
             ];
@@ -104,139 +112,165 @@ class TravelAgencyForStateChart extends ChartWidget
             $data[] = $countMap['null_state'] ?? 0;
         }
 
-        $colors = $this->glassBarColorsForValues($data);
+        $vibrantPalette = [
+            '#FF2D55', // Rosa Apple
+            '#5856D6', // Púrpura Apple
+            '#34C759', // Verde Apple
+            '#FF9500', // Naranja Apple
+            '#007AFF', // Azul Apple
+            '#AF52DE', // Índigo
+            '#FFCC00', // Amarillo
+            '#5AC8FA', // Cian
+            '#FF3B30', // Rojo
+            '#2dd4bf', // Teal
+            '#f472b6', // Rosa fuerte
+            '#a78bfa', // Violeta claro
+        ];
+
+        $total = (int) array_sum($data);
+        $percentages = $total > 0
+            ? array_map(
+                static fn (mixed $n): float => round(((float) $n / $total) * 100, 1),
+                $data
+            )
+            : [];
+
+        $backgroundColors = array_map(static function (int $index) use ($vibrantPalette): string {
+            return $vibrantPalette[$index % count($vibrantPalette)];
+        }, array_keys($data));
 
         return [
             'labels' => $labels,
             'datasets' => [
                 [
-                    'label' => 'Agencias',
+                    'label' => 'Agencias de viaje',
                     'data' => $data,
-                    'backgroundColor' => $colors['fills'],
-                    'borderColor' => $colors['strokes'],
-                    'borderWidth' => 1.25,
-                    'borderRadius' => 8,
-                    'borderSkipped' => false,
-                    'hoverBackgroundColor' => $colors['hovers'],
+                    'percentages' => array_values($percentages),
+                    'backgroundColor' => $backgroundColors,
+                    'borderWidth' => 0,
+                    'borderColor' => 'transparent',
+                    'radius' => '95%',
+                    'hoverOffset' => 35,
+                    'hoverBorderWidth' => 0,
+                    'hoverBorderColor' => 'transparent',
+                    'borderRadius' => 4,
                 ],
             ],
         ];
     }
 
-    protected function getOptions(): array
+    protected function getOptions(): RawJs
     {
-        $iosFont = '-apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-
-        return [
-            'indexAxis' => 'y',
-            'responsive' => true,
-            'maintainAspectRatio' => false,
-            'interaction' => [
-                'mode' => 'nearest',
-                'intersect' => true,
-                'axis' => 'xy',
-            ],
-            'datasets' => [
-                'bar' => [
-                    'categoryPercentage' => 0.92,
-                    'barPercentage' => 0.98,
-                ],
-            ],
-            'elements' => [
-                'bar' => [
-                    'borderWidth' => 1.25,
-                    'borderRadius' => 10,
-                    'inflateAmount' => 0.6,
-                    'hoverBorderWidth' => 2.5,
-                    'hoverBorderColor' => 'rgba(255, 255, 255, 0.92)',
-                ],
-            ],
-            'plugins' => [
-                'legend' => [
-                    'display' => false,
-                ],
-                'tooltip' => [
-                    'enabled' => true,
-                    'position' => 'nearest',
-                    'xAlign' => 'center',
-                    'yAlign' => 'bottom',
-                    'backgroundColor' => 'rgba(22, 22, 24, 0.56)',
-                    'titleColor' => '#f5f5f7',
-                    'bodyColor' => 'rgba(235, 235, 245, 0.88)',
-                    'footerColor' => 'rgba(235, 235, 245, 0.7)',
-                    'borderColor' => 'rgba(255, 255, 255, 0.2)',
-                    'borderWidth' => 1,
-                    'padding' => 10,
-                    'cornerRadius' => 12,
-                    'caretSize' => 6,
-                    'caretPadding' => 8,
-                    'titleFont' => [
-                        'size' => 14,
-                        'weight' => '700',
-                        'family' => $iosFont,
-                    ],
-                    'bodyFont' => [
-                        'size' => 13,
-                        'weight' => '500',
-                        'family' => $iosFont,
-                    ],
-                    'titleSpacing' => 0,
-                    'titleMarginBottom' => 8,
-                    'bodySpacing' => 6,
-                    'footerSpacing' => 8,
-                    'displayColors' => true,
-                    'usePointStyle' => true,
-                    'boxWidth' => 12,
-                    'boxHeight' => 12,
-                    'boxPadding' => 8,
-                    'multiKeyBackground' => 'rgba(255, 255, 255, 0.08)',
-                ],
-            ],
-            'scales' => [
-                'x' => [
-                    'stacked' => true,
-                    'beginAtZero' => true,
-                    'grid' => [
-                        'display' => true,
-                        'drawBorder' => false,
-                        'color' => 'rgba(120, 120, 128, 0.12)',
-                    ],
-                    'ticks' => [
-                        'precision' => 0,
-                        'stepSize' => 1,
-                        'color' => '#8e8e93',
-                        'font' => [
-                            'size' => 10,
-                            'family' => $iosFont,
-                        ],
-                    ],
-                ],
-                'y' => [
-                    'stacked' => true,
-                    'grid' => [
-                        'display' => true,
-                        'drawBorder' => false,
-                        'color' => 'rgba(120, 120, 128, 0.1)',
-                    ],
-                    'ticks' => [
-                        'autoSkip' => false,
-                        'color' => '#8e8e93',
-                        'font' => [
-                            'size' => 10,
-                            'family' => $iosFont,
-                        ],
-                    ],
-                ],
-            ],
-            'animation' => [
-                'duration' => 900,
-                'easing' => 'easeOutQuart',
-            ],
-        ];
+        return RawJs::make(<<<'JS'
+        {
+            responsive: true,
+            maintainAspectRatio: false,
+            borderWidth: 0,
+            elements: {
+                arc: {
+                    borderWidth: 0,
+                    borderColor: 'transparent'
+                }
+            },
+            layout: {
+                padding: { top: 8, right: 4, bottom: 0, left: 4 }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    align: 'center',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 18,
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        font: {
+                            size: 12,
+                            weight: '600',
+                            family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                        },
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const ds = data.datasets[0];
+                            const meta = chart.getDatasetMeta(0);
+                            return data.labels.map((label, i) => {
+                                const value = ds.data[i];
+                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
+                                    ? ds.percentages[i]
+                                    : 0;
+                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+                                return {
+                                    text: String(label) + ': ' + value + ' agencias (' + pct + '%)',
+                                    fillStyle: fill,
+                                    strokeStyle: fill,
+                                    lineWidth: 0,
+                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
+                                    index: i,
+                                    datasetIndex: 0
+                                };
+                            });
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#1e293b',
+                    bodyColor: '#1e293b',
+                    borderColor: '#e2e8f0',
+                    borderWidth: 1,
+                    padding: 12,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: (context) => {
+                            const value = context.raw || 0;
+                            const pct = context.dataset.percentages[context.dataIndex];
+                            return ` ${context.label}: ${value} agencias (${pct}%)`;
+                        }
+                    }
+                },
+                datalabels: {
+                    display: function(context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct >= 4;
+                    },
+                    color: '#ffffff',
+                    anchor: 'center',
+                    align: 'center',
+                    font: {
+                        size: 12,
+                        weight: '700',
+                        family: 'ui-sans-serif, -apple-system, system-ui, sans-serif'
+                    },
+                    formatter: function(value, context) {
+                        const pct = context.dataset.percentages[context.dataIndex];
+                        return pct + '%';
+                    },
+                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+                    textShadowBlur: 3
+                }
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            animation: {
+                animateScale: true,
+                animateRotate: true,
+                duration: 1500,
+                easing: 'easeOutQuart'
+            },
+            onHover: (event, chartElement) => {
+                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+            }
+        }
+        JS);
     }
 
     protected function getType(): string
     {
-        return 'bar';
+        return 'pie';
     }
 }

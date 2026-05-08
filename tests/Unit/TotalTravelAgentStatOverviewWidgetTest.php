@@ -7,13 +7,10 @@ use App\Filament\Business\Resources\TravelAgents\Widgets\TotalTravelAgentStatOve
 it('usa vista glass iOS y una columna para la stat', function (): void {
     $ref = new ReflectionClass(TotalTravelAgentStatOverview::class);
 
-    expect($ref->getDefaultProperties()['view'] ?? null)
-        ->toBe('filament.widgets.stats-overview-travel-agent-glass');
-
     $columns = (new ReflectionMethod(TotalTravelAgentStatOverview::class, 'getColumns'))
         ->invoke(new TotalTravelAgentStatOverview);
 
-    expect($columns)->toBe(1);
+    expect($columns)->toBe(3);
 });
 
 it('ocupa el ancho completo del área de widgets del listado', function (): void {

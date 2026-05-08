@@ -45,9 +45,22 @@
             @endif
         >
             @if ($this->selectedMonth)
-                <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-                    Detalle · {{ \App\Support\HelpdeskStatusYearlyChartSeries::monthLabels()[$this->selectedMonth - 1] ?? 'Mes' }} {{ $this->year }}
-                    <span class="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">Click en una barra para volver a la vista anual.</span>
+                <div
+                    class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+                >
+                    <span>
+                        Detalle · {{ \App\Support\HelpdeskStatusYearlyChartSeries::monthLabels()[$this->selectedMonth - 1] ?? 'Mes' }}
+                        {{ $this->year }}
+                    </span>
+                    <x-filament::button
+                        wire:click="resetToAnnual"
+                        wire:loading.attr="disabled"
+                        size="sm"
+                        color="gray"
+                        icon="heroicon-m-arrow-uturn-left"
+                    >
+                        Volver al gráfico anual
+                    </x-filament::button>
                 </div>
             @endif
 

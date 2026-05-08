@@ -20,6 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Js;
 
 class HelpdesksTable
 {
@@ -80,7 +81,12 @@ class HelpdesksTable
                     ->label('Descripción')
                     ->icon('heroicon-m-document-text')
                     ->searchable()
-                    ->limit(40),
+                    ->limit(40)
+                    ->extraAttributes(fn (HelpDesk $record): array => filled($description = trim((string) $record->description))
+                        ? [
+                            'x-tooltip' => '{ content: '.Js::from($description).', theme: $store.theme, delay: [1000, 0], maxWidth: 520 }',
+                        ]
+                        : []),
                 TextColumn::make('priority')
                     ->label('Prioridad')
                     ->icon(fn (?string $state): ?string => match ($state) {

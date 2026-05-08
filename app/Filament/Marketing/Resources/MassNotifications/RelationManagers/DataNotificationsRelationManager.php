@@ -2,19 +2,17 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\RelationManagers;
 
-use Filament\Tables\Table;
+use App\Filament\Marketing\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Marketing\Resources\Affiliations\AffiliationResource;
+use App\Filament\Marketing\Resources\Agencies\AgencyResource;
+use App\Filament\Marketing\Resources\Agents\AgentResource;
+use App\Filament\Marketing\Resources\InfoFrees\InfoFreeResource;
 use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
-use Filament\Actions\CreateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Marketing\Resources\Agents\AgentResource;
-use App\Filament\Marketing\Resources\Agencies\AgencyResource;
-use App\Filament\Marketing\Resources\Affiliations\AffiliationResource;
-use App\Filament\Marketing\Resources\MassNotifications\MassNotificationResource;
-use App\Filament\Marketing\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class DataNotificationsRelationManager extends RelationManager
 {
@@ -39,19 +37,23 @@ class DataNotificationsRelationManager extends RelationManager
                     ->label('Agentes')
                     ->color('warning')
                     ->icon('heroicon-o-plus')
-                    ->url(fn() => AgentResource::getUrl('index')),
+                    ->url(fn () => AgentResource::getUrl('index')),
                 Action::make('add_corporatives')
                     ->label('Corporativos')
                     ->color('success')
                     ->icon('heroicon-o-plus')
-                    ->url(fn() => AffiliationCorporateResource::getUrl('index')),
+                    ->url(fn () => AffiliationCorporateResource::getUrl('index')),
                 Action::make('add_individuals')
                     ->label('Individuales')
                     ->color('success')
                     ->icon('heroicon-o-plus')
-                    ->url(fn() => AffiliationResource::getUrl('index')),
-                    
-                
+                    ->url(fn () => AffiliationResource::getUrl('index')),
+                Action::make('add_info_free')
+                    ->label('Data Externa(FREE)')
+                    ->color('info')
+                    ->icon('heroicon-o-plus')
+                    ->url(fn () => InfoFreeResource::getUrl('index')),
+
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

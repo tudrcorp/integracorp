@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\TravelAgencies\Widgets;
 
 use App\Filament\Business\Resources\TravelAgencies\Pages\ListTravelAgencies;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -12,8 +13,6 @@ use Illuminate\Support\HtmlString;
 class TotalTravelAgencyStatOverview extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
-
-    protected string $view = 'filament.widgets.stats-overview-travel-agency-glass';
 
     protected ?string $heading = null;
 
@@ -29,13 +28,25 @@ class TotalTravelAgencyStatOverview extends StatsOverviewWidget
     public function content(Schema $schema): Schema
     {
         return $schema
-            ->components($this->getCachedStats())
-            ->columns($this->getColumns());
+            ->components([
+                $this->getSectionContentComponent(),
+            ]);
+    }
+
+    public function getSectionContentComponent(): Section
+    {
+        return Section::make()
+            ->heading($this->getHeading())
+            ->description($this->getDescription())
+            ->schema($this->getCachedStats())
+            ->columns($this->getColumns())
+            ->contained(false)
+            ->gridContainer();
     }
 
     protected function getColumns(): int|array|null
     {
-        return 1;
+        return 3;
     }
 
     protected function getStats(): array
@@ -50,33 +61,45 @@ class TotalTravelAgencyStatOverview extends StatsOverviewWidget
 
         $otras = max(0, $total - $activas);
 
+        $cardTotal = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500';
+
         return [
-            Stat::make('Agencias de viaje', $total)
+            Stat::make('TOTAL AGENCIAS DE VIAJE', (string) $total)
                 ->descriptionIcon('heroicon-m-building-office-2')
                 ->description(new HtmlString("
-                    <div class='mt-2 w-full min-w-0'>
-                        <div class='mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400'>
+                    <div class='mt-2 flex w-full min-w-0 flex-col gap-2'>
+                        <div class='text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400'>
                             Total según listado y filtros
                         </div>
-                        <div class='grid w-full min-w-0 grid-cols-2 gap-3 rounded-2xl border border-zinc-200/60 bg-white/35 p-3 shadow-inner backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-950/40'>
-                            <div class='flex min-w-0 flex-col'>
-                                <div class='flex items-center gap-1.5'>
-                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]'></div>
-                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Activas / aprobadas</span>
-                                </div>
-                                <span class='text-lg font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white'>{$activas}</span>
+
+                        <div class='flex flex-wrap items-center gap-x-4 gap-y-2'>
+                            <div class='flex items-center gap-2.5'>
+                                <span class='rounded-lg bg-success-100/90 px-2.5 py-1 text-sm font-medium text-success-700 shadow-sm dark:bg-success-900/40 dark:text-success-300'>
+                                    Activas / aprobadas
+                                </span>
+                                <span class='tabular-nums text-base font-medium text-gray-900 dark:text-white'>
+                                    {$activas}
+                                </span>
                             </div>
-                            <div class='flex min-w-0 flex-col border-l border-zinc-200/80 pl-3 dark:border-white/10'>
-                                <div class='flex items-center gap-1.5'>
-                                    <div class='h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.45)]'></div>
-                                    <span class='text-xs font-medium text-zinc-600 dark:text-zinc-300'>Otras</span>
-                                </div>
-                                <span class='text-lg font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white'>{$otras}</span>
+
+                            <div class='hidden h-6 w-px shrink-0 bg-zinc-200/80 sm:block dark:bg-white/15' aria-hidden='true'></div>
+
+                            <div class='flex items-center gap-2.5'>
+                                <span class='rounded-lg bg-rose-100/90 px-2.5 py-1 text-sm font-medium text-rose-700 shadow-sm dark:bg-rose-900/40 dark:text-rose-300'>
+                                    Otras
+                                </span>
+                                <span class='tabular-nums text-base font-medium text-gray-900 dark:text-white'>
+                                    {$otras}
+                                </span>
                             </div>
                         </div>
                     </div>
                 "))
-                ->color('primary'),
+                ->color('planCorp')
+                ->extraAttributes([
+                    'class' => "{$cardTotal} col-span-full",
+                    'style' => 'min-height: 130px;',
+                ]),
         ];
     }
 }
