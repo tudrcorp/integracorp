@@ -55,25 +55,24 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     public function mount(): void
     {
-        // 1. Llama al método mount original de Filament para inicializar el formulario
-        parent::mount();
-
-        // 2. Obtener el paciente desde la sesión
+        // 1. Obtener paciente y caso desde la sesión antes de inicializar el formulario.
         $this->patient = session()->get('patient');
         $this->case = session()->get('case');
 
-        if (! $this->patient) {
-            // Manejar si el paciente no está en sesión (por seguridad)
+        if (! $this->patient || ! $this->case) {
             Notification::make()
-                ->title('Error: Paciente no encontrado.')
+                ->title('Error: información de sesión incompleta.')
+                ->body('No se encontró el paciente o el caso para crear la consulta.')
                 ->danger()
                 ->send();
 
-            // Redirigir a la página de selección de pacientes o al índice
             $this->redirect($this->getResource()::getUrl('index'));
 
             return;
         }
+
+        // 2. Llama al mount original de Filament cuando la sesión está lista.
+        parent::mount();
 
         if ($this->case !== null) {
             $countCase = TelemedicineConsultationPatient::query()
@@ -198,6 +197,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
     {
 
         $patient = session()->get('patient');
+        if (! $patient instanceof TelemedicinePatient) {
+            return 'Registrar consulta';
+        }
 
         return new HtmlString(
             '<div style="display: flex; flex-direction: column;">'.
@@ -821,7 +823,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                      * ----------------------------------------------------------------------------------------------------
                      *
                      * @record = Informacion de la consulta
+                     *
                      * @doctor = Informacion del doctor
+                     *
                      * @patient = Informacion del paciente
                      *
                      * * @version 1.0
@@ -832,7 +836,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     }
 
                     /** INGRESO A CLINICA */
-                    if($record['telemedicine_service_list_drift_id'] == 8) {
+                    if ($record['telemedicine_service_list_drift_id'] == 8) {
                         $registeredOperationCoordinationService = OperationCoordinationServiceController::createServiceEnterClinic($record, $doctor, $patient);
                     }
 
