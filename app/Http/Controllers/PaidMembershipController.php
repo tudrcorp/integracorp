@@ -466,11 +466,59 @@ class PaidMembershipController extends Controller
                 $data_afiliaciones = $record->affiliation->toArray();
 
                 $comisionAgent = 0;
+                $comisionSubAgent = 0;
                 $comisionAgencyMaster = 0;
                 $comisionAgencyGeneral = 0;
 
+                $agent_type = Agent::where('id', $data_afiliaciones['agent_id'])->first();
+
+                // 1.- Validamos que la venta sea hecha por un sub-agente
+                if ($data_afiliaciones['agent_id'] != null && $agent_type->agent_type_id == 3) {
+
+                    $comisionSubAgent = CommissionController::calculateCommissionSubAgente($data_afiliaciones['agent_id'], $record);
+                    Log::info('venta de sub-agente');
+
+                    // Guardamos el calculo en la tabla de comisiones
+                    $commission = new Commission;
+                    /**Datos principales de la tabla commission */
+                    $commission->code = $sales->invoice_number;
+                    $commission->sale_id = $sales->id;
+                    $commission->plan_id = $record->plan_id;
+                    $commission->coverage_id = $record->coverage_id;
+                    $commission->agent_id = $record->agent_id;
+                    $commission->code_agency = $record->code_agency;
+                    $commission->payment_frequency = $record->payment_frequency;
+                    $commission->affiliate_full_name = $record->affiliation->full_name_ti;
+                    $commission->pay_amount_usd = $record->pay_amount_usd;
+                    $commission->pay_amount_ves = $record->pay_amount_ves;
+                    $commission->amount = $record->total_amount;
+
+                    $commission->porcent_sub_agente = $comisionSubAgent['porcent_sub_agente'];
+                    $commission->commission_sub_agent_usd = $comisionSubAgent['porcentaje_sub_agente_usd'];
+                    $commission->commission_sub_agent_ves = $comisionSubAgent['porcentaje_sub_agente_ves'];
+
+                    $commission->porcent_agente = $comisionSubAgent['porcent_agente_superior'];
+                    $commission->commission_agent_usd = $comisionSubAgent['porcentaje_agente_superior_usd'];
+                    $commission->commission_agent_ves = $comisionSubAgent['porcentaje_agente_superior_ves'];
+
+                    $commission->porcent_agency_general = $comisionSubAgent['porcent_agencia_general'];
+                    $commission->commission_agency_general_usd = $comisionSubAgent['porcentaje_agencia_general_usd'];
+                    $commission->commission_agency_general_ves = $comisionSubAgent['porcentaje_agencia_general_ves'];
+
+                    $commission->porcent_agency_master = $comisionSubAgent['porcent_agencia_master'];
+                    $commission->commission_agency_master_usd = $comisionSubAgent['porcentaje_agencia_master_usd'];
+                    $commission->commission_agency_master_ves = $comisionSubAgent['porcentaje_agencia_master_ves'];
+
+                    // dd($commission);
+                    $commission->payment_method = $sales->payment_method;
+
+                    $commission->affiliation_code = $sales->affiliation_code;
+                    $commission->created_by = Auth::user()->name;
+                    $commission->save();
+                }
+
                 // 1.- Validamos que la venta sea hecha por un agente
-                if ($data_afiliaciones['agent_id'] != null) {
+                if ($data_afiliaciones['agent_id'] != null && $agent_type->agent_type_id == 2) {
 
                     $comisionAgent = CommissionController::calculateCommissionAgente($data_afiliaciones['agent_id'], $record);
                     Log::info('venta de agente');
@@ -1006,6 +1054,7 @@ class PaidMembershipController extends Controller
             }
 
         } catch (\Throwable $th) {
+
             SecurityAudit::log('AUDIT_PAYMENT_APPROVAL_FAILED', 'paid-membership.approve-payment', [
                 'paid_membership_id' => $record->id ?? null,
                 'error' => $th->getMessage(),

@@ -33,7 +33,12 @@ class Commission extends Model
         'commission_agent_ves',
         'porcent_agency_master',
         'payment_method',
-        
+
+        // Comisiones del sub-agente
+        'porcent_sub_agente',
+        'commission_sub_agent_usd',
+        'commission_sub_agent_ves',
+
     ];
 
     public function sale()
@@ -49,7 +54,7 @@ class Commission extends Model
     public function coverage()
     {
         return $this->belongsTo(Coverage::class);
-    }   
+    }
 
     public function agent()
     {
@@ -70,6 +75,4 @@ class Commission extends Model
     {
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
-
-    
 }
