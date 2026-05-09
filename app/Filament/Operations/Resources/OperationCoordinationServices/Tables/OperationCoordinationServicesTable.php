@@ -99,6 +99,7 @@ class OperationCoordinationServicesTable
                 'class' => 'fi-ambulance-tdg-doctor-modal overflow-hidden rounded-2xl ring-1 ring-gray-950/5 dark:ring-white/10',
             ], merge: true)
             ->closeModalByClickingAway(false)
+            // FORMULARIO PARA ASIGNAR EL MEDICO TDG
             ->form([
                 Grid::make(1)
                     ->schema([
@@ -112,12 +113,11 @@ class OperationCoordinationServicesTable
                                     ->placeholder('Escriba para filtrar por nombre o especialidad…')
                                     ->helperText('Se guarda en la orden y, si aplica, en el caso de telemedicina vinculado.')
                                     ->options(fn (): array => TelemedicineDoctor::query()
-                                        ->where('managed_by', 'TDG')
                                         ->where('status', 'ACTIVO')
                                         ->orderBy('full_name')
                                         ->get()
                                         ->mapWithKeys(fn (TelemedicineDoctor $doctor): array => [
-                                            $doctor->id => $doctor->full_name.' — '.($doctor->specialty ?? '—'),
+                                            $doctor->id => $doctor->full_name.' — '.($doctor->specialty ?? '—').' — '.$doctor->managed_by,
                                         ])
                                         ->all())
                                     ->searchable()
@@ -425,11 +425,11 @@ class OperationCoordinationServicesTable
 
                                                 return new HtmlString(
                                                     '<div class="rounded-xl border border-gray-200/90 bg-gray-50/95 px-4 py-3 dark:border-white/10 dark:bg-white/5">'
-                                                        . '<span class="text-lg font-bold tracking-tight text-gray-950 dark:text-white">US$ '
-                                                        . e(number_format($quote, 2, '.', ','))
-                                                        . '</span>'
-                                                        . '<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Vista previa; se confirma al guardar.</p>'
-                                                        . '</div>'
+                                                        .'<span class="text-lg font-bold tracking-tight text-gray-950 dark:text-white">US$ '
+                                                        .e(number_format($quote, 2, '.', ','))
+                                                        .'</span>'
+                                                        .'<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Vista previa; se confirma al guardar.</p>'
+                                                        .'</div>'
                                                 );
                                             })
                                             ->columnSpanFull(),

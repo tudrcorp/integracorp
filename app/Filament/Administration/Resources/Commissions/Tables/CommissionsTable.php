@@ -229,6 +229,35 @@ class CommissionsTable
                             ->numeric()),
                 ]),
 
+                ColumnGroup::make('COMISIONES SUB-AGENTE USD - VES')->columns([
+                    TextColumn::make('porcent_sub_agente')
+                        ->label('%')
+                        ->badge()
+                        ->color('info')
+                        ->suffix('%')
+                        ->numeric()
+                        ->sortable(),
+                    TextColumn::make('commission_sub_agent_usd')
+                        ->label('Pago USD')
+                        ->grow()
+                        ->badge()
+                        ->color('success')
+                        ->suffix(' US$')
+                        ->numeric()
+                        ->sortable(),
+                    TextColumn::make('commission_sub_agent_ves')
+                        ->label('Pago VES')
+                        ->grow()
+                        ->badge()
+                        ->suffix(' VES')
+                        ->numeric()
+                        ->sortable()
+                        ->summarize(Sum::make()
+                            ->label(('Subtotal VES'))
+                            ->suffix(' VES')
+                            ->numeric()),
+                ]),
+
                 ColumnGroup::make('TOTAL COMISIONES USD - VES')->columns([
                     CommissionMaster::make('commision_master')
                         ->label('Total USD')
@@ -236,6 +265,7 @@ class CommissionsTable
                     CommissionGeneral::make('commision_general')
                         ->label('Total VES')
                         ->alignCenter(),
+                        
                 ]),
 
             ])

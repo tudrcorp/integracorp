@@ -34,7 +34,9 @@ class TelemedicineDoctorForm
                                     ->placeholder('Ej: ANA MARIA PEREZ GARCIA')
                                     ->prefixIcon('heroicon-s-user')
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn (?string $state, callable $set): mixed => $set('full_name', Str::upper(trim((string) $state)))),
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('full_name', $state.toUpperCase());
+                                    JS),
                                 TextInput::make('nro_identificacion')
                                     ->label('Número de identificación')
                                     ->required()
@@ -118,7 +120,9 @@ class TelemedicineDoctorForm
                                     ->columnSpanFull()
                                     ->placeholder('Dirección completa del médico (consultorio o domicilio).')
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn (?string $state, callable $set): mixed => $set('address', Str::upper(trim((string) $state)))),
+                                    ->afterStateUpdatedJs(<<<'JS'
+                                        $set('address', $state.toUpperCase());
+                                    JS),
                             ])
                             ->columns(2),
                     ]),

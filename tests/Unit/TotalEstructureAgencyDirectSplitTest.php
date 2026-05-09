@@ -6,7 +6,7 @@ use App\Filament\Business\Resources\Agencies\Widgets\TotalEstructureAgency;
 use App\Models\Agency;
 
 it('clasifica ventas directas en bucket master cuando la agencia es master valida', function (): void {
-    $widget = new class extends TotalEstructureAgency
+    $widget = new class TotalEstructureAgencyDirectSplitTest TotalEstructureAgency
     {
         /**
          * @return array{0: float, 1: float}
@@ -29,7 +29,7 @@ it('clasifica ventas directas en bucket master cuando la agencia es master valid
 });
 
 it('clasifica ventas directas en bucket general cuando la agencia no es master valida', function (): void {
-    $widget = new class extends TotalEstructureAgency
+    $widget = new class TotalEstructureAgencyDirectSplitTest TotalEstructureAgency
     {
         /**
          * @return array{0: float, 1: float}

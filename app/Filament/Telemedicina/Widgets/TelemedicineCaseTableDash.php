@@ -310,6 +310,7 @@ class TelemedicineCaseTableDash extends TableWidget
                 ->success()
                 ->send();
         } catch (\Throwable $th) {
+            dd($th);
             Log::error($th->getMessage());
             Notification::make()
                 ->body('Ocurrió un error al registrar las observaciones.')

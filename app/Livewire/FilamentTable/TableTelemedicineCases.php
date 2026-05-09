@@ -2,28 +2,27 @@
 
 namespace App\Livewire\FilamentTable;
 
-use Livewire\Component;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use App\Models\TelemedicineCase;
-use Illuminate\Contracts\View\View;
-use Filament\Actions\BulkActionGroup;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Columns\ColumnGroup;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Actions\Contracts\HasActions;
-use Filament\Schemas\Contracts\HasSchemas;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Actions\Concerns\InteractsWithActions;
-use Filament\Schemas\Concerns\InteractsWithSchemas;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
+use App\Models\TelemedicineCase;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Livewire\Component;
 
 class TableTelemedicineCases extends Component implements HasActions, HasSchemas, HasTable
 {
     use InteractsWithActions;
-    use InteractsWithTable;
     use InteractsWithSchemas;
+    use InteractsWithTable;
 
     public $records = [];
 
@@ -47,13 +46,13 @@ class TableTelemedicineCases extends Component implements HasActions, HasSchemas
                     ->label('Fecha de Asiganción')
                     ->dateTime()
                     // ->description(fn (TelemedicineCase $record): string => $record->created_at->diffForHumans())
-                    ->description(fn(TelemedicineCase $record): string => $record->updated_at->diffForHumans())
+                    ->description(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
                 TextColumn::make('code')
                     ->label('Codigo:')
                     ->badge()
                     ->icon('healthicons-f-health-literacy')
-                    ->color('success')    
+                    ->color('success')
                     ->searchable(),
                 TextColumn::make('telemedicineDoctor.full_name')
                     ->label('Asignado a:')
@@ -63,24 +62,28 @@ class TableTelemedicineCases extends Component implements HasActions, HasSchemas
                     ->sortable(),
                 TextColumn::make('priority.name')
                     ->label('Prioridad:')
-                    ->default(fn (TelemedicineCase $record): string => $record->telemedicine_priority_id == NULL ? 'NO ASIGNADA' : $record->priority->name)
+                    ->default(fn (TelemedicineCase $record): string => $record->telemedicine_priority_id == null ? 'NO ASIGNADA' : $record->priority->name)
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'No Urgente'  => 'no-urgente',
-                            'Estándar'    => 'estandar',
-                            'Urgencia'    => 'urgencia',
-                            'Emergencia'  => 'emergencia',
-                            'Critico'     => 'critico',
+                            'No Urgente' => 'no-urgente',
+                            'Estándar' => 'estandar',
+                            'Urgencia' => 'urgencia',
+                            'Emergencia' => 'emergencia',
+                            'Critico' => 'critico',
+                            'NO ASIGNADA' => 'gray',
+                            default => 'gray',
                         };
                     })
                     ->icon(function (string $state): string {
                         return match ($state) {
-                            'No Urgente'  => 'healthicons-f-health',
-                            'Estándar'    => 'healthicons-f-health',
-                            'Urgencia'    => 'healthicons-f-health',
-                            'Emergencia'  => 'heroicon-c-shield-exclamation',
-                            'Critico'     => 'heroicon-c-shield-exclamation',
+                            'No Urgente' => 'healthicons-f-health',
+                            'Estándar' => 'healthicons-f-health',
+                            'Urgencia' => 'healthicons-f-health',
+                            'Emergencia' => 'heroicon-c-shield-exclamation',
+                            'Critico' => 'heroicon-c-shield-exclamation',
+                            'NO ASIGNADA' => 'heroicon-o-minus-circle',
+                            default => 'heroicon-o-minus-circle',
                         };
                     })
                     ->searchable()
@@ -108,8 +111,8 @@ class TableTelemedicineCases extends Component implements HasActions, HasSchemas
                         session()->forget('historyCasesToDetails');
                         session()->put('historyCasesToDetails', $record);
                         redirect()->route('filament.telemedicina.resources.telemedicine-cases.view', ['record' => $record->id]);
-                    })
-                    // ->url(fn (TelemedicineCase $record): string => TelemedicineCaseResource::getUrl('view', ['record' => $record->id])),
+                    }),
+                // ->url(fn (TelemedicineCase $record): string => TelemedicineCaseResource::getUrl('view', ['record' => $record->id])),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -117,7 +120,7 @@ class TableTelemedicineCases extends Component implements HasActions, HasSchemas
                 ]),
             ]);
     }
-    
+
     public function render()
     {
         return view('livewire.filament-table.table-telemedicine-cases');
