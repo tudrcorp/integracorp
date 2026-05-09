@@ -50,6 +50,7 @@ class TelemedicineConsultationPatientForm
         $case = session()->get('case');
         $patient = session()->get('patient');
         $consultation = session()->get('consultation');
+        $caseId = $case?->id;
         $defaultTelemedicineServiceListId = null;
         if ($consultation instanceof TelemedicineConsultationPatient) {
             if (filled($consultation->telemedicine_service_list_drift_id)) {
@@ -59,7 +60,9 @@ class TelemedicineConsultationPatientForm
             }
         }
         $isTelemedicineServiceListIdLocked = $defaultTelemedicineServiceListId !== null;
-        $countCase = TelemedicineConsultationPatient::where('telemedicine_case_id', $case->id)->count();
+        $countCase = filled($caseId)
+            ? TelemedicineConsultationPatient::where('telemedicine_case_id', $caseId)->count()
+            : 0;
         // ------------------------------------------------
 
         return $schema
