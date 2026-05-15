@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Filament\Business\Resources\Agents\Widgets\TotalForStateAgent;
 
-it('es un ChartWidget con vista dedicada para dona por estado', function () {
+it('es un ChartWidget con vista dedicada para barras por estado', function () {
     expect(class_exists(TotalForStateAgent::class))->toBeTrue()
         ->and(is_subclass_of(TotalForStateAgent::class, \Filament\Widgets\ChartWidget::class))->toBeTrue();
 
@@ -60,24 +60,18 @@ it('serializa opciones RawJs sin comillas dobles para no romper x-data en HTML',
     $options = $method->invoke($widget);
     $raw = $options->toHtml();
 
-    expect($raw)->not->toContain('"');
+    expect($raw)->not->toContain('"')
+        ->and($raw)->toContain('agentDetails')
+        ->and($raw)->toContain('${code} - ${name}')
+        ->and($raw)->toContain('Total:');
 });
 
-it('genera clave estable para wire:key según estado reactivo de tabla', function () {
+it('genera clave estable para wire:key sin depender del estado reactivo de tabla', function () {
     $widget = new TotalForStateAgent;
-    $widget->tableSearch = 'foo';
-    $widget->tableFilters = ['status' => ['value' => 'x']];
-    $widget->tableSort = 'name';
-    $widget->tableGrouping = null;
-    $widget->activeTab = null;
-    $widget->tableColumnSearches = [];
-    $widget->tableRecordsPerPage = 10;
-
     $a = $widget->getStateDistributionChartWireKey();
-
-    $widget->tableSearch = 'bar';
     $b = $widget->getStateDistributionChartWireKey();
 
-    expect($a)->not->toBe($b)
+    expect($a)->toBe($b)
+        ->and($a)->toStartWith('agent-state-bar-')
         ->and(strlen($a))->toBeGreaterThan(16);
 });

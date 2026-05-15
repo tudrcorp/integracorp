@@ -522,6 +522,193 @@
     filter: brightness(1.06);
   }
 
+  /**
+   * Listado helpdesk — botón «Tutorial de uso»: píldora blanca y contorno azul con halo muy ligero.
+   * No combinar con .ticket-btn-ios-shell: ese estilo fuerza border con !important y tapa el azul.
+   */
+  #helpdesk-tour-btn {
+    border-radius: 9999px !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 2px solid rgba(59, 130, 246, 0.58) !important;
+    box-shadow:
+      0 0 0 1px rgba(59, 130, 246, 0.16),
+      0 0 5px 1px rgba(59, 130, 246, 0.18),
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 3px 10px rgba(59, 130, 246, 0.12) !important;
+  }
+
+  #helpdesk-tour-btn:hover {
+    filter: brightness(1.02);
+    border-color: rgba(37, 99, 235, 0.68) !important;
+    box-shadow:
+      0 0 0 1px rgba(37, 99, 235, 0.22),
+      0 0 6px 2px rgba(59, 130, 246, 0.22),
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 3px 12px rgba(59, 130, 246, 0.15) !important;
+  }
+
+  #helpdesk-tour-btn:active {
+    filter: brightness(0.98);
+  }
+
+  #helpdesk-tour-btn .fi-btn-icon,
+  #helpdesk-tour-btn .fi-btn-icon svg,
+  #helpdesk-tour-btn svg {
+    color: #9ca3af !important;
+    stroke: currentColor !important;
+  }
+
+  .dark #helpdesk-tour-btn {
+    background: #1f2937 !important;
+    color: #f9fafb !important;
+    border-color: rgba(96, 165, 250, 0.58) !important;
+    box-shadow:
+      0 0 0 1px rgba(96, 165, 250, 0.18),
+      0 0 6px 2px rgba(96, 165, 250, 0.18),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 3px 12px rgba(96, 165, 250, 0.16) !important;
+  }
+
+  .dark #helpdesk-tour-btn:hover {
+    border-color: rgba(147, 197, 253, 0.72) !important;
+    box-shadow:
+      0 0 0 1px rgba(147, 197, 253, 0.22),
+      0 0 7px 2px rgba(96, 165, 250, 0.22),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 3px 14px rgba(96, 165, 250, 0.2) !important;
+  }
+
+  .dark #helpdesk-tour-btn .fi-btn-icon,
+  .dark #helpdesk-tour-btn .fi-btn-icon svg,
+  .dark #helpdesk-tour-btn svg {
+    color: #9ca3af !important;
+  }
+
+  /**
+   * Business helpdesk — «Video tutorial»: contorno verde (misma píldora que el tour).
+   */
+  #helpdesk-video-tutorial-btn {
+    border-radius: 9999px !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 2px solid rgba(22, 163, 74, 0.62) !important;
+    box-shadow:
+      0 0 0 1px rgba(22, 163, 74, 0.14),
+      0 0 5px 1px rgba(22, 163, 74, 0.16),
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 3px 10px rgba(22, 163, 74, 0.1) !important;
+  }
+
+  #helpdesk-video-tutorial-btn:hover {
+    filter: brightness(1.02);
+    border-color: rgba(21, 128, 61, 0.75) !important;
+    box-shadow:
+      0 0 0 1px rgba(21, 128, 61, 0.2),
+      0 0 6px 2px rgba(22, 163, 74, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 3px 12px rgba(22, 163, 74, 0.14) !important;
+  }
+
+  #helpdesk-video-tutorial-btn:active {
+    filter: brightness(0.98);
+  }
+
+  #helpdesk-video-tutorial-btn .fi-btn-icon,
+  #helpdesk-video-tutorial-btn .fi-btn-icon svg,
+  #helpdesk-video-tutorial-btn svg {
+    color: #9ca3af !important;
+    stroke: currentColor !important;
+  }
+
+  .dark #helpdesk-video-tutorial-btn {
+    background: #1f2937 !important;
+    color: #f9fafb !important;
+    border-color: rgba(74, 222, 128, 0.58) !important;
+    box-shadow:
+      0 0 0 1px rgba(74, 222, 128, 0.16),
+      0 0 6px 2px rgba(74, 222, 128, 0.16),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 3px 12px rgba(74, 222, 128, 0.14) !important;
+  }
+
+  .dark #helpdesk-video-tutorial-btn:hover {
+    border-color: rgba(134, 239, 172, 0.72) !important;
+    box-shadow:
+      0 0 0 1px rgba(134, 239, 172, 0.2),
+      0 0 7px 2px rgba(74, 222, 128, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 3px 14px rgba(74, 222, 128, 0.18) !important;
+  }
+
+  .dark #helpdesk-video-tutorial-btn .fi-btn-icon,
+  .dark #helpdesk-video-tutorial-btn .fi-btn-icon svg,
+  .dark #helpdesk-video-tutorial-btn svg {
+    color: #9ca3af !important;
+  }
+
+  /**
+   * Business helpdesk — «Flujo del proceso»: contorno amarillo / ámbar.
+   */
+  #helpdesk-flow-process-btn {
+    border-radius: 9999px !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 2px solid rgba(202, 138, 4, 0.65) !important;
+    box-shadow:
+      0 0 0 1px rgba(202, 138, 4, 0.16),
+      0 0 5px 1px rgba(234, 179, 8, 0.18),
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 3px 10px rgba(234, 179, 8, 0.12) !important;
+  }
+
+  #helpdesk-flow-process-btn:hover {
+    filter: brightness(1.02);
+    border-color: rgba(161, 98, 7, 0.78) !important;
+    box-shadow:
+      0 0 0 1px rgba(161, 98, 7, 0.22),
+      0 0 6px 2px rgba(234, 179, 8, 0.22),
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 3px 12px rgba(234, 179, 8, 0.16) !important;
+  }
+
+  #helpdesk-flow-process-btn:active {
+    filter: brightness(0.98);
+  }
+
+  #helpdesk-flow-process-btn .fi-btn-icon,
+  #helpdesk-flow-process-btn .fi-btn-icon svg,
+  #helpdesk-flow-process-btn svg {
+    color: #9ca3af !important;
+    stroke: currentColor !important;
+  }
+
+  .dark #helpdesk-flow-process-btn {
+    background: #1f2937 !important;
+    color: #f9fafb !important;
+    border-color: rgba(250, 204, 21, 0.58) !important;
+    box-shadow:
+      0 0 0 1px rgba(250, 204, 21, 0.18),
+      0 0 6px 2px rgba(250, 204, 21, 0.18),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 3px 12px rgba(250, 204, 21, 0.14) !important;
+  }
+
+  .dark #helpdesk-flow-process-btn:hover {
+    border-color: rgba(253, 224, 71, 0.75) !important;
+    box-shadow:
+      0 0 0 1px rgba(253, 224, 71, 0.22),
+      0 0 7px 2px rgba(250, 204, 21, 0.22),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 3px 14px rgba(250, 204, 21, 0.18) !important;
+  }
+
+  .dark #helpdesk-flow-process-btn .fi-btn-icon,
+  .dark #helpdesk-flow-process-btn .fi-btn-icon svg,
+  .dark #helpdesk-flow-process-btn svg {
+    color: #9ca3af !important;
+  }
+
   /*
    * Misma forma que ticket-btn-ios pero usando la paleta primary del tema Filament
    * (--primary-400 / --primary-600, etc.). Así luce igual que el verde pero con el azul/tema del panel.

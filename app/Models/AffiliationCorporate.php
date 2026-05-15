@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AffiliationCorporate extends Model
@@ -111,6 +112,11 @@ class AffiliationCorporate extends Model
         return $this->hasMany(PaidMembershipCorporate::class);
     }
 
+    public function affiliationCorporateDocuments(): HasMany
+    {
+        return $this->hasMany(AffiliationCorporateDocument::class);
+    }
+
     public function status_log_corporate_affiliations()
     {
         return $this->hasMany(StatusLogAffiliationCorporate::class);
@@ -149,5 +155,15 @@ class AffiliationCorporate extends Model
     public function agency()
     {
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
+    }
+
+    public function businessUnit(): BelongsTo
+    {
+        return $this->belongsTo(BusinessUnit::class);
+    }
+
+    public function businessLine(): BelongsTo
+    {
+        return $this->belongsTo(BusinessLine::class);
     }
 }

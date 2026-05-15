@@ -2,10 +2,12 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\Tables;
 
+use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationFolderForm;
 use App\Http\Controllers\NotificationController;
 use App\Jobs\SendNotificationMasive;
 use App\Jobs\SendNotificationMasiveEmail;
 use App\Models\DataNotification;
+use App\Models\MassNotificationFolder;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -225,5 +227,28 @@ class MassNotificationsTable
         $count = DataNotification::where('mass_notification_id', $record->id)->count();
 
         return $count;
+    }
+
+    public static function makeCreateFolderAction(): Action
+    {
+        return Action::make('create_mass_notification_folder')
+            ->label('Crear carpeta')
+            ->icon('heroicon-o-folder-plus')
+            ->modalHeading('Crear carpeta')
+            ->modalDescription('Organiza tus notificaciones masivas en carpetas. Podrás abrirlas desde el listado principal.')
+            ->modalSubmitActionLabel('Guardar carpeta')
+            ->modalWidth('3xl')
+            ->form(MassNotificationFolderForm::createComponents())
+            ->action(function (array $data): void {
+                MassNotificationFolder::query()->create([
+                    'name' => trim($data['name']),
+                    'is_default' => false,
+                ]);
+
+                Notification::make()
+                    ->title('Carpeta creada')
+                    ->success()
+                    ->send();
+            });
     }
 }

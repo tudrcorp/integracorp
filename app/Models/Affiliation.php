@@ -200,6 +200,11 @@ class Affiliation extends Model
         return $this->hasMany(AffiliationIndividualDocument::class);
     }
 
+    public function affiliationDocuments(): HasMany
+    {
+        return $this->hasMany(AffiliationDocument::class);
+    }
+
     public function sendTarjetaAfiliacion($details)
     {
         /**

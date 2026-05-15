@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\Helpdesks\Tables;
 
 use App\Filament\Operations\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Operations\Resources\Helpdesks\HelpdeskResource;
+use App\Http\Controllers\HelpdeskExportCsvController;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Support\HelpdeskDocumentPaths;
@@ -11,13 +12,16 @@ use App\Support\HelpdeskTimelineBuilder;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Js;
 
@@ -236,6 +240,26 @@ class HelpdesksTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un ticket')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = HelpdeskExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('operations.helpdesks.export-csv', ['token' => $token]);
+                        }),
                     // DeleteBulkAction::make(),
                 ]),
             ]);
