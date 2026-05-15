@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class AffiliationCorporate extends Model
 {
@@ -45,18 +44,18 @@ class AffiliationCorporate extends Model
         'poblation',
         'activated_at',
 
-        //...Unidad de Negocio y linea de servicio
+        // ...Unidad de Negocio y linea de servicio
         'business_unit_id',
         'business_line_id',
         'ownerAccountManagers',
 
-        //PROVEEDORRES DE SERVICIOS
+        // PROVEEDORRES DE SERVICIOS
         'service_providers',
 
-        //...Fecha de Vigencia de la afiliacion
+        // ...Fecha de Vigencia de la afiliacion
         'effective_date',
 
-        //Unidades e Negocio y Lineas de Servicio
+        // Unidades e Negocio y Lineas de Servicio
         'business_unit_id',
         'business_line_id',
     ];
@@ -83,6 +82,18 @@ class AffiliationCorporate extends Model
     public function corporateAffiliates()
     {
         return $this->hasMany(AffiliateCorporate::class);
+    }
+
+    /**
+     * Cobranzas asociadas al código de afiliación corporativa (`collections.affiliation_code`).
+     *
+     * @return HasMany<\App\Models\Collection, $this>
+     */
+    public function billingCollections(): HasMany
+    {
+        return $this->hasMany(Collection::class, 'affiliation_code', 'code')
+            ->orderByRaw('COALESCE(next_payment_date, expiration_date) ASC')
+            ->orderBy('id');
     }
 
     public function coverage()
@@ -139,7 +150,4 @@ class AffiliationCorporate extends Model
     {
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
-    
-
-    
 }

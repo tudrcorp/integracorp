@@ -1,7 +1,11 @@
 <?php
 
+use App\Http\Controllers\AdministrationAgencyReportsExportController;
+use App\Http\Controllers\AdministrationAgentReportsExportController;
 use App\Http\Controllers\AffiliationBusinessDocumentsController;
 use App\Http\Controllers\AffiliationCorporateBusinessDocumentsController;
+use App\Http\Controllers\AffiliationCorporateFichaPdfController;
+use App\Http\Controllers\AffiliationFichaPdfController;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\Business\CorporateAgendaInvitationResponseController;
 use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
@@ -197,6 +201,30 @@ Route::get('business/agencies/{agency}/ficha-pdf/preview', [BusinessAgencyFichaP
 Route::get('business/agencies/{agency}/ficha-pdf/download', [BusinessAgencyFichaPdfController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('business.agencies.ficha-pdf.download');
+
+Route::get('administration/affiliation-corporates/{affiliationCorporate}/ficha/preview', [AffiliationCorporateFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliation-corporates.ficha.preview');
+
+Route::get('administration/affiliation-corporates/{affiliationCorporate}/ficha/download', [AffiliationCorporateFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliation-corporates.ficha.download');
+
+Route::get('administration/affiliations/{affiliation}/ficha/preview', [AffiliationFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliations.ficha.preview');
+
+Route::get('administration/affiliations/{affiliation}/ficha/download', [AffiliationFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliations.ficha.download');
+
+Route::get('administration/agencies/reports/export', AdministrationAgencyReportsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.agencies.reports.export');
+
+Route::get('administration/agents/reports/export', AdministrationAgentReportsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.agents.reports.export');
 
 Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record) {
     $isPreview = request()->boolean('preview');

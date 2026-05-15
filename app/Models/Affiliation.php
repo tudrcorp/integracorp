@@ -2,18 +2,15 @@
 
 namespace App\Models;
 
-use App\Mail\CertificateEmail;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Jobs\SendTarjetaAfiliado;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Database\Eloquent\Model;
-use Filament\Notifications\Notification;
 use App\Jobs\SendNotificacionAfiliacionIndividual;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Jobs\SendTarjetaAfiliado;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class Affiliation extends Model
 {
@@ -26,14 +23,14 @@ class Affiliation extends Model
         'owner_code',
         'owner_agent',
         'plan_id',
-        
+
         /** Datos del pagador */
         'full_name_payer',
         'nro_identificacion_payer',
         'phone_payer',
         'email_payer',
         'relationship_payer',
-        
+
         /** Datos del titular */
         'full_name_ti',
         'nro_identificacion_ti',
@@ -48,7 +45,6 @@ class Affiliation extends Model
         'phone_ti',
         'email_ti',
 
-        
         'cuestion_1',
         'cuestion_2',
         'cuestion_3',
@@ -66,7 +62,7 @@ class Affiliation extends Model
         'cuestion_15',
         'cuestion_16',
         'observations_cuestions',
-        
+
         'full_name_applicant',
         'signature_applicant',
         'nro_identificacion_applicant',
@@ -82,7 +78,7 @@ class Affiliation extends Model
         'observations_payment',
         'fee_anual',
 
-        //despues de afiliar el poago
+        // despues de afiliar el poago
         'payment_frequency',
         'coverage_id',
         'activated_at',
@@ -93,23 +89,23 @@ class Affiliation extends Model
         'feedback',
         'feedback_dos',
 
-        //...Unidad de Negocio y linea de servicio
+        // ...Unidad de Negocio y linea de servicio
         'business_unit_id',
         'business_line_id',
         'ownerAccountManagers',
 
-        //PROVEEDORRES DE SERVICIOS
+        // PROVEEDORRES DE SERVICIOS
         'service_providers',
 
-        //...Fecha de Vigencia de la afiliacion
+        // ...Fecha de Vigencia de la afiliacion
         'effective_date',
 
-        //...Aliado de Servicio NIVEL 1
+        // ...Aliado de Servicio NIVEL 1
         'aliado_1_name',
         'date_init_aliado_1',
         'date_end_aliado_1',
         'vaucher_aliado_1',
-        
+
     ];
 
     /**
@@ -147,7 +143,6 @@ class Affiliation extends Model
         return $this->belongsTo(Region::class);
     }
 
-
     public function agent()
     {
         return $this->belongsTo(Agent::class);
@@ -166,6 +161,18 @@ class Affiliation extends Model
     public function affiliates()
     {
         return $this->hasMany(Affiliate::class);
+    }
+
+    /**
+     * Cobranzas asociadas al código de afiliación (`collections.affiliation_code`).
+     *
+     * @return HasMany<\App\Models\Collection, $this>
+     */
+    public function billingCollections(): HasMany
+    {
+        return $this->hasMany(Collection::class, 'affiliation_code', 'code')
+            ->orderByRaw('COALESCE(next_payment_date, expiration_date) ASC')
+            ->orderBy('id');
     }
 
     public function coverage()
@@ -219,9 +226,10 @@ class Affiliation extends Model
     /**
      * Funcion para enviar el certificado de afiliacion
      * cuando se registra mas de un afiliado
-     * 
+     *
      * @param [type] $record
-     * @return void 
+     * @return void
+     *
      * @version 1.0
      */
     public function sendCertificate($record, $afiliates)
@@ -230,29 +238,28 @@ class Affiliation extends Model
         try {
 
             $pagador = [
-                'name'                  => $record->full_name_payer,
-                'code'                  => $record->code,
-                'tarifa_anual'          => $record->fee_anual,
-                'plan'                  => $record->plan->description,
-                'plan_id'               => $record->plan_id,
-                'frecuencia_pago'       => $record->payment_frequency,
-                'cobertura'            => isset($record->coverage_id) ? $record->coverage->price : 0,
-                'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
-                'tarifa_periodo'        => $record->total_amount,
+                'name' => $record->full_name_payer,
+                'code' => $record->code,
+                'tarifa_anual' => $record->fee_anual,
+                'plan' => $record->plan->description,
+                'plan_id' => $record->plan_id,
+                'frecuencia_pago' => $record->payment_frequency,
+                'cobertura' => isset($record->coverage_id) ? $record->coverage->price : 0,
+                'fecha_afiliacion' => $record->created_at->format('d/m/Y'),
+                'tarifa_periodo' => $record->total_amount,
             ];
 
-            //Validamos si la afiliacionn la realizo un agente o una agencia
+            // Validamos si la afiliacionn la realizo un agente o una agencia
             if (isset($record->agent)) {
                 $pagador['agente_agencia'] = $record->agent->name;
-            }else{
+            } else {
                 $pagador['agente_agencia'] = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
             }
 
-            
-            //Nombre del PDF
-            $name_pdf = 'CER-' . $record->code . '.pdf';
-            
-            //Beneficios asociados al plan
+            // Nombre del PDF
+            $name_pdf = 'CER-'.$record->code.'.pdf';
+
+            // Beneficios asociados al plan
             $beneficios = $record->plan->benefitPlans->toArray();
             $beneficios_table = [];
             for ($i = 0; $i < count($beneficios); $i++) {
@@ -261,24 +268,25 @@ class Affiliation extends Model
             // dd($beneficios_table, $pagador,$afiliates);
 
             SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user())->onQueue('certificates');
-            //code...
+            // code...
 
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
             Notification::make()
                 ->title('Falla al enviar el certificado')
                 ->danger();
-                
-            //throw $th;
+
+            // throw $th;
         }
     }
 
     /**
      * Funcion para enviar el certificado de afiliacion
      * cuando se registra un afiliado
-     * 
+     *
      * @param [type] $record
-     * @return void 
+     * @return void
+     *
      * @version 1.0
      */
     public function sendCertificateOnlyHolder($record, $afiliates)
@@ -287,32 +295,31 @@ class Affiliation extends Model
         try {
 
             $pagador = [
-                'name'                  => $record->full_name_payer,
-                'code'                  => $record->code,
-                'tarifa_anual'          => $record->fee_anual,
-                'plan'                  => $record->plan->description,
-                'plan_id'               => $record->plan_id,
-                'frecuencia_pago'       => $record->payment_frequency,
-                'cobertura'            => isset($record->coverage_id) ? $record->coverage->price : 0,
-                'fecha_afiliacion'      => $record->created_at->format('d/m/Y'),
-                'tarifa_periodo'        => $record->total_amount,
+                'name' => $record->full_name_payer,
+                'code' => $record->code,
+                'tarifa_anual' => $record->fee_anual,
+                'plan' => $record->plan->description,
+                'plan_id' => $record->plan_id,
+                'frecuencia_pago' => $record->payment_frequency,
+                'cobertura' => isset($record->coverage_id) ? $record->coverage->price : 0,
+                'fecha_afiliacion' => $record->created_at->format('d/m/Y'),
+                'tarifa_periodo' => $record->total_amount,
             ];
 
-            //Validamos si la afiliacionn la realizo un agente o una agencia
+            // Validamos si la afiliacionn la realizo un agente o una agencia
             if (isset($record->agent)) {
                 $pagador['agente_agencia'] = $record->agent->name;
             } else {
                 $pagador['agente_agencia'] = isset($record->agency->name_corporative) ? $record->agency->name_corporative : 'TuDrEnCasa';
             }
 
+            // Nombre del PDF
+            $name_pdf = 'CER-'.$record->code.'.pdf';
 
-            //Nombre del PDF
-            $name_pdf = 'CER-' . $record->code . '.pdf';
-
-            //Beneficios asociados al plan
+            // Beneficios asociados al plan
             $beneficios = $record->plan->benefitPlans->toArray();
             $beneficios_table = [];
-            
+
             for ($i = 0; $i < count($beneficios); $i++) {
                 $beneficios_table[$i] = $beneficios[$i]['description'];
             }
@@ -320,13 +327,10 @@ class Affiliation extends Model
             // dd($beneficios_table, $pagador,$afiliates);
 
             SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user())->onQueue('certificates');
-            //code...
+            // code...
         } catch (\Throwable $th) {
             dd($th);
-            //throw $th;
+            // throw $th;
         }
     }
-
-    
-    
 }
