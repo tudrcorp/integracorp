@@ -1,33 +1,117 @@
-<div class="space-y-4">
-    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {{ $doctorNurseLabel }}
-        </div>
-        <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Puedes abrir la vista previa en una pestaña nueva o descargar el PDF.
-        </div>
-    </div>
+@props([
+    'pdfPreviewUrl' => null,
+    'pdfDownloadUrl' => null,
+    'doctorNurseLabel' => null,
+])
 
-    <div class="flex flex-wrap gap-2">
-        <a
-            href="{{ $pdfPreviewUrl }}"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 active:scale-[0.98]"
+<div class="fi-scoped space-y-5" wire:ignore.self>
+    <div
+        class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70"
+    >
+        <div
+            class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/80 px-4 py-3 dark:border-white/10"
         >
-            <x-heroicon-o-document class="h-4 w-4"/>
-            Vista previa
-        </a>
+            <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">Ficha técnica</p>
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Vista previa del PDF</p>
+                @if (filled($doctorNurseLabel))
+                    <p class="mt-0.5 max-w-md truncate text-xs text-gray-500 dark:text-gray-400" title="{{ $doctorNurseLabel }}">
+                        {{ $doctorNurseLabel }}
+                    </p>
+                @endif
+            </div>
+            <span
+                class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
+            >
+                PDF
+            </span>
+        </div>
 
-        <a
-            href="{{ $pdfDownloadUrl }}"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.98]"
+        <div
+            class="bg-gray-50/80 p-3 dark:bg-gray-950/60"
+            wire:ignore
         >
-            <x-heroicon-o-arrow-down-tray class="h-4 w-4"/>
-            Descargar PDF
-        </a>
+            <div
+                class="relative min-h-[min(72vh,820px)]"
+                x-data="{ pdfPreviewLoading: true }"
+                x-init="$nextTick(() => {
+                    const iframe = $refs.pdfPreview;
+                    if (!iframe) {
+                        return;
+                    }
+                    const done = () => { pdfPreviewLoading = false };
+                    const safetyMs = 120000;
+                    const t = setTimeout(done, safetyMs);
+                    iframe.addEventListener(
+                        'load',
+                        () => {
+                            clearTimeout(t);
+                            done();
+                        },
+                        { once: true },
+                    );
+                })"
+            >
+                <div
+                    x-show="pdfPreviewLoading"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/95 px-6 text-center shadow-inner dark:bg-gray-950/95"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <svg
+                        class="h-10 w-10 shrink-0 animate-spin text-emerald-600 dark:text-emerald-400"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                    </svg>
+                    <div class="max-w-sm space-y-1">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            Generando la ficha en PDF...
+                        </p>
+                        <p class="text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                            Estamos generando el documento. La primera vez puede tardar más; las siguientes suelen abrir al instante mientras no cambien los datos del proveedor natural.
+                        </p>
+                    </div>
+                </div>
+                <iframe
+                    x-ref="pdfPreview"
+                    title="Vista previa ficha del proveedor natural"
+                    src="{{ $pdfPreviewUrl }}#toolbar=1"
+                    class="relative z-0 h-[min(72vh,820px)] w-full rounded-2xl border-0 bg-white dark:bg-gray-900"
+                ></iframe>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200/80 px-4 py-3 dark:border-white/10">
+            <a
+                href="{{ $pdfPreviewUrl }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+                Abrir en pestaña
+            </a>
+            <a
+                href="{{ $pdfDownloadUrl }}"
+                class="inline-flex items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
+            >
+                Descargar PDF
+            </a>
+        </div>
     </div>
 </div>
 

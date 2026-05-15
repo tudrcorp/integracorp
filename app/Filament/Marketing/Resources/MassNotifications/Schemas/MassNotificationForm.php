@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\Schemas;
 
+use App\Models\MassNotificationFolder;
 use Carbon\Carbon;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -28,6 +29,25 @@ class MassNotificationForm
                             Section::make('Status')
                                 ->heading('Información Previa')
                                 ->schema([
+                                    Select::make('mass_notification_folder_id')
+                                        ->label('Guardar en carpeta')
+                                        ->relationship(
+                                            name: 'folder',
+                                            titleAttribute: 'name',
+                                            modifyQueryUsing: fn ($query) => $query->orderByDesc('is_default')->orderBy('name'),
+                                        )
+                                        ->required()
+                                        ->preload()
+                                        ->searchable()
+                                        ->helperText('Elige la carpeta donde se guardará esta notificación. Por defecto se sugiere «Sin organizar».')
+                                        ->default(function (): ?int {
+                                            $fromQuery = request()->integer('folderId');
+                                            if ($fromQuery !== 0 && MassNotificationFolder::query()->whereKey($fromQuery)->exists()) {
+                                                return $fromQuery;
+                                            }
+
+                                            return MassNotificationFolder::query()->where('is_default', true)->value('id');
+                                        }),
                                     TextInput::make('title')
                                         ->label('Titulo de la notificación')
                                         ->helperText('Este campo es necesario para identificar la notificación y ser visible para asociarla a los destinatarios.')

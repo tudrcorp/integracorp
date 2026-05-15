@@ -2,26 +2,24 @@
 
 namespace App\Filament\General\Resources\Agents\Schemas;
 
-use App\Models\City;
-use App\Models\Agent;
-use App\Models\State;
 use App\Models\Agency;
-use App\Models\Region;
+use App\Models\Agent;
+use App\Models\City;
 use App\Models\Country;
-use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Region;
+use App\Models\State;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AgentForm
 {
@@ -50,7 +48,7 @@ class AgentForm
                             ->options(Agent::select('name', 'id', 'status', 'agent_type_id', 'owner_code')->where('agent_type_id', 2)->where('status', 'ACTIVO')->where('owner_code', Auth::user()->code_agency)->pluck('name', 'id'))
                             ->searchable()
                             ->live()
-                            ->hidden(fn(Get $get) => $get('agent_type_id') == 2)
+                            ->hidden(fn (Get $get) => $get('agent_type_id') == 2)
                             ->preload()
                             ->helperText('Esta lista despliega solo los agentes activos'),
                         Hidden::make('created_by')->default(Auth::user()->name),
@@ -91,8 +89,8 @@ class AgentForm
                                 column: 'rif',
                             )
                             ->validationMessages([
-                                'unique'    => 'El RIF ya se encuentra registrado.',
-                                'numeric'   => 'El campo es numerico',
+                                'unique' => 'El RIF ya se encuentra registrado.',
+                                'numeric' => 'El campo es numerico',
                             ]),
                         TextInput::make('ci')
                             ->label('Cedula de Identidad')
@@ -105,8 +103,8 @@ class AgentForm
                             )
                             ->required()
                             ->validationMessages([
-                                'unique'    => 'El RIF ya se encuentra registrado.',
-                                'numeric'   => 'El campo es numerico',
+                                'unique' => 'El RIF ya se encuentra registrado.',
+                                'numeric' => 'El campo es numerico',
                             ]),
 
                         Select::make('sex')
@@ -120,7 +118,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
 
@@ -130,7 +128,7 @@ class AgentForm
                             ->displayFormat('d/m/Y')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ]),
 
                         DatePicker::make('company_init_date')
@@ -149,9 +147,9 @@ class AgentForm
                                 column: 'email',
                             )
                             ->validationMessages([
-                                'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
-                                'required'  => 'Campo requerido',
-                                'email'     => 'El campo es un email',
+                                'unique' => 'El Correo Electrónico ya se encuentra registrado.',
+                                'required' => 'Campo requerido',
+                                'email' => 'El campo es un email',
                             ])
                             ->maxLength(255),
                         TextInput::make('address')
@@ -163,30 +161,30 @@ class AgentForm
                             ->prefixIcon('heroicon-s-identification')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->maxLength(255),
                         Select::make('country_code')
                             ->label('Código de país')
                             ->options([
-                                '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                '+49'  => '🇩🇪 +49 (Alemania)',
-                                '+33'  => '🇫🇷 +33 (Francia)',
-                                '+34'  => '🇪🇸 +34 (España)',
-                                '+39'  => '🇮🇹 +39 (Italia)',
-                                '+7'   => '🇷🇺 +7 (Rusia)',
-                                '+55'  => '🇧🇷 +55 (Brasil)',
-                                '+91'  => '🇮🇳 +91 (India)',
-                                '+86'  => '🇨🇳 +86 (China)',
-                                '+81'  => '🇯🇵 +81 (Japón)',
-                                '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                '+52'  => '🇲🇽 +52 (México)',
-                                '+58'  => '🇻🇪 +58 (Venezuela)',
-                                '+57'  => '🇨🇴 +57 (Colombia)',
-                                '+54'  => '🇦🇷 +54 (Argentina)',
-                                '+56'  => '🇨🇱 +56 (Chile)',
-                                '+51'  => '🇵🇪 +51 (Perú)',
+                                '+1' => '🇺🇸 +1 (Estados Unidos)',
+                                '+44' => '🇬🇧 +44 (Reino Unido)',
+                                '+49' => '🇩🇪 +49 (Alemania)',
+                                '+33' => '🇫🇷 +33 (Francia)',
+                                '+34' => '🇪🇸 +34 (España)',
+                                '+39' => '🇮🇹 +39 (Italia)',
+                                '+7' => '🇷🇺 +7 (Rusia)',
+                                '+55' => '🇧🇷 +55 (Brasil)',
+                                '+91' => '🇮🇳 +91 (India)',
+                                '+86' => '🇨🇳 +86 (China)',
+                                '+81' => '🇯🇵 +81 (Japón)',
+                                '+82' => '🇰🇷 +82 (Corea del Sur)',
+                                '+52' => '🇲🇽 +52 (México)',
+                                '+58' => '🇻🇪 +58 (Venezuela)',
+                                '+57' => '🇨🇴 +57 (Colombia)',
+                                '+54' => '🇦🇷 +54 (Argentina)',
+                                '+56' => '🇨🇱 +56 (Chile)',
+                                '+51' => '🇵🇪 +51 (Perú)',
                                 '+502' => '🇬🇹 +502 (Guatemala)',
                                 '+503' => '🇸🇻 +503 (El Salvador)',
                                 '+504' => '🇭🇳 +504 (Honduras)',
@@ -197,34 +195,34 @@ class AgentForm
                                 '+592' => '🇬🇾 +592 (Guyana)',
                                 '+591' => '🇧🇴 +591 (Bolivia)',
                                 '+598' => '🇺🇾 +598 (Uruguay)',
-                                '+20'  => '🇪🇬 +20 (Egipto)',
-                                '+27'  => '🇿🇦 +27 (Sudáfrica)',
+                                '+20' => '🇪🇬 +20 (Egipto)',
+                                '+27' => '🇿🇦 +27 (Sudáfrica)',
                                 '+234' => '🇳🇬 +234 (Nigeria)',
                                 '+212' => '🇲🇦 +212 (Marruecos)',
                                 '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                '+92'  => '🇵🇰 +92 (Pakistán)',
+                                '+92' => '🇵🇰 +92 (Pakistán)',
                                 '+880' => '🇧🇩 +880 (Bangladesh)',
-                                '+62'  => '🇮🇩 +62 (Indonesia)',
-                                '+63'  => '🇵🇭 +63 (Filipinas)',
-                                '+66'  => '🇹🇭 +66 (Tailandia)',
-                                '+60'  => '🇲🇾 +60 (Malasia)',
-                                '+65'  => '🇸🇬 +65 (Singapur)',
-                                '+61'  => '🇦🇺 +61 (Australia)',
-                                '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                '+90'  => '🇹🇷 +90 (Turquía)',
+                                '+62' => '🇮🇩 +62 (Indonesia)',
+                                '+63' => '🇵🇭 +63 (Filipinas)',
+                                '+66' => '🇹🇭 +66 (Tailandia)',
+                                '+60' => '🇲🇾 +60 (Malasia)',
+                                '+65' => '🇸🇬 +65 (Singapur)',
+                                '+61' => '🇦🇺 +61 (Australia)',
+                                '+64' => '🇳🇿 +64 (Nueva Zelanda)',
+                                '+90' => '🇹🇷 +90 (Turquía)',
                                 '+375' => '🇧🇾 +375 (Bielorrusia)',
                                 '+372' => '🇪🇪 +372 (Estonia)',
                                 '+371' => '🇱🇻 +371 (Letonia)',
                                 '+370' => '🇱🇹 +370 (Lituania)',
-                                '+48'  => '🇵🇱 +48 (Polonia)',
-                                '+40'  => '🇷🇴 +40 (Rumania)',
-                                '+46'  => '🇸🇪 +46 (Suecia)',
-                                '+47'  => '🇳🇴 +47 (Noruega)',
-                                '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                '+41'  => '🇨🇭 +41 (Suiza)',
-                                '+43'  => '🇦🇹 +43 (Austria)',
-                                '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                '+32'  => '🇧🇪 +32 (Bélgica)',
+                                '+48' => '🇵🇱 +48 (Polonia)',
+                                '+40' => '🇷🇴 +40 (Rumania)',
+                                '+46' => '🇸🇪 +46 (Suecia)',
+                                '+47' => '🇳🇴 +47 (Noruega)',
+                                '+45' => '🇩🇰 +45 (Dinamarca)',
+                                '+41' => '🇨🇭 +41 (Suiza)',
+                                '+43' => '🇦🇹 +43 (Austria)',
+                                '+31' => '🇳🇱 +31 (Países Bajos)',
+                                '+32' => '🇧🇪 +32 (Bélgica)',
                                 '+353' => '🇮🇪 +353 (Irlanda)',
                                 '+375' => '🇧🇾 +375 (Bielorrusia)',
                                 '+380' => '🇺🇦 +380 (Ucrania)',
@@ -232,7 +230,7 @@ class AgentForm
                                 '+995' => '🇬🇪 +995 (Georgia)',
                                 '+976' => '🇲🇳 +976 (Mongolia)',
                                 '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                '+84'  => '🇻🇳 +84 (Vietnam)',
+                                '+84' => '🇻🇳 +84 (Vietnam)',
                                 '+856' => '🇱🇦 +856 (Laos)',
                                 '+374' => '🇦🇲 +374 (Armenia)',
                                 '+965' => '🇰🇼 +965 (Kuwait)',
@@ -248,7 +246,7 @@ class AgentForm
                             ->required()
                             ->live(onBlur: true)
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->hiddenOn('edit'),
                         TextInput::make('phone')
@@ -257,14 +255,14 @@ class AgentForm
                             ->label('Número de teléfono')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                 $countryCode = $get('country_code');
                                 if ($countryCode) {
                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                    $set('phone', $countryCode . $cleanNumber);
+                                    $set('phone', $countryCode.$cleanNumber);
                                 }
                             }),
                         Select::make('country_id')
@@ -275,7 +273,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                         Select::make('state_id')
@@ -293,7 +291,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                         TextInput::make('region')
@@ -311,7 +309,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                         TextInput::make('user_tdev')
@@ -341,7 +339,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-identification')
                             ->numeric()
                             ->validationMessages([
-                                'numeric'  => 'Campo tipo numerico',
+                                'numeric' => 'Campo tipo numerico',
                             ])
                             ->maxLength(255),
                         TextInput::make('local_beneficiary_account_number')
@@ -349,7 +347,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-identification')
                             ->numeric()
                             ->validationMessages([
-                                'numeric'  => 'Campo tipo numerico',
+                                'numeric' => 'Campo tipo numerico',
                             ])
                             ->maxLength(255),
                         Grid::make(4)->schema([
@@ -357,33 +355,33 @@ class AgentForm
                                 ->label('Banco del Beneficiario')
                                 ->prefixIcon('heroicon-s-identification')
                                 ->options([
-                                    'BANCO DE VENEZUELA'            => 'BANCO DE VENEZUELA',
-                                    'BANCO BICENTENARIO'            => 'BANCO BICENTENARIO',
-                                    'BANCO MERCANTIL'               => 'BANCO MERCANTIL',
-                                    'BANCO PROVINCIAL'              => 'BANCO PROVINCIAL',
-                                    'BANCO CARONI'                  => 'BANCO CARONI',
-                                    'BANCO DEL CARIBE'              => 'BANCO DEL CARIBE',
-                                    'BANCO DEL TESORO'              => 'BANCO DEL TESORO',
-                                    'BANCO NACIONAL DE CREDITO'     => 'BANCO NACIONAL DE CREDITO',
-                                    'BANESCO'                       => 'BANESCO',
-                                    'BANCO CARONI'                  => 'BANCO CARONI',
-                                    'FONDO COMUN'                   => 'FONDO COMUN',
-                                    'BANCO CANARIAS'                => 'BANCO CANARIAS',
-                                    'BANCO DEL SUR'                 => 'BANCO DEL SUR',
-                                    'BANCO AGRICOLA DE VENEZUELA'   => 'BANCO AGRICOLA DE VENEZUELA',
-                                    'BANPLUS'                       => 'BANPLUS',
-                                    'MI BANCO'                      => 'MI BANCO',
-                                    'BANCAMIGA'                     => 'BANCAMIGA',
-                                    'BANFANB'                       => 'BANFANB',
-                                    'BANCARIBE'                     => 'BANCARIBE',
-                                    'BANCO ACTIVO'                  => 'BANCO ACTIVO',
+                                    'BANCO DE VENEZUELA' => 'BANCO DE VENEZUELA',
+                                    'BANCO BICENTENARIO' => 'BANCO BICENTENARIO',
+                                    'BANCO MERCANTIL' => 'BANCO MERCANTIL',
+                                    'BANCO PROVINCIAL' => 'BANCO PROVINCIAL',
+                                    'BANCO CARONI' => 'BANCO CARONI',
+                                    'BANCO DEL CARIBE' => 'BANCO DEL CARIBE',
+                                    'BANCO DEL TESORO' => 'BANCO DEL TESORO',
+                                    'BANCO NACIONAL DE CREDITO' => 'BANCO NACIONAL DE CREDITO',
+                                    'BANESCO' => 'BANESCO',
+                                    'BANCO CARONI' => 'BANCO CARONI',
+                                    'FONDO COMUN' => 'FONDO COMUN',
+                                    'BANCO CANARIAS' => 'BANCO CANARIAS',
+                                    'BANCO DEL SUR' => 'BANCO DEL SUR',
+                                    'BANCO AGRICOLA DE VENEZUELA' => 'BANCO AGRICOLA DE VENEZUELA',
+                                    'BANPLUS' => 'BANPLUS',
+                                    'MI BANCO' => 'MI BANCO',
+                                    'BANCAMIGA' => 'BANCAMIGA',
+                                    'BANFANB' => 'BANFANB',
+                                    'BANCARIBE' => 'BANCARIBE',
+                                    'BANCO ACTIVO' => 'BANCO ACTIVO',
                                 ]),
                             Select::make('local_beneficiary_account_type')
                                 ->label('Tipo de Cuenta del Beneficiario')
                                 ->prefixIcon('heroicon-s-identification')
                                 ->options([
-                                    'AHORRO'      => 'AHORRO',
-                                    'CORRIENTE'   => 'CORRIENTE',
+                                    'AHORRO' => 'AHORRO',
+                                    'CORRIENTE' => 'CORRIENTE',
                                 ]),
                             TextInput::make('local_beneficiary_phone_pm')
                                 ->label('Teléfono Pago Movil del Beneficiario')
@@ -395,7 +393,7 @@ class AgentForm
 
                                     if ($countryCode) {
                                         $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                        $set('local_beneficiary_phone_pm', $countryCode . $cleanNumber);
+                                        $set('local_beneficiary_phone_pm', $countryCode.$cleanNumber);
                                     }
                                 }),
                         ])->columnSpanFull(),
@@ -419,7 +417,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-identification')
                             ->numeric()
                             ->validationMessages([
-                                'numeric'  => 'Campo tipo numeric',
+                                'numeric' => 'Campo tipo numeric',
                             ])
                             ->maxLength(255),
                         TextInput::make('extra_beneficiary_account_number')
@@ -427,7 +425,7 @@ class AgentForm
                             ->prefixIcon('heroicon-s-identification')
                             ->numeric()
                             ->validationMessages([
-                                'numeric'  => 'Campo tipo numeric',
+                                'numeric' => 'Campo tipo numeric',
                             ])
                             ->live()
                             ->maxLength(255),
@@ -437,38 +435,39 @@ class AgentForm
                             ->searchable()
                             ->preload()
                             ->options([
-                                'JPMORGAN CHASE & CO'                                   => 'JPMORGAN CHASE & CO',
-                                'BANK OF AMERICA'                                       => 'BANK OF AMERICA',
-                                'WELLS FARGO'                                           => 'WELLS FARGO',
-                                'CITIBANK (CITIGROUP)'                                  => 'CITIBANK (CITIGROUP)',
-                                'U.S. BANK'                                             => 'U.S. BANK',
-                                'PNC FINANCIAL SERVICES'                                => 'PNC FINANCIAL SERVICES',
-                                'TRUIST FINANCIAL CORPORATION'                          => 'TRUIST FINANCIAL CORPORATION',
-                                'CAPITAL ONE'                                           => 'CAPITAL ONE',
-                                'TD BANK (TORONTO-DOMINION BANK)'                       => 'TD BANK (TORONTO-DOMINION BANK)',
-                                'HSBC BANK USA'                                         => 'HSBC BANK USA',
-                                'FIFTH THIRD BANK'                                      => 'FIFTH THIRD BANK',
-                                'REGIONS FINANCIAL CORPORATION'                         => 'REGIONS FINANCIAL CORPORATION',
-                                'HUNTINGTON NATIONAL BANK'                              => 'HUNTINGTON NATIONAL BANK',
-                                'NAVY FEDERAL CREDIT UNION'                             => 'NAVY FEDERAL CREDIT UNION',
-                                'STATE EMPLOYEES CREDIT UNION (SECU)'                   => 'STATE EMPLOYEES CREDIT UNION (SECU)',
-                                'BANCO NACIONAL DE PANAMÁ (BNP)'                        => 'BANCO NACIONAL DE PANAMÁ (BNP)',
-                                'CAJA DE AHORROS'                                       => 'CAJA DE AHORROS',
-                                'BANCO GENERAL'                                         => 'BANCO GENERAL',
-                                'GLOBAL BANK'                                           => 'GLOBAL BANK',
-                                'BANESCO PANAMÁ'                                        => 'BANESCO PANAMÁ',
-                                'METROBANK'                                             => 'METROBANK',
-                                'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)'   => 'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)',
-                                'HSBC BANK PANAMÁ'                                      => 'HSBC BANK PANAMÁ',
-                                'SCOTIABANK PANAMÁ'                                     => 'SCOTIABANK PANAMÁ',
-                                'CITIBANK PANAMÁ'                                       => 'CITIBANK PANAMÁ',
-                                'BANCO SANTANDER PANAMÁ'                                => 'BANCO SANTANDER PANAMÁ',
-                                'BANCO DAVIVIENDA PANAMÁ'                               => 'BANCO DAVIVIENDA PANAMÁ',
-                                'BANCO ALIADO'                                          => 'BANCO ALIADO',
-                                'MULTIBANK'                                             => 'MULTIBANK',
-                                'BANCAMIGA'                                             => 'BANCAMIGA',
-                                'BANCO DEL TESORO'                                      => 'BANCO DEL TESORO',
-                                'PROVINCIAL'                                            => 'PROVINCIAL',
+                                'FACEBANK INTERNATIONAL' => 'FACEBANK INTERNATIONAL',
+                                'JPMORGAN CHASE & CO' => 'JPMORGAN CHASE & CO',
+                                'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                'WELLS FARGO' => 'WELLS FARGO',
+                                'CITIBANK (CITIGROUP)' => 'CITIBANK (CITIGROUP)',
+                                'U.S. BANK' => 'U.S. BANK',
+                                'PNC FINANCIAL SERVICES' => 'PNC FINANCIAL SERVICES',
+                                'TRUIST FINANCIAL CORPORATION' => 'TRUIST FINANCIAL CORPORATION',
+                                'CAPITAL ONE' => 'CAPITAL ONE',
+                                'TD BANK (TORONTO-DOMINION BANK)' => 'TD BANK (TORONTO-DOMINION BANK)',
+                                'HSBC BANK USA' => 'HSBC BANK USA',
+                                'FIFTH THIRD BANK' => 'FIFTH THIRD BANK',
+                                'REGIONS FINANCIAL CORPORATION' => 'REGIONS FINANCIAL CORPORATION',
+                                'HUNTINGTON NATIONAL BANK' => 'HUNTINGTON NATIONAL BANK',
+                                'NAVY FEDERAL CREDIT UNION' => 'NAVY FEDERAL CREDIT UNION',
+                                'STATE EMPLOYEES CREDIT UNION (SECU)' => 'STATE EMPLOYEES CREDIT UNION (SECU)',
+                                'BANCO NACIONAL DE PANAMÁ (BNP)' => 'BANCO NACIONAL DE PANAMÁ (BNP)',
+                                'CAJA DE AHORROS' => 'CAJA DE AHORROS',
+                                'BANCO GENERAL' => 'BANCO GENERAL',
+                                'GLOBAL BANK' => 'GLOBAL BANK',
+                                'BANESCO PANAMÁ' => 'BANESCO PANAMÁ',
+                                'METROBANK' => 'METROBANK',
+                                'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)' => 'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)',
+                                'HSBC BANK PANAMÁ' => 'HSBC BANK PANAMÁ',
+                                'SCOTIABANK PANAMÁ' => 'SCOTIABANK PANAMÁ',
+                                'CITIBANK PANAMÁ' => 'CITIBANK PANAMÁ',
+                                'BANCO SANTANDER PANAMÁ' => 'BANCO SANTANDER PANAMÁ',
+                                'BANCO DAVIVIENDA PANAMÁ' => 'BANCO DAVIVIENDA PANAMÁ',
+                                'BANCO ALIADO' => 'BANCO ALIADO',
+                                'MULTIBANK' => 'MULTIBANK',
+                                'BANCAMIGA' => 'BANCAMIGA',
+                                'BANCO DEL TESORO' => 'BANCO DEL TESORO',
+                                'PROVINCIAL' => 'PROVINCIAL',
                             ]),
                         TextInput::make('extra_beneficiary_address')
                             ->label('Direccion')
@@ -484,19 +483,19 @@ class AgentForm
                             ->searchable()
                             ->preload()
                             ->options([
-                                'CUENTA DE CHEQUES (CHECKING ACCOUNT)'                              => 'CUENTA DE CHEQUES (CHECKING ACCOUNT)',
-                                'CUENTA DE AHORROS (SAVINGS ACCOUNT)'                               => 'CUENTA DE AHORROS (SAVINGS ACCOUNT)',
-                                'CUENTA CORRIENTE (CURRENT ACCOUNT)'                                => 'CUENTA CORRIENTE (CURRENT ACCOUNT)',
-                                'CUENTA DE DEPÓSITO A PLAZO FIJO (CERTIFICATE OF DEPOSIT - CD)'     => 'CUENTA DE DEPÓSITO A PLAZO FIJO (CERTIFICATE OF DEPOSIT - CD)',
-                                'CUENTA DE NEGOCIOS (BUSINESS ACCOUNT)'                             => 'CUENTA DE NEGOCIOS (BUSINESS ACCOUNT)',
-                                'CUENTA DE INVERSIÓN (INVESTMENT ACCOUNT)'                          => 'CUENTA DE INVERSIÓN (INVESTMENT ACCOUNT)',
+                                'CUENTA DE CHEQUES (CHECKING ACCOUNT)' => 'CUENTA DE CHEQUES (CHECKING ACCOUNT)',
+                                'CUENTA DE AHORROS (SAVINGS ACCOUNT)' => 'CUENTA DE AHORROS (SAVINGS ACCOUNT)',
+                                'CUENTA CORRIENTE (CURRENT ACCOUNT)' => 'CUENTA CORRIENTE (CURRENT ACCOUNT)',
+                                'CUENTA DE DEPÓSITO A PLAZO FIJO (CERTIFICATE OF DEPOSIT - CD)' => 'CUENTA DE DEPÓSITO A PLAZO FIJO (CERTIFICATE OF DEPOSIT - CD)',
+                                'CUENTA DE NEGOCIOS (BUSINESS ACCOUNT)' => 'CUENTA DE NEGOCIOS (BUSINESS ACCOUNT)',
+                                'CUENTA DE INVERSIÓN (INVESTMENT ACCOUNT)' => 'CUENTA DE INVERSIÓN (INVESTMENT ACCOUNT)',
                                 'CUENTA DE RETIRO INDIVIDUAL (INDIVIDUAL RETIREMENT ACCOUNT - IRA)' => 'CUENTA DE RETIRO INDIVIDUAL (INDIVIDUAL RETIREMENT ACCOUNT - IRA)',
-                                'CUENTA DE FONDOS DE EMERGENCIA (EMERGENCY FUND ACCOUNT)'           => 'CUENTA DE FONDOS DE EMERGENCIA (EMERGENCY FUND ACCOUNT)',
-                                'CUENTA PARA MENORES (MINOR ACCOUNT / CUSTODIAL ACCOUNT)'           => 'CUENTA PARA MENORES (MINOR ACCOUNT / CUSTODIAL ACCOUNT)',
-                                'CUENTA CONJUNTA (JOINT ACCOUNT)'                                   => 'CUENTA CONJUNTA (JOINT ACCOUNT)',
-                                'CUENTA EN MONEDA EXTRANJERA (CUENTA EN DÓLARES, EUROS, ETC.)'      => 'CUENTA EN MONEDA EXTRANJERA (CUENTA EN DÓLARES, EUROS, ETC.)',
-                                'CUENTA DE RETIRO (CUENTA DE JUBILACIÓN)'                           => 'CUENTA DE RETIRO (CUENTA DE JUBILACIÓN)',
-                                'CUENTA DE FIDEICOMISO (TRUST ACCOUNT)'                             => 'CUENTA DE FIDEICOMISO (TRUST ACCOUNT)',
+                                'CUENTA DE FONDOS DE EMERGENCIA (EMERGENCY FUND ACCOUNT)' => 'CUENTA DE FONDOS DE EMERGENCIA (EMERGENCY FUND ACCOUNT)',
+                                'CUENTA PARA MENORES (MINOR ACCOUNT / CUSTODIAL ACCOUNT)' => 'CUENTA PARA MENORES (MINOR ACCOUNT / CUSTODIAL ACCOUNT)',
+                                'CUENTA CONJUNTA (JOINT ACCOUNT)' => 'CUENTA CONJUNTA (JOINT ACCOUNT)',
+                                'CUENTA EN MONEDA EXTRANJERA (CUENTA EN DÓLARES, EUROS, ETC.)' => 'CUENTA EN MONEDA EXTRANJERA (CUENTA EN DÓLARES, EUROS, ETC.)',
+                                'CUENTA DE RETIRO (CUENTA DE JUBILACIÓN)' => 'CUENTA DE RETIRO (CUENTA DE JUBILACIÓN)',
+                                'CUENTA DE FIDEICOMISO (TRUST ACCOUNT)' => 'CUENTA DE FIDEICOMISO (TRUST ACCOUNT)',
                             ]),
                         TextInput::make('extra_beneficiary_route')
                             ->label('Ruta')
@@ -528,7 +527,7 @@ class AgentForm
                     ->icon('heroicon-m-folder-plus')
                     ->schema([
                         Textarea::make('comments')
-                            ->label('Comentarios')
+                            ->label('Comentarios'),
                     ])->columnSpanFull(),
             ]);
     }

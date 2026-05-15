@@ -12,11 +12,34 @@ use Illuminate\Support\Facades\DB;
 class DoctorNurseFichaPdfService
 {
     /**
-     * v1: base64 en caché (driver database / UTF-8), igual que {@see SupplierFichaPdfService}.
+     * v2: base64 en caché (driver database / UTF-8), igual que {@see SupplierFichaPdfService}.
      */
-    private const PDF_CACHE_KEY_PREFIX = 'doctor_nurse_ficha_pdf:v1:';
+    private const PDF_CACHE_KEY_PREFIX = 'doctor_nurse_ficha_pdf:v2:';
 
     private const PDF_CACHE_TTL_FALLBACK_SECONDS = 900;
+
+    /**
+     * @return list<string>
+     */
+    private static function logoCandidatePaths(): array
+    {
+        return [
+            public_path('storage/administracion/logoNewPdfTDEC.png'),
+            public_path('storage/logo1-pdf.png'),
+            public_path('image/logoNewPdf.png'),
+        ];
+    }
+
+    public static function logoDataUri(): string
+    {
+        foreach (self::logoCandidatePaths() as $path) {
+            if (is_file($path)) {
+                return 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
+            }
+        }
+
+        return '';
+    }
 
     public static function downloadFilename(DoctorNurse $doctorNurse): string
     {
@@ -54,6 +77,8 @@ class DoctorNurseFichaPdfService
 
         return Pdf::loadView('documents.doctor-nurse-ficha', [
             'doctorNurse' => $doctorNurse,
+            'logoDataUri' => self::logoDataUri(),
+            'generatedAt' => now()->timezone(config('app.timezone')),
         ])
             ->setPaper('a4', 'portrait')
             ->setWarnings(false)

@@ -368,8 +368,8 @@ class SuppliersTable
                     ->label('Clasificación del proveedor')
                     ->attribute('supplier_clasificacion_id')
                     ->options(SupplierClasificacion::query()->orderBy('description')->pluck('description', 'id')),
-                SelectFilter::make('updated_by')
-                    ->label('Actualizado por (Operaciones)')
+                SelectFilter::make('created_by')
+                    ->label('Coordinador encargado:')
                     ->options(function (): array {
                         return User::query()
                             ->select(['name', 'departament'])

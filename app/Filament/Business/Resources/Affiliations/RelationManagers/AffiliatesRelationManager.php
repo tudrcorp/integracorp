@@ -100,6 +100,7 @@ class AffiliatesRelationManager extends RelationManager
                                 'ESPOSO' => 'ESPOSO',
                                 'HIJO' => 'HIJO',
                                 'HIJA' => 'HIJA',
+                                'OTRO' => 'OTRO',
                             ]),
                         Textarea::make('address')
                             ->label('Direccion')

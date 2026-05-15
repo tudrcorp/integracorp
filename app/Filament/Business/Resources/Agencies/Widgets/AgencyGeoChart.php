@@ -40,7 +40,7 @@ class AgencyGeoChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'doughnut';
+        return 'bar';
     }
 
     protected function getData(): array
@@ -48,16 +48,38 @@ class AgencyGeoChart extends ChartWidget
         $year = $this->resolvedChartYear();
         $month = $this->resolvedChartMonth();
 
-        $distribution = Agency::query()
+        $agenciesByState = Agency::query()
             ->join('states', 'agencies.state_id', '=', 'states.id')
-            ->selectRaw('states.definition as state_name, COUNT(*) as total')
+            ->select([
+                'states.definition as state_name',
+                'agencies.code as agency_code',
+                'agencies.name_corporative as agency_name',
+            ])
             ->where('agencies.status', 'ACTIVO')
             ->whereYear('agencies.created_at', $year)
             ->when($month, fn ($q) => $q->whereMonth('agencies.created_at', $month))
-            ->groupBy('states.definition')
-            ->orderByDesc('total')
-            ->pluck('total', 'state_name')
-            ->toArray();
+            ->orderBy('states.definition')
+            ->orderBy('agencies.name_corporative')
+            ->get()
+            ->groupBy('state_name')
+            ->sortByDesc(static fn ($agencies): int => $agencies->count());
+
+        $labels = $agenciesByState->keys()->all();
+        $data = $agenciesByState->map(static fn ($agencies): int => $agencies->count())->values()->all();
+        $agencyDetails = $agenciesByState
+            ->map(static function ($agencies): array {
+                return $agencies
+                    ->map(static function ($agency): array {
+                        return [
+                            'code' => (string) ($agency->agency_code ?? ''),
+                            'name' => trim((string) ($agency->agency_name ?? '')) !== '' ? (string) $agency->agency_name : 'Sin nombre',
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            })
+            ->values()
+            ->all();
 
         $vibrantPalette = [
             '#FF2D55', // Rosa Apple
@@ -73,9 +95,6 @@ class AgencyGeoChart extends ChartWidget
             '#f472b6', // Rosa fuerte
             '#a78bfa', // Violeta claro
         ];
-
-        $labels = array_keys($distribution);
-        $data = array_values($distribution);
 
         $total = (int) array_sum($data);
         $percentages = $total > 0
@@ -96,13 +115,14 @@ class AgencyGeoChart extends ChartWidget
                     'label' => 'Agencias Activas',
                     'data' => $data,
                     'percentages' => array_values($percentages),
+                    'agencyDetails' => $agencyDetails,
                     'backgroundColor' => $backgroundColors,
                     'borderWidth' => 0,
                     'borderColor' => 'transparent',
-                    'hoverOffset' => 35,
                     'hoverBorderWidth' => 0,
                     'hoverBorderColor' => 'transparent',
                     'borderRadius' => 4,
+                    'borderSkipped' => false,
                 ],
             ],
         ];
@@ -115,54 +135,29 @@ class AgencyGeoChart extends ChartWidget
             responsive: true,
             maintainAspectRatio: false,
             borderWidth: 0,
-            elements: {
-                arc: {
-                    borderWidth: 0,
-                    borderColor: 'transparent'
-                }
-            },
-            cutout: '52%',
             layout: {
                 padding: { top: 16, right: 8, bottom: 6, left: 8 }
             },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            },
             plugins: {
                 legend: {
-                    display: true,
-                    position: 'bottom',
-                    align: 'center',
-                    labels: {
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 18,
-                        boxWidth: 10,
-                        boxHeight: 10,
-                        font: {
-                            size: 12,
-                            weight: '600',
-                            family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
-                        },
-                        generateLabels: function(chart) {
-                            const data = chart.data;
-                            const ds = data.datasets[0];
-                            const meta = chart.getDatasetMeta(0);
-                            return data.labels.map((label, i) => {
-                                const value = ds.data[i];
-                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
-                                    ? ds.percentages[i]
-                                    : 0;
-                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
-                                return {
-                                    text: String(label) + ': ' + value + ' agencias (' + pct + '%)',
-                                    fillStyle: fill,
-                                    strokeStyle: fill,
-                                    lineWidth: 0,
-                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
-                                    index: i,
-                                    datasetIndex: 0
-                                };
-                            });
-                        }
-                    }
+                    display: false
                 },
                 tooltip: {
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -175,10 +170,29 @@ class AgencyGeoChart extends ChartWidget
                     usePointStyle: true,
                     callbacks: {
                         label: (context) => {
-                            const value = context.raw || 0;
-                            const pct = context.dataset.percentages[context.dataIndex];
-                            return ` ${context.label}: ${value} agencias (${pct}%)`;
-                        }
+                            const agencies = Array.isArray(context.dataset.agencyDetails)
+                                ? context.dataset.agencyDetails[context.dataIndex]
+                                : [];
+
+                            if (!Array.isArray(agencies) || agencies.length === 0) {
+                                return ' Sin agencias disponibles';
+                            }
+
+                            return agencies.map((agency) => {
+                                const code = agency && agency.code ? String(agency.code) : 'SIN-CODIGO';
+                                const name = agency && agency.name ? String(agency.name) : 'Sin nombre';
+                                return ` ${code} - ${name}`;
+                            });
+                        },
+                        footer: (items) => {
+                            const first = Array.isArray(items) ? items[0] : null;
+                            if (!first) {
+                                return '';
+                            }
+                            const value = first.raw || 0;
+                            const pct = first.dataset.percentages[first.dataIndex];
+                            return `Total: ${value} agencias (${pct}%)`;
+                        },
                     }
                 },
                 datalabels: {
@@ -186,9 +200,10 @@ class AgencyGeoChart extends ChartWidget
                         const pct = context.dataset.percentages[context.dataIndex];
                         return pct >= 4;
                     },
-                    color: '#ffffff',
-                    anchor: 'center',
-                    align: 'center',
+                    color: '#1e293b',
+                    anchor: 'end',
+                    align: 'end',
+                    offset: 4,
                     font: {
                         size: 12,
                         weight: '700',
@@ -197,9 +212,7 @@ class AgencyGeoChart extends ChartWidget
                     formatter: function(value, context) {
                         const pct = context.dataset.percentages[context.dataIndex];
                         return pct + '%';
-                    },
-                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-                    textShadowBlur: 3
+                    }
                 }
             },
             // Configuraciones de interacción para el resaltado
@@ -208,8 +221,6 @@ class AgencyGeoChart extends ChartWidget
                 intersect: true
             },
             animation: {
-                animateScale: true,
-                animateRotate: true,
                 duration: 1500,
                 easing: 'easeOutQuart'
             },
