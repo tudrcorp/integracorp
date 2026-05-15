@@ -3,21 +3,20 @@
 namespace App\Filament\Operations\Resources\TelemedicineCases\RelationManagers;
 
 use App\Filament\Operations\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
-use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Telemedicine\TelemedicineCoverageCatalog;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
+use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class ConsultationsRelationManager extends RelationManager
 {
@@ -145,31 +144,44 @@ class ConsultationsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->heading('Bitácora de Gestión Médica')
-            ->description('Descripción detallada de todos los seguimiento y asignaciones del caso.')
+            ->heading('Bitácora de gestión médica')
+            ->description('Seguimientos y registros vinculados a este caso. Los valores de cobertura se muestran como listas cuando provienen de formularios estructurados.')
+            ->emptyStateHeading('Sin consultas en este caso')
+            ->emptyStateDescription('Aún no hay registros de consulta o seguimiento. Use «Crear» para iniciar una nueva.')
+            ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
+            ->striped()
+            ->defaultSort('created_at', 'desc')
+            ->paginationPageOptions([10, 25, 50])
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'telemedicinePatientMedications.operationInventory',
+            ]))
             ->columns([
                 TextColumn::make('created_at')
-                    ->label('Fecha de Registro')
-                    ->dateTime()
-                    // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
-                    ->description(fn (TelemedicineConsultationPatient $record): string => $record->updated_at->diffForHumans())
-                    ->sortable(),
+                    ->label('Fecha de registro')
+                    ->dateTime('d/m/Y H:i')
+                    ->description(fn (TelemedicineConsultationPatient $record): string => $record->updated_at?->diffForHumans() ?? '')
+                    ->sortable()
+                    ->icon(Heroicon::OutlinedCalendarDays)
+                    ->iconColor('gray'),
                 TextColumn::make('telemedicine_case_code')
-                    ->label('Numero de Caso')
+                    ->label('N.º de caso')
+                    ->weight(FontWeight::Medium)
                     ->badge()
                     ->color('success')
                     ->searchable(),
                 TextColumn::make('code_reference')
                     ->label('Referencia')
                     ->badge()
-                    ->color('success')
-                    ->searchable(),
+                    ->color('gray')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
-                    ->description(fn ($record): string => 'Atenido por: Dr(a):'.$record->telemedicineDoctor->full_name)
-                    ->sortable(),
+                    ->description(fn (TelemedicineConsultationPatient $record): string => 'Atendido por: Dr(a). '.($record->telemedicineDoctor?->full_name ?? '—'))
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('nro_identificacion')
-                    ->label('Número de Identificación')
+                    ->label('Identificación')
                     ->prefix('V-')
                     ->alignCenter()
                     ->badge()
@@ -179,144 +191,298 @@ class ConsultationsRelationManager extends RelationManager
                     ->label('Servicio')
                     ->badge()
                     ->color('success')
-                    ->icon('heroicon-s-check')
+                    ->icon(Heroicon::OutlinedCheckCircle)
                     ->searchable()
-                    ->sortable(),
-                // Derivado
+                    ->sortable()
+                    ->wrap(),
                 TextColumn::make('telemedicineServiceListDrift.name')
-                    ->label('ServicioDerivado')
+                    ->label('Servicio derivado')
                     ->badge()
+                    ->placeholder('—')
                     ->color(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state) ? 'danger' : 'info')
-                    ->icon(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
-                        ? 'heroicon-m-exclamation-triangle'
-                        : 'heroicon-m-information-circle')
+                    ->icon(fn (?string $state): Heroicon => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
+                        ? Heroicon::OutlinedExclamationTriangle
+                        : Heroicon::OutlinedInformationCircle)
                     ->searchable()
-                    ->sortable(),
-                ColumnGroup::make('LABORATORIOS Y ESTUDIOS CUBIERTOS', [
-                    TextColumn::make('labs')
-                        ->label('Laboratorio')
-                        ->alignCenter()
-                        ->wrap()
-                        ->badge()
-                        ->color(function (TelemedicineConsultationPatient $record) {
-                            return $record->labs ? 'success' : 'gray';
-                        })
-                        ->default(function (TelemedicineConsultationPatient $record) {
-                            return $record->labs ? $record->labs : 'N/A';
-                        })
-                        ->searchable(),
-                    TextColumn::make('studies')
+                    ->sortable()
+                    ->wrap(),
+                ColumnGroup::make('Medicamentos (consulta / caso)', [
+                    TextColumn::make('medications_case_lines')
+                        ->label('Medicamentos')
+                        ->alignStart()
+                        ->html()
+                        ->getStateUsing(fn (TelemedicineConsultationPatient $record): HtmlString => self::consultationMedicationsHtml($record, 'medicine')),
+                ]),
+                ColumnGroup::make('Cobertura (incluidos)', [
+                    TextColumn::make('labs_badges')
+                        ->label('Laboratorios')
+                        ->alignStart()
+
+                        ->html()
+                        ->getStateUsing(fn (TelemedicineConsultationPatient $record): HtmlString => self::consultationCoverageCatalogBadgesHtml(
+                            $record,
+                            'labs',
+                            fn (string $label): bool => TelemedicineCoverageCatalog::laboratoryIsCovered($label)
+                        )),
+                    TextColumn::make('studies_badges')
                         ->label('Estudios')
-                        ->alignCenter()
-                        ->wrap()
-                        ->badge()
-                        ->color(function (TelemedicineConsultationPatient $record) {
-                            return $record->studies ? 'success' : 'gray';
-                        })
-                        ->default(function (TelemedicineConsultationPatient $record) {
-                            return $record->studies ? $record->studies : 'N/A';
-                        })
-                        ->searchable(),
-                    TextColumn::make('consult_specialist')
-                        ->label('Consultas de Especialistas')
-                        ->alignCenter()
-                        ->wrap()
-                        ->badge()
-                        ->color(function (TelemedicineConsultationPatient $record) {
-                            return $record->consult_specialist ? 'success' : 'gray';
-                        })
-                        ->default(function (TelemedicineConsultationPatient $record) {
-                            return $record->consult_specialist ? $record->consult_specialist : 'N/A';
-                        })
-                        ->searchable(),
+                        ->alignStart()
+                        ->html()
+                        ->getStateUsing(fn (TelemedicineConsultationPatient $record): HtmlString => self::consultationCoverageCatalogBadgesHtml(
+                            $record,
+                            'studies',
+                            fn (string $label): bool => TelemedicineCoverageCatalog::studyIsCovered($label)
+                        )),
+                    TextColumn::make('consult_specialist_badges')
+                        ->label('Especialistas')
+                        ->alignStart()
+                        ->html()
+                        ->getStateUsing(fn (TelemedicineConsultationPatient $record): HtmlString => self::consultationCoverageCatalogBadgesHtml(
+                            $record,
+                            'consult_specialist',
+                            fn (string $label): bool => TelemedicineCoverageCatalog::specialistIsCovered($label)
+                        )),
                 ]),
-
-                ColumnGroup::make('LABORATORIOS Y ESTUDIOS NO CUBIERTOS', [
-                    TextColumn::make('other_labs')
-                        ->label('Otros Laboratorios')
-                        ->alignCenter()
-                        ->wrap()
-                        ->badge()
-                        ->color(function (TelemedicineConsultationPatient $record) {
-                            return $record->other_labs ? 'success' : 'gray';
-                        })
-                        ->default(function (TelemedicineConsultationPatient $record) {
-                            return $record->other_labs ? $record->labs : 'N/A';
-                        })
-                        ->searchable(),
-
-                    TextColumn::make('other_studies')
-                        ->label('Otros Estudios')
-                        ->alignCenter()
-                        ->wrap()
-                        ->badge()
-                        ->color(function (TelemedicineConsultationPatient $record) {
-                            return $record->studies ? 'success' : 'gray';
-                        })
-                        ->default(function (TelemedicineConsultationPatient $record) {
-                            return $record->studies ? $record->studies : 'N/A';
-                        })
-                        ->searchable(),
-
-                    TextColumn::make('other_specialist')
-                        ->label('Otros Especialistas')
-                        ->alignCenter()
-                        ->wrap()
-                        ->badge()
-                        ->color(function (TelemedicineConsultationPatient $record) {
-                            return $record->consult_specialist ? 'success' : 'gray';
-                        })
-                        ->default(function (TelemedicineConsultationPatient $record) {
-                            return $record->consult_specialist ? $record->consult_specialist : 'N/A';
-                        })
-                        ->searchable(),
-                ]),
-
+                // ColumnGroup::make('Fuera de cobertura', [
+                //     TextColumn::make('other_labs')
+                //         ->label('Otros laboratorios')
+                //         ->alignCenter()
+                //         ->wrap()
+                //         ->badge()
+                //         ->formatStateUsing(fn (mixed $state): string => self::formatCoverageList($state))
+                //         ->color(fn (mixed $state): string => self::coverageListIsFilled($state) ? 'warning' : 'gray'),
+                //     TextColumn::make('other_studies')
+                //         ->label('Otros estudios')
+                //         ->alignCenter()
+                //         ->wrap()
+                //         ->badge()
+                //         ->formatStateUsing(fn (mixed $state): string => self::formatCoverageList($state))
+                //         ->color(fn (mixed $state): string => self::coverageListIsFilled($state) ? 'warning' : 'gray'),
+                //     TextColumn::make('other_specialist')
+                //         ->label('Otros especialistas')
+                //         ->alignCenter()
+                //         ->wrap()
+                //         ->badge()
+                //         ->formatStateUsing(fn (mixed $state): string => self::formatCoverageList($state))
+                //         ->color(fn (mixed $state): string => self::coverageListIsFilled($state) ? 'warning' : 'gray'),
+                // ]),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
-                    ->color(function (TelemedicineConsultationPatient $record) {
-                        return $record->status == 'EN SEGUIMIENTO' ? 'warning' : 'success';
+                    ->color(fn (TelemedicineConsultationPatient $record): string => match ($record->status) {
+                        'EN SEGUIMIENTO' => 'warning',
+                        'CONSULTA INICIAL' => 'info',
+                        'ALTA MEDICA' => 'success',
+                        default => 'gray',
+                    })
+                    ->icon(fn (TelemedicineConsultationPatient $record): Heroicon => match ($record->status) {
+                        'EN SEGUIMIENTO' => Heroicon::OutlinedArrowPath,
+                        'CONSULTA INICIAL' => Heroicon::OutlinedHeart,
+                        'ALTA MEDICA' => Heroicon::OutlinedCheckBadge,
+                        default => Heroicon::OutlinedQuestionMarkCircle,
                     }),
-
-                // TextColumn::make('telemedicinePriority.name')
-                //     ->label('Prioridad')
-                //     ->badge()
-                //     ->color(function (string $state): string {
-                //         return match ($state) {
-                //             'ALTA'          => 'success',
-                //             'MEDIA'         => 'warning',
-                //             'BAJA'          => 'primary',
-                //             'EMERGENCIA'    => 'danger',
-                //         };
-                //     })
-                //     ->icon(function (string $state): string {
-                //         return match ($state) {
-                //             'ALTA'             => 'healthicons-f-health',
-                //             'MEDIA'            => 'healthicons-f-health',
-                //             'BAJA'             => 'healthicons-f-health',
-                //             'EMERGENCIA'       => 'heroicon-c-shield-exclamation',
-                //         };
-                //     })
-                //     ->searchable(),
             ])
             ->recordActions([
-                // ViewAction::make()
                 ViewAction::make()
-                    ->icon('heroicon-s-eye')
-                    ->label('Ver Detalle')
+                    ->label('Ver detalle')
+                    ->icon(Heroicon::OutlinedEye)
                     ->color('primary')
-                    ->url(function (TelemedicineConsultationPatient $record) {
+                    ->link()
+                    ->url(function (TelemedicineConsultationPatient $record): string {
                         $url = TelemedicineConsultationPatientResource::getUrl('view', ['record' => $record->getKey()]);
                         if (request()->query('from') === 'patient') {
                             $url .= (str_contains($url, '?') ? '&' : '?').'from=patient';
                         }
 
                         return $url;
-                    }),
+                    })
+                    ->openUrlInNewTab(),
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->label('Nueva consulta')
+                    ->icon(Heroicon::OutlinedPlus),
             ]);
+    }
+
+    /**
+     * @param  'indications'|'medicine'  $line
+     */
+    private static function consultationMedicationsHtml(TelemedicineConsultationPatient $record, string $line): HtmlString
+    {
+        $medications = $record->relationLoaded('telemedicinePatientMedications')
+            ? $record->telemedicinePatientMedications
+            : $record->telemedicinePatientMedications()->orderBy('id')->get();
+
+        $medications = $medications->sortBy('id')->values();
+
+        if ($medications->isEmpty()) {
+            return new HtmlString('<span class="text-gray-500 dark:text-gray-400">—</span>');
+        }
+
+        $badges = [];
+        foreach ($medications as $medication) {
+            $covered = TelemedicineMedicationCoverage::isCovered($medication);
+
+            if ($line === 'medicine') {
+                $label = e((string) ($medication->medicine ?? '—'));
+            } else {
+                $raw = $medication->indications ?? null;
+                $label = filled($raw) ? e((string) $raw) : '—';
+            }
+
+            $badges[] = self::coverageStatusBadgeHtml(
+                $covered,
+                $label,
+                'Cubierto por el plan o convenio',
+                'Fuera de cobertura'
+            );
+        }
+
+        return new HtmlString(
+            '<div class="flex flex-wrap items-start gap-1.5">'.implode('', $badges).'</div>'
+        );
+    }
+
+    /**
+     * Laboratorios / estudios / especialistas según catálogo (CUBIERTO vs NO CUBIERTO).
+     *
+     * @param  callable(string): bool  $coverageResolver
+     */
+    private static function consultationCoverageCatalogBadgesHtml(
+        TelemedicineConsultationPatient $record,
+        string $attribute,
+        callable $coverageResolver,
+    ): HtmlString {
+        $items = self::flattenCoverageStateToStrings($record->{$attribute} ?? null);
+
+        if ($items === []) {
+            return new HtmlString('<span class="text-gray-500 dark:text-gray-400">—</span>');
+        }
+
+        $badges = [];
+        foreach ($items as $label) {
+            $escaped = e($label);
+            $covered = $coverageResolver($label);
+            $badges[] = self::coverageStatusBadgeHtml($covered, $escaped);
+        }
+
+        return new HtmlString(
+            '<div class="flex flex-wrap items-start gap-1.5">'.implode('', $badges).'</div>'
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function flattenCoverageStateToStrings(mixed $state): array
+    {
+        if ($state === null || $state === '' || $state === []) {
+            return [];
+        }
+
+        if (is_string($state)) {
+            return $state !== '' ? [trim($state)] : [];
+        }
+
+        if (! is_array($state)) {
+            $s = trim((string) $state);
+
+            return $s !== '' ? [$s] : [];
+        }
+
+        $flat = [];
+
+        $walker = function (mixed $value) use (&$flat, &$walker): void {
+            if (is_array($value)) {
+                foreach ($value as $inner) {
+                    $walker($inner);
+                }
+
+                return;
+            }
+
+            if ($value === null || $value === '') {
+                return;
+            }
+
+            $flat[] = trim((string) $value);
+        };
+
+        $walker($state);
+
+        return array_values(array_filter($flat, fn (string $v): bool => $v !== ''));
+    }
+
+    /**
+     * Badge: icono + texto; verde si cubierto, rojo si no (misma línea visual que medicamentos).
+     */
+    private static function coverageStatusBadgeHtml(
+        bool $covered,
+        string $escapedLabel,
+        string $titleWhenCovered = 'Cubierto según catálogo maestro',
+        string $titleWhenNotCovered = 'No cubierto según catálogo maestro',
+    ): string {
+        $title = e($covered ? $titleWhenCovered : $titleWhenNotCovered);
+
+        $surface = $covered
+            ? 'bg-emerald-50 text-emerald-900 ring-emerald-600/15 dark:bg-emerald-400/10 dark:text-emerald-100 dark:ring-emerald-400/25'
+            : 'bg-red-50 text-red-900 ring-red-600/15 dark:bg-red-400/10 dark:text-red-100 dark:ring-red-400/25';
+
+        $icon = $covered ? self::svgIconShieldCheck() : self::svgIconXCircle();
+
+        return '<span class="fi-badge inline-flex max-w-full items-center gap-x-1.5 rounded-lg px-2 py-0.5 text-xs font-semibold ring-1 ring-inset '.$surface.'" title="'.$title.'">'.$icon.'<span class="min-w-0 flex-1 whitespace-normal break-words leading-snug">'.$escapedLabel.'</span></span>';
+    }
+
+    private static function svgIconShieldCheck(): string
+    {
+        return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-300" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>';
+    }
+
+    private static function svgIconXCircle(): string
+    {
+        return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-300" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>';
+    }
+
+    private static function formatCoverageList(mixed $state): string
+    {
+        if ($state === null || $state === '' || $state === []) {
+            return '—';
+        }
+
+        if (is_string($state)) {
+            return $state;
+        }
+
+        if (! is_array($state)) {
+            return (string) $state;
+        }
+
+        $flat = [];
+
+        $walker = function (mixed $value) use (&$flat, &$walker): void {
+            if (is_array($value)) {
+                foreach ($value as $inner) {
+                    $walker($inner);
+                }
+
+                return;
+            }
+
+            if ($value === null || $value === '') {
+                return;
+            }
+
+            $flat[] = (string) $value;
+        };
+
+        $walker($state);
+
+        return $flat === [] ? '—' : implode(', ', $flat);
+    }
+
+    private static function coverageListIsFilled(mixed $state): bool
+    {
+        return self::formatCoverageList($state) !== '—';
     }
 }

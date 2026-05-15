@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 
 class RrhhColaborador extends Model
 {
-    //
     protected $table = 'rrhh_colaboradors';
 
     protected $fillable = [
@@ -37,7 +38,54 @@ class RrhhColaborador extends Model
         'avatar',
         'sueldo',
         'user_id',
+        'documents',
+        'age',
+        'birth_date',
     ];
+
+    protected $casts = [
+        'documents' => 'array',
+        'birth_date' => 'date',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (RrhhColaborador $model): void {
+            if ($model->birth_date !== null) {
+                $years = self::completedYearsFromBirthDate($model->birth_date);
+                $model->age = $years;
+                $model->fechaNacimiento = Carbon::parse($model->birth_date)->format('d/m/Y');
+
+                return;
+            }
+
+            if ($model->isDirty('birth_date')) {
+                $model->age = null;
+            }
+        });
+    }
+
+    /**
+     * Años cumplidos respecto a la fecha actual (0 si la fecha es futura).
+     */
+    public static function completedYearsFromBirthDate(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            $normalized = $value instanceof CarbonInterface
+                ? $value->format('Y-m-d')
+                : (string) $value;
+
+            $date = Carbon::parse($normalized);
+
+            return max(0, $date->age);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 
     public function departamento()
     {

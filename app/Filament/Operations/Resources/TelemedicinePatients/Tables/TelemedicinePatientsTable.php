@@ -264,7 +264,7 @@ class TelemedicinePatientsTable
                         ->label('Ver Detalle'),
                     EditAction::make()
                         ->label('Editar')
-                        ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI'),
+                        ->hidden(fn (TelemedicinePatient $record) => in_array('ATENMEDI', Auth::user()->departament)),
                     Action::make('asigned_doctor')
                         ->label('Asignar doctor')
                         ->icon('healthicons-f-i-exam-qualification')
@@ -644,7 +644,6 @@ class TelemedicinePatientsTable
                                 }
 
                             } catch (\Throwable $exception) {
-                                dd($exception);
                                 SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNMENT_FAILED', 'operations.telemedicine-patients.assign-doctor', [
                                     'telemedicine_patient_id' => $record->id,
                                     'patient_name' => $record->full_name,
@@ -660,7 +659,8 @@ class TelemedicinePatientsTable
                                     ->danger()
                                     ->send();
                             }
-                        }),
+                        })
+                        ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI' && ! in_array('ATENMEDI', Auth::user()->departament)),
                     Action::make('assign_atenmedi')
                         ->label('Asignar ATENMEDI')
                         ->icon('heroicon-o-user')

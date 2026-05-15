@@ -83,12 +83,12 @@ class TelemedicinePatient extends Model
 
     public function afilliation()
     {
-        return $this->belongsTo(Affiliation::class);
+        return $this->belongsTo(Affiliation::class, 'afilliation_id');
     }
 
     public function afilliationCorporate()
     {
-        return $this->belongsTo(AffiliationCorporate::class);
+        return $this->belongsTo(AffiliationCorporate::class, 'afilliation_corporate_id');
     }
 
     public function createdBy()

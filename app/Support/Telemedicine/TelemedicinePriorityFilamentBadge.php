@@ -14,6 +14,9 @@ final class TelemedicinePriorityFilamentBadge
             'URGENCIA', 'Urgencia' => 'urgencia',
             'EMERGENCIA', 'Emergencia' => 'emergencia',
             'CRITICO', 'Critico', 'Crítico' => 'critico',
+            'ALTA' => 'success',
+            'MEDIA' => 'warning',
+            'BAJA' => 'primary',
             default => 'gray',
         };
     }
@@ -26,6 +29,7 @@ final class TelemedicinePriorityFilamentBadge
             'URGENCIA', 'Urgencia' => 'healthicons-f-health',
             'EMERGENCIA', 'Emergencia' => 'heroicon-c-shield-exclamation',
             'CRITICO', 'Critico', 'Crítico' => 'heroicon-c-shield-exclamation',
+            'ALTA', 'MEDIA', 'BAJA' => 'healthicons-f-health',
             default => 'healthicons-f-health',
         };
     }

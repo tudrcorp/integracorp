@@ -34,11 +34,9 @@ return new class extends Migration
 
         if (! Schema::hasColumn('mass_notifications', 'mass_notification_folder_id')) {
             Schema::table('mass_notifications', function (Blueprint $table) {
-                $table->foreignId('mass_notification_folder_id')
+                $table->integer('mass_notification_folder_id')
                     ->nullable()
-                    ->after('id')
-                    ->constrained('mass_notification_folders')
-                    ->nullOnDelete();
+                    ->after('id');
             });
 
             DB::table('mass_notifications')

@@ -15,6 +15,9 @@ it('resuelve color e icono para nombre Estándar y variantes en mayúsculas', fu
     'no urgente caps' => ['NO URGENTE', 'no-urgente'],
     'critico titulo' => ['Critico', 'critico'],
     'critico mayus' => ['CRITICO', 'critico'],
+    'legacy alta' => ['ALTA', 'success'],
+    'legacy media' => ['MEDIA', 'warning'],
+    'legacy baja' => ['BAJA', 'primary'],
 ]);
 
 it('usa valores por defecto para prioridad desconocida', function (): void {

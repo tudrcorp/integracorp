@@ -9,6 +9,8 @@ use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
@@ -84,240 +86,260 @@ class TelemedicineConsultationPatientInfolist
         return $schema
             ->columns(1)
             ->components([
-
-                Section::make('Paciente en esta consulta')
-                    ->description('Ficha resumida en estilo tarjeta iOS: identidad tal como quedó en esta historia clínica.')
-                    ->icon(Heroicon::OutlinedUserCircle)
-                    ->extraAttributes([
-                        'class' => self::IOS_PATIENT_HERO_OUTER,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                            ->extraAttributes([
-                                'class' => self::IOS_PATIENT_HERO_INNER,
-                            ])
+                Tabs::make('telemedicineConsultationPatientInfolistTabs')
+                    ->columnSpanFull()
+                    ->persistTab()
+                    ->tabs([
+                        Tab::make('Paciente en esta consulta')
+                            ->icon(Heroicon::OutlinedUserCircle)
                             ->schema([
-                                TextEntry::make('full_name')
-                                    ->label('Nombre completo')
-                                    ->icon(Heroicon::OutlinedUser)
-                                    ->weight('bold')
-                                    ->size(TextSize::Large)
-                                    ->color('gray')
-                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                                    ->placeholder('—'),
-                                TextEntry::make('nro_identificacion')
-                                    ->label('Identificación')
-                                    ->icon(Heroicon::OutlinedIdentification)
-                                    ->prefix('V-')
-                                    ->badge()
-                                    ->color('success')
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicinePatient.sex')
-                                    ->label('Sexo')
-                                    ->icon(Heroicon::OutlinedUserGroup)
-                                    ->badge()
-                                    ->color('info')
-                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicinePatient.age')
-                                    ->label('Edad')
-                                    ->icon(Heroicon::OutlinedCalendar)
-                                    ->suffix(' años')
-                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper((string) $state) : null)
-                                    ->placeholder('—'),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Consulta telemédica')
-                    ->description(fn (TelemedicineConsultationPatient $record): string => self::headerSummary($record))
-                    ->icon(Heroicon::OutlinedClipboardDocumentList)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('telemedicine_case_code')
-                                    ->label('Número de caso')
-                                    ->icon(Heroicon::OutlinedHashtag)
-                                    ->badge()
-                                    ->color('success')
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('code_reference')
-                                    ->label('Código de referencia')
-                                    ->icon(Heroicon::OutlinedDocumentDuplicate)
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicineServiceList.name')
-                                    ->label('Servicio')
-                                    ->icon(Heroicon::OutlinedWrenchScrewdriver)
-                                    ->badge()
-                                    ->color('success')
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicineServiceListDrift.name')
-                                    ->label('Servicio Derivado:')
-                                    ->badge()
-                                    ->color(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state) ? 'danger' : 'info')
-                                    ->icon(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
-                                        ? 'heroicon-m-exclamation-triangle'
-                                        : 'heroicon-m-information-circle'),
-                                TextEntry::make('telemedicineDoctor.full_name')
-                                    ->label('Atendido por')
+                                Section::make('Paciente en esta consulta')
+                                    ->description('Ficha resumida en estilo tarjeta iOS: identidad tal como quedó en esta historia clínica.')
                                     ->icon(Heroicon::OutlinedUserCircle)
-                                    ->prefix('Dr(a). ')
-                                    ->weight('medium')
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicinePriority.name')
-                                    ->label('Prioridad')
-                                    ->icon(Heroicon::OutlinedBolt)
-                                    ->badge()
-                                    ->color(fn (?string $state): string => self::priorityColor($state))
-                                    ->placeholder('—'),
-                                TextEntry::make('assigned_by')
-                                    ->label('Asignado por')
-                                    ->icon(Heroicon::OutlinedUserPlus)
-                                    ->placeholder('—'),
-                                TextEntry::make('status')
-                                    ->label('Estado de la consulta')
-                                    ->icon(Heroicon::OutlinedSignal)
-                                    ->badge()
-                                    ->color(fn (?string $state): string => self::statusColor($state))
-                                    ->placeholder('—'),
-                                TextEntry::make('created_at')
-                                    ->label('Fecha de registro')
-                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                    ->dateTime('d/m/Y H:i')
-                                    ->placeholder('—'),
-                                TextEntry::make('updated_at')
-                                    ->label('Última actualización')
-                                    ->icon(Heroicon::OutlinedClock)
-                                    ->dateTime('d/m/Y H:i')
-                                    ->helperText(fn (TelemedicineConsultationPatient $record): ?string => $record->updated_at
-                                        ? 'Relativo: '.$record->updated_at->diffForHumans()
-                                        : null)
-                                    ->placeholder('—'),
+                                    ->extraAttributes([
+                                        'class' => self::IOS_PATIENT_HERO_OUTER,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_PATIENT_HERO_INNER,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('full_name')
+                                                    ->label('Nombre completo')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->weight('bold')
+                                                    ->size(TextSize::Large)
+                                                    ->color('gray')
+                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('nro_identificacion')
+                                                    ->label('Identificación')
+                                                    ->icon(Heroicon::OutlinedIdentification)
+                                                    ->prefix('V-')
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicinePatient.sex')
+                                                    ->label('Sexo')
+                                                    ->icon(Heroicon::OutlinedUserGroup)
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicinePatient.age')
+                                                    ->label('Edad')
+                                                    ->icon(Heroicon::OutlinedCalendar)
+                                                    ->suffix(' años')
+                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper((string) $state) : null)
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Información médica')
-                    ->hidden(fn (TelemedicineConsultationPatient $record): bool => $record->status == 'EN SEGUIMIENTO' || $record->status == 'ALTA MAEDICA')
-                    ->description('Motivo, evolución e impresión diagnóstica.')
-                    ->icon(Heroicon::OutlinedHeart)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
+                        Tab::make('Consulta telemédica')
+                            ->icon(Heroicon::OutlinedClipboardDocumentList)
                             ->schema([
-                                TextEntry::make('reason_consultation')
-                                    ->label('Razón de consulta')
-                                    ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('actual_phatology')
-                                    ->label('Cuadro / patología actual')
-                                    ->icon(Heroicon::OutlinedBeaker)
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('background')
-                                    ->label('Antecedentes')
-                                    ->icon(Heroicon::OutlinedBookOpen)
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('diagnostic_impression')
-                                    ->label('Impresión diagnóstica')
-                                    ->icon(Heroicon::OutlinedClipboardDocumentCheck)
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
+                                Section::make('Consulta telemédica')
+                                    ->description(fn (TelemedicineConsultationPatient $record): string => self::headerSummary($record))
+                                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('telemedicine_case_code')
+                                                    ->label('Número de caso')
+                                                    ->icon(Heroicon::OutlinedHashtag)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('code_reference')
+                                                    ->label('Código de referencia')
+                                                    ->icon(Heroicon::OutlinedDocumentDuplicate)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicineServiceList.name')
+                                                    ->label('Servicio')
+                                                    ->icon(Heroicon::OutlinedWrenchScrewdriver)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicineServiceListDrift.name')
+                                                    ->label('Servicio Derivado:')
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state) ? 'danger' : 'info')
+                                                    ->icon(fn (?string $state): string => TelemedicineDerivedServiceBadge::driftNameIsCritical($state)
+                                                        ? 'heroicon-m-exclamation-triangle'
+                                                        : 'heroicon-m-information-circle'),
+                                                TextEntry::make('telemedicineDoctor.full_name')
+                                                    ->label('Atendido por')
+                                                    ->icon(Heroicon::OutlinedUserCircle)
+                                                    ->prefix('Dr(a). ')
+                                                    ->weight('medium')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicinePriority.name')
+                                                    ->label('Prioridad')
+                                                    ->icon(Heroicon::OutlinedBolt)
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => self::priorityColor($state))
+                                                    ->placeholder('—'),
+                                                TextEntry::make('assigned_by')
+                                                    ->label('Asignado por')
+                                                    ->icon(Heroicon::OutlinedUserPlus)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('status')
+                                                    ->label('Estado de la consulta')
+                                                    ->icon(Heroicon::OutlinedSignal)
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => self::statusColor($state))
+                                                    ->placeholder('—'),
+                                                TextEntry::make('created_at')
+                                                    ->label('Fecha de registro')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('updated_at')
+                                                    ->label('Última actualización')
+                                                    ->icon(Heroicon::OutlinedClock)
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->helperText(fn (TelemedicineConsultationPatient $record): ?string => $record->updated_at
+                                                        ? 'Relativo: '.$record->updated_at->diffForHumans()
+                                                        : null)
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Cuestionario de seguimiento')
-                    ->hidden(fn (TelemedicineConsultationPatient $record): bool => $record->status == 'CONSULTA INICIAL')
-                    ->description('Respuestas del cuestionario (visible siempre; puede estar vacío en consulta inicial).')
-                    ->icon(Heroicon::OutlinedClipboardDocumentList)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
+                        Tab::make('Información médica')
+                            ->icon(Heroicon::OutlinedHeart)
+                            ->hidden(fn (TelemedicineConsultationPatient $record): bool => $record->status == 'EN SEGUIMIENTO' || $record->status == 'ALTA MAEDICA')
                             ->schema([
-                                TextEntry::make('cuestion_1')
-                                    ->label('1. ¿Cómo se siente el día de hoy?')
-                                    ->prefix('Respuesta: ')
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('cuestion_2')
-                                    ->label('2. ¿Cómo ha respondido al tratamiento indicado?')
-                                    ->prefix('Respuesta: ')
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('cuestion_3')
-                                    ->label('3. ¿Siente que han mejorado los síntomas?')
-                                    ->prefix('Respuesta: ')
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('cuestion_4')
-                                    ->label('4. ¿Se realizaron los estudios solicitados?')
-                                    ->prefix('Respuesta: ')
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('cuestion_5')
-                                    ->label('5. Indicaciones médicas modificadas por resultados alterados')
-                                    ->prefix('Respuesta: ')
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
+                                Section::make('Información médica')
+                                    ->description('Motivo, evolución e impresión diagnóstica.')
+                                    ->icon(Heroicon::OutlinedHeart)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('reason_consultation')
+                                                    ->label('Razón de consulta')
+                                                    ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('actual_phatology')
+                                                    ->label('Cuadro / patología actual')
+                                                    ->icon(Heroicon::OutlinedBeaker)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('background')
+                                                    ->label('Antecedentes')
+                                                    ->icon(Heroicon::OutlinedBookOpen)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('diagnostic_impression')
+                                                    ->label('Impresión diagnóstica')
+                                                    ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Seguimiento y observaciones')
-                    ->description('Notas adicionales y parámetros de seguimiento.')
-                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
+                        Tab::make('Cuestionario de seguimiento')
+                            ->icon(Heroicon::OutlinedClipboardDocumentList)
+                            ->hidden(fn (TelemedicineConsultationPatient $record): bool => $record->status == 'CONSULTA INICIAL')
                             ->schema([
-                                TextEntry::make('priorityMonitoring')
-                                    ->label('Prioridad de monitoreo')
-                                    ->suffix(' minutos')
-                                    ->placeholder('—'),
-                                TextEntry::make('observations')
-                                    ->label('Observaciones')
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
+                                Section::make('Cuestionario de seguimiento')
+                                    ->description('Respuestas del cuestionario (visible siempre; puede estar vacío en consulta inicial).')
+                                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('cuestion_1')
+                                                    ->label('1. ¿Cómo se siente el día de hoy?')
+                                                    ->prefix('Respuesta: ')
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('cuestion_2')
+                                                    ->label('2. ¿Cómo ha respondido al tratamiento indicado?')
+                                                    ->prefix('Respuesta: ')
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('cuestion_3')
+                                                    ->label('3. ¿Siente que han mejorado los síntomas?')
+                                                    ->prefix('Respuesta: ')
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('cuestion_4')
+                                                    ->label('4. ¿Se realizaron los estudios solicitados?')
+                                                    ->prefix('Respuesta: ')
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('cuestion_5')
+                                                    ->label('5. Indicaciones médicas modificadas por resultados alterados')
+                                                    ->prefix('Respuesta: ')
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
-                    ])
-                    ->columnSpanFull(),
+                        Tab::make('Seguimiento y observaciones')
+                            ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                            ->schema([
+                                Section::make('Seguimiento y observaciones')
+                                    ->description('Notas adicionales y parámetros de seguimiento.')
+                                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('priorityMonitoring')
+                                                    ->label('Prioridad de monitoreo')
+                                                    ->suffix(' minutos')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('observations')
+                                                    ->label('Observaciones')
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
             ]);
     }
 

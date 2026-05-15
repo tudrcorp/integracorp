@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('affiliation_documents', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('affiliation_id')->constrained('affiliations')->cascadeOnDelete();
+            $table->integer('affiliation_id');
             $table->string('file_path');
             $table->string('original_name')->nullable();
             $table->string('mime_type')->nullable();
-            $table->unsignedBigInteger('file_size')->nullable();
-            $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('file_size')->nullable();
+            $table->string('uploaded_by')->nullable();
             $table->timestamps();
         });
     }

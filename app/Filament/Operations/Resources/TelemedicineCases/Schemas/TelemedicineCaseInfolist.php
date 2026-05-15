@@ -8,6 +8,8 @@ use App\Models\TelemedicineCase;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
@@ -38,203 +40,205 @@ class TelemedicineCaseInfolist
         return $schema
             ->columns(1)
             ->components([
-                Section::make('Datos del paciente en el caso')
-                    ->description('Tarjeta resaltada iOS: identidad registrada en el expediente del caso (puede diferir de la ficha maestra).')
-                    ->icon(Heroicon::OutlinedUserCircle)
-                    ->extraAttributes([
-                        'class' => self::IOS_PATIENT_HERO_OUTER,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                            ->extraAttributes([
-                                'class' => self::IOS_PATIENT_HERO_INNER,
-                            ])
+                Tabs::make('telemedicineCaseInfolistTabs')
+                    ->columnSpanFull()
+                    ->persistTab()
+                    ->tabs([
+                        Tab::make('Paciente en el caso')
+                            ->icon(Heroicon::OutlinedUserCircle)
                             ->schema([
-                                TextEntry::make('patient_name')
-                                    ->label('Nombre completo')
-                                    ->icon(Heroicon::OutlinedUser)
-                                    ->weight('bold')
-                                    ->size(TextSize::Large)
-                                    ->color('gray')
-                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                                    ->placeholder('—'),
-
-                                TextEntry::make('telemedicinePatient.nro_identificacion')
-                                    ->label('Número de identificación')
-                                    ->prefix('V-')
-                                    ->icon(Heroicon::OutlinedIdentification)
-                                    ->badge()
-                                    ->color('success')
-                                    ->copyable()
-                                    ->placeholder('—'),
-
-                                TextEntry::make('patient_age')
-                                    ->label('Edad')
-                                    ->icon(Heroicon::OutlinedCalendar)
-                                    ->suffix(' años')
-                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper((string) $state) : null)
-                                    ->placeholder('—'),
-                                TextEntry::make('patient_sex')
-                                    ->label('Sexo')
-                                    ->icon(Heroicon::OutlinedUserGroup)
-                                    ->badge()
-                                    ->color('info')
-                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                                    ->placeholder('—'),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Caso de telemedicina')
-                    ->description('Identificación, estado, fechas y contexto clínico-administrativo.')
-                    ->icon(Heroicon::OutlinedClipboardDocumentList)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('code')
-                                    ->label('Número de caso')
-                                    ->icon(Heroicon::OutlinedHashtag)
-                                    ->badge()
-                                    ->color('success')
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('status')
-                                    ->label('Estatus del caso')
-                                    ->icon(Heroicon::OutlinedSignal)
-                                    ->badge()
-                                    ->color(fn (?string $state): string => self::statusColor($state))
-                                    ->placeholder('—'),
-                                TextEntry::make('priority.name')
-                                    ->label('Prioridad')
-                                    ->icon(Heroicon::OutlinedExclamationTriangle)
-                                    ->badge()
-                                    ->color('warning')
-                                    ->placeholder('—'),
-                                TextEntry::make('created_at')
-                                    ->label('Fecha de registro')
-                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                    ->dateTime('d/m/Y H:i')
-                                    ->placeholder('—'),
-                                TextEntry::make('updated_at')
-                                    ->label('Última actualización')
-                                    ->icon(Heroicon::OutlinedClock)
-                                    ->dateTime('d/m/Y H:i')
-                                    ->helperText(fn (TelemedicineCase $record): ?string => $record->updated_at
-                                        ? 'Relativo: '.$record->updated_at->diffForHumans()
-                                        : null)
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicinePatient.full_name')
-                                    ->label('Paciente (ficha)')
-                                    ->icon(Heroicon::OutlinedUser)
-                                    ->weight('medium')
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicinePatient.code')
-                                    ->label('Código del paciente')
-                                    ->icon(Heroicon::OutlinedIdentification)
-                                    ->badge()
-                                    ->color('gray')
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicine_doctor_id')
-                                    ->label('ID médico (FK)')
-                                    ->icon(Heroicon::OutlinedKey)
-                                    ->badge()
-                                    ->color('gray')
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicineDoctor.full_name')
-                                    ->label('Médico asignado')
+                                Section::make('Datos del paciente en el caso')
+                                    ->description('Tarjeta resaltada iOS: identidad registrada en el expediente del caso (puede diferir de la ficha maestra).')
                                     ->icon(Heroicon::OutlinedUserCircle)
-                                    ->weight('medium')
-                                    ->placeholder('—'),
-                                TextEntry::make('telemedicineDoctor.code')
-                                    ->label('Código del médico')
-                                    ->icon(Heroicon::OutlinedIdentification)
-                                    ->badge()
-                                    ->color('info')
-                                    ->placeholder('—'),
-                                TextEntry::make('assigned_by')
-                                    ->label('Asignado por')
-                                    ->icon(Heroicon::OutlinedUserPlus)
-                                    ->placeholder('—'),
-                                TextEntry::make('reason')
-                                    ->label('Motivo / razón del caso')
-                                    ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('ambulanceParking')
-                                    ->label('Estacionamiento de ambulancia')
-                                    ->icon(Heroicon::OutlinedTruck)
-                                    ->placeholder('—'),
-                                TextEntry::make('directionAmbulance')
-                                    ->label('Dirección / indicaciones ambulancia')
-                                    ->icon(Heroicon::OutlinedMapPin)
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
+                                    ->extraAttributes([
+                                        'class' => self::IOS_PATIENT_HERO_OUTER,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_PATIENT_HERO_INNER,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('patient_name')
+                                                    ->label('Nombre completo')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->weight('bold')
+                                                    ->size(TextSize::Large)
+                                                    ->color('gray')
+                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
+                                                    ->placeholder('—'),
 
-                Section::make('Ubicación y contacto')
-                    ->description('Dirección y vías de contacto registradas para el caso.')
-                    ->icon(Heroicon::OutlinedMap)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('patient_address')
-                                    ->label('Dirección')
-                                    ->icon(Heroicon::OutlinedHome)
-                                    ->columnSpanFull()
-                                    ->wrap()
-                                    ->placeholder('—'),
-                                TextEntry::make('patient_phone')
-                                    ->label('Teléfono principal')
-                                    ->icon(Heroicon::OutlinedDevicePhoneMobile)
-                                    ->copyable()
-                                    ->badge()
-                                    ->color('info')
-                                    ->placeholder('—'),
-                                TextEntry::make('patient_phone_2')
-                                    ->label('Teléfono alternativo')
-                                    ->icon(Heroicon::OutlinedPhone)
-                                    ->copyable()
-                                    ->badge()
-                                    ->color('info')
-                                    ->placeholder('—'),
-                                TextEntry::make('city.definition')
-                                    ->label('Ciudad')
-                                    ->icon(Heroicon::OutlinedBuildingOffice2)
-                                    ->badge()
-                                    ->color('success')
-                                    ->placeholder('—'),
-                                TextEntry::make('state.definition')
-                                    ->label('Estado / provincia')
-                                    ->icon(Heroicon::OutlinedMapPin)
-                                    ->badge()
-                                    ->color('success')
-                                    ->placeholder('—'),
-                                TextEntry::make('country.name')
-                                    ->label('País')
-                                    ->icon(Heroicon::OutlinedGlobeAmericas)
-                                    ->badge()
-                                    ->color('success')
-                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicinePatient.nro_identificacion')
+                                                    ->label('Número de identificación')
+                                                    ->prefix('V-')
+                                                    ->icon(Heroicon::OutlinedIdentification)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+
+                                                TextEntry::make('patient_age')
+                                                    ->label('Edad')
+                                                    ->icon(Heroicon::OutlinedCalendar)
+                                                    ->suffix(' años')
+                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper((string) $state) : null)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('patient_sex')
+                                                    ->label('Sexo')
+                                                    ->icon(Heroicon::OutlinedUserGroup)
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
+                                                    ->placeholder('—'),
+                                            ]),
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('patient_address')
+                                                    ->label('Dirección')
+                                                    ->icon(Heroicon::OutlinedHome)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('patient_phone')
+                                                    ->label('Teléfono principal')
+                                                    ->icon(Heroicon::OutlinedDevicePhoneMobile)
+                                                    ->copyable()
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('patient_phone_2')
+                                                    ->label('Teléfono alternativo')
+                                                    ->icon(Heroicon::OutlinedPhone)
+                                                    ->copyable()
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('city.definition')
+                                                    ->label('Ciudad')
+                                                    ->icon(Heroicon::OutlinedBuildingOffice2)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('state.definition')
+                                                    ->label('Estado / provincia')
+                                                    ->icon(Heroicon::OutlinedMapPin)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('country.name')
+                                                    ->label('País')
+                                                    ->icon(Heroicon::OutlinedGlobeAmericas)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
-                    ])
-                    ->columnSpanFull(),
+                        Tab::make('Caso de telemedicina')
+                            ->icon(Heroicon::OutlinedClipboardDocumentList)
+                            ->schema([
+                                Section::make('Caso de telemedicina')
+                                    ->description('Identificación, estado, fechas y contexto clínico-administrativo.')
+                                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('code')
+                                                    ->label('Número de caso')
+                                                    ->icon(Heroicon::OutlinedHashtag)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('status')
+                                                    ->label('Estatus del caso')
+                                                    ->icon(Heroicon::OutlinedSignal)
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => self::statusColor($state))
+                                                    ->placeholder('—'),
+                                                TextEntry::make('priority.name')
+                                                    ->label('Prioridad')
+                                                    ->icon(Heroicon::OutlinedExclamationTriangle)
+                                                    ->badge()
+                                                    ->color('warning')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('created_at')
+                                                    ->label('Fecha de registro')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('updated_at')
+                                                    ->label('Última actualización')
+                                                    ->icon(Heroicon::OutlinedClock)
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->helperText(fn (?TelemedicineCase $record): ?string => $record?->updated_at
+                                                        ? 'Relativo: '.$record->updated_at->diffForHumans()
+                                                        : null)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicinePatient.full_name')
+                                                    ->label('Paciente (ficha)')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->weight('medium')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicinePatient.code')
+                                                    ->label('Código del paciente')
+                                                    ->icon(Heroicon::OutlinedIdentification)
+                                                    ->badge()
+                                                    ->color('gray')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicine_doctor_id')
+                                                    ->label('ID médico (FK)')
+                                                    ->icon(Heroicon::OutlinedKey)
+                                                    ->badge()
+                                                    ->color('gray')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicineDoctor.full_name')
+                                                    ->label('Médico asignado')
+                                                    ->icon(Heroicon::OutlinedUserCircle)
+                                                    ->weight('medium')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('telemedicineDoctor.code')
+                                                    ->label('Código del médico')
+                                                    ->icon(Heroicon::OutlinedIdentification)
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('assigned_by')
+                                                    ->label('Asignado por')
+                                                    ->icon(Heroicon::OutlinedUserPlus)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('reason')
+                                                    ->label('Motivo / razón del caso')
+                                                    ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('ambulanceParking')
+                                                    ->label('Estacionamiento de ambulancia')
+                                                    ->icon(Heroicon::OutlinedTruck)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('directionAmbulance')
+                                                    ->label('Dirección / indicaciones ambulancia')
+                                                    ->icon(Heroicon::OutlinedMapPin)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
             ]);
     }
 }

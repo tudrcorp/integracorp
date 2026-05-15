@@ -20,7 +20,7 @@
         <div class="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
             <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Empresa</p>
             <dl class="space-y-2 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">RIF</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{{ $affiliationCorporate->rif ?: 'N/A' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">RIF</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{{ \App\Support\AffiliationCorporateRifLabel::withJPrefix($affiliationCorporate->rif) ?: 'N/A' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Correo</dt><dd class="font-medium text-slate-900 dark:text-slate-100 break-all">{{ $affiliationCorporate->email ?: 'N/A' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Teléfono</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{{ $affiliationCorporate->phone ?: 'N/A' }}</dd></div>
             </dl>
