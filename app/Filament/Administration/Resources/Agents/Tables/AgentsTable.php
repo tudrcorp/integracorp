@@ -76,6 +76,7 @@ class AgentsTable
                     ->color('verde'),
                 TextColumn::make('name')
                     ->label('Razon Social')
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                     ->searchable()
                     ->badge()
                     ->color('verde')
@@ -106,6 +107,7 @@ class AgentsTable
                     ->color('verde'),
                 TextColumn::make('address')
                     ->label('Direccion')
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                     ->searchable(),
 
                 TextColumn::make('email')
@@ -177,8 +179,16 @@ class AgentsTable
 
                 TextColumn::make('status')
                     ->label('Estatus')
-                    ->formatStateUsing(fn (mixed $state): HtmlString => self::iosStatusPill((string) $state))
-                    ->html()
+                    // ->formatStateUsing(fn (mixed $state): HtmlString => self::iosStatusPill((string) $state))
+                    // ->html()
+                    ->badge()
+                    ->color(function (mixed $state): string {
+                        return match ($state) {
+                            'ACTIVO' => 'success',
+                            'INACTIVO' => 'danger',
+                            'POR REVISION' => 'warning',
+                        };
+                    })
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_by')

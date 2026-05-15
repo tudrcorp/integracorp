@@ -6,6 +6,7 @@ use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateRe
 use App\Http\Controllers\AffiliationCorporateController;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
+use App\Support\AffiliationCorporateRifLabel;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -49,6 +50,27 @@ class AffiliationCorporatesTable
             ->heading('AFILIACIONES CORPORATIVAS')
             ->description('Lista de afiliaciones corporativas registradas en el sistema')
             ->columns([
+                TextColumn::make('status')
+                    ->label('Estatus')
+                    ->badge()
+                    ->color(function (mixed $state): string {
+                        return match ($state) {
+                            'PRE-APROBADA' => 'success',
+                            'ACTIVA' => 'success',
+                            'PENDIENTE' => 'warning',
+                            'EXCLUIDO' => 'danger',
+                        };
+                    })
+                    ->searchable()
+                    ->sortable()
+                    ->icon(function (mixed $state): ?string {
+                        return match ($state) {
+                            'PRE-APROBADA' => 'heroicon-c-information-circle',
+                            'ACTIVA' => 'heroicon-s-check-circle',
+                            'PENDIENTE' => 'heroicon-s-exclamation-circle',
+                            'EXCLUIDO' => 'heroicon-c-x-circle',
+                        };
+                    }),
                 TextColumn::make('code')
                     ->label('Codigo')
                     ->badge()
@@ -80,12 +102,14 @@ class AffiliationCorporatesTable
                     ->label('Cliente Corporativo')
                     ->badge()
                     ->color('azulOscuro')
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('agency.name_corporative')
                     ->label('Agencia')
                     ->badge()
                     ->color('azulOscuro')
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('agent.name')
@@ -93,6 +117,7 @@ class AffiliationCorporatesTable
                     ->label('Agente')
                     ->badge()
                     ->color('azulOscuro')
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                     ->sortable()
                     ->searchable(),
 
@@ -151,7 +176,7 @@ class AffiliationCorporatesTable
 
                 TextColumn::make('rif')
                     ->label('Rif')
-                    ->prefix('J-')
+                    ->formatStateUsing(fn (?string $state): string => AffiliationCorporateRifLabel::withJPrefix($state))
                     ->badge()
                     ->color('verde')
                     ->sortable()
@@ -202,6 +227,7 @@ class AffiliationCorporatesTable
                 ]),
                 TextColumn::make('created_by')
                     ->label('Creado por')
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                     ->sortable()
                     ->searchable(),
 
@@ -220,28 +246,6 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->searchable()
                     ->sortable(),
-
-                TextColumn::make('status')
-                    ->label('Estatus')
-                    ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'PRE-APROBADA' => 'success',
-                            'ACTIVA' => 'success',
-                            'PENDIENTE' => 'warning',
-                            'EXCLUIDO' => 'danger',
-                        };
-                    })
-                    ->searchable()
-                    ->sortable()
-                    ->icon(function (mixed $state): ?string {
-                        return match ($state) {
-                            'PRE-APROBADA' => 'heroicon-c-information-circle',
-                            'ACTIVA' => 'heroicon-s-check-circle',
-                            'PENDIENTE' => 'heroicon-s-exclamation-circle',
-                            'EXCLUIDO' => 'heroicon-c-x-circle',
-                        };
-                    }),
             ])
             ->filters([
                 //

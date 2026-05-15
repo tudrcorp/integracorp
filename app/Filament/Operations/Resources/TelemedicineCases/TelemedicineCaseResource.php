@@ -47,7 +47,15 @@ class TelemedicineCaseResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with([
-                'telemedicinePatient',
+                'telemedicinePatient.afilliation',
+                'telemedicinePatient.afilliationCorporate',
+                'telemedicinePatient.plan',
+                'telemedicinePatient.coverage',
+                'telemedicinePatient.businessUnit',
+                'telemedicinePatient.businessLine',
+                'telemedicinePatient.city',
+                'telemedicinePatient.state',
+                'telemedicinePatient.country',
                 'telemedicineDoctor',
                 'priority',
                 'city',

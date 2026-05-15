@@ -155,40 +155,50 @@ class ListTelemedicinePatients extends ListRecords
                         ])->columnSpanFull(),
                 ])
                 ->action(function (array $data): void {
-                    if ($data['type_affiliate'] == 'inv') {
-                        $affiliation = Affiliate::where('id', $data['affiliate_id'])
+                    if (($data['type_affiliate'] ?? null) === 'inv') {
+                        $affiliate = Affiliate::query()
                             ->with('affiliation')
-                            ->get()
-                            ->toArray();
+                            ->find($data['affiliate_id'] ?? null);
 
-                        $emailTitular = Str::lower(trim((string) ($affiliation[0]['affiliation']['email_ti'] ?? '')));
+                        if ($affiliate === null || $affiliate->affiliation === null) {
+                            Notification::make()
+                                ->title('Afiliado no encontrado')
+                                ->body('No se encontró el afiliado seleccionado o no tiene una afiliación asociada. Elija otro registro e intente de nuevo.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $affiliation = $affiliate->affiliation;
+                        $emailTitular = Str::lower(trim((string) ($affiliation->email_ti ?? '')));
 
                         $attributes = [
-                            'plan_id' => $affiliation[0]['affiliation']['plan_id'],
-                            'coverage_id' => $affiliation[0]['affiliation']['coverage_id'],
-                            'afilliation_id' => $affiliation[0]['affiliation']['id'],
-                            'code_affiliation' => $affiliation[0]['affiliation']['code'],
+                            'plan_id' => $affiliation->plan_id,
+                            'coverage_id' => $affiliation->coverage_id,
+                            'afilliation_id' => $affiliation->id,
+                            'code_affiliation' => $affiliation->code,
                             'status_affiliation' => 'ACTIVO',
                             'type_affiliation' => 'INDIVIDUAL',
-                            'full_name' => $affiliation[0]['full_name'],
-                            'nro_identificacion' => $affiliation[0]['nro_identificacion'],
-                            'birth_date' => $affiliation[0]['birth_date'],
-                            'sex' => $affiliation[0]['sex'],
-                            'age' => $affiliation[0]['age'],
-                            'phone' => $affiliation[0]['phone'],
-                            'address' => $affiliation[0]['address'],
-                            'city_id' => $affiliation[0]['city_id'],
-                            'country_id' => $affiliation[0]['country_id'],
-                            'region' => $affiliation[0]['region'],
-                            'state_id' => $affiliation[0]['state_id'],
-                            'email' => $emailTitular !== '' ? $emailTitular : ($affiliation[0]['affiliation']['email_ti'] ?? null),
-                            'phone_contact' => $affiliation[0]['affiliation']['phone_ti'] ?? null,
-                            'email_contact' => filled($affiliation[0]['affiliation']['email_payer'] ?? null)
-                                ? Str::lower(trim((string) $affiliation[0]['affiliation']['email_payer']))
+                            'full_name' => $affiliate->full_name,
+                            'nro_identificacion' => $affiliate->nro_identificacion,
+                            'birth_date' => $affiliate->birth_date,
+                            'sex' => $affiliate->sex,
+                            'age' => $affiliate->age,
+                            'phone' => $affiliate->phone,
+                            'address' => $affiliate->address,
+                            'city_id' => $affiliate->city_id,
+                            'country_id' => $affiliate->country_id,
+                            'region' => $affiliate->region,
+                            'state_id' => $affiliate->state_id,
+                            'email' => $emailTitular !== '' ? $emailTitular : ($affiliation->email_ti ?? null),
+                            'phone_contact' => $affiliation->phone_ti ?? null,
+                            'email_contact' => filled($affiliation->email_payer ?? null)
+                                ? Str::lower(trim((string) $affiliation->email_payer))
                                 : null,
                             'created_by' => Auth::user()->name,
-                            'business_unit_id' => $affiliation[0]['affiliation']['business_unit_id'] == null ? '----' : $affiliation[0]['affiliation']['business_unit_id'],
-                            'business_line_id' => $affiliation[0]['affiliation']['business_line_id'] == null ? '----' : $affiliation[0]['affiliation']['business_line_id'],
+                            'business_unit_id' => $affiliation->business_unit_id == null ? '----' : $affiliation->business_unit_id,
+                            'business_line_id' => $affiliation->business_line_id == null ? '----' : $affiliation->business_line_id,
                         ];
 
                         $patient = $emailTitular !== ''
@@ -206,36 +216,49 @@ class ListTelemedicinePatients extends ListRecords
                             ->send();
                     }
 
-                    if ($data['type_affiliate'] == 'cor') {
-                        $affiliation = AffiliateCorporate::where('id', $data['affiliate_corporate_id'])->with('affiliationCorporate')->get()->toArray();
+                    if (($data['type_affiliate'] ?? null) === 'cor') {
+                        $member = AffiliateCorporate::query()
+                            ->with('affiliationCorporate')
+                            ->find($data['affiliate_corporate_id'] ?? null);
 
-                        $emailKey = Str::lower(trim((string) ($affiliation[0]['email'] ?? '')));
+                        if ($member === null || $member->affiliationCorporate === null) {
+                            Notification::make()
+                                ->title('Afiliado corporativo no encontrado')
+                                ->body('No se encontró el afiliado corporativo seleccionado o falta su afiliación. Elija otro registro e intente de nuevo.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $affiliation = $member->affiliationCorporate;
+                        $emailKey = Str::lower(trim((string) ($member->email ?? '')));
 
                         $attributes = [
-                            'name_corporate' => $affiliation[0]['affiliation_corporate']['name_corporate'],
-                            'plan_id' => $affiliation[0]['plan_id'],
-                            'coverage_id' => $affiliation[0]['coverage_id'],
-                            'afilliation_corporate_id' => $affiliation[0]['affiliation_corporate']['id'],
-                            'code_affiliation' => $affiliation[0]['affiliation_corporate']['code'],
+                            'name_corporate' => $affiliation->name_corporate,
+                            'plan_id' => $member->plan_id,
+                            'coverage_id' => $member->coverage_id,
+                            'afilliation_corporate_id' => $affiliation->id,
+                            'code_affiliation' => $affiliation->code,
                             'status_affiliation' => 'ACTIVO',
                             'type_affiliation' => 'CORPORATIVO',
-                            'full_name' => $affiliation[0]['first_name'],
-                            'nro_identificacion' => $affiliation[0]['nro_identificacion'],
-                            'birth_date' => $affiliation[0]['birth_date'],
-                            'sex' => $affiliation[0]['sex'],
-                            'age' => $affiliation[0]['age'],
-                            'phone' => $affiliation[0]['phone'],
-                            'address' => $affiliation[0]['address'],
-                            'city_id' => $affiliation[0]['affiliation_corporate']['city_id'],
-                            'country_id' => $affiliation[0]['affiliation_corporate']['country_id'],
-                            'region' => $affiliation[0]['affiliation_corporate']['region_id'],
-                            'state_id' => $affiliation[0]['affiliation_corporate']['state_id'],
-                            'email' => $emailKey !== '' ? $emailKey : ($affiliation[0]['email'] ?? null),
-                            'phone_contact' => $affiliation[0]['affiliation_corporate']['phone'],
-                            'email_contact' => $affiliation[0]['affiliation_corporate']['email'],
+                            'full_name' => $member->first_name,
+                            'nro_identificacion' => $member->nro_identificacion,
+                            'birth_date' => $member->birth_date,
+                            'sex' => $member->sex,
+                            'age' => $member->age,
+                            'phone' => $member->phone,
+                            'address' => $member->address,
+                            'city_id' => $affiliation->city_id,
+                            'country_id' => $affiliation->country_id,
+                            'region' => $affiliation->region_id,
+                            'state_id' => $affiliation->state_id,
+                            'email' => $emailKey !== '' ? $emailKey : ($member->email ?? null),
+                            'phone_contact' => $affiliation->phone,
+                            'email_contact' => $affiliation->email,
                             'created_by' => Auth::user()->name,
-                            'business_unit_id' => $affiliation[0]['affiliation_corporate']['business_unit_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_unit_id'],
-                            'business_line_id' => $affiliation[0]['affiliation_corporate']['business_line_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_line_id'],
+                            'business_unit_id' => $affiliation->business_unit_id == null ? null : $affiliation->business_unit_id,
+                            'business_line_id' => $affiliation->business_line_id == null ? null : $affiliation->business_line_id,
                         ];
 
                         $patient = $emailKey !== ''

@@ -163,6 +163,18 @@ class Affiliation extends Model
         return $this->hasMany(Affiliate::class);
     }
 
+    /**
+     * Cobranzas asociadas al código de afiliación (`collections.affiliation_code`).
+     *
+     * @return HasMany<\App\Models\Collection, $this>
+     */
+    public function billingCollections(): HasMany
+    {
+        return $this->hasMany(Collection::class, 'affiliation_code', 'code')
+            ->orderByRaw('COALESCE(next_payment_date, expiration_date) ASC')
+            ->orderBy('id');
+    }
+
     public function coverage()
     {
         return $this->belongsTo(Coverage::class);

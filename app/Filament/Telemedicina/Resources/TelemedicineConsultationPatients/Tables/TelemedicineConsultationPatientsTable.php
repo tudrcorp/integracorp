@@ -2,22 +2,20 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Tables;
 
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use PhpParser\Node\Stmt\Label;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Filament\Actions\BulkActionGroup;
-use Filament\Schemas\Components\Grid;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Tables\Columns\ColumnGroup;
-use Filament\Schemas\Components\Fieldset;
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class TelemedicineConsultationPatientsTable
 {
@@ -146,24 +144,10 @@ class TelemedicineConsultationPatientsTable
                 TextColumn::make('telemedicinePriority.name')
                     ->label('Prioridad')
                     ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'ALTA'          => 'success',
-                            'MEDIA'         => 'warning',
-                            'BAJA'          => 'primary',
-                            'EMERGENCIA'    => 'danger',
-                        };
-                    })
-                    ->icon(function (string $state): string {
-                        return match ($state) {
-                            'ALTA'             => 'healthicons-f-health',
-                            'MEDIA'            => 'healthicons-f-health',
-                            'BAJA'             => 'healthicons-f-health',
-                            'EMERGENCIA'       => 'heroicon-c-shield-exclamation',
-                        };
-                    })
+                    ->color(fn (?string $state): string => TelemedicinePriorityFilamentBadge::color((string) ($state ?? '')))
+                    ->icon(fn (?string $state): string => TelemedicinePriorityFilamentBadge::icon((string) ($state ?? '')))
                     ->searchable(),
-                
+
                 TextColumn::make('created_at')
                     ->label('Fecha de Registro')
                     ->dateTime()
@@ -190,40 +174,40 @@ class TelemedicineConsultationPatientsTable
                                     TextInput::make('vs_pa')
                                         ->label('PA')
                                         ->disabled()
-                                        ->default(fn(TelemedicineConsultationPatient $record) => $record->vs_pa),
+                                        ->default(fn (TelemedicineConsultationPatient $record) => $record->vs_pa),
                                     TextInput::make('vs_fc')
                                         ->label('FC')
                                         ->disabled()
-                                        ->default(fn(TelemedicineConsultationPatient $record) => $record->vs_fc),
+                                        ->default(fn (TelemedicineConsultationPatient $record) => $record->vs_fc),
                                     TextInput::make('vs_fr')
                                         ->label('FR')
                                         ->disabled()
-                                        ->default(fn(TelemedicineConsultationPatient $record) => $record->vs_fr),
+                                        ->default(fn (TelemedicineConsultationPatient $record) => $record->vs_fr),
                                     TextInput::make('vs_temp')
                                         ->label('TEMP')
                                         ->disabled()
-                                        ->default(fn(TelemedicineConsultationPatient $record) => $record->vs_temp),
+                                        ->default(fn (TelemedicineConsultationPatient $record) => $record->vs_temp),
                                     TextInput::make('vs_sat')
                                         ->label('SAT')
                                         ->disabled()
-                                        ->default(fn(TelemedicineConsultationPatient $record) => $record->vs_sat),
+                                        ->default(fn (TelemedicineConsultationPatient $record) => $record->vs_sat),
                                     TextInput::make('vs_weight')
                                         ->label('W')
                                         ->disabled()
-                                        ->default(fn(TelemedicineConsultationPatient $record) => $record->vs_weight),
+                                        ->default(fn (TelemedicineConsultationPatient $record) => $record->vs_weight),
                                 ])->columns(3),
                             Textarea::make('reason_consultation')
                                 ->label('Motivo de consulta:')
                                 ->disabled()
-                                ->default(fn(TelemedicineConsultationPatient $record) => $record->reason_consultation),
+                                ->default(fn (TelemedicineConsultationPatient $record) => $record->reason_consultation),
                             Textarea::make('actual_phatology')
                                 ->label('Patología actual:')
                                 ->disabled()
-                                ->default(fn(TelemedicineConsultationPatient $record) => $record->actual_phatology),
+                                ->default(fn (TelemedicineConsultationPatient $record) => $record->actual_phatology),
                             Textarea::make('diagnostic_impression')
                                 ->label('Impresión Diagnóstica:')
                                 ->disabled()
-                                ->default(fn(TelemedicineConsultationPatient $record) => $record->diagnostic_impression),
+                                ->default(fn (TelemedicineConsultationPatient $record) => $record->diagnostic_impression),
                         ]),
                     Action::make('follow_up')
                         ->label('Hacer Seguimiento')
@@ -237,13 +221,13 @@ class TelemedicineConsultationPatientsTable
                             Textarea::make('reason')
                                 ->label('Descripción:')
                                 ->disabled()
-                                ->default(fn(TelemedicineConsultationPatient $record) => $record->patient_address)
+                                ->default(fn (TelemedicineConsultationPatient $record) => $record->patient_address)
                                 ->required(),
                         ]),
-                    
-                ])
 
-            // EditAction::make(),
+                ]),
+
+                // EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -9,6 +9,7 @@ use App\Filament\Operations\Widgets\StatsOverviewPlan;
 use App\Filament\Operations\Widgets\TotalAfiliacionesPorEstado;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
+use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -54,6 +55,10 @@ class OperationsPanelProvider extends PanelProvider
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
+            ->globalSearch(position: GlobalSearchPosition::Topbar)
+            ->globalSearchDebounce('350ms')
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearchFieldKeyBindingSuffix()
             ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Operations/Resources'), for: 'App\Filament\Operations\Resources')
             ->discoverPages(in: app_path('Filament/Operations/Pages'), for: 'App\Filament\Operations\Pages')

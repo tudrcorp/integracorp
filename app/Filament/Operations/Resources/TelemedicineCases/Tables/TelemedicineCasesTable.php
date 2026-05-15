@@ -5,14 +5,19 @@ namespace App\Filament\Operations\Resources\TelemedicineCases\Tables;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +26,21 @@ class TelemedicineCasesTable
 {
     public static function configure(Table $table): Table
     {
+        $openPatientSummary = Action::make('openPatientSummaryFromCase')
+            ->label('Paciente')
+            ->modalHeading(fn (TelemedicineCase $record): string => 'Paciente — caso '.$record->code)
+            ->modalDescription('Identificación y contacto, ubicación del expediente y, si aplica, plan y datos de afiliación.')
+            ->modalIcon(Heroicon::OutlinedUserCircle)
+            ->modalIconColor('primary')
+            ->modalContent(fn (TelemedicineCase $record): View => view(
+                'filament.operations.telemedicine-cases.patient-summary-modal',
+                ['record' => $record]
+            ))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->modalWidth(Width::FiveExtraLarge)
+            ->closeModalByClickingAway(false);
+
         return $table
             ->query(
                 TelemedicineCase::query()
@@ -49,7 +69,13 @@ class TelemedicineCasesTable
                     ->label('Numero de Caso')
                     ->badge()
                     ->color('primary')
-                    ->searchable(),
+                    ->weight(FontWeight::SemiBold)
+                    ->searchable()
+                    ->tooltip('Ver resumen del paciente en este caso')
+                    ->action($openPatientSummary)
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer underline decoration-dotted underline-offset-2 hover:opacity-90 active:opacity-75',
+                    ]),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
                     ->description(fn ($record): string => 'Asignado a Dr(a):'.$record->telemedicineDoctor->full_name)
@@ -146,6 +172,15 @@ class TelemedicineCasesTable
                                     ->danger()
                                     ->send();
                             }
+                        }),
+                    BulkAction::make('ver_observaciones')
+                        ->label('Ver Observaciones')
+                        ->color('success')
+                        ->icon('heroicon-s-eye')
+                        ->action(function (Collection $records) {
+                            $records->each(function (TelemedicineCase $record) {
+                                return redirect()->route('filament.operations.resources.telemedicine-cases.view', ['record' => $record->id.'?relation=observations']);
+                            });
                         }),
                     DeleteBulkAction::make(),
                 ]),

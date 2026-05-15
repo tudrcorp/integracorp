@@ -2,28 +2,14 @@
 
 namespace App\Filament\Agents\Resources\Agents\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
 use App\Models\Agent;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Filament\Actions\BulkActionGroup;
-use Filament\Support\Enums\Alignment;
-use Filament\Actions\DeleteBulkAction;
-use App\Http\Controllers\LogController;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use App\Http\Controllers\AgentController;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Facades\Auth;
 
 class AgentsTable
 {
@@ -49,6 +35,7 @@ class AgentsTable
                 TextColumn::make('name')
                     ->label('Nombre y Apellido')
                     ->searchable()
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                     ->badge()
                     ->color('verde'),
                 TextColumn::make('ci')
@@ -57,14 +44,14 @@ class AgentsTable
                     ->badge()
                     ->color('verde')
                     ->toggleable(isToggledHiddenByDefault: false),
-                
+
                 TextColumn::make('phone')
                     ->label('Número de teléfono')
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Correo Electrónico')
                     ->searchable(),
-                
+
                 TextColumn::make('country.name')
                     ->label('País')
                     ->searchable()
@@ -97,12 +84,13 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                
+
                 TextColumn::make('commission_tdev')
                     ->label('(%) TDEV')
                     ->suffix('%')
@@ -112,12 +100,13 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                
+
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
@@ -155,20 +144,20 @@ class AgentsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;

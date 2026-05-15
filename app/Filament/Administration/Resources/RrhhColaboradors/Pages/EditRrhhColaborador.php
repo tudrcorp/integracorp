@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class EditRrhhColaborador extends EditRecord
@@ -25,6 +26,26 @@ class EditRrhhColaborador extends EditRecord
      * @var array<string, array{old:mixed,new:mixed}>
      */
     protected array $auditChanges = [];
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        if (empty($data['birth_date'] ?? null) && ! empty($data['fechaNacimiento'] ?? null)) {
+            try {
+                $data['birth_date'] = Carbon::createFromFormat('d/m/Y', trim((string) $data['fechaNacimiento']))->format('Y-m-d');
+            } catch (\Throwable) {
+                try {
+                    $data['birth_date'] = Carbon::parse((string) $data['fechaNacimiento'])->format('Y-m-d');
+                } catch (\Throwable) {
+                }
+            }
+        }
+
+        if (! empty($data['birth_date'])) {
+            $data['age'] = RrhhColaborador::completedYearsFromBirthDate($data['birth_date']);
+        }
+
+        return $data;
+    }
 
     protected function getHeaderActions(): array
     {
@@ -60,6 +81,8 @@ class EditRrhhColaborador extends EditRecord
             'cargo_id',
             'cedula',
             'sexo',
+            'birth_date',
+            'age',
             'fechaNacimiento',
             'fechaIngreso',
             'telefono',
@@ -78,6 +101,7 @@ class EditRrhhColaborador extends EditRecord
             'status',
             'avatar',
             'sueldo',
+            'documents',
             'updated_by',
         ];
 
