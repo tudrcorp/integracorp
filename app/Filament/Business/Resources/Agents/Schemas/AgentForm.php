@@ -537,6 +537,7 @@ class AgentForm
                                                     ->searchable()
                                                     ->preload()
                                                     ->options([
+                                                        'FACEBANK INTERNATIONAL' => 'FACEBANK INTERNATIONAL',
                                                         'JPMORGAN CHASE & CO' => 'JPMORGAN CHASE & CO',
                                                         'BANK OF AMERICA' => 'BANK OF AMERICA',
                                                         'WELLS FARGO' => 'WELLS FARGO',

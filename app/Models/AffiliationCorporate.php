@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class AffiliationCorporate extends Model
 {
@@ -45,18 +45,18 @@ class AffiliationCorporate extends Model
         'poblation',
         'activated_at',
 
-        //...Unidad de Negocio y linea de servicio
+        // ...Unidad de Negocio y linea de servicio
         'business_unit_id',
         'business_line_id',
         'ownerAccountManagers',
 
-        //PROVEEDORRES DE SERVICIOS
+        // PROVEEDORRES DE SERVICIOS
         'service_providers',
 
-        //...Fecha de Vigencia de la afiliacion
+        // ...Fecha de Vigencia de la afiliacion
         'effective_date',
 
-        //Unidades e Negocio y Lineas de Servicio
+        // Unidades e Negocio y Lineas de Servicio
         'business_unit_id',
         'business_line_id',
     ];
@@ -100,6 +100,11 @@ class AffiliationCorporate extends Model
         return $this->hasMany(PaidMembershipCorporate::class);
     }
 
+    public function affiliationCorporateDocuments(): HasMany
+    {
+        return $this->hasMany(AffiliationCorporateDocument::class);
+    }
+
     public function status_log_corporate_affiliations()
     {
         return $this->hasMany(StatusLogAffiliationCorporate::class);
@@ -139,7 +144,14 @@ class AffiliationCorporate extends Model
     {
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
-    
 
-    
+    public function businessUnit(): BelongsTo
+    {
+        return $this->belongsTo(BusinessUnit::class);
+    }
+
+    public function businessLine(): BelongsTo
+    {
+        return $this->belongsTo(BusinessLine::class);
+    }
 }

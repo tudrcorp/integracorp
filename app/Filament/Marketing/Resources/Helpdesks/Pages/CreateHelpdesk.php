@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Marketing\Resources\Helpdesks\Pages;
 
+use App\Filament\Concerns\LabelsHelpdeskCreateAnotherFormAction;
 use App\Filament\Concerns\PreparesHelpdeskColaboradorAssigneesOnCreate;
 use App\Filament\Marketing\Resources\Helpdesks\HelpdeskResource;
 use App\Services\HelpdeskTicketAssigneeMailService;
@@ -16,6 +17,7 @@ use Throwable;
 
 class CreateHelpdesk extends CreateRecord
 {
+    use LabelsHelpdeskCreateAnotherFormAction;
     use PreparesHelpdeskColaboradorAssigneesOnCreate;
 
     protected static string $resource = HelpdeskResource::class;

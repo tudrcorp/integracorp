@@ -11,3 +11,22 @@ it('configura el infolist de afiliación corporativa sin error', function (): vo
 
     expect($configured)->toBeInstanceOf(Schema::class);
 });
+
+it('mueve la documentación fuera del infolist principal', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateInfolist.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->not->toContain("Section::make('Documentación')")
+        ->toContain("Section::make('Pagos e ILS')")
+        ->toContain("Section::make('Observaciones')");
+});
+
+it('muestra el documento del titular en ubicación y datos fiscales', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateInfolist.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("TextEntry::make('document')")
+        ->toContain("->label('Documento del titular')");
+});

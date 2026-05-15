@@ -5,12 +5,19 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Affiliations\Schemas;
 
 use App\Models\Affiliation;
+use App\Models\AffiliationDocument;
+use Filament\Actions\Action;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Storage;
 
 class AffiliationInfolist
 {
@@ -26,6 +33,33 @@ class AffiliationInfolist
             'EXCLUIDO' => 'danger',
             default => 'gray',
         };
+    }
+
+    private static function formatStoredFileName(mixed $state): ?string
+    {
+        if (blank($state)) {
+            return null;
+        }
+
+        return basename((string) $state);
+    }
+
+    private static function formatFileSize(?int $size): string
+    {
+        if ($size === null || $size <= 0) {
+            return '—';
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $unitIndex = 0;
+        $value = (float) $size;
+
+        while ($value >= 1024 && $unitIndex < count($units) - 1) {
+            $value /= 1024;
+            $unitIndex++;
+        }
+
+        return number_format($value, $unitIndex === 0 ? 0 : 2, ',', '.').' '.$units[$unitIndex];
     }
 
     public static function configure(Schema $schema): Schema
@@ -312,6 +346,127 @@ class AffiliationInfolist
                             ])
                             ->schema([
                                 ...self::medicalQuestionIconEntries(),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Expediente digital')
+                    ->description('Adjuntos del expediente individual (PDF e imágenes).')
+                    ->icon(Heroicon::OutlinedFolderOpen)
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        Grid::make(1)
+                            ->extraAttributes([
+                                'class' => self::IOS_INNER_CLASS,
+                            ])
+                            ->schema([
+                                RepeatableEntry::make('affiliationDocuments')
+                                    ->label('')
+                                    ->placeholder('No hay documentos adjuntos en el expediente.')
+                                    ->table([
+                                        TableColumn::make('Documento')->width('38%'),
+                                        TableColumn::make('Tipo')->width('18%'),
+                                        TableColumn::make('Tamaño')->width('12%'),
+                                        TableColumn::make('Fecha')->width('17%'),
+                                        TableColumn::make('Acciones')->width('15%')->alignStart(),
+                                    ])
+                                    ->schema([
+                                        TextEntry::make('original_name')
+                                            ->label('Documento')
+                                            ->icon(Heroicon::OutlinedDocumentText)
+                                            ->formatStateUsing(fn (mixed $state, $record): string => filled($state)
+                                                ? (string) $state
+                                                : self::formatStoredFileName($record->file_path))
+                                            ->url(fn ($record): ?string => filled($record->file_path)
+                                                ? asset('storage/'.$record->file_path)
+                                                : null)
+                                            ->openUrlInNewTab()
+                                            ->placeholder('—'),
+                                        TextEntry::make('mime_type')
+                                            ->label('Tipo')
+                                            ->formatStateUsing(function (mixed $state): string {
+                                                if (! filled($state)) {
+                                                    return '—';
+                                                }
+
+                                                $mime = (string) $state;
+
+                                                if (str_starts_with($mime, 'image/')) {
+                                                    return 'Imagen';
+                                                }
+
+                                                return $mime === 'application/pdf' ? 'PDF' : $mime;
+                                            }),
+                                        TextEntry::make('file_size')
+                                            ->label('Tamaño')
+                                            ->formatStateUsing(fn (mixed $state): string => self::formatFileSize(
+                                                is_numeric($state) ? (int) $state : null
+                                            )),
+                                        TextEntry::make('created_at')
+                                            ->label('Fecha')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->placeholder('—'),
+                                        TextEntry::make('expediente_delete')
+                                            ->label('Acciones')
+                                            ->alignStart()
+                                            ->getStateUsing(fn (): string => "\u{00A0}")
+                                            ->formatStateUsing(fn (): string => '')
+                                            ->prefixActions([
+                                                Action::make('downloadExpedienteDocument')
+                                                    ->label('Descargar')
+                                                    ->tooltip('Descargar documento')
+                                                    ->icon(Heroicon::OutlinedArrowDownTray)
+                                                    ->color('verde')
+                                                    ->action(function (AffiliationDocument $document, ViewRecord $livewire) {
+                                                        abort_unless(
+                                                            (int) $document->affiliation_id === (int) $livewire->getRecord()->getKey(),
+                                                            403
+                                                        );
+
+                                                        abort_unless(
+                                                            filled($document->file_path) && Storage::disk('public')->exists($document->file_path),
+                                                            404
+                                                        );
+
+                                                        return response()->download(
+                                                            Storage::disk('public')->path($document->file_path),
+                                                            self::formatStoredFileName($document->original_name ?: $document->file_path) ?? 'documento'
+                                                        );
+                                                    }),
+                                                Action::make('deleteExpedienteDocument')
+                                                    ->label('Eliminar')
+                                                    ->tooltip('Eliminar documento')
+                                                    ->icon(Heroicon::OutlinedTrash)
+                                                    ->color('danger')
+                                                    ->requiresConfirmation()
+                                                    ->modalHeading('Eliminar documento')
+                                                    ->modalDescription('¿Seguro que deseas eliminar este archivo del expediente? Esta acción no se puede deshacer.')
+                                                    ->modalSubmitActionLabel('Eliminar')
+                                                    ->action(function (AffiliationDocument $document, ViewRecord $livewire): void {
+                                                        abort_unless(
+                                                            (int) $document->affiliation_id === (int) $livewire->getRecord()->getKey(),
+                                                            403
+                                                        );
+
+                                                        if (filled($document->file_path)) {
+                                                            Storage::disk('public')->delete($document->file_path);
+                                                        }
+
+                                                        $document->delete();
+
+                                                        $livewire->record->unsetRelation('affiliationDocuments');
+                                                        $livewire->record->load('affiliationDocuments');
+
+                                                        Notification::make()
+                                                            ->success()
+                                                            ->title('Documento eliminado')
+                                                            ->send();
+                                                    }),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
                     ])
                     ->columnSpanFull(),

@@ -35,5 +35,6 @@ it('certificacion de infraestructura incluye servicios extendidos al renderizar 
         ->toContain('Urgencias')
         ->toContain('Urgencias 24 h')
         ->toContain('Otras unidades especializadas')
-        ->toContain('Unidad de dolor');
+        ->toContain('Unidad de dolor')
+        ->toContain('infra-check-badge');
 });

@@ -58,7 +58,7 @@ class StatsOverview extends StatsOverviewWidget
                 ->value(new HtmlString("<span x-text='label'>{$totalAfiliados} Afiliados</span>"))
                 ->description(new HtmlString("<span x-text='desc'>Con Planes Individuales</span>")),
 
-            Stat::make('Total Neto', 'US$ '.number_format($totalNeto, 2, ',', '.'))
+            /*    Stat::make('Total Neto', 'US$ '.number_format($totalNeto, 2, ',', '.'))
                 ->icon('heroicon-m-currency-dollar')
                 ->description('Total Neto Cuantificable')
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
@@ -80,7 +80,7 @@ class StatsOverview extends StatsOverviewWidget
                     ",
                 ])
                 ->value(new HtmlString("<span x-text='valor'>US$ ".number_format($totalNeto, 2, ',', '.').'</span>'))
-                ->description(new HtmlString("<span x-text='desc'>Total Neto Cuantificable</span>")),
+                ->description(new HtmlString("<span x-text='desc'>Total Neto Cuantificable</span>")),   */
         ];
     }
 }

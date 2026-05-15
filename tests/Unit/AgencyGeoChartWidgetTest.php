@@ -11,6 +11,7 @@ it('registra chartjs-plugin-datalabels y expone porcentajes en el dataset', func
     expect($code)->not->toBeFalse()
         ->and($code)->toContain('chartjs-datalabels')
         ->and($code)->toContain("'percentages'")
+        ->and($code)->toContain("'agencyDetails'")
         ->and($code)->toContain('datalabels:');
 });
 
@@ -21,5 +22,8 @@ it('incluye bloque datalabels en getOptions', function (): void {
 
     expect($options)->toBeInstanceOf(RawJs::class);
     expect($options->toHtml())->toContain('datalabels')
-        ->and($options->toHtml())->toContain('percentages');
+        ->and($options->toHtml())->toContain('percentages')
+        ->and($options->toHtml())->toContain('agencyDetails')
+        ->and($options->toHtml())->toContain('SIN-CODIGO')
+        ->and($options->toHtml())->toContain('Total:');
 });

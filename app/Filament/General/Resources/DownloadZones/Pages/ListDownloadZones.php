@@ -28,7 +28,7 @@ class ListDownloadZones extends ListRecords
 
             $tabs['zone_'.$zoneId] = Tab::make($label)
                 ->icon(DownloadZoneTabIcons::forZone($zone))
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', $zoneId))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', $zoneId)->orderBy('position')->orderBy('id'))
                 ->badge(DownloadZone::query()->where('zone_id', $zoneId)->count())
                 ->badgeColor('success');
         }

@@ -194,6 +194,26 @@
         .text-right {
             text-align: right;
         }
+
+        .infra-check-cell {
+            vertical-align: middle;
+        }
+
+        .infra-check-badge {
+            display: inline-block;
+            box-sizing: border-box;
+            width: 15px;
+            height: 15px;
+            line-height: 13px;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: center;
+            vertical-align: middle;
+            border-radius: 50%;
+            border: 1.2px solid #059669;
+            background-color: #d1fae5;
+            color: #047857;
+        }
     </style>
 </head>
 @php
@@ -532,10 +552,8 @@
                 @forelse ($infraestructuraCertificada as $fila)
                     <tr>
                         <td>{{ $fila['nombre'] }}</td>
-                        <td class="text-center">
-                            <span class="boolean-yes" style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background-color: #10b981; color: white; border-radius: 50%; font-size: 12px;">
-                                ✓
-                            </span>
+                        <td class="text-center infra-check-cell">
+                            <span class="infra-check-badge" title="Sí" aria-hidden="true">&#10003;</span>
                         </td>
                         <td>{{ $fila['descripcion'] }}</td>
                     </tr>

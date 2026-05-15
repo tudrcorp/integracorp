@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Gráfico de dona: agentes agrupados por estado para un único mes/año.
+ * Gráfico de barras: agentes agrupados por estado para un único mes/año.
  *
  * A diferencia de un widget enlazado a la tabla ({@see \App\Filament\Widgets\Concerns\InteractsWithPageTable}),
  * esta vista **no** aplica búsqueda, filtros ni orden de la lista de agentes: solo el período elegido en el
@@ -94,7 +94,7 @@ class TotalForStateAgent extends ChartWidget
     {
         [$y, $m] = $this->resolveSelectedYearMonth();
 
-        return 'agent-state-pie-'.hash('xxh128', json_encode([$y, $m]));
+        return 'agent-state-bar-'.hash('xxh128', json_encode([$y, $m]));
     }
 
     /**
@@ -104,20 +104,23 @@ class TotalForStateAgent extends ChartWidget
     {
         [$year, $month] = $this->resolveSelectedYearMonth();
 
-        $results = DB::table('agents')
+        $agentsByState = DB::table('agents')
             ->leftJoin('states', 'agents.state_id', '=', 'states.id')
             ->whereYear('agents.created_at', $year)
             ->when($month, fn ($q) => $q->whereMonth('agents.created_at', $month))
             ->select(
                 DB::raw("COALESCE(states.definition, 'Sin estado') as state_name"),
-                DB::raw('states.id as state_id'),
-                DB::raw('count(agents.id) as total')
+                DB::raw('agents.id as agent_id'),
+                DB::raw('agents.code_agent as agent_code'),
+                DB::raw('agents.name as agent_name')
             )
-            ->groupBy('states.id', 'states.definition')
-            ->orderByDesc('total')
-            ->get();
+            ->orderBy('state_name')
+            ->orderBy('agents.name')
+            ->get()
+            ->groupBy('state_name')
+            ->sortByDesc(static fn ($agents): int => $agents->count());
 
-        if ($results->isEmpty()) {
+        if ($agentsByState->isEmpty()) {
             return [
                 'labels' => [],
                 'datasets' => [
@@ -125,23 +128,49 @@ class TotalForStateAgent extends ChartWidget
                         'label' => 'Agentes',
                         'data' => [],
                         'percentages' => [],
+                        'agentDetails' => [],
                         'backgroundColor' => [],
                         'borderWidth' => 0,
                         'borderColor' => 'transparent',
-                        'hoverOffset' => 35,
                         'hoverBorderWidth' => 0,
                         'hoverBorderColor' => 'transparent',
                         'borderRadius' => 4,
+                        'borderSkipped' => false,
                     ],
                 ],
             ];
         }
 
-        $totalAgents = (int) $results->sum('total');
-        $labels = $results->pluck('state_name')->all();
-        $dataCounts = $results->pluck('total')->map(fn ($n) => (int) $n)->all();
+        $labels = $agentsByState->keys()->values()->all();
+        $dataCounts = $agentsByState->map(static fn ($agents): int => $agents->count())->values()->all();
+        $agentDetails = $agentsByState
+            ->map(static function ($agents): array {
+                return $agents
+                    ->map(static function ($agent): array {
+                        $name = trim((string) ($agent->agent_name ?? ''));
+                        $code = trim((string) ($agent->agent_code ?? ''));
+
+                        if ($code === '') {
+                            $agentId = (int) ($agent->agent_id ?? 0);
+                            $code = $agentId > 0 ? 'AGT-000'.$agentId : 'SIN-CODIGO';
+                        }
+
+                        return [
+                            'code' => $code,
+                            'name' => $name !== '' ? $name : 'Sin nombre',
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            })
+            ->values()
+            ->all();
+        $totalAgents = (int) array_sum($dataCounts);
         $percentages = $totalAgents > 0
-            ? $results->map(fn ($item) => round(((int) $item->total / $totalAgents) * 100, 1))->all()
+            ? array_map(
+                static fn (int $count): float => round(($count / $totalAgents) * 100, 1),
+                $dataCounts
+            )
             : [];
 
         $fills = [];
@@ -156,13 +185,14 @@ class TotalForStateAgent extends ChartWidget
                     'label' => 'Agentes',
                     'data' => $dataCounts,
                     'percentages' => array_values($percentages),
+                    'agentDetails' => $agentDetails,
                     'backgroundColor' => $fills,
                     'borderWidth' => 0,
                     'borderColor' => 'transparent',
-                    'hoverOffset' => 35,
                     'hoverBorderWidth' => 0,
                     'hoverBorderColor' => 'transparent',
                     'borderRadius' => 4,
+                    'borderSkipped' => false,
                 ],
             ],
         ];
@@ -175,55 +205,29 @@ class TotalForStateAgent extends ChartWidget
             responsive: true,
             maintainAspectRatio: false,
             borderWidth: 0,
-            elements: {
-                arc: {
-                    borderWidth: 0,
-                    borderColor: 'transparent'
-                }
-            },
-            cutout: '52%',
             layout: {
                 padding: { top: 16, right: 8, bottom: 6, left: 8 }
             },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            },
             plugins: {
                 legend: {
-                    display: true,
-                    position: 'bottom',
-                    align: 'center',
-                    labels: {
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 18,
-                        boxWidth: 10,
-                        boxHeight: 10,
-                        font: {
-                            size: 12,
-                            weight: '600',
-                            family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
-                        },
-                        generateLabels: function(chart) {
-                            const data = chart.data;
-                            const ds = data.datasets[0];
-                            const meta = chart.getDatasetMeta(0);
-                            return data.labels.map((label, i) => {
-                                const value = ds.data[i];
-                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
-                                    ? ds.percentages[i]
-                                    : 0;
-                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
-                                const agentes = value === 1 ? ' agente' : ' agentes';
-                                return {
-                                    text: String(label) + ': ' + value + agentes + ' (' + pct + '%)',
-                                    fillStyle: fill,
-                                    strokeStyle: fill,
-                                    lineWidth: 0,
-                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
-                                    index: i,
-                                    datasetIndex: 0
-                                };
-                            });
-                        }
-                    }
+                    display: false
                 },
                 tooltip: {
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -236,10 +240,30 @@ class TotalForStateAgent extends ChartWidget
                     usePointStyle: true,
                     callbacks: {
                         label: (context) => {
-                            const value = context.raw || 0;
-                            const pct = context.dataset.percentages[context.dataIndex];
-                            return ` ${context.label}: ${value} agente(s) (${pct}%)`;
-                        }
+                            const agents = Array.isArray(context.dataset.agentDetails)
+                                ? context.dataset.agentDetails[context.dataIndex]
+                                : [];
+
+                            if (!Array.isArray(agents) || agents.length === 0) {
+                                return ' Sin agentes disponibles';
+                            }
+
+                            return agents.map((agent) => {
+                                const code = agent && agent.code ? String(agent.code) : 'SIN-CODIGO';
+                                const name = agent && agent.name ? String(agent.name) : 'Sin nombre';
+                                return ` ${code} - ${name}`;
+                            });
+                        },
+                        footer: (items) => {
+                            const first = Array.isArray(items) ? items[0] : null;
+                            if (!first) {
+                                return '';
+                            }
+                            const value = first.raw || 0;
+                            const pct = first.dataset.percentages[first.dataIndex];
+                            const agentes = value === 1 ? 'agente' : 'agentes';
+                            return `Total: ${value} ${agentes} (${pct}%)`;
+                        },
                     }
                 },
                 datalabels: {
@@ -247,9 +271,10 @@ class TotalForStateAgent extends ChartWidget
                         const pct = context.dataset.percentages[context.dataIndex];
                         return pct >= 4;
                     },
-                    color: '#ffffff',
-                    anchor: 'center',
-                    align: 'center',
+                    color: '#1e293b',
+                    anchor: 'end',
+                    align: 'end',
+                    offset: 4,
                     font: {
                         size: 12,
                         weight: '700',
@@ -258,9 +283,7 @@ class TotalForStateAgent extends ChartWidget
                     formatter: function(value, context) {
                         const pct = context.dataset.percentages[context.dataIndex];
                         return pct + '%';
-                    },
-                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-                    textShadowBlur: 3
+                    }
                 }
             },
             hover: {
@@ -268,8 +291,6 @@ class TotalForStateAgent extends ChartWidget
                 intersect: true
             },
             animation: {
-                animateScale: true,
-                animateRotate: true,
                 duration: 1500,
                 easing: 'easeOutQuart'
             },
@@ -282,6 +303,6 @@ class TotalForStateAgent extends ChartWidget
 
     protected function getType(): string
     {
-        return 'doughnut';
+        return 'bar';
     }
 }

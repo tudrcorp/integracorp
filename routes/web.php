@@ -11,6 +11,8 @@ use App\Http\Controllers\BusinessAppointmentsController;
 use App\Http\Controllers\DoctorNurseFichaPdfController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\HelpdeskAttachmentDownloadController;
+use App\Http\Controllers\HelpdeskFlowProcessFileController;
+use App\Http\Controllers\HelpdeskVideoTutorialFileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Operations\DoctorNurseDocumentAuditController;
 use App\Http\Controllers\Operations\OperationCoordinationClinicDocumentDownloadController;
@@ -140,6 +142,22 @@ Route::get('business/export-prospect-agents-csv', App\Http\Controllers\ProspectA
 Route::get('business/export-travel-agencies-csv', App\Http\Controllers\TravelAgencyExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.travel-agencies.export-csv');
+
+Route::get('business/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.helpdesks.export-csv');
+
+Route::get('administration/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.helpdesks.export-csv');
+
+Route::get('operations/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.helpdesks.export-csv');
+
+Route::get('marketing/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('marketing.helpdesks.export-csv');
 
 Route::get('operations/suppliers/report/preview', [SupplierReportPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
@@ -319,6 +337,14 @@ Route::get('helpdesks/{helpDesk}/attachments/{index}/download', HelpdeskAttachme
     ->middleware(['web', 'auth'])
     ->whereNumber('index')
     ->name('helpdesks.attachments.download');
+
+Route::get('helpdesks/flow-process-files/{helpdeskFlowProcessFile}/download', [HelpdeskFlowProcessFileController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('helpdesks.flow-process-files.download');
+
+Route::get('helpdesks/video-tutorial-files/{helpdeskVideoTutorialFile}/download', [HelpdeskVideoTutorialFileController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('helpdesks.video-tutorial-files.download');
 
 Route::get('agenda/invitacion/{participant}', [CorporateAgendaInvitationResponseController::class, 'show'])
     ->middleware(['web', 'signed'])
