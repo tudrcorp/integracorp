@@ -2,12 +2,20 @@
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Tables;
 
+use App\Http\Controllers\OperationServiceOrderController;
 use App\Models\OperationCoordinationService;
+use App\Models\OperationInventoryUbication;
+use App\Models\OperationServiceOrder;
 use App\Models\OperationTypeNegotiation;
 use App\Models\OperationTypeService;
 use App\Models\Supplier;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
+use App\Models\TelemedicinePatientLab;
+use App\Models\TelemedicinePatientMedications;
+use App\Models\TelemedicinePatientSpecialty;
+use App\Models\TelemedicinePatientStudy;
+use App\Models\TelemedicinePriority;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
@@ -15,10 +23,12 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -31,6 +41,8 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
@@ -114,7 +126,8 @@ class OperationCoordinationServicesTable
                                     ->helperText('Se guarda en la orden y, si aplica, en el caso de telemedicina vinculado.')
                                     ->options(fn (): array => TelemedicineDoctor::query()
                                         ->where('status', 'ACTIVO')
-                                        ->orderBy('full_name')
+                                        ->where('managed_by', 'TDG')
+                                        ->orderBy('full_name', 'asc')
                                         ->get()
                                         ->mapWithKeys(fn (TelemedicineDoctor $doctor): array => [
                                             $doctor->id => $doctor->full_name.' — '.($doctor->specialty ?? '—').' — '.$doctor->managed_by,
@@ -174,7 +187,7 @@ class OperationCoordinationServicesTable
             })
             ->modalIcon(Heroicon::OutlinedDocumentArrowUp)
             ->modalIconColor('info')
-            ->modalWidth(Width::FiveExtraLarge)
+            ->modalWidth(Width::SixExtraLarge)
             ->stickyModalHeader()
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Cerrar')
@@ -204,16 +217,12 @@ class OperationCoordinationServicesTable
                     '<div class="space-y-2 text-sm text-gray-600 dark:text-gray-300">'
                     .'<p><span class="font-medium text-gray-900 dark:text-white">Paciente:</span> '.e($record->patient ?? '—').'</p>'
                     .'<p><span class="font-medium text-gray-900 dark:text-white">Referencia:</span> '.e($record->reference_number ?? '—').' · <span class="font-medium text-gray-900 dark:text-white">ID:</span> '.e((string) $record->id).'</p>'
-                    .'<p class="rounded-lg border border-primary-200/80 bg-primary-50/80 px-3 py-2 text-xs text-primary-950 dark:border-primary-500/30 dark:bg-primary-950/40 dark:text-primary-50">'
-                    .'<span class="font-semibold">Asistente por pasos:</span> use <strong>Siguiente</strong> y <strong>Anterior</strong> para revisar todo. El área central hace scroll si no cabe en pantalla. Al final pulse <strong>Guardar cambios</strong>. '
-                    .'El precio de cotización se recalcula al guardar: <span class="font-mono">neto + (neto × % TDEC ÷ 100)</span>.'
-                    .'</p>'
                     .'</div>'
                 );
             })
             ->modalIcon(Heroicon::OutlinedCurrencyDollar)
             ->modalIconColor('primary')
-            ->modalWidth(Width::FiveExtraLarge)
+            ->modalWidth(Width::SevenExtraLarge)
             ->stickyModalHeader()
             ->stickyModalFooter()
             ->modalSubmitActionLabel('Guardar cambios')
@@ -240,7 +249,7 @@ class OperationCoordinationServicesTable
                     'ring-gray-950/5',
                     'dark:ring-white/10',
                     '[&_.fi-modal-content]:min-h-0',
-                    '[&_.fi-modal-content]:max-h-[min(calc(92vh-10rem),48rem))]',
+                    '[&_.fi-modal-content]:max-h-[min(calc(92vh-10rem),48rem)]',
                     '[&_.fi-modal-content]:overflow-y-auto',
                     '[&_.fi-modal-content]:overscroll-contain',
                 ]),
@@ -250,6 +259,16 @@ class OperationCoordinationServicesTable
                 'type_service' => $record->type_service,
                 'supplier_service' => $record->supplier_service,
                 'farmadoc' => $record->farmadoc,
+                'service_order_item_ids' => [],
+                'create_service_order' => false,
+                'create_associated_quote' => false,
+                'order_number' => 'ORD-'.str_pad((string) (((int) (OperationServiceOrder::max('id') ?? 0)) + 1), 4, '0', STR_PAD_LEFT),
+                'telemedicine_priority_id' => $record->telemedicine_priority_id,
+                'supplier_id' => null,
+                'supplier_external' => null,
+                'operation_inventory_ubication_id' => null,
+                'service_order_description' => null,
+                'service_order_observations' => null,
                 'type_negotiation' => $record->type_negotiation,
                 'status_negotiation' => $record->status_negotiation,
                 'neto' => $record->neto,
@@ -314,7 +333,7 @@ class OperationCoordinationServicesTable
                                     ->placeholder('Seleccione…')
                                     ->options(
                                         OperationTypeService::query()
-                                            ->orderBy('description')
+                                            ->orderBy('description', 'asc')
                                             ->pluck('description', 'description')
                                             ->all()
                                     )
@@ -330,7 +349,7 @@ class OperationCoordinationServicesTable
                                                 $query->where('name', 'like', "%{$search}%")
                                                     ->orWhere('rif', 'like', "%{$search}%");
                                             })
-                                            ->orderBy('name')
+                                            ->orderBy('name', 'asc')
                                             ->limit(50)
                                             ->pluck('name', 'name')
                                             ->all()
@@ -341,6 +360,103 @@ class OperationCoordinationServicesTable
                                     ->label('Farmadoc')
                                     ->maxLength(255),
                             ])->columnSpanFull()->columns(3),
+                    ]),
+                Step::make('Orden de Servicio')
+                    ->description('Ítems y creación de orden')
+                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                    ->completedIcon(Heroicon::OutlinedCheckCircle)
+                    ->schema([
+                        Section::make('Ítems pendientes por gestionar')
+                            ->description('Seleccione los ítems a incluir en la orden. Se muestran según el tipo de servicio derivado del caso.')
+                            ->icon(Heroicon::OutlinedListBullet)
+                            ->iconColor('info')
+                            ->schema([
+                                Placeholder::make('service_order_type_badge')
+                                    ->label('Tipo detectado')
+                                    ->content(fn (OperationCoordinationService $record): HtmlString => self::serviceOrderTypeBadge($record)),
+                                Placeholder::make('service_order_existing_orders')
+                                    ->label('Órdenes existentes')
+                                    ->content(fn (OperationCoordinationService $record): HtmlString => self::existingServiceOrdersTable($record)),
+                                CheckboxList::make('service_order_item_ids')
+                                    ->label(fn (OperationCoordinationService $record): string => self::serviceOrderSelectableLabel($record))
+                                    ->options(fn (OperationCoordinationService $record): array => self::serviceOrderSelectableOptions($record))
+                                    ->descriptions(fn (OperationCoordinationService $record): array => self::serviceOrderSelectableDescriptions($record))
+                                    ->bulkToggleable()
+                                    ->searchable()
+                                    ->live()
+                                    ->columns(1)
+                                    ->helperText('Solo se listan ítems que no estén en estatus EN GESTION.')
+                                    ->visible(fn (OperationCoordinationService $record): bool => self::serviceOrderType($record) !== null)
+                                    ->columnSpanFull(),
+                                Placeholder::make('service_order_preview')
+                                    ->label('Vista previa de ítems seleccionados')
+                                    ->content(fn (OperationCoordinationService $record, Get $get): HtmlString => self::selectedServiceOrderItemsTable($record, $get('service_order_item_ids')))
+                                    ->visible(fn (OperationCoordinationService $record): bool => self::serviceOrderType($record) !== null),
+                            ])
+                            ->columnSpanFull(),
+                        Section::make('Crear orden desde esta modal')
+                            ->description('Esta creación reemplaza la acción manual desde la vista de detalle, manteniendo la misma lógica de generación.')
+                            ->icon(Heroicon::OutlinedPlusCircle)
+                            ->iconColor('success')
+                            ->schema([
+                                Toggle::make('create_service_order')
+                                    ->label('Crear orden al guardar este asistente')
+                                    ->helperText('Si está activo, al guardar se generará la orden y se actualizarán los ítems seleccionados a EN GESTION.')
+                                    ->default(false)
+                                    ->live(),
+                                Toggle::make('create_associated_quote')
+                                    ->label('Crear cotización asociada')
+                                    ->helperText('Actívelo si desea que el proceso también genere una cotización del medicamento o servicio seleccionado.')
+                                    ->default(false)
+                                    ->visible(fn (Get $get): bool => (bool) $get('create_service_order')),
+                                Grid::make(2)
+                                    ->schema([
+                                        TextInput::make('order_number')
+                                            ->label('Número de orden')
+                                            ->required(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->maxLength(255),
+                                        Select::make('telemedicine_priority_id')
+                                            ->label('Prioridad')
+                                            ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                            ->required(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->native(false),
+                                        Select::make('supplier_id')
+                                            ->label('Proveedor TDG')
+                                            ->options(Supplier::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                            ->searchable()
+                                            ->preload()
+                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->native(false),
+                                        TextInput::make('supplier_external')
+                                            ->label('Proveedor externo')
+                                            ->maxLength(255)
+                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order')),
+                                        Select::make('operation_inventory_ubication_id')
+                                            ->label('Ubicación inventario (medicamentos)')
+                                            ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
+                                            ->searchable()
+                                            ->preload()
+                                            ->visible(fn (OperationCoordinationService $record, Get $get): bool => (bool) $get('create_service_order') && self::serviceOrderType($record) === 'MEDICAMENTOS')
+                                            ->native(false)
+                                            ->columnSpanFull(),
+                                        TextInput::make('service_order_description')
+                                            ->label('Descripción de la orden')
+                                            ->required(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->maxLength(500)
+                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->columnSpanFull(),
+                                        Textarea::make('service_order_observations')
+                                            ->label('Observaciones de la orden')
+                                            ->rows(3)
+                                            ->maxLength(2000)
+                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
+                                            ->columnSpanFull(),
+                                    ]),
+                            ])
+                            ->columns(1)
+                            ->columnSpanFull(),
                     ]),
                 Step::make('Negociación')
                     ->description('Tipo y estatus')
@@ -359,7 +475,7 @@ class OperationCoordinationServicesTable
                                             ->placeholder('Seleccione…')
                                             ->options(
                                                 OperationTypeNegotiation::query()
-                                                    ->orderBy('description')
+                                                    ->orderBy('description', 'asc')
                                                     ->pluck('description', 'description')
                                                     ->all()
                                             )
@@ -460,28 +576,28 @@ class OperationCoordinationServicesTable
                                             ->columnSpanFull(),
                                     ]),
                             ]),
-                        Section::make('Facturación')
-                            ->description('Opcional: complete cuando exista factura.')
-                            ->icon(Heroicon::OutlinedReceiptPercent)
-                            ->iconColor('danger')
-                            ->collapsed()
-                            ->schema([
-                                Grid::make(2)
-                                    ->schema([
-                                        TextInput::make('bill_number')
-                                            ->label('Número de Factura')
-                                            ->maxLength(255),
-                                        TextInput::make('bill_price')
-                                            ->label('Precio de Factura')
-                                            ->numeric()
-                                            ->prefix('US$'),
-                                        TextInput::make('bill_date')
-                                            ->label('Fecha de Factura')
-                                            ->maxLength(255)
-                                            ->helperText('Texto o fecha tal como debe figurar en reportes.')
-                                            ->columnSpanFull(),
-                                    ]),
-                            ]),
+                        // Section::make('Facturación')
+                        //     ->description('Opcional: complete cuando exista factura.')
+                        //     ->icon(Heroicon::OutlinedReceiptPercent)
+                        //     ->iconColor('danger')
+                        //     ->collapsed()
+                        //     ->schema([
+                        //         Grid::make(2)
+                        //             ->schema([
+                        //                 TextInput::make('bill_number')
+                        //                     ->label('Número de Factura')
+                        //                     ->maxLength(255),
+                        //                 TextInput::make('bill_price')
+                        //                     ->label('Precio de Factura')
+                        //                     ->numeric()
+                        //                     ->prefix('US$'),
+                        //                 TextInput::make('bill_date')
+                        //                     ->label('Fecha de Factura')
+                        //                     ->maxLength(255)
+                        //                     ->helperText('Texto o fecha tal como debe figurar en reportes.')
+                        //                     ->columnSpanFull(),
+                        //             ]),
+                        //     ]),
                     ]),
                 Step::make('Calidad')
                     ->description('QC — último paso')
@@ -501,6 +617,11 @@ class OperationCoordinationServicesTable
                     ]),
             ])
             ->action(function (OperationCoordinationService $record, array $data): void {
+                if (($data['create_service_order'] ?? false) === true) {
+                    self::createServiceOrderFromWizard($record, $data);
+                    $data['service_order_number'] = $data['order_number'] ?? $data['service_order_number'] ?? null;
+                }
+
                 $neto = (float) ($data['neto'] ?? 0);
                 $porcenTdec = (float) ($data['porcen_tdec'] ?? 0);
                 $quotePrice = $neto + ($neto * $porcenTdec / 100);
@@ -823,5 +944,348 @@ class OperationCoordinationServicesTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function serviceOrderType(OperationCoordinationService $record): ?string
+    {
+        if ($record->telemedicinePatientMedications()->where('status', '!=', 'EN GESTION')->exists()) {
+            return 'MEDICAMENTOS';
+        }
+
+        if ($record->telemedicinePatientStudies()->where('status', '!=', 'EN GESTION')->exists()) {
+            return 'IMAGENOLOGIA';
+        }
+
+        if ($record->telemedicinePatientLabs()->where('status', '!=', 'EN GESTION')->exists()) {
+            return 'LABORATORIOS';
+        }
+
+        if ($record->telemedicinePatientSpecialties()->where('status', '!=', 'EN GESTION')->exists()) {
+            return 'ESPECIALISTA';
+        }
+
+        return null;
+    }
+
+    private static function serviceOrderTypeBadge(OperationCoordinationService $record): HtmlString
+    {
+        $type = self::serviceOrderType($record);
+
+        if ($type === null) {
+            return new HtmlString(
+                '<div class="rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-50">'
+                .'No hay ítems pendientes para crear orden en este momento. Si todos están en <strong>EN GESTION</strong>, no se mostrarán para selección.'
+                .'</div>'
+            );
+        }
+
+        return new HtmlString(
+            '<div class="rounded-xl border border-primary-200/80 bg-primary-50/90 px-4 py-3 text-sm text-primary-900 dark:border-primary-500/30 dark:bg-primary-950/40 dark:text-primary-50">'
+            .'Tipo de orden detectado: <strong>'.$type.'</strong>'
+            .'</div>'
+        );
+    }
+
+    private static function existingServiceOrdersTable(OperationCoordinationService $record): HtmlString
+    {
+        $orders = OperationServiceOrder::query()
+            ->where('operation_coordination_service_id', $record->id)
+            ->latest('id')
+            ->limit(5)
+            ->get(['order_number', 'service_type', 'status', 'created_at']);
+
+        if ($orders->isEmpty()) {
+            return new HtmlString(
+                '<div class="rounded-xl border border-gray-200/90 bg-gray-50/90 px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">'
+                .'Aún no hay órdenes registradas para esta coordinación.'
+                .'</div>'
+            );
+        }
+
+        $rows = $orders->map(function (OperationServiceOrder $order): string {
+            return '<tr class="border-b border-gray-100 last:border-0 dark:border-white/10">'
+                .'<td class="px-3 py-2 font-medium">'.e((string) $order->order_number).'</td>'
+                .'<td class="px-3 py-2">'.e((string) ($order->service_type ?? '—')).'</td>'
+                .'<td class="px-3 py-2">'.e((string) ($order->status ?? '—')).'</td>'
+                .'<td class="px-3 py-2">'.e(optional($order->created_at)->format('d/m/Y H:i') ?? '—').'</td>'
+                .'</tr>';
+        })->implode('');
+
+        return new HtmlString(
+            '<div class="overflow-x-auto rounded-xl border border-gray-200/90 dark:border-white/10">'
+            .'<table class="min-w-full divide-y divide-gray-100 text-sm dark:divide-white/10">'
+            .'<thead class="bg-gray-50/90 dark:bg-white/5"><tr>'
+            .'<th class="px-3 py-2 text-left font-semibold">Orden</th>'
+            .'<th class="px-3 py-2 text-left font-semibold">Tipo</th>'
+            .'<th class="px-3 py-2 text-left font-semibold">Estatus</th>'
+            .'<th class="px-3 py-2 text-left font-semibold">Creada</th>'
+            .'</tr></thead>'
+            .'<tbody>'.$rows.'</tbody>'
+            .'</table>'
+            .'</div>'
+        );
+    }
+
+    private static function serviceOrderSelectableLabel(OperationCoordinationService $record): string
+    {
+        return match (self::serviceOrderType($record)) {
+            'MEDICAMENTOS' => 'Medicamentos disponibles',
+            'IMAGENOLOGIA' => 'Estudios de imagenología disponibles',
+            'LABORATORIOS' => 'Laboratorios disponibles',
+            'ESPECIALISTA' => 'Especialidades disponibles',
+            default => 'Ítems disponibles',
+        };
+    }
+
+    private static function serviceOrderSelectableItems(OperationCoordinationService $record): Collection
+    {
+        $type = self::serviceOrderType($record);
+
+        return match ($type) {
+            'MEDICAMENTOS' => $record->telemedicinePatientMedications()
+                ->where('status', '!=', 'EN GESTION')
+                ->orderBy('id')
+                ->with('operationInventory:id,is_covered')
+                ->get(['id', 'medicine', 'indications', 'status', 'is_covered', 'operation_inventory_id'])
+                ->map(fn (TelemedicinePatientMedications $item): array => [
+                    'coverage_label' => self::coverageLabel(self::coverageValue($type, $item)),
+                    'id' => (int) $item->id,
+                    'label' => (string) ($item->medicine ?? 'Medicamento sin nombre'),
+                    'description' => 'Indicaciones: '.($item->indications ?? '—').' · Cobertura: '.self::coverageLabel(self::coverageValue($type, $item)).' · Estatus: '.($item->status ?? '—'),
+                ]),
+            'IMAGENOLOGIA' => $record->telemedicinePatientStudies()
+                ->where('status', '!=', 'EN GESTION')
+                ->orderBy('id')
+                ->get(['id', 'study', 'type', 'status'])
+                ->map(fn (TelemedicinePatientStudy $item): array => [
+                    'coverage_label' => self::coverageLabel(self::coverageValue($type, $item)),
+                    'id' => (int) $item->id,
+                    'label' => (string) ($item->study ?? 'Estudio sin nombre'),
+                    'description' => 'Tipo: '.($item->type ?? '—').' · Cobertura: '.self::coverageLabel(self::coverageValue($type, $item)).' · Estatus: '.($item->status ?? '—'),
+                ]),
+            'LABORATORIOS' => $record->telemedicinePatientLabs()
+                ->where('status', '!=', 'EN GESTION')
+                ->orderBy('id')
+                ->get(['id', 'laboratory', 'type', 'status'])
+                ->map(fn (TelemedicinePatientLab $item): array => [
+                    'coverage_label' => self::coverageLabel(self::coverageValue($type, $item)),
+                    'id' => (int) $item->id,
+                    'label' => (string) ($item->laboratory ?? 'Laboratorio sin nombre'),
+                    'description' => 'Tipo: '.($item->type ?? '—').' · Cobertura: '.self::coverageLabel(self::coverageValue($type, $item)).' · Estatus: '.($item->status ?? '—'),
+                ]),
+            'ESPECIALISTA' => $record->telemedicinePatientSpecialties()
+                ->where('status', '!=', 'EN GESTION')
+                ->orderBy('id')
+                ->get(['id', 'specialty', 'type', 'status'])
+                ->map(fn (TelemedicinePatientSpecialty $item): array => [
+                    'coverage_label' => self::coverageLabel(self::coverageValue($type, $item)),
+                    'id' => (int) $item->id,
+                    'label' => (string) ($item->specialty ?? 'Especialidad sin nombre'),
+                    'description' => 'Tipo: '.($item->type ?? '—').' · Cobertura: '.self::coverageLabel(self::coverageValue($type, $item)).' · Estatus: '.($item->status ?? '—'),
+                ]),
+            default => collect(),
+        };
+    }
+
+    private static function serviceOrderSelectableOptions(OperationCoordinationService $record): array
+    {
+        return self::serviceOrderSelectableItems($record)
+            ->mapWithKeys(fn (array $item): array => [$item['id'] => $item['label']])
+            ->all();
+    }
+
+    private static function serviceOrderSelectableDescriptions(OperationCoordinationService $record): array
+    {
+        return self::serviceOrderSelectableItems($record)
+            ->mapWithKeys(fn (array $item): array => [$item['id'] => $item['description']])
+            ->all();
+    }
+
+    private static function selectedServiceOrderRecords(OperationCoordinationService $record, array $ids): EloquentCollection
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        if ($ids === []) {
+            return new EloquentCollection;
+        }
+
+        return match (self::serviceOrderType($record)) {
+            'MEDICAMENTOS' => TelemedicinePatientMedications::query()
+                ->where('operation_coordination_service_id', $record->id)
+                ->whereKey($ids)
+                ->with('operationInventory:id,is_covered')
+                ->get(),
+            'IMAGENOLOGIA' => TelemedicinePatientStudy::query()
+                ->where('operation_coordination_service_id', $record->id)
+                ->whereKey($ids)
+                ->get(),
+            'LABORATORIOS' => TelemedicinePatientLab::query()
+                ->where('operation_coordination_service_id', $record->id)
+                ->whereKey($ids)
+                ->get(),
+            'ESPECIALISTA' => TelemedicinePatientSpecialty::query()
+                ->where('operation_coordination_service_id', $record->id)
+                ->whereKey($ids)
+                ->get(),
+            default => new EloquentCollection,
+        };
+    }
+
+    private static function selectedServiceOrderItemsTable(OperationCoordinationService $record, mixed $selectedIds): HtmlString
+    {
+        $ids = is_array($selectedIds) ? $selectedIds : [];
+        $records = self::selectedServiceOrderRecords($record, $ids);
+
+        if ($records->isEmpty()) {
+            return new HtmlString(
+                '<div class="rounded-xl border border-dashed border-gray-300/90 bg-gray-50/70 px-4 py-3 text-sm text-gray-600 dark:border-white/15 dark:bg-white/5 dark:text-gray-300">'
+                .'Seleccione al menos un ítem para ver la vista previa de la orden.'
+                .'</div>'
+            );
+        }
+
+        $rows = $records->map(function ($row) use ($record): string {
+            $type = self::serviceOrderType($record);
+            $isCovered = self::coverageValue($type, $row);
+            $coverageLabel = self::coverageLabel($isCovered);
+            $coverageBadgeClass = match ($isCovered) {
+                true => 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300/80 dark:bg-emerald-500/20 dark:text-emerald-100 dark:ring-emerald-500/30',
+                false => 'bg-rose-100 text-rose-800 ring-1 ring-rose-300/80 dark:bg-rose-500/20 dark:text-rose-100 dark:ring-rose-500/30',
+                default => 'bg-gray-100 text-gray-700 ring-1 ring-gray-300/80 dark:bg-white/10 dark:text-gray-200 dark:ring-white/20',
+            };
+
+            $itemName = match ($type) {
+                'MEDICAMENTOS' => (string) ($row->medicine ?? '—'),
+                'IMAGENOLOGIA' => (string) ($row->study ?? '—'),
+                'LABORATORIOS' => (string) ($row->laboratory ?? '—'),
+                'ESPECIALISTA' => (string) ($row->specialty ?? '—'),
+                default => '—',
+            };
+
+            $extra = match ($type) {
+                'MEDICAMENTOS' => (string) ($row->indications ?? '—'),
+                default => (string) ($row->type ?? '—'),
+            };
+
+            return '<tr class="border-b border-gray-100 last:border-0 dark:border-white/10">'
+                .'<td class="px-3 py-2 font-medium">'.e($itemName).'</td>'
+                .'<td class="px-3 py-2">'.e($extra).'</td>'
+                .'<td class="px-3 py-2"><span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold '.$coverageBadgeClass.'">'.e($coverageLabel).'</span></td>'
+                .'<td class="px-3 py-2">'.e((string) ($row->status ?? '—')).'</td>'
+                .'</tr>';
+        })->implode('');
+
+        $middleTitle = self::serviceOrderType($record) === 'MEDICAMENTOS' ? 'Indicaciones' : 'Tipo';
+
+        return new HtmlString(
+            '<div class="overflow-x-auto rounded-xl border border-gray-200/90 dark:border-white/10">'
+            .'<table class="min-w-full divide-y divide-gray-100 text-sm dark:divide-white/10">'
+            .'<thead class="bg-gray-50/90 dark:bg-white/5"><tr>'
+            .'<th class="px-3 py-2 text-left font-semibold">Ítem</th>'
+            .'<th class="px-3 py-2 text-left font-semibold">'.e($middleTitle).'</th>'
+            .'<th class="px-3 py-2 text-left font-semibold">Cobertura</th>'
+            .'<th class="px-3 py-2 text-left font-semibold">Estatus</th>'
+            .'</tr></thead>'
+            .'<tbody>'.$rows.'</tbody>'
+            .'</table>'
+            .'</div>'
+        );
+    }
+
+    private static function coverageValue(?string $serviceOrderType, mixed $row): ?bool
+    {
+        if ($serviceOrderType === 'MEDICAMENTOS') {
+            if (isset($row->operationInventory) && $row->operationInventory !== null && $row->operationInventory->is_covered !== null) {
+                return (bool) $row->operationInventory->is_covered;
+            }
+
+            return isset($row->is_covered) ? (bool) $row->is_covered : null;
+        }
+
+        if (isset($row->type) && is_string($row->type)) {
+            return mb_strtoupper(trim($row->type)) === 'CUBIERTO';
+        }
+
+        return null;
+    }
+
+    private static function coverageLabel(?bool $isCovered): string
+    {
+        return match ($isCovered) {
+            true => 'Cubierto',
+            false => 'No cubierto',
+            default => 'Sin dato',
+        };
+    }
+
+    private static function createServiceOrderFromWizard(OperationCoordinationService $record, array $data): void
+    {
+        $selectedIds = array_values(array_unique(array_map('intval', (array) ($data['service_order_item_ids'] ?? []))));
+
+        if ($selectedIds === []) {
+            Notification::make()
+                ->title('Orden de servicio')
+                ->body('Active la creación y seleccione al menos un ítem antes de guardar.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $type = self::serviceOrderType($record);
+
+        if ($type === null) {
+            Notification::make()
+                ->title('Orden de servicio')
+                ->body('No se detectó un tipo de servicio elegible para crear la orden.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $records = self::selectedServiceOrderRecords($record, $selectedIds);
+
+        if ($records->isEmpty()) {
+            Notification::make()
+                ->title('Orden de servicio')
+                ->body('Los ítems seleccionados no están disponibles para esta coordinación.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $payload = [
+            'order_number' => $data['order_number'] ?? null,
+            'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? $record->telemedicine_priority_id,
+            'supplier_id' => $data['supplier_id'] ?? null,
+            'supplier_external' => $data['supplier_external'] ?? null,
+            'operation_inventory_ubication_id' => $data['operation_inventory_ubication_id'] ?? null,
+            'description' => $data['service_order_description'] ?? null,
+            'service_type' => $type,
+            'status' => 'EN GESTION',
+            'observations' => $data['service_order_observations'] ?? null,
+            'created_by' => Auth::user()?->name,
+            'updated_by' => Auth::user()?->name,
+        ];
+
+        if ($type === 'MEDICAMENTOS') {
+            $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [
+                'quantity' => 1,
+                'indications' => $item->indications ?? null,
+            ])->values()->all();
+        }
+
+        OperationServiceOrderController::create($payload, $record->toArray(), $records);
+
+        $records->each(function ($item): void {
+            $item->status = 'EN GESTION';
+            $item->save();
+        });
+
+        $record->status = 'EN GESTION';
+        $record->updated_by = Auth::user()?->name;
+        $record->save();
     }
 }

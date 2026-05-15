@@ -56,7 +56,7 @@ it('OperationCoordinationServicesTable define acción modal de negociación y pr
     expect($contents)
         ->toContain("Action::make('editNegotiationAndPricing')")
         ->and($contents)->toContain('Negociación, cotización y facturación')
-        ->and($contents)->toContain('Width::FiveExtraLarge')
+        ->and($contents)->toContain('Width::SevenExtraLarge')
         ->and($contents)->toContain('quote_price_preview')
         ->and($contents)->toContain('->steps([')
         ->and($contents)->toContain("Step::make('Servicio')")
