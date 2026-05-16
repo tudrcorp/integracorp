@@ -183,7 +183,7 @@ class Agent extends Model
      * @param  array  $details
      * @return void
      */
-    public function sendCartaBienvenida($id, $name, $email, $password)
+    public function sendCartaBienvenida($id, $name, $email, $password = null)
     {
 
         /**

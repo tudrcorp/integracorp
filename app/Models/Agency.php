@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use App\Jobs\SendCartaBienvenidaAgenteAgencia;
 use App\Jobs\SendCartaBienvenidaAgenteAgenciaTwo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Agency extends Model
 {
@@ -30,13 +29,12 @@ class Agency extends Model
         'city_id',
         'region',
 
-        //contacto secundario
+        // contacto secundario
         'name_contact_2',
         'email_contact_2',
         'phone_contact_2',
-        
 
-        //datos bancarios moneda local
+        // datos bancarios moneda local
         'local_beneficiary_name',
         'local_beneficiary_rif',
         'local_beneficiary_account_number',
@@ -47,8 +45,7 @@ class Agency extends Model
         'local_beneficiary_account_bank_mon_inter',
         'local_beneficiary_account_type_mon_inter',
 
-
-        //datos bancarios moneda extrangera
+        // datos bancarios moneda extrangera
         'extra_beneficiary_name',
         'extra_beneficiary_ci_rif',
         'extra_beneficiary_account_number',
@@ -61,7 +58,7 @@ class Agency extends Model
         'extra_beneficiary_aba',
         'extra_beneficiary_address',
 
-        //comisones        
+        // comisones
         'tdec',
         'tdev',
         'commission_tdec',
@@ -77,7 +74,7 @@ class Agency extends Model
         'updated_by',
         'comments',
 
-        /*Docuemntos*/
+        /* Docuemntos */
         'doc_digital_signature',
         'doc_document_identity',
         'doc_w8_w9',
@@ -92,13 +89,10 @@ class Agency extends Model
         'type_chart',
         'account_manager_id',
 
-
     ];
 
     /**
      * Get the user associated with the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
     public function typeAgency(): HasOne
     {
@@ -107,8 +101,6 @@ class Agency extends Model
 
     /**
      * Get all of the comments for the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function agents(): HasMany
     {
@@ -117,8 +109,6 @@ class Agency extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function country(): BelongsTo
     {
@@ -127,8 +117,6 @@ class Agency extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function city(): BelongsTo
     {
@@ -137,8 +125,6 @@ class Agency extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function region(): BelongsTo
     {
@@ -147,8 +133,6 @@ class Agency extends Model
 
     /**
      * Get the user that owns the Agency
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function state(): BelongsTo
     {
@@ -160,7 +144,7 @@ class Agency extends Model
         return $this->hasMany(CorporateQuoteRequest::class);
     }
 
-    //Relacion uno a uno con la tanla de agentes
+    // Relacion uno a uno con la tanla de agentes
     public function agent()
     {
         return $this->hasOne(Agent::class);
@@ -179,13 +163,13 @@ class Agency extends Model
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de la carta de bienvenida
-     * 
-     * @return void
+     *
      * @author TuDrEnCasa
-     * 
-     * @param array $details
+     *
+     * @param  array  $details
+     * @return void
      */
-    public function sendCartaBienvenida($code, $name, $email, $password)
+    public function sendCartaBienvenida($code, $name, $email, $password = null)
     {
         /**
          * JOB
@@ -202,5 +186,4 @@ class Agency extends Model
     {
         return $this->hasMany(ObservationCommercialStructure::class);
     }
-
 }

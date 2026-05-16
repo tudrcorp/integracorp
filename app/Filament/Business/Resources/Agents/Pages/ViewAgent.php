@@ -6,6 +6,8 @@ use App\Filament\Business\Resources\Agents\AgentResource;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\HtmlString;
 
 class ViewAgent extends ViewRecord
 {
@@ -19,7 +21,6 @@ class ViewAgent extends ViewRecord
     private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
 
     protected function getHeaderActions(): array
     {
@@ -42,44 +43,46 @@ class ViewAgent extends ViewRecord
         ];
     }
 
-    public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|Htmlable
     {
         $agent = $this->getRecord();
 
-        // Definimos el nombre del afiliado de forma segura
-        $fullName = $agent->name ?? 'Sin Nombre';
+        $code = (string) ($agent->code_agent ?? ('AGT-000'.$agent->id));
+        $name = (string) ($agent->name ?? 'Sin nombre');
+        $status = strtoupper((string) ($agent->status ?? 'SIN ESTADO'));
+        $email = (string) ($agent->email ?? 'Sin correo');
+        $phone = (string) ($agent->phone ?? 'Sin teléfono');
+        $badgeStyle = $this->badgeStyleForStatus($status);
 
-        return new \Illuminate\Support\HtmlString(
-            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">' .
-                // Título Principal Resaltado
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">' .
-                'Codigo: AGT-000' . $agent->id .
-                '</span>' .
-
-                // Subtítulo (Nombre del Paciente)
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">' .
-                'Nombre: ' . $fullName .
-                '</span>' .
-
-                // Estatus Estilo Badge iOS Resaltado
-                '<div style="display: flex; align-items: center; margin-top: 8px;">' .
-                '<span style="' .
-                'background-color: #28cd41; ' . // Verde iOS vibrante
-                'color: #ffffff; ' .
-                'padding: 6px 16px; ' .
-                'border-radius: 50px; ' .
-                'font-size: 0.8rem; ' .
-                'font-weight: 700; ' .
-                'display: inline-flex; ' .
-                'align-items: center; ' .
-                'gap: 6px; ' .
-                'box-shadow: 0 4px 12px rgba(40, 205, 65, 0.35); ' .
-                'border: 1px solid rgba(255, 255, 255, 0.2);' .
-                '">' .
-                '<span style="font-size: 10px;">●</span> ACTIVO' .
-                '</span>' .
-                '</div>' .
-                '</div>'
+        return new HtmlString(
+            '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">'
+            .'<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-white">'
+            .'Agente: '.e($code)
+            .'</span>'
+            .'<span class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">'
+            .e($name)
+            .'</span>'
+            .'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+            .'<span style="background-color: '.$badgeStyle['bg'].';color:#fff;padding:5px 14px;border-radius:999px;font-size:.78rem;font-weight:700;box-shadow:'.$badgeStyle['shadow'].';">'
+            .e($status)
+            .'</span>'
+            .'<span class="text-sm text-gray-600 dark:text-gray-300">📧 '.e($email).'</span>'
+            .'<span class="text-sm text-gray-600 dark:text-gray-300">📞 '.e($phone).'</span>'
+            .'</div>'
+            .'</div>'
         );
+    }
+
+    /**
+     * @return array{bg: string, shadow: string}
+     */
+    private function badgeStyleForStatus(string $status): array
+    {
+        return match ($status) {
+            'ACTIVO' => ['bg' => '#16a34a', 'shadow' => '0 8px 20px rgba(22,163,74,.35)'],
+            'PENDIENTE' => ['bg' => '#f59e0b', 'shadow' => '0 8px 20px rgba(245,158,11,.35)'],
+            'INACTIVO' => ['bg' => '#dc2626', 'shadow' => '0 8px 20px rgba(220,38,38,.35)'],
+            default => ['bg' => '#6b7280', 'shadow' => '0 8px 20px rgba(107,114,128,.35)'],
+        };
     }
 }

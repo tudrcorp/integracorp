@@ -26,3 +26,14 @@ it('formatea fecha de nacimiento con FilamentDateDisplay para cadenas d/m/Y', fu
     expect($source)->toContain('FilamentDateDisplay::toDmy');
     expect($source)->toContain("TextEntry::make('birth_date')");
 });
+
+it('incluye una pestaña de jerarquía comercial con diagrama visual', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain("Tab::make('Jerarquía')")
+        ->toContain("Section::make('Jerarquía comercial')")
+        ->toContain("TextEntry::make('hierarchy_diagram')")
+        ->toContain('renderHierarchyDiagram');
+});

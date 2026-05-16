@@ -6,11 +6,15 @@ namespace App\Filament\Business\Resources\Agencies\Schemas;
 
 use App\Models\Agency;
 use App\Models\AgencyType;
+use App\Models\Agent;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
+use App\Models\TravelAgency;
+use App\Models\TravelAgent;
 use App\Models\User;
+use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -19,6 +23,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -50,6 +55,23 @@ class AgencyForm
                 ->default(fn (): string => Auth::user()?->name ?? '')
                 ->hiddenOn('create'),
         ];
+    }
+
+    private static function hasDuplicatedEmail(string $email, ?int $ignoreAgencyId = null): bool
+    {
+        $normalizedEmail = mb_strtolower(trim($email));
+
+        $agencyQuery = Agency::query()->whereRaw('LOWER(email) = ?', [$normalizedEmail]);
+
+        if ($ignoreAgencyId !== null) {
+            $agencyQuery->whereKeyNot($ignoreAgencyId);
+        }
+
+        return $agencyQuery->exists()
+            || Agent::query()->whereRaw('LOWER(email) = ?', [$normalizedEmail])->exists()
+            || TravelAgency::query()->whereRaw('LOWER(email) = ?', [$normalizedEmail])->exists()
+            || TravelAgent::query()->whereRaw('LOWER(email) = ?', [$normalizedEmail])->exists()
+            || User::query()->whereRaw('LOWER(email) = ?', [$normalizedEmail])->exists();
     }
 
     public static function configure(Schema $schema): Schema
@@ -91,6 +113,7 @@ class AgencyForm
                                                     ->options(fn (): array => AgencyType::query()->orderBy('definition')->pluck('definition', 'id')->all())
                                                     ->searchable()
                                                     ->live()
+                                                    ->required()
                                                     ->validationMessages([
                                                         'required' => 'Campo requerido',
                                                     ])
@@ -99,13 +122,14 @@ class AgencyForm
                                                     ->label('Jerarquía')
                                                     ->options(function (): array {
                                                         return Agency::query()
-                                                            ->select('code', 'agency_type_id')
+                                                            ->select('code', 'agency_type_id', 'name_corporative')
                                                             ->where('agency_type_id', 1)
                                                             ->get()
                                                             ->mapWithKeys(function ($agency): array {
                                                                 $type = AgencyType::query()->find($agency->agency_type_id)?->definition ?? '';
+                                                                $agencyName = $agency->name_corporative ?? '';
 
-                                                                return [$agency->code => "{$type} - {$agency->code}"];
+                                                                return [$agency->code => "{$type} - {$agency->code} - {$agencyName}"];
                                                             })
                                                             ->all();
                                                     })
@@ -125,6 +149,10 @@ class AgencyForm
                                                     ->preload()
                                                     ->columnSpan(['default' => 1, 'lg' => 2]),
                                                 Select::make('ownerAccountManagers')
+                                                    ->required()
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                    ])
                                                     ->hidden(fn (): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true))
                                                     ->label('Account manager')
                                                     ->options(fn (): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
@@ -149,6 +177,7 @@ class AgencyForm
                                             ->schema([
                                                 TextInput::make('name_corporative')
                                                     ->label('Razón social')
+                                                    ->required()
                                                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                                                         $set('name', strtoupper((string) $state));
                                                     })
@@ -161,6 +190,7 @@ class AgencyForm
                                                     ->label('RIF')
                                                     ->prefix('J-')
                                                     ->numeric()
+                                                    ->required()
                                                     ->unique(
                                                         table: Agency::class,
                                                         column: 'rif'
@@ -173,18 +203,40 @@ class AgencyForm
                                                 TextInput::make('email')
                                                     ->label('Correo electrónico')
                                                     ->email()
-                                                    ->unique(
-                                                        table: Agency::class,
-                                                        column: 'email'
-                                                    )
+                                                    ->required()
+                                                    ->live(debounce: 700)
+                                                    ->afterStateUpdated(function (?string $state, ?Agency $record): void {
+                                                        if (! is_string($state) || blank($state)) {
+                                                            return;
+                                                        }
+
+                                                        if (self::hasDuplicatedEmail($state, $record?->id)) {
+                                                            Notification::make()
+                                                                ->title('Correo electrónico duplicado')
+                                                                ->body('El email ya existe en agencias, agentes, agencias de viaje, agentes de viaje o usuarios.')
+                                                                ->danger()
+                                                                ->send();
+                                                        }
+                                                    })
+                                                    ->rule(function (?Agency $record): Closure {
+                                                        return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                            if (! is_string($value) || blank($value)) {
+                                                                return;
+                                                            }
+
+                                                            if (self::hasDuplicatedEmail($value, $record?->id)) {
+                                                                $fail('El email ya se encuentra registrado en agencias, agentes, agencias de viaje, agentes de viaje o usuarios. Por favor intente con otro.');
+                                                            }
+                                                        };
+                                                    })
                                                     ->validationMessages([
                                                         'required' => 'Campo requerido',
                                                         'email' => 'El campo es un email',
-                                                        'unique' => 'El email ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
                                                     ])
                                                     ->maxLength(255),
                                                 TextInput::make('name_representative')
                                                     ->label('Nombre del representante')
+                                                    ->required()
                                                     ->validationMessages([
                                                         'required' => 'Campo Requerido',
                                                     ])
@@ -196,6 +248,7 @@ class AgencyForm
                                                     ->label('Cédula del representante')
                                                     ->prefix('V-')
                                                     ->numeric()
+                                                    ->required()
                                                     ->unique(
                                                         ignoreRecord: true,
                                                         table: 'agencies',
@@ -209,17 +262,17 @@ class AgencyForm
                                                 DatePicker::make('brithday_date')
                                                     ->label('Fecha de nacimiento del representante')
                                                     ->format('d/m/Y')
+                                                    ->required()
                                                     ->validationMessages([
                                                         'required' => 'Campo Requerido',
                                                     ]),
                                                 DatePicker::make('anniversary_date')
                                                     ->label('Fecha de aniversario de la agencia')
                                                     ->format('d/m/Y')
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ]),
+                                                    ->default(now()),
                                                 TextInput::make('address')
                                                     ->label('Dirección')
+                                                    ->required()
                                                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                                                         $set('address', strtoupper((string) $state));
                                                     })
@@ -245,6 +298,10 @@ class AgencyForm
                                             ->schema([
                                                 Select::make('country_code')
                                                     ->label('Código de país')
+                                                    ->required()
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                    ])
                                                     ->options([
                                                         '+1' => '🇺🇸 +1 (Estados Unidos)',
                                                         '+44' => '🇬🇧 +44 (Reino Unido)',
@@ -322,13 +379,11 @@ class AgencyForm
                                                     ->searchable()
                                                     ->default('+58')
                                                     ->live(onBlur: true)
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ])
                                                     ->hiddenOn('edit'),
                                                 TextInput::make('phone')
                                                     ->tel()
                                                     ->label('Número de teléfono')
+                                                    ->required()
                                                     ->validationMessages([
                                                         'required' => 'Campo Requerido',
                                                     ])
@@ -343,6 +398,7 @@ class AgencyForm
                                                 Select::make('country_id')
                                                     ->label('País')
                                                     ->live()
+                                                    ->required()
                                                     ->options(fn (): array => Country::query()->orderBy('name')->pluck('name', 'id')->all())
                                                     ->searchable()
                                                     ->validationMessages([
@@ -351,6 +407,7 @@ class AgencyForm
                                                     ->preload(),
                                                 Select::make('state_id')
                                                     ->label('Estado')
+                                                    ->required()
                                                     ->options(function (Get $get): array {
                                                         return State::query()->where('country_id', $get('country_id'))->orderBy('definition')->pluck('definition', 'id')->all();
                                                     })
@@ -372,6 +429,10 @@ class AgencyForm
                                                     ->maxLength(255),
                                                 Select::make('city_id')
                                                     ->label('Ciudad')
+                                                    ->required()
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                    ])
                                                     ->options(function (Get $get): array {
                                                         return City::query()
                                                             ->where('country_id', $get('country_id'))
@@ -381,9 +442,6 @@ class AgencyForm
                                                             ->all();
                                                     })
                                                     ->searchable()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ])
                                                     ->preload(),
                                                 TextInput::make('user_instagram')
                                                     ->label('Usuario de Instagram')
@@ -784,20 +842,22 @@ class AgencyForm
                                                     ->onColor('success'),
                                                 TextInput::make('commission_tdec')
                                                     ->label('Comisión TDEC US$')
+                                                    ->required()
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                    ])
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numerico.',
-                                                    ]),
+                                                    ->numeric(),
                                                 TextInput::make('commission_tdec_renewal')
                                                     ->label('Comisión renovación TDEC US$')
+                                                    ->required()
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                    ])
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numerico.',
-                                                    ]),
+                                                    ->numeric(),
                                                 TextInput::make('commission_tdev')
                                                     ->label('Comisión TDEV US$')
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')

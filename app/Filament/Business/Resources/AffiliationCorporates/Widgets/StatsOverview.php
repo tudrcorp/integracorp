@@ -72,27 +72,27 @@ class StatsOverview extends StatsOverviewWidget
                 ->value(new \Illuminate\Support\HtmlString("<span x-text='label'>{$totalEmpresas} empresas</span>"))
                 ->description(new \Illuminate\Support\HtmlString("<span x-text='desc'>Total histórico / Acumulado</span>")),
 
-            Stat::make('Total Neto', 'US$ '.number_format($totalNeto, 2, ',', '.'))
-                ->icon('heroicon-m-currency-dollar')
-                ->description('Total en US$ Cuantificable')
-                ->color('planIdeal')
-                ->extraAttributes([
-                    'class' => $iosFocusBlurStyles,
-                    'x-data' => "{ 
-                        valor: 'US$ ".number_format($totalNeto, 2, ',', '.')."', 
-                        desc: 'Total en US$ Cuantificable' 
-                    }",
-                    '@mouseenter' => "
-                        valor = 'US$ ".number_format($totalNetoMes, 2, ',', '.')."'; 
-                        desc = 'Recaudado en ".$mesActualNombre."';
-                    ",
-                    '@mouseleave' => "
-                        valor = 'US$ ".number_format($totalNeto, 2, ',', '.')."'; 
-                        desc = 'Total en US$ Cuantificable';
-                    ",
-                ])
-                ->value(new \Illuminate\Support\HtmlString("<span x-text='valor'>US$ ".number_format($totalNeto, 2, ',', '.').'</span>'))
-                ->description(new \Illuminate\Support\HtmlString("<span x-text='desc'>Total en US$ Cuantificable</span>")),
+            // Stat::make('Total Neto', 'US$ '.number_format($totalNeto, 2, ',', '.'))
+            //     ->icon('heroicon-m-currency-dollar')
+            //     ->description('Total en US$ Cuantificable')
+            //     ->color('planIdeal')
+            //     ->extraAttributes([
+            //         'class' => $iosFocusBlurStyles,
+            //         'x-data' => "{
+            //             valor: 'US$ ".number_format($totalNeto, 2, ',', '.')."',
+            //             desc: 'Total en US$ Cuantificable'
+            //         }",
+            //         '@mouseenter' => "
+            //             valor = 'US$ ".number_format($totalNetoMes, 2, ',', '.')."';
+            //             desc = 'Recaudado en ".$mesActualNombre."';
+            //         ",
+            //         '@mouseleave' => "
+            //             valor = 'US$ ".number_format($totalNeto, 2, ',', '.')."';
+            //             desc = 'Total en US$ Cuantificable';
+            //         ",
+            //     ])
+            //     ->value(new \Illuminate\Support\HtmlString("<span x-text='valor'>US$ ".number_format($totalNeto, 2, ',', '.').'</span>'))
+            //     ->description(new \Illuminate\Support\HtmlString("<span x-text='desc'>Total en US$ Cuantificable</span>")),
         ];
     }
 }
