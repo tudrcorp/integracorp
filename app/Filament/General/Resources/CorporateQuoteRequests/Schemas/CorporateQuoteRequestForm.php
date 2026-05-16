@@ -170,6 +170,14 @@ class CorporateQuoteRequestForm
                                         ])->columnSpanFull(),
                                     Grid::make(1)
                                         ->schema([
+                                            Textarea::make('observations')
+                                                ->label('Especificaciones de la cotización')
+                                                ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
+                                                ->required()
+                                                ->autosize()
+                                        ])->columnSpanFull(),
+                                    Grid::make(1)
+                                        ->schema([
                                             FileUpload::make('document_file')
                                                 ->label('Archivo de la solicitud de cotización')
                                                 ->directory('solicitudes-archivos')
@@ -178,14 +186,7 @@ class CorporateQuoteRequestForm
                                                 ->helperText('Por favor, adjunte el archivo de la solicitud de cotización donde describa la población, y rango de edades en formato Pdf, Excel, Word, Csv.')
 
                                         ]),
-                                    Grid::make(1)
-                                        ->schema([
-                                            Textarea::make('observations')
-                                                ->label('Especificaciones de la cotización')
-                                                ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
-                                                ->required()
-                                                ->autosize()
-                                        ])->columnSpanFull(),
+                                    
                                     //...
                                     Hidden::make('status')
                                         ->default('ACTIVA-PENDIENTE'),

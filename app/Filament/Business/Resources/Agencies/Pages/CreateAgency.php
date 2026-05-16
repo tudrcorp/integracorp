@@ -3,66 +3,14 @@
 namespace App\Filament\Business\Resources\Agencies\Pages;
 
 use App\Filament\Business\Resources\Agencies\AgencyResource;
-use App\Models\Agent;
-use App\Models\User;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class CreateAgency extends CreateRecord
 {
     protected static string $resource = AgencyResource::class;
-
-    /**
-     * Metodo que se ejecuta antes de crear un registro
-     * Valida que el RIF y el correo electrónico no se encuentren registrados en la base de datos.
-     */
-    protected function beforeCreate(): void
-    {
-
-        $email = $this->data['email'];
-
-        if (Agent::where('email', $email)->exists()) {
-            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_CREATE_FAILED', 'business.agencies.create', [
-                'email' => $email,
-                'reason' => 'email_exists_in_agents',
-            ]);
-
-            Notification::make()
-                ->title('ERROR')
-                ->body('El Correo electrónico ya se encuentra registrado en la tabla de agentes. Por favor intenta con otro correo electrónico')
-                ->icon('heroicon-m-tag')
-                ->iconColor('danger')
-                ->danger()
-                ->send();
-
-            Log::warning('NEGOCIOS: El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente en la tabla de agentes.');
-
-            $this->halt();
-        }
-
-        if (User::where('email', $email)->exists()) {
-            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_CREATE_FAILED', 'business.agencies.create', [
-                'email' => $email,
-                'reason' => 'email_exists_in_users',
-            ]);
-
-            Notification::make()
-                ->title('ERROR')
-                ->body('El Correo electrónico ya se encuentra registrado en la tabla de usuarios. Por favor intenta con otro correo electrónico')
-                ->icon('heroicon-m-tag')
-                ->iconColor('danger')
-                ->danger()
-                ->send();
-
-            Log::warning('NEGOCIOS: El Usuario '.Auth::user()->name.' intento registrar una agencia con un correo electrónico ya existente en la tabla de usuarios.');
-
-            $this->halt();
-        }
-
-    }
 
     protected function afterCreate(): void
     {

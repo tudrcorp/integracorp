@@ -48,7 +48,6 @@ class ListAgencies extends ListRecords
 
     private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
-
     protected function getHeaderActions(): array
     {
         return [
@@ -67,7 +66,7 @@ class ListAgencies extends ListRecords
                     'class' => self::TICKET_BUTTON_CLASS,
                 ])
                 ->modalHeading('Enviar enlace de registro externo')
-                ->modalDescription('El enlace incluye el código de la agencia cifrado en la URL (Integracorp → /agency/c/…). Indique al menos correo electrónico o WhatsApp para enviarlo.')
+                ->modalDescription('Si selecciona una agencia, el enlace incluye el código cifrado en la URL (Integracorp → /agency/c/…); si no, se enviará el enlace general. Indique al menos correo electrónico o WhatsApp para enviarlo.')
                 ->modalIcon('heroicon-m-link')
                 ->modalIconColor('success')
                 ->modalSubmitActionLabel('Enviar')
@@ -79,7 +78,6 @@ class ListAgencies extends ListRecords
                         ->schema([
                             Select::make('agency_code')
                                 ->label('Agencia')
-                                ->required()
                                 ->searchable()
                                 ->preload()
                                 ->options(function (): array {
@@ -100,7 +98,7 @@ class ListAgencies extends ListRecords
                                 })
                                 ->default(fn () => Auth::user()?->code_agency)
                                 ->placeholder('Seleccione una agencia')
-                                ->helperText('Nombre corporativo y código que se asociarán al formulario de registro.'),
+                                ->helperText('Nombre corporativo y código que se asociarán al formulario de registro. Si lo dejas en blanco, se asociara InHOUSE.'),
                         ]),
                     Section::make('Destinatarios')
                         ->description('Opcional por campo: puede usar solo correo, solo WhatsApp o ambos en el mismo envío.')
@@ -130,47 +128,36 @@ class ListAgencies extends ListRecords
 
                     try {
                         $agencyCode = $data['agency_code'] ?? null;
-                        if (blank($agencyCode)) {
-                            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
-                                'reason' => 'missing_agency_code',
-                            ]);
+                        if (filled($agencyCode)) {
+                            $allowedAgencyQuery = Agency::query()
+                                ->where('status', 'ACTIVO')
+                                ->where('code', $agencyCode);
 
-                            Notification::make()
-                                ->title('NOTIFICACION')
-                                ->body('Debe seleccionar la agencia cuyo código se usará en el enlace de registro.')
-                                ->icon('heroicon-c-shield-exclamation')
-                                ->color('warning')
-                                ->send();
+                            if (Auth::user()->is_accountManagers) {
+                                $allowedAgencyQuery->where('ownerAccountManagers', Auth::id());
+                            }
 
-                            return false;
-                        }
+                            if (! $allowedAgencyQuery->exists()) {
+                                SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
+                                    'reason' => 'invalid_or_unauthorized_agency_code',
+                                    'agency_code' => $agencyCode,
+                                ]);
 
-                        $allowedAgencyQuery = Agency::query()
-                            ->where('status', 'ACTIVO')
-                            ->where('code', $agencyCode);
+                                Notification::make()
+                                    ->title('NOTIFICACION')
+                                    ->body('El código de agencia seleccionado no es válido o no tiene permisos para usarlo.')
+                                    ->icon('heroicon-c-shield-exclamation')
+                                    ->color('danger')
+                                    ->send();
 
-                        if (Auth::user()->is_accountManagers) {
-                            $allowedAgencyQuery->where('ownerAccountManagers', Auth::id());
-                        }
-
-                        if (! $allowedAgencyQuery->exists()) {
-                            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [
-                                'reason' => 'invalid_or_unauthorized_agency_code',
-                                'agency_code' => $agencyCode,
-                            ]);
-
-                            Notification::make()
-                                ->title('NOTIFICACION')
-                                ->body('El código de agencia seleccionado no es válido o no tiene permisos para usarlo.')
-                                ->icon('heroicon-c-shield-exclamation')
-                                ->color('danger')
-                                ->send();
-
-                            return false;
+                                return false;
+                            }
                         }
 
                         $baseUrl = rtrim((string) config('parameters.INTEGRACORP_URL'), '/');
-                        $link = $baseUrl.'/agency/c/'.Crypt::encryptString($agencyCode);
+                        $link = blank($agencyCode)
+                            ? $baseUrl.'/agency'
+                            : $baseUrl.'/agency/c/'.Crypt::encryptString($agencyCode);
 
                         if ($data['phone'] == null && $data['email'] == null) {
                             SecurityAudit::log('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED', 'business.agencies.send-register-link', [

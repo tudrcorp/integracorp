@@ -63,7 +63,7 @@ class AgentsTable
 
                 return AgentActivityQuery::applyToAgentsQuery(Agent::query());
             })
-            ->defaultSort('last_interaction_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
             ->heading('Agentes')
             ->description('Listado de agentes registrados en el sistema. Todas las columnas están visibles por defecto; puedes reorganizarlas desde el selector de columnas.')

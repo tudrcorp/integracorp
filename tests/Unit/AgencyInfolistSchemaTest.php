@@ -35,3 +35,16 @@ it('agrupa secciones alineadas al formulario y usa rejilla de cinco columnas', f
     expect($source)->toContain("Section::make('Contacto alternativo')");
     expect($source)->toContain('Grid::make(5)');
 });
+
+it('incluye una pestaña de jerarquía para resolver general, master y TUDRENCASA', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agencies/Schemas/AgencyInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain("Tab::make('Jerarquía')")
+        ->toContain("Section::make('Jerarquía comercial')")
+        ->toContain("TextEntry::make('hierarchy_diagram')")
+        ->toContain('renderHierarchyDiagram')
+        ->toContain('TUDRENCASA')
+        ->toContain('structureSummaryForAgency');
+});

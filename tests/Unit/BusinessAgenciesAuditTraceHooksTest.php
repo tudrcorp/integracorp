@@ -67,3 +67,13 @@ it('registra auditoría en envío de link de registro de agencias', function ():
         ->and($contents)->toContain('AUDIT_BUSINESS_AGENCY_REGISTER_LINK_SEND_FAILED')
         ->and($contents)->toContain('business.agencies.send-register-link');
 });
+
+it('permite enviar link general cuando no se selecciona agencia', function (): void {
+    $listPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agencies/Pages/ListAgencies.php';
+    $contents = file_get_contents($listPath);
+
+    expect($contents)
+        ->toContain('if (filled($agencyCode))')
+        ->and($contents)->toContain('$link = blank($agencyCode)')
+        ->and($contents)->toContain("\$baseUrl.'/agency'");
+});
