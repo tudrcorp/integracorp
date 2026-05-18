@@ -154,9 +154,10 @@ class ListAgencies extends ListRecords
                             }
                         }
 
+                        
                         $baseUrl = rtrim((string) config('parameters.INTEGRACORP_URL'), '/');
                         $link = blank($agencyCode)
-                            ? $baseUrl.'/agency'
+                            ? $baseUrl.'/agency/c'
                             : $baseUrl.'/agency/c/'.Crypt::encryptString($agencyCode);
 
                         if ($data['phone'] == null && $data['email'] == null) {

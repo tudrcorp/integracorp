@@ -201,6 +201,7 @@ class AgencyForm
                                                         'unique' => 'El rif ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
                                                     ]),
                                                 TextInput::make('email')
+                                                    ->hiddenOn('edit')
                                                     ->label('Correo electrónico')
                                                     ->email()
                                                     ->required()
@@ -234,6 +235,7 @@ class AgencyForm
                                                         'email' => 'El campo es un email',
                                                     ])
                                                     ->maxLength(255),
+                                                    
                                                 TextInput::make('name_representative')
                                                     ->label('Nombre del representante')
                                                     ->required()
