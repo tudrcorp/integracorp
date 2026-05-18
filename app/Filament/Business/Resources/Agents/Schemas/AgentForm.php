@@ -274,7 +274,8 @@ class AgentForm
                                                         'required' => 'Campo requerido',
                                                         'email' => 'El campo es un email',
                                                     ])
-                                                    ->maxLength(255),
+                                                    ->maxLength(255)
+                                                    ->hiddenOn('edit'),
                                                 TextInput::make('address')
                                                     ->label('Dirección')
                                                     ->required()
