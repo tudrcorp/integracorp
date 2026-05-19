@@ -2,39 +2,30 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Panel;
+use App\Filament\General\Resources\Agencies\AgencyResource;
 use App\Models\Agency;
-use Filament\PanelProvider;
 use Filament\Actions\Action;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Http\Middleware\AuthenticateSession;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
+use Filament\Panel;
+use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
-use Filament\Support\Colors\Color;
-use Illuminate\Support\Facades\DB;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use App\Http\Controllers\LogController;
-use Filament\Forms\Components\TextInput;
-use Filament\Navigation\NavigationGroup;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Widgets\FilamentInfoWidget;
-use Filament\Http\Middleware\Authenticate;
-use Illuminate\Session\Middleware\StartSession;
-use App\Http\Controllers\NotificationController;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Filament\Http\Middleware\AuthenticateSession;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use App\Filament\General\Resources\Agencies\AgencyResource;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class GeneralPanelProvider extends PanelProvider
 {
@@ -113,19 +104,19 @@ class GeneralPanelProvider extends PanelProvider
                 statusCode: 404,
             )
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('Perfil General')
+                'profile' => fn (Action $action) => $action->label('Perfil General')
                     ->icon('heroicon-o-user-circle')
                     ->url(AgencyResource::getUrl('edit', ['record' => DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id], panel: 'general')),
                 // // ...
                 // ...
-                'logout' => fn(Action $action) => $action
+                'logout' => fn (Action $action) => $action
                     ->label('Cerrar Sesión')
                     ->color('danger')
                     ->url(route('external')),
             ])
             ->renderHook(
                 PanelsRenderHook::FOOTER,
-                fn() => view('footer-panel-admin')
+                fn () => view('footer-panel-admin')
             )
             ->plugins([
                 FilamentBackgroundsPlugin::make()
@@ -134,6 +125,7 @@ class GeneralPanelProvider extends PanelProvider
                             ->directory('backgroundGeneralPanelLogin')
                     ),
             ])
-            ->resourceEditPageRedirect('index');
+            ->resourceEditPageRedirect('index')
+            ->viteTheme('resources/css/filament/general/theme.css');
     }
 }

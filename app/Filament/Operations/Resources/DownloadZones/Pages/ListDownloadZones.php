@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\DownloadZones\Pages;
 use App\Filament\Operations\Resources\DownloadZones\DownloadZoneResource;
 use App\Models\DownloadZone;
 use App\Models\Zone;
+use App\Support\Filament\Concerns\HasDownloadZoneTabsGridLayout;
 use App\Support\Filament\DownloadZoneTabIcons;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ListDownloadZones extends ListRecords
 {
+    use HasDownloadZoneTabsGridLayout;
+
     protected static string $resource = DownloadZoneResource::class;
 
     protected static ?string $title = 'Zona de descarga';
@@ -142,6 +145,7 @@ class ListDownloadZones extends ListRecords
             $zoneId = $zone->id;
 
             $tabs['zone_'.$zoneId] = Tab::make($label)
+                ->icon(DownloadZoneTabIcons::forZone($zone))
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('zone_id', $zoneId)->orderBy('position')->orderBy('id'))
                 ->badge(DownloadZone::query()->where('zone_id', $zoneId)->count())
                 ->badgeColor('success');

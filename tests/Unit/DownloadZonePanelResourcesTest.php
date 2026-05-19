@@ -26,6 +26,14 @@ it('expone recurso y formulario de zona de descarga en administración', functio
     expect(AdministrationDownloadZoneForm::configure($schema))->toBeInstanceOf(Schema::class);
 });
 
+it('CreateDownloadZone redirige al índice tras crear en paneles con alta', function (string $panel): void {
+    $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/DownloadZones/Pages/CreateDownloadZone.php";
+    $src = file_get_contents($path);
+
+    expect($src)->toContain('protected function getRedirectUrl(): string')
+        ->and($src)->toContain("::getUrl('index')");
+})->with(['Business', 'Operations', 'Administration', 'Marketing']);
+
 it('expone recurso de documentos en paneles agente, master y general solo lectura', function (): void {
     expect(class_exists(AgentsDownloadZoneResource::class))->toBeTrue();
     expect(class_exists(MasterDownloadZoneResource::class))->toBeTrue();

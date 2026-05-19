@@ -103,6 +103,44 @@ it('resuelve iconos conocidos por etiqueta de pestaña', function (): void {
     expect(DownloadZoneTabIcons::forTodosTab())->toBe(Heroicon::OutlinedSquaresPlus);
 });
 
+it('usa el layout de pestañas en cuadrícula en administración, operaciones, marketing, agentes, agencias y master', function (): void {
+    $listPages = [
+        base_path('app/Filament/Business/Resources/DownloadZones/Pages/ListDownloadZones.php'),
+        base_path('app/Filament/Administration/Resources/DownloadZones/Pages/ListDownloadZones.php'),
+        base_path('app/Filament/Operations/Resources/DownloadZones/Pages/ListDownloadZones.php'),
+        base_path('app/Filament/Marketing/Resources/DownloadZones/Pages/ListDownloadZones.php'),
+        base_path('app/Filament/Agents/Resources/DownloadZones/Pages/ListDownloadZones.php'),
+        base_path('app/Filament/General/Resources/DownloadZones/Pages/ListDownloadZones.php'),
+        base_path('app/Filament/Master/Resources/DownloadZones/Pages/ListDownloadZones.php'),
+    ];
+
+    foreach ($listPages as $file) {
+        $contents = file_get_contents($file);
+        expect($contents)->not->toBeFalse();
+
+        expect($contents)
+            ->toContain('use HasDownloadZoneTabsGridLayout;')
+            ->toContain('HasDownloadZoneTabsGridLayout');
+    }
+
+    $trait = file_get_contents(base_path('app/Support/Filament/Concerns/HasDownloadZoneTabsGridLayout.php'));
+    expect($trait)->not->toBeFalse();
+
+    expect($trait)
+        ->toContain('fi-download-zone-tabs-grid')
+        ->toContain('->contained(false)');
+
+    $styles = file_get_contents(base_path('resources/css/filament/download-zone-tabs.css'));
+    expect($styles)->not->toBeFalse();
+
+    expect($styles)
+        ->toContain('grid-template-columns: repeat(5, max-content)')
+        ->toContain('column-gap: 0.125rem')
+        ->toContain('margin-inline: auto')
+        ->toContain('justify-content: center')
+        ->toContain('font-size: 0.9375rem');
+});
+
 it('excluye la zona test en los tabs de marketing, operaciones y administración', function (): void {
     $files = [
         base_path('app/Filament/Marketing/Resources/DownloadZones/Pages/ListDownloadZones.php'),

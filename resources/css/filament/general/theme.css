@@ -1,0 +1,6 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/General/**/*';
+@source '../../../../resources/views/filament/general/**/*';
+
+@import '../download-zone-tabs.css';
