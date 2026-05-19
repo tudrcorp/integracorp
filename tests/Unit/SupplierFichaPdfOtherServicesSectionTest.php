@@ -17,7 +17,16 @@ it('incluye la seccion de otros servicios en la ficha pdf del proveedor', functi
         ->toContain('nl2br(e((string) $supplier->otros_servicios))');
 });
 
-it('certificacion de infraestructura incluye servicios extendidos al renderizar la ficha', function (): void {
+it('certificacion de infraestructura muestra solo infraestructura y dispone en tres columnas', function (): void {
+    $viewPath = dirname(__DIR__, 2).'/resources/views/documents/supplier-ficha.blade.php';
+    $contents = file_get_contents($viewPath);
+
+    expect($contents)
+        ->toContain('infra-cert-columns')
+        ->toContain('<th>Infraestructura</th>')
+        ->toContain('<th>¿Dispone?</th>')
+        ->not->toContain('<th>Descripción</th>');
+
     $supplier = new Supplier([
         'name' => 'Proveedor prueba',
         'urgen_care' => true,
@@ -33,8 +42,11 @@ it('certificacion de infraestructura incluye servicios extendidos al renderizar 
     expect($html)
         ->toContain('Certificación de Infraestructura')
         ->toContain('Urgencias')
-        ->toContain('Urgencias 24 h')
         ->toContain('Otras unidades especializadas')
-        ->toContain('Unidad de dolor')
-        ->toContain('infra-check-badge');
+        ->toContain('infra-check-badge')
+        ->toContain('infra-cert-columns')
+        ->not->toContain('Urgencias 24 h')
+        ->not->toContain('Unidad de dolor');
+
+    expect(substr_count($html, 'class="infra-cert-col"'))->toBe(3);
 });

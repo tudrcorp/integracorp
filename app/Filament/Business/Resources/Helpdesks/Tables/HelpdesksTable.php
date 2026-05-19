@@ -130,7 +130,7 @@ class HelpdesksTable
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('status')
-                    ->label('Estado')
+                    ->label('Estatus')
                     ->icon(fn (?string $state): ?string => match ($state) {
                         'PENDIENTE POR INICIAR' => 'heroicon-m-clock',
                         'EN PROCESO' => 'heroicon-m-arrow-path',

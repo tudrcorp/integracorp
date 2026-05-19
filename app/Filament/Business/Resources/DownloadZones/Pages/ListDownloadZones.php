@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\DownloadZones\Pages;
 use App\Filament\Business\Resources\DownloadZones\DownloadZoneResource;
 use App\Models\DownloadZone;
 use App\Models\Zone;
+use App\Support\Filament\Concerns\HasDownloadZoneTabsGridLayout;
 use App\Support\Filament\DownloadZoneTabIcons;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ListDownloadZones extends ListRecords
 {
+    use HasDownloadZoneTabsGridLayout;
+
     protected static string $resource = DownloadZoneResource::class;
 
     protected static ?string $title = 'Zona de descarga';

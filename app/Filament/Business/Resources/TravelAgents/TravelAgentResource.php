@@ -11,7 +11,6 @@ use App\Models\TravelAgent;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -23,7 +22,7 @@ class TravelAgentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
+    protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
     protected static ?int $navigationSort = 4;
 
@@ -53,4 +52,8 @@ class TravelAgentResource extends Resource
         ];
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 }

@@ -214,6 +214,24 @@
             background-color: #d1fae5;
             color: #047857;
         }
+
+        .infra-cert-columns {
+            width: 100%;
+            display: table;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 8px 0;
+        }
+
+        .infra-cert-col {
+            display: table-cell;
+            width: 33.33%;
+            vertical-align: top;
+        }
+
+        .infra-cert-col .table {
+            width: 100%;
+        }
     </style>
 </head>
 @php
@@ -501,69 +519,87 @@
     <div class="section-block">
         <div class="section-title">Certificación de Infraestructura</div>
 
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Infraestructura</th>
-                    <th>¿Dispone?</th>
-                    <th>Descripción</th>
-                </tr>
-            </thead>
-            <tbody>
-                @php
-                    $infraSi = static fn (mixed $v): bool => filter_var($v, FILTER_VALIDATE_BOOLEAN);
-                    $infraTxt = static fn (?string $v): string => ($v !== null && trim($v) !== '') ? $v : '-';
-                    $oncologiaDispone = $infraSi($supplier->oncologia ?? $supplier->encologogia ?? false);
-                    $oncologiaDesc = $infraTxt($supplier->descripcion_oncologia ?? $supplier->descripcion_encologogia ?? null);
-                    $infraestructuraCertificada = collect([
-                        ['nombre' => 'Urgencias', 'dispone' => $infraSi($supplier->urgen_care ?? false), 'descripcion' => $infraTxt($supplier->descripcion_urgen_care ?? null)],
-                        ['nombre' => 'Consultas APS', 'dispone' => $infraSi($supplier->consulta_aps ?? false), 'descripcion' => $infraTxt($supplier->descripcion_consulta_aps ?? null)],
-                        ['nombre' => 'Asistencia médica domiciliaria', 'dispone' => $infraSi($supplier->amd ?? false), 'descripcion' => $infraTxt($supplier->descripcion_amd ?? null)],
-                        ['nombre' => 'Laboratorio en centro', 'dispone' => $infraSi($supplier->laboratorio_centro ?? false), 'descripcion' => $infraTxt($supplier->descripcion_laboratorio_centro ?? null)],
-                        ['nombre' => 'Laboratorio en domicilio', 'dispone' => $infraSi($supplier->laboratorio_domicilio ?? false), 'descripcion' => $infraTxt($supplier->descripcion_laboratorio_domicilio ?? null)],
-                        ['nombre' => 'Rayos X en centro', 'dispone' => $infraSi($supplier->rx_centro ?? false), 'descripcion' => $infraTxt($supplier->descripcion_rx_centro ?? null)],
-                        ['nombre' => 'Rayos X en domicilio', 'dispone' => $infraSi($supplier->rx_domicilio ?? false), 'descripcion' => $infraTxt($supplier->descripcion_rx_domicilio ?? null)],
-                        ['nombre' => 'Ecografía abdominal en centro', 'dispone' => $infraSi($supplier->eco_abdominal_centro ?? false), 'descripcion' => $infraTxt($supplier->descripcion_eco_abdominal_centro ?? null)],
-                        ['nombre' => 'Ecografía abdominal en domicilio', 'dispone' => $infraSi($supplier->eco_abdominal_domicilio ?? false), 'descripcion' => $infraTxt($supplier->descripcion_eco_abdominal_domicilio ?? null)],
-                        ['nombre' => 'Electrocardiógrafo en domicilio', 'dispone' => $infraSi($supplier->electrocardiograma_domicilio ?? false), 'descripcion' => $infraTxt($supplier->descripcion_electrocardiograma_domicilio ?? null)],
-                        ['nombre' => 'Densitómetro', 'dispone' => $infraSi($supplier->densitometria_osea ?? false), 'descripcion' => $infraTxt($supplier->descripcion_densitometria_osea ?? null)],
-                        ['nombre' => 'Equipo de diálisis', 'dispone' => $infraSi($supplier->dialisis ?? false), 'descripcion' => $infraTxt($supplier->descripcion_dialisis ?? null)],
-                        ['nombre' => 'Electrocardiógrafo en centro', 'dispone' => $infraSi($supplier->electrocardiograma_centro ?? false), 'descripcion' => $infraTxt($supplier->descripcion_electrocardiograma_centro ?? null)],
-                        ['nombre' => 'Equipos especiales de oftalmología', 'dispone' => $infraSi($supplier->equipos_especiales_oftalmologia ?? false), 'descripcion' => $infraTxt($supplier->descripcion_equipos_especiales_oftalmologia ?? null)],
-                        ['nombre' => 'Mamógrafo', 'dispone' => $infraSi($supplier->mamografia ?? false), 'descripcion' => $infraTxt($supplier->descripcion_mamografia ?? null)],
-                        ['nombre' => 'Quirófanos', 'dispone' => $infraSi($supplier->quirofanos ?? false), 'descripcion' => $infraTxt($supplier->descripcion_quirofanos ?? null)],
-                        ['nombre' => 'Radioterapia intraoperatoria', 'dispone' => $infraSi($supplier->radioterapia_intraoperatoria ?? false), 'descripcion' => $infraTxt($supplier->descripcion_radioterapia_intraoperatoria ?? null)],
-                        ['nombre' => 'Resonador', 'dispone' => $infraSi($supplier->resonancia ?? false), 'descripcion' => $infraTxt($supplier->descripcion_resonancia ?? null)],
-                        ['nombre' => 'Tomógrafo', 'dispone' => $infraSi($supplier->tomografo ?? false), 'descripcion' => $infraTxt($supplier->descripcion_tomografo ?? null)],
-                        ['nombre' => 'Oncología', 'dispone' => $oncologiaDispone, 'descripcion' => $oncologiaDesc],
-                        ['nombre' => 'UCI UTE', 'dispone' => $infraSi($supplier->uci_uten ?? false), 'descripcion' => $infraTxt($supplier->descripcion_uci_uten ?? null)],
-                        ['nombre' => 'Cuidados neonatales', 'dispone' => $infraSi($supplier->neonatal ?? false), 'descripcion' => $infraTxt($supplier->descripcion_neonatal ?? null)],
-                        ['nombre' => 'Ambulancias', 'dispone' => $infraSi($supplier->ambulancias ?? false), 'descripcion' => $infraTxt($supplier->descripcion_ambulancias ?? null)],
-                        ['nombre' => 'Odontología', 'dispone' => $infraSi($supplier->odontologia ?? false), 'descripcion' => $infraTxt($supplier->descripcion_odontologia ?? null)],
-                        ['nombre' => 'Oftalmología', 'dispone' => $infraSi($supplier->oftalmologia ?? false), 'descripcion' => $infraTxt($supplier->descripcion_oftalmologia ?? null)],
-                        ['nombre' => 'UCI pediátrica', 'dispone' => $infraSi($supplier->uci_pediatrica ?? false), 'descripcion' => $infraTxt($supplier->descripcion_uci_pediatrica ?? null)],
-                        ['nombre' => 'UCI adulto', 'dispone' => $infraSi($supplier->uci_adulto ?? false), 'descripcion' => $infraTxt($supplier->descripcion_uci_adulto ?? null)],
-                        ['nombre' => 'Estacionamiento propio', 'dispone' => $infraSi($supplier->estacionamiento_propio ?? false), 'descripcion' => $infraTxt($supplier->descripcion_estacionamiento_propio ?? null)],
-                        ['nombre' => 'Ascensor operativo', 'dispone' => $infraSi($supplier->ascensor ?? false), 'descripcion' => $infraTxt($supplier->descripcion_ascensor ?? null)],
-                        ['nombre' => 'Equipo de cirugía robótica', 'dispone' => $infraSi($supplier->robotica ?? false), 'descripcion' => $infraTxt($supplier->descripcion_robotica ?? null)],
-                        ['nombre' => 'Otras unidades especializadas', 'dispone' => $infraSi($supplier->otras_unidades_especiales ?? false), 'descripcion' => $infraTxt($supplier->descripcion_otras_unidades_especiales ?? null)],
-                    ])->filter(fn (array $fila): bool => $fila['dispone'])->values();
-                @endphp
-                @forelse ($infraestructuraCertificada as $fila)
+        @php
+            $infraSi = static fn (mixed $v): bool => filter_var($v, FILTER_VALIDATE_BOOLEAN);
+            $oncologiaDispone = $infraSi($supplier->oncologia ?? $supplier->encologogia ?? false);
+            $infraestructuraCertificada = collect([
+                ['nombre' => 'Urgencias', 'dispone' => $infraSi($supplier->urgen_care ?? false)],
+                ['nombre' => 'Consultas APS', 'dispone' => $infraSi($supplier->consulta_aps ?? false)],
+                ['nombre' => 'Asistencia médica domiciliaria', 'dispone' => $infraSi($supplier->amd ?? false)],
+                ['nombre' => 'Laboratorio en centro', 'dispone' => $infraSi($supplier->laboratorio_centro ?? false)],
+                ['nombre' => 'Laboratorio en domicilio', 'dispone' => $infraSi($supplier->laboratorio_domicilio ?? false)],
+                ['nombre' => 'Rayos X en centro', 'dispone' => $infraSi($supplier->rx_centro ?? false)],
+                ['nombre' => 'Rayos X en domicilio', 'dispone' => $infraSi($supplier->rx_domicilio ?? false)],
+                ['nombre' => 'Ecografía abdominal en centro', 'dispone' => $infraSi($supplier->eco_abdominal_centro ?? false)],
+                ['nombre' => 'Ecografía abdominal en domicilio', 'dispone' => $infraSi($supplier->eco_abdominal_domicilio ?? false)],
+                ['nombre' => 'Electrocardiógrafo en domicilio', 'dispone' => $infraSi($supplier->electrocardiograma_domicilio ?? false)],
+                ['nombre' => 'Densitómetro', 'dispone' => $infraSi($supplier->densitometria_osea ?? false)],
+                ['nombre' => 'Equipo de diálisis', 'dispone' => $infraSi($supplier->dialisis ?? false)],
+                ['nombre' => 'Electrocardiógrafo en centro', 'dispone' => $infraSi($supplier->electrocardiograma_centro ?? false)],
+                ['nombre' => 'Equipos especiales de oftalmología', 'dispone' => $infraSi($supplier->equipos_especiales_oftalmologia ?? false)],
+                ['nombre' => 'Mamógrafo', 'dispone' => $infraSi($supplier->mamografia ?? false)],
+                ['nombre' => 'Quirófanos', 'dispone' => $infraSi($supplier->quirofanos ?? false)],
+                ['nombre' => 'Radioterapia intraoperatoria', 'dispone' => $infraSi($supplier->radioterapia_intraoperatoria ?? false)],
+                ['nombre' => 'Resonador', 'dispone' => $infraSi($supplier->resonancia ?? false)],
+                ['nombre' => 'Tomógrafo', 'dispone' => $infraSi($supplier->tomografo ?? false)],
+                ['nombre' => 'Oncología', 'dispone' => $oncologiaDispone],
+                ['nombre' => 'UCI UTE', 'dispone' => $infraSi($supplier->uci_uten ?? false)],
+                ['nombre' => 'Cuidados neonatales', 'dispone' => $infraSi($supplier->neonatal ?? false)],
+                ['nombre' => 'Ambulancias', 'dispone' => $infraSi($supplier->ambulancias ?? false)],
+                ['nombre' => 'Odontología', 'dispone' => $infraSi($supplier->odontologia ?? false)],
+                ['nombre' => 'Oftalmología', 'dispone' => $infraSi($supplier->oftalmologia ?? false)],
+                ['nombre' => 'UCI pediátrica', 'dispone' => $infraSi($supplier->uci_pediatrica ?? false)],
+                ['nombre' => 'UCI adulto', 'dispone' => $infraSi($supplier->uci_adulto ?? false)],
+                ['nombre' => 'Estacionamiento propio', 'dispone' => $infraSi($supplier->estacionamiento_propio ?? false)],
+                ['nombre' => 'Ascensor operativo', 'dispone' => $infraSi($supplier->ascensor ?? false)],
+                ['nombre' => 'Equipo de cirugía robótica', 'dispone' => $infraSi($supplier->robotica ?? false)],
+                ['nombre' => 'Otras unidades especializadas', 'dispone' => $infraSi($supplier->otras_unidades_especiales ?? false)],
+            ])->filter(fn (array $fila): bool => $fila['dispone'])->values();
+
+            $totalInfra = $infraestructuraCertificada->count();
+            $tamanoColumnaInfra = (int) max(1, ceil($totalInfra / 3));
+            $columnasInfraestructura = collect(range(0, 2))->map(
+                fn (int $indice): \Illuminate\Support\Collection => $infraestructuraCertificada->slice(
+                    $indice * $tamanoColumnaInfra,
+                    $tamanoColumnaInfra,
+                ),
+            );
+        @endphp
+
+        @if ($infraestructuraCertificada->isEmpty())
+            <table class="table">
+                <tbody>
                     <tr>
-                        <td>{{ $fila['nombre'] }}</td>
-                        <td class="text-center infra-check-cell">
-                            <span class="infra-check-badge" title="Sí" aria-hidden="true">&#10003;</span>
-                        </td>
-                        <td>{{ $fila['descripcion'] }}</td>
+                        <td colspan="2">Ninguna infraestructura registrada como «Sí» en certificación.</td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="3">Ninguna infraestructura registrada como «Sí» en certificación.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        @else
+            <div class="infra-cert-columns">
+                @foreach ($columnasInfraestructura as $columnaInfraestructura)
+                    <div class="infra-cert-col">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Infraestructura</th>
+                                    <th>¿Dispone?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($columnaInfraestructura as $fila)
+                                    <tr>
+                                        <td>{{ $fila['nombre'] }}</td>
+                                        <td class="text-center infra-check-cell">
+                                            <span class="infra-check-badge" title="Sí" aria-hidden="true">&#10003;</span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
 
     <div class="section-block">

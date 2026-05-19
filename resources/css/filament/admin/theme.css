@@ -388,7 +388,10 @@
   .fi-supplier-status-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill.fi-active .fi-badge {
     transform: scale(1.08);
   }
+
 }
+
+@import '../download-zone-tabs.css';
 
 /* Mismo estilo que "Crear Ticket" (menu-user): gradiente verde + sombras iOS. Usar con extraAttributes class="ticket-btn-ios ..." */
 @layer components {
