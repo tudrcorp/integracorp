@@ -9,10 +9,10 @@ use Livewire\Attributes\Validate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
-use PhpParser\Node\Stmt\TryCatch;
+use App\Livewire\Concerns\HandlesInternationalPhone;
 
 new #[Layout('components.layouts.auth.split')] class extends Component {
-
+    use HandlesInternationalPhone;
 
     public string $owner_code;
     
@@ -45,11 +45,11 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     public function register(): void
     {
 
-            $validated = $this->validate([
+            $validated = $this->validate(array_merge([
                 'name' => 'required',
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
                 'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-            ]);
+            ], $this->internationalPhoneValidationRules()));
 
             $validated['password'] = Hash::make($validated['password']);
 
@@ -62,6 +62,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             $create_agent->agent_type_id    = 2;
             $create_agent->name             = $this->name;
             $create_agent->email            = $this->email;
+            $create_agent->phone            = $this->phoneForStorage();
             $create_agent->status           = 'ACTIVO';
             $create_agent->save();
 
@@ -117,6 +118,8 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
         <!-- Email Address -->
         <flux:input input icon="at-symbol" wire:model="email" :label="__('Correo Electrónico')" type="email"
             autocomplete="email" placeholder="email@example.com" />
+
+        @include('components.auth-phone-field')
 
         <!-- Password -->
         <flux:input input icon="key" wire:model="password" :label="__('Contraseña')" type="password"

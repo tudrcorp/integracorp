@@ -13,9 +13,10 @@ use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
 use App\Http\Controllers\AgencyController;
 use App\Http\Controllers\NotificationController;
+use App\Livewire\Concerns\HandlesInternationalPhone;
 
 new #[Layout('components.layouts.auth.split')] class extends Component {
-
+    use HandlesInternationalPhone;
 
     public string $owner_code;
     #[Validate('required', message: 'Campo requerido')]
@@ -29,9 +30,6 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     
     #[Validate('required', message: 'Campo requerido')]
     public string $type;
-
-    #[Validate('required', message: 'Campo requerido')]
-    public string $phone;
 
     #[Validate('required', message: 'Campo requerido!')]
     #[Validate('min:8', message: 'La contraseña debe tener al menos 8 caracteres!')]
@@ -52,10 +50,12 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     public function register(): void
     {
 
-            $validated = $this->validate([
+            $validated = $this->validate(array_merge([
+                'name' => ['required'],
+                'type' => ['required'],
                 'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . Agency::class],
                 'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-            ]);
+            ], $this->internationalPhoneValidationRules()));
 
             $validated['password'] = Hash::make($validated['password']);
 
@@ -78,6 +78,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
                 $create_agency->agency_type_id   = '3';
                 $create_agency->name_corporative = $this->name;
                 $create_agency->email            = $this->email;
+                $create_agency->phone            = $this->phoneForStorage();
                 $create_agency->save();
 
                 /**
@@ -139,6 +140,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
                 $create_agent->agent_type_id    = 2;
                 $create_agent->name             = $this->name;
                 $create_agent->email            = $this->email;
+                $create_agent->phone            = $this->phoneForStorage();
                 $create_agent->save();
 
                 /**
@@ -253,12 +255,10 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             oninput="this.value = this.value.replace(/[^a-zA-Z\sáéíóúÁÉÍÓÚÑñ]/g, '')" />
 
         <!-- Email Address -->
-        <flux:input input icon="at-symbol" wire:model=" email" :label="__('Correo Electrónico')" type="email"
+        <flux:input input icon="at-symbol" wire:model="email" :label="__('Correo Electrónico')" type="email"
             autocomplete="email" placeholder="email@example.com" />
 
-        <!-- Email Address -->
-        <flux:input input icon="phone" wire:model=" phone" :label="__('Nro. de Telefono')" type="tel"
-            autocomplete="email" placeholder="04127018390" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+        @include('components.auth-phone-field')
 
         <!-- Password -->
         <flux:input input icon="key" wire:model="password" :label="__('Password')" type="password"

@@ -13,9 +13,10 @@ use Illuminate\Support\Facades\Crypt;
 use Filament\Notifications\Notification;
 use App\Http\Controllers\AgencyController;
 use App\Http\Controllers\NotificationController;
+use App\Livewire\Concerns\HandlesInternationalPhone;
 
 new #[Layout('components.layouts.auth.split')] class extends Component {
-
+    use HandlesInternationalPhone;
 
     public string $owner_code;
 
@@ -31,20 +32,21 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     public string $agency_type_id;
 
     #[Validate('required', message: 'Campo requerido!')]
-    public string $phone;
-
-    #[Validate('required', message: 'Campo requerido!')]
     #[Validate('min:8', message: 'La contraseña debe tener al menos 8 caracteres!')]
     #[Validate('confirmed', message: 'Las contraseñas no coinciden, por favor verifica y intenta nuevamente!')]
     public string $password;
     
     public string $password_confirmation;
 
-    public function mount($code = null)
+    public function mount(?string $code = null): void
     {
         $code_decrypted = isset($code) ? Crypt::decryptString($code) : 'TDG-100';
         $this->owner_code = $code_decrypted;
-
+        if ($this->owner_code == 'TDG-100') {
+            $this->agency_type_id = 1;
+        } else {
+            $this->agency_type_id = 3;
+        }
     }
 
     /**
@@ -52,14 +54,11 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
      */
     public function register(): void
     {
-
-        $validated = $this->validate([
+        $validated = $this->validate(array_merge([
             'name_corporative' => ['required'],
-            'phone' => ['required'],
-            'agency_type_id' => ['required'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . Agency::class],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-        ]);
+        ], $this->internationalPhoneValidationRules()));
 
         $validated['password'] = Hash::make($validated['password']);
 
@@ -70,15 +69,13 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
          */
         $code = AgencyController::generate_code_agency();
 
-        $code_country = '+58';
-
         $create_agency = new Agency();
         $create_agency->owner_code       = $this->owner_code;
         $create_agency->code             = $code;
         $create_agency->agency_type_id   = $this->agency_type_id;
         $create_agency->name_corporative = $this->name_corporative;
         $create_agency->email            = $this->email;
-        $create_agency->phone            = '+58' . ltrim(preg_replace('/[^0-9]/', '', $this->phone), '0');
+        $create_agency->phone            = $this->phoneForStorage();
         $create_agency->save();
 
         /**
@@ -143,7 +140,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     <form wire:submit="register" class="flex flex-col gap-6">
 
 
-        <flux:radio.group wire:model.live="agency_type_id" variant="segmented" label="Tipo de Agencia"
+        <!-- <flux:radio.group wire:model.live="agency_type_id" variant="segmented" label="Tipo de Agencia"
             :indicator="false" required class="max-sm:flex-col">
             <flux:radio value="1" icon="building-storefront" label="Master"
                 description="Agencias con estructura empresarial" required />
@@ -151,7 +148,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             <flux:radio value="3" icon="cube" label="General" description="Agencias con estructura comercial"
                 required />
 
-        </flux:radio.group>
+        </flux:radio.group> -->
         <!-- <flux:error name="agency_type_id" /> -->
 
 
@@ -164,9 +161,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
         <flux:input input icon="at-symbol" wire:model="email" :label="__('Correo Electrónico')" type="email"
             autocomplete="email" placeholder="email@example.com" />
 
-        <!-- Email Address -->
-        <flux:input input icon="phone" wire:model="phone" :label="__('Nro. de Teléfono')" type="tel"
-            autocomplete="email" placeholder="04127018390" mask="(9999) 999-9999" />
+        @include('components.auth-phone-field')
 
         <!-- Password -->
 
