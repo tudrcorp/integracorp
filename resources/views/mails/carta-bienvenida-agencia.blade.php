@@ -62,8 +62,9 @@
                             <p>Contáctanos para mayor información.</p>
                             <p>📱 WhatsApp: (+58) 424 227 1498</p>
                             <p>✉️ Email: comercial@tudrencasa.com</p>
+                            <p style="margin:0;">Atentamente</p>
+                            <p>Departamento Comercial</p>
 
-                            <p style="margin:0;">Atentamente,</p>
                         </td>
                     </tr>
                 </table>
