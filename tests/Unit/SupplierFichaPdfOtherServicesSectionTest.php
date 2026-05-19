@@ -43,7 +43,9 @@ it('certificacion de infraestructura muestra solo infraestructura y dispone en t
         ->toContain('Certificación de Infraestructura')
         ->toContain('Urgencias')
         ->toContain('Otras unidades especializadas')
-        ->toContain('infra-check-badge')
+        ->toContain('infra-check-icon')
+        ->toContain('fill="#22c55e"')
+        ->toContain('stroke-linecap="round"')
         ->toContain('infra-cert-columns')
         ->not->toContain('Urgencias 24 h')
         ->not->toContain('Unidad de dolor');
