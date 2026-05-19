@@ -199,20 +199,18 @@
             vertical-align: middle;
         }
 
-        .infra-check-badge {
+        .infra-check-icon {
             display: inline-block;
-            box-sizing: border-box;
-            width: 15px;
-            height: 15px;
-            line-height: 13px;
-            font-size: 9px;
-            font-weight: 700;
-            text-align: center;
+            width: 14px;
+            height: 14px;
+            line-height: 0;
             vertical-align: middle;
-            border-radius: 50%;
-            border: 1.2px solid #059669;
-            background-color: #d1fae5;
-            color: #047857;
+        }
+
+        .infra-check-icon svg {
+            display: block;
+            width: 14px;
+            height: 14px;
         }
 
         .infra-cert-columns {
@@ -590,7 +588,12 @@
                                     <tr>
                                         <td>{{ $fila['nombre'] }}</td>
                                         <td class="text-center infra-check-cell">
-                                            <span class="infra-check-badge" title="Sí" aria-hidden="true">&#10003;</span>
+                                            <span class="infra-check-icon" title="Sí" aria-hidden="true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" role="img" aria-hidden="true">
+                                                    <circle cx="12" cy="12" r="12" fill="#22c55e"/>
+                                                    <path d="M6.8 12.3l3.1 3.1 7.6-7.7" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </span>
                                         </td>
                                     </tr>
                                 @endforeach
