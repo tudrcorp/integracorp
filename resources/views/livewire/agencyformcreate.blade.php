@@ -38,15 +38,12 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     
     public string $password_confirmation;
 
-    public function mount(?string $code = null): void
+    public function mount(?string $code = null, ?string $type = null): void
     {
+        // dd($type,$code);
         $code_decrypted = isset($code) ? Crypt::decryptString($code) : 'TDG-100';
         $this->owner_code = $code_decrypted;
-        if ($this->owner_code == 'TDG-100') {
-            $this->agency_type_id = 1;
-        } else {
-            $this->agency_type_id = 3;
-        }
+        $this->agency_type_id = $type;
     }
 
     /**

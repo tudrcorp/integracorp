@@ -383,7 +383,7 @@ Route::post('agenda/invitacion/{participant}/responder', [CorporateAgendaInvitat
     ->name('agenda.invitation.respond');
 
 Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
-Volt::route('/agency/c/{code?}', 'agencyformcreate')->name('volt.agency.create');
+Volt::route('/agency/c/{code?}/{type?}', 'agencyformcreate')->name('volt.agency.create');
 Volt::route('/m/o/c/{code?}', 'agencymasterform')->name('master.organization.create');
 Volt::route('/d/c', 'doctorFormCreate')->name('volt.doctor.create');
 
