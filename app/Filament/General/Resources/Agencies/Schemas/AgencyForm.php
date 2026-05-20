@@ -58,13 +58,13 @@ class AgencyForm
                                 ->disabled()
                                 ->dehydrated()
                                 ->maxLength(255),
-                            Select::make('agency_type_id')
-                                ->label('Tipo de agencia')
-                                ->options(AgencyType::where('id', 3)->get()->pluck('definition', 'id'))
-                                ->searchable()
-                                ->preload()
-                                ->disabled()
-                                ->dehydrated(),
+                            // Select::make('agency_type_id')
+                            //     ->label('Tipo de agencia')
+                            //     ->options(AgencyType::where('id', 3)->get()->pluck('definition', 'id'))
+                            //     ->searchable()
+                            //     ->preload()
+                            //     ->disabled()
+                            //     ->dehydrated(),
 
                             /**JERARQUÍA */
                             /* ---------------------------------------------------------- */

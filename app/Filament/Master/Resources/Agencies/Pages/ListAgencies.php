@@ -142,7 +142,7 @@ class ListAgencies extends ListRecords
                         }
 
                         $baseUrl = rtrim((string) config('parameters.INTEGRACORP_URL'), '/');
-                        $link = $baseUrl.'/agency/c/'.Crypt::encryptString($agencyCode);
+                        $link = $baseUrl.'/agency/c/'.Crypt::encryptString($agencyCode).'/3';
 
                         if ($data['phone'] == null && $data['email'] == null) {
                             SecurityAudit::log('AUDIT_MASTER_AGENCY_REGISTER_LINK_SEND_FAILED', 'master.agencies.send-register-link', [
