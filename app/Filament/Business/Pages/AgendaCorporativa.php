@@ -20,6 +20,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -110,6 +111,11 @@ class AgendaCorporativa extends Page
 
     public string $invitationRejectionNote = '';
 
+    /** @var array<int>|null */
+    protected ?array $currentCollaboratorIdsCache = null;
+
+    protected ?string $socialPublicationFormHydratedForDate = null;
+
     public function mount(): void
     {
         $this->cursorMonth = now()->startOfMonth()->toDateString();
@@ -176,19 +182,39 @@ class AgendaCorporativa extends Page
         $cursor = $this->resolveCursor();
         $start = $cursor->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
         $end = $cursor->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
-        $monthActivities = $this->visibleActivitiesBetween($start, $end)
-            ->with([
-                'creator:id,name,email,phone',
-                'participants.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar,user_id',
-            ])
-            ->orderBy('activity_date')
-            ->get()
-            ->groupBy(fn (CorporateAgendaActivity $activity): string => $activity->activity_date->toDateString());
+        $monthCacheKey = sprintf(
+            'agenda-corporativa:calendar-days:%s:%s:%s:%s',
+            Auth::id() ?? 'guest',
+            md5(json_encode($this->currentCollaboratorIds())),
+            $start->toDateString(),
+            $end->toDateString(),
+        );
 
-        $monthPublications = $this->socialPublicationsBetween($start, $end)
-            ->orderBy('platform')
-            ->get()
-            ->groupBy(fn (CorporateAgendaSocialPublication $publication): string => $publication->publication_date->toDateString());
+        $payload = Cache::remember($monthCacheKey, now()->addSeconds(45), function () use ($start, $end): array {
+            $monthActivities = $this->visibleActivitiesBetween($start, $end)
+                ->with([
+                    'participants:id,activity_id,rrhh_colaborador_id,invitation_status',
+                    'participants.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar,user_id',
+                ])
+                ->orderBy('activity_date')
+                ->get()
+                ->groupBy(fn (CorporateAgendaActivity $activity): string => $activity->activity_date->toDateString());
+
+            $monthPublications = $this->socialPublicationsBetween($start, $end)
+                ->orderBy('platform')
+                ->get()
+                ->groupBy(fn (CorporateAgendaSocialPublication $publication): string => $publication->publication_date->toDateString());
+
+            return [
+                'activities' => $monthActivities,
+                'publications' => $monthPublications,
+            ];
+        });
+
+        /** @var Collection<string, Collection<int, CorporateAgendaActivity>> $monthActivities */
+        $monthActivities = $payload['activities'];
+        /** @var Collection<string, Collection<int, CorporateAgendaSocialPublication>> $monthPublications */
+        $monthPublications = $payload['publications'];
 
         $days = [];
         $day = $start->copy();
@@ -333,7 +359,7 @@ class AgendaCorporativa extends Page
         return collect($attachments)
             ->map(function (mixed $attachmentPath): ?array {
                 $path = ltrim(trim((string) $attachmentPath), '/');
-                if ($path === '' || ! Storage::disk('public')->exists($path)) {
+                if ($path === '') {
                     return null;
                 }
 
@@ -346,12 +372,12 @@ class AgendaCorporativa extends Page
                 }
 
                 return [
-                    'url' => url('storage/'.$path),
+                    'url' => $this->publicStorageUrl($path) ?? '',
                     'type' => $isVideo ? 'video' : 'image',
                     'name' => basename($path),
                 ];
             })
-            ->filter(fn (?array $item): bool => $item !== null)
+            ->filter(fn (?array $item): bool => $item !== null && ($item['url'] ?? '') !== '')
             ->take(8)
             ->values()
             ->all();
@@ -474,7 +500,12 @@ class AgendaCorporativa extends Page
             $this->isCreatingActivity = false;
             $this->newNote = '';
             $this->invitationRejectionNote = '';
-            $this->startCreateSocialPublication();
+            $this->isCreatingSocialPublication = true;
+
+            if ($this->socialPublicationFormHydratedForDate !== $this->selectedDate) {
+                $this->startCreateSocialPublication();
+                $this->socialPublicationFormHydratedForDate = $this->selectedDate;
+            }
         } else {
             $this->selectedSocialPublicationId = null;
             $this->isCreatingSocialPublication = false;
@@ -520,7 +551,12 @@ class AgendaCorporativa extends Page
             'participant_ids' => [],
             'description' => null,
         ];
-        $this->resetSocialPublicationFormForSelectedDate();
+        if ($this->modalWorkspace === 'marketing' && $this->canManageSocialPublications()) {
+            $this->resetSocialPublicationFormForSelectedDate();
+            $this->socialPublicationFormHydratedForDate = $this->selectedDate;
+        } else {
+            $this->socialPublicationFormHydratedForDate = null;
+        }
         $this->isActivityModalOpen = true;
     }
 
@@ -532,6 +568,7 @@ class AgendaCorporativa extends Page
         $this->selectedActivityId = null;
         $this->selectedSocialPublicationId = null;
         $this->modalWorkspace = 'activities';
+        $this->socialPublicationFormHydratedForDate = null;
         $this->newNote = '';
         $this->invitationRejectionNote = '';
     }
@@ -842,6 +879,10 @@ class AgendaCorporativa extends Page
      */
     public function getCollaboratorOptionsProperty(): array
     {
+        if (! $this->isActivityModalOpen || $this->modalWorkspace !== 'activities') {
+            return [];
+        }
+
         return RrhhColaborador::query()
             ->orderBy('fullName')
             ->get(['id', 'fullName', 'emailCorporativo', 'emailPersonal', 'avatar'])
@@ -903,6 +944,10 @@ class AgendaCorporativa extends Page
      */
     public function getSelectedDateActivitiesProperty(): Collection
     {
+        if (! $this->isActivityModalOpen) {
+            return collect();
+        }
+
         return $this->visibleActivitiesBetween(
             Carbon::parse($this->selectedDate)->startOfDay(),
             Carbon::parse($this->selectedDate)->endOfDay(),
@@ -1116,8 +1161,14 @@ class AgendaCorporativa extends Page
      */
     private function currentCollaboratorIds(): array
     {
+        if ($this->currentCollaboratorIdsCache !== null) {
+            return $this->currentCollaboratorIdsCache;
+        }
+
         $user = Auth::user();
         if ($user === null) {
+            $this->currentCollaboratorIdsCache = [];
+
             return [];
         }
 
@@ -1137,12 +1188,14 @@ class AgendaCorporativa extends Page
             }
         });
 
-        return $query->pluck('id')
+        $this->currentCollaboratorIdsCache = $query->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)
             ->unique()
             ->values()
             ->all();
+
+        return $this->currentCollaboratorIdsCache;
     }
 
     private function currentCollaboratorId(): ?int
@@ -1347,10 +1400,7 @@ class AgendaCorporativa extends Page
         $avatarUrl = null;
 
         if (is_string($avatar) && $avatar !== '') {
-            $avatarPath = ltrim($avatar, '/');
-            if (Storage::disk('public')->exists($avatarPath)) {
-                $avatarUrl = url('storage/'.$avatarPath);
-            }
+            $avatarUrl = $this->publicStorageUrl($avatar);
         }
 
         return [
@@ -1464,7 +1514,7 @@ class AgendaCorporativa extends Page
      */
     public function getSelectedDateSocialPublicationsProperty(): Collection
     {
-        if (! $this->canManageSocialPublications()) {
+        if (! $this->isActivityModalOpen || ! $this->canManageSocialPublications() || $this->modalWorkspace !== 'marketing') {
             return collect();
         }
 
@@ -1527,6 +1577,7 @@ class AgendaCorporativa extends Page
         $this->selectedDate = $publication->publication_date->toDateString();
         $this->isCreatingSocialPublication = false;
         $this->fillSocialPublicationFormFromDate();
+        $this->socialPublicationFormHydratedForDate = $this->selectedDate;
     }
 
     public function saveSocialPublications(): void
@@ -1643,6 +1694,7 @@ class AgendaCorporativa extends Page
         $this->selectedDate = $publicationDate;
         $this->socialPublicationUploadsByPlatform = [];
         $this->fillSocialPublicationFormFromDate();
+        $this->socialPublicationFormHydratedForDate = $this->selectedDate;
 
         Notification::make()
             ->title('Calendario publicitario actualizado')
@@ -1676,6 +1728,7 @@ class AgendaCorporativa extends Page
         $this->selectedSocialPublicationId = null;
         $this->isCreatingSocialPublication = true;
         $this->fillSocialPublicationFormFromDate();
+        $this->socialPublicationFormHydratedForDate = $this->selectedDate;
 
         Notification::make()
             ->title('Publicación eliminada')
@@ -1780,6 +1833,10 @@ class AgendaCorporativa extends Page
      */
     public function getSelectedDateSocialPublicationReferencePreviewsProperty(): array
     {
+        if (! $this->isActivityModalOpen || $this->modalWorkspace !== 'marketing') {
+            return [];
+        }
+
         $paths = $this->selectedDateSocialPublications
             ->flatMap(function (CorporateAgendaSocialPublication $publication): array {
                 $attachments = $publication->attachments;
@@ -1794,7 +1851,7 @@ class AgendaCorporativa extends Page
         return $paths
             ->map(function (string $path): ?array {
                 $normalizedPath = ltrim($path, '/');
-                if (! Storage::disk('public')->exists($normalizedPath)) {
+                if ($normalizedPath === '') {
                     return null;
                 }
 
@@ -1803,14 +1860,14 @@ class AgendaCorporativa extends Page
                 $isVideo = in_array($extension, ['mp4', 'webm', 'mov'], true);
 
                 return [
-                    'url' => url('storage/'.$normalizedPath),
+                    'url' => $this->publicStorageUrlIfExists($normalizedPath) ?? '',
                     'name' => basename($normalizedPath),
                     'is_image' => $isImage,
                     'is_video' => $isVideo,
                     'ext' => $extension !== '' ? $extension : 'archivo',
                 ];
             })
-            ->filter(fn (?array $item): bool => $item !== null)
+            ->filter(fn (?array $item): bool => $item !== null && ($item['url'] ?? '') !== '')
             ->take(8)
             ->values()
             ->all();
@@ -1825,7 +1882,7 @@ class AgendaCorporativa extends Page
         return collect($paths)
             ->map(function (mixed $path): ?array {
                 $normalizedPath = ltrim(trim((string) $path), '/');
-                if ($normalizedPath === '' || ! Storage::disk('public')->exists($normalizedPath)) {
+                if ($normalizedPath === '') {
                     return null;
                 }
 
@@ -1834,16 +1891,46 @@ class AgendaCorporativa extends Page
                 $isVideo = in_array($extension, ['mp4', 'webm', 'mov'], true);
 
                 return [
-                    'url' => url('storage/'.$normalizedPath),
+                    'url' => $this->publicStorageUrlIfExists($normalizedPath) ?? '',
                     'name' => basename($normalizedPath),
                     'is_image' => $isImage,
                     'is_video' => $isVideo,
                     'ext' => $extension !== '' ? $extension : 'archivo',
                 ];
             })
-            ->filter(fn (?array $preview): bool => $preview !== null)
+            ->filter(fn (?array $preview): bool => $preview !== null && ($preview['url'] ?? '') !== '')
             ->values()
             ->all();
+    }
+
+    private function publicStorageUrl(?string $path): ?string
+    {
+        $normalizedPath = ltrim(trim((string) $path), '/');
+        if ($normalizedPath === '') {
+            return null;
+        }
+
+        return url('storage/'.$normalizedPath);
+    }
+
+    private function publicStorageUrlIfExists(?string $path): ?string
+    {
+        $normalizedPath = ltrim(trim((string) $path), '/');
+        if ($normalizedPath === '') {
+            return null;
+        }
+
+        $exists = Cache::remember(
+            'agenda-corporativa:storage-exists:'.md5($normalizedPath),
+            now()->addMinutes(5),
+            fn (): bool => Storage::disk('public')->exists($normalizedPath),
+        );
+
+        if (! $exists) {
+            return null;
+        }
+
+        return $this->publicStorageUrl($normalizedPath);
     }
 
     /**
