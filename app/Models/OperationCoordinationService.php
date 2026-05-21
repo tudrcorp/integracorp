@@ -59,7 +59,16 @@ class OperationCoordinationService extends Model
         'observations',
         'created_by',
         'updated_by',
+        'managed_by',
+        'uploaded_documents',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'uploaded_documents' => 'array',
+        ];
+    }
 
     public function telemedicinePatient()
     {

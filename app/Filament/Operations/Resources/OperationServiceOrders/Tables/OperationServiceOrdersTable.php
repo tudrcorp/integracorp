@@ -4,21 +4,30 @@ namespace App\Filament\Operations\Resources\OperationServiceOrders\Tables;
 
 use App\Http\Controllers\ApiBcvController;
 use App\Models\OperationServiceOrder;
+use App\Models\OperationServiceOrderItem;
+use App\Models\OperationServiceOrderQuote;
+use App\Models\Supplier;
+use App\Services\OperationServiceOrderMedicationQuotePdfService;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -82,13 +91,142 @@ class OperationServiceOrdersTable
         return $hasUsd || $hasVes;
     }
 
+    /**
+     * @return Collection<int, OperationServiceOrderItem>
+     */
+    private static function medicationItems(OperationServiceOrder $record): Collection
+    {
+        return $record->operationServiceOrderItems()
+            ->where('category', 'MEDICAMENTOS')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function medicationItemOptions(OperationServiceOrder $record): array
+    {
+        return self::medicationItems($record)
+            ->mapWithKeys(fn (OperationServiceOrderItem $item): array => [
+                $item->id => $item->item_name.' (x'.max(1, (int) $item->quantity).')',
+            ])
+            ->all();
+    }
+
+    private static function nextQuoteNumber(OperationServiceOrder $record): string
+    {
+        $next = ((int) ($record->operationServiceOrderQuotes()->count())) + 1;
+
+        return 'COT-'.$record->order_number.'-'.str_pad((string) $next, 2, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * @param  array<int, mixed>  $itemIds
+     * @return array{items: array<int, array<string, mixed>>, total_usd: float}
+     */
+    private static function quoteLinesFromItems(OperationServiceOrder $record, array $itemIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $itemIds)));
+
+        $items = $record->operationServiceOrderItems()
+            ->whereIn('id', $ids)
+            ->where('category', 'MEDICAMENTOS')
+            ->orderBy('id')
+            ->get();
+
+        $lines = [];
+        $total = 0.0;
+
+        foreach ($items as $item) {
+            $quantity = max(1, (int) ($item->quantity ?? 1));
+            $unitAmountUsd = (float) ($item->amount ?? 0);
+            $lineTotalUsd = round($unitAmountUsd * $quantity, 4);
+            $total += $lineTotalUsd;
+
+            $lines[] = [
+                'item_id' => $item->id,
+                'item_name' => $item->item_name,
+                'quantity' => $quantity,
+                'unit_amount_usd' => $unitAmountUsd,
+                'line_total_usd' => $lineTotalUsd,
+            ];
+        }
+
+        return [
+            'items' => $lines,
+            'total_usd' => round($total, 4),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $quoteData
+     */
+    private static function persistMedicationQuote(OperationServiceOrder $record, array $quoteData): void
+    {
+        $bcvRate = (float) ($quoteData['bcv_rate'] ?? 0);
+        $supplierId = isset($quoteData['supplier_id']) && filled($quoteData['supplier_id'])
+            ? (int) $quoteData['supplier_id']
+            : null;
+        $supplierExternal = filled($quoteData['supplier_external'] ?? null)
+            ? (string) $quoteData['supplier_external']
+            : null;
+
+        $lines = self::quoteLinesFromItems($record, is_array($quoteData['item_ids'] ?? null) ? $quoteData['item_ids'] : []);
+        if ($lines['items'] === []) {
+            return;
+        }
+
+        $totalUsd = (float) $lines['total_usd'];
+        $totalVes = round($totalUsd * $bcvRate, 4);
+        $quoteNumber = self::nextQuoteNumber($record);
+
+        $supplierName = $supplierId !== null
+            ? Supplier::query()->whereKey($supplierId)->value('name')
+            : null;
+        $supplierName = $supplierName ?: ($supplierExternal ?: 'Proveedor no especificado');
+
+        $quote = OperationServiceOrderQuote::query()->create([
+            'operation_service_order_id' => $record->id,
+            'quote_number' => $quoteNumber,
+            'supplier_id' => $supplierId,
+            'supplier_external' => $supplierExternal,
+            'bcv_rate' => $bcvRate,
+            'total_amount_usd' => $totalUsd,
+            'total_amount_ves' => $totalVes,
+            'items_payload' => $lines['items'],
+            'created_by' => Auth::user()?->name,
+            'updated_by' => Auth::user()?->name,
+        ]);
+
+        $pdfContent = OperationServiceOrderMedicationQuotePdfService::make(
+            $record,
+            [
+                'quote_number' => $quoteNumber,
+                'supplier_name' => $supplierName,
+                'bcv_rate' => $bcvRate,
+                'total_amount_usd' => $totalUsd,
+                'total_amount_ves' => $totalVes,
+            ],
+            $lines['items']
+        )->output();
+
+        $safeOrder = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $record->order_number) ?: (string) $record->id;
+        $safeQuote = preg_replace('/[^a-zA-Z0-9_-]/', '_', $quoteNumber) ?: (string) $quote->id;
+        $relativePath = 'operation-service-orders/quotes/'.$safeOrder.'/'.$safeQuote.'.pdf';
+        Storage::disk('public')->put($relativePath, $pdfContent);
+
+        $quote->quote_pdf_path = $relativePath;
+        $quote->save();
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
             ->heading('Órdenes de servicio')
             ->description('Listado de órdenes generadas por coordinación; el color de cada fila indica la prioridad asignada. Flujo: primero «Datos de pago»; al guardarlos podrás usar «Cargar soportes».')
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn ($query) => $query->with(['telemedicinePriority', 'supplier']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['telemedicinePriority', 'supplier', 'approvedOperationQuote'])->withCount('operationServiceOrderQuotes'))
             ->columns([
                 TextColumn::make('order_number')
                     ->label('Nº orden')
@@ -98,6 +236,17 @@ class OperationServiceOrdersTable
                     ->icon('heroicon-m-hashtag')
                     ->copyable()
                     ->copyMessage('Número copiado'),
+                TextColumn::make('approvedOperationQuote.id')
+                    ->label('Código cotización')
+                    ->badge()
+                    ->color('warning')
+                    ->formatStateUsing(
+                        fn (mixed $state): string => filled($state)
+                            ? 'COT-'.str_pad((string) ((int) $state), 6, '0', STR_PAD_LEFT)
+                            : '—'
+                    )
+                    ->tooltip('Se completa cuando la orden nace desde una cotización aprobada.')
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -181,6 +330,24 @@ class OperationServiceOrdersTable
                     })
                     ->searchable()
                     ->toggleable(),
+                TextColumn::make('service_order_pdf_path')
+                    ->label('PDF orden')
+                    ->badge()
+                    ->color(fn (?string $state): string => filled($state) ? 'success' : 'gray')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Generado' : 'Pendiente')
+                    ->toggleable(),
+                TextColumn::make('associated_quote_pdf_path')
+                    ->label('PDF cotización')
+                    ->badge()
+                    ->color(fn (?string $state): string => filled($state) ? 'success' : 'gray')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Generado' : 'No aplica')
+                    ->toggleable(),
+                TextColumn::make('operation_service_order_quotes_count')
+                    ->label('Cotizaciones')
+                    ->badge()
+                    ->color('info')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable(),
@@ -211,6 +378,263 @@ class OperationServiceOrdersTable
                 // ViewAction::make(),
                 // EditAction::make(),
                 ActionGroup::make([
+                    Action::make('downloadServiceOrderPdf')
+                        ->label('PDF orden')
+                        ->icon('heroicon-m-document-arrow-down')
+                        ->color('success')
+                        ->url(
+                            fn (OperationServiceOrder $record): ?string => filled($record->service_order_pdf_path)
+                                ? URL::to(Storage::url((string) $record->service_order_pdf_path))
+                                : null,
+                            shouldOpenInNewTab: true
+                        )
+                        ->hidden(fn (OperationServiceOrder $record): bool => ! filled($record->service_order_pdf_path)),
+                    Action::make('downloadAssociatedQuotePdf')
+                        ->label('PDF cotización')
+                        ->icon('heroicon-m-document-text')
+                        ->color('info')
+                        ->url(
+                            fn (OperationServiceOrder $record): ?string => filled($record->associated_quote_pdf_path)
+                                ? URL::to(Storage::url((string) $record->associated_quote_pdf_path))
+                                : null,
+                            shouldOpenInNewTab: true
+                        )
+                        ->hidden(fn (OperationServiceOrder $record): bool => ! filled($record->associated_quote_pdf_path)),
+                    Action::make('manageMedicationQuotes')
+                        ->label('Cotizar medicamentos')
+                        ->icon('heroicon-m-document-currency-dollar')
+                        ->color('warning')
+                        ->slideOver()
+                        ->modalWidth(Width::FourExtraLarge)
+                        ->modalHeading('Cotizaciones de medicamentos por proveedor')
+                        ->modalDescription('Puedes generar una sola cotización con todos los medicamentos o dividirlos en varias cotizaciones por proveedor. Cada cotización se guarda con su PDF para consulta del analista.')
+                        ->modalSubmitActionLabel('Generar cotización(es)')
+                        ->fillForm(fn (OperationServiceOrder $record): array => [
+                            'bcv_rate' => self::referenciaTasaBcvDesdeApi(),
+                            'single_quote_item_ids' => array_keys(self::medicationItemOptions($record)),
+                            'split_by_supplier' => false,
+                            'quote_groups' => [],
+                        ])
+                        ->form([
+                            Section::make('Configuración')
+                                ->schema([
+                                    TextInput::make('bcv_rate')
+                                        ->label('Tasa BCV para cotizaciones')
+                                        ->prefix('Bs.')
+                                        ->numeric()
+                                        ->required()
+                                        ->minValue(0.0001)
+                                        ->helperText('Se aplicará esta tasa para calcular bolívares en cada cotización.'),
+                                    Toggle::make('split_by_supplier')
+                                        ->label('Dividir cotizaciones por proveedor')
+                                        ->helperText('Activo: crea 2 o más cotizaciones. Inactivo: crea una sola cotización con todos los ítems seleccionados.')
+                                        ->live(),
+                                ])
+                                ->columns(2),
+                            Section::make('Cotización única')
+                                ->visible(fn (Get $get): bool => ! ((bool) $get('split_by_supplier')))
+                                ->schema([
+                                    Select::make('single_supplier_id')
+                                        ->label('Proveedor TDG')
+                                        ->options(Supplier::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                        ->searchable()
+                                        ->preload()
+                                        ->native(false),
+                                    TextInput::make('single_supplier_external')
+                                        ->label('Proveedor externo')
+                                        ->maxLength(255),
+                                    CheckboxList::make('single_quote_item_ids')
+                                        ->label('Medicamentos a cotizar')
+                                        ->options(fn (OperationServiceOrder $record): array => self::medicationItemOptions($record))
+                                        ->searchable()
+                                        ->columns(1)
+                                        ->bulkToggleable()
+                                        ->required()
+                                        ->columnSpanFull(),
+                                ])
+                                ->columns(2),
+                            Section::make('Cotizaciones múltiples por proveedor')
+                                ->visible(fn (Get $get): bool => (bool) $get('split_by_supplier'))
+                                ->schema([
+                                    Repeater::make('quote_groups')
+                                        ->label('Grupos de cotización')
+                                        ->defaultItems(2)
+                                        ->minItems(2)
+                                        ->schema([
+                                            Select::make('supplier_id')
+                                                ->label('Proveedor TDG')
+                                                ->options(Supplier::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                                ->searchable()
+                                                ->preload()
+                                                ->native(false),
+                                            TextInput::make('supplier_external')
+                                                ->label('Proveedor externo')
+                                                ->maxLength(255),
+                                            CheckboxList::make('item_ids')
+                                                ->label('Medicamentos para este proveedor')
+                                                ->options(fn (OperationServiceOrder $record): array => self::medicationItemOptions($record))
+                                                ->searchable()
+                                                ->columns(1)
+                                                ->required()
+                                                ->columnSpanFull(),
+                                        ])
+                                        ->columns(2)
+                                        ->columnSpanFull(),
+                                ]),
+                        ])
+                        ->action(function (OperationServiceOrder $record, array $data): void {
+                            $medicationOptions = self::medicationItemOptions($record);
+                            if ($medicationOptions === []) {
+                                Notification::make()
+                                    ->title('Sin medicamentos')
+                                    ->body('Esta orden no tiene ítems de categoría MEDICAMENTOS para cotizar.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $bcvRate = (float) ($data['bcv_rate'] ?? 0);
+                            if ($bcvRate <= 0) {
+                                Notification::make()
+                                    ->title('Tasa inválida')
+                                    ->body('Debe indicar una tasa BCV mayor que cero.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            if (! ((bool) ($data['split_by_supplier'] ?? false))) {
+                                $itemIds = array_values(array_unique(array_map('intval', (array) ($data['single_quote_item_ids'] ?? []))));
+                                if ($itemIds === []) {
+                                    Notification::make()
+                                        ->title('Ítems requeridos')
+                                        ->body('Selecciona al menos un medicamento para la cotización.')
+                                        ->warning()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                self::persistMedicationQuote($record, [
+                                    'supplier_id' => $data['single_supplier_id'] ?? null,
+                                    'supplier_external' => $data['single_supplier_external'] ?? null,
+                                    'item_ids' => $itemIds,
+                                    'bcv_rate' => $bcvRate,
+                                ]);
+
+                                Notification::make()
+                                    ->title('Cotización generada')
+                                    ->body('Se generó y almacenó la cotización con su PDF.')
+                                    ->success()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $groups = is_array($data['quote_groups'] ?? null) ? $data['quote_groups'] : [];
+                            if ($groups === []) {
+                                Notification::make()
+                                    ->title('Grupos requeridos')
+                                    ->body('Agrega al menos dos grupos para cotización por proveedor.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $availableItemIds = array_map('intval', array_keys($medicationOptions));
+                            $assignmentCounter = [];
+                            $preparedGroups = [];
+
+                            foreach ($groups as $group) {
+                                $itemIds = array_values(array_unique(array_map('intval', (array) ($group['item_ids'] ?? []))));
+                                if ($itemIds === []) {
+                                    continue;
+                                }
+
+                                foreach ($itemIds as $itemId) {
+                                    if (! in_array($itemId, $availableItemIds, true)) {
+                                        continue;
+                                    }
+
+                                    $assignmentCounter[$itemId] = ($assignmentCounter[$itemId] ?? 0) + 1;
+                                }
+
+                                $preparedGroups[] = [
+                                    'supplier_id' => $group['supplier_id'] ?? null,
+                                    'supplier_external' => $group['supplier_external'] ?? null,
+                                    'item_ids' => $itemIds,
+                                    'bcv_rate' => $bcvRate,
+                                ];
+                            }
+
+                            $assignedItems = array_keys($assignmentCounter);
+                            if ($assignedItems === []) {
+                                Notification::make()
+                                    ->title('Ítems requeridos')
+                                    ->body('Cada cotización debe tener al menos un medicamento asignado.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $duplicatedItems = collect($assignmentCounter)
+                                ->filter(fn (int $times): bool => $times > 1)
+                                ->keys()
+                                ->all();
+
+                            if ($duplicatedItems !== []) {
+                                Notification::make()
+                                    ->title('Ítems duplicados')
+                                    ->body('Un mismo medicamento no puede estar en dos cotizaciones distintas. Ajusta la distribución por proveedor.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $missingItems = array_values(array_diff($availableItemIds, array_map('intval', $assignedItems)));
+                            if ($missingItems !== []) {
+                                Notification::make()
+                                    ->title('Distribución incompleta')
+                                    ->body('Debes asignar todos los medicamentos a algún proveedor para cerrar el proceso rápido y sin pendientes.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            foreach ($preparedGroups as $groupData) {
+                                self::persistMedicationQuote($record, $groupData);
+                            }
+
+                            Notification::make()
+                                ->title('Cotizaciones generadas')
+                                ->body('Se generaron y almacenaron las cotizaciones por proveedor con sus PDFs.')
+                                ->success()
+                                ->send();
+                        })
+                        ->hidden(fn (): bool => true),
+                    Action::make('viewMedicationQuotes')
+                        ->label('Ver cotizaciones')
+                        ->icon('heroicon-m-folder-open')
+                        ->color('info')
+                        ->modalHeading('Cotizaciones registradas')
+                        ->modalDescription('Historial de cotizaciones por proveedor con acceso directo a cada PDF.')
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Cerrar')
+                        ->form(fn (OperationServiceOrder $record): array => [
+                            Section::make('Documentación disponible')
+                                ->schema([
+                                    Placeholder::make('quote_documents_preview')
+                                        ->label('')
+                                        ->content(fn (): HtmlString => self::renderMedicationQuotesPreview($record)),
+                                ]),
+                        ])
+                        ->hidden(fn (): bool => true),
                     Action::make('registerPayment')
                         ->label('Datos de pago')
                         ->icon('heroicon-m-banknotes')
@@ -414,6 +838,50 @@ class OperationServiceOrdersTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function renderMedicationQuotesPreview(OperationServiceOrder $record): HtmlString
+    {
+        $quotes = $record->operationServiceOrderQuotes()
+            ->with('supplier:id,name')
+            ->latest('id')
+            ->get();
+
+        if ($quotes->isEmpty()) {
+            return new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">No hay cotizaciones registradas para esta orden.</p>');
+        }
+
+        $rows = $quotes->map(function (OperationServiceOrderQuote $quote): string {
+            $supplier = $quote->supplier?->name ?: ($quote->supplier_external ?: 'Proveedor no especificado');
+            $pdfUrl = filled($quote->quote_pdf_path) ? URL::to(Storage::url((string) $quote->quote_pdf_path)) : null;
+
+            return '<tr class="border-b border-gray-100 dark:border-white/10">'
+                .'<td class="px-3 py-2 font-medium">'.e($quote->quote_number).'</td>'
+                .'<td class="px-3 py-2">'.e($supplier).'</td>'
+                .'<td class="px-3 py-2 text-right">US$ '.e(number_format((float) $quote->total_amount_usd, 2, ',', '.')).'</td>'
+                .'<td class="px-3 py-2 text-right">Bs. '.e(number_format((float) $quote->total_amount_ves, 2, ',', '.')).'</td>'
+                .'<td class="px-3 py-2 text-center">'
+                .($pdfUrl
+                    ? '<a href="'.e($pdfUrl).'" target="_blank" class="inline-flex items-center rounded-full border-b-2 border-primary-600 bg-primary-500/15 px-3 py-1 text-xs font-semibold text-primary-700 dark:border-primary-500 dark:bg-primary-500/25 dark:text-primary-300">Abrir PDF</a>'
+                    : '<span class="text-xs text-gray-500 dark:text-gray-400">Sin PDF</span>')
+                .'</td>'
+                .'</tr>';
+        })->implode('');
+
+        return new HtmlString(
+            '<div class="overflow-x-auto rounded-xl border border-gray-200/90 dark:border-white/10">'
+            .'<table class="min-w-full divide-y divide-gray-100 text-sm dark:divide-white/10">'
+            .'<thead class="bg-gray-50/90 dark:bg-white/5"><tr>'
+            .'<th class="px-3 py-2 text-left font-semibold">N° cotización</th>'
+            .'<th class="px-3 py-2 text-left font-semibold">Proveedor</th>'
+            .'<th class="px-3 py-2 text-right font-semibold">Total US$</th>'
+            .'<th class="px-3 py-2 text-right font-semibold">Total Bs.</th>'
+            .'<th class="px-3 py-2 text-center font-semibold">Documento</th>'
+            .'</tr></thead>'
+            .'<tbody>'.$rows.'</tbody>'
+            .'</table>'
+            .'</div>'
+        );
     }
 
     private static function buildDownloadAllUrl($record): ?string

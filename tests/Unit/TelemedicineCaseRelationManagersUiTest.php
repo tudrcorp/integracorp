@@ -21,12 +21,15 @@ it('consultations relation manager formatea listas de cobertura y estados', func
     expect($c)
         ->toContain('formatCoverageList')
         ->toContain('coverageListIsFilled')
+        ->toContain('consultationCoverageBadgesHtml')
         ->toContain('consultationCoverageCatalogBadgesHtml')
+        ->toContain("'other_labs'")
+        ->toContain("'other_studies'")
+        ->toContain("'other_specialist'")
         ->toContain('TelemedicineCoverageCatalog::')
         ->toContain('coverageStatusBadgeHtml')
         ->toContain('svgIconShieldCheck')
-        ->toContain('ColumnGroup::make(\'Cobertura (incluidos)\', [')
-        ->toContain('ColumnGroup::make(\'Fuera de cobertura\', [')
+        ->toContain('ColumnGroup::make(\'Cobertura\', [')
         ->toContain('->striped()');
 });
 

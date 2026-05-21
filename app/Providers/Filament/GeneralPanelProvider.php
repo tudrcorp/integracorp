@@ -14,7 +14,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
-use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -114,10 +113,6 @@ class GeneralPanelProvider extends PanelProvider
                     ->color('danger')
                     ->url(route('external')),
             ])
-            ->renderHook(
-                PanelsRenderHook::FOOTER,
-                fn () => view('footer-panel-admin')
-            )
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(

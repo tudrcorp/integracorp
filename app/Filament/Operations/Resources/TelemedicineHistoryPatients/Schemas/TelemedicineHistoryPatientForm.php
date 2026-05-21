@@ -25,6 +25,10 @@ use Illuminate\Support\Facades\Log;
 
 class TelemedicineHistoryPatientForm
 {
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
+    private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -32,12 +36,16 @@ class TelemedicineHistoryPatientForm
                 Tabs::make('telemedicineHistoryPatientFormTabs')
                     ->columnSpanFull()
                     ->persistTab()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
                     ->tabs([
                         Tab::make('Información general')
                             ->icon(Heroicon::OutlinedIdentification)
                             ->schema([
                                 Section::make('Información Principal')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Section::make()
                                             ->description('Datos principales del paciente')
@@ -66,12 +74,18 @@ class TelemedicineHistoryPatientForm
                                                     ->label('Paciente')
                                                     ->options(TelemedicinePatient::all()->pluck('full_name', 'id'))
                                                     ->default(function () {
-                                                        if (session()->get('patient')) {
-                                                            $patient = session()->get('patient')->id;
-
-                                                            return $patient;
+                                                        $sessionPatient = session()->get('patient');
+                                                        $patientId = is_object($sessionPatient)
+                                                            ? data_get($sessionPatient, 'id')
+                                                            : null;
+                                                        if (filled($patientId)) {
+                                                            return (int) $patientId;
                                                         }
-                                                        Log::warning(session()->get('patient_id'));
+
+                                                        $sessionPatientId = session()->get('patient_id');
+                                                        if (filled($sessionPatientId)) {
+                                                            Log::warning($sessionPatientId);
+                                                        }
 
                                                         return null;
                                                     })
@@ -82,11 +96,11 @@ class TelemedicineHistoryPatientForm
                                                     ->default(now()),
                                                 // ...
                                                 Hidden::make('telemedicine_doctor_id')->default(function () {
-                                                    $isDoctor = Auth::user()->doctor_id;
+                                                    $isDoctor = Auth::user()?->doctor_id;
 
                                                     return $isDoctor ?? null;
                                                 }),
-                                                Hidden::make('created_by')->default(Auth::user()->name)->hiddenOn('edit'),
+                                                Hidden::make('created_by')->default(Auth::user()?->name)->hiddenOn('edit'),
                                             ])->columnSpanFull()->columns(5),
                                     ])->columnSpanFull(),
                             ]),
@@ -95,6 +109,7 @@ class TelemedicineHistoryPatientForm
                             ->schema([
                                 Section::make('Antecedentes Patológicos Familiares')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Section::make()
                                             ->description('Selección multiple de antecedentes patológicos familiares. Esta sección posee un campo de observación para agregar información adicional.')
@@ -278,6 +293,7 @@ class TelemedicineHistoryPatientForm
                             ->schema([
                                 Section::make('Antecedentes Patológicos Personales')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Section::make()
                                             ->description('Sección de selección multiple de antecedentes patológicos personales mas un campo de observación para agregar información adicional.')
@@ -450,6 +466,7 @@ class TelemedicineHistoryPatientForm
                             ->schema([
                                 Section::make('Antecedentes Quirúrgicos')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         // ...
                                         Section::make()
@@ -467,6 +484,7 @@ class TelemedicineHistoryPatientForm
                             ->schema([
                                 Section::make('Antecedentes No Patológicos')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         Section::make()
                                             ->description('Sección de selección multiple de antecedentes mas dos campo de observación para agregar información adicional y lo relacionado con el esquema de vacunación.')
@@ -498,6 +516,7 @@ class TelemedicineHistoryPatientForm
                             ->schema([
                                 Section::make('Alergias')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         // ...
                                         Section::make('Selección Múltiple')
@@ -522,6 +541,7 @@ class TelemedicineHistoryPatientForm
                             ->schema([
                                 Section::make('Medicamentos y Suplementos')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         // ...
                                         Section::make()
@@ -554,6 +574,7 @@ class TelemedicineHistoryPatientForm
                             ->schema([
                                 Section::make('Antecedentes Ginecológicos')
                                     ->icon('healthicons-f-i-exam-multiple-choice')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         // ...
                                         Section::make()

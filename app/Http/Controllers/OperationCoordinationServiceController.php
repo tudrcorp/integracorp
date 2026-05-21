@@ -74,6 +74,7 @@ class OperationCoordinationServiceController extends Controller
                     'observations' => $record['observations'] ?? '...',
                     'created_by' => Auth::user()->name,
                     'updated_by' => Auth::user()->name,
+                    'managed_by' => $patient['managed_by'] == 'ATENMEDI' ? 'ATENMEDI' : 'TDG',
 
                 ]);
 

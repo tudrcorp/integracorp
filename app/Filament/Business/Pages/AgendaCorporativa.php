@@ -6,8 +6,10 @@ namespace App\Filament\Business\Pages;
 
 use App\Enums\CorporateAgendaActivityType;
 use App\Enums\CorporateAgendaInvitationStatus;
+use App\Enums\CorporateAgendaSocialPlatform;
 use App\Models\CorporateAgendaActivity;
 use App\Models\CorporateAgendaActivityParticipant;
+use App\Models\CorporateAgendaSocialPublication;
 use App\Models\RrhhColaborador;
 use App\Services\CorporateAgendaInvitationWhatsAppService;
 use BackedEnum;
@@ -22,10 +24,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Livewire\WithFileUploads;
 use UnitEnum;
 
 class AgendaCorporativa extends Page
 {
+    use WithFileUploads;
+
     // protected static string|UnitEnum|null $navigationGroup = 'SOLICITUDES';
 
     protected static ?string $navigationLabel = 'Agenda Corporativa';
@@ -49,6 +54,34 @@ class AgendaCorporativa extends Page
     public ?int $selectedActivityId = null;
 
     public bool $isCreatingActivity = false;
+
+    public string $modalWorkspace = 'activities';
+
+    public ?int $selectedSocialPublicationId = null;
+
+    public bool $isCreatingSocialPublication = false;
+
+    /** @var array<string, array<int, mixed>> */
+    public array $socialPublicationUploadsByPlatform = [];
+
+    /** @var array<string, array<int, string>> */
+    public array $socialPublicationExistingAttachmentsByPlatform = [];
+
+    /** @var array<string, string|null> */
+    public array $socialPublicationBriefByPlatform = [];
+
+    /** @var array{
+     *     publication_date:string|null,
+     *     platforms:array<int, string>,
+     *     brief:string|null,
+     *     attachments:array<int, string>
+     * } */
+    public array $socialPublicationForm = [
+        'publication_date' => null,
+        'platforms' => [],
+        'brief' => null,
+        'attachments' => [],
+    ];
 
     /** @var array{
      *     activity_date:string|null,
@@ -152,6 +185,11 @@ class AgendaCorporativa extends Page
             ->get()
             ->groupBy(fn (CorporateAgendaActivity $activity): string => $activity->activity_date->toDateString());
 
+        $monthPublications = $this->socialPublicationsBetween($start, $end)
+            ->orderBy('platform')
+            ->get()
+            ->groupBy(fn (CorporateAgendaSocialPublication $publication): string => $publication->publication_date->toDateString());
+
         $days = [];
         $day = $start->copy();
 
@@ -160,6 +198,7 @@ class AgendaCorporativa extends Page
             $isToday = $day->isToday();
             $isPastDate = $day->lt(now()->startOfDay());
             $activities = $monthActivities->get($day->toDateString(), collect());
+            $publications = $monthPublications->get($day->toDateString(), collect());
 
             $days[] = [
                 'date' => $day->toDateString(),
@@ -167,7 +206,7 @@ class AgendaCorporativa extends Page
                 'is_current_month' => $isCurrentMonth,
                 'is_today' => $isToday,
                 'is_past_date' => $isPastDate,
-                ...$this->buildDayVisuals($activities, $isCurrentMonth),
+                ...$this->buildDayVisuals($activities, $publications, $isCurrentMonth),
             ];
 
             $day->addDay();
@@ -192,10 +231,16 @@ class AgendaCorporativa extends Page
             ->get()
             ->groupBy(fn (CorporateAgendaActivity $activity): string => $activity->activity_date->toDateString());
 
+        $publicationsByDate = $this->socialPublicationsBetween($startOfWeek, $endOfWeek)
+            ->orderBy('platform')
+            ->get()
+            ->groupBy(fn (CorporateAgendaSocialPublication $publication): string => $publication->publication_date->toDateString());
+
         $days = [];
         $cursor = $startOfWeek->copy();
         while ($cursor->lessThanOrEqualTo($endOfWeek)) {
             $dateKey = $cursor->toDateString();
+            $publications = $publicationsByDate->get($dateKey, collect());
             $days[] = [
                 'date' => $dateKey,
                 'day_label' => Str::upper($cursor->translatedFormat('D')),
@@ -203,6 +248,8 @@ class AgendaCorporativa extends Page
                 'is_today' => $cursor->isToday(),
                 'is_selected' => $dateKey === $this->selectedWeekDate,
                 'activity_count' => $activitiesByDate->get($dateKey, collect())->count(),
+                'social_platforms' => $this->resolveSocialPlatformsForPublications($publications),
+                'social_badges' => $this->resolveSocialBadgesForPublications($publications),
             ];
 
             $cursor->addDay();
@@ -232,8 +279,89 @@ class AgendaCorporativa extends Page
     /**
      * @return array<string, mixed>
      */
-    private function buildDayVisuals(Collection $activities, bool $isCurrentMonth): array
+    /**
+     * @param  Collection<int, CorporateAgendaSocialPublication>  $publications
+     * @return array<int, string>
+     */
+    private function resolveSocialPlatformsForPublications(Collection $publications): array
     {
+        return $publications
+            ->map(fn (CorporateAgendaSocialPublication $publication): string => $publication->platform?->value ?? (string) $publication->getRawOriginal('platform'))
+            ->filter(fn (string $platform): bool => $platform !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, CorporateAgendaSocialPublication>  $publications
+     * @return array<int, array{
+     *   platform:string,
+     *   media:array<int, array{url:string,type:string,name:string}>,
+     *   media_count:int
+     * }>
+     */
+    private function resolveSocialBadgesForPublications(Collection $publications): array
+    {
+        return $publications
+            ->map(function (CorporateAgendaSocialPublication $publication): array {
+                $platform = $publication->platform?->value ?? (string) $publication->getRawOriginal('platform');
+                $media = $this->resolveSocialPublicationMediaGallery($publication);
+
+                return [
+                    'platform' => $platform,
+                    'media' => $media,
+                    'media_count' => count($media),
+                ];
+            })
+            ->filter(fn (array $badge): bool => ($badge['platform'] ?? '') !== '')
+            ->unique('platform')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{url:string,type:string,name:string}>
+     */
+    private function resolveSocialPublicationMediaGallery(CorporateAgendaSocialPublication $publication): array
+    {
+        $attachments = is_array($publication->attachments) ? $publication->attachments : [];
+        if ($attachments === []) {
+            return [];
+        }
+
+        return collect($attachments)
+            ->map(function (mixed $attachmentPath): ?array {
+                $path = ltrim(trim((string) $attachmentPath), '/');
+                if ($path === '' || ! Storage::disk('public')->exists($path)) {
+                    return null;
+                }
+
+                $ext = Str::lower(pathinfo($path, PATHINFO_EXTENSION));
+                $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+                $isVideo = in_array($ext, ['mp4', 'webm', 'mov'], true);
+
+                if (! $isImage && ! $isVideo) {
+                    return null;
+                }
+
+                return [
+                    'url' => url('storage/'.$path),
+                    'type' => $isVideo ? 'video' : 'image',
+                    'name' => basename($path),
+                ];
+            })
+            ->filter(fn (?array $item): bool => $item !== null)
+            ->take(8)
+            ->values()
+            ->all();
+    }
+
+    private function buildDayVisuals(Collection $activities, Collection $publications, bool $isCurrentMonth): array
+    {
+        $socialPlatforms = $this->resolveSocialPlatformsForPublications($publications);
+        $socialBadges = $this->resolveSocialBadgesForPublications($publications);
+
         if (! $isCurrentMonth) {
             return [
                 'activity_count' => 0,
@@ -243,6 +371,9 @@ class AgendaCorporativa extends Page
                 'progress_width' => 0,
                 'progress_tone' => 'none',
                 'has_indicator' => false,
+                'social_platforms' => [],
+                'social_badges' => [],
+                'has_social_publications' => false,
             ];
         }
 
@@ -313,11 +444,47 @@ class AgendaCorporativa extends Page
             'avatars' => $avatars,
             'progress_width' => $progressWidth,
             'progress_tone' => $progressTone,
-            'has_indicator' => $withMeetCount > 0,
+            'has_indicator' => $withMeetCount > 0 || $socialPlatforms !== [],
+            'social_platforms' => $socialPlatforms,
+            'social_badges' => $socialBadges,
+            'has_social_publications' => $socialPlatforms !== [],
         ];
     }
 
-    public function openDayModal(string $date): void
+    public function setModalWorkspace(string $workspace): void
+    {
+        if (! in_array($workspace, ['activities', 'marketing'], true)) {
+            return;
+        }
+
+        if ($workspace === 'marketing' && ! $this->canManageSocialPublications()) {
+            Notification::make()
+                ->title('Sin permisos')
+                ->body('Solo usuarios del módulo MARKETING o SUPERADMIN pueden acceder al calendario publicitario.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->modalWorkspace = $workspace;
+
+        if ($workspace === 'marketing') {
+            $this->selectedActivityId = null;
+            $this->isCreatingActivity = false;
+            $this->newNote = '';
+            $this->invitationRejectionNote = '';
+            $this->startCreateSocialPublication();
+        } else {
+            $this->selectedSocialPublicationId = null;
+            $this->isCreatingSocialPublication = false;
+            if (! $this->isCreatingActivity && $this->selectedActivityId === null) {
+                $this->isCreatingActivity = true;
+            }
+        }
+    }
+
+    public function openDayModal(string $date, string $workspace = 'activities'): void
     {
         $targetDate = Carbon::parse($date)->startOfDay();
         if ($targetDate->lt(now()->startOfDay())) {
@@ -330,10 +497,17 @@ class AgendaCorporativa extends Page
             return;
         }
 
+        if ($workspace === 'marketing' && ! $this->canManageSocialPublications()) {
+            $workspace = 'activities';
+        }
+
         $this->selectedDate = $targetDate->toDateString();
         $this->selectedWeekDate = $this->selectedDate;
         $this->selectedActivityId = null;
-        $this->isCreatingActivity = true;
+        $this->selectedSocialPublicationId = null;
+        $this->isCreatingActivity = $workspace === 'activities';
+        $this->isCreatingSocialPublication = $workspace === 'marketing';
+        $this->modalWorkspace = in_array($workspace, ['activities', 'marketing'], true) ? $workspace : 'activities';
         $this->newNote = '';
         $this->invitationRejectionNote = '';
         $this->activityForm = [
@@ -346,6 +520,7 @@ class AgendaCorporativa extends Page
             'participant_ids' => [],
             'description' => null,
         ];
+        $this->resetSocialPublicationFormForSelectedDate();
         $this->isActivityModalOpen = true;
     }
 
@@ -353,7 +528,10 @@ class AgendaCorporativa extends Page
     {
         $this->isActivityModalOpen = false;
         $this->isCreatingActivity = false;
+        $this->isCreatingSocialPublication = false;
         $this->selectedActivityId = null;
+        $this->selectedSocialPublicationId = null;
+        $this->modalWorkspace = 'activities';
         $this->newNote = '';
         $this->invitationRejectionNote = '';
     }
@@ -1237,8 +1415,539 @@ class AgendaCorporativa extends Page
         return false;
     }
 
+    private function userIsMarketingDepartment(): bool
+    {
+        $rawDepartments = Auth::user()?->departament;
+        $departments = is_array($rawDepartments) ? $rawDepartments : [(string) $rawDepartments];
+
+        $serialized = Str::upper((string) json_encode($rawDepartments, JSON_UNESCAPED_UNICODE));
+        $normalizedSerialized = str_replace([' ', '-', '_'], '', $serialized);
+        if (Str::contains($normalizedSerialized, 'MARKETING')) {
+            return true;
+        }
+
+        foreach ($departments as $department) {
+            $departmentText = Str::upper((string) $department);
+            $normalizedDepartment = str_replace([' ', '-', '_'], '', $departmentText);
+            if ($normalizedDepartment === 'MARKETING' || Str::contains($normalizedDepartment, 'MARKETING')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function canCreateActivity(): bool
     {
         return Auth::check();
+    }
+
+    public function canManageSocialPublications(): bool
+    {
+        return Auth::check() && ($this->userIsSuperAdmin() || $this->userIsMarketingDepartment());
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getSocialPlatformOptionsProperty(): array
+    {
+        if (! $this->canManageSocialPublications()) {
+            return [];
+        }
+
+        return CorporateAgendaSocialPlatform::options();
+    }
+
+    /**
+     * @return Collection<int, CorporateAgendaSocialPublication>
+     */
+    public function getSelectedDateSocialPublicationsProperty(): Collection
+    {
+        if (! $this->canManageSocialPublications()) {
+            return collect();
+        }
+
+        return $this->socialPublicationsBetween(
+            Carbon::parse($this->selectedDate)->startOfDay(),
+            Carbon::parse($this->selectedDate)->endOfDay(),
+        )
+            ->with('creator:id,name')
+            ->orderBy('platform')
+            ->get();
+    }
+
+    public function getSelectedSocialPublicationProperty(): ?CorporateAgendaSocialPublication
+    {
+        if ($this->selectedSocialPublicationId === null) {
+            return null;
+        }
+
+        return $this->selectedDateSocialPublications
+            ->firstWhere('id', $this->selectedSocialPublicationId);
+    }
+
+    public function startCreateSocialPublication(): void
+    {
+        if (! $this->canManageSocialPublications()) {
+            return;
+        }
+
+        $this->selectedSocialPublicationId = null;
+        $this->isCreatingSocialPublication = true;
+        $this->resetSocialPublicationFormForSelectedDate();
+    }
+
+    public function selectSocialPublication(int $publicationId): void
+    {
+        if (! $this->canManageSocialPublications()) {
+            return;
+        }
+
+        if ($this->selectedSocialPublicationId === $publicationId) {
+            $this->selectedSocialPublicationId = null;
+            $this->isCreatingSocialPublication = false;
+            $this->resetSocialPublicationFormForSelectedDate();
+
+            return;
+        }
+
+        $publication = $this->findSocialPublicationOrNull($publicationId);
+        if ($publication === null) {
+            Notification::make()
+                ->title('Publicación no disponible')
+                ->body('No se encontró la publicación seleccionada.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->selectedSocialPublicationId = $publication->id;
+        $this->selectedDate = $publication->publication_date->toDateString();
+        $this->isCreatingSocialPublication = false;
+        $this->fillSocialPublicationFormFromDate();
+    }
+
+    public function saveSocialPublications(): void
+    {
+        if (! $this->canManageSocialPublications()) {
+            Notification::make()
+                ->title('Sin permisos')
+                ->body('Solo usuarios del módulo MARKETING o SUPERADMIN pueden gestionar publicaciones.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'socialPublicationForm.publication_date' => ['required', 'date', 'after_or_equal:today'],
+            'socialPublicationForm.platforms' => ['required', 'array', 'min:1'],
+            'socialPublicationForm.platforms.*' => ['required', Rule::in(CorporateAgendaSocialPlatform::values())],
+            'socialPublicationBriefByPlatform' => ['nullable', 'array'],
+            'socialPublicationBriefByPlatform.*' => ['nullable', 'string', 'max:2000'],
+            'socialPublicationUploadsByPlatform' => ['nullable', 'array'],
+            'socialPublicationUploadsByPlatform.*' => ['nullable', 'array'],
+            'socialPublicationUploadsByPlatform.*.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif,mp4,webm,mov,pdf,doc,docx,xls,xlsx,ppt,pptx', 'max:10240'],
+        ], [
+            'socialPublicationForm.platforms.required' => 'Selecciona al menos una red social para programar la publicación.',
+            'socialPublicationForm.platforms.min' => 'Selecciona al menos una red social para programar la publicación.',
+            'socialPublicationUploadsByPlatform.*.*.mimes' => 'Solo se permiten imágenes, videos y documentos de oficina (JPG, PNG, WEBP, GIF, MP4, WEBM, MOV, PDF, DOCX, XLSX, PPTX).',
+            'socialPublicationUploadsByPlatform.*.*.max' => 'Cada archivo debe pesar máximo 10 MB.',
+        ]);
+
+        $publicationDate = (string) $validated['socialPublicationForm']['publication_date'];
+        $platforms = array_values(array_unique(array_map('strval', $validated['socialPublicationForm']['platforms'] ?? [])));
+
+        $existingPublications = $this->socialPublicationsBetween(
+            Carbon::parse($publicationDate)->startOfDay(),
+            Carbon::parse($publicationDate)->endOfDay(),
+        )->get()->keyBy(fn (CorporateAgendaSocialPublication $publication): string => $publication->platform?->value ?? (string) $publication->getRawOriginal('platform'));
+
+        foreach ($platforms as $platform) {
+            $publication = $existingPublications->get($platform);
+
+            if ($publication !== null && ! $this->canCurrentUserEditSocialPublication($publication)) {
+                Notification::make()
+                    ->title('Sin permisos')
+                    ->body('Solo el creador o un usuario SUPERADMIN puede modificar publicaciones ya registradas.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+        }
+
+        foreach (CorporateAgendaSocialPlatform::values() as $platform) {
+            $publication = $existingPublications->get($platform);
+            $shouldExist = in_array($platform, $platforms, true);
+
+            if ($shouldExist) {
+                $briefByPlatform = collect($this->socialPublicationBriefByPlatform)->get($platform);
+                $brief = filled($briefByPlatform)
+                    ? trim((string) $briefByPlatform)
+                    : null;
+
+                $existingAttachmentPaths = collect($this->socialPublicationExistingAttachmentsByPlatform[$platform] ?? [])
+                    ->map(fn (mixed $path): string => trim((string) $path))
+                    ->filter(fn (string $path): bool => $path !== '')
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $uploadedAttachmentPaths = collect($this->socialPublicationUploadsByPlatform[$platform] ?? [])
+                    ->map(function ($upload): ?string {
+                        if (! is_object($upload) || ! method_exists($upload, 'store')) {
+                            return null;
+                        }
+
+                        $storedPath = $upload->store('corporate-agenda/social-publications', 'public');
+
+                        return is_string($storedPath) && $storedPath !== '' ? $storedPath : null;
+                    })
+                    ->filter(fn (?string $path): bool => $path !== null)
+                    ->values()
+                    ->all();
+
+                $attachments = collect([...$existingAttachmentPaths, ...$uploadedAttachmentPaths])
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if ($publication === null) {
+                    CorporateAgendaSocialPublication::query()->create([
+                        'creator_user_id' => (int) Auth::id(),
+                        'publication_date' => $publicationDate,
+                        'platform' => $platform,
+                        'brief' => $brief,
+                        'attachments' => $attachments,
+                    ]);
+
+                    continue;
+                }
+
+                if ($this->canCurrentUserEditSocialPublication($publication)) {
+                    $publication->update([
+                        'brief' => $brief,
+                        'attachments' => $attachments,
+                    ]);
+                }
+            } elseif ($publication !== null && $this->canCurrentUserEditSocialPublication($publication)) {
+                $publication->delete();
+            }
+        }
+
+        $this->selectedSocialPublicationId = null;
+        $this->isCreatingSocialPublication = true;
+        $this->selectedDate = $publicationDate;
+        $this->socialPublicationUploadsByPlatform = [];
+        $this->fillSocialPublicationFormFromDate();
+
+        Notification::make()
+            ->title('Calendario publicitario actualizado')
+            ->body('Las publicaciones del día fueron sincronizadas correctamente.')
+            ->success()
+            ->send();
+    }
+
+    public function deleteSelectedSocialPublication(): void
+    {
+        if (! $this->canManageSocialPublications()) {
+            return;
+        }
+
+        if ($this->selectedSocialPublicationId === null) {
+            return;
+        }
+
+        $publication = $this->findSocialPublicationOrNull($this->selectedSocialPublicationId);
+        if ($publication === null || ! $this->canCurrentUserEditSocialPublication($publication)) {
+            Notification::make()
+                ->title('Sin permisos')
+                ->body('Solo el creador o un usuario SUPERADMIN puede eliminar esta publicación.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $publication->delete();
+        $this->selectedSocialPublicationId = null;
+        $this->isCreatingSocialPublication = true;
+        $this->fillSocialPublicationFormFromDate();
+
+        Notification::make()
+            ->title('Publicación eliminada')
+            ->body('Se quitó la red social del calendario publicitario de este día.')
+            ->success()
+            ->send();
+    }
+
+    public function updatedSocialPublicationFormPlatforms(): void
+    {
+        if (! $this->canManageSocialPublications()) {
+            $this->socialPublicationForm['platforms'] = [];
+
+            return;
+        }
+
+        $platforms = collect($this->socialPublicationForm['platforms'] ?? [])
+            ->map(fn (mixed $platform): string => (string) $platform)
+            ->filter(fn (string $platform): bool => $platform !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->socialPublicationForm['platforms'] = $platforms;
+        $this->syncSocialPublicationPlatformPayloads($platforms);
+    }
+
+    public function removeSocialPublicationAttachment(string $platform, int $index): void
+    {
+        if (! $this->canManageSocialPublications()) {
+            return;
+        }
+
+        if (! isset($this->socialPublicationExistingAttachmentsByPlatform[$platform][$index])) {
+            return;
+        }
+
+        unset($this->socialPublicationExistingAttachmentsByPlatform[$platform][$index]);
+        $this->socialPublicationExistingAttachmentsByPlatform[$platform] = array_values($this->socialPublicationExistingAttachmentsByPlatform[$platform]);
+    }
+
+    /**
+     * @return array<string, array<int, array{url:string,name:string,is_image:bool,is_video:bool,ext:string}>>
+     */
+    public function getSocialPublicationAttachmentPreviewsByPlatformProperty(): array
+    {
+        return collect($this->socialPublicationForm['platforms'] ?? [])
+            ->mapWithKeys(function (mixed $platform): array {
+                $platformKey = (string) $platform;
+                $paths = $this->socialPublicationExistingAttachmentsByPlatform[$platformKey] ?? [];
+
+                return [$platformKey => $this->buildStoredAttachmentPreviews($paths)];
+            })
+            ->all();
+    }
+
+    /**
+     * @return array<string, array<int, array{url:string,name:string,is_image:bool,is_video:bool,ext:string}>>
+     */
+    public function getSocialPublicationUploadPreviewsByPlatformProperty(): array
+    {
+        return collect($this->socialPublicationForm['platforms'] ?? [])
+            ->mapWithKeys(function (mixed $platform): array {
+                $platformKey = (string) $platform;
+                $uploads = $this->socialPublicationUploadsByPlatform[$platformKey] ?? [];
+                $previews = collect($uploads)
+                    ->map(function ($upload): ?array {
+                        if (! is_object($upload)) {
+                            return null;
+                        }
+
+                        $name = method_exists($upload, 'getClientOriginalName')
+                            ? (string) $upload->getClientOriginalName()
+                            : 'archivo';
+                        $mime = method_exists($upload, 'getMimeType')
+                            ? (string) $upload->getMimeType()
+                            : '';
+                        $isImage = str_starts_with($mime, 'image/') && method_exists($upload, 'temporaryUrl');
+                        $isVideo = str_starts_with($mime, 'video/') && method_exists($upload, 'temporaryUrl');
+                        $url = ($isImage || $isVideo) ? (string) $upload->temporaryUrl() : null;
+                        $ext = Str::lower(pathinfo($name, PATHINFO_EXTENSION));
+
+                        return [
+                            'url' => $url ?? '',
+                            'name' => $name,
+                            'is_image' => $isImage,
+                            'is_video' => $isVideo,
+                            'ext' => $ext !== '' ? $ext : 'archivo',
+                        ];
+                    })
+                    ->filter(fn (?array $preview): bool => $preview !== null)
+                    ->values()
+                    ->all();
+
+                return [$platformKey => $previews];
+            })
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{url:string,name:string,is_image:bool,is_video:bool,ext:string}>
+     */
+    public function getSelectedDateSocialPublicationReferencePreviewsProperty(): array
+    {
+        $paths = $this->selectedDateSocialPublications
+            ->flatMap(function (CorporateAgendaSocialPublication $publication): array {
+                $attachments = $publication->attachments;
+
+                return is_array($attachments) ? $attachments : [];
+            })
+            ->map(fn (mixed $path): string => trim((string) $path))
+            ->filter(fn (string $path): bool => $path !== '')
+            ->unique()
+            ->values();
+
+        return $paths
+            ->map(function (string $path): ?array {
+                $normalizedPath = ltrim($path, '/');
+                if (! Storage::disk('public')->exists($normalizedPath)) {
+                    return null;
+                }
+
+                $extension = Str::lower(pathinfo($normalizedPath, PATHINFO_EXTENSION));
+                $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+                $isVideo = in_array($extension, ['mp4', 'webm', 'mov'], true);
+
+                return [
+                    'url' => url('storage/'.$normalizedPath),
+                    'name' => basename($normalizedPath),
+                    'is_image' => $isImage,
+                    'is_video' => $isVideo,
+                    'ext' => $extension !== '' ? $extension : 'archivo',
+                ];
+            })
+            ->filter(fn (?array $item): bool => $item !== null)
+            ->take(8)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, mixed>  $paths
+     * @return array<int, array{url:string,name:string,is_image:bool,is_video:bool,ext:string}>
+     */
+    private function buildStoredAttachmentPreviews(array $paths): array
+    {
+        return collect($paths)
+            ->map(function (mixed $path): ?array {
+                $normalizedPath = ltrim(trim((string) $path), '/');
+                if ($normalizedPath === '' || ! Storage::disk('public')->exists($normalizedPath)) {
+                    return null;
+                }
+
+                $extension = Str::lower(pathinfo($normalizedPath, PATHINFO_EXTENSION));
+                $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+                $isVideo = in_array($extension, ['mp4', 'webm', 'mov'], true);
+
+                return [
+                    'url' => url('storage/'.$normalizedPath),
+                    'name' => basename($normalizedPath),
+                    'is_image' => $isImage,
+                    'is_video' => $isVideo,
+                    'ext' => $extension !== '' ? $extension : 'archivo',
+                ];
+            })
+            ->filter(fn (?array $preview): bool => $preview !== null)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $platforms
+     */
+    private function syncSocialPublicationPlatformPayloads(array $platforms): void
+    {
+        $platformSet = collect($platforms)
+            ->map(fn (string $platform): string => trim($platform))
+            ->filter(fn (string $platform): bool => $platform !== '')
+            ->values()
+            ->all();
+
+        $briefs = [];
+        $existingAttachments = [];
+        $uploads = [];
+
+        foreach ($platformSet as $platform) {
+            $briefs[$platform] = $this->socialPublicationBriefByPlatform[$platform] ?? null;
+            $existingAttachments[$platform] = array_values($this->socialPublicationExistingAttachmentsByPlatform[$platform] ?? []);
+            $uploads[$platform] = array_values($this->socialPublicationUploadsByPlatform[$platform] ?? []);
+        }
+
+        $this->socialPublicationBriefByPlatform = $briefs;
+        $this->socialPublicationExistingAttachmentsByPlatform = $existingAttachments;
+        $this->socialPublicationUploadsByPlatform = $uploads;
+    }
+
+    public function canCurrentUserEditSocialPublication(?CorporateAgendaSocialPublication $publication): bool
+    {
+        if ($publication === null) {
+            return false;
+        }
+
+        if ($this->userIsSuperAdmin()) {
+            return true;
+        }
+
+        return (int) $publication->creator_user_id === (int) Auth::id();
+    }
+
+    private function socialPublicationsBetween(Carbon $start, Carbon $end): Builder
+    {
+        return CorporateAgendaSocialPublication::query()
+            ->whereDate('publication_date', '>=', $start->toDateString())
+            ->whereDate('publication_date', '<=', $end->toDateString());
+    }
+
+    private function findSocialPublicationOrNull(int $publicationId): ?CorporateAgendaSocialPublication
+    {
+        return $this->socialPublicationsBetween(
+            Carbon::create(2000, 1, 1),
+            Carbon::create(2100, 1, 1),
+        )
+            ->with('creator:id,name')
+            ->whereKey($publicationId)
+            ->first();
+    }
+
+    private function resetSocialPublicationFormForSelectedDate(): void
+    {
+        $this->socialPublicationForm = [
+            'publication_date' => $this->selectedDate,
+            'platforms' => [],
+            'brief' => null,
+            'attachments' => [],
+        ];
+        $this->socialPublicationUploadsByPlatform = [];
+        $this->socialPublicationExistingAttachmentsByPlatform = [];
+        $this->socialPublicationBriefByPlatform = [];
+
+        $this->fillSocialPublicationFormFromDate();
+    }
+
+    private function fillSocialPublicationFormFromDate(): void
+    {
+        $publications = $this->selectedDateSocialPublications;
+        $firstPublication = $publications->first();
+
+        $this->socialPublicationForm = [
+            'publication_date' => $this->selectedDate,
+            'platforms' => $this->resolveSocialPlatformsForPublications($publications),
+            'brief' => $firstPublication?->brief,
+            'attachments' => is_array($firstPublication?->attachments) ? array_values(array_map('strval', $firstPublication->attachments)) : [],
+        ];
+
+        $this->socialPublicationBriefByPlatform = $publications
+            ->mapWithKeys(function (CorporateAgendaSocialPublication $publication): array {
+                $platform = $publication->platform?->value ?? (string) $publication->getRawOriginal('platform');
+
+                return [$platform => $publication->brief];
+            })
+            ->all();
+
+        $this->socialPublicationExistingAttachmentsByPlatform = $publications
+            ->mapWithKeys(function (CorporateAgendaSocialPublication $publication): array {
+                $platform = $publication->platform?->value ?? (string) $publication->getRawOriginal('platform');
+                $attachments = is_array($publication->attachments) ? array_values(array_map('strval', $publication->attachments)) : [];
+
+                return [$platform => $attachments];
+            })
+            ->all();
+
+        $this->socialPublicationUploadsByPlatform = [];
+        $this->syncSocialPublicationPlatformPayloads($this->socialPublicationForm['platforms']);
     }
 }

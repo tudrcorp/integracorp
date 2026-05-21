@@ -110,8 +110,67 @@
                                         {{ $day['day_label'] }}
                                     </p>
                                     <p class="mt-1 text-2xl font-semibold leading-none {{ $day['is_selected'] ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-100' }}">{{ $day['day_number'] }}</p>
-                                    <div class="mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $day['is_selected'] ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/25 dark:text-cyan-100' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }}">
-                                        {{ $day['activity_count'] }} actividades
+                                    <div class="mt-2 flex flex-col items-center gap-1.5">
+                                        <div class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $day['is_selected'] ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/25 dark:text-cyan-100' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }}">
+                                            {{ $day['activity_count'] }} actividades
+                                        </div>
+                                        @if ($this->canManageSocialPublications() && ! empty($day['social_badges']))
+                                            <div class="flex flex-wrap items-center justify-center gap-1">
+                                                @foreach ($day['social_badges'] as $badge)
+                                                    <div class="group/social relative inline-flex">
+                                                        <x-corporate-agenda-social-icon :platform="$badge['platform']" size="sm" />
+                                                        @if (! empty($badge['media']))
+                                                            @php
+                                                                $mediaCount = count($badge['media']);
+                                                                $previewWidthClass = match (true) {
+                                                                    $mediaCount <= 1 => 'w-44',
+                                                                    $mediaCount === 2 => 'w-64',
+                                                                    default => 'w-80',
+                                                                };
+                                                                $previewGridClass = match (true) {
+                                                                    $mediaCount <= 1 => 'grid-cols-1',
+                                                                    $mediaCount === 2 => 'grid-cols-2',
+                                                                    default => 'grid-cols-3',
+                                                                };
+                                                                $previewMediaHeightClass = $mediaCount <= 1 ? 'h-28' : 'h-20';
+                                                            @endphp
+                                                            <div class="absolute bottom-full left-1/2 z-40 mb-2 hidden max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-xl group-hover/social:block dark:border-white/15 dark:bg-slate-900/95 {{ $previewWidthClass }}">
+                                                                <div class="mb-1 flex items-center justify-between">
+                                                                    <p class="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-700 dark:text-slate-200">{{ \App\Support\CorporateAgendaSocialPlatformCatalog::for((string) ($badge['platform'] ?? ''))['label'] ?? 'Publicación' }}</p>
+                                                                    <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ count($badge['media']) }}</span>
+                                                                </div>
+                                                                <div class="grid gap-2 pb-1 {{ $previewGridClass }}">
+                                                                    @foreach ($badge['media'] as $media)
+                                                                        <div class="overflow-hidden rounded-lg border border-slate-200/70 bg-slate-50 dark:border-white/10 dark:bg-slate-800/70">
+                                                                            @if (($media['type'] ?? 'image') === 'video')
+                                                                                <div class="relative">
+                                                                                    <video
+                                                                                        src="{{ $media['url'] }}"
+                                                                                        class="w-full object-cover {{ $previewMediaHeightClass }}"
+                                                                                        controls
+                                                                                        autoplay
+                                                                                        muted
+                                                                                        loop
+                                                                                        playsinline
+                                                                                        preload="metadata"
+                                                                                    ></video>
+                                                                                </div>
+                                                                            @else
+                                                                                <img
+                                                                                    src="{{ $media['url'] }}"
+                                                                                    alt="{{ $media['name'] ?? 'Vista previa' }}"
+                                                                                    class="w-full object-cover {{ $previewMediaHeightClass }}"
+                                                                                >
+                                                                            @endif
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                 </button>
                             @endforeach
@@ -253,14 +312,70 @@
                                     {{ $day['is_past_date'] ? 'cursor-not-allowed opacity-75 hover:translate-y-0 hover:shadow-[0_2px_12px_rgba(15,23,42,0.05)] dark:hover:shadow-[0_8px_20px_rgba(0,0,0,0.35)]' : ($day['is_current_month'] ? 'cursor-pointer' : 'cursor-default') }}
                                     {{ $day['is_today'] ? 'ring-2 ring-cyan-400/60 dark:ring-cyan-300/70' : '' }}"
                                 >
-                                    <div class="mb-2 flex items-center justify-between">
+                                    <div class="mb-2 flex items-center justify-between gap-2">
                                         <span class="text-2xl font-semibold leading-none tracking-tight {{ $day['is_current_month'] ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-600' }}">
                                             {{ $day['day_number'] }}
                                         </span>
 
-                                        @if ($day['has_indicator'] && $day['is_current_month'])
-                                            <span class="size-2.5 rounded-full bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)] dark:bg-amber-300 dark:shadow-[0_0_0_2px_rgba(253,224,71,0.26)]"></span>
-                                        @endif
+                                        <div class="flex items-center gap-1.5">
+                                            @if ($this->canManageSocialPublications() && ! empty($day['social_badges']) && $day['is_current_month'])
+                                                <div class="flex flex-wrap justify-end gap-1">
+                                                    @foreach ($day['social_badges'] as $badge)
+                                                        <div class="group/social relative inline-flex">
+                                                            <x-corporate-agenda-social-icon :platform="$badge['platform']" size="sm" />
+                                                            @if (! empty($badge['media']))
+                                                                @php
+                                                                    $mediaCount = count($badge['media']);
+                                                                    $previewWidthClass = match (true) {
+                                                                        $mediaCount <= 1 => 'w-48',
+                                                                        $mediaCount === 2 => 'w-72',
+                                                                        default => 'w-[22rem]',
+                                                                    };
+                                                                    $previewGridClass = match (true) {
+                                                                        $mediaCount <= 1 => 'grid-cols-1',
+                                                                        $mediaCount === 2 => 'grid-cols-2',
+                                                                        default => 'grid-cols-3',
+                                                                    };
+                                                                    $previewMediaHeightClass = $mediaCount <= 1 ? 'h-32' : 'h-24';
+                                                                @endphp
+                                                                <div class="absolute bottom-full right-0 z-40 mb-2 hidden max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-xl group-hover/social:block dark:border-white/15 dark:bg-slate-900/95 {{ $previewWidthClass }}">
+                                                                    <div class="mb-1 flex items-center justify-between">
+                                                                        <p class="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-700 dark:text-slate-200">{{ \App\Support\CorporateAgendaSocialPlatformCatalog::for((string) ($badge['platform'] ?? ''))['label'] ?? 'Publicación' }}</p>
+                                                                        <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ count($badge['media']) }}</span>
+                                                                    </div>
+                                                                    <div class="grid gap-2 pb-1 {{ $previewGridClass }}">
+                                                                        @foreach ($badge['media'] as $media)
+                                                                            <div class="overflow-hidden rounded-lg border border-slate-200/70 bg-slate-50 dark:border-white/10 dark:bg-slate-800/70">
+                                                                                @if (($media['type'] ?? 'image') === 'video')
+                                                                                    <div class="relative">
+                                                                                        <video
+                                                                                            src="{{ $media['url'] }}"
+                                                                                            class="w-full object-cover {{ $previewMediaHeightClass }}"
+                                                                                            controls
+                                                                                            autoplay
+                                                                                            muted
+                                                                                            loop
+                                                                                            playsinline
+                                                                                            preload="metadata"
+                                                                                        ></video>
+                                                                                    </div>
+                                                                                @else
+                                                                                    <img
+                                                                                        src="{{ $media['url'] }}"
+                                                                                        alt="{{ $media['name'] ?? 'Vista previa' }}"
+                                                                                        class="w-full object-cover {{ $previewMediaHeightClass }}"
+                                                                                    >
+                                                                                @endif
+                                                                            </div>
+                                                                        @endforeach
+                                                                    </div>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     @if ($day['is_current_month'])
@@ -338,28 +453,82 @@
         >
             <div class="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]" wire:click="closeActivityModal"></div>
 
-            <section class="relative z-[81] h-[88vh] max-h-[92vh] w-full max-w-7xl overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900">
-                <header class="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-white/10">
-                    <div>
-                        <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
-                            Actividades del {{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}
-                        </h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">
-                            Solo ves actividades creadas por ti o donde participas.
-                        </p>
+            <section class="relative z-[81] flex w-full max-w-7xl max-h-[90vh] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900">
+                <header class="shrink-0 border-b border-slate-200/80 px-5 py-4 dark:border-white/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                                {{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('l d \\d\\e F Y') }}
+                            </p>
+                            <h3 class="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
+                                Gestión del día
+                            </h3>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                Alterna entre actividades corporativas y el calendario publicitario de marketing.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            wire:click="closeActivityModal"
+                            class="inline-flex items-center justify-center rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                        >
+                            <x-filament::icon icon="heroicon-o-x-mark" class="size-5" />
+                        </button>
                     </div>
 
-                    <button
-                        type="button"
-                        wire:click="closeActivityModal"
-                        class="inline-flex items-center justify-center rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
-                    >
-                        <x-filament::icon icon="heroicon-o-x-mark" class="size-5" />
-                    </button>
+                    <div class="mt-4 grid gap-2 sm:grid-cols-2" role="tablist" aria-label="Espacios de trabajo de la agenda">
+                        <button
+                            type="button"
+                            wire:click="setModalWorkspace('activities')"
+                            class="rounded-2xl border px-3 py-3 text-left transition
+                            {{ $modalWorkspace === 'activities'
+                                ? 'border-[#4E8EA2]/80 bg-[#BDD8E9]/90 shadow-[0_8px_22px_rgba(78,142,162,0.25)] dark:border-[#7BBDE8]/70 dark:bg-[#0A4174]/55'
+                                : 'border-slate-200/80 bg-white/80 hover:border-[#7BBDE8]/80 hover:bg-[#BDD8E9]/35 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-[#6EA2B3]/60 dark:hover:bg-[#0A4174]/25' }}"
+                            role="tab"
+                            aria-selected="{{ $modalWorkspace === 'activities' ? 'true' : 'false' }}"
+                        >
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex size-8 items-center justify-center rounded-xl bg-[#7BBDE8]/40 text-[#0A4174] dark:bg-[#4E8EA2]/35 dark:text-[#BDD8E9]">
+                                    <x-filament::icon icon="heroicon-o-calendar-days" class="size-4" />
+                                </span>
+                                <span>
+                                    <span class="block text-xs font-semibold text-slate-900 dark:text-slate-100">Actividades corporativas</span>
+                                    <span class="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">Reuniones, meet y participantes</span>
+                                </span>
+                            </div>
+                        </button>
+
+                        @if ($this->canManageSocialPublications())
+                            <button
+                                type="button"
+                                wire:click="setModalWorkspace('marketing')"
+                                class="rounded-2xl border px-3 py-3 text-left transition
+                                {{ $modalWorkspace === 'marketing'
+                                    ? 'border-[#4E8EA2]/80 bg-[#BDD8E9]/90 shadow-[0_8px_22px_rgba(78,142,162,0.25)] dark:border-[#7BBDE8]/70 dark:bg-[#0A4174]/55'
+                                    : 'border-slate-200/80 bg-white/80 hover:border-[#7BBDE8]/80 hover:bg-[#BDD8E9]/35 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-[#6EA2B3]/60 dark:hover:bg-[#0A4174]/25' }}"
+                                role="tab"
+                                aria-selected="{{ $modalWorkspace === 'marketing' ? 'true' : 'false' }}"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-flex size-8 items-center justify-center rounded-xl bg-[#7BBDE8]/40 text-[#0A4174] dark:bg-[#4E8EA2]/35 dark:text-[#BDD8E9]">
+                                        <x-filament::icon icon="heroicon-o-megaphone" class="size-4" />
+                                    </span>
+                                    <span>
+                                        <span class="block text-xs font-semibold text-slate-900 dark:text-slate-100">Calendario publicitario</span>
+                                        <span class="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">Instagram, YouTube, X y Facebook</span>
+                                    </span>
+                                </div>
+                            </button>
+                        @endif
+                    </div>
                 </header>
 
-                <div class="grid h-[calc(88vh-4rem)] grid-cols-1 overflow-hidden lg:grid-cols-12">
+                <div class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-12">
                     <aside class="flex h-full min-h-0 flex-col border-b border-slate-200/80 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-slate-950/50 lg:col-span-4 lg:border-b-0 lg:border-r">
+                        @if ($modalWorkspace === 'marketing' && $this->canManageSocialPublications())
+                            @include('filament.business.pages.partials.agenda-corporativa-marketing-sidebar')
+                        @else
                         <div class="mb-3 flex items-center justify-between">
                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Agenda del día</p>
                             <button
@@ -367,7 +536,7 @@
                                 wire:click="startCreateActivity"
                                 wire:loading.attr="disabled"
                                 wire:target="startCreateActivity"
-                                class="rounded-xl bg-cyan-500 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-cyan-400"
+                                class="rounded-xl border border-[#4E8EA2] bg-[#0A4174] px-3 py-1.5 text-[11px] font-semibold text-[#BDD8E9] transition hover:bg-[#49769F]"
                             >
                                 <span class="inline-flex items-center gap-1">
                                     <x-filament::icon icon="heroicon-o-arrow-path" wire:loading wire:target="startCreateActivity" class="size-3.5 animate-spin" />
@@ -582,9 +751,13 @@
                                 </div>
                             @endforelse
                         </div>
+                        @endif
                     </aside>
 
-                    <main class="h-full overflow-y-auto p-4 lg:col-span-8 lg:p-5">
+                    <main class="h-full overflow-y-auto p-4 pb-8 lg:col-span-8 lg:p-5 lg:pb-10">
+                        @if ($modalWorkspace === 'marketing' && $this->canManageSocialPublications())
+                            @include('filament.business.pages.partials.agenda-corporativa-marketing-form')
+                        @else
                         @php
                             $selectedActivity = $this->selectedActivity;
                         @endphp
@@ -969,8 +1142,9 @@
                                 <p class="text-xs text-slate-500 dark:text-slate-400">Selecciona una actividad de la lista o registra una nueva.</p>
                             </div>
                         @endif
+                        @endif
 
-                        @if ($selectedActivity)
+                        @if ($modalWorkspace === 'activities' && $selectedActivity)
                             <div class="mt-4 rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-white/10 dark:bg-slate-900/80">
                                 <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Notas y comentarios</p>
 

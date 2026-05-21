@@ -23,10 +23,13 @@ class HelpDesk extends Model
         'updated_by',
         'observation',
         'cc_colaboradores',
+        'team',
+        'team_members',
     ];
 
     protected $casts = [
         'cc_colaboradores' => 'array',
+        'team_members' => 'array',
     ];
 
     protected static function booted(): void

@@ -21,3 +21,19 @@ it('incluye selector de pertenencia entre ATENMEDI y TDG', function (): void {
         ->toContain("'ATENMEDI' => 'ATENMEDI'")
         ->toContain("'TDG' => 'TDG'");
 });
+
+it('organiza el formulario en tabs con el mismo estilo del registro de agencias master', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineDoctors/Schemas/TelemedicineDoctorForm.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain('Tabs::make(')
+        ->toContain("Tab::make('Perfil del médico')")
+        ->toContain("Tab::make('Credenciales profesionales')")
+        ->toContain("Tab::make('Archivos')")
+        ->toContain('private const TABS_CONTAINER')
+        ->toContain('private const SECTION_CARD')
+        ->toContain('extraAttributes([')
+        ->toContain("'class' => self::TABS_CONTAINER")
+        ->toContain("'class' => self::SECTION_CARD");
+});

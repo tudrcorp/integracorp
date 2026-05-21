@@ -33,3 +33,12 @@ it('precarga datos de paciente para el modal desde el recurso de casos', functio
         ->toContain('telemedicinePatient.afilliation')
         ->toContain('telemedicinePatient.plan');
 });
+
+it('oculta relation managers de observaciones y referencias médicas en el recurso', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineCases/TelemedicineCaseResource.php');
+
+    expect($contents)
+        ->toContain("'consultations' => ConsultationsRelationManager::class")
+        ->not->toContain('ObservationsRelationManager')
+        ->not->toContain('TelemedicineDocumentsRelationManager');
+});

@@ -4,13 +4,19 @@ namespace App\Filament\Operations\Resources\OperationServiceOrders\Pages;
 
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Mail\OperationServiceOrderPdfMail;
+use App\Models\OperationDocumentList;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 
 class ViewOperationServiceOrder extends ViewRecord
@@ -34,8 +40,35 @@ class ViewOperationServiceOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('preview_quote_pdf')
+                ->label('Cotización PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('warning')
+                ->button()
+                ->extraAttributes([
+                    'x-on:click.stop' => '',
+                    'class' => self::IOS_INFO_BUTTON_CLASS,
+                ])
+                ->modalHeading('Vista previa de cotización')
+                ->modalDescription('Visualiza el PDF de la cotización asociada sin salir de la orden.')
+                ->modalWidth(Width::SevenExtraLarge)
+                ->modalIcon('heroicon-o-eye')
+                ->modalContent(function (): ViewContract {
+                    $pdfPath = (string) ($this->getRecord()->associated_quote_pdf_path ?? '');
+                    $previewUrl = URL::to(Storage::url($pdfPath));
+
+                    return View::make('filament.operations.operation-service-orders.pdf-preview', [
+                        'pdfPreviewUrl' => $previewUrl,
+                        'pdfDownloadUrl' => $previewUrl,
+                    ]);
+                })
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Cerrar')
+                ->visible(fn (): bool => filled($this->getRecord()->associated_quote_pdf_path))
+                ->action(fn () => null),
+
             Action::make('preview_operation_pdf')
-                ->label('Vista previa PDF')
+                ->label('Orden de servicio PDF')
                 ->icon('heroicon-o-document-magnifying-glass')
                 ->color('info')
                 ->button()
@@ -78,6 +111,130 @@ class ViewOperationServiceOrder extends ViewRecord
                         ->success()
                         ->title('Correo enviado')
                         ->body('Se adjuntó el PDF de la orden de servicio al mensaje.')
+                        ->send();
+                }),
+
+            Action::make('upload_order_documents')
+                ->label('Cargar documentos')
+                ->icon('heroicon-o-paper-clip')
+                ->color('warning')
+                ->button()
+                ->extraAttributes([
+                    'x-on:click.stop' => '',
+                    'class' => self::IOS_INFO_BUTTON_CLASS,
+                ])
+                ->modalHeading('Cargar documentos de la orden')
+                ->modalDescription('Agregue uno o varios documentos. Cada archivo puede incluir uno o varios tipos de documento.')
+                ->modalWidth(Width::FourExtraLarge)
+                ->form([
+                    Repeater::make('documents')
+                        ->label('Documentos')
+                        ->defaultItems(1)
+                        ->addActionLabel('Agregar documento')
+                        ->reorderable()
+                        ->minItems(1)
+                        ->schema([
+                            Select::make('document_type_ids')
+                                ->label('Tipo(s) de documento')
+                                ->helperText('Seleccione uno o varios tipos según la información contenida en el archivo.')
+                                ->options(fn (): array => OperationDocumentList::query()
+                                    ->orderBy('name', 'asc')
+                                    ->pluck('name', 'id')
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->multiple()
+                                ->required(),
+                            FileUpload::make('document_file')
+                                ->label('Archivo')
+                                ->directory(fn () => 'operation-service-orders/'.$this->getRecord()->id.'/documents')
+                                ->preserveFilenames()
+                                ->required()
+                                ->maxSize(10240),
+
+                        ])
+                        ->columns(1)
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $record = $this->getRecord();
+                    /** @var array<int, string> $documentTypeNames */
+                    $documentTypeNames = OperationDocumentList::query()
+                        ->pluck('name', 'id')
+                        ->mapWithKeys(static fn (mixed $name, mixed $id): array => [(int) $id => (string) $name])
+                        ->all();
+
+                    $newDocuments = collect($data['documents'] ?? [])
+                        ->map(function (mixed $item) use ($documentTypeNames): ?array {
+                            if (! is_array($item)) {
+                                return null;
+                            }
+
+                            $documentFile = trim((string) ($item['document_file'] ?? ''));
+
+                            if ($documentFile === '') {
+                                return null;
+                            }
+
+                            $documentName = trim((string) pathinfo($documentFile, PATHINFO_FILENAME));
+
+                            if ($documentName === '') {
+                                $documentName = basename($documentFile);
+                            }
+
+                            $rawTypeIds = $item['document_type_ids'] ?? [];
+
+                            $typeIds = collect(is_array($rawTypeIds) ? $rawTypeIds : [])
+                                ->map(static fn (mixed $value, mixed $key): int => is_numeric($value)
+                                    ? (int) $value
+                                    : (is_numeric($key) ? (int) $key : 0))
+                                ->filter(static fn (int $id): bool => $id > 0)
+                                ->unique()
+                                ->values()
+                                ->all();
+
+                            $typeNames = collect($typeIds)
+                                ->map(static fn (int $id): string => $documentTypeNames[$id] ?? '')
+                                ->filter(static fn (string $value): bool => $value !== '')
+                                ->values()
+                                ->all();
+
+                            return [
+                                'document_name' => $documentName,
+                                'file_path' => $documentFile,
+                                'document_type_ids' => $typeIds,
+                                'document_types' => $typeNames,
+                                'uploaded_at' => now()->toDateTimeString(),
+                            ];
+                        })
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    if ($newDocuments === []) {
+                        Notification::make()
+                            ->warning()
+                            ->title('Sin documentos válidos')
+                            ->body('Debe cargar al menos un documento con archivo y tipos seleccionados.')
+                            ->send();
+
+                        return;
+                    }
+
+                    $existingDocuments = is_array($record->uploaded_documents)
+                        ? $record->uploaded_documents
+                        : [];
+
+                    $record->update([
+                        'uploaded_documents' => array_values(array_merge($existingDocuments, $newDocuments)),
+                    ]);
+
+                    Notification::make()
+                        ->success()
+                        ->title('Documentos cargados')
+                        ->body(count($newDocuments) > 1
+                            ? 'Se cargaron '.count($newDocuments).' documentos en la orden.'
+                            : 'Se cargó 1 documento en la orden.')
                         ->send();
                 }),
 

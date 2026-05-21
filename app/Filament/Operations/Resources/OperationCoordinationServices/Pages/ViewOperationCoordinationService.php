@@ -3,8 +3,14 @@
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
+use App\Models\OperationDocumentList;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Enums\Width;
 
 class ViewOperationCoordinationService extends ViewRecord
 {
@@ -15,11 +21,143 @@ class ViewOperationCoordinationService extends ViewRecord
     /**
      * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
      */
-    private const GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const BUTTON_TAIL = 'shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray '.self::BUTTON_TAIL;
+
+    private const INFO_BUTTON_CLASS = 'aviso-btn-ios-info '.self::BUTTON_TAIL;
+
+    public function getRelationManagers(): array
+    {
+        return [];
+    }
 
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('upload_coordination_documents')
+                ->label('Cargar documentos')
+                ->icon('heroicon-o-paper-clip')
+                ->color('warning')
+                ->button()
+                ->extraAttributes([
+                    'x-on:click.stop' => '',
+                    'class' => self::INFO_BUTTON_CLASS,
+                ])
+                ->modalHeading('Cargar documentos de la coordinación')
+                ->modalDescription('Agregue uno o varios documentos. Cada archivo puede incluir uno o varios tipos de documento.')
+                ->modalWidth(Width::FourExtraLarge)
+                ->form([
+                    Repeater::make('documents')
+                        ->label('Documentos')
+                        ->defaultItems(1)
+                        ->addActionLabel('Agregar documento')
+                        ->reorderable()
+                        ->minItems(1)
+                        ->schema([
+                            Select::make('document_type_ids')
+                                ->label('Tipo(s) de documento')
+                                ->helperText('Seleccione uno o varios tipos según la información contenida en el archivo.')
+                                ->options(fn (): array => OperationDocumentList::query()
+                                    ->orderBy('name', 'asc')
+                                    ->pluck('name', 'id')
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->multiple()
+                                ->required(),
+                            FileUpload::make('document_file')
+                                ->label('Archivo')
+                                ->directory(fn () => 'operation-coordination-services/'.$this->getRecord()->id.'/documents')
+                                ->preserveFilenames()
+                                ->required()
+                                ->maxSize(10240),
+                        ])
+                        ->columns(1)
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $record = $this->getRecord();
+                    /** @var array<int, string> $documentTypeNames */
+                    $documentTypeNames = OperationDocumentList::query()
+                        ->pluck('name', 'id')
+                        ->mapWithKeys(static fn (mixed $name, mixed $id): array => [(int) $id => (string) $name])
+                        ->all();
+
+                    $newDocuments = collect($data['documents'] ?? [])
+                        ->map(function (mixed $item) use ($documentTypeNames): ?array {
+                            if (! is_array($item)) {
+                                return null;
+                            }
+
+                            $documentFile = trim((string) ($item['document_file'] ?? ''));
+
+                            if ($documentFile === '') {
+                                return null;
+                            }
+
+                            $documentName = trim((string) pathinfo($documentFile, PATHINFO_FILENAME));
+
+                            if ($documentName === '') {
+                                $documentName = basename($documentFile);
+                            }
+
+                            $rawTypeIds = $item['document_type_ids'] ?? [];
+
+                            $typeIds = collect(is_array($rawTypeIds) ? $rawTypeIds : [])
+                                ->map(static fn (mixed $value, mixed $key): int => is_numeric($value)
+                                    ? (int) $value
+                                    : (is_numeric($key) ? (int) $key : 0))
+                                ->filter(static fn (int $id): bool => $id > 0)
+                                ->unique()
+                                ->values()
+                                ->all();
+
+                            $typeNames = collect($typeIds)
+                                ->map(static fn (int $id): string => $documentTypeNames[$id] ?? '')
+                                ->filter(static fn (string $value): bool => $value !== '')
+                                ->values()
+                                ->all();
+
+                            return [
+                                'document_name' => $documentName,
+                                'file_path' => $documentFile,
+                                'document_type_ids' => $typeIds,
+                                'document_types' => $typeNames,
+                                'uploaded_at' => now()->toDateTimeString(),
+                            ];
+                        })
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    if ($newDocuments === []) {
+                        Notification::make()
+                            ->warning()
+                            ->title('Sin documentos válidos')
+                            ->body('Debe cargar al menos un documento con archivo y tipos seleccionados.')
+                            ->send();
+
+                        return;
+                    }
+
+                    $existingDocuments = is_array($record->uploaded_documents)
+                        ? $record->uploaded_documents
+                        : [];
+
+                    $record->update([
+                        'uploaded_documents' => array_values(array_merge($existingDocuments, $newDocuments)),
+                    ]);
+
+                    Notification::make()
+                        ->success()
+                        ->title('Documentos cargados')
+                        ->body(count($newDocuments) > 1
+                            ? 'Se cargaron '.count($newDocuments).' documentos en la coordinación.'
+                            : 'Se cargó 1 documento en la coordinación.')
+                        ->send();
+                }),
+
             Action::make('back')
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')

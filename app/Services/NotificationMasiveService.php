@@ -19,6 +19,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Laravel\Boost\Contracts\Agent;
 use PhpParser\Node\Stmt\TryCatch;
 use Throwable;
 
@@ -642,6 +643,18 @@ class NotificationMasiveService
                                             // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
                                             set_time_limit(0);
 
+                                            //Aqui se agrega la logica para enviar la notificacion al telefono del agente asociado a la afiliacion a
+                                            //la que pertenece el afiliado
+                                            $agent = Agent::where('id', $data[$k]->agent_id)->first();
+                                            if ($agent) {
+                                                WhatsAppBirthdayNotification::dispatch(
+                                                    $agent->name,
+                                                    $agent->phone,
+                                                    $rowsNotifications[$i]['content'],
+                                                    $rowsNotifications[$i]['file'],
+                                                    $rowsNotifications[$i]['type']
+                                                );
+
                                             //Envio Principal al Cliente
                                             WhatsAppBirthdayNotification::dispatch(
                                                 $data[$k]->full_name,
@@ -734,6 +747,19 @@ class NotificationMasiveService
                                         //Ejecuto el envio de la notificacion
                                         // self::sendEmailBirthday($data[$k]->email_ti, $data[$k]->full_name_ti, $rowsNotifications[$i]['content'], $rowsNotifications[$i]['file']);
                                         set_time_limit(0);
+
+                                        //Aqui se agrega la logica para enviar la notificacion al telefono del agente asociado a la afiliacion a
+                                        //la que pertenece el afiliado
+                                        $agent = Agent::where('id', $data[$k]->agent_id)->first();
+                                        if ($agent) {
+                                            WhatsAppBirthdayNotification::dispatch(
+                                                $agent->name,
+                                                $agent->phone,
+                                                $rowsNotifications[$i]['content'],
+                                                $rowsNotifications[$i]['file'],
+                                                $rowsNotifications[$i]['type']
+                                            );
+                                        }
 
                                         //Envio Principal al Cliente
                                         WhatsAppBirthdayNotification::dispatch(

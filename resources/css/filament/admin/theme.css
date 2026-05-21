@@ -1459,7 +1459,7 @@
       0 1px 2px rgb(0 0 0 / 0.04),
       0 8px 24px rgb(0 0 0 / 0.06),
       inset 0 1px 0 rgb(255 255 255 / 0.85);
-    overflow: hidden;
+    overflow: visible;
     transition:
       box-shadow 0.25s ease,
       transform 0.2s ease;
@@ -1523,6 +1523,28 @@
     padding: 0.75rem 0.75rem 0.25rem;
     background: rgb(0 0 0 / 0.03);
     border: 1px solid rgb(0 0 0 / 0.05);
+    overflow: visible;
+  }
+
+  /* Selects buscables: no recortar el panel desplegable dentro de la tarjeta iOS */
+  .fi-helpdesk-ios-section.fi-sc-section,
+  .fi-helpdesk-ios-section .fi-section-content-ctn {
+    overflow: visible;
+  }
+
+  .fi-helpdesk-ios-section .fi-fo-field:has(.fi-fo-select) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .fi-helpdesk-ios-section .fi-fo-field:has(.fi-fo-select-trigger:focus-within),
+  .fi-helpdesk-ios-section .fi-fo-field:has(.fi-fo-select [aria-expanded='true']) {
+    z-index: 50;
+  }
+
+  .fi-helpdesk-ios-section .fi-dropdown-panel,
+  .fi-helpdesk-ios-section .fi-fo-select-list {
+    z-index: 60;
   }
 
   .dark .fi-helpdesk-ios-inset,
@@ -1547,6 +1569,316 @@
   .fi-helpdesk-ios-section .fi-fo-textarea textarea {
     border-radius: 0.875rem !important;
     min-height: 6rem;
+  }
+
+  /* Helpdesk — historial de notas en infolist */
+  .helpdesk-notes-infolist {
+    max-width: 100%;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-notes-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgb(16 185 129 / 0.22);
+    background: rgb(236 253 245 / 0.9);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-notes-summary--empty {
+    margin-bottom: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-notes-summary__icon {
+    font-size: 1.125rem;
+    line-height: 1;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-notes-summary__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-notes-summary__title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(4 120 87);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-notes-summary__count {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgb(6 78 59);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-notes-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin: 0;
+    padding: 0 0 0 0.5rem;
+    list-style: none;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card {
+    position: relative;
+    margin: 0;
+    padding: 0 0 0 1.125rem;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card::before {
+    content: '';
+    position: absolute;
+    left: 0.2rem;
+    top: 1.35rem;
+    bottom: -0.5rem;
+    width: 2px;
+    border-radius: 1px;
+    background: linear-gradient(180deg, rgb(14 165 233 / 0.45), rgb(14 165 233 / 0.08));
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card:last-child::before {
+    display: none;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 1.1rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: rgb(14 165 233);
+    box-shadow: 0 0 0 3px rgb(255 255 255), 0 0 0 4px rgb(14 165 233 / 0.25);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__shell {
+    border-radius: 0.875rem;
+    padding: 0.75rem 0.875rem 0.875rem;
+    background: rgb(255 255 255);
+    border: 1px solid rgb(226 232 240 / 0.95);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card:first-child .helpdesk-note-card__shell {
+    border-color: rgb(125 211 252 / 0.65);
+    box-shadow:
+      0 0 0 1px rgb(14 165 233 / 0.08),
+      0 4px 14px rgb(14 165 233 / 0.1);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__shell:hover {
+    border-color: rgb(186 230 253);
+    box-shadow: 0 4px 12px rgb(15 23 42 / 0.06);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__avatar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: rgb(30 64 175);
+    background: linear-gradient(145deg, rgb(219 234 254), rgb(191 219 254));
+    border: 1px solid rgb(147 197 253 / 0.5);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__identity {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: rgb(15 23 42);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__time {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: rgb(100 116 139);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__badge {
+    flex-shrink: 0;
+    padding: 0.2rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__badge--note {
+    color: rgb(4 120 87);
+    background: rgb(209 250 229);
+    border: 1px solid rgb(110 231 183 / 0.5);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__badge--status {
+    color: rgb(29 78 216);
+    background: rgb(219 234 254);
+    border: 1px solid rgb(147 197 253 / 0.55);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__badge--priority {
+    color: rgb(146 64 14);
+    background: rgb(254 243 199);
+    border: 1px solid rgb(252 211 77 / 0.55);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__badge--legacy {
+    color: rgb(71 85 105);
+    background: rgb(241 245 249);
+    border: 1px solid rgb(203 213 225 / 0.6);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__body {
+    padding-left: 2.875rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.55;
+    color: rgb(30 41 59);
+    word-break: break-word;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__body p {
+    margin: 0;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__body p + p {
+    margin-top: 0.375rem;
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__body strong {
+    font-weight: 700;
+    color: rgb(15 23 42);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card__callout {
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.5rem;
+    background: rgb(239 246 255 / 0.9);
+    border-left: 3px solid rgb(59 130 246);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-card--status_change .helpdesk-note-card__callout {
+    background: rgb(239 246 255 / 0.95);
+    border-left-color: rgb(37 99 235);
+  }
+
+  .helpdesk-notes-infolist .helpdesk-note-legacy {
+    padding: 0.75rem 1rem;
+    border-radius: 0.875rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: rgb(51 65 85);
+    background: rgb(248 250 252);
+    border: 1px dashed rgb(203 213 225);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-notes-summary {
+    border-color: rgb(16 185 129 / 0.28);
+    background: rgb(6 78 59 / 0.35);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-notes-summary__title {
+    color: rgb(110 231 183);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-notes-summary__count {
+    color: rgb(167 243 208);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card::before {
+    background: linear-gradient(180deg, rgb(56 189 248 / 0.5), rgb(56 189 248 / 0.06));
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card::after {
+    background: rgb(56 189 248);
+    box-shadow: 0 0 0 3px rgb(15 23 42), 0 0 0 4px rgb(56 189 248 / 0.35);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__shell {
+    background: rgb(30 41 59 / 0.55);
+    border-color: rgb(51 65 85 / 0.85);
+    box-shadow: none;
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card:first-child .helpdesk-note-card__shell {
+    border-color: rgb(56 189 248 / 0.35);
+    box-shadow: 0 0 0 1px rgb(56 189 248 / 0.12);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__avatar {
+    color: rgb(191 219 254);
+    background: linear-gradient(145deg, rgb(30 58 138 / 0.5), rgb(30 64 175 / 0.35));
+    border-color: rgb(59 130 246 / 0.35);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__name {
+    color: rgb(248 250 252);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__time {
+    color: rgb(148 163 184);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__body {
+    color: rgb(226 232 240);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__body strong {
+    color: rgb(255 255 255);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__callout {
+    background: rgb(30 58 138 / 0.25);
+    border-left-color: rgb(96 165 250);
+  }
+
+  .dark .helpdesk-notes-infolist .helpdesk-note-legacy {
+    color: rgb(203 213 225);
+    background: rgb(15 23 42 / 0.5);
+    border-color: rgb(71 85 105);
   }
 
   /* Marketing — infolist iOS (InfoFree, Capemiac, ContactList): tarjetas + inset + filas */
@@ -2646,6 +2978,94 @@
     @apply mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-black/[0.06] pt-5 dark:border-white/[0.08];
   }
 
+  /*
+   * Modal gestionar ítems — panel Operaciones (wizard + checkbox cards + tablas).
+   * Layout flex: encabezado y pie fijos; solo el contenido central hace scroll.
+   * El contenedor externo no debe hacer scroll (Filament wizard usa scrollIntoView al cambiar paso).
+   */
+  .fi-modal:has(.fi-coordination-manage-items-modal) .fi-modal-window-ctn {
+    @apply overflow-hidden overscroll-contain py-4 sm:py-6;
+    align-items: center;
+  }
+
+  .fi-coordination-manage-items-modal {
+    @apply flex max-h-[min(calc(100dvh-3rem),58rem)] w-full flex-col overflow-hidden rounded-2xl ring-1 ring-gray-950/5 dark:ring-white/10;
+  }
+
+  .fi-coordination-manage-items-modal .fi-modal-header {
+    @apply relative z-20 shrink-0 border-b border-black/[0.05] bg-white px-4 pb-4 pt-4 dark:border-white/[0.06] dark:bg-gray-950 sm:px-6;
+  }
+
+  .fi-coordination-manage-items-modal .fi-modal-content {
+    @apply min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain scroll-smooth px-4 py-4 sm:px-6 sm:py-5;
+    isolation: isolate;
+  }
+
+  .fi-coordination-manage-items-modal .fi-modal-footer {
+    @apply relative z-20 shrink-0 gap-3 border-t border-black/[0.06] bg-white px-4 py-4 dark:border-white/[0.08] dark:bg-gray-950 sm:px-6;
+  }
+
+  .fi-coordination-manage-items-wizard {
+    @apply flex flex-col gap-5;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-sc-wizard-header {
+    @apply shrink-0 scroll-mt-0;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-sc-wizard-step {
+    @apply min-h-0;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-sc-wizard-step > .fi-sc {
+    @apply flex flex-col gap-4;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-sc-wizard-footer {
+    @apply mt-2 shrink-0 border-t border-black/[0.05] pt-4 dark:border-white/[0.06];
+  }
+
+  .fi-coordination-manage-items-wizard .fi-fo-checkbox-list.fi-manage-service-items-checkbox-list {
+    @apply gap-3;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option {
+    @apply rounded-2xl border border-zinc-200/90 bg-gradient-to-br from-white to-zinc-50/80 p-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-all duration-200 hover:border-primary-300/70 hover:shadow-md dark:border-white/10 dark:from-zinc-900/90 dark:to-zinc-950/90 dark:hover:border-primary-500/35;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:checked) {
+    @apply border-primary-400/80 bg-gradient-to-br from-primary-50/90 to-white ring-2 ring-primary-500/15 dark:border-primary-500/40 dark:from-primary-950/30 dark:to-zinc-900/90 dark:ring-primary-400/20;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option-label {
+    @apply text-sm font-semibold text-gray-900 dark:text-white;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-field-wrp-helper-text,
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option-description {
+    @apply text-xs leading-relaxed text-gray-600 dark:text-gray-300;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-table tbody tr:hover {
+    @apply bg-zinc-50/90 dark:bg-white/[0.03];
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-quote-params-section .fi-section-content-ctn {
+    @apply pt-1;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-quote-readonly-field .fi-input-wrp {
+    @apply border-dashed border-zinc-300/80 bg-zinc-50/80 dark:border-zinc-600/60 dark:bg-zinc-900/40;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-quote-summary {
+    @apply min-h-full;
+  }
+
+  .fi-coordination-manage-items-wizard .fi-manage-quote-summary .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Estatus del caso — bloque destacado tipo aviso iOS (seguimiento / alta) */
   .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-section {
     @apply border-l-[3px] border-l-amber-400 bg-gradient-to-br from-amber-50/95 via-white to-white shadow-[0_2px_16px_-4px_rgba(245,158,11,0.2)] dark:border-l-amber-500/90 dark:from-amber-950/35 dark:via-zinc-900/95 dark:to-zinc-900/90 dark:shadow-[0_2px_20px_-4px_rgba(0,0,0,0.45)];
@@ -3001,6 +3421,57 @@
   .dark .fi-travel-agency-stats-overview-glass .fi-wi-stats-overview-stat:hover,
   .dark .fi-travel-agent-stats-overview-glass .fi-wi-stats-overview-stat:hover {
     border-color: color-mix(in oklch, white 22%, transparent);
+  }
+
+  .fi-panel-footer {
+    @apply mt-auto w-full shrink-0 border-t border-gray-200/90 bg-gray-50/80 text-xs text-gray-600 backdrop-blur-sm;
+    @apply dark:border-white/10 dark:bg-gray-950/70 dark:text-gray-400;
+  }
+
+  .fi-panel-footer__inner {
+    @apply mx-auto flex w-full max-w-full flex-col items-center justify-between gap-3 px-4 py-3 sm:flex-row sm:gap-4 sm:px-6;
+  }
+
+  .fi-panel-footer__brand,
+  .fi-panel-footer__meta {
+    @apply flex min-w-0 items-center gap-2.5;
+  }
+
+  .fi-panel-footer__meta {
+    @apply flex-wrap justify-center sm:justify-end;
+  }
+
+  .fi-panel-footer__icon {
+    @apply size-4 shrink-0 text-primary-600 dark:text-primary-400;
+  }
+
+  .fi-panel-footer__icon--muted {
+    @apply text-gray-400 dark:text-gray-500;
+  }
+
+  .fi-panel-footer__copyright {
+    @apply min-w-0 leading-snug;
+  }
+
+  .fi-panel-footer__brand-name {
+    @apply block font-semibold text-[#4f8c69] dark:text-[#7bc49a];
+  }
+
+  .fi-panel-footer__rights {
+    @apply block text-[0.6875rem] text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-panel-footer__credit {
+    @apply flex min-w-0 items-center gap-1.5 text-[0.6875rem] text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-panel-footer__integracorp {
+    @apply font-semibold text-gray-700 dark:text-gray-200;
+  }
+
+  .fi-panel-footer__version {
+    @apply inline-flex shrink-0 items-center rounded-full border border-gray-200/90 bg-white/90 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-gray-600 ring-1 ring-gray-950/5;
+    @apply dark:border-white/10 dark:bg-gray-900/80 dark:text-gray-300 dark:ring-white/10;
   }
 }
 

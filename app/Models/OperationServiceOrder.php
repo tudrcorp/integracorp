@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class OperationServiceOrder extends Model
 {
@@ -32,6 +33,9 @@ class OperationServiceOrder extends Model
         'total_items_unit',
         'files',
         'status_payment',
+        'service_order_pdf_path',
+        'associated_quote_pdf_path',
+        'uploaded_documents',
     ];
 
     protected function casts(): array
@@ -40,6 +44,7 @@ class OperationServiceOrder extends Model
             'total_items' => 'integer',
             'total_items_unit' => 'integer',
             'files' => 'array',
+            'uploaded_documents' => 'array',
         ];
     }
 
@@ -66,5 +71,15 @@ class OperationServiceOrder extends Model
     public function operationServiceOrderItems(): HasMany
     {
         return $this->hasMany(OperationServiceOrderItem::class);
+    }
+
+    public function operationServiceOrderQuotes(): HasMany
+    {
+        return $this->hasMany(OperationServiceOrderQuote::class);
+    }
+
+    public function approvedOperationQuote(): HasOne
+    {
+        return $this->hasOne(OperationQuoteGenerator::class, 'operation_service_order_id');
     }
 }
