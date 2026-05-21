@@ -114,6 +114,9 @@ class AgendaCorporativa extends Page
     /** @var array<int>|null */
     protected ?array $currentCollaboratorIdsCache = null;
 
+    /** @var array<int, array{id:int,name:string,email:string|null}>|null */
+    protected ?array $collaboratorOptionsCache = null;
+
     protected ?string $socialPublicationFormHydratedForDate = null;
 
     public function mount(): void
@@ -883,7 +886,11 @@ class AgendaCorporativa extends Page
             return [];
         }
 
-        return RrhhColaborador::query()
+        if ($this->collaboratorOptionsCache !== null) {
+            return $this->collaboratorOptionsCache;
+        }
+
+        $this->collaboratorOptionsCache = RrhhColaborador::query()
             ->orderBy('fullName')
             ->get(['id', 'fullName', 'emailCorporativo', 'emailPersonal', 'avatar'])
             ->map(function (RrhhColaborador $colaborador): array {
@@ -894,6 +901,8 @@ class AgendaCorporativa extends Page
                 ];
             })
             ->all();
+
+        return $this->collaboratorOptionsCache;
     }
 
     /**
@@ -902,8 +911,24 @@ class AgendaCorporativa extends Page
     public function getFilteredCollaboratorOptionsProperty(): array
     {
         $term = Str::lower(trim($this->collaboratorSearch));
+
+        $selectedIds = collect($this->activityForm['participant_ids'] ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values()
+            ->all();
+
         if ($term === '') {
-            return $this->collaboratorOptions;
+            $selectedCollaborators = collect($this->collaboratorOptions)
+                ->whereIn('id', $selectedIds);
+
+            $firstBatch = collect($this->collaboratorOptions)->take(50);
+
+            return $selectedCollaborators
+                ->concat($firstBatch)
+                ->unique('id')
+                ->values()
+                ->all();
         }
 
         return collect($this->collaboratorOptions)
@@ -955,7 +980,6 @@ class AgendaCorporativa extends Page
             ->with([
                 'creator:id,name,email,phone',
                 'participants.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar,user_id',
-                'notes.user:id,name,email',
             ])
             ->orderBy('start_time')
             ->orderBy('created_at')
@@ -968,8 +992,17 @@ class AgendaCorporativa extends Page
             return null;
         }
 
-        return $this->selectedDateActivities
-            ->firstWhere('id', $this->selectedActivityId);
+        return $this->visibleActivitiesBetween(
+            Carbon::parse($this->selectedDate)->startOfDay(),
+            Carbon::parse($this->selectedDate)->endOfDay(),
+        )
+            ->with([
+                'creator:id,name,email,phone',
+                'participants.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar,user_id',
+                'notes.user:id,name,email',
+            ])
+            ->whereKey($this->selectedActivityId)
+            ->first();
     }
 
     public function isCurrentUserCreator(?CorporateAgendaActivity $activity): bool
