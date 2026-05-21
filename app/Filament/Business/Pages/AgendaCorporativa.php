@@ -977,9 +977,17 @@ class AgendaCorporativa extends Page
             Carbon::parse($this->selectedDate)->startOfDay(),
             Carbon::parse($this->selectedDate)->endOfDay(),
         )
-            ->with([
-                'creator:id,name,email,phone',
-                'participants.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar,user_id',
+            ->select([
+                'id',
+                'creator_user_id',
+                'activity_date',
+                'start_time',
+                'end_time',
+                'activity_type',
+                'has_google_meet',
+                'google_meet_url',
+                'description',
+                'created_at',
             ])
             ->orderBy('start_time')
             ->orderBy('created_at')
