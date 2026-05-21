@@ -588,13 +588,6 @@
                                         ? $activityTheme['selected']
                                         : $activityTheme['idle'] }}"
                                 >
-                                    @php
-                                        $participants = $activity->participants;
-                                        $pendingCount = $participants->filter(fn ($participant) => $participant->invitation_status?->value === \App\Enums\CorporateAgendaInvitationStatus::Pending->value)->count();
-                                        $acceptedCount = $participants->filter(fn ($participant) => $participant->invitation_status?->value === \App\Enums\CorporateAgendaInvitationStatus::Accepted->value)->count();
-                                        $rejectedCount = $participants->filter(fn ($participant) => $participant->invitation_status?->value === \App\Enums\CorporateAgendaInvitationStatus::Rejected->value)->count();
-                                    @endphp
-
                                     <button
                                         type="button"
                                         wire:click="selectActivity({{ $activity->id }})"
@@ -627,11 +620,18 @@
                                     </button>
 
                                     @if ($selectedActivityId === $activity->id)
+                                        @php
+                                            $selectedActivityDetails = $this->selectedActivity;
+                                            $participants = $selectedActivityDetails?->participants ?? collect();
+                                            $pendingCount = $participants->filter(fn ($participant) => $participant->invitation_status?->value === \App\Enums\CorporateAgendaInvitationStatus::Pending->value)->count();
+                                            $acceptedCount = $participants->filter(fn ($participant) => $participant->invitation_status?->value === \App\Enums\CorporateAgendaInvitationStatus::Accepted->value)->count();
+                                            $rejectedCount = $participants->filter(fn ($participant) => $participant->invitation_status?->value === \App\Enums\CorporateAgendaInvitationStatus::Rejected->value)->count();
+                                        @endphp
                                         <div class="mt-3 space-y-3">
                                         <div class="grid gap-2 text-[11px] text-slate-600 dark:text-slate-300 sm:grid-cols-2">
                                             <div class="rounded-xl border border-slate-200/80 bg-slate-50/70 px-2.5 py-2 dark:border-white/10 dark:bg-slate-800/60">
                                                 <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Creador</p>
-                                                <p class="mt-1 font-medium text-slate-800 dark:text-slate-100">{{ $activity->creator?->name ?: 'Sin dato' }}</p>
+                                                <p class="mt-1 font-medium text-slate-800 dark:text-slate-100">{{ $selectedActivityDetails?->creator?->name ?: 'Sin dato' }}</p>
                                             </div>
                                             <div class="rounded-xl border border-slate-200/80 bg-slate-50/70 px-2.5 py-2 dark:border-white/10 dark:bg-slate-800/60">
                                                 <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Fecha</p>
@@ -649,7 +649,7 @@
                                             </div>
                                             <div class="rounded-xl border border-slate-200/80 bg-slate-50/70 px-2.5 py-2 dark:border-white/10 dark:bg-slate-800/60">
                                                 <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notas</p>
-                                                <p class="mt-1 font-medium text-slate-800 dark:text-slate-100">{{ $activity->notes->count() }}</p>
+                                                <p class="mt-1 font-medium text-slate-800 dark:text-slate-100">{{ $selectedActivityDetails?->notes?->count() ?? 0 }}</p>
                                             </div>
                                         </div>
 
@@ -691,9 +691,7 @@
                                                             };
                                                             $participantColaborador = $participant->colaborador;
                                                             $avatarPath = is_string($participantColaborador?->avatar) ? ltrim((string) $participantColaborador->avatar, '/') : '';
-                                                            $avatarUrl = ($avatarPath !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($avatarPath))
-                                                                ? url('storage/'.$avatarPath)
-                                                                : null;
+                                                            $avatarUrl = $avatarPath !== '' ? url('storage/'.$avatarPath) : null;
                                                             $fullName = (string) ($participantColaborador?->fullName ?? '');
                                                             $nameParts = collect(preg_split('/\s+/', trim($fullName)) ?: [])->filter();
                                                             $initials = $nameParts->count() > 1
