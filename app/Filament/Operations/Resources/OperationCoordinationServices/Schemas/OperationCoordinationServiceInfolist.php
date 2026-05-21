@@ -2,280 +2,684 @@
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Schemas;
 
+use App\Models\OperationCoordinationService;
+use App\Models\TelemedicinePatientLab;
+use App\Models\TelemedicinePatientMedications;
+use App\Models\TelemedicinePatientSpecialty;
+use App\Models\TelemedicinePatientStudy;
+use App\Support\Telemedicine\TelemedicineMedicationCoverage;
+use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 class OperationCoordinationServiceInfolist
 {
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
+    private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Solicitud')
-                    ->description('Datos generales de la coordinación')
-                    ->icon(Heroicon::DocumentText)
-                    ->schema([
-                        Fieldset::make('Datos de la solicitud')
+                Tabs::make('operationCoordinationServiceInfolistTabs')
+                    ->columnSpanFull()
+                    ->persistTab()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
+                    ->tabs([
+                        Tab::make('Solicitud')
+                            ->icon(Heroicon::DocumentText)
                             ->schema([
-                                TextEntry::make('date_solicitud')
-                                    ->label('Fecha solicitud')
-                                    ->placeholder('-'),
-                                TextEntry::make('date_service')
-                                    ->label('Fecha servicio')
-                                    ->placeholder('-'),
-                                TextEntry::make('businessLine.definition')
-                                    ->label('Línea de negocio')
-                                    ->placeholder('-'),
-                                TextEntry::make('businessUnit.definition')
-                                    ->label('Unidad de negocio')
-                                    ->placeholder('-'),
-                                TextEntry::make('reference_number')
-                                    ->label('Nº referencia')
-                                    ->placeholder('-'),
-                                TextEntry::make('status')
-                                    ->label('Estado')
-                                    ->badge()
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
-
-                Section::make('Titular y paciente')
-                    ->collapsed(true)
-                    ->description('Información del titular y del paciente')
-                    ->icon(Heroicon::UserGroup)
-                    ->schema([
-                        Fieldset::make('Titular')
+                                Section::make('Solicitud')
+                                    ->description('Datos generales de la coordinación')
+                                    ->icon(Heroicon::DocumentText)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Datos de la solicitud')
+                                            ->schema([
+                                                TextEntry::make('date_solicitud')
+                                                    ->label('Fecha solicitud')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('date_service')
+                                                    ->label('Fecha servicio')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('businessLine.definition')
+                                                    ->label('Línea de negocio')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('businessUnit.definition')
+                                                    ->label('Unidad de negocio')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('reference_number')
+                                                    ->label('Nº referencia')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('status')
+                                                    ->label('Estado')
+                                                    ->badge()
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Titular y paciente')
+                            ->icon(Heroicon::UserGroup)
                             ->schema([
-                                TextEntry::make('holder')
-                                    ->label('Titular')
-                                    ->placeholder('-'),
-                                TextEntry::make('ci_holder')
-                                    ->label('C.I. titular')
-                                    ->placeholder('-'),
-                                TextEntry::make('phone_holder')
-                                    ->label('Teléfono titular')
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                        Fieldset::make('Paciente')
+                                Section::make('Titular y paciente')
+                                    ->description('Información del titular y del paciente')
+                                    ->icon(Heroicon::UserGroup)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Titular')
+                                            ->schema([
+                                                TextEntry::make('holder')
+                                                    ->label('Titular')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('ci_holder')
+                                                    ->label('C.I. titular')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('phone_holder')
+                                                    ->label('Teléfono titular')
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                        Fieldset::make('Paciente')
+                                            ->schema([
+                                                TextEntry::make('patient')
+                                                    ->label('Paciente')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('ci_patient')
+                                                    ->label('C.I. paciente')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('birth_date_patient')
+                                                    ->label('Fecha nacimiento')
+
+                                                    ->placeholder('-'),
+                                                TextEntry::make('age_patient')
+                                                    ->label('Edad')
+                                                    ->suffix(' años')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('relationship_patient')
+                                                    ->label('Parentesco')
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Ubicación')
+                            ->icon(Heroicon::MapPin)
                             ->schema([
-                                TextEntry::make('patient')
-                                    ->label('Paciente')
-                                    ->placeholder('-'),
-                                TextEntry::make('ci_patient')
-                                    ->label('C.I. paciente')
-                                    ->placeholder('-'),
-                                TextEntry::make('birth_date_patient')
-                                    ->label('Fecha nacimiento')
-
-                                    ->placeholder('-'),
-                                TextEntry::make('age_patient')
-                                    ->label('Edad')
-                                    ->suffix(' años')
-                                    ->placeholder('-'),
-                                TextEntry::make('relationship_patient')
-                                    ->label('Parentesco')
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
-
-                Section::make('Ubicación')
-                    ->collapsed(true)
-                    ->description('Dirección y ubicación')
-                    ->icon(Heroicon::MapPin)
-                    ->schema([
-                        Fieldset::make('Dirección y contacto')
+                                Section::make('Ubicación')
+                                    ->description('Dirección y ubicación')
+                                    ->icon(Heroicon::MapPin)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Dirección y contacto')
+                                            ->schema([
+                                                TextEntry::make('contractor')
+                                                    ->label('Contratante')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('state.definition')
+                                                    ->label('Estado')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('city.definition')
+                                                    ->label('Ciudad')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('address')
+                                                    ->label('Dirección')
+                                                    ->placeholder('-')
+                                                    ->columnSpanFull(),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Servicio')
+                            ->icon(Heroicon::WrenchScrewdriver)
                             ->schema([
-                                TextEntry::make('contractor')
-                                    ->label('Contratante')
-                                    ->placeholder('-'),
-                                TextEntry::make('state.definition')
-                                    ->label('Estado')
-                                    ->placeholder('-'),
-                                TextEntry::make('city.definition')
-                                    ->label('Ciudad')
-                                    ->placeholder('-'),
-                                TextEntry::make('address')
-                                    ->label('Dirección')
-                                    ->placeholder('-')
-                                    ->columnSpanFull(),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
-
-                Section::make('Servicio')
-                    ->collapsed(true)
-                    ->description('Detalle del servicio solicitado')
-                    ->icon(Heroicon::WrenchScrewdriver)
-                    ->schema([
-                        Fieldset::make('Detalle del servicio')
+                                Section::make('Servicio')
+                                    ->description('Detalle del servicio solicitado')
+                                    ->icon(Heroicon::WrenchScrewdriver)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Detalle del servicio')
+                                            ->schema([
+                                                TextEntry::make('symptoms_diagnosis')
+                                                    ->label('Síntomas / diagnóstico')
+                                                    ->placeholder('-')
+                                                    ->columnSpanFull(),
+                                                TextEntry::make('servicie')
+                                                    ->label('Servicio')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('specific_service')
+                                                    ->label('Servicio específico')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('type_service')
+                                                    ->label('Tipo de servicio')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('supplier_service')
+                                                    ->label('Proveedor del servicio')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('farmadoc')
+                                                    ->label('Farmadoc')
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Ítems asociados')
+                            ->icon(Heroicon::ClipboardDocumentList)
                             ->schema([
-                                TextEntry::make('symptoms_diagnosis')
-                                    ->label('Síntomas / diagnóstico')
-                                    ->placeholder('-')
-                                    ->columnSpanFull(),
-                                TextEntry::make('servicie')
-                                    ->label('Servicio')
-                                    ->placeholder('-'),
-                                TextEntry::make('specific_service')
-                                    ->label('Servicio específico')
-                                    ->placeholder('-'),
-                                TextEntry::make('type_service')
-                                    ->label('Tipo de servicio')
-                                    ->placeholder('-'),
-                                TextEntry::make('supplier_service')
-                                    ->label('Proveedor del servicio')
-                                    ->placeholder('-'),
-                                TextEntry::make('farmadoc')
-                                    ->label('Farmadoc')
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
-
-                Section::make('Negociación y precios')
-                    ->collapsed(true)
-                    ->description('Montos y negociación')
-                    ->icon(Heroicon::CurrencyDollar)
-                    ->schema([
-                        Fieldset::make('Negociación')
+                                Section::make('Ítems asociados a la coordinación')
+                                    ->description('Visualice solo los ítems realmente asociados a esta coordinación.')
+                                    ->icon(Heroicon::ClipboardDocumentList)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->visible(fn (OperationCoordinationService $record): bool => self::hasAnyAssociatedItems($record))
+                                    ->schema([
+                                        Fieldset::make('Medicamentos')
+                                            ->visible(fn (OperationCoordinationService $record): bool => self::hasMedications($record))
+                                            ->schema([
+                                                TextEntry::make('telemedicinePatientMedicationsSummary')
+                                                    ->label('Medicamentos e indicaciones')
+                                                    ->state(fn (OperationCoordinationService $record): string => self::medicationsSummary($record))
+                                                    ->html()
+                                                    ->columnSpanFull(),
+                                            ]),
+                                        Fieldset::make('Laboratorios')
+                                            ->visible(fn (OperationCoordinationService $record): bool => self::hasLaboratories($record))
+                                            ->schema([
+                                                TextEntry::make('telemedicinePatientLabsSummary')
+                                                    ->label('Laboratorios')
+                                                    ->state(fn (OperationCoordinationService $record): string => self::laboratoriesSummary($record))
+                                                    ->html()
+                                                    ->columnSpanFull(),
+                                            ]),
+                                        Fieldset::make('Estudios')
+                                            ->visible(fn (OperationCoordinationService $record): bool => self::hasStudies($record))
+                                            ->schema([
+                                                TextEntry::make('telemedicinePatientStudiesSummary')
+                                                    ->label('Estudios')
+                                                    ->state(fn (OperationCoordinationService $record): string => self::studiesSummary($record))
+                                                    ->html()
+                                                    ->columnSpanFull(),
+                                            ]),
+                                        Fieldset::make('Consulta con especialista')
+                                            ->visible(fn (OperationCoordinationService $record): bool => self::hasSpecialties($record))
+                                            ->schema([
+                                                TextEntry::make('telemedicinePatientSpecialtiesSummary')
+                                                    ->label('Especialistas')
+                                                    ->state(fn (OperationCoordinationService $record): string => self::specialtiesSummary($record))
+                                                    ->html()
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Negociación y precios')
+                            ->icon(Heroicon::CurrencyDollar)
                             ->schema([
-                                TextEntry::make('type_negotiation')
-                                    ->label('Tipo negociación')
-                                    ->placeholder('-'),
-                                TextEntry::make('status_negotiation')
-                                    ->label('Estado negociación')
-                                    ->placeholder('-'),
-                                TextEntry::make('negotiation')
-                                    ->label('Negociación')
-                                    ->placeholder('-'),
-                                TextEntry::make('neto')
-                                    ->label('Neto')
-                                    ->numeric()
-                                    ->placeholder('-'),
-                                TextEntry::make('porcen_tdec')
-                                    ->label('% TDEC')
-                                    ->numeric()
-                                    ->suffix('%')
-                                    ->placeholder('-'),
-                                TextEntry::make('quote_price')
-                                    ->label('Precio cotizado')
-                                    ->money()
-                                    ->placeholder('-'),
-                                TextEntry::make('porcen_discount')
-                                    ->label('% descuento')
-                                    ->numeric()
-                                    ->suffix('%')
-                                    ->placeholder('-'),
-                                TextEntry::make('price_discount')
-                                    ->label('Precio con descuento')
-                                    ->numeric()
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
-
-                Section::make('Documentos y facturación')
-                    ->collapsed(true)
-                    ->description('Números de cotización, orden y factura')
-                    ->icon(Heroicon::DocumentDuplicate)
-                    ->schema([
-                        Fieldset::make('Números y factura')
+                                Section::make('Negociación y precios')
+                                    ->description('Montos y negociación')
+                                    ->icon(Heroicon::CurrencyDollar)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Negociación')
+                                            ->schema([
+                                                TextEntry::make('type_negotiation')
+                                                    ->label('Tipo negociación')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('status_negotiation')
+                                                    ->label('Estado negociación')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('negotiation')
+                                                    ->label('Negociación')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('neto')
+                                                    ->label('Neto')
+                                                    ->numeric()
+                                                    ->placeholder('-'),
+                                                TextEntry::make('porcen_tdec')
+                                                    ->label('% TDEC')
+                                                    ->numeric()
+                                                    ->suffix('%')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('quote_price')
+                                                    ->label('Precio cotizado')
+                                                    ->money()
+                                                    ->placeholder('-'),
+                                                TextEntry::make('porcen_discount')
+                                                    ->label('% descuento')
+                                                    ->numeric()
+                                                    ->suffix('%')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('price_discount')
+                                                    ->label('Precio con descuento')
+                                                    ->numeric()
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Documentos y facturación')
+                            ->icon(Heroicon::DocumentDuplicate)
                             ->schema([
-                                TextEntry::make('quote_number')
-                                    ->label('Nº cotización')
-                                    ->placeholder('-'),
-                                TextEntry::make('approved_number')
-                                    ->label('Nº aprobación')
-                                    ->placeholder('-'),
-                                TextEntry::make('service_order_number')
-                                    ->label('Nº orden de servicio')
-                                    ->placeholder('-'),
-                                TextEntry::make('bill_number')
-                                    ->label('Nº factura')
-                                    ->placeholder('-'),
-                                TextEntry::make('bill_price')
-                                    ->label('Monto factura')
-                                    ->money()
-                                    ->placeholder('-'),
-                                TextEntry::make('bill_date')
-                                    ->label('Fecha factura')
+                                Section::make('Documentos y facturación')
+                                    ->description('Números de cotización, orden y factura')
+                                    ->icon(Heroicon::DocumentDuplicate)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Números y factura')
+                                            ->schema([
+                                                TextEntry::make('quote_number')
+                                                    ->label('Nº cotización')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('approved_number')
+                                                    ->label('Nº aprobación')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('service_order_number')
+                                                    ->label('Nº orden de servicio')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('bill_number')
+                                                    ->label('Nº factura')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('bill_price')
+                                                    ->label('Monto factura')
+                                                    ->money()
+                                                    ->placeholder('-'),
+                                                TextEntry::make('bill_date')
+                                                    ->label('Fecha factura')
 
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
-
-                Section::make('Incidencias y observaciones')
-                    ->collapsed(true)
-                    ->description('Notas e incidencias')
-                    ->icon(Heroicon::ChatBubbleLeftRight)
-                    ->schema([
-                        Fieldset::make('Observaciones')
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Incidencias y observaciones')
+                            ->icon(Heroicon::ChatBubbleLeftRight)
                             ->schema([
-                                TextEntry::make('incidence')
-                                    ->label('Incidencia')
-                                    ->placeholder('-')
-                                    ->columnSpanFull(),
-                                TextEntry::make('negotiation_description')
-                                    ->label('Descripción negociación')
-                                    ->placeholder('-')
-                                    ->columnSpanFull(),
-                                TextEntry::make('qc_description')
-                                    ->label('Descripción QC')
-                                    ->placeholder('-')
-                                    ->columnSpanFull(),
-                                TextEntry::make('observations')
-                                    ->label('Observaciones')
-                                    ->placeholder('-')
+                                Section::make('Incidencias y observaciones')
+                                    ->description('Notas e incidencias')
+                                    ->icon(Heroicon::ChatBubbleLeftRight)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Observaciones')
+                                            ->schema([
+                                                TextEntry::make('incidence')
+                                                    ->label('Incidencia')
+                                                    ->placeholder('-')
+                                                    ->columnSpanFull(),
+                                                TextEntry::make('negotiation_description')
+                                                    ->label('Descripción negociación')
+                                                    ->placeholder('-')
+                                                    ->columnSpanFull(),
+                                                TextEntry::make('qc_description')
+                                                    ->label('Descripción QC')
+                                                    ->placeholder('-')
+                                                    ->columnSpanFull(),
+                                                TextEntry::make('observations')
+                                                    ->label('Observaciones')
+                                                    ->placeholder('-')
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Vinculación telemedicina')
+                            ->icon(Heroicon::Signal)
+                            ->schema([
+                                Section::make('Vinculación telemedicina')
+                                    ->description('Identificadores de telemedicina')
+                                    ->icon(Heroicon::Signal)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('IDs telemedicina')
+                                            ->schema([
+                                                TextEntry::make('telemedicine_patient_id')
+                                                    ->label('ID paciente')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('telemedicine_case_id')
+                                                    ->label('ID caso')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('telemedicine_doctor_id')
+                                                    ->label('ID doctor')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('telemedicine_consultation_patient_id')
+                                                    ->label('ID consulta paciente')
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                        Tab::make('Documentos')
+                            ->icon(Heroicon::OutlinedFolderOpen)
+                            ->schema([
+                                Section::make('Documentos cargados')
+                                    ->description('Validación en tiempo real de documentos y tipos asociados por archivo.')
+                                    ->icon(Heroicon::OutlinedFolderOpen)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        RepeatableEntry::make('uploaded_documents')
+                                            ->label('Listado de documentos')
+                                            ->placeholder('Aún no hay documentos cargados en esta coordinación.')
+                                            ->table([
+                                                TableColumn::make('Documento')->width('30%'),
+                                                TableColumn::make('Tipo(s)')->width('28%'),
+                                                TableColumn::make('Archivo')->width('20%'),
+                                                TableColumn::make('Fecha')->width('12%'),
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('document_name')
+                                                    ->label('Documento')
+                                                    ->html()
+                                                    ->formatStateUsing(function (TextEntry $component, mixed $state): string {
+                                                        $row = $component->getConstantState();
+
+                                                        return self::renderDocumentNameCell(
+                                                            is_array($row) ? ($row['document_name'] ?? $state) : $state,
+                                                            is_array($row) ? $row : null,
+                                                        );
+                                                    })
+                                                    ->placeholder('—'),
+                                                TextEntry::make('document_types')
+                                                    ->label('Tipo(s)')
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->formatStateUsing(fn (mixed $state): ?string => filled($state)
+                                                        ? trim((string) $state)
+                                                        : null)
+                                                    ->placeholder('Sin tipo asociado'),
+                                                TextEntry::make('file_path')
+                                                    ->label('Archivo')
+                                                    ->formatStateUsing(fn (mixed $state): string => filled($state)
+                                                        ? basename((string) $state)
+                                                        : '—')
+                                                    ->url(fn (mixed $state): ?string => filled($state)
+                                                        ? URL::to(Storage::url((string) $state))
+                                                        : null)
+                                                    ->openUrlInNewTab()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('uploaded_at')
+                                                    ->label('Fecha')
+                                                    ->formatStateUsing(fn (mixed $state): string => self::formatUploadedAt($state))
+                                                    ->placeholder('—'),
+                                            ])
+                                            ->columnSpanFull(),
+                                    ])
                                     ->columnSpanFull(),
                             ]),
-                    ])->columnSpanFull(),
-
-                Section::make('Vinculación telemedicina')
-                    ->collapsed(true)
-                    ->description('Identificadores de telemedicina')
-                    ->icon(Heroicon::Signal)
-                    ->collapsible()
-                    ->schema([
-                        Fieldset::make('IDs telemedicina')
+                        Tab::make('Auditoría')
+                            ->icon(Heroicon::Clock)
                             ->schema([
-                                TextEntry::make('telemedicine_patient_id')
-                                    ->label('ID paciente')
-                                    ->placeholder('-'),
-                                TextEntry::make('telemedicine_case_id')
-                                    ->label('ID caso')
-                                    ->placeholder('-'),
-                                TextEntry::make('telemedicine_doctor_id')
-                                    ->label('ID doctor')
-                                    ->placeholder('-'),
-                                TextEntry::make('telemedicine_consultation_patient_id')
-                                    ->label('ID consulta paciente')
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
-
-                Section::make('Auditoría')
-                    ->collapsed(true)
-                    ->description('Registro de cambios')
-                    ->icon(Heroicon::Clock)
-                    ->schema([
-                        Fieldset::make('Registro')
-                            ->schema([
-                                TextEntry::make('created_by')
-                                    ->label('Creado por')
-                                    ->placeholder('-'),
-                                TextEntry::make('updated_by')
-                                    ->label('Actualizado por')
-                                    ->placeholder('-'),
-                                TextEntry::make('created_at')
-                                    ->label('Fecha creación')
-                                    ->dateTime('d/m/Y H:i')
-                                    ->placeholder('-'),
-                                TextEntry::make('updated_at')
-                                    ->label('Última actualización')
-                                    ->dateTime('d/m/Y H:i')
-                                    ->placeholder('-'),
-                            ])->columns(2),
-                    ])->columnSpanFull(),
+                                Section::make('Auditoría')
+                                    ->description('Registro de cambios')
+                                    ->icon(Heroicon::Clock)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Registro')
+                                            ->schema([
+                                                TextEntry::make('created_by')
+                                                    ->label('Creado por')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('updated_by')
+                                                    ->label('Actualizado por')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('created_at')
+                                                    ->label('Fecha creación')
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('updated_at')
+                                                    ->label('Última actualización')
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->placeholder('-'),
+                                            ])->columns(2),
+                                    ])->columnSpanFull(),
+                            ]),
+                    ]),
             ]);
+    }
+
+    private static function renderDocumentNameCell(mixed $state, mixed $record): string
+    {
+        $name = trim((string) $state);
+        $filePath = is_array($record) ? trim((string) ($record['file_path'] ?? '')) : '';
+        $extension = strtoupper((string) pathinfo($filePath, PATHINFO_EXTENSION));
+
+        if ($name === '') {
+            $name = 'Documento sin nombre';
+        }
+
+        $meta = $extension !== '' ? $extension : 'Archivo';
+
+        return '<div class="flex items-center gap-2">'
+            .'<span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500 dark:text-cyan-300">📄</span>'
+            .'<div class="min-w-0">'
+            .'<p class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">'.e($name).'</p>'
+            .'<p class="text-[11px] text-gray-500 dark:text-gray-400">'.e($meta).'</p>'
+            .'</div>'
+            .'</div>';
+    }
+
+    private static function renderDocumentTypesBadges(mixed $state): string
+    {
+        if (! is_array($state) || $state === []) {
+            return '<span class="text-xs text-gray-400">Sin tipo asociado</span>';
+        }
+
+        $badges = collect($state)
+            ->map(static fn (mixed $item): string => trim((string) $item))
+            ->filter(static fn (string $value): bool => $value !== '')
+            ->map(static fn (string $value): string => '<span class="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">'.e($value).'</span>')
+            ->values()
+            ->all();
+
+        if ($badges === []) {
+            return '<span class="text-xs text-gray-400">Sin tipo asociado</span>';
+        }
+
+        return '<div class="flex flex-wrap gap-1">'.implode('', $badges).'</div>';
+    }
+
+    /**
+     * Filament descompone arrays de estado en ítems individuales; normalizamos array o string.
+     *
+     * @return array<int, string>
+     */
+    private static function normalizeDocumentTypesState(mixed $state): array
+    {
+        if (is_array($state)) {
+            return collect($state)
+                ->map(static fn (mixed $item): string => trim((string) $item))
+                ->filter(static fn (string $value): bool => $value !== '')
+                ->values()
+                ->all();
+        }
+
+        if (is_string($state) && trim($state) !== '') {
+            return [trim($state)];
+        }
+
+        return [];
+    }
+
+    private static function formatUploadedAt(mixed $state): string
+    {
+        if (! filled($state)) {
+            return '—';
+        }
+
+        try {
+            return Carbon::parse((string) $state)->format('d/m/Y H:i');
+        } catch (\Throwable) {
+            return (string) $state;
+        }
+    }
+
+    private static function renderDownloadButton(mixed $record): string
+    {
+        if (! is_array($record)) {
+            return '<span class="text-gray-400">No disponible</span>';
+        }
+
+        $filePath = trim((string) ($record['file_path'] ?? ''));
+
+        if ($filePath === '' || ! Storage::disk('public')->exists($filePath)) {
+            return '<span class="text-gray-400">No disponible</span>';
+        }
+
+        $downloadUrl = URL::to(Storage::url($filePath));
+        $fileName = Str::limit(basename($filePath), 22);
+
+        return '<a href="'.e($downloadUrl).'" title="Descargar '.e($fileName).'" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-600 transition hover:bg-cyan-500/20 dark:text-cyan-300">⬇ Descargar</a>';
+    }
+
+    private static function medicationsSummary(OperationCoordinationService $record): string
+    {
+        $items = $record->telemedicinePatientMedications()
+            ->orderBy('id')
+            ->with('operationInventory:id,is_covered')
+            ->get(['medicine', 'indications', 'status', 'is_covered', 'operation_inventory_id'])
+            ->map(fn (TelemedicinePatientMedications $item): array => [
+                'title' => 'Medicamento: '.($item->medicine ?? 'Medicamento sin nombre'),
+                'detail' => 'Indicación: '.($item->indications ?? 'Sin indicación'),
+                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
+                'coverage' => TelemedicineMedicationCoverage::isCovered($item),
+            ]);
+
+        return self::renderAssociatedItemsCards($items);
+    }
+
+    private static function laboratoriesSummary(OperationCoordinationService $record): string
+    {
+        $items = $record->telemedicinePatientLabs()
+            ->orderBy('id')
+            ->get(['laboratory', 'type', 'status'])
+            ->map(fn (TelemedicinePatientLab $item): array => [
+                'title' => 'Laboratorio: '.($item->laboratory ?? 'Laboratorio sin nombre'),
+                'detail' => 'Tipo: '.($item->type ?? '—'),
+                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
+                'coverage' => self::catalogItemCoverageValue($item->type),
+            ]);
+
+        return self::renderAssociatedItemsCards($items);
+    }
+
+    private static function studiesSummary(OperationCoordinationService $record): string
+    {
+        $items = $record->telemedicinePatientStudies()
+            ->orderBy('id')
+            ->get(['study', 'type', 'status'])
+            ->map(fn (TelemedicinePatientStudy $item): array => [
+                'title' => 'Estudio: '.($item->study ?? 'Estudio sin nombre'),
+                'detail' => 'Tipo: '.($item->type ?? '—'),
+                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
+                'coverage' => self::catalogItemCoverageValue($item->type),
+            ]);
+
+        return self::renderAssociatedItemsCards($items);
+    }
+
+    private static function specialtiesSummary(OperationCoordinationService $record): string
+    {
+        $items = $record->telemedicinePatientSpecialties()
+            ->orderBy('id')
+            ->get(['specialty', 'type', 'status'])
+            ->map(fn (TelemedicinePatientSpecialty $item): array => [
+                'title' => 'Especialidad: '.($item->specialty ?? 'Especialidad sin nombre'),
+                'detail' => 'Tipo: '.($item->type ?? '—'),
+                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
+                'coverage' => self::catalogItemCoverageValue($item->type),
+            ]);
+
+        return self::renderAssociatedItemsCards($items);
+    }
+
+    private static function catalogItemCoverageValue(?string $type): ?bool
+    {
+        if ($type === null || trim($type) === '') {
+            return null;
+        }
+
+        return mb_strtoupper(trim($type)) === 'CUBIERTO';
+    }
+
+    private static function coverageLabel(?bool $isCovered): string
+    {
+        return match ($isCovered) {
+            true => 'Cubierto',
+            false => 'No cubierto',
+            default => 'Sin dato',
+        };
+    }
+
+    private static function coverageBadgeClasses(?bool $isCovered): string
+    {
+        return match ($isCovered) {
+            true => 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-200',
+            false => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
+            default => 'border-gray-400/40 bg-gray-500/10 text-gray-700 dark:border-gray-300/30 dark:bg-gray-400/15 dark:text-gray-200',
+        };
+    }
+
+    /**
+     * @param  Collection<int, array{title: string, detail: string, status: string, coverage: bool|null}>  $items
+     */
+    private static function renderAssociatedItemsCards(Collection $items): string
+    {
+        $cards = $items
+            ->map(function (array $item): string {
+                $status = mb_strtoupper(trim($item['status']));
+                $statusBadgeClasses = match ($status) {
+                    'FINALIZADO' => 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-200',
+                    'PENDIENTE' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
+                    'EN GESTION' => 'border-orange-500/45 bg-orange-500/10 text-orange-700 dark:border-orange-400/45 dark:bg-orange-400/15 dark:text-orange-200',
+                    'CANCELADO', 'CANCELADA' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
+                    default => 'border-gray-400/40 bg-gray-500/10 text-gray-700 dark:border-gray-300/30 dark:bg-gray-400/15 dark:text-gray-200',
+                };
+
+                $coverageLabel = self::coverageLabel($item['coverage'] ?? null);
+                $coverageBadgeClasses = self::coverageBadgeClasses($item['coverage'] ?? null);
+
+                return '<div class="rounded-xl border border-gray-200/80 bg-white px-4 py-3 shadow-xs dark:border-white/10 dark:bg-white/5">'
+                    .'<div class="flex flex-wrap items-center justify-between gap-2">'
+                    .'<p class="text-sm font-semibold text-gray-900 dark:text-white">'.e($item['title']).'</p>'
+                    .'<div class="flex flex-wrap items-center gap-2">'
+                    .'<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide '.$coverageBadgeClasses.'">'.e($coverageLabel).'</span>'
+                    .'<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide '.$statusBadgeClasses.'">'.e($item['status']).'</span>'
+                    .'</div>'
+                    .'</div>'
+                    .'<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">'.e($item['detail']).'</p>'
+                    .'</div>';
+            })
+            ->implode('');
+
+        return '<div class="space-y-3">'.$cards.'</div>';
+    }
+
+    private static function hasAnyAssociatedItems(OperationCoordinationService $record): bool
+    {
+        return self::hasMedications($record)
+            || self::hasLaboratories($record)
+            || self::hasStudies($record)
+            || self::hasSpecialties($record);
+    }
+
+    private static function hasMedications(OperationCoordinationService $record): bool
+    {
+        return $record->telemedicinePatientMedications()->exists();
+    }
+
+    private static function hasLaboratories(OperationCoordinationService $record): bool
+    {
+        return $record->telemedicinePatientLabs()->exists();
+    }
+
+    private static function hasStudies(OperationCoordinationService $record): bool
+    {
+        return $record->telemedicinePatientStudies()->exists();
+    }
+
+    private static function hasSpecialties(OperationCoordinationService $record): bool
+    {
+        return $record->telemedicinePatientSpecialties()->exists();
     }
 }

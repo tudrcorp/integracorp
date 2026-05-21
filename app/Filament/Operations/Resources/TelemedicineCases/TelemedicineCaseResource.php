@@ -7,8 +7,6 @@ use App\Filament\Operations\Resources\TelemedicineCases\Pages\EditTelemedicineCa
 use App\Filament\Operations\Resources\TelemedicineCases\Pages\ListTelemedicineCases;
 use App\Filament\Operations\Resources\TelemedicineCases\Pages\ViewTelemedicineCase;
 use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\ConsultationsRelationManager;
-use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\ObservationsRelationManager;
-use App\Filament\Operations\Resources\TelemedicineCases\RelationManagers\TelemedicineDocumentsRelationManager;
 use App\Filament\Operations\Resources\TelemedicineCases\Schemas\TelemedicineCaseForm;
 use App\Filament\Operations\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
 use App\Filament\Operations\Resources\TelemedicineCases\Tables\TelemedicineCasesTable;
@@ -61,6 +59,7 @@ class TelemedicineCaseResource extends Resource
                 'city',
                 'state',
                 'country',
+                'observations.createdBy:id,name,email',
             ]);
     }
 
@@ -73,8 +72,6 @@ class TelemedicineCaseResource extends Resource
     {
         return [
             'consultations' => ConsultationsRelationManager::class,
-            'observations' => ObservationsRelationManager::class,
-            'documents' => TelemedicineDocumentsRelationManager::class,
         ];
     }
 

@@ -1,13 +1,43 @@
-<footer class="w-full flex justify-center items-center px-4 py-6 mb-5 bg-white border-t border-gray-200 text-xs mt-20">
-    <div class="text-center w-full">
-        <span class="text-[#4F8C69] font-medium">© {{ date('Y') }} TuDrGroup</span>
-        <span class="mx-2 text-gray-400">|</span>
-        <span class="text-gray-500">Desarrollado por @Integracorp</span>
-        <span class="mx-2 text-gray-400">|</span>
-        <span class="text-gray-400">v1.0</span>
+@php
+    $year = (int) date('Y');
+    $appVersion = config('app.panel_version', '1.0');
+@endphp
+
+<footer
+    role="contentinfo"
+    aria-label="Pie de panel administrativo"
+    class="fi-panel-footer"
+>
+    <div class="fi-panel-footer__inner">
+        <div class="fi-panel-footer__brand">
+            <x-filament::icon
+                icon="heroicon-s-building-office-2"
+                class="fi-panel-footer__icon"
+            />
+            <p class="fi-panel-footer__copyright">
+                <span class="fi-panel-footer__brand-name">TuDrGroup</span>
+                <span class="fi-panel-footer__rights">© {{ $year }}. Todos los derechos reservados.</span>
+            </p>
+        </div>
+
+        <div class="fi-panel-footer__meta">
+            <p class="fi-panel-footer__credit">
+                <x-filament::icon
+                    icon="heroicon-s-code-bracket-square"
+                    class="fi-panel-footer__icon fi-panel-footer__icon--muted"
+                />
+                <span>
+                    Desarrollado por
+                    <span class="fi-panel-footer__integracorp">IntegraCorp</span>
+                </span>
+            </p>
+
+            <span
+                class="fi-panel-footer__version"
+                title="Versión de la plataforma"
+            >
+                v{{ $appVersion }}
+            </span>
+        </div>
     </div>
 </footer>
-
-
-
-

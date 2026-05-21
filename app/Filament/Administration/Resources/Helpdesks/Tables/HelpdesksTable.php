@@ -8,6 +8,7 @@ use App\Http\Controllers\HelpdeskExportCsvController;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Support\HelpdeskDocumentPaths;
+use App\Support\HelpdeskTableTeamColumns;
 use App\Support\HelpdeskTimelineBuilder;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -118,6 +119,7 @@ class HelpdesksTable
                     ->icon('heroicon-m-user')
                     ->listWithLineBreaks()
                     ->searchable(),
+                ...HelpdeskTableTeamColumns::make(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->icon('heroicon-m-user-circle')

@@ -62,5 +62,30 @@ it('OperationCoordinationServicesTable define acción modal de negociación y pr
         ->and($contents)->toContain("Step::make('Servicio')")
         ->and($contents)->toContain('stickyModalFooter()')
         ->and($contents)->toContain('fi-modal-content]:overflow-y-auto')
-        ->and($contents)->not->toContain("SelectColumn::make('type_service')");
+        ->and($contents)->not->toContain("SelectColumn::make('type_service')")
+        ->and($contents)->not->toContain('RecordActionsPosition::');
+});
+
+it('OperationCoordinationServicesTable define modal para gestionar ítems con cobertura y selección múltiple', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Action::make('manage_service_items')")
+        ->toContain('Width::SevenExtraLarge')
+        ->toContain('fi-coordination-manage-items-modal')
+        ->toContain('fi-coordination-manage-items-wizard')
+        ->toContain('manage_service_items_context')
+        ->toContain('manage_service_order_context')
+        ->toContain('extraAlpineAttributes')
+        ->toContain('manageServiceItemsContextHeader')
+        ->toContain("Step::make('Selección de ítems')")
+        ->toContain("Step::make('Orden de servicio')")
+        ->toContain("Step::make('Cotización')")
+        ->toContain('nonCoveredSelectedManagementItemKeys')
+        ->toContain('createQuoteFromManageModal')
+        ->toContain('renderManagementItemsTable')
+        ->toContain('CheckboxList::make(\'managed_service_item_keys\')')
+        ->toContain('coveredSelectedManagementItemKeys')
+        ->toContain('createServiceOrderFromManageModal');
 });

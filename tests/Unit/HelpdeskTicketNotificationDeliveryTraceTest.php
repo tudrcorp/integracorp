@@ -14,12 +14,17 @@ it('registra trazas de correo y whatsapp en flujo de creacion de tickets helpdes
         $contents = file_get_contents($path);
 
         expect($contents)
-            ->toContain('HelpdeskTicketAssigneeMailService::sendToEachAssigneeWithReport')
-            ->toContain('HelpdeskTicketAssigneeWhatsAppService::dispatchToEachAssigneeWithReport')
-            ->toContain('AUDIT_HELPDESK_TICKET_NOTIFICATIONS_PROCESSED')
-            ->toContain('mail_sent_count')
-            ->toContain('whatsapp_dispatched_count');
+            ->toContain('dispatchHelpdeskCreateNotifications')
+            ->toContain('DispatchesHelpdeskCreateNotifications');
     }
+
+    $traitContents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Concerns/DispatchesHelpdeskCreateNotifications.php');
+
+    expect($traitContents)
+        ->toContain('AUDIT_HELPDESK_TICKET_NOTIFICATIONS_PROCESSED')
+        ->toContain('mail_sent_count')
+        ->toContain('whatsapp_dispatched_count')
+        ->toContain('team_whatsapp_report');
 });
 
 it('mantiene trazabilidad por destinatario en servicios de notificacion helpdesk', function (): void {
@@ -37,6 +42,9 @@ it('mantiene trazabilidad por destinatario en servicios de notificacion helpdesk
         ->toContain('AUDIT_HELPDESK_EMAIL_FAILED')
         ->toContain('AUDIT_HELPDESK_EMAIL_SKIPPED');
 
+    $teamWhatsAppServicePath = dirname(__DIR__, 2).'/app/Services/HelpdeskTeamMembersWhatsAppService.php';
+    $teamWhatsAppServiceContents = file_get_contents($teamWhatsAppServicePath);
+
     expect($whatsAppServiceContents)
         ->toContain('normalizePhoneForWhatsApp')
         ->toContain('dispatchCustomMessageToEachAssigneeWithReport')
@@ -47,6 +55,11 @@ it('mantiene trazabilidad por destinatario en servicios de notificacion helpdesk
         ->toContain('AUDIT_HELPDESK_WHATSAPP_DISPATCHED')
         ->toContain('AUDIT_HELPDESK_WHATSAPP_DISPATCH_FAILED')
         ->toContain('AUDIT_HELPDESK_WHATSAPP_SKIPPED');
+
+    expect($teamWhatsAppServiceContents)
+        ->toContain('dispatchToEachTeamMemberWithReport')
+        ->toContain('buildWhatsAppBodyForTeamTicket')
+        ->toContain('Integrantes del equipo');
 
     expect($jobContents)
         ->toContain('AUDIT_HELPDESK_WHATSAPP_SENT')

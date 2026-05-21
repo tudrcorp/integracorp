@@ -7,6 +7,7 @@ namespace App\Support\Telemedicine;
 use App\Models\TelemedicineListLaboratory;
 use App\Models\TelemedicineListSpecialist;
 use App\Models\TelemedicineListStudy;
+use Illuminate\Support\Str;
 
 /**
  * Resuelve si un ítem de laboratorio, estudio o especialista está cubierto según el catálogo maestro (type).
@@ -43,6 +44,13 @@ final class TelemedicineCoverageCatalog
         return self::itemIsCoveredFromCatalogType(self::$specialistTypeByName[self::normalizeKey($name)] ?? null);
     }
 
+    public static function flushCache(): void
+    {
+        self::$laboratoryTypeByName = null;
+        self::$studyTypeByName = null;
+        self::$specialistTypeByName = null;
+    }
+
     /**
      * Sin coincidencia en catálogo: se asume cubierto (datos provienen del bloque «incluidos»).
      * Con tipo explícito «NO CUBIERTO»: no cubierto.
@@ -58,7 +66,9 @@ final class TelemedicineCoverageCatalog
 
     private static function normalizeKey(string $name): string
     {
-        return trim($name);
+        $normalized = preg_replace('/\s+/u', ' ', trim($name)) ?? trim($name);
+
+        return mb_strtolower(Str::ascii($normalized));
     }
 
     private static function ensureLaboratoryMap(): void
@@ -69,8 +79,15 @@ final class TelemedicineCoverageCatalog
 
         self::$laboratoryTypeByName = TelemedicineListLaboratory::query()
             ->get(['name', 'type'])
-            ->mapWithKeys(fn ($row): array => [self::normalizeKey((string) $row->name) => (string) $row->type])
-            ->all();
+            ->reduce(function (array $carry, $row): array {
+                $name = self::normalizeKey((string) $row->name);
+                $type = trim((string) $row->type);
+                $existing = $carry[$name] ?? null;
+
+                $carry[$name] = self::resolveTypeWithPriority($existing, $type);
+
+                return $carry;
+            }, []);
     }
 
     private static function ensureStudyMap(): void
@@ -81,8 +98,15 @@ final class TelemedicineCoverageCatalog
 
         self::$studyTypeByName = TelemedicineListStudy::query()
             ->get(['name', 'type'])
-            ->mapWithKeys(fn ($row): array => [self::normalizeKey((string) $row->name) => (string) $row->type])
-            ->all();
+            ->reduce(function (array $carry, $row): array {
+                $name = self::normalizeKey((string) $row->name);
+                $type = trim((string) $row->type);
+                $existing = $carry[$name] ?? null;
+
+                $carry[$name] = self::resolveTypeWithPriority($existing, $type);
+
+                return $carry;
+            }, []);
     }
 
     private static function ensureSpecialistMap(): void
@@ -93,7 +117,43 @@ final class TelemedicineCoverageCatalog
 
         self::$specialistTypeByName = TelemedicineListSpecialist::query()
             ->get(['name', 'type'])
-            ->mapWithKeys(fn ($row): array => [self::normalizeKey((string) $row->name) => (string) $row->type])
-            ->all();
+            ->reduce(function (array $carry, $row): array {
+                $name = self::normalizeKey((string) $row->name);
+                $type = trim((string) $row->type);
+                $existing = $carry[$name] ?? null;
+
+                $carry[$name] = self::resolveTypeWithPriority($existing, $type);
+
+                return $carry;
+            }, []);
+    }
+
+    private static function resolveTypeWithPriority(?string $existingType, string $incomingType): string
+    {
+        $existingType = $existingType !== null ? trim($existingType) : null;
+        $incomingType = trim($incomingType);
+
+        if (self::isExplicitCoveredType($existingType)) {
+            return $existingType;
+        }
+
+        if (self::isExplicitCoveredType($incomingType)) {
+            return $incomingType;
+        }
+
+        if ($existingType !== null && $existingType !== '') {
+            return $existingType;
+        }
+
+        return $incomingType;
+    }
+
+    private static function isExplicitCoveredType(?string $catalogType): bool
+    {
+        if ($catalogType === null || trim($catalogType) === '') {
+            return false;
+        }
+
+        return strtoupper(trim($catalogType)) === 'CUBIERTO';
     }
 }

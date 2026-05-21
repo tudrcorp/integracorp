@@ -30,3 +30,16 @@ it('muestra el documento del titular en ubicación y datos fiscales', function (
         ->toContain("TextEntry::make('document')")
         ->toContain("->label('Documento del titular')");
 });
+
+it('incluye el tab de planes asociados con detalle', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateInfolist.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Tab::make('Planes asociados')")
+        ->toContain("RepeatableEntry::make('affiliationCorporatePlans')")
+        ->toContain("TextEntry::make('plan.description')")
+        ->toContain("TextEntry::make('coverage.price')")
+        ->toContain("TextEntry::make('ageRange.range')")
+        ->toContain("TextEntry::make('subtotal_monthly')");
+});

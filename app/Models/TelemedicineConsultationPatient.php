@@ -52,6 +52,7 @@ class TelemedicineConsultationPatient extends Model
         'imc',          // indice de masa corporal
 
         'feedbackOne',
+        'uploaded_documents',
     ];
 
     protected $casts = [
@@ -61,6 +62,7 @@ class TelemedicineConsultationPatient extends Model
         'other_labs' => 'array',
         'other_studies' => 'array',
         'other_specialist' => 'array',
+        'uploaded_documents' => 'array',
     ];
 
     public function telemedicinePatient()

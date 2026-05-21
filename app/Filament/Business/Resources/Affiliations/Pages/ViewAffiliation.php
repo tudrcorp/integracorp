@@ -16,6 +16,11 @@ class ViewAffiliation extends ViewRecord
 {
     protected static string $resource = AffiliationResource::class;
 
+    public function getRelationManagers(): array
+    {
+        return [];
+    }
+
     protected function resolveRecord(int|string $key): Model
     {
         $record = parent::resolveRecord($key);

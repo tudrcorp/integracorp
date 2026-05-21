@@ -30,3 +30,23 @@ it('permite adjuntar múltiples documentos desde la vista de afiliación corpora
         ->toContain('->multiple()')
         ->toContain("'application/pdf'");
 });
+
+it('oculta relation managers en la vista de afiliación corporativa', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Pages/ViewAffiliationCorporate.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain('public function getRelationManagers(): array')
+        ->toContain('return [];');
+});
+
+it('muestra un título personalizado en la vista de afiliación corporativa', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Pages/ViewAffiliationCorporate.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain('public function getTitle(): string|\\Illuminate\\Contracts\\Support\\Htmlable')
+        ->toContain('Afiliación Corporativa Nro:')
+        ->toContain('Empresa: ')
+        ->toContain('badgeStyleForStatus');
+});

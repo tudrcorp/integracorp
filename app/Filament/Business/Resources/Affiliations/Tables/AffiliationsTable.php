@@ -954,22 +954,6 @@ class AffiliationsTable
                                     ->danger()
                                     ->send();
                             }
-                        })
-                        ->hidden(function (Affiliation $record) {
-
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
-                                return true;
-                            }
-
-                            return false;
                         }),
 
                     /**DESCARGAR CERTIFICADO PDF */
@@ -1078,14 +1062,41 @@ class AffiliationsTable
                         ->modalIcon('heroicon-o-arrow-path')
                         ->modalDescription('Se generan el certificado (único) y una tarjeta por cada familiar. Al abrir se cargan las vistas previas y puede enviar por correo al agente.')
                         ->modalContent(function (Affiliation $record): ViewContract {
+                            try {
+                                Log::info('NEGOCIOS-AFILIACIONES: Modal de regeneración de documentos abierto.', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'agent_id' => $record->agent_id,
+                                    'status' => $record->status,
+                                ]);
+
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_DOCUMENTS_REGENERATE_OPENED', 'business.affiliations.regenerate-documents', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'agent_id' => $record->agent_id,
+                                    'status' => $record->status,
+                                ]);
+                            } catch (\Throwable $th) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_DOCUMENTS_REGENERATE_OPEN_FAILED', 'business.affiliations.regenerate-documents', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                Log::error('NEGOCIOS-AFILIACIONES: Error al abrir modal de regeneración de documentos.', [
+                                    'affiliation_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'error' => $th->getMessage(),
+                                ]);
+                            }
+
                             return View::make('filament.business.affiliations.affiliation-documents-preview-modal', [
                                 'affiliation' => $record,
                             ]);
                         })
                         ->modalSubmitAction(false)
                         ->modalCancelActionLabel('Cerrar')
-                        ->action(fn () => null)
-                        ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()->departament)),
+                        ->action(fn () => null),
 
                     /**DESCARGAR O REENVIAR KIT DE AFILIACION */
                     Action::make('download_resend_kit')

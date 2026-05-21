@@ -692,6 +692,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $this->sendNotifications($record);
 
                     if ($record['status'] == 'CONSULTA INICIAL') {
+
                         $dataInformeCorteo = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $this->data['code_reference'],

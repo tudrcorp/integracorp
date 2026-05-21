@@ -117,7 +117,8 @@ class TelemedicinePatientsTable
                         'primary', 'info', 'success', 'warning',
                     ]))
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('businessLine.definition')
                     ->label('Línea de servicio')
                     ->badge()
@@ -125,7 +126,8 @@ class TelemedicinePatientsTable
                         'success', 'warning', 'primary', 'danger',
                     ]))
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('type_affiliation')
                     ->label('Tipo de afiliación')
                     ->badge()
@@ -136,7 +138,8 @@ class TelemedicinePatientsTable
                         default => self::badgeColorFromString($state, ['primary', 'gray', 'info']),
                     })
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('name_corporate')
                     ->label('Corporativo')
                     ->limit(24)

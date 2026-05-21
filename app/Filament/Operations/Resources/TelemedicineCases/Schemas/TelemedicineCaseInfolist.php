@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\TelemedicineCases\Schemas;
 
+use App\Models\ObservationCase;
+use App\Models\OperationDocumentList;
 use App\Models\TelemedicineCase;
+use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
+use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -13,6 +18,9 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Schema as SchemaFacade;
+use Illuminate\Support\Facades\View as ViewFactory;
+use Illuminate\Support\HtmlString;
 
 class TelemedicineCaseInfolist
 {
@@ -24,6 +32,8 @@ class TelemedicineCaseInfolist
     private const IOS_PATIENT_HERO_OUTER = 'relative overflow-hidden rounded-[1.75rem] border border-sky-200/75 bg-gradient-to-b from-sky-50/98 via-white to-slate-50/92 shadow-[0_18px_50px_-14px_rgba(14,165,233,0.28),0_1px_0_0_rgba(255,255,255,0.85)_inset] ring-1 ring-sky-300/45 backdrop-blur-[2px] dark:border-sky-500/30 dark:from-sky-950/55 dark:via-gray-900/96 dark:to-slate-950/92 dark:shadow-[0_22px_60px_-18px_rgba(56,189,248,0.14)] dark:ring-sky-400/25';
 
     private const IOS_PATIENT_HERO_INNER = 'relative rounded-[1.25rem] border border-white/90 bg-white/90 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95),0_10px_28px_-10px_rgba(15,23,42,0.1)] backdrop-blur-md dark:border-white/12 dark:bg-white/[0.07] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_12px_32px_-12px_rgba(0,0,0,0.35)] sm:p-6';
+
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
     private static function statusColor(?string $status): string
     {
@@ -43,6 +53,9 @@ class TelemedicineCaseInfolist
                 Tabs::make('telemedicineCaseInfolistTabs')
                     ->columnSpanFull()
                     ->persistTab()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
                     ->tabs([
                         Tab::make('Paciente en el caso')
                             ->icon(Heroicon::OutlinedUserCircle)
@@ -235,6 +248,134 @@ class TelemedicineCaseInfolist
                                                     ->wrap()
                                                     ->placeholder('—'),
                                             ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Expediente documental')
+                            ->icon(Heroicon::OutlinedFolderOpen)
+                            ->schema([
+                                Section::make('Centro de documentos del caso')
+                                    ->description('Toda la documentación generada y cargada: referencias médicas, coordinación, cotizaciones y órdenes de servicio.')
+                                    ->icon(Heroicon::OutlinedDocumentDuplicate)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        TextEntry::make('case_documents_hub')
+                                            ->hiddenLabel()
+                                            ->html()
+                                            ->state(function (TelemedicineCase $record): HtmlString {
+                                                $documents = TelemedicineCaseDocumentsCatalog::entries($record);
+                                                $documentFilters = SchemaFacade::hasTable('operation_document_lists')
+                                                    ? OperationDocumentList::query()
+                                                        ->pluck('name')
+                                                        ->filter(static fn (mixed $name): bool => is_string($name) && trim($name) !== '')
+                                                        ->map(static fn (string $name): string => trim($name))
+                                                        ->unique()
+                                                        ->sort()
+                                                        ->values()
+                                                        ->all()
+                                                    : [];
+
+                                                return new HtmlString(
+                                                    ViewFactory::make('filament.operations.telemedicine-cases.case-documents-hub', [
+                                                        'documents' => $documents,
+                                                        'documentFilters' => $documentFilters,
+                                                        'caseCode' => filled($record->code)
+                                                            ? (string) $record->code
+                                                            : 'Caso #'.$record->id,
+                                                    ])->render()
+                                                );
+                                            }),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Bitácora')
+                            ->icon(Heroicon::OutlinedBookOpen)
+                            ->schema([
+                                Section::make('Bitácora de observaciones')
+                                    ->description('Historial cronológico de notas y seguimiento del caso. De la más reciente a la más antigua.')
+                                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 3])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('observations_bitacora_total')
+                                                    ->label('Total de notas')
+                                                    ->icon(Heroicon::OutlinedQueueList)
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->state(fn (TelemedicineCase $record): int => $record->observations->count()),
+                                                TextEntry::make('observations_bitacora_latest_at')
+                                                    ->label('Última nota')
+                                                    ->icon(Heroicon::OutlinedClock)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->state(fn (TelemedicineCase $record): string => $record->observations->first()?->created_at?->format('d/m/Y H:i') ?? '—'),
+                                                TextEntry::make('observations_bitacora_latest_author')
+                                                    ->label('Último registro por')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->badge()
+                                                    ->color('gray')
+                                                    ->state(fn (TelemedicineCase $record): string => $record->observations->first()?->createdBy?->name
+                                                        ?? $record->observations->first()?->created_by
+                                                        ?? '—'),
+                                            ]),
+                                        RepeatableEntry::make('observations')
+                                            ->hiddenLabel()
+                                            ->placeholder('Aún no hay observaciones registradas en este caso.')
+                                            ->table([
+                                                TableColumn::make('#')->width('6%'),
+                                                TableColumn::make('Fecha y hora')->width('14%'),
+                                                TableColumn::make('Observación')->width('46%'),
+                                                TableColumn::make('Registrado por')->width('18%'),
+                                                TableColumn::make('Actualización')->width('16%'),
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('id')
+                                                    ->label('#')
+                                                    ->prefix('#')
+                                                    ->weight('bold')
+                                                    ->color('gray'),
+                                                TextEntry::make('created_at')
+                                                    ->label('Fecha y hora')
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->helperText(fn (ObservationCase $record): string => $record->created_at?->diffForHumans() ?? '—'),
+                                                TextEntry::make('description')
+                                                    ->label('Observación')
+                                                    ->wrap()
+                                                    ->prose()
+                                                    ->formatStateUsing(fn (?string $state): string => filled($state)
+                                                        ? trim((string) $state)
+                                                        : '—')
+                                                    ->tooltip(fn (ObservationCase $record): ?string => filled($record->description)
+                                                        ? trim((string) $record->description)
+                                                        : null),
+                                                TextEntry::make('createdBy.name')
+                                                    ->label('Registrado por')
+                                                    ->icon(Heroicon::OutlinedUserCircle)
+                                                    ->weight('medium')
+                                                    ->placeholder('—')
+                                                    ->formatStateUsing(fn (?string $state, ObservationCase $record): string => filled($state)
+                                                        ? (string) $state
+                                                        : (filled($record->created_by) ? 'Usuario #'.$record->created_by : '—'))
+                                                    ->helperText(fn (ObservationCase $record): ?string => $record->createdBy?->email),
+                                                TextEntry::make('updated_at')
+                                                    ->label('Actualización')
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->icon(Heroicon::OutlinedArrowPath)
+                                                    ->placeholder('—')
+                                                    ->helperText(fn (ObservationCase $record): ?string => $record->updated_at && $record->created_at && ! $record->updated_at->equalTo($record->created_at)
+                                                        ? 'Editado: '.$record->updated_at->diffForHumans()
+                                                        : 'Sin ediciones'),
+                                            ])
+                                            ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),

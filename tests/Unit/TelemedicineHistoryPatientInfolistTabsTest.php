@@ -10,6 +10,8 @@ it('infolist de historia clínica usa pestañas por bloque', function (): void {
         ->toContain('Tab::make')
         ->toContain('persistTab')
         ->toContain('Información general')
+        ->toContain('Paciente principal')
+        ->toContain('telemedicinePatient.full_name')
         ->toContain('Familiares')
         ->toContain('Patológicos')
         ->toContain('Hábitos y social')

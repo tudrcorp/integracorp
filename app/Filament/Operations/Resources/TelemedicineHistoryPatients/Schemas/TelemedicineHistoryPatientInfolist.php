@@ -17,7 +17,9 @@ use Filament\Support\Icons\Heroicon;
 
 class TelemedicineHistoryPatientInfolist
 {
-    private const IOS_SECTION_CLASS = 'rounded-[1.75rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
+    private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
@@ -26,43 +28,37 @@ class TelemedicineHistoryPatientInfolist
         return $schema
             ->columns(1)
             ->components([
-                Section::make('Historia clínica')
-                    ->description(fn (?TelemedicineHistoryPatient $record): ?string => self::patientSummaryLine($record))
+                Tabs::make('telemedicineHistoryPatientInfolistTabs')
                     ->columnSpanFull()
-                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                    ->persistTab()
                     ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
+                        'class' => self::TABS_CONTAINER,
                     ])
-                    ->schema([
-                        Tabs::make('telemedicineHistoryPatientInfolistTabs')
-                            ->columnSpanFull()
-                            ->persistTab()
-                            ->tabs([
-                                Tab::make('Información general')
-                                    ->icon(Heroicon::OutlinedIdentification)
-                                    ->schema(self::informacionGeneralTab()),
-                                Tab::make('Familiares')
-                                    ->icon(Heroicon::OutlinedUsers)
-                                    ->schema(self::antecedentesFamiliaresTab()),
-                                Tab::make('Patológicos')
-                                    ->icon(Heroicon::OutlinedBeaker)
-                                    ->schema(self::antecedentesPatologicosTab()),
-                                Tab::make('Hábitos y social')
-                                    ->icon(Heroicon::OutlinedFire)
-                                    ->schema(self::antecedentesNoPatologicosTab()),
-                                Tab::make('Quirúrgicos')
-                                    ->icon(Heroicon::OutlinedScissors)
-                                    ->schema(self::quirurgicosTab()),
-                                Tab::make('Alergias')
-                                    ->icon(Heroicon::OutlinedExclamationTriangle)
-                                    ->schema(self::alergiasTab()),
-                                Tab::make('Medicamentos')
-                                    ->icon(Heroicon::OutlinedArchiveBox)
-                                    ->schema(self::medicamentosTab()),
-                                Tab::make('Ginecológicos')
-                                    ->icon(Heroicon::OutlinedHeart)
-                                    ->schema(self::ginecologicosTab()),
-                            ]),
+                    ->tabs([
+                        Tab::make('Información general')
+                            ->icon(Heroicon::OutlinedIdentification)
+                            ->schema(self::informacionGeneralTab()),
+                        Tab::make('Familiares')
+                            ->icon(Heroicon::OutlinedUsers)
+                            ->schema(self::antecedentesFamiliaresTab()),
+                        Tab::make('Patológicos')
+                            ->icon(Heroicon::OutlinedBeaker)
+                            ->schema(self::antecedentesPatologicosTab()),
+                        Tab::make('Hábitos y social')
+                            ->icon(Heroicon::OutlinedFire)
+                            ->schema(self::antecedentesNoPatologicosTab()),
+                        Tab::make('Quirúrgicos')
+                            ->icon(Heroicon::OutlinedScissors)
+                            ->schema(self::quirurgicosTab()),
+                        Tab::make('Alergias')
+                            ->icon(Heroicon::OutlinedExclamationTriangle)
+                            ->schema(self::alergiasTab()),
+                        Tab::make('Medicamentos')
+                            ->icon(Heroicon::OutlinedArchiveBox)
+                            ->schema(self::medicamentosTab()),
+                        Tab::make('Ginecológicos')
+                            ->icon(Heroicon::OutlinedHeart)
+                            ->schema(self::ginecologicosTab()),
                     ]),
             ]);
     }
@@ -73,9 +69,54 @@ class TelemedicineHistoryPatientInfolist
     private static function informacionGeneralTab(): array
     {
         return [
+            Section::make('Paciente principal')
+                ->description('Datos clave del paciente asociado a la historia clínica.')
+                ->icon(Heroicon::OutlinedUserCircle)
+                ->extraAttributes(['class' => self::SECTION_CARD])
+                ->schema([
+                    Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                        ->extraAttributes([
+                            'class' => self::IOS_INNER_CLASS,
+                        ])
+                        ->schema([
+                            TextEntry::make('telemedicinePatient.full_name')
+                                ->label('Paciente')
+                                ->badge()
+                                ->color('primary')
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.nro_identificacion')
+                                ->label('Cédula / identificación')
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.code')
+                                ->label('Código paciente')
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.sex')
+                                ->label('Sexo')
+                                ->badge()
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.age')
+                                ->label('Edad')
+                                ->suffix(' años')
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.birth_date')
+                                ->label('Fecha de nacimiento')
+                                ->formatStateUsing(fn (mixed $state): string => self::safeDateFormat($state))
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.phone')
+                                ->label('Teléfono principal')
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.phone_contact')
+                                ->label('Teléfono de contacto')
+                                ->placeholder('—'),
+                            TextEntry::make('telemedicinePatient.email')
+                                ->label('Correo')
+                                ->placeholder('—'),
+                        ]),
+                ]),
             Section::make('Identificación y medidas')
                 ->description('Datos de la historia, antropometría y registro.')
                 ->icon(Heroicon::OutlinedIdentification)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Grid::make(['default' => 1, 'sm' => 2, 'lg' => 6])
                         ->extraAttributes([
@@ -134,6 +175,7 @@ class TelemedicineHistoryPatientInfolist
             Section::make('Antecedentes personales y familiares')
                 ->description('Antecedentes declarados a nivel familiar o personal.')
                 ->icon(Heroicon::OutlinedUsers)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                         ->extraAttributes([
@@ -207,6 +249,7 @@ class TelemedicineHistoryPatientInfolist
             Section::make('Antecedentes patológicos')
                 ->description('Condiciones declaradas en la revisión patológica.')
                 ->icon(Heroicon::OutlinedBeaker)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                         ->extraAttributes([
@@ -280,6 +323,7 @@ class TelemedicineHistoryPatientInfolist
             Section::make('Hábitos y antecedentes no patológicos')
                 ->description('Tabaco, alcohol y otros hábitos.')
                 ->icon(Heroicon::OutlinedFire)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                         ->extraAttributes([
@@ -317,6 +361,7 @@ class TelemedicineHistoryPatientInfolist
             Section::make('Antecedentes quirúrgicos')
                 ->description('Intervenciones y procedimientos previos.')
                 ->icon(Heroicon::OutlinedScissors)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Fieldset::make('Detalle')
                         ->schema([
@@ -342,6 +387,7 @@ class TelemedicineHistoryPatientInfolist
             Section::make('Alergias')
                 ->description('Sustancias y reacciones declaradas.')
                 ->icon(Heroicon::OutlinedExclamationTriangle)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Fieldset::make('Lista')
                         ->schema([
@@ -372,6 +418,7 @@ class TelemedicineHistoryPatientInfolist
             Section::make('Medicamentos y suplementos')
                 ->description('Tratamiento farmacológico y suplementación.')
                 ->icon(Heroicon::OutlinedArchiveBox)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Fieldset::make('Uso actual')
                         ->schema([
@@ -405,6 +452,7 @@ class TelemedicineHistoryPatientInfolist
             Section::make('Antecedentes ginecológicos')
                 ->description('Historia obstétrica cuando aplica.')
                 ->icon(Heroicon::OutlinedHeart)
+                ->extraAttributes(['class' => self::SECTION_CARD])
                 ->schema([
                     Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                         ->extraAttributes([
@@ -480,5 +528,40 @@ class TelemedicineHistoryPatientInfolist
         }
 
         return (string) $state;
+    }
+
+    private static function safeDateFormat(mixed $state): string
+    {
+        if ($state === null || $state === '') {
+            return '—';
+        }
+
+        if (is_string($state)) {
+            $value = trim($state);
+
+            if ($value === '') {
+                return '—';
+            }
+
+            foreach (['d/m/Y', 'Y-m-d', 'Y-m-d H:i:s'] as $format) {
+                try {
+                    return \Carbon\Carbon::createFromFormat($format, $value)->format('d/m/Y');
+                } catch (\Throwable) {
+                    // Try next known format.
+                }
+            }
+
+            try {
+                return \Carbon\Carbon::parse($value)->format('d/m/Y');
+            } catch (\Throwable) {
+                return $value;
+            }
+        }
+
+        try {
+            return \Carbon\Carbon::parse((string) $state)->format('d/m/Y');
+        } catch (\Throwable) {
+            return (string) $state;
+        }
     }
 }

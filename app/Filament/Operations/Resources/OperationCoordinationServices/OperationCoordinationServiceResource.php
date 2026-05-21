@@ -28,7 +28,7 @@ class OperationCoordinationServiceResource extends Resource
 {
     protected static ?string $model = OperationCoordinationService::class;
 
-    protected static ?string $navigationLabel = 'Lista de Servicios';
+    protected static ?string $navigationLabel = 'Servicios Medicos';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-square-3-stack-3d';
 

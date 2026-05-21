@@ -31,7 +31,23 @@ it('renderiza bloque con formato enriquecido', function (): void {
     $html = HelpdeskObservationHtmlRenderer::render($obs);
 
     expect($html)->toContain('negrita')
-        ->and($html)->toContain('😀');
+        ->and($html)->toContain('😀')
+        ->and($html)->toContain('helpdesk-notes-feed')
+        ->and($html)->toContain('helpdesk-note-card');
+});
+
+it('renderiza tarjetas con tipo de entrada y avatar', function (): void {
+    $obs = "[20/05/2026 22:12 · GUSTAVO CAMACHO]\nEstado del ticket actualizado de **PENDIENTE** a **EN PROCESO**.\n\n"
+        ."[20/05/2026 22:15 · GUSTAVO CAMACHO]\nNota manual";
+
+    $html = HelpdeskObservationHtmlRenderer::render($obs);
+
+    expect($html)
+        ->toContain('GC')
+        ->toContain('Gustavo Camacho')
+        ->toContain('helpdesk-note-card__badge--status')
+        ->toContain('helpdesk-note-card__badge--note')
+        ->and(HelpdeskObservationHtmlRenderer::countEntries($obs))->toBe(2);
 });
 
 it('mergeObservation acepta cuerpo HTML', function (): void {

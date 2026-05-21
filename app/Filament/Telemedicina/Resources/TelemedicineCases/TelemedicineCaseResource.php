@@ -2,22 +2,19 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineCases;
 
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use App\Models\TelemedicineCase;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\EditTelemedicineCase;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\ViewTelemedicineCase;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\ListTelemedicineCases;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\CreateTelemedicineCase;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseForm;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\Tables\TelemedicineCasesTable;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\ObservationsRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\EditTelemedicineCase;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\ListTelemedicineCases;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Pages\ViewTelemedicineCase;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\ConsultationsRelationManager;
-use App\Filament\Telemedicina\Resources\TelemedicineCases\RelationManagers\TelemedicineDocumentsRelationManager;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseForm;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Tables\TelemedicineCasesTable;
+use App\Models\TelemedicineCase;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
 
 class TelemedicineCaseResource extends Resource
 {
@@ -50,8 +47,6 @@ class TelemedicineCaseResource extends Resource
     {
         return [
             ConsultationsRelationManager::class,
-            ObservationsRelationManager::class,
-            TelemedicineDocumentsRelationManager::class
         ];
     }
 

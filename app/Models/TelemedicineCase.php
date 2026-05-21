@@ -73,7 +73,8 @@ class TelemedicineCase extends Model
 
     public function observations()
     {
-        return $this->hasMany(ObservationCase::class);
+        return $this->hasMany(ObservationCase::class)
+            ->orderByDesc('created_at');
     }
 
     public function telemedicineDocuments()

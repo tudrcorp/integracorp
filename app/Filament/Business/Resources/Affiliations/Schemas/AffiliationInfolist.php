@@ -15,6 +15,8 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +33,16 @@ class AffiliationInfolist
             'ACTIVA', 'PRE-APROBADA' => 'success',
             'PENDIENTE' => 'warning',
             'EXCLUIDO' => 'danger',
+            default => 'gray',
+        };
+    }
+
+    private static function affiliateStatusColor(?string $state): string
+    {
+        return match (strtoupper(trim((string) $state))) {
+            'ACTIVO', 'ACTIVA' => 'success',
+            'INACTIVO', 'INACTIVA' => 'warning',
+            'EXCLUIDO', 'EXCLUIDA' => 'danger',
             default => 'gray',
         };
     }
@@ -67,409 +79,503 @@ class AffiliationInfolist
         return $schema
             ->columns(1)
             ->components([
-                Section::make('Resumen')
-                    ->description(fn (Affiliation $record): string => 'Generada el '.$record->created_at->format('d/m/Y').' a las '.$record->created_at->format('H:i').' · Creada por: '.($record->created_by ?? '—'))
-                    ->icon(Heroicon::OutlinedClipboardDocumentList)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(1)
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
+                Tabs::make('affiliationInfolistTabs')
+                    ->columnSpanFull()
+                    ->persistTab()
+                    ->tabs([
+                        Tab::make('Resumen')
+                            ->icon(Heroicon::OutlinedClipboardDocumentList)
                             ->schema([
-                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                    ->schema([
-                                        TextEntry::make('code')
-                                            ->label('Nº solicitud')
-                                            ->icon(Heroicon::OutlinedHashtag)
-                                            ->badge()
-                                            ->color('success'),
-                                        TextEntry::make('individual_quote.code')
-                                            ->label('Nº cotización')
-                                            ->icon(Heroicon::OutlinedDocumentDuplicate)
-                                            ->badge()
-                                            ->color('success'),
-                                        TextEntry::make('agent_id')
-                                            ->label('Código agente')
-                                            ->icon(Heroicon::OutlinedHashtag)
-                                            ->formatStateUsing(fn ($state): string => 'AGT-000'.(string) $state),
-                                        TextEntry::make('agent.name')
-                                            ->label('Nombre del agente')
-                                            ->icon(Heroicon::OutlinedUser)
-                                            ->placeholder('—'),
-                                        TextEntry::make('created_by')
-                                            ->label('Usuario')
-                                            ->icon(Heroicon::OutlinedUserCircle)
-                                            ->placeholder('—'),
-                                        TextEntry::make('created_at')
-                                            ->label('Fecha')
-                                            ->icon(Heroicon::OutlinedCalendarDays)
-                                            ->dateTime('d/m/Y H:i'),
-                                        TextEntry::make('status')
-                                            ->label('Estatus')
-                                            ->icon(Heroicon::OutlinedSignal)
-                                            ->badge()
-                                            ->color(fn (?string $state): string => self::statusColor($state)),
-                                        TextEntry::make('activation_date')
-                                            ->label('Fecha de activación')
-                                            ->icon(Heroicon::OutlinedInformationCircle)
-                                            ->badge()
-                                            ->color('success')
-                                            ->placeholder('—'),
-                                    ]),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Titular del plan')
-                    ->icon(Heroicon::OutlinedUser)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('full_name_ti')
-                                    ->label('Nombre y apellido')
-                                    ->icon(Heroicon::OutlinedUser)
-                                    ->weight('medium')
-                                    ->placeholder('—'),
-                                TextEntry::make('nro_identificacion_ti')
-                                    ->label('Identificación')
-                                    ->icon(Heroicon::OutlinedIdentification)
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('phone_ti')
-                                    ->label('Teléfono')
-                                    ->icon(Heroicon::OutlinedPhone)
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('email_ti')
-                                    ->label('Correo')
-                                    ->icon(Heroicon::OutlinedEnvelope)
-                                    ->copyable()
-                                    ->placeholder('—')
-                                    ->wrap(),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Responsable de pago (pagador)')
-                    ->icon(Heroicon::OutlinedBanknotes)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('full_name_payer')
-                                    ->label('Nombre y apellido')
-                                    ->icon(Heroicon::OutlinedUser)
-                                    ->weight('medium')
-                                    ->placeholder('—'),
-                                TextEntry::make('nro_identificacion_payer')
-                                    ->label('Identificación')
-                                    ->icon(Heroicon::OutlinedIdentification)
-                                    ->copyable()
-                                    ->placeholder('—'),
-                                TextEntry::make('email_payer')
-                                    ->label('Correo')
-                                    ->icon(Heroicon::OutlinedEnvelope)
-                                    ->copyable()
-                                    ->placeholder('—')
-                                    ->wrap(),
-                                TextEntry::make('phone_payer')
-                                    ->label('Teléfono')
-                                    ->icon(Heroicon::OutlinedPhone)
-                                    ->copyable()
-                                    ->placeholder('—'),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Plan y frecuencia de pago')
-                    ->icon(Heroicon::OutlinedRectangleStack)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('plan.description')
-                                    ->label('Plan')
-                                    ->badge()
-                                    ->color('primary')
-                                    ->placeholder('—')
-                                    ->wrap(),
-                                TextEntry::make('coverage.price')
-                                    ->label('Cobertura')
-                                    ->money('USD')
-                                    ->placeholder('—'),
-                                TextEntry::make('fee_anual')
-                                    ->label('Tarifa anual')
-                                    ->money('USD')
-                                    ->placeholder('—'),
-                                TextEntry::make('payment_frequency')
-                                    ->label('Frecuencia de pago')
-                                    ->badge()
-                                    ->color('primary'),
-                                TextEntry::make('total_amount')
-                                    ->label('Monto total')
-                                    ->money('USD')
-                                    ->weight('semibold')
-                                    ->color('success'),
-                                TextEntry::make('family_members')
-                                    ->label('Miembros de la familia')
-                                    ->suffix(' pers.')
-                                    ->badge()
-                                    ->color('primary'),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Aliado de servicio nivel 1')
-                    ->icon(Heroicon::OutlinedBuildingStorefront)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('aliado_1_name')
-                                    ->label('Nombre del aliado')
-                                    ->icon(Heroicon::OutlinedDocumentText)
-                                    ->badge()
-                                    ->color('primary')
-                                    ->placeholder('—'),
-                                TextEntry::make('date_init_aliado_1')
-                                    ->label('Inicio')
-                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                    ->badge()
-                                    ->color('primary')
-                                    ->placeholder('—'),
-                                TextEntry::make('date_end_aliado_1')
-                                    ->label('Vencimiento')
-                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                    ->badge()
-                                    ->color('primary')
-                                    ->placeholder('—'),
-                                IconEntry::make('vaucher_aliado_1')
-                                    ->label('Voucher')
-                                    ->icon(fn (Affiliation $record): string => filled($record->vaucher_aliado_1)
-                                        ? 'heroicon-o-check-circle'
-                                        : 'heroicon-o-x-circle')
-                                    ->color(fn (Affiliation $record): string => filled($record->vaucher_aliado_1) ? 'success' : 'danger')
-                                    ->url(fn (Affiliation $record): ?string => filled($record->vaucher_aliado_1)
-                                        ? asset('storage/'.$record->vaucher_aliado_1)
-                                        : null)
-                                    ->openUrlInNewTab(),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Aliado de servicio nivel 2')
-                    ->icon(Heroicon::OutlinedBuildingStorefront)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                TextEntry::make('affiliates.vaucherIls')
-                                    ->label('Número de voucher')
-                                    ->icon(Heroicon::OutlinedDocumentText)
-                                    ->badge()
-                                    ->color('primary')
-                                    ->placeholder('—'),
-                                TextEntry::make('affiliates.dateInit')
-                                    ->label('Inicio')
-                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                    ->badge()
-                                    ->color('primary')
-                                    ->placeholder('—'),
-                                TextEntry::make('affiliates.dateEnd')
-                                    ->label('Vencimiento')
-                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                    ->badge()
-                                    ->color('primary')
-                                    ->placeholder('—'),
-                                IconEntry::make('affiliate_level_two_ils')
-                                    ->label('Documento ILS')
-                                    ->icon(function (Affiliation $record): string {
-                                        $doc = $record->affiliates->first()?->document_ils;
-
-                                        return filled($doc) ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle';
-                                    })
-                                    ->color(function (Affiliation $record): string {
-                                        $doc = $record->affiliates->first()?->document_ils;
-
-                                        return filled($doc) ? 'success' : 'danger';
-                                    })
-                                    ->url(function (Affiliation $record): ?string {
-                                        $doc = $record->affiliates->first()?->document_ils;
-
-                                        return filled($doc) ? asset('storage/'.$doc) : null;
-                                    })
-                                    ->openUrlInNewTab(),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Declaración médica')
-                    ->description('Respuestas del cuestionario de salud.')
-                    ->icon(Heroicon::OutlinedHeart)
-                    ->collapsed()
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(['default' => 1, 'lg' => 2])
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                ...self::medicalQuestionIconEntries(),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Expediente digital')
-                    ->description('Adjuntos del expediente individual (PDF e imágenes).')
-                    ->icon(Heroicon::OutlinedFolderOpen)
-                    ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
-                    ])
-                    ->schema([
-                        Grid::make(1)
-                            ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
-                            ])
-                            ->schema([
-                                RepeatableEntry::make('affiliationDocuments')
-                                    ->label('')
-                                    ->placeholder('No hay documentos adjuntos en el expediente.')
-                                    ->table([
-                                        TableColumn::make('Documento')->width('38%'),
-                                        TableColumn::make('Tipo')->width('18%'),
-                                        TableColumn::make('Tamaño')->width('12%'),
-                                        TableColumn::make('Fecha')->width('17%'),
-                                        TableColumn::make('Acciones')->width('15%')->alignStart(),
+                                Section::make('Resumen')
+                                    ->description(fn (Affiliation $record): string => 'Generada el '.$record->created_at->format('d/m/Y').' a las '.$record->created_at->format('H:i').' · Creada por: '.($record->created_by ?? '—'))
+                                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
                                     ])
                                     ->schema([
-                                        TextEntry::make('original_name')
-                                            ->label('Documento')
-                                            ->icon(Heroicon::OutlinedDocumentText)
-                                            ->formatStateUsing(fn (mixed $state, $record): string => filled($state)
-                                                ? (string) $state
-                                                : self::formatStoredFileName($record->file_path))
-                                            ->url(fn ($record): ?string => filled($record->file_path)
-                                                ? asset('storage/'.$record->file_path)
-                                                : null)
-                                            ->openUrlInNewTab()
-                                            ->placeholder('—'),
-                                        TextEntry::make('mime_type')
-                                            ->label('Tipo')
-                                            ->formatStateUsing(function (mixed $state): string {
-                                                if (! filled($state)) {
-                                                    return '—';
-                                                }
-
-                                                $mime = (string) $state;
-
-                                                if (str_starts_with($mime, 'image/')) {
-                                                    return 'Imagen';
-                                                }
-
-                                                return $mime === 'application/pdf' ? 'PDF' : $mime;
-                                            }),
-                                        TextEntry::make('file_size')
-                                            ->label('Tamaño')
-                                            ->formatStateUsing(fn (mixed $state): string => self::formatFileSize(
-                                                is_numeric($state) ? (int) $state : null
-                                            )),
-                                        TextEntry::make('created_at')
-                                            ->label('Fecha')
-                                            ->dateTime('d/m/Y H:i')
-                                            ->placeholder('—'),
-                                        TextEntry::make('expediente_delete')
-                                            ->label('Acciones')
-                                            ->alignStart()
-                                            ->getStateUsing(fn (): string => "\u{00A0}")
-                                            ->formatStateUsing(fn (): string => '')
-                                            ->prefixActions([
-                                                Action::make('downloadExpedienteDocument')
-                                                    ->label('Descargar')
-                                                    ->tooltip('Descargar documento')
-                                                    ->icon(Heroicon::OutlinedArrowDownTray)
-                                                    ->color('verde')
-                                                    ->action(function (AffiliationDocument $document, ViewRecord $livewire) {
-                                                        abort_unless(
-                                                            (int) $document->affiliation_id === (int) $livewire->getRecord()->getKey(),
-                                                            403
-                                                        );
-
-                                                        abort_unless(
-                                                            filled($document->file_path) && Storage::disk('public')->exists($document->file_path),
-                                                            404
-                                                        );
-
-                                                        return response()->download(
-                                                            Storage::disk('public')->path($document->file_path),
-                                                            self::formatStoredFileName($document->original_name ?: $document->file_path) ?? 'documento'
-                                                        );
-                                                    }),
-                                                Action::make('deleteExpedienteDocument')
-                                                    ->label('Eliminar')
-                                                    ->tooltip('Eliminar documento')
-                                                    ->icon(Heroicon::OutlinedTrash)
-                                                    ->color('danger')
-                                                    ->requiresConfirmation()
-                                                    ->modalHeading('Eliminar documento')
-                                                    ->modalDescription('¿Seguro que deseas eliminar este archivo del expediente? Esta acción no se puede deshacer.')
-                                                    ->modalSubmitActionLabel('Eliminar')
-                                                    ->action(function (AffiliationDocument $document, ViewRecord $livewire): void {
-                                                        abort_unless(
-                                                            (int) $document->affiliation_id === (int) $livewire->getRecord()->getKey(),
-                                                            403
-                                                        );
-
-                                                        if (filled($document->file_path)) {
-                                                            Storage::disk('public')->delete($document->file_path);
-                                                        }
-
-                                                        $document->delete();
-
-                                                        $livewire->record->unsetRelation('affiliationDocuments');
-                                                        $livewire->record->load('affiliationDocuments');
-
-                                                        Notification::make()
-                                                            ->success()
-                                                            ->title('Documento eliminado')
-                                                            ->send();
-                                                    }),
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                                    ->schema([
+                                                        TextEntry::make('code')
+                                                            ->label('Nº solicitud')
+                                                            ->icon(Heroicon::OutlinedHashtag)
+                                                            ->badge()
+                                                            ->color('success'),
+                                                        TextEntry::make('individual_quote.code')
+                                                            ->label('Nº cotización')
+                                                            ->icon(Heroicon::OutlinedDocumentDuplicate)
+                                                            ->badge()
+                                                            ->color('success'),
+                                                        TextEntry::make('agent_id')
+                                                            ->label('Código agente')
+                                                            ->icon(Heroicon::OutlinedHashtag)
+                                                            ->formatStateUsing(fn ($state): string => 'AGT-000'.(string) $state),
+                                                        TextEntry::make('agent.name')
+                                                            ->label('Nombre del agente')
+                                                            ->icon(Heroicon::OutlinedUser)
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('created_by')
+                                                            ->label('Usuario')
+                                                            ->icon(Heroicon::OutlinedUserCircle)
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('created_at')
+                                                            ->label('Fecha')
+                                                            ->icon(Heroicon::OutlinedCalendarDays)
+                                                            ->dateTime('d/m/Y H:i'),
+                                                        TextEntry::make('status')
+                                                            ->label('Estatus')
+                                                            ->icon(Heroicon::OutlinedSignal)
+                                                            ->badge()
+                                                            ->color(fn (?string $state): string => self::statusColor($state)),
+                                                        TextEntry::make('activation_date')
+                                                            ->label('Fecha de activación')
+                                                            ->icon(Heroicon::OutlinedInformationCircle)
+                                                            ->badge()
+                                                            ->color('success')
+                                                            ->placeholder('—'),
+                                                    ]),
                                             ]),
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                    ])
-                    ->columnSpanFull(),
+                        Tab::make('Titular del plan')
+                            ->icon(Heroicon::OutlinedUser)
+                            ->schema([
+                                Section::make('Titular del plan')
+                                    ->icon(Heroicon::OutlinedUser)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('full_name_ti')
+                                                    ->label('Nombre y apellido')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->weight('medium')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('nro_identificacion_ti')
+                                                    ->label('Identificación')
+                                                    ->icon(Heroicon::OutlinedIdentification)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('phone_ti')
+                                                    ->label('Teléfono')
+                                                    ->icon(Heroicon::OutlinedPhone)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('email_ti')
+                                                    ->label('Correo')
+                                                    ->icon(Heroicon::OutlinedEnvelope)
+                                                    ->copyable()
+                                                    ->placeholder('—')
+                                                    ->wrap(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Pagador')
+                            ->icon(Heroicon::OutlinedBanknotes)
+                            ->schema([
+                                Section::make('Responsable de pago (pagador)')
+                                    ->icon(Heroicon::OutlinedBanknotes)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('full_name_payer')
+                                                    ->label('Nombre y apellido')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->weight('medium')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('nro_identificacion_payer')
+                                                    ->label('Identificación')
+                                                    ->icon(Heroicon::OutlinedIdentification)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('email_payer')
+                                                    ->label('Correo')
+                                                    ->icon(Heroicon::OutlinedEnvelope)
+                                                    ->copyable()
+                                                    ->placeholder('—')
+                                                    ->wrap(),
+                                                TextEntry::make('phone_payer')
+                                                    ->label('Teléfono')
+                                                    ->icon(Heroicon::OutlinedPhone)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Plan y pagos')
+                            ->icon(Heroicon::OutlinedRectangleStack)
+                            ->schema([
+                                Section::make('Plan y frecuencia de pago')
+                                    ->icon(Heroicon::OutlinedRectangleStack)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('plan.description')
+                                                    ->label('Plan')
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—')
+                                                    ->wrap(),
+                                                TextEntry::make('coverage.price')
+                                                    ->label('Cobertura')
+                                                    ->money('USD')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('fee_anual')
+                                                    ->label('Tarifa anual')
+                                                    ->money('USD')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('payment_frequency')
+                                                    ->label('Frecuencia de pago')
+                                                    ->badge()
+                                                    ->color('primary'),
+                                                TextEntry::make('total_amount')
+                                                    ->label('Monto total')
+                                                    ->money('USD')
+                                                    ->weight('semibold')
+                                                    ->color('success'),
+                                                TextEntry::make('family_members')
+                                                    ->label('Miembros de la familia')
+                                                    ->suffix(' pers.')
+                                                    ->badge()
+                                                    ->color('primary'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Afiliados asociados')
+                            ->icon(Heroicon::OutlinedUsers)
+                            ->schema([
+                                Section::make('Afiliados asociados')
+                                    ->description(fn (Affiliation $record): string => 'Resumen principal de afiliados vinculados. Total: '.(int) ($record->affiliates?->count() ?? 0))
+                                    ->icon(Heroicon::OutlinedUsers)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                RepeatableEntry::make('affiliates')
+                                                    ->label('')
+                                                    ->placeholder('No hay afiliados asociados a esta afiliación.')
+                                                    ->table([
+                                                        TableColumn::make('Nombre'),
+                                                        TableColumn::make('Identificación'),
+                                                        TableColumn::make('Parentesco'),
+                                                        TableColumn::make('Teléfono'),
+                                                        TableColumn::make('Correo'),
+                                                        TableColumn::make('Estatus'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('full_name')
+                                                            ->label('Nombre')
+                                                            ->icon(Heroicon::OutlinedUser)
+                                                            ->weight('medium')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('nro_identificacion')
+                                                            ->label('Identificación')
+                                                            ->icon(Heroicon::OutlinedIdentification)
+                                                            ->copyable()
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('relationship')
+                                                            ->label('Parentesco')
+                                                            ->badge()
+                                                            ->color('gray')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('phone')
+                                                            ->label('Teléfono')
+                                                            ->icon(Heroicon::OutlinedPhone)
+                                                            ->copyable()
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('email')
+                                                            ->label('Correo')
+                                                            ->icon(Heroicon::OutlinedEnvelope)
+                                                            ->copyable()
+                                                            ->placeholder('—')
+                                                            ->wrap(),
+                                                        TextEntry::make('status')
+                                                            ->label('Estatus')
+                                                            ->badge()
+                                                            ->color(fn (?string $state): string => self::affiliateStatusColor($state))
+                                                            ->placeholder('—'),
+                                                    ])
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Aliado nivel 1')
+                            ->icon(Heroicon::OutlinedBuildingStorefront)
+                            ->schema([
+                                Section::make('Aliado de servicio nivel 1')
+                                    ->icon(Heroicon::OutlinedBuildingStorefront)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('aliado_1_name')
+                                                    ->label('Nombre del aliado')
+                                                    ->icon(Heroicon::OutlinedDocumentText)
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('date_init_aliado_1')
+                                                    ->label('Inicio')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('date_end_aliado_1')
+                                                    ->label('Vencimiento')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—'),
+                                                IconEntry::make('vaucher_aliado_1')
+                                                    ->label('Voucher')
+                                                    ->icon(fn (Affiliation $record): string => filled($record->vaucher_aliado_1)
+                                                        ? 'heroicon-o-check-circle'
+                                                        : 'heroicon-o-x-circle')
+                                                    ->color(fn (Affiliation $record): string => filled($record->vaucher_aliado_1) ? 'success' : 'danger')
+                                                    ->url(fn (Affiliation $record): ?string => filled($record->vaucher_aliado_1)
+                                                        ? asset('storage/'.$record->vaucher_aliado_1)
+                                                        : null)
+                                                    ->openUrlInNewTab(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Aliado nivel 2')
+                            ->icon(Heroicon::OutlinedBuildingStorefront)
+                            ->schema([
+                                Section::make('Aliado de servicio nivel 2')
+                                    ->icon(Heroicon::OutlinedBuildingStorefront)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('affiliates.vaucherIls')
+                                                    ->label('Número de voucher')
+                                                    ->icon(Heroicon::OutlinedDocumentText)
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliates.dateInit')
+                                                    ->label('Inicio')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliates.dateEnd')
+                                                    ->label('Vencimiento')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—'),
+                                                IconEntry::make('affiliate_level_two_ils')
+                                                    ->label('Documento ILS')
+                                                    ->icon(function (Affiliation $record): string {
+                                                        $doc = $record->affiliates->first()?->document_ils;
+
+                                                        return filled($doc) ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle';
+                                                    })
+                                                    ->color(function (Affiliation $record): string {
+                                                        $doc = $record->affiliates->first()?->document_ils;
+
+                                                        return filled($doc) ? 'success' : 'danger';
+                                                    })
+                                                    ->url(function (Affiliation $record): ?string {
+                                                        $doc = $record->affiliates->first()?->document_ils;
+
+                                                        return filled($doc) ? asset('storage/'.$doc) : null;
+                                                    })
+                                                    ->openUrlInNewTab(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Declaración médica')
+                            ->icon(Heroicon::OutlinedHeart)
+                            ->schema([
+                                Section::make('Declaración médica')
+                                    ->description('Respuestas del cuestionario de salud.')
+                                    ->icon(Heroicon::OutlinedHeart)
+                                    ->collapsed()
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                ...self::medicalQuestionIconEntries(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Expediente digital')
+                            ->icon(Heroicon::OutlinedFolderOpen)
+                            ->schema([
+                                Section::make('Expediente digital')
+                                    ->description('Adjuntos del expediente individual (PDF e imágenes).')
+                                    ->icon(Heroicon::OutlinedFolderOpen)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                RepeatableEntry::make('affiliationDocuments')
+                                                    ->label('')
+                                                    ->placeholder('No hay documentos adjuntos en el expediente.')
+                                                    ->table([
+                                                        TableColumn::make('Documento')->width('38%'),
+                                                        TableColumn::make('Tipo')->width('18%'),
+                                                        TableColumn::make('Tamaño')->width('12%'),
+                                                        TableColumn::make('Fecha')->width('17%'),
+                                                        TableColumn::make('Acciones')->width('15%')->alignStart(),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('original_name')
+                                                            ->label('Documento')
+                                                            ->icon(Heroicon::OutlinedDocumentText)
+                                                            ->formatStateUsing(fn (mixed $state, $record): string => filled($state)
+                                                                ? (string) $state
+                                                                : self::formatStoredFileName($record->file_path))
+                                                            ->url(fn ($record): ?string => filled($record->file_path)
+                                                                ? asset('storage/'.$record->file_path)
+                                                                : null)
+                                                            ->openUrlInNewTab()
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('mime_type')
+                                                            ->label('Tipo')
+                                                            ->formatStateUsing(function (mixed $state): string {
+                                                                if (! filled($state)) {
+                                                                    return '—';
+                                                                }
+
+                                                                $mime = (string) $state;
+
+                                                                if (str_starts_with($mime, 'image/')) {
+                                                                    return 'Imagen';
+                                                                }
+
+                                                                return $mime === 'application/pdf' ? 'PDF' : $mime;
+                                                            }),
+                                                        TextEntry::make('file_size')
+                                                            ->label('Tamaño')
+                                                            ->formatStateUsing(fn (mixed $state): string => self::formatFileSize(
+                                                                is_numeric($state) ? (int) $state : null
+                                                            )),
+                                                        TextEntry::make('created_at')
+                                                            ->label('Fecha')
+                                                            ->dateTime('d/m/Y H:i')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('expediente_delete')
+                                                            ->label('Acciones')
+                                                            ->alignStart()
+                                                            ->getStateUsing(fn (): string => "\u{00A0}")
+                                                            ->formatStateUsing(fn (): string => '')
+                                                            ->prefixActions([
+                                                                Action::make('downloadExpedienteDocument')
+                                                                    ->label('Descargar')
+                                                                    ->tooltip('Descargar documento')
+                                                                    ->icon(Heroicon::OutlinedArrowDownTray)
+                                                                    ->color('verde')
+                                                                    ->action(function (AffiliationDocument $document, ViewRecord $livewire) {
+                                                                        abort_unless(
+                                                                            (int) $document->affiliation_id === (int) $livewire->getRecord()->getKey(),
+                                                                            403
+                                                                        );
+
+                                                                        abort_unless(
+                                                                            filled($document->file_path) && Storage::disk('public')->exists($document->file_path),
+                                                                            404
+                                                                        );
+
+                                                                        return response()->download(
+                                                                            Storage::disk('public')->path($document->file_path),
+                                                                            self::formatStoredFileName($document->original_name ?: $document->file_path) ?? 'documento'
+                                                                        );
+                                                                    }),
+                                                                Action::make('deleteExpedienteDocument')
+                                                                    ->label('Eliminar')
+                                                                    ->tooltip('Eliminar documento')
+                                                                    ->icon(Heroicon::OutlinedTrash)
+                                                                    ->color('danger')
+                                                                    ->requiresConfirmation()
+                                                                    ->modalHeading('Eliminar documento')
+                                                                    ->modalDescription('¿Seguro que deseas eliminar este archivo del expediente? Esta acción no se puede deshacer.')
+                                                                    ->modalSubmitActionLabel('Eliminar')
+                                                                    ->action(function (AffiliationDocument $document, ViewRecord $livewire): void {
+                                                                        abort_unless(
+                                                                            (int) $document->affiliation_id === (int) $livewire->getRecord()->getKey(),
+                                                                            403
+                                                                        );
+
+                                                                        if (filled($document->file_path)) {
+                                                                            Storage::disk('public')->delete($document->file_path);
+                                                                        }
+
+                                                                        $document->delete();
+
+                                                                        $livewire->record->unsetRelation('affiliationDocuments');
+                                                                        $livewire->record->load('affiliationDocuments');
+
+                                                                        Notification::make()
+                                                                            ->success()
+                                                                            ->title('Documento eliminado')
+                                                                            ->send();
+                                                                    }),
+                                                            ]),
+                                                    ])
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
             ]);
     }
 

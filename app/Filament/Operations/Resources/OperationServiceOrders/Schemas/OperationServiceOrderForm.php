@@ -38,6 +38,8 @@ class OperationServiceOrderForm
                 TextInput::make('created_by')
                     ->required(),
                 TextInput::make('updated_by'),
+                TextInput::make('service_order_pdf_path'),
+                TextInput::make('associated_quote_pdf_path'),
                 Textarea::make('observations')
                     ->columnSpanFull(),
             ]);

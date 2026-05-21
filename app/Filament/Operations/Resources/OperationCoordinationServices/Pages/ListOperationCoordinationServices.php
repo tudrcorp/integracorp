@@ -16,7 +16,7 @@ class ListOperationCoordinationServices extends ListRecords
 {
     protected static string $resource = OperationCoordinationServiceResource::class;
 
-    protected static ?string $title = 'Listado de Ordenes de Servicio';
+    protected static ?string $title = 'Cuadro de Control de Servicios Medicos';
 
     protected function getHeaderActions(): array
     {
