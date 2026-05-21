@@ -278,7 +278,7 @@ class AgendaCorporativa extends Page
                 'is_selected' => $dateKey === $this->selectedWeekDate,
                 'activity_count' => $activitiesByDate->get($dateKey, collect())->count(),
                 'social_platforms' => $this->resolveSocialPlatformsForPublications($publications),
-                'social_badges' => $this->resolveSocialBadgesForPublications($publications),
+                'social_badges' => $this->resolveSocialBadgesForPublications($publications, includeMedia: false),
             ];
 
             $cursor->addDay();
@@ -330,17 +330,18 @@ class AgendaCorporativa extends Page
      *   media_count:int
      * }>
      */
-    private function resolveSocialBadgesForPublications(Collection $publications): array
+    private function resolveSocialBadgesForPublications(Collection $publications, bool $includeMedia = true): array
     {
         return $publications
-            ->map(function (CorporateAgendaSocialPublication $publication): array {
+            ->map(function (CorporateAgendaSocialPublication $publication) use ($includeMedia): array {
                 $platform = $publication->platform?->value ?? (string) $publication->getRawOriginal('platform');
-                $media = $this->resolveSocialPublicationMediaGallery($publication);
+                $media = $includeMedia ? $this->resolveSocialPublicationMediaGallery($publication) : [];
+                $attachments = is_array($publication->attachments) ? $publication->attachments : [];
 
                 return [
                     'platform' => $platform,
                     'media' => $media,
-                    'media_count' => count($media),
+                    'media_count' => count($attachments),
                 ];
             })
             ->filter(fn (array $badge): bool => ($badge['platform'] ?? '') !== '')
@@ -388,8 +389,9 @@ class AgendaCorporativa extends Page
 
     private function buildDayVisuals(Collection $activities, Collection $publications, bool $isCurrentMonth): array
     {
+        $includeHeavyCalendarPayload = ! $this->isActivityModalOpen;
         $socialPlatforms = $this->resolveSocialPlatformsForPublications($publications);
-        $socialBadges = $this->resolveSocialBadgesForPublications($publications);
+        $socialBadges = $this->resolveSocialBadgesForPublications($publications, includeMedia: $includeHeavyCalendarPayload);
 
         if (! $isCurrentMonth) {
             return [
@@ -411,49 +413,51 @@ class AgendaCorporativa extends Page
         $secondary = $activities->skip(1)->first();
         $withMeetCount = $activities->filter(fn (CorporateAgendaActivity $activity): bool => $activity->has_google_meet)->count();
 
-        $avatars = $activities
-            ->flatMap(function (CorporateAgendaActivity $activity): Collection {
-                $activityTitle = $activity->short_description ?: 'Actividad';
+        $avatars = $includeHeavyCalendarPayload
+            ? $activities
+                ->flatMap(function (CorporateAgendaActivity $activity): Collection {
+                    $activityTitle = $activity->short_description ?: 'Actividad';
 
-                return $activity->participants->map(
-                    fn (CorporateAgendaActivityParticipant $participant): array => $this->buildAvatarData(
-                        $participant->colaborador,
-                        $activityTitle,
-                        $participant->invitation_status?->value,
-                    )
-                );
-            })
-            ->filter(fn (array $avatar): bool => filled($avatar['name']))
-            ->groupBy('name')
-            ->map(function (Collection $items): array {
-                /** @var array{name:string|null,email:string|null,avatar_url:string|null,initials:string,activity_titles:array<int,string>,status:string} $first */
-                $first = $items->first();
+                    return $activity->participants->map(
+                        fn (CorporateAgendaActivityParticipant $participant): array => $this->buildAvatarData(
+                            $participant->colaborador,
+                            $activityTitle,
+                            $participant->invitation_status?->value,
+                        )
+                    );
+                })
+                ->filter(fn (array $avatar): bool => filled($avatar['name']))
+                ->groupBy('name')
+                ->map(function (Collection $items): array {
+                    /** @var array{name:string|null,email:string|null,avatar_url:string|null,initials:string,activity_titles:array<int,string>,status:string} $first */
+                    $first = $items->first();
 
-                $activityTitles = $items
-                    ->flatMap(fn (array $item): array => $item['activity_titles'] ?? [])
-                    ->filter(fn (mixed $title): bool => is_string($title) && $title !== '')
-                    ->unique()
-                    ->take(3)
-                    ->values()
-                    ->all();
+                    $activityTitles = $items
+                        ->flatMap(fn (array $item): array => $item['activity_titles'] ?? [])
+                        ->filter(fn (mixed $title): bool => is_string($title) && $title !== '')
+                        ->unique()
+                        ->take(3)
+                        ->values()
+                        ->all();
 
-                $first['activity_titles'] = $activityTitles;
-                $statuses = $items
-                    ->pluck('status')
-                    ->filter(fn (mixed $status): bool => is_string($status) && $status !== '')
-                    ->values();
+                    $first['activity_titles'] = $activityTitles;
+                    $statuses = $items
+                        ->pluck('status')
+                        ->filter(fn (mixed $status): bool => is_string($status) && $status !== '')
+                        ->values();
 
-                $first['status'] = match (true) {
-                    $statuses->contains(CorporateAgendaInvitationStatus::Rejected->value) => CorporateAgendaInvitationStatus::Rejected->value,
-                    $statuses->contains(CorporateAgendaInvitationStatus::Accepted->value) => CorporateAgendaInvitationStatus::Accepted->value,
-                    default => CorporateAgendaInvitationStatus::Pending->value,
-                };
+                    $first['status'] = match (true) {
+                        $statuses->contains(CorporateAgendaInvitationStatus::Rejected->value) => CorporateAgendaInvitationStatus::Rejected->value,
+                        $statuses->contains(CorporateAgendaInvitationStatus::Accepted->value) => CorporateAgendaInvitationStatus::Accepted->value,
+                        default => CorporateAgendaInvitationStatus::Pending->value,
+                    };
 
-                return $first;
-            })
-            ->take(4)
-            ->values()
-            ->all();
+                    return $first;
+                })
+                ->take(4)
+                ->values()
+                ->all()
+            : [];
 
         $progressWidth = $activityCount === 0
             ? 0
