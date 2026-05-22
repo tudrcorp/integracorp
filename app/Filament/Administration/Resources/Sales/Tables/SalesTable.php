@@ -348,6 +348,17 @@ class SalesTable
         return asset('storage/reciboDePago/RDP-'.$record->invoice_number.'.pdf').'?t='.filemtime($path);
     }
 
+    public static function deleteReciboPagoPdfIfExists(Sale $record): bool
+    {
+        $path = self::reciboPagoPdfPath($record);
+
+        if (! is_file($path)) {
+            return false;
+        }
+
+        return unlink($path);
+    }
+
     public static function downloadPdfAction(): Action
     {
         return Action::make('download_pdf')
@@ -464,6 +475,14 @@ class SalesTable
                 ]);
 
                 return false;
+            }
+
+            $hadExistingPdf = self::deleteReciboPagoPdfIfExists($record);
+
+            if ($hadExistingPdf) {
+                self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_EXISTING_REMOVED', 'administration.sales.regenerate-pdf', $record, [
+                    'file_path' => self::reciboPagoPdfPath($record),
+                ]);
             }
 
             $regenerar = $record->type === 'AFILIACION CORPORATIVA'

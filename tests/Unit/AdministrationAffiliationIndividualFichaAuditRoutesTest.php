@@ -29,7 +29,10 @@ it('rutas y controlador de ficha individual registran auditoría esperada', func
         ->toContain('administration.affiliations.ficha.preview')
         ->and($actionsContents)->toContain('affiliation-ficha-preview-modal');
 
-    expect($editContents)->toContain('AffiliationFichaPdfActions::printIndividualPdfAction');
+    expect($editContents)
+        ->toContain('AffiliationFichaPdfActions::printIndividualPdfAction')
+        ->and($editContents)->toContain('getRelationManagersContentComponent')
+        ->and($editContents)->not->toContain('getFormContentComponent');
 
     expect($viewContents)->toContain('AffiliationFichaPdfActions::printIndividualPdfAction');
 });

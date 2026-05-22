@@ -12,15 +12,22 @@ it('configura el infolist de agente business sin error', function (): void {
     expect($configured)->toBeInstanceOf(Schema::class);
 });
 
-it('expone la relación observationCommercialStructures en el infolist', function (): void {
+it('delega al infolist compartido de agentes en business', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)->toContain('SharedAgentInfolist::configure($schema)');
+});
+
+it('expone la relación observationCommercialStructures en el infolist', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
     $source = file_get_contents($path);
 
     expect($source)->toContain("RepeatableEntry::make('observationCommercialStructures')");
 });
 
 it('formatea fecha de nacimiento con FilamentDateDisplay para cadenas d/m/Y', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentInfolist.php';
+    $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
     $source = file_get_contents($path);
 
     expect($source)->toContain('FilamentDateDisplay::toDmy');
@@ -28,18 +35,28 @@ it('formatea fecha de nacimiento con FilamentDateDisplay para cadenas d/m/Y', fu
 });
 
 it('incluye una pestaña de jerarquía comercial con diagrama visual', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentInfolist.php';
-    $source = file_get_contents($path);
+    $agentPath = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
+    $agentSource = file_get_contents($agentPath);
+    $flowchartPath = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/CommercialHierarchyFlowchart.php';
+    $flowchartSource = file_get_contents($flowchartPath);
 
-    expect($source)
+    expect($agentSource)
         ->toContain("Tab::make('Jerarquía')")
         ->toContain("Section::make('Jerarquía comercial')")
+        ->toContain('Diagrama visual para validar si la agencia es general, master y su relación con TUDRENCASA.')
         ->toContain("TextEntry::make('hierarchy_diagram')")
-        ->toContain('renderHierarchyDiagram');
+        ->toContain('CommercialHierarchyFlowchart::renderForAgent');
+
+    expect($flowchartSource)
+        ->toContain('tdg-hierarchy-flowchart-shell')
+        ->toContain('renderForAgent')
+        ->toContain('tdg-hierarchy-flowchart')
+        ->toContain('highlightAgentId')
+        ->not->toContain('renderStructureCardsByAgency');
 });
 
 it('aplica estilos de contenedor de tabs alineados a telemedicina', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentInfolist.php';
+    $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
     $source = file_get_contents($path);
 
     expect($source)

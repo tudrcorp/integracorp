@@ -49,7 +49,7 @@ Schedule::job(new UpdateAnnualCollectionRemainingDays, 'system')->dailyAt('6:00'
  * Prepara renovaciones individuales: recalcula tarifas por edad y crea registro en renovations
  * cuando faltan 30 o más días para la fecha de renovación (effective_date + 1 año).
  */
-Schedule::job(new PrepareAffiliationRenovations, 'renew')->dailyAt('6:00');
+Schedule::job(new PrepareAffiliationRenovations, 'renovations')->dailyAt('6:00');
 
 /**
  * Recalcula días restantes hasta dateEnd (vaucher ILS) en familiares afiliados.

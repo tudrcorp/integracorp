@@ -121,11 +121,11 @@ class ViewAffiliation extends ViewRecord
                     'class' => self::SUCCESS_BUTTON_CLASS,
                 ]),
             EditAction::make()
-                ->label('Editar')
-                ->icon(Heroicon::OutlinedPencil)
+                ->label('Compensar Pago')
+                ->icon(Heroicon::OutlinedCreditCard)
                 ->color(self::PRIMARY_BUTTON_CLASS)
                 ->extraAttributes([
-                    'class' => self::PRIMARY_BUTTON_CLASS,
+                    'class' => self::SUCCESS_BUTTON_CLASS,
                 ]),
         ];
     }
