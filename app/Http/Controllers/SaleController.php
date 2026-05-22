@@ -173,9 +173,14 @@ class SaleController extends Controller
             ini_set('memory_limit', '2048M');
 
             $name_pdf = 'RDP-'.$data['invoice_number'].'.pdf';
+            $pdfPath = public_path('storage/reciboDePago/'.$name_pdf);
+
+            if (is_file($pdfPath)) {
+                unlink($pdfPath);
+            }
 
             $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago', compact('data'));
-            $pdf->save(public_path('storage/reciboDePago/'.$name_pdf));
+            $pdf->save($pdfPath);
 
             SecurityAudit::log('AUDIT_SALE_PAYMENT_PDF_REGENERATED', 'sales.regenerate-aviso-de-pago', [
                 'invoice_number' => $data['invoice_number'] ?? null,
@@ -205,9 +210,14 @@ class SaleController extends Controller
             ini_set('memory_limit', '2048M');
 
             $name_pdf = 'RDP-'.$data['invoice_number'].'.pdf';
+            $pdfPath = public_path('storage/reciboDePago/'.$name_pdf);
+
+            if (is_file($pdfPath)) {
+                unlink($pdfPath);
+            }
 
             $pdf = Pdf::loadView('documents.regenerar-aviso-de-pago-corporativo', compact('data'));
-            $pdf->save(public_path('storage/reciboDePago/'.$name_pdf));
+            $pdf->save($pdfPath);
 
             SecurityAudit::log('AUDIT_SALE_PAYMENT_PDF_REGENERATED', 'sales.regenerate-aviso-de-pago-corporativo', [
                 'invoice_number' => $data['invoice_number'] ?? null,

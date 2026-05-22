@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Administration\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\AgentInfolist as SharedAgentInfolist;
 use Filament\Schemas\Schema;
 
 class AgentInfolist
 {
     public static function configure(Schema $schema): Schema
     {
-        return \App\Filament\Business\Resources\Agents\Schemas\AgentInfolist::configure($schema);
+        return SharedAgentInfolist::configure($schema);
     }
 }
