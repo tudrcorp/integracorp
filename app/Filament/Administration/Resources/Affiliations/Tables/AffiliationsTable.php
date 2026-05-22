@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Administration\Resources\Affiliations\Tables;
 
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
@@ -26,9 +28,11 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -41,94 +45,123 @@ use Illuminate\Support\Facades\Mail;
 
 class AffiliationsTable
 {
+    private const COLUMN_GROUP_HEADER_CLASS = '[&_th]:bg-gradient-to-r [&_th]:from-slate-100/95 [&_th]:via-slate-50/90 [&_th]:to-transparent dark:[&_th]:from-white/[0.08] dark:[&_th]:via-white/[0.04] dark:[&_th]:to-transparent [&_th]:font-semibold [&_th]:text-slate-800 dark:[&_th]:text-slate-100 [&_th]:border-b [&_th]:border-slate-200/80 dark:[&_th]:border-white/10';
+
+    /** @return array<string, Tab> */
+    public static function getTabs(): array
+    {
+        return [
+            'todos' => Tab::make('Todas')
+                ->icon(Heroicon::OutlinedQueueList),
+            'activa' => Tab::make('Activas')
+                ->icon(Heroicon::OutlinedCheckCircle)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'ACTIVA')),
+            'pendiente' => Tab::make('Pendientes')
+                ->icon(Heroicon::OutlinedClock)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'PENDIENTE')),
+            'preaprobada' => Tab::make('Pre-aprobadas')
+                ->icon(Heroicon::OutlinedInformationCircle)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'PRE-APROBADA')),
+            'excluido' => Tab::make('Excluidas')
+                ->icon(Heroicon::OutlinedXCircle)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'EXCLUIDO')),
+        ];
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
-            // ->query(Affiliation::query()->where('ownerAccountManagers', Auth::user()->id))
-            ->query(function (Builder $query) {
+            ->query(function (Builder $query): Builder {
+                $base = Affiliation::query()->with([
+                    'plan',
+                    'coverage',
+                    'individual_quote',
+                    'accountManager',
+                    'agency',
+                    'agent',
+                    'city',
+                    'state',
+                    'country',
+                ]);
+
                 if (Auth::user()->is_accountManagers) {
-                    return Affiliation::query()->where('ownerAccountManagers', Auth::user()->id);
+                    return $base->where('ownerAccountManagers', Auth::user()->id);
                 }
 
-                return Affiliation::query();
+                return $base;
             })
             ->defaultSort('created_at', 'desc')
-            ->heading('AFILIACIONES INDIVIDUALES')
-            ->description('Lista de afiliaciones individuales registradas en el sistema')
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->heading('Afiliaciones individuales')
+            ->description('Plan, titular, montos y estatus. Las emitidas hoy en ACTIVA se resaltan en verde. Use pestañas y filtros para priorizar gestión.')
+            ->striped()
+            ->deferFilters(false)
+            ->filtersFormColumns(2)
+            ->recordTitleAttribute('code')
+            ->emptyStateHeading('Sin afiliaciones individuales')
+            ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros aplicados.')
+            ->emptyStateIcon(Heroicon::OutlinedUserGroup)
             ->recordUrl(fn (Affiliation $record): string => AffiliationResource::getUrl('view', ['record' => $record]))
             ->columns([
-                TextColumn::make('status')
-                    ->sortable()
-                    ->label('Estatus')
+                ColumnGroup::make('Resumen', [
+                    TextColumn::make('status')
+                        ->label('Estatus')
+                        ->sortable()
+                        ->badge()
+                        ->color(fn (?string $state): string => self::statusColor($state))
+                        ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
+                        ->searchable()
+                        ->icon(fn (?string $state): Heroicon => self::statusIcon($state)),
+                    TextColumn::make('code')
+                        ->label('Código')
+                        ->icon(function ($record) {
+                            $now = Carbon::today();
+                            if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                                return 'heroicon-c-star';
+                            }
 
-                    ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'PRE-APROBADA' => 'success',
-                            'ACTIVA' => 'success',
-                            'PENDIENTE' => 'warning',
-                            'EXCLUIDO' => 'danger',
-                        };
-                    })
-                    ->searchable()
-                    ->icon(function (mixed $state): ?string {
-                        return match ($state) {
-                            'PRE-APROBADA' => 'heroicon-c-information-circle',
-                            'ACTIVA' => 'heroicon-s-check-circle',
-                            'PENDIENTE' => 'heroicon-s-exclamation-circle',
-                            'EXCLUIDO' => 'heroicon-c-x-circle',
-                        };
-                    }),
-                TextColumn::make('code')
-                    ->label('Codigo')
-                    ->icon(function ($record) {
-                        $now = Carbon::today();
-                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
-                            return 'heroicon-c-star';
-                        }
+                            return 'heroicon-s-user-group';
+                        })
+                        ->iconColor(function ($record) {
+                            $now = Carbon::today();
+                            // Forzamos el color del icono a rojo (danger) solo cuando el if es true
+                            if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                                return 'danger';
+                            }
 
-                        return 'heroicon-s-user-group';
-                    })
-                    ->iconColor(function ($record) {
-                        $now = Carbon::today();
-                        // Forzamos el color del icono a rojo (danger) solo cuando el if es true
-                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
-                            return 'danger';
-                        }
+                            return null; // Color por defecto (blanco por el estilo extraAttributes)
+                        })
+                        ->badge(function ($record) {
+                            $now = Carbon::today();
+                            if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                                return false;
+                            }
 
-                        return null; // Color por defecto (blanco por el estilo extraAttributes)
-                    })
-                    ->badge(function ($record) {
-                        $now = Carbon::today();
-                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
-                            return false;
-                        }
+                            return true;
+                        })
+                        ->color(function ($record) {
+                            return 'success';
+                        })
+                        ->searchable()
+                        ->tooltip('Clic para ver ficha de afiliación')
+                        ->extraAttributes(function ($record) {
 
-                        return true;
-                    })
-                    ->color(function ($record) {
-                        return 'success';
-                    })
-                    ->searchable()
-                    ->tooltip('Clic para ver ficha de afiliación')
-                    ->extraAttributes(function ($record) {
-
-                        /**
+                            /**
                          * Diseño optimizado con estilo iOS System Green.
                          * Utilizamos el verde oficial de Apple (#34C759) para máximo resaltado.
                          */
-                        $iosGreen = '#34C759';
-                        $iosGreenDark = '#248A3D'; // Para el texto, asegurando legibilidad
-
-                        $now = Carbon::today();
-                        // dd($now->diffInDays($record->created_at));
-
-                        if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
                             $iosGreen = '#34C759';
-                            $iosGreenDark = '#248A3D';
+                            $iosGreenDark = '#248A3D'; // Para el texto, asegurando legibilidad
 
-                            return [
-                                'style' => "
+                            $now = Carbon::today();
+                            // dd($now->diffInDays($record->created_at));
+
+                            if ($record->status == 'ACTIVA' && $record->created_at >= $now) {
+                                $iosGreen = '#34C759';
+                                $iosGreenDark = '#248A3D';
+
+                                return [
+                                    'style' => "
                                         background-color: {$iosGreen} !important;
                                         color: #ffffff !important;
                                         font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
@@ -144,49 +177,51 @@ class AffiliationsTable
                                         align-items: center;
                                         margin-left: 2px;
                                     ",
+                                ];
+                            }
+
+                            return [
+                                'class' => 'cursor-pointer',
                             ];
-                        }
-
-                        return [
-                            'class' => 'cursor-pointer',
-                        ];
-                    }),
-                TextColumn::make('individual_quote.code')
-                    ->label('Nro. de cotización')
-                    ->badge()
-                    ->color('verde')
-                    ->icon('heroicon-m-tag')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('accountManager.name')
-                    ->label('Account Manager')
-                    ->icon('heroicon-o-shield-check')
-                    ->badge()
-                    ->sortable()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            '-----' => 'info',
-                            default => 'success',
-                        };
-                    }),
-                TextColumn::make('agency.name_corporative')
-                    ->label('CO-Agencia')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                    ->color('azulOscuro')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('agent.name')
-                    ->label('Nombre del agente')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                    ->color('azulOscuro')
-                    ->sortable()
-                    ->icon('heroicon-m-user')
-                    ->searchable(),
-
-                // ...
-                ColumnGroup::make('Plan Afiliado', [
+                        }),
+                    TextColumn::make('individual_quote.code')
+                        ->label('Nro. cotización')
+                        ->badge()
+                        ->color('verde')
+                        ->icon(Heroicon::OutlinedTag)
+                        ->sortable()
+                        ->searchable()
+                        ->toggleable(),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Estructura comercial', [
+                    TextColumn::make('accountManager.name')
+                        ->label('Account Manager')
+                        ->icon(Heroicon::OutlinedShieldCheck)
+                        ->badge()
+                        ->sortable()
+                        ->color(fn (?string $state): string => ($state === '-----' || blank($state)) ? 'gray' : 'success')
+                        ->toggleable(),
+                    TextColumn::make('agency.name_corporative')
+                        ->label('Agencia')
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
+                        ->color('azulOscuro')
+                        ->sortable()
+                        ->searchable()
+                        ->toggleable(),
+                    TextColumn::make('agent.name')
+                        ->label('Agente')
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
+                        ->color('azulOscuro')
+                        ->sortable()
+                        ->icon(Heroicon::OutlinedUser)
+                        ->searchable()
+                        ->toggleable(),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Plan y montos', [
                     TextColumn::make('plan.description')
                         ->label('Plan')
                         ->alignCenter()
@@ -270,11 +305,11 @@ class AffiliationsTable
                         ->badge()
                         ->sortable()
                         ->color('success')
-                        ->searchable(),
-                ]),
-
-                // ...
-                ColumnGroup::make('Información del Titular', [
+                        ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Titular', [
                     TextColumn::make('full_name_ti')
                         ->label('Nombre titular')
                         ->badge()
@@ -325,12 +360,12 @@ class AffiliationsTable
                         ->searchable(),
                     TextColumn::make('country.name')
                         ->sortable()
-                        ->label('Pais')
-                        ->searchable(),
-                ]),
-
-                // ...
-                ColumnGroup::make('Información del Tomador', [
+                        ->label('País')
+                        ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Tomador', [
                     TextColumn::make('full_name_payer')
                         ->label('Nombre y Apellido')
                         ->badge()
@@ -345,35 +380,50 @@ class AffiliationsTable
                         ->sortable()
                         ->color('azulOscuro')
                         ->searchable(),
-                ]),
-
-                TextColumn::make('created_by')
-                    ->label('Creado por')
-                    ->sortable()
-                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                    ->searchable(),
-
-                TextColumn::make('activated_at')
-                    ->sortable()
-                    ->label('Fecha de Emisión')
-                    ->color('warning')
-                    ->icon('heroicon-s-calendar')
-                    ->badge()
-                    ->searchable(),
-
-                TextColumn::make('effective_date')
-                    ->sortable()
-                    ->label('Vigencia')
-                    ->color('success')
-                    ->icon('heroicon-s-calendar')
-                    ->badge()
-                    ->searchable(),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Auditoría', [
+                    TextColumn::make('created_by')
+                        ->label('Creado por')
+                        ->sortable()
+                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
+                        ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('activated_at')
+                        ->sortable()
+                        ->label('Fecha de emisión')
+                        ->color('warning')
+                        ->icon(Heroicon::OutlinedCalendar)
+                        ->badge()
+                        ->searchable()
+                        ->toggleable(),
+                    TextColumn::make('effective_date')
+                        ->sortable()
+                        ->label('Vigencia')
+                        ->color('success')
+                        ->icon(Heroicon::OutlinedCalendarDays)
+                        ->badge()
+                        ->searchable()
+                        ->toggleable(),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
             ])
+            ->recordClasses(fn (Affiliation $record): array => self::recordRowClasses($record))
             ->filters([
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options([
+                        'ACTIVA' => 'Activa',
+                        'PENDIENTE' => 'Pendiente',
+                        'PRE-APROBADA' => 'Pre-aprobada',
+                        'EXCLUIDO' => 'Excluida',
+                    ])
+                    ->multiple(),
                 Filter::make('created_at')
+                    ->label('Fecha de registro')
                     ->form([
-                        DatePicker::make('desde'),
-                        DatePicker::make('hasta'),
+                        DatePicker::make('desde')->label('Desde'),
+                        DatePicker::make('hasta')->label('Hasta'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -412,11 +462,11 @@ class AffiliationsTable
             ->filtersTriggerAction(
                 fn (Action $action) => $action
                     ->button()
-                    ->label('Filtros'),
+                    ->label('Filtros')
+                    ->icon(Heroicon::OutlinedFunnel),
             )
             ->recordActions([
                 ActionGroup::make([
-
                     EditAction::make()
                         ->label('Editar')
                         ->color('warning')
@@ -1260,7 +1310,12 @@ class AffiliationsTable
                             }
                         }),
 
-                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                ])
+                    ->label('Acciones')
+                    ->icon(Heroicon::OutlinedEllipsisVertical)
+                    ->button()
+                    ->color('gray')
+                    ->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -1876,5 +1931,51 @@ class AffiliationsTable
                         }),
                 ]),
             ]);
+    }
+
+    private static function statusColor(?string $state): string
+    {
+        return match (strtoupper(trim((string) $state))) {
+            'ACTIVA', 'PRE-APROBADA' => 'success',
+            'PENDIENTE' => 'warning',
+            'EXCLUIDO' => 'danger',
+            default => 'gray',
+        };
+    }
+
+    private static function statusIcon(?string $state): Heroicon
+    {
+        return match (strtoupper(trim((string) $state))) {
+            'ACTIVA' => Heroicon::OutlinedCheckCircle,
+            'PRE-APROBADA' => Heroicon::OutlinedInformationCircle,
+            'PENDIENTE' => Heroicon::OutlinedExclamationCircle,
+            'EXCLUIDO' => Heroicon::OutlinedXCircle,
+            default => Heroicon::OutlinedMinusCircle,
+        };
+    }
+
+    private static function statusLabel(?string $state): string
+    {
+        return match (strtoupper(trim((string) $state))) {
+            'ACTIVA' => 'Activa',
+            'PRE-APROBADA' => 'Pre-aprobada',
+            'PENDIENTE' => 'Pendiente',
+            'EXCLUIDO' => 'Excluida',
+            default => (string) ($state ?? '—'),
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function recordRowClasses(Affiliation $record): array
+    {
+        return match (strtoupper(trim((string) $record->status))) {
+            'EXCLUIDO' => ['bg-red-50/80 dark:bg-red-950/20 border-l-4 border-red-500'],
+            'PENDIENTE' => ['bg-amber-50/70 dark:bg-amber-950/20 border-l-4 border-amber-400'],
+            'PRE-APROBADA' => ['bg-sky-50/60 dark:bg-sky-950/20 border-l-4 border-sky-400'],
+            'ACTIVA' => ['border-l-4 border-emerald-400/80'],
+            default => ['border-l-4 border-transparent'],
+        };
     }
 }

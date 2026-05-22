@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Administration\Resources\Agents\Tables;
 
 use App\Filament\Administration\Resources\Agents\AgentResource;
@@ -18,8 +20,12 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -29,202 +35,243 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\HtmlString;
 
 class AgentsTable
 {
+    private const COLUMN_GROUP_HEADER_CLASS = '[&_th]:bg-gradient-to-r [&_th]:from-slate-100/95 [&_th]:via-slate-50/90 [&_th]:to-transparent dark:[&_th]:from-white/[0.08] dark:[&_th]:via-white/[0.04] dark:[&_th]:to-transparent [&_th]:font-semibold [&_th]:text-slate-800 dark:[&_th]:text-slate-100 [&_th]:border-b [&_th]:border-slate-200/80 dark:[&_th]:border-white/10';
+
+    /** @return array<string, Tab> */
+    public static function getTabs(): array
+    {
+        return [
+            'todos' => Tab::make('Todos')
+                ->icon(Heroicon::OutlinedUserGroup),
+            'activo' => Tab::make('Activos')
+                ->icon(Heroicon::OutlinedCheckCircle)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'ACTIVO')),
+            'inactivo' => Tab::make('Inactivos')
+                ->icon(Heroicon::OutlinedXCircle)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'INACTIVO')),
+            'revision' => Tab::make('Por revisión')
+                ->icon(Heroicon::OutlinedClock)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'POR REVISION')),
+        ];
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
-            ->query(function (Builder $query) {
+            ->query(function (Builder $query): Builder {
+                $base = Agent::query()->with(['typeAgent', 'accountManager']);
+
                 if (Auth::user()->is_accountManagers) {
-                    return Agent::query()->where('ownerAccountManagers', Auth::user()->id);
+                    return $base->where('ownerAccountManagers', Auth::user()->id);
                 }
 
-                return Agent::query();
+                return $base;
             })
-            ->heading('AGENTES')
-            ->description('Lista de agentes registrados en el sistema')
+            ->defaultSort('created_at', 'desc')
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->heading('Agentes')
+            ->description('Corredores y subagentes: jerarquía, contacto, comisiones y estatus. Use pestañas y filtros para priorizar activaciones.')
+            ->striped()
+            ->deferFilters(false)
+            ->filtersFormColumns(2)
+            ->recordTitleAttribute('name')
+            ->emptyStateHeading('Sin agentes')
+            ->emptyStateDescription('No hay agentes registrados o no coinciden con los filtros aplicados.')
+            ->emptyStateIcon(Heroicon::OutlinedAcademicCap)
             ->columns([
-                TextColumn::make('owner_code')
-                    ->label('Jerarquía')
-                    ->prefix(function ($record) {
-                        $agency_type = Agency::select('agency_type_id')
-                            ->where('code', $record->owner_code)
-                            ->with('typeAgency')
-                            ->first();
-
-                        return isset($agency_type) ? $agency_type->typeAgency->definition.' - ' : 'MASTER - ';
-                    })
-                    ->alignCenter()
-                    ->badge()
-                    ->color('success')
-                    ->icon('heroicon-s-building-library')
-                    ->searchable(),
-                TextColumn::make('id')
-                    ->label('Código de agente')
-                    ->prefix('AGT-000')
-                    ->alignCenter()
-                    ->badge()
-                    ->color('azulOscuro')
-                    ->searchable(),
-                TextColumn::make('typeAgent.definition')
-                    ->label('Tipo de Agente')
-                    ->searchable()
-                    ->badge()
-                    ->color('verde'),
-                TextColumn::make('name')
-                    ->label('Razon Social')
-                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                    ->searchable()
-                    ->badge()
-                    ->color('verde')
-                    ->tooltip('Abrir detalle del agente'),
-                TextColumn::make('ci')
-                    ->label('CI:')
-                    ->searchable()
-                    ->badge()
-                    ->color('verde'),
-                TextColumn::make('address')
-                    ->label('Direccion')
-                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
-                    ->searchable(),
-
-                TextColumn::make('email')
-                    ->label('Correo electrónico')
-                    ->searchable(),
-                TextColumn::make('phone')
-                    ->label('Número de Teléfono')
-                    ->searchable(),
-                TextColumn::make('commission_tdec')
-                    ->label('(%) TDEC')
-                    ->suffix('%')
-                    ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-
-                        return 'warning';
-                    })
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('commission_tdec_renewal')
-                    ->label('(%) TDEC Renovacion')
-                    ->suffix('%')
-                    ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-
-                        return 'warning';
-                    })
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('commission_tdev')
-                    ->label('(%) TDEV')
-                    ->suffix('%')
-                    ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-
-                        return 'warning';
-                    })
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('commission_tdev_renewal')
-                    ->label('(%) TDEV Renovacion')
-                    ->suffix('%')
-                    ->badge()
-                    ->color(function ($record): string {
-
-                        if ($record->commission_tdec > 0) {
-                            return 'success';
-                        }
-
-                        return 'warning';
-                    })
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-
-                TextColumn::make('status')
-                    ->label('Estatus')
-                    // ->formatStateUsing(fn (mixed $state): HtmlString => self::iosStatusPill((string) $state))
-                    // ->html()
-                    ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'ACTIVO' => 'success',
-                            'INACTIVO' => 'danger',
-                            'POR REVISION' => 'warning',
-                        };
-                    })
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                TextColumn::make('created_by')
-                    ->label('Creado Por')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_at')
-                    ->label('Fecha de Creación')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->label('Fecha de Modificación')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                ColumnGroup::make('Identificación', [
+                    TextColumn::make('owner_code')
+                        ->label('Jerarquía')
+                        ->icon(Heroicon::OutlinedBuildingLibrary)
+                        ->prefix(fn (Agent $record): string => self::hierarchyPrefix($record))
+                        ->badge()
+                        ->color('success')
+                        ->searchable()
+                        ->placeholder('—')
+                        ->wrap(),
+                    TextColumn::make('id')
+                        ->label('Código')
+                        ->icon(Heroicon::OutlinedHashtag)
+                        ->prefix('AGT-000')
+                        ->weight('semibold')
+                        ->badge()
+                        ->color('azulOscuro')
+                        ->searchable()
+                        ->sortable()
+                        ->action(
+                            ViewAction::make('viewFromCode')
+                                ->url(fn (Agent $record): string => AgentResource::getUrl('view', ['record' => $record])),
+                        ),
+                    TextColumn::make('typeAgent.definition')
+                        ->label('Tipo')
+                        ->badge()
+                        ->color('verde')
+                        ->searchable()
+                        ->placeholder('—'),
+                    TextColumn::make('accountManager.full_name')
+                        ->label('Account manager')
+                        ->icon(Heroicon::OutlinedShieldCheck)
+                        ->badge()
+                        ->color('warning')
+                        ->placeholder('—')
+                        ->toggleable(),
+                    TextColumn::make('name')
+                        ->label('Razón social')
+                        ->icon(Heroicon::OutlinedUser)
+                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
+                        ->searchable()
+                        ->sortable()
+                        ->weight('medium')
+                        ->limit(36)
+                        ->tooltip(fn (Agent $record): ?string => filled($record->name) ? mb_strtoupper($record->name) : null)
+                        ->wrap(),
+                    TextColumn::make('ci')
+                        ->label('CI')
+                        ->searchable()
+                        ->copyable()
+                        ->placeholder('—')
+                        ->toggleable(),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Contacto', [
+                    TextColumn::make('email')
+                        ->label('Correo')
+                        ->icon(Heroicon::OutlinedEnvelope)
+                        ->searchable()
+                        ->copyable()
+                        ->copyMessage('Correo copiado')
+                        ->wrap()
+                        ->placeholder('—'),
+                    TextColumn::make('phone')
+                        ->label('Teléfono')
+                        ->icon(Heroicon::OutlinedPhone)
+                        ->searchable()
+                        ->copyable()
+                        ->placeholder('—'),
+                    TextColumn::make('address')
+                        ->label('Dirección')
+                        ->icon(Heroicon::OutlinedMapPin)
+                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
+                        ->limit(40)
+                        ->tooltip(fn (Agent $record): ?string => filled($record->address) ? mb_strtoupper($record->address) : null)
+                        ->toggleable(isToggledHiddenByDefault: true),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Comisiones', [
+                    TextColumn::make('commission_tdec')
+                        ->label('TDEC')
+                        ->suffix('%')
+                        ->alignCenter()
+                        ->badge()
+                        ->color(fn (Agent $record): string => self::commissionColor($record->commission_tdec))
+                        ->numeric(2)
+                        ->sortable(),
+                    TextColumn::make('commission_tdec_renewal')
+                        ->label('TDEC renov.')
+                        ->suffix('%')
+                        ->alignCenter()
+                        ->badge()
+                        ->color(fn (Agent $record): string => self::commissionColor($record->commission_tdec_renewal))
+                        ->numeric(2)
+                        ->sortable()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('commission_tdev')
+                        ->label('TDEV')
+                        ->suffix('%')
+                        ->alignCenter()
+                        ->badge()
+                        ->color(fn (Agent $record): string => self::commissionColor($record->commission_tdev))
+                        ->numeric(2)
+                        ->sortable(),
+                    TextColumn::make('commission_tdev_renewal')
+                        ->label('TDEV renov.')
+                        ->suffix('%')
+                        ->alignCenter()
+                        ->badge()
+                        ->color(fn (Agent $record): string => self::commissionColor($record->commission_tdev_renewal))
+                        ->numeric(2)
+                        ->sortable()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                ColumnGroup::make('Gestión', [
+                    TextColumn::make('status')
+                        ->label('Estatus')
+                        ->icon(fn (?string $state): Heroicon => self::statusIcon($state))
+                        ->badge()
+                        ->color(fn (?string $state): string => self::statusColor($state))
+                        ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
+                        ->searchable()
+                        ->sortable(),
+                    TextColumn::make('created_by')
+                        ->label('Creado por')
+                        ->placeholder('—')
+                        ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('created_at')
+                        ->label('Alta')
+                        ->icon(Heroicon::OutlinedCalendar)
+                        ->dateTime('d/m/Y H:i')
+                        ->description(fn (Agent $record): string => $record->created_at->diffForHumans())
+                        ->sortable()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('updated_at')
+                        ->label('Actualizado')
+                        ->icon(Heroicon::OutlinedArrowPath)
+                        ->dateTime('d/m/Y H:i')
+                        ->description(fn (Agent $record): string => $record->updated_at->diffForHumans())
+                        ->sortable()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
             ])
+            ->recordClasses(fn (Agent $record): array => self::recordRowClasses($record))
             ->filters([
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options([
+                        'ACTIVO' => 'Activo',
+                        'INACTIVO' => 'Inactivo',
+                        'POR REVISION' => 'Por revisión',
+                    ])
+                    ->placeholder('Todos')
+                    ->native(false),
+                SelectFilter::make('agent_type_id')
+                    ->label('Tipo de agente')
+                    ->relationship('typeAgent', 'definition')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 Filter::make('created_at')
+                    ->label('Fecha de alta')
                     ->form([
-                        DatePicker::make('desde'),
-                        DatePicker::make('hasta'),
+                        DatePicker::make('desde')->label('Desde'),
+                        DatePicker::make('hasta')->label('Hasta'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $q, $date): Builder => $q->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $q, $date): Builder => $q->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Desde '.Carbon::parse($data['desde'])->format('d/m/Y');
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Hasta '.Carbon::parse($data['hasta'])->format('d/m/Y');
                         }
 
                         return $indicators;
                     }),
-                SelectFilter::make('type_agent')
-                    ->label('Tipo agente')
-                    ->relationship('typeAgent', 'definition')
-                    ->attribute('agent_type_id'),
-                SelectFilter::make('status')
-                    ->label('Estatus')
-                    ->options([
-                        'ACTIVO' => 'ACTIVO',
-                        'INACTIVO' => 'INACTIVO',
-                        'POR REVISION' => 'POR REVISION',
-                    ]),
             ])
             ->filtersTriggerAction(
                 fn (Action $action) => $action
@@ -234,11 +281,13 @@ class AgentsTable
             ->recordUrl(fn (Agent $record): string => AgentResource::getUrl('view', ['record' => $record]))
             ->recordActions([
                 ActionGroup::make([
+                    ViewAction::make()
+                        ->label('Ver')
+                        ->icon(Heroicon::OutlinedEye),
                     Action::make('Activate')
-                        ->action(function (Agent $record) {
-
+                        ->label('Activar')
+                        ->action(function (Agent $record): void {
                             try {
-
                                 if ($record->status == 'ACTIVO') {
                                     Notification::make()
                                         ->title('AGENTE YA ACTIVADO')
@@ -248,14 +297,13 @@ class AgentsTable
                                         ->iconColor('danger')
                                         ->send();
 
-                                    return true;
+                                    return;
                                 }
 
                                 $record->status = 'ACTIVO';
                                 $record->save();
                                 LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
 
-                                // 4. creamos el usuario en la tabla users (AGENTES)
                                 $user = new User;
                                 $user->name = $record->name;
                                 $user->email = $record->email;
@@ -268,12 +316,6 @@ class AgentsTable
                                 $user->status = 'ACTIVO';
                                 $user->save();
 
-                                /**
-                                 * Notificacion por correo electronico
-                                 * CARTA DE BIENVENIDA
-                                 *
-                                 * @param  Agent  $record
-                                 */
                                 $record->sendCartaBienvenida($record->id, $record->name, $record->email);
 
                                 $phone = $record->phone;
@@ -307,22 +349,31 @@ class AgentsTable
                                     ->send();
                             }
                         })
-                        ->icon('heroicon-s-check-circle')
+                        ->icon(Heroicon::OutlinedCheckCircle)
                         ->color('success')
                         ->requiresConfirmation(),
                     Action::make('Inactivate')
+                        ->label('Inactivar')
                         ->action(fn (Agent $record) => $record->update(['status' => 'INACTIVO']))
-                        ->icon('heroicon-s-x-circle')
-                        ->color('danger'),
+                        ->icon(Heroicon::OutlinedXCircle)
+                        ->color('danger')
+                        ->requiresConfirmation(),
                     DeleteAction::make()
+                        ->label('Eliminar')
+                        ->icon(Heroicon::OutlinedTrash)
                         ->color('danger'),
-                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
+                ])
+                    ->label('Acciones')
+                    ->icon(Heroicon::OutlinedEllipsisVertical)
+                    ->color('gray')
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('format_phone')
-                        ->label('Formatear Teléfonos')
-                        ->action(function (Collection $records) {
+                        ->label('Formatear teléfonos')
+                        ->icon(Heroicon::OutlinedPhone)
+                        ->action(function (Collection $records): void {
                             foreach ($records as $record) {
                                 $record->phone = UtilsController::normalizeVenezuelanPhone($record->phone);
                                 $record->save();
@@ -330,39 +381,75 @@ class AgentsTable
                         })
                         ->requiresConfirmation()
                         ->color('azulOscuro'),
-
                     DeleteBulkAction::make(),
-                    ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
+                    ExportBulkAction::make()
+                        ->exporter(AgentExporter::class)
+                        ->label('Exportar XLS')
+                        ->color('warning')
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
 
-    private static function iosStatusPill(string $state): HtmlString
+    private static function hierarchyPrefix(Agent $record): string
     {
-        $normalized = strtoupper(trim($state));
+        $agency = Agency::query()
+            ->where('code', $record->owner_code)
+            ->with('typeAgency')
+            ->first();
 
-        [$wrapperClass, $dotClass] = match ($normalized) {
-            'ACTIVO' => [
-                'border-emerald-500/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,.18),0_10px_18px_-12px_rgba(16,185,129,.85)]',
-                'bg-emerald-300',
-            ],
-            'INACTIVO' => [
-                'border-rose-500/35 bg-rose-500/15 text-rose-300 shadow-[0_0_0_1px_rgba(244,63,94,.18),0_10px_18px_-12px_rgba(244,63,94,.85)]',
-                'bg-rose-300',
-            ],
-            default => [
-                'border-amber-500/35 bg-amber-500/15 text-amber-300 shadow-[0_0_0_1px_rgba(245,158,11,.18),0_10px_18px_-12px_rgba(245,158,11,.85)]',
-                'bg-amber-300',
-            ],
+        if (filled($agency?->typeAgency?->definition)) {
+            return $agency->typeAgency->definition.' - ';
+        }
+
+        return 'MASTER - ';
+    }
+
+    private static function commissionColor(mixed $value): string
+    {
+        return ((float) ($value ?? 0)) > 0 ? 'success' : 'warning';
+    }
+
+    private static function statusColor(?string $state): string
+    {
+        return match (strtoupper(trim((string) $state))) {
+            'ACTIVO' => 'success',
+            'INACTIVO' => 'danger',
+            'POR REVISION' => 'warning',
+            default => 'gray',
         };
+    }
 
-        $label = $normalized !== '' ? e($normalized) : 'SIN ESTATUS';
+    private static function statusIcon(?string $state): Heroicon
+    {
+        return match (strtoupper(trim((string) $state))) {
+            'ACTIVO' => Heroicon::OutlinedCheckCircle,
+            'INACTIVO' => Heroicon::OutlinedXCircle,
+            'POR REVISION' => Heroicon::OutlinedClock,
+            default => Heroicon::OutlinedMinusCircle,
+        };
+    }
 
-        return new HtmlString(
-            '<span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide '.$wrapperClass.'">'.
-                '<span class="h-1.5 w-1.5 rounded-full '.$dotClass.'"></span>'.
-                '<span>'.$label.'</span>'.
-            '</span>'
-        );
+    private static function statusLabel(?string $state): string
+    {
+        return match (strtoupper(trim((string) $state))) {
+            'ACTIVO' => 'Activo',
+            'INACTIVO' => 'Inactivo',
+            'POR REVISION' => 'Por revisión',
+            default => (string) ($state ?? '—'),
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function recordRowClasses(Agent $record): array
+    {
+        return match (strtoupper(trim((string) $record->status))) {
+            'INACTIVO' => ['bg-red-50/80 dark:bg-red-950/20 border-l-4 border-red-500'],
+            'POR REVISION' => ['bg-amber-50/70 dark:bg-amber-950/20 border-l-4 border-amber-400'],
+            'ACTIVO' => ['border-l-4 border-emerald-400/80'],
+            default => ['border-l-4 border-transparent'],
+        };
     }
 }

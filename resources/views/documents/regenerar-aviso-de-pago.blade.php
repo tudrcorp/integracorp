@@ -376,7 +376,7 @@
     </div>
 
     <div class="footer-banner">
-        <img src="{{ public_path('storage/bannerFooter.png') }}" alt="">
+        <img src="{{ public_path('storage/bannerFooterv2.png') }}" alt="">
     </div>
 
     <script type="text/php">
