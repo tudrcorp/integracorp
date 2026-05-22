@@ -11,10 +11,13 @@
             margin: 0;
             padding: 0;
             display: flex;
-            justify-content: center; /* Centra horizontalmente */
-            align-items: center; /* Centra verticalmente */
+            justify-content: center;
+            /* Centra horizontalmente */
+            align-items: center;
+            /* Centra verticalmente */
             /* width: 100vw; */
-            min-height: 100vh; /* Altura mínima de la ventana */
+            min-height: 100vh;
+            /* Altura mínima de la ventana */
             /* background-color: #f4f4f9; */
 
         }
@@ -32,45 +35,65 @@
             float: left;
         }
 
-         /* Contenedor padre */
-         .container {
-            width: 700px; /* Ancho fijo del contenedor */
-            display: flex; /* Activa Flexbox */
-            justify-content: space-between; /* Espacio entre los divs */
-            border: 1px solid #ccc; /* Borde para visualizar el contenedor */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
-            border-radius: 8px; /* Bordes redondeados */
-            overflow: hidden; /* Asegura que los bordes redondeados se vean bien */
-         }
-
-         .parent {
-            display: flex; /* Activa Flexbox */
-            width: 100vw; /* Ancho total de la ventana */
-            height: 155px; /* Altura fija */
-            background-color: #f4f4f9; /* Fondo claro */
-            border: 1px solid #ccc; /* Borde para visualizar el contenedor */
-            box-sizing: border-box; /* Incluye el borde en el cálculo del tamaño */
-         }
-
-         /* Divs hijos */
-         .child {
-            flex: 1; /* Cada div ocupa el mismo espacio (50% del ancho del padre) */
+        /* Contenedor padre */
+        .container {
+            width: 700px;
+            /* Ancho fijo del contenedor */
             display: flex;
-            justify-content: center; /* Centra horizontalmente */
-            align-items: center; /* Centra verticalmente */
-            text-align: center; /* Alinea el texto al centro */
+            /* Activa Flexbox */
+            justify-content: space-between;
+            /* Espacio entre los divs */
+            border: 1px solid #ccc;
+            /* Borde para visualizar el contenedor */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            /* Sombra suave */
+            border-radius: 8px;
+            /* Bordes redondeados */
+            overflow: hidden;
+            /* Asegura que los bordes redondeados se vean bien */
+        }
+
+        .parent {
+            display: flex;
+            /* Activa Flexbox */
+            width: 100vw;
+            /* Ancho total de la ventana */
+            height: 155px;
+            /* Altura fija */
+            background-color: #f4f4f9;
+            /* Fondo claro */
+            border: 1px solid #ccc;
+            /* Borde para visualizar el contenedor */
+            box-sizing: border-box;
+            /* Incluye el borde en el cálculo del tamaño */
+        }
+
+        /* Divs hijos */
+        .child {
+            flex: 1;
+            /* Cada div ocupa el mismo espacio (50% del ancho del padre) */
+            display: flex;
+            justify-content: center;
+            /* Centra horizontalmente */
+            align-items: center;
+            /* Centra verticalmente */
+            text-align: center;
+            /* Alinea el texto al centro */
             font-size: 18px;
-            color: #ffffff; /* Texto blanco */
-         }
+            color: #ffffff;
+            /* Texto blanco */
+        }
 
-         /* Estilo específico para cada div */
-         .left {
-            background-color: #00539c; /* Azul oscuro */
-         }
+        /* Estilo específico para cada div */
+        .left {
+            background-color: #00539c;
+            /* Azul oscuro */
+        }
 
-         .right {
-            background-color: #333333; /* Gris oscuro */
-         }
+        .right {
+            background-color: #333333;
+            /* Gris oscuro */
+        }
 
     </style>
 
@@ -122,16 +145,16 @@
         </div>
         <div style="position: absolute; top: 174px; left: 425px; color: #000000; font-weight: bold">
             @if($details['payment_frequency'] == 'MENSUAL')
-                {{ date('d-m-Y', strtotime('+1 month')) }}  
+            {{ date('d-m-Y', strtotime('+1 month')) }}
             @endif
             @if($details['payment_frequency'] == 'TRIMESTRAL')
-                {{ date('d-m-Y', strtotime('+3 month')) }}  
+            {{ date('d-m-Y', strtotime('+3 month')) }}
             @endif
             @if($details['payment_frequency'] == 'SEMESTRAL')
-                {{ date('d-m-Y', strtotime('+6 month')) }}  
+            {{ date('d-m-Y', strtotime('+6 month')) }}
             @endif
             @if($details['payment_frequency'] == 'ANUAL')
-                {{ date('d-m-Y', strtotime('+1 year')) }}  
+            {{ date('d-m-Y', strtotime('+1 year')) }}
             @endif
         </div>
 
@@ -155,7 +178,7 @@
     </div>
 
     <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 25px">
-        <img src="{{ public_path('storage/bannerFooter.png') }}" style="width: 100%;" alt="">
+        <img src="{{ public_path('storage/bannerFooterv2.png') }}" style="width: 100%;" alt="">
     </div>
 
 
@@ -173,5 +196,3 @@
 </body>
 
 </html>
-
-

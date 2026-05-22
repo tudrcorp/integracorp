@@ -1,319 +1,335 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarjeta de Afiliado</title>
+    <title>Aviso de Cobro</title>
 
     <style>
-        /* Estilos generales */
-        body {
+        /**
+         * Márgenes de hoja: en DomPDF el margin del body es más fiable que padding en contenedores al 100%.
+         */
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            /* Centra horizontalmente */
-            align-items: center;
-            /* Centra verticalmente */
-            /* width: 100vw; */
-            min-height: 100vh;
-            /* Altura mínima de la ventana */
-            /* background-color: #f4f4f9; */
-
         }
 
-        /* Logos */
-        .logo-top-right {
-            width: 50px;
-            height: 50px;
-            float: right;
+        body {
+            margin: 15mm 20mm 0 20mm;
+            padding: 0;
+            width: auto;
+            max-width: 100%;
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 12px;
+            color: #000000;
         }
 
-        .logo-bottom-left {
-            width: 50px;
-            height: 50px;
-            float: left;
-        }
-
-        /* Contenedor padre */
-        .container {
-            width: 700px;
-            /* Ancho fijo del contenedor */
-            display: flex;
-            /* Activa Flexbox */
-            justify-content: space-between;
-            /* Espacio entre los divs */
-            border: 1px solid #ccc;
-            /* Borde para visualizar el contenedor */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            /* Sombra suave */
-            border-radius: 8px;
-            /* Bordes redondeados */
-            overflow: hidden;
-            /* Asegura que los bordes redondeados se vean bien */
-        }
-
-        .parent {
-            display: flex;
-            /* Activa Flexbox */
-            width: 100vw;
-            /* Ancho total de la ventana */
-            height: 155px;
-            /* Altura fija */
-            background-color: #f4f4f9;
-            /* Fondo claro */
-            border: 1px solid #ccc;
-            /* Borde para visualizar el contenedor */
-            box-sizing: border-box;
-            /* Incluye el borde en el cálculo del tamaño */
-        }
-
-        /* Divs hijos */
-        .child {
-            flex: 1;
-            /* Cada div ocupa el mismo espacio (50% del ancho del padre) */
-            display: flex;
-            justify-content: center;
-            /* Centra horizontalmente */
-            align-items: center;
-            /* Centra verticalmente */
-            text-align: center;
-            /* Alinea el texto al centro */
-            font-size: 18px;
-            color: #ffffff;
-            /* Texto blanco */
-        }
-
-        /* Estilo específico para cada div */
-        .left {
-            background-color: #00539c;
-            /* Azul oscuro */
-        }
-
-        .right {
-            background-color: #333333;
-            /* Gris oscuro */
-        }
-
-        /* Estilos de la tabla */
-        table {
-            width: 100%;
-            /* Ancho total */
-            border-collapse: separate;
-            /* Necesario para bordes redondeados */
-            border-spacing: 0;
-            /* Elimina el espacio entre celdas */
-            margin: 0 auto;
-            /* Centra la tabla */
-            max-width: 800px;
-            /* Ancho máximo */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            /* Sombra suave */
-            font-size: 14px;
-        }
-
-        /* Encabezados de columna */
-        thead tr th {
-            padding: 5px;
-            /* Espaciado interno */
-            text-align: left;
-            /* Alineación centrada */
-        }
-
-        /* Celdas de la tabla */
-        tbody tr td {
-            /* padding: 10px; */
-            /* Espaciado interno */
-            text-align: left;
-            /* Alineación centrada */
-        }
-
-        /* Separación entre filas */
-        tbody tr {
-            margin-bottom: 5px;
-            /* Espacio entre filas */
-        }
-
-        /* Efecto hover en las filas */
-        tbody tr:hover {
-            background-color: #d9edff;
-            /* Cambia el color al pasar el cursor */
-        }
-
-        .table_info_ti {
-            width: 100%;
-            /* Ancho total */
-            font-size: 14px;
-        }
-
-        .tr_table_info_ti .td_table_info_ti {
-
-            background-color: #ffffff;
-            /* Color gris */
-            text-align: left;
-            /* Alineación centrada */
-            background-color: none;
-            padding: 2px;
-            /* Espaciado interno */
-
-        }
-
-        p {
-            line-height: 0.5;
-        }
-
-        footer {
-            display: flex;
+        /**
+         * Marca de agua de seguridad: logo al 85% del área útil, centrado, baja opacidad.
+         */
+        .document-watermark {
             position: fixed;
-            bottom: 0px;
-            left: 0px;
-            right: 0px;
-            align-items: center;
+            top: 50%;
+            left: 7.5%;
+            width: 85%;
+            max-width: 85%;
+            opacity: 0.08;
+            z-index: 0;
+            pointer-events: none;
             text-align: center;
+            transform: translateY(-50%);
         }
 
+        .document-watermark img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .doc-root {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 100%;
+            padding: 0 0 95mm 0;
+        }
+
+        .doc-header-table {
+            width: 100%;
+            max-width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+
+        .doc-header-table td {
+            vertical-align: top;
+            padding: 0;
+            word-wrap: break-word;
+        }
+
+        .doc-header-logo img {
+            width: 200px;
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .doc-header-meta {
+            text-align: right;
+            font-size: 12px;
+            text-transform: uppercase;
+            line-height: 1.1;
+            padding-left: 8px;
+        }
+
+        .doc-header-meta p {
+            margin: 0 0 1px 0;
+            line-height: 1.1;
+        }
+
+        .client-info {
+            margin-top: 50px;
+            margin-bottom: 18px;
+            font-size: 12px;
+            text-transform: uppercase;
+            line-height: 1.1;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .client-info p {
+            margin: 0 0 2px 0;
+            line-height: 1.1;
+        }
+
+        .client-info .client-address {
+            margin: 0 0 2px 0;
+            line-height: 1.15;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            max-width: 100%;
+        }
+
+        .client-info .client-address strong {
+            display: inline;
+        }
+
+        .client-info .client-address-value {
+            font-weight: bold;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+        }
+
+        .plans-section {
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
+        table.plans-table {
+            width: 100%;
+            max-width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            border-spacing: 0;
+            font-size: 11px;
+        }
+
+        table.plans-table thead th {
+            padding: 6px 4px;
+            text-align: left;
+            border-bottom: 2px solid #000000;
+            text-transform: uppercase;
+        }
+
+        table.plans-table thead th.desc-col {
+            width: 72%;
+        }
+
+        table.plans-table thead th.amount-col {
+            width: 28%;
+            text-align: right;
+        }
+
+        table.plans-table tbody td {
+            padding: 8px 4px;
+            vertical-align: top;
+            text-align: left;
+            word-wrap: break-word;
+        }
+
+        table.plans-table tbody td.amount-col {
+            width: 28%;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        table.plans-table tbody tr.total-row td {
+            font-weight: bold;
+            text-align: right;
+            padding-top: 12px;
+        }
+
+        .plan-line {
+            margin: 0;
+            line-height: 1.35;
+            text-transform: uppercase;
+        }
+
+        /**
+         * Pie legal fijo, alineado a la derecha, justo encima del banner decorativo.
+         */
+        .footer-legal {
+            position: fixed;
+            bottom: 30mm;
+            left: 20mm;
+            right: 20mm;
+            text-align: right;
+            font-size: 10px;
+            text-transform: uppercase;
+            line-height: 1.05;
+            z-index: 10;
+        }
+
+        .footer-legal p {
+            margin: 0;
+            padding: 0;
+            line-height: 1.05;
+            text-align: right;
+        }
+
+        .footer-legal p + p {
+            margin-top: 1px;
+        }
+
+        .footer-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 11;
+            line-height: 0;
+        }
+
+        .footer-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0;
+        }
     </style>
-
-
 </head>
+
 <body>
 
-    <div style="position: absolute; top: 0px; left: 10px; padding: 10px;">
-        <img src="{{ public_path('storage/administracion/logoNewPdfTDEC.png') }}" style="width: 250px; height: auto;" alt="">
-
-    </div>
-    {{-- <div style="position: absolute; top: 320px; opacity: 0.2;">
-        <img src="{{ public_path('storage/logo-marca-agua.png') }}" style="width: 700px; height: auto;" alt="">
-    </div> --}}
-
-    <div style="position: absolute; top: 56px; right: 0px; padding: 10px;">
-        <p class="sin-margen" style="font-size: 14px; text-align: right; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000; ">Aviso de Cobro: Nro. {{ $data['invoice_number'] }}</span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-align: right; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">
-                Fecha de Emisión: {{ $data['emission_date'] }}
-            </span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-align: right; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">
-                Condiciones de Pago: Contado
-            </span>
-        </p>
+    <div class="document-watermark" aria-hidden="true">
+        <img src="{{ public_path('image/logoNewTDG.png') }}" alt="">
     </div>
 
-    <div style="position: absolute; top: 200px; left: 15px; padding: 10px; width: 100%;">
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; ">A Nombre de: {{ $data['full_name_ti'] }}</span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Documento: V-{{ $data['ci_rif_ti'] }}</span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Dirección: {{ $data['address_ti'] }} </span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Teléfono: {{ $data['phone_ti'] }}</span>
-        </p>
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; color: #000000;">Correo: {{ $data['email_ti'] }}</span>
-        </p>
-    </div>
+    <div class="doc-root">
 
-    <div style="display: blog; justify-content: center; align-items: center; text-align: center; margin-top: 370px; padding: 20px">
-        <table>
-            <thead>
-                <tr>
-                    <th style="border-bottom: 2px solid #000000; text-transform: uppercase;">Descripción</th>
-                    <th style="border-bottom: 2px solid #000000; text-align: right; text-transform: uppercase;">Monto</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="font-weight: bold; padding: 5px">
-                        <p style="text-transform: uppercase; line-height: 1.2;">
-                            @if($data['plan'] == 'PLAN ESPECIAL')
-                            {{ $data['plan'] }}
-                            <br> ASISTENCIA MEDICA POR PATOLOGIAS LISTADAS
-                            <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA <br>
-
-                            @endif
-                            @if($data['plan'] == 'PLAN IDEAL')
-                            {{ $data['plan'] }}
-                            <br> ASISTENCIA MEDICA POR ACCIDENTES PERSONALES
-                            <br> COBERTURA GEOGRAFICA – LOCAL VENEZUELA <br>
-                            @endif
-                            @if($data['plan'] == 'PLAN INICIAL')
-                            {{ $data['plan'] }}
-                            <br> ASISTENCIA MEDICA <br>
-                            @endif
-                            @if ($data['coverage'] != null) COBERTURA: {{ number_format($data['coverage'], 2) }}US$<br>@endif
-                            AIFILADO: {{ $data['full_name_ti'] }}
-                        </p>
-                    </td>
-                    <td style="font-weight: bold; text-align: right;">{{ number_format($data['total_amount'], 2) }}US$</td>
-                </tr>
-
-            </tbody>
+        <table class="doc-header-table">
+            <tr>
+                <td style="width: 48%;">
+                    <div class="doc-header-logo">
+                        <img src="{{ public_path('storage/administracion/logoNewPdfTDEC.png') }}" alt="Tu Doctor en Casa">
+                    </div>
+                </td>
+                <td style="width: 52%;">
+                    <div class="doc-header-meta">
+                        <p><strong>Aviso de Cobro: Nro. {{ $data['invoice_number'] }}</strong></p>
+                        <p><strong>Fecha de Emisión: {{ $data['emission_date'] }}</strong></p>
+                        <p><strong>Condiciones de Pago: Contado</strong></p>
+                    </div>
+                </td>
+            </tr>
         </table>
+
+        <div class="client-info">
+            <p><strong>A Nombre de: {{ $data['full_name_ti'] }}</strong></p>
+            <p><strong>Documento: V-{{ $data['ci_rif_ti'] }}</strong></p>
+            <p class="client-address">
+                <strong>Dirección:</strong>
+                <span class="client-address-value">{{ $data['address_ti'] }}</span>
+            </p>
+            <p><strong>Teléfono: {{ $data['phone_ti'] }}</strong></p>
+            <p><strong>Correo: {{ $data['email_ti'] }}</strong></p>
+        </div>
+
+        <div class="plans-section">
+            <table class="plans-table">
+                <thead>
+                    <tr>
+                        <th class="desc-col">Descripción</th>
+                        <th class="amount-col">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="desc-col">
+                            <p class="plan-line">
+                                {{ $data['plan'] }}@if ($data['coverage'] != null), COBERTURA: {{ round($data['coverage']) }}US$@endif<br>
+                                @if ($data['plan'] == 'PLAN ESPECIAL')
+                                    ASISTENCIA MEDICA POR PATOLOGIAS LISTADAS<br>
+                                @endif
+                                @if ($data['plan'] == 'PLAN IDEAL')
+                                    ASISTENCIA MEDICA POR ACCIDENTES PERSONALES<br>
+                                @endif
+                                @if ($data['plan'] == 'PLAN INICIAL')
+                                    ASISTENCIA MEDICA<br>
+                                @endif
+                                COBERTURA GEOGRAFICA – LOCAL VENEZUELA<br>
+                                AFILIADO: {{ $data['full_name_ti'] }}
+                            </p>
+                        </td>
+                        <td class="amount-col">{{ number_format($data['total_amount'], 2) }}US$</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td colspan="2">Monto Total: {{ number_format($data['total_amount'], 2) }}US$</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
     </div>
 
-    <div style="position: absolute; top: 617px; left: 503px; padding: 10px; width: 100%;">
-        <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; ">Monto Total: {{ number_format($data['total_amount'], 2) }}US$</span>
-
-        </p>
+    <div class="footer-legal">
+        <p>TU DOCTOR EN CASA, C. A. J-503583681</p>
+        <p>Oficina Comercial: Av. Francisco de Miranda,<br>
+            Centro Lido, Torre A, Ofic.124<br> El Rosal Caracas - Venezuela</p>
+        <p>Teléfono.: (+58) 212 308 28 55 / 0424-287-5732</p>
+        <p>Email: administracion@tudrencasa.com</p>
+        <p>www.tudrencasa.com</p>
     </div>
 
-    <div style="position: absolute; top: 660px; left: 250px; padding: 10px;">
-        {{-- <img src="{{ public_path('storage/sello-nuevo.png') }}" style="width: 150px; height: auto;" alt=""> --}}
+    <div class="footer-banner">
+        <img src="{{ public_path('storage/bannerFooterv2.png') }}" alt="">
     </div>
-
-    <div style="position: absolute; top: 870px; right: 0px; padding: 0px; width: 100%;">
-        <p class="sin-margen" style="font-size: 12px; text-align: right; text-transform: uppercase;">
-            <span style="color: #000000; ">TU DOCTOR EN CASA, C. A. J-503583681</span>
-        </p>
-        <p class="sin-margen" style="font-size: 12px; text-align: right; text-transform: uppercase;">
-            <span style="color: #000000;">
-                Ofic. Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Ofic124. El Rosal
-            </span>
-        </p>
-        <p class="sin-margen" style="font-size: 12px; text-align: right; text-transform: uppercase;">
-            <span style="color: #000000;">
-                Caracas -Venezuela
-            </span>
-        </p>
-        <p class="sin-margen" style="font-size: 12px; text-align: right; text-transform: uppercase;">
-            <span style="color: #000000; ">Telf.: (+58) 212 308 28 55 Ext. 513</span>
-        </p>
-        <p class="sin-margen" style="font-size: 12px; text-align: right; text-transform: uppercase;">
-            <span style="color: #000000;">
-                Email: administracion@tudrencasa.com
-            </span>
-        </p>
-        <p class="sin-margen" style="font-size: 12px; text-align: right; text-transform: uppercase;">
-            <span style="color: #000000;">
-                www.tudrencasa.com
-            </span>
-        </p>
-
-    </div>
-
-
-    <footer>
-        {{-- <img src="{{ public_path('storage/firma-pdf.png') }}" style="width: 35%" alt=""> --}}
-        <img src="{{ public_path('storage/bannerFooter.png') }}" style="width: 100%; margin-top: 5px" alt="">
-    </footer>
 
     <script type="text/php">
-        if ( isset($pdf) ) {
+        if (isset($pdf)) {
             $pdf->page_script('
-                $font = $fontMetrics->get_font("Arial, Helvetica, sans-serif", "normal");
-                $pdf->text(500, 790, "Pag $PAGE_NUM/$PAGE_COUNT", $font, 10);
+                $font = $fontMetrics->get_font("DejaVu Sans", "normal");
+                $pdf->text(480, 800, "Pag $PAGE_NUM/$PAGE_COUNT", $font, 10);
             ');
         }
     </script>
 </body>
 
 </html>
-

@@ -267,7 +267,7 @@
                     <td>{{ $affiliate['nro_identificacion'] }}</td>
                     <td>{{ $affiliate['birth_date'] }}</td>
                     <td>{{ App\Models\Plan::find($affiliate['plan_id'])->description }}</td>
-                    <td>{{ 
+                    <td>{{
                             app('App\Http\Controllers\UtilsController')->formatMount(App\Models\Coverage::find($affiliate['coverage_id'])->price)
                         }}
                     </td>
@@ -280,7 +280,7 @@
 
     <footer>
         <img src="{{ public_path('storage/firma-pdf.png') }}" style="width: 35%" alt="">
-        <img src="{{ public_path('storage/bannerFooter.png') }}" style="width: 100%; margin-top: 5px" alt="">
+        <img src="{{ public_path('storage/bannerFooterv2.png') }}" style="width: 100%; margin-top: 5px" alt="">
     </footer>
 
 
@@ -295,4 +295,3 @@
 </body>
 
 </html>
-

@@ -37,3 +37,14 @@ it('incluye una pestaña de jerarquía comercial con diagrama visual', function 
         ->toContain("TextEntry::make('hierarchy_diagram')")
         ->toContain('renderHierarchyDiagram');
 });
+
+it('aplica estilos de contenedor de tabs alineados a telemedicina', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain('TABS_CONTAINER')
+        ->toContain('->persistTab()')
+        ->toContain('SECTION_CARD')
+        ->toContain('rounded-[1.25rem]');
+});

@@ -926,7 +926,7 @@ class AgendaCorporativa extends Page
             $selectedCollaborators = collect($this->collaboratorOptions)
                 ->whereIn('id', $selectedIds);
 
-            $firstBatch = collect($this->collaboratorOptions)->take(50);
+            $firstBatch = collect($this->collaboratorOptions)->take(12);
 
             return $selectedCollaborators
                 ->concat($firstBatch)
@@ -942,6 +942,7 @@ class AgendaCorporativa extends Page
 
                 return Str::contains($name, $term) || Str::contains($email, $term);
             })
+            ->take(40)
             ->values()
             ->all();
     }

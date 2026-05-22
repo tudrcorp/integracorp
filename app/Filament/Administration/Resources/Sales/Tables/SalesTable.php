@@ -2,6 +2,7 @@
 
 namespace App\Filament\Administration\Resources\Sales\Tables;
 
+use App\Filament\Administration\Resources\Sales\SaleResource;
 use App\Filament\Exports\SaleExporter;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\SaleController;
@@ -19,7 +20,6 @@ use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
 use Throwable;
 
 class SalesTable
@@ -42,6 +43,7 @@ class SalesTable
             ->heading('VENTAS')
             ->description('Registro de pagos(ventas) de afiliaciones activas')
             ->defaultSort('created_at', 'desc')
+            ->recordUrl(fn (Sale $record): string => SaleResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('created_at')
                     ->sortable()
@@ -60,8 +62,7 @@ class SalesTable
                     ->extraAttributes([
                         'class' => 'cursor-pointer',
                     ])
-                    ->tooltip('Clic para ver workspace de venta')
-                    ->action(self::viewSaleWorkspaceAction()),
+                    ->tooltip('Clic para ver detalle de la venta'),
                 TextColumn::make('affiliation_code')
                     ->sortable()
                     ->badge()
@@ -331,205 +332,253 @@ class SalesTable
             ]);
     }
 
-    private static function viewSaleWorkspaceAction(): Action
+    public static function reciboPagoPdfPath(Sale $record): string
     {
-        return Action::make('view_sale_workspace')
-            ->label('Ver gestión de venta')
-            ->icon('heroicon-o-window')
-            ->color('info')
-            ->modalHeading(fn (Sale $record): string => 'Venta · Recibo #'.($record->invoice_number ?? 'N/A'))
-            ->modalDescription('Workspace operativo con resumen y acciones principales en una sola vista.')
-            ->modalWidth(Width::FiveExtraLarge)
-            ->modalSubmitAction(false)
-            ->modalCancelActionLabel('Cerrar')
-            ->modalContent(function (Sale $record): ViewContract {
-                return view('filament.administration.sales.modals.sale-workspace-modal', [
-                    'sale' => $record->loadMissing(['plan', 'coverage', 'agency', 'agent']),
-                ]);
-            })
-            ->extraModalFooterActions([
-                self::downloadPdfAction(),
-                self::regeneratePdfAction(),
-                self::printInvoiceAction(),
-            ])
-            ->action(fn () => null);
+        return public_path('storage/reciboDePago/RDP-'.$record->invoice_number.'.pdf');
     }
 
-    private static function downloadPdfAction(): Action
+    public static function reciboPagoPreviewUrl(Sale $record): ?string
+    {
+        $path = self::reciboPagoPdfPath($record);
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        return asset('storage/reciboDePago/RDP-'.$record->invoice_number.'.pdf').'?t='.filemtime($path);
+    }
+
+    public static function downloadPdfAction(): Action
     {
         return Action::make('download_pdf')
             ->label('Descargar PDF')
             ->icon('heroicon-s-arrow-down-on-square-stack')
             ->color('verde')
-            ->action(function (Sale $record) {
-                self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_DOWNLOAD_ATTEMPTED', 'administration.sales.download-pdf', $record);
-
-                try {
-                    $path = public_path('storage/reciboDePago/RDP-'.$record->invoice_number.'.pdf');
-
-                    self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_DOWNLOADED', 'administration.sales.download-pdf', $record, [
-                        'file_path' => $path,
-                    ]);
-
-                    LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Ventas', 'DESCARGAR');
-
-                    return response()->download($path);
-                } catch (Throwable $th) {
-                    self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_DOWNLOAD_FAILED', 'administration.sales.download-pdf', $record, [
-                        'error_message' => $th->getMessage(),
-                        'error_class' => $th::class,
-                        'error_file' => $th->getFile(),
-                        'error_line' => $th->getLine(),
-                    ]);
-
-                    LogController::log(Auth::user()->id, 'EXCEPTION', 'administration.sales.download-pdf', $th->getMessage());
-
-                    Notification::make()
-                        ->title('ERROR')
-                        ->body($th->getMessage())
-                        ->icon('heroicon-s-x-circle')
-                        ->iconColor('danger')
-                        ->danger()
-                        ->send();
-
-                    return null;
-                }
+            ->modalHeading('Recibo de pago')
+            ->modalDescription('Vista previa del recibo guardado. Use el botón «Descargar PDF» para guardar el archivo.')
+            ->modalIcon('heroicon-o-document-arrow-down')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalContent(fn (Sale $record): ViewContract => View::make('filament.administration.sales.recibo-pago-view-modal', [
+                'sale' => $record,
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->extraModalFooterActions(fn (Sale $record): array => [
+                Action::make('download_recibo_pdf')
+                    ->label('Descargar PDF')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(fn (): mixed => self::downloadReciboPagoPdfResponse($record)),
+            ])
+            ->action(function (Sale $record): void {
+                self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_PREVIEW_OPENED', 'administration.sales.preview-pdf', $record, [
+                    'file_exists' => is_file(self::reciboPagoPdfPath($record)),
+                ]);
             });
     }
 
-    private static function regeneratePdfAction(): Action
+    private static function downloadReciboPagoPdfResponse(Sale $record): mixed
+    {
+        self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_DOWNLOAD_ATTEMPTED', 'administration.sales.download-pdf', $record);
+
+        try {
+            $path = self::reciboPagoPdfPath($record);
+
+            if (! is_file($path)) {
+                self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_DOWNLOAD_FAILED', 'administration.sales.download-pdf', $record, [
+                    'reason' => 'file_not_found',
+                ]);
+
+                Notification::make()
+                    ->title('¡ERROR!')
+                    ->body('No existe el PDF del recibo. Regenérelo primero.')
+                    ->danger()
+                    ->send();
+
+                return null;
+            }
+
+            self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_DOWNLOADED', 'administration.sales.download-pdf', $record, [
+                'file_path' => $path,
+            ]);
+
+            LogController::log(Auth::user()->id, 'Descarga de documento', 'Modulo Ventas', 'DESCARGAR');
+
+            return response()->download($path);
+        } catch (Throwable $th) {
+            self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_DOWNLOAD_FAILED', 'administration.sales.download-pdf', $record, [
+                'error_message' => $th->getMessage(),
+                'error_class' => $th::class,
+                'error_file' => $th->getFile(),
+                'error_line' => $th->getLine(),
+            ]);
+
+            LogController::log(Auth::user()->id, 'EXCEPTION', 'administration.sales.download-pdf', $th->getMessage());
+
+            Notification::make()
+                ->title('ERROR')
+                ->body($th->getMessage())
+                ->icon('heroicon-s-x-circle')
+                ->iconColor('danger')
+                ->danger()
+                ->send();
+
+            return null;
+        }
+    }
+
+    public static function regeneratePdfAction(): Action
     {
         return Action::make('regenate_pdf')
             ->label('Regenerar PDF')
             ->icon('heroicon-o-wrench-screwdriver')
             ->color('warning')
-            ->requiresConfirmation()
-            ->form([
-                Fieldset::make('Periodo de Vigencia')->schema([
-                    DatePicker::make('desde')->format('d/m/Y'),
-                    DatePicker::make('hasta')->format('d/m/Y'),
-                ])->columnSpanFull()->columns(2),
-            ])
-            ->action(function (Sale $record, array $data) {
-                self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_ATTEMPTED', 'administration.sales.regenerate-pdf', $record, [
-                    'desde' => $data['desde'] ?? null,
-                    'hasta' => $data['hasta'] ?? null,
-                ]);
-
-                try {
-                    /** @var Sale|null $sale */
-                    $sale = Sale::query()->with(['plan', 'coverage'])->find($record->id);
-
-                    if (! $sale) {
-                        self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_FAILED', 'administration.sales.regenerate-pdf', $record, [
-                            'reason' => 'sale_not_found',
-                        ]);
-
-                        Notification::make()
-                            ->title('¡ERROR!')
-                            ->body('No se encontró el registro de venta para regenerar el PDF.')
-                            ->danger()
-                            ->send();
-
-                        return;
-                    }
-
-                    $regenerar = false;
-
-                    if ($record->type === 'AFILIACION INDIVIDUAL') {
-                        $afiliacion = Affiliation::query()->where('code', $sale->affiliation_code)->with('paid_memberships')->first();
-
-                        $payload = [
-                            'invoice_number' => $sale->invoice_number,
-                            'emission_date' => $sale->created_at->format('d/m/Y'),
-                            'payment_method' => $sale->payment_method,
-                            'reference' => $record->reference_payment,
-                            'full_name_ti' => $sale->affiliate_full_name,
-                            'ci_rif_ti' => $sale->affiliate_ci_rif,
-                            'address_ti' => $afiliacion?->adress_ti,
-                            'phone_ti' => $afiliacion?->phone_ti,
-                            'email_ti' => $afiliacion?->email_ti,
-                            'total_amount' => $sale->total_amount,
-                            'plan' => $sale->plan?->description,
-                            'coverage' => $sale->coverage->price ?? null,
-                            'frequency' => $sale->payment_frequency,
-                            'desde' => $data['desde'] ?? null,
-                            'hasta' => $data['hasta'] ?? null,
-                        ];
-
-                        $regenerar = SaleController::regenerateAvisoDePago($payload);
-                    }
-
-                    if ($record->type === 'AFILIACION CORPORATIVA') {
-                        $afiliacion = AffiliationCorporate::query()
-                            ->where('code', $sale->affiliation_code)
-                            ->with(['paid_membership_corporates', 'affiliationCorporatePlans'])
-                            ->first();
-
-                        $payload = [
-                            'invoice_number' => $sale->invoice_number,
-                            'emission_date' => $sale->created_at->format('d/m/Y'),
-                            'payment_method' => $sale->payment_method,
-                            'reference' => $record->reference_payment,
-                            'full_name_ti' => $sale->affiliate_full_name,
-                            'ci_rif_ti' => $afiliacion?->rif,
-                            'address_ti' => $afiliacion?->address,
-                            'phone_ti' => $afiliacion?->phone,
-                            'email_ti' => $afiliacion?->email,
-                            'total_amount' => $sale->total_amount,
-                            'plan' => $afiliacion?->affiliationCorporatePlans?->toArray() ?? [],
-                            'coverage' => $sale->coverage->price ?? null,
-                            'frequency' => $sale->payment_frequency,
-                            'desde' => $data['desde'] ?? null,
-                            'hasta' => $data['hasta'] ?? null,
-                        ];
-
-                        $regenerar = SaleController::regenerateAvisoDePagoCorporate($payload);
-                    }
-
-                    if ($regenerar) {
-                        self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATED', 'administration.sales.regenerate-pdf', $record);
-
-                        Notification::make()
-                            ->title('¡REGENERADO CON EXITO!')
-                            ->body('El recibo de pago se ha regenerado exitosamente.')
-                            ->success()
-                            ->send();
-
-                        return;
-                    }
-
-                    self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_FAILED', 'administration.sales.regenerate-pdf', $record, [
-                        'reason' => 'controller_returned_false',
-                    ]);
-
-                    Notification::make()
-                        ->title('¡ERROR!')
-                        ->body('El recibo de pago no se ha regenerado.')
-                        ->danger()
-                        ->send();
-                } catch (Throwable $th) {
-                    self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_FAILED', 'administration.sales.regenerate-pdf', $record, [
-                        'error_message' => $th->getMessage(),
-                        'error_class' => $th::class,
-                        'error_file' => $th->getFile(),
-                        'error_line' => $th->getLine(),
-                    ]);
-
-                    LogController::log(Auth::user()->id, 'EXCEPTION', 'administration.sales.regenerate-pdf', $th->getMessage());
-
-                    Notification::make()
-                        ->title('ERROR')
-                        ->body($th->getMessage())
-                        ->icon('heroicon-s-x-circle')
-                        ->iconColor('danger')
-                        ->danger()
-                        ->send();
-                }
-            });
+            ->modalHeading('Recibo de pago')
+            ->modalDescription('Indique el periodo de vigencia, genere la vista previa del PDF y confirme antes de descargar.')
+            ->modalIcon('heroicon-o-document-arrow-down')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalContent(fn (Sale $record): ViewContract => View::make('filament.administration.sales.recibo-pago-preview-modal', [
+                'sale' => $record,
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->action(fn () => null);
     }
 
-    private static function printInvoiceAction(): Action
+    /**
+     * @param  array{desde?: string|null, hasta?: string|null}  $vigencia
+     */
+    public static function runRegenerateReciboPago(Sale $record, array $vigencia): bool
+    {
+        self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_ATTEMPTED', 'administration.sales.regenerate-pdf', $record, [
+            'desde' => $vigencia['desde'] ?? null,
+            'hasta' => $vigencia['hasta'] ?? null,
+        ]);
+
+        try {
+            $payload = self::buildReciboPagoRegenerationPayload($record, $vigencia);
+
+            if ($payload === null) {
+                self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_FAILED', 'administration.sales.regenerate-pdf', $record, [
+                    'reason' => 'unsupported_sale_type',
+                ]);
+
+                return false;
+            }
+
+            $regenerar = $record->type === 'AFILIACION CORPORATIVA'
+                ? SaleController::regenerateAvisoDePagoCorporate($payload)
+                : SaleController::regenerateAvisoDePago($payload);
+
+            if ($regenerar) {
+                self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATED', 'administration.sales.regenerate-pdf', $record);
+
+                return true;
+            }
+
+            self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_FAILED', 'administration.sales.regenerate-pdf', $record, [
+                'reason' => 'controller_returned_false',
+            ]);
+
+            return false;
+        } catch (Throwable $th) {
+            self::auditSaleAction('AUDIT_ADMIN_SALES_PDF_REGENERATE_FAILED', 'administration.sales.regenerate-pdf', $record, [
+                'error_message' => $th->getMessage(),
+                'error_class' => $th::class,
+                'error_file' => $th->getFile(),
+                'error_line' => $th->getLine(),
+            ]);
+
+            LogController::log(Auth::user()->id, 'EXCEPTION', 'administration.sales.regenerate-pdf', $th->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * @param  array{desde?: string|null, hasta?: string|null}  $vigencia
+     * @return array<string, mixed>|null
+     */
+    public static function buildReciboPagoRegenerationPayload(Sale $record, array $vigencia): ?array
+    {
+        /** @var Sale|null $sale */
+        $sale = Sale::query()->with(['plan', 'coverage'])->find($record->id);
+
+        if (! $sale) {
+            return null;
+        }
+
+        $desde = self::formatVigenciaDateForPdf($vigencia['desde'] ?? null);
+        $hasta = self::formatVigenciaDateForPdf($vigencia['hasta'] ?? null);
+
+        if ($record->type === 'AFILIACION INDIVIDUAL') {
+            $afiliacion = Affiliation::query()->where('code', $sale->affiliation_code)->with('paid_memberships')->first();
+
+            return [
+                'invoice_number' => $sale->invoice_number,
+                'emission_date' => $sale->created_at->format('d/m/Y'),
+                'payment_method' => $sale->payment_method,
+                'reference' => $record->reference_payment,
+                'full_name_ti' => $sale->affiliate_full_name,
+                'ci_rif_ti' => $sale->affiliate_ci_rif,
+                'address_ti' => $afiliacion?->adress_ti,
+                'phone_ti' => $afiliacion?->phone_ti,
+                'email_ti' => $afiliacion?->email_ti,
+                'total_amount' => $sale->total_amount,
+                'plan' => $sale->plan?->description,
+                'coverage' => $sale->coverage?->price,
+                'frequency' => $sale->payment_frequency,
+                'desde' => $desde,
+                'hasta' => $hasta,
+            ];
+        }
+
+        if ($record->type === 'AFILIACION CORPORATIVA') {
+            $afiliacion = AffiliationCorporate::query()
+                ->where('code', $sale->affiliation_code)
+                ->with(['paid_membership_corporates', 'affiliationCorporatePlans'])
+                ->first();
+
+            return [
+                'invoice_number' => $sale->invoice_number,
+                'emission_date' => $sale->created_at->format('d/m/Y'),
+                'payment_method' => $sale->payment_method,
+                'reference' => $record->reference_payment,
+                'full_name_ti' => $sale->affiliate_full_name,
+                'ci_rif_ti' => $afiliacion?->rif,
+                'address_ti' => $afiliacion?->address,
+                'phone_ti' => $afiliacion?->phone,
+                'email_ti' => $afiliacion?->email,
+                'total_amount' => $sale->total_amount,
+                'plan' => $afiliacion?->affiliationCorporatePlans?->toArray() ?? [],
+                'coverage' => $sale->coverage?->price,
+                'frequency' => $sale->payment_frequency,
+                'desde' => $desde,
+                'hasta' => $hasta,
+            ];
+        }
+
+        return null;
+    }
+
+    private static function formatVigenciaDateForPdf(?string $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            if (str_contains((string) $value, '/')) {
+                return (string) $value;
+            }
+
+            return Carbon::parse($value)->format('d/m/Y');
+        } catch (Throwable) {
+            return (string) $value;
+        }
+    }
+
+    public static function printInvoiceAction(): Action
     {
         return Action::make('print_invoice')
             ->label('Generar Factura')

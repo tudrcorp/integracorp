@@ -27,6 +27,9 @@
                             @case ('percent')
                                 <x-heroicon-o-calculator class="h-5 w-5" />
                                 @break
+                            @case ('hierarchy')
+                                <x-heroicon-o-squares-2x2 class="h-5 w-5" />
+                                @break
                             @case ('map')
                                 <x-heroicon-o-map-pin class="h-5 w-5" />
                                 @break
@@ -49,6 +52,9 @@
                 <div class="flex flex-wrap gap-2 px-4 py-3">
                     <a
                         href="{{ $report['csvUrl'] }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        wire:navigate="false"
                         class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-sm transition hover:border-primary-400/60 hover:bg-primary-50/80 hover:text-primary-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-white/15 dark:bg-gray-950 dark:text-gray-100 dark:hover:border-primary-400/40 dark:hover:bg-primary-500/10"
                     >
                         <x-heroicon-o-arrow-down-tray class="h-4 w-4 shrink-0" />
@@ -56,6 +62,9 @@
                     </a>
                     <a
                         href="{{ $report['xlsxUrl'] }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        wire:navigate="false"
                         class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 dark:ring-offset-gray-900"
                     >
                         <x-heroicon-o-document-text class="h-4 w-4 shrink-0" />

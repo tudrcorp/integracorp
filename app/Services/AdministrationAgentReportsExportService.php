@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Agent;
+use App\Support\CommercialStructure\AgentHierarchyCommissionResolver;
 use App\Support\CommercialStructureBankingExportColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,8 @@ final class AdministrationAgentReportsExportService
 
     public const REPORT_COMMISSION_PERCENTAGES = 'commission_percentages';
 
+    public const REPORT_COMMISSION_HIERARCHY = 'commission_hierarchy';
+
     public const REPORT_AGENT_STATUS = 'agent_status';
 
     /**
@@ -30,6 +33,7 @@ final class AdministrationAgentReportsExportService
         return [
             self::REPORT_GEO_SUMMARY => 'Reporte de agentes por estado, región y ciudad',
             self::REPORT_COMMISSION_PERCENTAGES => 'Reporte de porcentaje de comisiones',
+            self::REPORT_COMMISSION_HIERARCHY => 'Reporte de comisiones por jerarquía',
             self::REPORT_AGENT_STATUS => 'Reporte de agentes por estatus',
         ];
     }
@@ -38,7 +42,7 @@ final class AdministrationAgentReportsExportService
     {
         $filename = self::buildFilename($report, 'csv');
 
-        return new StreamedResponse(function () use ($report): void {
+        return response()->streamDownload(function () use ($report): void {
             $handle = fopen('php://output', 'w');
 
             if ($handle === false) {
@@ -52,9 +56,8 @@ final class AdministrationAgentReportsExportService
             }
 
             fclose($handle);
-        }, 200, [
+        }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
@@ -91,6 +94,7 @@ final class AdministrationAgentReportsExportService
         $slug = match ($report) {
             self::REPORT_GEO_SUMMARY => 'ubicacion_estado_region_ciudad',
             self::REPORT_COMMISSION_PERCENTAGES => 'comisiones',
+            self::REPORT_COMMISSION_HIERARCHY => 'comisiones_jerarquia',
             self::REPORT_AGENT_STATUS => 'estatus',
             default => 'reporte',
         };
@@ -106,6 +110,7 @@ final class AdministrationAgentReportsExportService
         return match ($report) {
             self::REPORT_GEO_SUMMARY => self::geoSummaryRows(),
             self::REPORT_COMMISSION_PERCENTAGES => self::commissionPercentageRows(),
+            self::REPORT_COMMISSION_HIERARCHY => self::commissionHierarchyRows(),
             self::REPORT_AGENT_STATUS => self::agentStatusRows(),
             default => [],
         };
@@ -157,6 +162,96 @@ final class AdministrationAgentReportsExportService
         }
 
         return 'AGT-000'.(string) $agent->id;
+    }
+
+    /**
+     * @return iterable<int, array<int, scalar|null>>
+     */
+    private static function commissionHierarchyRows(): iterable
+    {
+        yield [
+            'Código agente referencia',
+            'Nombre agente referencia',
+            'Orden jerarquía',
+            'Rol en jerarquía',
+            'Tipo integrante',
+            'Código integrante',
+            'Nombre integrante',
+            'Estatus integrante',
+            'Cadena jerárquica',
+            '% TDEC',
+            '% TDEC renovación',
+            '% TDEV',
+            '% TDEV renovación',
+            'Advertencias jerarquía',
+        ];
+
+        $query = self::scopedAgentQuery()->orderBy('id');
+
+        foreach ($query->cursor() as $agent) {
+            /** @var Agent $agent */
+            $resolution = AgentHierarchyCommissionResolver::resolve($agent);
+            $nodes = $resolution['nodes'];
+            $warnings = $resolution['warnings'];
+            $linearChain = AgentHierarchyCommissionResolver::formatLinearChain($nodes);
+            $warningsText = implode(' | ', $warnings);
+            $referenceCode = self::agentDisplayCode($agent);
+            $referenceName = (string) ($agent->name ?? '');
+            $totalNodes = count($nodes);
+
+            foreach ($nodes as $index => $node) {
+                $order = $index + 1;
+
+                yield [
+                    $referenceCode,
+                    $referenceName,
+                    $order,
+                    (string) ($node['role'] ?? ''),
+                    (string) ($node['entity_type'] ?? ''),
+                    (string) ($node['code'] ?? ''),
+                    (string) ($node['name'] ?? ''),
+                    (string) ($node['status'] ?? ''),
+                    $linearChain,
+                    self::formatCommissionPercent($node['commission_tdec'] ?? null),
+                    self::formatCommissionPercent($node['commission_tdec_renewal'] ?? null),
+                    self::formatCommissionPercent($node['commission_tdev'] ?? null),
+                    self::formatCommissionPercent($node['commission_tdev_renewal'] ?? null),
+                    $order === 1 ? $warningsText : '',
+                ];
+            }
+
+            if ($totalNodes === 0) {
+                yield [
+                    $referenceCode,
+                    $referenceName,
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    $warningsText !== '' ? $warningsText : 'Sin integrantes resueltos en la jerarquía.',
+                ];
+            }
+        }
+    }
+
+    private static function formatCommissionPercent(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        if (! is_numeric($value)) {
+            return '';
+        }
+
+        return number_format((float) $value, 2, ',', '.');
     }
 
     /**

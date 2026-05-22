@@ -21,9 +21,11 @@ use Illuminate\Support\HtmlString;
 
 class AgentInfolist
 {
-    private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
-    private const IOS_INNER_CLASS = 'rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+    private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
     private const IOS_INSET_GROUP_CLASS = 'rounded-xl border border-slate-200/60 bg-slate-50/50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:p-4';
 
@@ -53,6 +55,10 @@ class AgentInfolist
             ->components([
                 Tabs::make('agentInfolistTabs')
                     ->columnSpanFull()
+                    ->persistTab()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
                     ->tabs([
                         Tab::make('Agente')
                             ->icon('heroicon-o-user-circle')
@@ -61,7 +67,7 @@ class AgentInfolist
                                     ->description('Identificación principal, contacto y estado.')
                                     ->icon('heroicon-o-user-circle')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make(1)
@@ -152,7 +158,7 @@ class AgentInfolist
                                     ->description('Diagrama visual del agente dentro de la estructura: superior, agencia y master.')
                                     ->icon('heroicon-o-squares-2x2')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make(1)
@@ -178,7 +184,7 @@ class AgentInfolist
                                     ->description('Segundo canal de contacto e Instagram.')
                                     ->icon('heroicon-o-phone')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
@@ -219,7 +225,7 @@ class AgentInfolist
                                     ->description('Beneficiario, cuenta y pago móvil.')
                                     ->icon('heroicon-o-banknotes')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make(1)
@@ -288,7 +294,7 @@ class AgentInfolist
                                     ->description('Cuenta internacional, Zelle y datos SWIFT / ACH.')
                                     ->icon('heroicon-o-currency-dollar')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
@@ -352,7 +358,7 @@ class AgentInfolist
                                     ->description('TDEC y TDEV: venta nueva y renovación.')
                                     ->icon('heroicon-o-calculator')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make(1)
@@ -405,7 +411,7 @@ class AgentInfolist
                                     ->description('Comentarios internos, observaciones de seguimiento y trazabilidad.')
                                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make(1)
@@ -462,7 +468,7 @@ class AgentInfolist
                                     ))
                                     ->icon('heroicon-o-document-text')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         RepeatableEntry::make('affiliations')

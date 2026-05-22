@@ -322,6 +322,13 @@ Route::post('administration/aviso-cobro/send-email/{collection}', [
     ->middleware(['web', 'auth'])
     ->name('aviso-cobro.send-email');
 
+Route::post('administration/sales/{sale}/recibo-pago/regenerate-async', [
+    \App\Http\Controllers\ReciboPagoController::class,
+    'regenerateAsync',
+])
+    ->middleware(['web', 'auth'])
+    ->name('administration.sales.recibo-pago.regenerate-async');
+
 Route::post('business/affiliations/documents/regenerate-async/{affiliation}', [
     AffiliationBusinessDocumentsController::class,
     'regenerateAsync',
