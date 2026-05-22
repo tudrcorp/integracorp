@@ -10,6 +10,7 @@ it('define tabla y enum BusinessAgendaCorporativaSocialPublicationsTest publicac
     $modelPath = dirname(__DIR__, 2).'/app/Models/CorporateAgendaSocialPublication.php';
     $pagePath = dirname(__DIR__, 2).'/app/Filament/Business/Pages/AgendaCorporativa.php';
     $viewPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/agenda-corporativa.blade.php';
+    $shellPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/corporate-calendar-shell.blade.php';
     $marketingFormPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/agenda-corporativa-marketing-form.blade.php';
     $marketingSidebarPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/agenda-corporativa-marketing-sidebar.blade.php';
     $iconPath = dirname(__DIR__, 2).'/resources/views/components/corporate-agenda-social-icon.blade.php';
@@ -53,9 +54,11 @@ it('define tabla y enum BusinessAgendaCorporativaSocialPublicationsTest publicac
 
     expect(file_get_contents($viewPath))
         ->toContain('setModalWorkspace(\'marketing\')')
-        ->toContain('x-corporate-agenda-social-icon')
-        ->toContain('social_badges')
         ->toContain('agenda-corporativa-marketing-form');
+
+    expect(file_get_contents($shellPath))
+        ->toContain('x-corporate-agenda-social-icon')
+        ->toContain('social_badges');
 
     expect(file_get_contents($marketingFormPath))
         ->toContain('Calendario publicitario')

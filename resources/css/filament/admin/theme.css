@@ -1,6 +1,8 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 
 @source '../../../../app/Filament/**/*';
+@source '../../../../app/Support/TdgCalendarDepartmentCatalog.php';
+@source '../../../../app/Support/TdgCalendarOfficeCatalog.php';
 @source '../../../../resources/views/filament/**/*';
 
 @layer base {
@@ -3472,6 +3474,339 @@
   .fi-panel-footer__version {
     @apply inline-flex shrink-0 items-center rounded-full border border-gray-200/90 bg-white/90 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-gray-600 ring-1 ring-gray-950/5;
     @apply dark:border-white/10 dark:bg-gray-900/80 dark:text-gray-300 dark:ring-white/10;
+  }
+
+  /* TDG calendar — department chips (light + dark) */
+  .tdg-dept-chip {
+    @apply inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold uppercase tracking-wide transition;
+  }
+
+  .tdg-dept-chip__dot {
+    @apply inline-flex size-2.5 shrink-0 rounded-full shadow-sm ring-2 ring-white;
+  }
+
+  .dark .tdg-dept-chip__dot {
+    @apply ring-slate-900;
+  }
+
+  .tdg-dept-chip--comercial.is-idle {
+    @apply border-sky-300 bg-sky-50 text-sky-900 hover:border-sky-400 hover:bg-sky-100;
+  }
+
+  .dark .tdg-dept-chip--comercial.is-idle {
+    @apply border-sky-600 bg-sky-950 text-sky-100 hover:border-sky-500 hover:bg-sky-900;
+  }
+
+  .tdg-dept-chip--comercial.is-selected {
+    @apply border-sky-400 bg-sky-200 text-sky-950 shadow-sm;
+  }
+
+  .dark .tdg-dept-chip--comercial.is-selected {
+    @apply border-sky-500 bg-sky-700 text-white;
+  }
+
+  .tdg-dept-chip__dot--comercial {
+    @apply bg-sky-500;
+  }
+
+  .tdg-dept-chip--afiliaciones.is-idle {
+    @apply border-emerald-300 bg-emerald-50 text-emerald-900 hover:border-emerald-400 hover:bg-emerald-100;
+  }
+
+  .dark .tdg-dept-chip--afiliaciones.is-idle {
+    @apply border-emerald-600 bg-emerald-950 text-emerald-100 hover:border-emerald-500 hover:bg-emerald-900;
+  }
+
+  .tdg-dept-chip--afiliaciones.is-selected {
+    @apply border-emerald-400 bg-emerald-200 text-emerald-950 shadow-sm;
+  }
+
+  .dark .tdg-dept-chip--afiliaciones.is-selected {
+    @apply border-emerald-500 bg-emerald-700 text-white;
+  }
+
+  .tdg-dept-chip__dot--afiliaciones {
+    @apply bg-emerald-500;
+  }
+
+  .tdg-dept-chip--proveedores.is-idle {
+    @apply border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400 hover:bg-amber-100;
+  }
+
+  .dark .tdg-dept-chip--proveedores.is-idle {
+    @apply border-amber-600 bg-amber-950 text-amber-100 hover:border-amber-500 hover:bg-amber-900;
+  }
+
+  .tdg-dept-chip--proveedores.is-selected {
+    @apply border-amber-400 bg-amber-200 text-amber-950 shadow-sm;
+  }
+
+  .dark .tdg-dept-chip--proveedores.is-selected {
+    @apply border-amber-500 bg-amber-700 text-white;
+  }
+
+  .tdg-dept-chip__dot--proveedores {
+    @apply bg-amber-500;
+  }
+
+  .tdg-dept-chip--operaciones.is-idle {
+    @apply border-violet-300 bg-violet-50 text-violet-900 hover:border-violet-400 hover:bg-violet-100;
+  }
+
+  .dark .tdg-dept-chip--operaciones.is-idle {
+    @apply border-violet-600 bg-violet-950 text-violet-100 hover:border-violet-500 hover:bg-violet-900;
+  }
+
+  .tdg-dept-chip--operaciones.is-selected {
+    @apply border-violet-400 bg-violet-200 text-violet-950 shadow-sm;
+  }
+
+  .dark .tdg-dept-chip--operaciones.is-selected {
+    @apply border-violet-500 bg-violet-700 text-white;
+  }
+
+  .tdg-dept-chip__dot--operaciones {
+    @apply bg-violet-500;
+  }
+
+  .tdg-dept-chip--marketing.is-idle {
+    @apply border-pink-300 bg-pink-50 text-pink-900 hover:border-pink-400 hover:bg-pink-100;
+  }
+
+  .dark .tdg-dept-chip--marketing.is-idle {
+    @apply border-pink-600 bg-pink-950 text-pink-100 hover:border-pink-500 hover:bg-pink-900;
+  }
+
+  .tdg-dept-chip--marketing.is-selected {
+    @apply border-pink-400 bg-pink-200 text-pink-950 shadow-sm;
+  }
+
+  .dark .tdg-dept-chip--marketing.is-selected {
+    @apply border-pink-500 bg-pink-700 text-white;
+  }
+
+  .tdg-dept-chip__dot--marketing {
+    @apply bg-pink-500;
+  }
+
+  .tdg-dept-chip--proyecto.is-idle {
+    @apply border-indigo-300 bg-indigo-50 text-indigo-900 hover:border-indigo-400 hover:bg-indigo-100;
+  }
+
+  .dark .tdg-dept-chip--proyecto.is-idle {
+    @apply border-indigo-600 bg-indigo-950 text-indigo-100 hover:border-indigo-500 hover:bg-indigo-900;
+  }
+
+  .tdg-dept-chip--proyecto.is-selected {
+    @apply border-indigo-400 bg-indigo-200 text-indigo-950 shadow-sm;
+  }
+
+  .dark .tdg-dept-chip--proyecto.is-selected {
+    @apply border-indigo-500 bg-indigo-700 text-white;
+  }
+
+  .tdg-dept-chip__dot--proyecto {
+    @apply bg-indigo-500;
+  }
+
+  .tdg-dept-chip--default.is-idle {
+    @apply border-slate-300 bg-slate-50 text-slate-800 hover:border-slate-400 hover:bg-slate-100;
+  }
+
+  .dark .tdg-dept-chip--default.is-idle {
+    @apply border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500 hover:bg-slate-700;
+  }
+
+  .tdg-dept-chip--default.is-selected {
+    @apply border-slate-400 bg-slate-200 text-slate-950 shadow-sm;
+  }
+
+  .dark .tdg-dept-chip--default.is-selected {
+    @apply border-slate-500 bg-slate-600 text-white;
+  }
+
+  .tdg-dept-chip__dot--default {
+    @apply bg-slate-500;
+  }
+
+  .tdg-dept-chip--comercial.is-idle,
+  .tdg-dept-chip--afiliaciones.is-idle,
+  .tdg-dept-chip--proveedores.is-idle,
+  .tdg-dept-chip--operaciones.is-idle,
+  .tdg-dept-chip--marketing.is-idle,
+  .tdg-dept-chip--proyecto.is-idle,
+  .tdg-dept-chip--default.is-idle {
+    @apply shadow-sm;
+  }
+
+  span.tdg-dept-chip.is-selected {
+    @apply px-2.5 py-1 text-xs;
+  }
+
+  .tdg-calendar-avatar-stack__item {
+    @apply relative shrink-0;
+  }
+
+  .tdg-calendar-avatar-stack__overflow {
+    @apply z-10;
+  }
+
+  .tdg-calendar-avatar-stack__tooltip {
+    pointer-events: auto;
+  }
+
+  .tdg-calendar-avatar-stack__tooltip-list {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184 / 0.9) transparent;
+  }
+
+  .tdg-calendar-avatar-stack__tooltip-list::-webkit-scrollbar {
+    width: 0.375rem;
+  }
+
+  .tdg-calendar-avatar-stack__tooltip-list::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: rgb(148 163 184 / 0.9);
+  }
+
+  .dark .tdg-calendar-avatar-stack__tooltip-list {
+    scrollbar-color: rgb(100 116 139 / 0.9) transparent;
+  }
+
+  .dark .tdg-calendar-avatar-stack__tooltip-list::-webkit-scrollbar-thumb {
+    background-color: rgb(100 116 139 / 0.9);
+  }
+
+  .tdg-office-card--central-lido {
+    @apply border-cyan-300/90 bg-cyan-50/80 dark:border-cyan-600/50 dark:bg-cyan-950/40;
+  }
+
+  .tdg-office-card--farmadoc-delicias {
+    @apply border-blue-300/90 bg-blue-50/80 dark:border-blue-600/50 dark:bg-blue-950/40;
+  }
+
+  .tdg-office-card--farmadoc-san-bernardino {
+    @apply border-orange-300/90 bg-orange-50/80 dark:border-orange-600/50 dark:bg-orange-950/40;
+  }
+
+  .tdg-office-card--default {
+    @apply border-slate-200/80 bg-slate-50/70 dark:border-white/10 dark:bg-slate-950/40;
+  }
+
+  .tdg-office-card__eyebrow--central-lido {
+    @apply text-cyan-700 dark:text-cyan-300;
+  }
+
+  .tdg-office-card__eyebrow--farmadoc-delicias {
+    @apply text-blue-700 dark:text-blue-300;
+  }
+
+  .tdg-office-card__eyebrow--farmadoc-san-bernardino {
+    @apply text-orange-700 dark:text-orange-300;
+  }
+
+  .tdg-office-card__title--central-lido {
+    @apply text-cyan-950 dark:text-cyan-50;
+  }
+
+  .tdg-office-card__title--farmadoc-delicias {
+    @apply text-blue-950 dark:text-blue-50;
+  }
+
+  .tdg-office-card__title--farmadoc-san-bernardino {
+    @apply text-orange-950 dark:text-orange-50;
+  }
+
+  .tdg-office-picker {
+    @apply flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition;
+  }
+
+  .tdg-office-picker--central-lido.is-idle {
+    @apply border-slate-200/80 bg-white hover:border-cyan-300 hover:bg-cyan-50/70 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-cyan-500/50 dark:hover:bg-cyan-500/10;
+  }
+
+  .tdg-office-picker--central-lido.is-selected {
+    @apply border-cyan-400 bg-cyan-100 shadow-sm dark:border-cyan-500/70 dark:bg-cyan-700/40;
+  }
+
+  .tdg-office-picker--farmadoc-delicias.is-idle {
+    @apply border-slate-200/80 bg-white hover:border-blue-300 hover:bg-blue-50/70 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/10;
+  }
+
+  .tdg-office-picker--farmadoc-delicias.is-selected {
+    @apply border-blue-400 bg-blue-100 shadow-sm dark:border-blue-500/70 dark:bg-blue-700/40;
+  }
+
+  .tdg-office-picker--farmadoc-san-bernardino.is-idle {
+    @apply border-slate-200/80 bg-white hover:border-orange-300 hover:bg-orange-50/70 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-orange-500/50 dark:hover:bg-orange-500/10;
+  }
+
+  .tdg-office-picker--farmadoc-san-bernardino.is-selected {
+    @apply border-orange-400 bg-orange-100 shadow-sm dark:border-orange-500/70 dark:bg-orange-700/40;
+  }
+
+  .tdg-office-selected-row--central-lido {
+    @apply rounded-xl border border-cyan-200/90 bg-cyan-50/60 px-2 py-2 dark:border-cyan-500/40 dark:bg-cyan-500/10;
+  }
+
+  .tdg-office-selected-row--farmadoc-delicias {
+    @apply rounded-xl border border-blue-200/90 bg-blue-50/60 px-2 py-2 dark:border-blue-500/40 dark:bg-blue-500/10;
+  }
+
+  .tdg-office-selected-row--farmadoc-san-bernardino {
+    @apply rounded-xl border border-orange-200/90 bg-orange-50/60 px-2 py-2 dark:border-orange-500/40 dark:bg-orange-500/10;
+  }
+
+  .tdg-office-count-badge--central-lido {
+    @apply rounded-full bg-cyan-100 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-900 dark:bg-cyan-500/30 dark:text-cyan-100;
+  }
+
+  .tdg-office-count-badge--farmadoc-delicias {
+    @apply rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-900 dark:bg-blue-500/30 dark:text-blue-100;
+  }
+
+  .tdg-office-count-badge--farmadoc-san-bernardino {
+    @apply rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-900 dark:bg-orange-500/30 dark:text-orange-100;
+  }
+
+  .tdg-office-chip--central-lido.is-selected {
+    @apply border-cyan-400 bg-cyan-100 text-cyan-950 dark:border-cyan-500/70 dark:bg-cyan-700/50 dark:text-cyan-50;
+  }
+
+  .tdg-office-chip--farmadoc-delicias.is-selected {
+    @apply border-blue-400 bg-blue-100 text-blue-950 dark:border-blue-500/70 dark:bg-blue-700/50 dark:text-blue-50;
+  }
+
+  .tdg-office-chip--farmadoc-san-bernardino.is-selected {
+    @apply border-orange-400 bg-orange-100 text-orange-950 dark:border-orange-500/70 dark:bg-orange-700/50 dark:text-orange-50;
+  }
+
+  .tdg-office-chip__dot--central-lido {
+    @apply bg-cyan-500;
+  }
+
+  .tdg-office-chip__dot--farmadoc-delicias {
+    @apply bg-blue-500;
+  }
+
+  .tdg-office-chip__dot--farmadoc-san-bernardino {
+    @apply bg-orange-500;
+  }
+
+  .tdg-office-chip__dot--default {
+    @apply bg-slate-500;
+  }
+
+  .tdg-office-picker__check--central-lido {
+    @apply text-cyan-600 dark:text-cyan-300;
+  }
+
+  .tdg-office-picker__check--farmadoc-delicias {
+    @apply text-blue-600 dark:text-blue-300;
+  }
+
+  .tdg-office-picker__check--farmadoc-san-bernardino {
+    @apply text-orange-600 dark:text-orange-300;
   }
 }
 

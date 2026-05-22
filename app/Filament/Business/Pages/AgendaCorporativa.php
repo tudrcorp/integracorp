@@ -126,6 +126,16 @@ class AgendaCorporativa extends Page
         $this->selectedWeekDate = now()->toDateString();
     }
 
+    public function corporateCalendarHeading(): string
+    {
+        return 'Agenda Corporativa';
+    }
+
+    public function calendarDayInteractionsEnabled(): bool
+    {
+        return true;
+    }
+
     public function previousMonth(): void
     {
         $this->cursorMonth = $this->resolveCursor()->subMonth()->toDateString();

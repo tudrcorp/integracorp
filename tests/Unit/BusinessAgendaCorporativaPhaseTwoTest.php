@@ -49,8 +49,10 @@ it('define estructura de datos para actividades de agenda corporativa', function
 it('expone acciones de agenda para crear, editar, responder invitaciones y notas', function (): void {
     $pagePath = dirname(__DIR__, 2).'/app/Filament/Business/Pages/AgendaCorporativa.php';
     $viewPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/agenda-corporativa.blade.php';
+    $shellPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/corporate-calendar-shell.blade.php';
     $pageContents = file_get_contents($pagePath);
     $viewContents = file_get_contents($viewPath);
+    $shellContents = file_get_contents($shellPath);
 
     expect($pageContents)
         ->toContain('openDayModal')
@@ -78,8 +80,9 @@ it('expone acciones de agenda para crear, editar, responder invitaciones y notas
         ->toContain('CorporateAgendaInvitationWhatsAppService::notifyCreatorAboutInvitationResponse')
         ->toContain('CorporateAgendaInvitationWhatsAppService::dispatchInvitationToParticipant');
 
+    expect($shellContents)->toContain('wire:click="openDayModal(');
+
     expect($viewContents)
-        ->toContain('wire:click="openDayModal(')
         ->toContain('wire:submit.prevent="saveActivity"')
         ->toContain('wire:model="activityForm.start_time"')
         ->toContain('wire:model="activityForm.end_time"')
