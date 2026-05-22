@@ -49,8 +49,8 @@ it('restringe visibilidad para no superadmin y mantiene edicion por creador o su
 });
 
 it('alinea la vista semanal con el fondo claro de la vista mensual', function (): void {
-    $viewPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/agenda-corporativa.blade.php';
-    $viewContents = file_get_contents($viewPath);
+    $shellPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/corporate-calendar-shell.blade.php';
+    $viewContents = file_get_contents($shellPath);
 
     expect($viewContents)
         ->toContain('min-w-[980px] rounded-[1.65rem] border border-slate-200/80 bg-slate-50/70 p-3')
