@@ -2,6 +2,7 @@
 
 namespace App\Filament\Administration\Resources\Agencies\Tables;
 
+use App\Filament\Administration\Resources\Agencies\AgencyResource;
 use App\Filament\Exports\AgencyExporter;
 use App\Http\Controllers\AgencyController;
 use App\Http\Controllers\LogController;
@@ -21,12 +22,10 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
 
 class AgenciesTable
@@ -79,26 +78,7 @@ class AgenciesTable
                     ->searchable()
                     ->badge()
                     ->color('verde')
-                    ->tooltip('Ver perfil de la agencia')
-                    ->extraAttributes([
-                        'class' => 'cursor-pointer',
-                    ])
-                    ->action(
-                        Action::make('view_agency_profile')
-                            ->label('Ver perfil')
-                            ->icon('heroicon-o-eye')
-                            ->color('primary')
-                            ->modalHeading('Perfil de la Agencia')
-                            ->modalDescription('Vista principal de la agencia con estilo iOS.')
-                            ->modalWidth('4xl')
-                            ->modalSubmitAction(false)
-                            ->modalCancelActionLabel('Cerrar')
-                            ->modalContent(function (Agency $record): ViewContract {
-                                return View::make('filament.administration.agencies.agency-quick-profile', [
-                                    'agency' => $record->loadMissing(['typeAgency', 'country', 'state', 'city']),
-                                ]);
-                            }),
-                    )
+                    ->tooltip('Abrir detalle de la agencia')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('rif')
                     ->label('RIF:')
@@ -244,6 +224,7 @@ class AgenciesTable
                         return $indicators;
                     }),
             ])
+            ->recordUrl(fn (Agency $record): string => AgencyResource::getUrl('view', ['record' => $record]))
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()

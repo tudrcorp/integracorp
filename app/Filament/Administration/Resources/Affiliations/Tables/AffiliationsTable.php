@@ -34,12 +34,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\View;
 
 class AffiliationsTable
 {
@@ -57,6 +55,7 @@ class AffiliationsTable
             ->defaultSort('created_at', 'desc')
             ->heading('AFILIACIONES INDIVIDUALES')
             ->description('Lista de afiliaciones individuales registradas en el sistema')
+            ->recordUrl(fn (Affiliation $record): string => AffiliationResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('status')
                     ->sortable()
@@ -111,23 +110,7 @@ class AffiliationsTable
                         return 'success';
                     })
                     ->searchable()
-                    ->tooltip('Ver ficha de afiliación individual')
-                    ->action(
-                        Action::make('view_affiliation_profile')
-                            ->label('Ver ficha')
-                            ->icon('heroicon-o-eye')
-                            ->color('primary')
-                            ->modalHeading('Afiliación Individual · Workspace')
-                            ->modalDescription('Consulta, carga de comprobante y aprobación de pagos en una sola experiencia.')
-                            ->modalWidth('7xl')
-                            ->modalSubmitAction(false)
-                            ->modalCancelActionLabel('Cerrar')
-                            ->modalContent(function (Affiliation $record): ViewContract {
-                                return View::make('filament.administration.affiliations.affiliation-workspace-modal-wrapper', [
-                                    'affiliation' => $record,
-                                ]);
-                            }),
-                    )
+                    ->tooltip('Clic para ver ficha de afiliación')
                     ->extraAttributes(function ($record) {
 
                         /**
@@ -164,7 +147,9 @@ class AffiliationsTable
                             ];
                         }
 
-                        return [];
+                        return [
+                            'class' => 'cursor-pointer',
+                        ];
                     }),
                 TextColumn::make('individual_quote.code')
                     ->label('Nro. de cotización')

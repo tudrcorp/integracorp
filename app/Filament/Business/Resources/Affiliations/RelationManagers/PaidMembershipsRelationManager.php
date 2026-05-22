@@ -1,233 +1,262 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Table;
-
-use BackedEnum;
-use App\Models\User;
-use App\Models\Collection;
+use App\Http\Controllers\PaidMembershipController;
 use App\Models\Affiliation;
-use Filament\Actions\Action;
+use App\Models\Collection;
 use App\Models\PaidMembership;
-use Filament\Support\Icons\Heroicon;
+use App\Models\User;
+use App\Support\FilamentDateDisplay;
+use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Select;
-use Filament\Support\Enums\Alignment;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use App\Http\Controllers\PaidMembershipController;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaidMembershipsRelationManager extends RelationManager
 {
     protected static string $relationship = 'paid_memberships';
 
-    protected static ?string $title = 'PAGOS REGISTRADOS';
+    protected static ?string $title = 'Pagos registrados';
 
     protected static string|BackedEnum|null $icon = 'heroicon-m-document-currency-dollar';
 
     public function table(Table $table): Table
     {
         return $table
-            ->heading('PAGOS REGISTRADOS')
-            ->description('Relacion de pago de la afiliacion')
-            ->recordTitleAttribute('affiliation_id')
+            ->recordTitleAttribute('reference_payment_usd')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with(['plan', 'coverage'])
+                ->orderByDesc('created_at'))
+            ->heading('Pagos registrados')
+            ->description('Comprobantes y montos asociados a esta afiliación. Apruebe los pendientes desde el menú de acciones.')
+            ->emptyStateHeading('Sin pagos registrados')
+            ->emptyStateDescription('Aún no hay comprobantes de pago vinculados a esta afiliación.')
+            ->emptyStateIcon(Heroicon::Banknotes)
+            ->striped()
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50])
             ->columns([
+                TextColumn::make('status')
+                    ->label('Estatus')
+                    ->icon(Heroicon::Signal)
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'APROBADO' ? 'success' : 'warning')
+                    ->sortable(),
+                TextColumn::make('pay_amount_usd')
+                    ->label('Monto USD')
+                    ->icon(Heroicon::CurrencyDollar)
+                    ->weight(FontWeight::SemiBold)
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' US$')
+                    ->description(fn (PaidMembership $record): ?string => $record->pay_amount_ves !== 'N/A'
+                        ? $record->pay_amount_ves.' VES'
+                        : null)
+                    ->sortable(),
+                TextColumn::make('payment_method')
+                    ->label('Método')
+                    ->badge()
+                    ->searchable(),
+                TextColumn::make('payment_frequency')
+                    ->label('Frecuencia')
+                    ->badge()
+                    ->color('info')
+                    ->toggleable(),
+                TextColumn::make('total_amount')
+                    ->label('Total contrato')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' US$')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('bank_usd')
+                    ->label('Banco USD')
+                    ->icon(Heroicon::BuildingLibrary)
+                    ->description(fn (PaidMembership $record): string => $record->bank_ves !== 'N/A'
+                        ? 'VES: '.$record->bank_ves
+                        : 'VES: N/A')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('reference_payment_usd')
+                    ->label('Referencia')
+                    ->icon(Heroicon::Hashtag)
+                    ->fontFamily(\Filament\Support\Enums\FontFamily::Mono)
+                    ->prefix('USD: ')
+                    ->description(fn (PaidMembership $record): string => $record->reference_payment_ves !== 'N/A'
+                        ? 'VES: '.$record->reference_payment_ves
+                        : 'VES: N/A')
+                    ->searchable()
+                    ->copyable()
+                    ->wrap(),
+                TextColumn::make('payment_date')
+                    ->label('Desde')
+                    ->icon(Heroicon::CalendarDays)
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state)),
+                TextColumn::make('prox_payment_date')
+                    ->label('Hasta')
+                    ->icon(Heroicon::CalendarDays)
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state)),
+                TextColumn::make('renewal_date')
+                    ->label('Renovación')
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                    ->badge()
+                    ->color('warning')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('tasa_bcv')
+                    ->label('Tasa BCV')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' VES')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('document_usd')
+                    ->alignment(Alignment::Center)
+                    ->label('USD')
+                    ->tooltip('Comprobante USD')
+                    ->icon(fn (PaidMembership $record): string => $record->document_usd !== 'N/A'
+                        ? 'heroicon-o-check-circle'
+                        : 'heroicon-o-x-circle')
+                    ->color(fn (PaidMembership $record): string => $record->document_usd !== 'N/A'
+                        ? 'success'
+                        : 'gray')
+                    ->url(fn (PaidMembership $record): ?string => $record->document_usd !== 'N/A'
+                        ? asset('storage/'.$record->document_usd)
+                        : null)
+                    ->openUrlInNewTab(),
+                IconColumn::make('document_ves')
+                    ->alignment(Alignment::Center)
+                    ->label('VES')
+                    ->tooltip('Comprobante VES')
+                    ->icon(fn (PaidMembership $record): string => $record->document_ves !== 'N/A'
+                        ? 'heroicon-o-check-circle'
+                        : 'heroicon-o-x-circle')
+                    ->color(fn (PaidMembership $record): string => $record->document_ves !== 'N/A'
+                        ? 'success'
+                        : 'gray')
+                    ->url(fn (PaidMembership $record): ?string => $record->document_ves !== 'N/A'
+                        ? asset('storage/'.$record->document_ves)
+                        : null)
+                    ->openUrlInNewTab(),
                 TextColumn::make('plan.description')
                     ->label('Plan')
                     ->badge()
-                    ->color('azulOscuro')
+                    ->color('gray')
+                    ->limit(20)
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('coverage.price')
-                    ->label('Covertura')
-                    ->badge()
-                    ->color('azulOscuro')
+                    ->label('Cobertura')
+                    ->numeric(decimalPlaces: 2)
                     ->suffix(' US$')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('payment_frequency')
-                    ->label('Frecuencia de pago')
-                    ->badge()
-                    ->color('azulOscuro'),
-                TextColumn::make('total_amount')
-                    ->label('Pago total')
-                    ->numeric()
-                    ->suffix(' US$'),
-                TextColumn::make('payment_method')
-                    ->badge()
-                    ->searchable()
-                    ->label('Metodo de pago'),
-                TextColumn::make('payment_method_usd')
-                    ->label('Pago multiple')
-                    ->prefix('US$: ')
-                    ->description(function ($record) {
-                        return $record->payment_method_ves != 'N/A' ? 'VES: ' . $record->payment_method_ves : 'VES: N/A';
-                    })
-                    ->searchable(),
-                TextColumn::make('bank_usd')
-                    ->searchable()
-                    ->label('Banco')
-                    ->description(function ($record) {
-                        return $record->bank_ves != 'N/A' ? $record->bank_ves : 'N/A';
-                    }),
-                TextColumn::make('reference_payment_usd')
-                    ->label('Referencia de pago')
-                    ->prefix('Ref(Zelle): ')
-                    ->description(function ($record) {
-                        return $record->reference_payment_ves != 'N/A' ?  'Ref(VES): ' . $record->reference_payment_ves : 'Ref(VES): N/A';
-                    })
-                    ->searchable(),
-                IconColumn::make('document_ves')
-                    ->alignment(Alignment::Center)
-                    ->label('Comprobante')
-                    ->icon(function ($record) {
-                        // Muestra un ícono si la imagen existe
-                        return $record->document_ves != 'N/A'
-                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
-                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
-                    })
-                    // ->iconPosition(IconPosition::After), // Posición del ícono
-                    ->color(function ($record) {
-                        // Color del ícono basado en la existencia de la imagen
-                        return $record->document_ves != 'N/A'
-                            ? 'success' // Verde si la imagen existe
-                            : 'danger'; // Rojo si no existe
-                    })
-                    ->url(function ($record) {
-                        return asset('storage/' . $record->document_ves);
-                    })
-                    ->openUrlInNewTab(),
-                IconColumn::make('document_usd')
-                    ->alignment(Alignment::Center)
-                    ->label('Comprobante')
-                    ->icon(function ($record) {
-                        // Muestra un ícono si la imagen existe
-                        return $record->document_usd != 'N/A'
-                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
-                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
-                    })
-                    // ->iconPosition(IconPosition::After), // Posición del ícono
-                    ->color(function ($record) {
-                        // Color del ícono basado en la existencia de la imagen
-                        return $record->document_usd != 'N/A'
-                            ? 'success' // Verde si la imagen existe
-                            : 'danger'; // Rojo si no existe
-                    })
-                    ->url(function ($record) {
-                        return asset('storage/' . $record->document_usd);
-                    })
-                    ->openUrlInNewTab(),
-                TextColumn::make('pay_amount_usd')
-                    ->label('Pago registrado')
-                    ->suffix(' US$')
-                    ->description(function ($record) {
-                        return $record->pay_amount_ves != 'N/A' ? $record->pay_amount_ves . ' VES' : 'N/A';
-                    }),
-                TextColumn::make('tasa_bcv')
-                    ->label('Tasa BCV')
-                    ->suffix(' VES')
-                    ->numeric(),
-                TextColumn::make('payment_date')
-                    ->label('Pagado desde'),
-                TextColumn::make('prox_payment_date')
-                    ->label('Pagado hasta'),
-                TextColumn::make('renewal_date')
-                    ->label('Renovacion')
-                    ->badge()
-                    ->color('warning'),
                 TextColumn::make('created_at')
-                    ->label('Cargado el:')
-                    ->badge()
-                    ->dateTime('d/m/Y'),
-                TextColumn::make('status')
+                    ->label('Registrado')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('status')
                     ->label('Estatus')
-                    ->badge()
-                    ->color(function ($record) {
-                        return $record->status == 'APROBADO' ? 'success' : 'warning';
-                    }),
+                    ->options([
+                        'APROBADO' => 'Aprobado',
+                        'POR APROBAR' => 'Por aprobar',
+                    ])
+                    ->native(false),
             ])
             ->recordActions([
-                Action::make('approve')
-                    ->hidden(function (PaidMembership $record) {
-                        return $record->status == 'APROBADO';
-                    })
-                    ->label('Aprobar')
-                    ->color('success')
-                    ->icon('heroicon-s-check-circle')
-                    ->form([
-                        TextInput::make('affiliation_code')
-                            ->label('Codigo de afiliacion')
-                            ->default(function (PaidMembership $record) {
-                                return Affiliation::find($record->affiliation_id)->code;
-                            })
-                            ->dehydrated()
-                            ->disabled()
-                            ->live(),
-                        Select::make('collections')
-                            ->label('Avisos de cobro')
-                            ->searchable()
-                            ->preload()
-                            ->multiple()
-                            ->options(function (Get $get) {
-                                // Log::info($get('affiliation_code'));
-                                return Collection::select('id', 'collection_invoice_number', 'status', 'next_payment_date')
-                                    ->where('affiliation_code', $get('affiliation_code'))
-                                    ->where('status', 'POR PAGAR')
-                                    ->get()
-                                    ->pluck('next_payment_date', 'id');
-                            })
-                            ->required()
-                            ->live()
-                            ->hidden(function (Get $get) {
-                                $count = Collection::select('id', 'collection_invoice_number', 'status')
-                                    ->where('affiliation_code', $get('affiliation_code'))
-                                    ->where('status', 'POR PAGAR')
-                                    ->get()
-                                    ->count();
-                                if ($count == 0) {
-                                    return true;
-                                }
-                                return false;
-                            })
+                ActionGroup::make([
+                    Action::make('approve')
+                        ->label('Aprobar pago')
+                        ->color('success')
+                        ->icon(Heroicon::CheckCircle)
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalHeading('Aprobar comprobante de pago')
+                        ->modalDescription('Seleccione los avisos de cobro que cubre este pago. Solo se listan avisos en estatus POR PAGAR.')
+                        ->hidden(fn (PaidMembership $record): bool => $record->status === 'APROBADO')
+                        ->form([
+                            Section::make('Validación del pago')
+                                ->icon(Heroicon::ClipboardDocumentCheck)
+                                ->schema([
+                                    TextInput::make('affiliation_code')
+                                        ->label('Código de afiliación')
+                                        ->default(fn (PaidMembership $record): ?string => Affiliation::query()
+                                            ->whereKey($record->affiliation_id)
+                                            ->value('code'))
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->live(),
+                                    Select::make('collections')
+                                        ->label('Avisos de cobro')
+                                        ->searchable()
+                                        ->preload()
+                                        ->multiple()
+                                        ->options(fn (Get $get): array => Collection::query()
+                                            ->where('affiliation_code', $get('affiliation_code'))
+                                            ->where('status', 'POR PAGAR')
+                                            ->get()
+                                            ->mapWithKeys(fn (Collection $collection): array => [
+                                                $collection->id => $collection->next_payment_date.' — #'.$collection->collection_invoice_number,
+                                            ])
+                                            ->all())
+                                        ->required()
+                                        ->hidden(fn (Get $get): bool => Collection::query()
+                                            ->where('affiliation_code', $get('affiliation_code'))
+                                            ->where('status', 'POR PAGAR')
+                                            ->doesntExist()),
+                                ]),
+                        ])
+                        ->action(function (PaidMembership $record, array $data): void {
+                            $approvePayment = PaidMembershipController::approvePayment($record, $data);
 
-                    ])
-                    ->action(function (PaidMembership $record, array $data) {
-
-                        $approvePayment = PaidMembershipController::approvePayment($record, $data);
-
-                        if (isset($approvePayment['firstRegister']) && $approvePayment['firstRegister'] == true) {
-                            Notification::make()
-                                ->title('Operacion exitosa')
-                                ->success()
-                                ->send();
-
-                            //Notificacion para Admin
-                            $recipient = User::where('is_admin', 1)->get();
-                            foreach ($recipient as $user) {
-                                $recipient_for_user = User::find($user->id);
+                            if (isset($approvePayment['firstRegister']) && $approvePayment['firstRegister'] === true) {
                                 Notification::make()
-                                    ->title('COMPROBANTE APROBADO')
-                                    ->body('El pago ha sido aprobado. Codigo de afiliacion: ' . $record->affiliation->code)
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
+                                    ->title('Pago aprobado')
+                                    ->body('El comprobante fue aprobado correctamente.')
                                     ->success()
-                                    ->sendToDatabase($recipient_for_user);
+                                    ->icon(Heroicon::CheckCircle)
+                                    ->send();
+
+                                $recipient = User::query()->where('is_admin', 1)->get();
+                                foreach ($recipient as $user) {
+                                    $recipientForUser = User::find($user->id);
+                                    if ($recipientForUser !== null) {
+                                        Notification::make()
+                                            ->title('Comprobante aprobado')
+                                            ->body('Pago aprobado. Afiliación: '.$record->affiliation->code)
+                                            ->icon(Heroicon::UserPlus)
+                                            ->iconColor('success')
+                                            ->success()
+                                            ->sendToDatabase($recipientForUser);
+                                    }
+                                }
                             }
-                        }
 
-                        if (isset($approvePayment['nextRegister']) && $approvePayment['nextRegister'] == true) {
-                            Notification::make()
-                                ->title('Registro de pago exitoso')
-                                ->success()
-                                ->send();
-                        }
+                            if (isset($approvePayment['nextRegister']) && $approvePayment['nextRegister'] === true) {
+                                Notification::make()
+                                    ->title('Registro de pago exitoso')
+                                    ->success()
+                                    ->send();
+                            }
 
-                        redirect()->route('filament.admin.resources.affiliations.index');
-                    }),
-                ]);
+                            $this->redirect(AffiliationResource::getUrl('view', [
+                                'record' => $record->affiliation_id,
+                            ], panel: 'business'));
+                        }),
+                ])
+                    ->icon(Heroicon::EllipsisVertical),
+            ]);
     }
 }

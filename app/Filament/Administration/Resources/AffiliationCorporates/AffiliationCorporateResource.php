@@ -2,21 +2,22 @@
 
 namespace App\Filament\Administration\Resources\AffiliationCorporates;
 
-use UnitEnum;
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use App\Models\AffiliationCorporate;
-use Filament\Support\Icons\Heroicon;
+use App\Filament\Administration\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
 use App\Filament\Administration\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
 use App\Filament\Administration\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
-use App\Filament\Administration\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
-use App\Filament\Administration\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
-use App\Filament\Administration\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Filament\Administration\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
+use App\Filament\Administration\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
 use App\Filament\Administration\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
 use App\Filament\Administration\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
-use App\Filament\Administration\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
+use App\Filament\Administration\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
+use App\Filament\Administration\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
+use App\Filament\Administration\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Models\AffiliationCorporate;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
@@ -26,11 +27,18 @@ class AffiliationCorporateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
-    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+    protected static string|UnitEnum|null $navigationGroup = 'AFILIACIONES';
+
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {
         return AffiliationCorporateForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return AffiliationCorporateInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -52,6 +60,7 @@ class AffiliationCorporateResource extends Resource
         return [
             'index' => ListAffiliationCorporates::route('/'),
             'create' => CreateAffiliationCorporate::route('/create'),
+            'view' => ViewAffiliationCorporate::route('/{record}'),
             'edit' => EditAffiliationCorporate::route('/{record}/edit'),
         ];
     }

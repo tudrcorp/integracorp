@@ -48,3 +48,14 @@ it('incluye una pestaña de jerarquía para resolver general, master y TUDRENCAS
         ->toContain('TUDRENCASA')
         ->toContain('structureSummaryForAgency');
 });
+
+it('aplica estilos de contenedor de tabs alineados a telemedicina', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agencies/Schemas/AgencyInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain('TABS_CONTAINER')
+        ->toContain('->persistTab()')
+        ->toContain('SECTION_CARD')
+        ->toContain('rounded-[1.25rem]');
+});

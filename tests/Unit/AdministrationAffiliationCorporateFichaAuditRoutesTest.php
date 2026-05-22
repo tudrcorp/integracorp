@@ -6,10 +6,14 @@ it('rutas y controlador de ficha corporativa registran auditoría esperada', fun
     $controllerPath = dirname(__DIR__, 2).'/app/Http/Controllers/AffiliationCorporateFichaPdfController.php';
     $routesPath = dirname(__DIR__, 2).'/routes/web.php';
     $editPagePath = dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AffiliationCorporates/Pages/EditAffiliationCorporate.php';
+    $viewPagePath = dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AffiliationCorporates/Pages/ViewAffiliationCorporate.php';
+    $actionsPath = dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AffiliationCorporates/Actions/AffiliationCorporateFichaPdfActions.php';
 
     $controllerContents = file_get_contents($controllerPath);
     $routesContents = file_get_contents($routesPath);
     $editContents = file_get_contents($editPagePath);
+    $viewContents = file_get_contents($viewPagePath);
+    $actionsContents = file_get_contents($actionsPath);
 
     expect($controllerContents)
         ->toContain('AUDIT_ADMINISTRATION_AFFILIATION_CORPORATE_FICHA_VIEWED')
@@ -21,7 +25,11 @@ it('rutas y controlador de ficha corporativa registran auditoría esperada', fun
         ->toContain('administration.affiliation-corporates.ficha.preview')
         ->and($routesContents)->toContain('administration.affiliation-corporates.ficha.download');
 
-    expect($editContents)
+    expect($actionsContents)
         ->toContain('administration.affiliation-corporates.ficha.preview')
-        ->and($editContents)->toContain('affiliation-corporate-ficha-preview-modal');
+        ->and($actionsContents)->toContain('affiliation-corporate-ficha-preview-modal');
+
+    expect($editContents)->toContain('AffiliationCorporateFichaPdfActions::printCorporatePdfAction');
+
+    expect($viewContents)->toContain('AffiliationCorporateFichaPdfActions::printCorporatePdfAction');
 });

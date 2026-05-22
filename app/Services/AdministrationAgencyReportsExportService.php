@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Agency;
+use App\Support\CommercialStructure\AgencyHierarchyCommissionResolver;
+use App\Support\CommercialStructure\AgentHierarchyCommissionResolver;
 use App\Support\CommercialStructureBankingExportColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +19,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final class AdministrationAgencyReportsExportService
 {
     public const REPORT_COMMISSION_PERCENTAGES = 'commission_percentages';
+
+    public const REPORT_COMMISSION_HIERARCHY = 'commission_hierarchy';
 
     public const REPORT_GEO_SUMMARY = 'geo_summary';
 
@@ -31,6 +35,7 @@ final class AdministrationAgencyReportsExportService
     {
         return [
             self::REPORT_COMMISSION_PERCENTAGES => 'Reporte de porcentaje de comisiones',
+            self::REPORT_COMMISSION_HIERARCHY => 'Reporte de comisiones por jerarquía',
             self::REPORT_GEO_SUMMARY => 'Reporte de agencias por estado, región y ciudad',
             self::REPORT_AGENCY_TYPES => 'Reporte de tipo de agencia',
             self::REPORT_AGENCY_STATUS => 'Reporte de agencias por estatus',
@@ -41,7 +46,7 @@ final class AdministrationAgencyReportsExportService
     {
         $filename = self::buildFilename($report, 'csv');
 
-        return new StreamedResponse(function () use ($report): void {
+        return response()->streamDownload(function () use ($report): void {
             $handle = fopen('php://output', 'w');
 
             if ($handle === false) {
@@ -55,9 +60,8 @@ final class AdministrationAgencyReportsExportService
             }
 
             fclose($handle);
-        }, 200, [
+        }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
@@ -93,6 +97,7 @@ final class AdministrationAgencyReportsExportService
     {
         $slug = match ($report) {
             self::REPORT_COMMISSION_PERCENTAGES => 'comisiones',
+            self::REPORT_COMMISSION_HIERARCHY => 'comisiones_jerarquia',
             self::REPORT_GEO_SUMMARY => 'ubicacion_estado_region_ciudad',
             self::REPORT_AGENCY_TYPES => 'tipo_agencia',
             self::REPORT_AGENCY_STATUS => 'estatus',
@@ -109,6 +114,7 @@ final class AdministrationAgencyReportsExportService
     {
         return match ($report) {
             self::REPORT_COMMISSION_PERCENTAGES => self::commissionPercentageRows(),
+            self::REPORT_COMMISSION_HIERARCHY => self::commissionHierarchyRows(),
             self::REPORT_GEO_SUMMARY => self::geoSummaryRows(),
             self::REPORT_AGENCY_TYPES => self::agencyTypeRows(),
             self::REPORT_AGENCY_STATUS => self::agencyStatusRows(),
@@ -151,6 +157,102 @@ final class AdministrationAgencyReportsExportService
                 self::boolishLabel($agency->tdev),
             ], CommercialStructureBankingExportColumns::valuesFromModel($agency));
         }
+    }
+
+    /**
+     * @return iterable<int, array<int, scalar|null>>
+     */
+    private static function commissionHierarchyRows(): iterable
+    {
+        yield [
+            'Código agencia referencia',
+            'Nombre agencia referencia',
+            'Orden jerarquía',
+            'Rol en jerarquía',
+            'Tipo integrante',
+            'Código integrante',
+            'Nombre integrante',
+            'Estatus integrante',
+            'Agencia estructura (código)',
+            'Agencia estructura (nombre)',
+            'Cadena jerárquica',
+            '% TDEC',
+            '% TDEC renovación',
+            '% TDEV',
+            '% TDEV renovación',
+            'Advertencias jerarquía',
+        ];
+
+        $query = self::scopedAgencyQuery()->orderBy('id');
+
+        foreach ($query->cursor() as $agency) {
+            /** @var Agency $agency */
+            $resolution = AgencyHierarchyCommissionResolver::resolve($agency);
+            $nodes = $resolution['nodes'];
+            $warnings = $resolution['warnings'];
+            $linearChain = AgentHierarchyCommissionResolver::formatLinearChain($nodes);
+            $warningsText = implode(' | ', $warnings);
+            $referenceCode = (string) ($agency->code ?? '');
+            $referenceName = (string) ($agency->name_corporative ?? '');
+            $totalNodes = count($nodes);
+
+            foreach ($nodes as $index => $node) {
+                $order = $index + 1;
+
+                yield [
+                    $referenceCode,
+                    $referenceName,
+                    $order,
+                    (string) ($node['role'] ?? ''),
+                    (string) ($node['entity_type'] ?? ''),
+                    (string) ($node['code'] ?? ''),
+                    (string) ($node['name'] ?? ''),
+                    (string) ($node['status'] ?? ''),
+                    (string) ($node['structure_agency_code'] ?? ''),
+                    (string) ($node['structure_agency_name'] ?? ''),
+                    $linearChain,
+                    self::formatCommissionPercent($node['commission_tdec'] ?? null),
+                    self::formatCommissionPercent($node['commission_tdec_renewal'] ?? null),
+                    self::formatCommissionPercent($node['commission_tdev'] ?? null),
+                    self::formatCommissionPercent($node['commission_tdev_renewal'] ?? null),
+                    $order === 1 ? $warningsText : '',
+                ];
+            }
+
+            if ($totalNodes === 0) {
+                yield [
+                    $referenceCode,
+                    $referenceName,
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    $warningsText !== '' ? $warningsText : 'Sin integrantes resueltos en la jerarquía.',
+                ];
+            }
+        }
+    }
+
+    private static function formatCommissionPercent(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        if (! is_numeric($value)) {
+            return '';
+        }
+
+        return number_format((float) $value, 2, ',', '.');
     }
 
     /**

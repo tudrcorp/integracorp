@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\AgeRange;
-use App\Models\Fee;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
+use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\FilamentDateDisplay;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -29,20 +32,22 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\FontFamily;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class AffiliatesRelationManager extends RelationManager
 {
     protected static string $relationship = 'affiliates';
 
-    protected static ?string $title = 'FAMILIARES AFILIADOS';
+    protected static ?string $title = 'Familiares afiliados';
 
     protected static string|BackedEnum|null $icon = 'heroicon-s-user-group';
 
@@ -50,9 +55,9 @@ class AffiliatesRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Section::make('FAMILIAR')
-                    ->description('Fomulario de familiar.')
-                    ->icon('heroicon-s-user')
+                Section::make('Datos personales')
+                    ->description('Identificación y parentesco del familiar.')
+                    ->icon(Heroicon::User)
                     ->schema([
                         TextInput::make('full_name')
                             ->required()
@@ -103,15 +108,18 @@ class AffiliatesRelationManager extends RelationManager
                                 'OTRO' => 'OTRO',
                             ]),
                         Textarea::make('address')
-                            ->label('Direccion')
+                            ->label('Dirección')
                             ->columnSpanFull()
                             ->required()
                             ->autosize(),
-                        Hidden::make('created_by')->default(Auth::user()->name),
-                        Hidden::make('status')->default('ACTIVO'),
-
-                        // ... INFORMACION DEL PLAN
-                        Fieldset::make('Plan de afiliación')
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+                Section::make('Plan de afiliación')
+                    ->description('Cobertura, tarifa y frecuencia de pago.')
+                    ->icon(Heroicon::ClipboardDocumentList)
+                    ->schema([
+                        Fieldset::make('Plan de afiliación')
                             ->schema([
                                 Select::make('plan_id')
                                     ->required()
@@ -134,11 +142,10 @@ class AffiliatesRelationManager extends RelationManager
                                         'required' => 'Campo Obligatorio',
                                     ])
                                     ->label('Rango de edad')
-                                    ->options(function (get $get, $state) {
-                                        Log::info($state);
-
-                                        return AgeRange::where('plan_id', $get('plan_id'))->get()->pluck('range', 'id');
-                                    })
+                                    ->options(fn (Get $get): array => AgeRange::query()
+                                        ->where('plan_id', $get('plan_id'))
+                                        ->pluck('range', 'id')
+                                        ->all())
                                     ->searchable()
                                     ->validationMessages([
                                         'required' => 'Campo Obligatorio',
@@ -215,10 +222,16 @@ class AffiliatesRelationManager extends RelationManager
                                     ->validationMessages([
                                         'required' => 'Campo Obligatorio',
                                     ]),
-                            ])->columnSpanFull()->columns(2),
-
-                        // ... VAUCHER ILS
-                        Fieldset::make('Vaucher ILS')
+                            ])
+                            ->columnSpanFull()
+                            ->columns(2),
+                    ])
+                    ->columnSpanFull(),
+                Section::make('Voucher ILS')
+                    ->description('Cobertura internacional de servicios, si aplica.')
+                    ->icon(Heroicon::Ticket)
+                    ->schema([
+                        Fieldset::make('Voucher ILS')
                             ->schema([
                                 Grid::make()->schema([
                                     TextInput::make('vaucherIls')
@@ -249,142 +262,219 @@ class AffiliatesRelationManager extends RelationManager
                                         ->label('Documento/Comprobante ILS')
                                         ->required(),
                                 ]),
-                            ])->columnSpanFull()->columns(2),
-
-                    ])->columnSpanFull()->columns(2),
+                            ])
+                            ->columnSpanFull()
+                            ->columns(2),
+                        Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? ''),
+                        Hidden::make('status')->default('ACTIVO'),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->heading('CARGA FAMILIAR')
-            ->description('Lista de familiares afiliados')
+            ->recordTitleAttribute('full_name')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with(['plan', 'ageRange', 'coverage'])
+                ->orderByRaw("CASE WHEN relationship = 'TITULAR' THEN 0 ELSE 1 END")
+                ->orderBy('full_name'))
+            ->heading('Carga familiar')
+            ->description('Familiares vinculados a esta afiliación. Use búsqueda, filtros y columnas para ajustar la vista.')
+            ->emptyStateHeading('Sin familiares registrados')
+            ->emptyStateDescription('Agregue un familiar con el botón superior o complete la pre-afiliación.')
+            ->emptyStateIcon(Heroicon::UserGroup)
+            ->striped()
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50])
             ->columns([
-                TextInputColumn::make('full_name')
-                    ->label('Nombre y Apellidos'),
-                TextInputColumn::make('nro_identificacion')
-                    ->label('Nro Identificacion'),
-                TextColumn::make('birth_date')
-                    ->label('Fecha de Nacimiento'),
+                TextColumn::make('relationship')
+                    ->label('Parentesco')
+                    ->icon(Heroicon::UserCircle)
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'TITULAR' ? 'primary' : 'gray')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('full_name')
+                    ->label('Nombre completo')
+                    ->icon(Heroicon::User)
+                    ->weight(FontWeight::SemiBold)
+                    ->wrap()
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('Nombre copiado')
+                    ->extraCellAttributes(['class' => 'min-w-44 sm:min-w-56']),
+                TextColumn::make('nro_identificacion')
+                    ->label('C.I.')
+                    ->icon(Heroicon::Identification)
+                    ->fontFamily(FontFamily::Mono)
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('C.I. copiada'),
                 TextColumn::make('age')
-                    ->label('Edad'),
+                    ->label('Edad')
+                    ->alignCenter()
+                    ->sortable(),
+                TextColumn::make('birth_date')
+                    ->label('Nacimiento')
+                    ->icon(Heroicon::CalendarDays)
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                    ->toggleable(),
                 TextColumn::make('sex')
-                    ->label('Genero'),
-                TextColumn::make('relationship')
-                    ->label('Parentesco'),
-                TextColumn::make('address')
-                    ->label('Direccion Completa'),
-                TextInputColumn::make('phone')
-                    ->label('Numero de Telefono'),
-                TextInputColumn::make('email')
-                    ->label('Correo Electronico'),
-                TextColumn::make('relationship')
-                    ->label('Parentesco'),
-                TextColumn::make('plan.description')
+                    ->label('Sexo')
                     ->badge()
-                    ->color('success'),
-                TextColumn::make('ageRange.range')
-                    ->label('Rango de Edad')
-                    ->badge()
-                    ->color('success'),
-                TextColumn::make('coverage.price')
-                    ->badge()
-                    ->color('success'),
-                TextColumn::make('payment_frequency')
-                    ->label('Frecuencia de Pago')
-                    ->badge()
-                    ->color('success'),
-                TextColumn::make('fee')
-                    ->label('Tarifa Anual')
-                    ->badge()
-                    ->color('success'),
-                TextColumn::make('total_amount')
-                    ->label('Monto a Pagar')
-                    ->badge()
-                    ->color('success'),
+                    ->color('gray')
+                    ->toggleable(),
                 TextColumn::make('status')
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'ACTIVO' => 'success',
-                            'INACTIVO' => 'danger',
-                            'EXCLUIDO' => 'danger',
-                            default => 'primary',
-                        };
-                    })
+                    ->label('Estatus')
+                    ->icon(Heroicon::Signal)
                     ->badge()
-                    ->label('Estatus'),
+                    ->color(fn (string $state): string => match ($state) {
+                        'ACTIVO' => 'success',
+                        'INACTIVO', 'EXCLUIDO' => 'danger',
+                        default => 'gray',
+                    })
+                    ->sortable(),
+                TextColumn::make('plan.description')
+                    ->label('Plan')
+                    ->icon(Heroicon::ClipboardDocumentList)
+                    ->badge()
+                    ->color('success')
+                    ->searchable()
+                    ->limit(24)
+                    ->tooltip(fn (Affiliate $record): ?string => strlen((string) ($record->plan?->description ?? '')) > 24
+                        ? $record->plan?->description
+                        : null),
+                TextColumn::make('fee')
+                    ->label('Tarifa anual')
+                    ->icon(Heroicon::CurrencyDollar)
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' US$')
+                    ->sortable(),
+                TextColumn::make('total_amount')
+                    ->label('Monto período')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' US$')
+                    ->sortable(),
+                TextColumn::make('payment_frequency')
+                    ->label('Frecuencia')
+                    ->badge()
+                    ->color('info')
+                    ->toggleable(),
+                TextColumn::make('phone')
+                    ->label('Teléfono')
+                    ->icon(Heroicon::Phone)
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('email')
+                    ->label('Correo')
+                    ->icon(Heroicon::Envelope)
+                    ->copyable()
+                    ->limit(28)
+                    ->tooltip(fn (Affiliate $record): ?string => strlen((string) ($record->email ?? '')) > 28 ? $record->email : null)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('address')
+                    ->label('Dirección')
+                    ->icon(Heroicon::MapPin)
+                    ->wrap()
+                    ->lineClamp(2)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('ageRange.range')
+                    ->label('Rango edad')
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('coverage.price')
+                    ->label('Cobertura')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' US$')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('vaucherIls')
                     ->label('Voucher ILS')
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(fn ($record) => $record->vaucherIls == null ? '--------' : $record->vaucherIls),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('dateInit')
-                    ->label('Fecha Inicio')
+                    ->label('ILS desde')
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(fn ($record) => $record->dateInit == null ? '--/--/---' : $record->dateInit),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('dateEnd')
-                    ->label('Fecha Fin')
+                    ->label('ILS hasta')
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(fn ($record) => $record->dateEnd === null ? '--/--/---' : $record->dateEnd),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('numberDays')
-                    ->label('Dias Cobertura')
-                    ->suffix(' Dias Restantes')
+                    ->label('Días ILS')
+                    ->suffix(' días')
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(function ($record) {
+                    ->getStateUsing(function (Affiliate $record): string {
                         if ($record->dateEnd === null) {
-                            return '--';
+                            return '—';
                         }
-
                         $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($record->dateEnd);
 
-                        return $days === null ? '--' : $days;
-                    }),
+                        return $days === null ? '—' : (string) $days;
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('document_ils')
                     ->alignment(Alignment::Center)
-                    ->label('Comprobante')
-                    ->icon(function ($record) {
-                        // Muestra un ícono si la imagen existe
-                        return $record->document_ils != null
-                            ? 'heroicon-o-check-circle' // Ícono de "check" si la imagen existe
-                            : 'heroicon-o-x-circle';   // Ícono de "x" si no existe
-                    })
-                    // ->iconPosition(IconPosition::After), // Posición del ícono
-                    ->color(function ($record) {
-                        // Color del ícono basado en la existencia de la imagen
-                        return $record->document_ils != null
-                            ? 'success' // Verde si la imagen existe
-                            : 'danger'; // Rojo si no existe
-                    })
-                    ->url(function ($record) {
-                        return asset('storage/'.$record->document_ils);
-                    })
-                    ->openUrlInNewTab(),
+                    ->label('Doc. ILS')
+                    ->icon(fn (Affiliate $record): string => $record->document_ils !== null
+                        ? 'heroicon-o-check-circle'
+                        : 'heroicon-o-x-circle')
+                    ->color(fn (Affiliate $record): string => $record->document_ils !== null
+                        ? 'success'
+                        : 'danger')
+                    ->url(fn (Affiliate $record): ?string => $record->document_ils
+                        ? asset('storage/'.$record->document_ils)
+                        : null)
+                    ->openUrlInNewTab()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options([
+                        'ACTIVO' => 'Activo',
+                        'INACTIVO' => 'Inactivo',
+                        'EXCLUIDO' => 'Excluido',
+                    ])
+                    ->native(false),
+                SelectFilter::make('relationship')
+                    ->label('Parentesco')
+                    ->options([
+                        'TITULAR' => 'Titular',
+                        'CONYUGE' => 'Cónyuge',
+                        'HIJO' => 'Hijo',
+                        'HIJA' => 'Hija',
+                        'PADRE' => 'Padre',
+                        'MADRE' => 'Madre',
+                        'OTRO' => 'Otro',
+                    ])
+                    ->native(false),
             ])
             ->recordActions([
                 ActionGroup::make([
-
                     Action::make('upload_info_ils')
-                        ->label('Vaucher ILS')
+                        ->label('Voucher ILS')
                         ->color('info')
                         ->icon(Heroicon::Ticket)
-                        ->requiresConfirmation()
                         ->modalWidth(Width::TwoExtraLarge)
-                        ->modalHeading('Activar afiliacion')
+                        ->modalHeading('Activar cobertura ILS')
+                        ->modalDescription('Indique vigencia y adjunte el comprobante del voucher.')
                         ->form([
-                            Section::make('ACTIVAR AFILIACION')
-                                ->description('Foirmulario de activacion de afiliacion. Campo Requerido(*)')
-                                ->icon('heroicon-s-check-circle')
+                            Section::make('Datos del voucher')
+                                ->description('Todos los campos son obligatorios.')
+                                ->icon(Heroicon::CheckCircle)
                                 ->schema([
                                     Grid::make(2)->schema([
                                         TextInput::make('vaucherIls')
@@ -438,29 +528,26 @@ class AffiliatesRelationManager extends RelationManager
 
                                 Notification::make()
                                     ->success()
-                                    ->title('Vaucher ILS Activado')
+                                    ->title('Voucher ILS activado')
+                                    ->icon(Heroicon::CheckCircle)
                                     ->send();
                             } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
                                 Notification::make()
                                     ->danger()
-                                    ->title('Error')
-                                    ->body('Hubo un error activando el Vaucher ILS. Por favor, intente nuevamente.')
+                                    ->title('Error al activar ILS')
+                                    ->body('No se pudo guardar el voucher. Intente nuevamente.')
                                     ->send();
                             }
                         })
-                        ->hidden(function (Affiliate $record): bool {
-                            if ($record->vaucherIls != null) {
-                                return true;
-                            }
-
-                            return false;
-                        }),
+                        ->hidden(fn (Affiliate $record): bool => $record->vaucherIls !== null),
 
                     EditAction::make()
-                        ->label('Editar Afiliación')
-                        ->icon('heroicon-s-pencil')
+                        ->label('Editar')
+                        ->icon(Heroicon::PencilSquare)
                         ->color('warning')
+                        ->modalWidth(Width::SevenExtraLarge)
+                        ->modalHeading('Editar familiar')
+                        ->modalDescription('Actualice datos personales, plan y montos. Los cambios recalculan los totales de la afiliación.')
                         ->after(function (Affiliate $record, array $data): void {
                             try {
                                 $record->refresh();
@@ -480,128 +567,159 @@ class AffiliatesRelationManager extends RelationManager
                                 ]);
 
                                 $owner = $this->getOwnerRecord();
-
-                                $fee_anual = $this->recalculateAffiliationTotalsFromAffiliates($owner->affiliates->toArray());
-
                                 $owner->plan_id = (int) $data['plan_id'];
                                 $owner->coverage_id = (int) $data['coverage_id'];
                                 $owner->payment_frequency = $frequency;
-                                $owner->fee_anual = $fee_anual;
-                                $owner->family_members = $owner->affiliates->count();
-                                $owner->total_amount = $this->totalAmountForPaymentFrequency($owner->fee_anual, $frequency);
-                                $owner->save();
+                                $this->recalculateAffiliationTotalsFromAffiliates($owner);
 
-                            } catch (\Throwable $th) {
-                                dd($th);
-                                Log::error($th->getMessage());
+                            } catch (\Throwable) {
                                 Notification::make()
                                     ->danger()
-                                    ->title('Error')
-                                    ->body('Hubo un error actualizando la afiliación. Por favor, intente nuevamente.')
+                                    ->title('Error al actualizar')
+                                    ->body('No se pudieron guardar los cambios del familiar.')
                                     ->send();
                             }
                         }),
 
                     Action::make('changet_status')
-                        ->label('Dar de Baja')
-                        ->icon('heroicon-s-trash')
+                        ->label('Dar de baja')
+                        ->icon(Heroicon::Trash)
                         ->color('danger')
                         ->requiresConfirmation()
+                        ->modalHeading('Dar de baja al familiar')
+                        ->modalDescription('El familiar quedará inactivo y dejará de sumar en los totales de la afiliación.')
                         ->action(function (Affiliate $record): void {
-
                             $record->update([
                                 'status' => 'INACTIVO',
                             ]);
 
-                            $owner = $this->getOwnerRecord();
-                            $owner->family_members = $owner->affiliates()->where('status', 'ACTIVO')->count();
-                            $owner->save();
-
-                            $this->recalculateAffiliationTotalsFromAffiliates($owner);
+                            app(AffiliationAffiliateFeeCalculator::class)
+                                ->recalculateAffiliationTotalsFromAffiliates($this->getOwnerRecord());
 
                             Notification::make()
                                 ->success()
-                                ->title('Afiliacion de Baja')
+                                ->title('Familiar dado de baja')
+                                ->icon(Heroicon::CheckCircle)
                                 ->send();
                         }),
 
                     Action::make('asociated_amount_affiliation')
-                        ->label('Asociar Monto Afiliación')
+                        ->label('Asociar montos')
                         ->color('success')
-                        ->icon('heroicon-s-cog')
+                        ->icon(Heroicon::Cog6Tooth)
+                        ->requiresConfirmation()
+                        ->modalHeading('Asociar montos de la afiliación')
+                        ->modalDescription('Asigna plan, cobertura y tarifa según la edad del familiar y la cobertura de la afiliación.')
                         ->action(function (Affiliate $record): void {
+                            $affiliation = Affiliation::query()->findOrFail($record->affiliation_id);
+                            $calculator = app(AffiliationAffiliateFeeCalculator::class);
+
+                            if (! $calculator->isInitialPlanWithoutCoverage($affiliation) && blank($affiliation->coverage_id)) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Cobertura no definida')
+                                    ->body('La afiliación no tiene cobertura asociada. Defínala antes de asociar montos.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $affiliateAge = $calculator->resolveAffiliateAge($record);
+
+                            if ($affiliateAge === null) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Edad no disponible')
+                                    ->body('El familiar debe tener edad o fecha de nacimiento para calcular la tarifa.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $fee = $calculator->resolveFeeForAffiliateAge($affiliation, $affiliateAge);
+
+                            if ($fee === null) {
+                                $context = $calculator->isInitialPlanWithoutCoverage($affiliation)
+                                    ? 'plan inicial (sin cobertura)'
+                                    : "cobertura #{$affiliation->coverage_id}";
+
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Tarifa no encontrada')
+                                    ->body("No hay tarifa para {$context} y edad {$affiliateAge} años.")
+                                    ->send();
+
+                                return;
+                            }
 
                             try {
+                                if (! $calculator->applyAmountsToAffiliate($affiliation, $record)) {
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Error al asociar')
+                                        ->body('No se pudieron guardar los montos del familiar.')
+                                        ->send();
 
-                                $info_afiliacion = Affiliation::where('id', $record->affiliation_id)->first();
+                                    return;
+                                }
 
-                                $age_range_id = Fee::where('price', $info_afiliacion->fee_anual)->where('coverage_id', $info_afiliacion->coverage_id)->first()->age_range_id;
+                                $calculator->recalculateAffiliationTotalsFromAffiliates($affiliation);
 
-                                $record->update([
-                                    'plan_id' => $info_afiliacion->plan_id,
-                                    'coverage_id' => $info_afiliacion->coverage_id,
-                                    'age_range_id' => $age_range_id,
-                                    'total_amount' => $info_afiliacion->total_amount,
-                                ]);
+                                $annualFee = (float) $fee->price;
+                                $periodAmount = $calculator->totalAmountForPaymentFrequency(
+                                    $annualFee,
+                                    (string) ($affiliation->payment_frequency ?? 'ANUAL'),
+                                );
 
                                 Notification::make()
                                     ->success()
-                                    ->title('Asociacion Completada!')
+                                    ->title('Montos asociados')
+                                    ->body("Tarifa anual US$ {$annualFee} ({$fee->range}) · período US$ {$periodAmount}.")
+                                    ->icon(Heroicon::CheckCircle)
                                     ->send();
-                            } catch (\Throwable $th) {
-                                dd($th);
-                                Log::error($th->getMessage());
+                            } catch (\Throwable) {
                                 Notification::make()
                                     ->danger()
-                                    ->title('Error')
-                                    ->body('Hubo un error activando el Vaucher ILS. Por favor, intente nuevamente.')
+                                    ->title('Error al asociar')
+                                    ->body('No se pudieron guardar los montos del familiar.')
                                     ->send();
                             }
                         })
-                        ->hidden(fn ($record) => Auth::user()->is_business_admin != 1),
+                        ->hidden(fn (): bool => Auth::user()?->is_business_admin != 1),
 
-                ])->hidden(function ($record): bool {
-                    if ($this->getOwnerRecord()->status == 'EXCLUIDO' || Auth::user()->is_business_admin != 1) {
-                        return true;
-                    }
-
-                    return false;
-                }),
+                ])
+                    ->icon(Heroicon::EllipsisVertical)
+                    ->hidden(fn (): bool => $this->getOwnerRecord()->status === 'EXCLUIDO'
+                        || Auth::user()?->is_business_admin != 1),
 
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->label('Agregar Familiar')
-                    ->icon('heroicon-s-user-plus')
-                    ->after(function (array $data): void {
-                        $owner = $this->getOwnerRecord();
-                        $owner->family_members = $owner->affiliates()->where('status', 'ACTIVO')->count();
-                        $owner->save();
-
-                        $this->recalculateAffiliationTotalsFromAffiliates($owner);
+                    ->label('Agregar familiar')
+                    ->icon(Heroicon::UserPlus)
+                    ->color('success')
+                    ->createAnother(false)
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalHeading('Nuevo familiar')
+                    ->modalDescription('Complete los datos del familiar y el plan. Los totales de la afiliación se actualizarán al guardar.')
+                    ->after(function (): void {
+                        app(AffiliationAffiliateFeeCalculator::class)
+                            ->recalculateAffiliationTotalsFromAffiliates($this->getOwnerRecord());
                     })
-                    ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()->departament)),
+                    ->hidden(fn (): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true)),
 
             ]);
     }
 
     public function totalAmountForPaymentFrequency(float $annualFee, string $frequency): float
     {
-        return match ($frequency) {
-            'ANUAL' => round($annualFee, 2),
-            'SEMESTRAL' => round($annualFee / 2, 2),
-            'TRIMESTRAL' => round($annualFee / 4, 2),
-            default => round($annualFee, 2),
-        };
+        return app(AffiliationAffiliateFeeCalculator::class)
+            ->totalAmountForPaymentFrequency($annualFee, $frequency);
     }
 
-    public function recalculateAffiliationTotalsFromAffiliates(array $affiliates): float
+    public function recalculateAffiliationTotalsFromAffiliates(Affiliation $owner): void
     {
-        $total_amount = 0;
-        foreach ($affiliates as $affiliate) {
-            $total_amount += $affiliate['fee'];
-        }
-
-        return round($total_amount, 2);
+        app(AffiliationAffiliateFeeCalculator::class)
+            ->recalculateAffiliationTotalsFromAffiliates($owner);
     }
 }

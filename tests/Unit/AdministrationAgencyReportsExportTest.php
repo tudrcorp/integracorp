@@ -55,6 +55,29 @@ it('devuelve csv de comisiones para usuario autenticado', function (): void {
         ->and($response->streamedContent())->toContain('Nat. nombre beneficiario');
 });
 
+it('devuelve csv de comisiones por jerarquía de agencias con columnas esperadas', function (): void {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('administration.agencies.reports.export', [
+            'report' => 'commission_hierarchy',
+            'format' => 'csv',
+        ]))
+        ->assertOk()
+        ->assertHeaderContains('content-type', 'text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Código agencia referencia')
+        ->toContain('Cadena jerárquica')
+        ->toContain('Agencia estructura (código)');
+
+    expect($response->headers->get('content-disposition'))
+        ->toContain('attachment')
+        ->toContain('.csv');
+});
+
 it('devuelve csv de estatus sin error de agregación (group by alineado con select)', function (): void {
     $user = User::factory()->create();
 

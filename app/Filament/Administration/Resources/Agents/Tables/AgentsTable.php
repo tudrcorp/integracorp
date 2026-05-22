@@ -2,6 +2,7 @@
 
 namespace App\Filament\Administration\Resources\Agents\Tables;
 
+use App\Filament\Administration\Resources\Agents\AgentResource;
 use App\Filament\Exports\AgentExporter;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
@@ -23,13 +24,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
 
 class AgentsTable
@@ -80,26 +79,7 @@ class AgentsTable
                     ->searchable()
                     ->badge()
                     ->color('verde')
-                    ->tooltip('Ver perfil del agente')
-                    ->extraAttributes([
-                        'class' => 'cursor-pointer',
-                    ])
-                    ->action(
-                        Action::make('view_agent_profile')
-                            ->label('Ver perfil')
-                            ->icon('heroicon-o-eye')
-                            ->color('primary')
-                            ->modalHeading('Perfil del Agente')
-                            ->modalDescription('Vista principal del agente con estilo iOS.')
-                            ->modalWidth('4xl')
-                            ->modalSubmitAction(false)
-                            ->modalCancelActionLabel('Cerrar')
-                            ->modalContent(function (Agent $record): ViewContract {
-                                return View::make('filament.administration.agents.agent-quick-profile', [
-                                    'agent' => $record->loadMissing(['typeAgent', 'agency', 'country', 'state', 'city']),
-                                ]);
-                            }),
-                    ),
+                    ->tooltip('Abrir detalle del agente'),
                 TextColumn::make('ci')
                     ->label('CI:')
                     ->searchable()
@@ -251,6 +231,7 @@ class AgentsTable
                     ->button()
                     ->label('Filtros'),
             )
+            ->recordUrl(fn (Agent $record): string => AgentResource::getUrl('view', ['record' => $record]))
             ->recordActions([
                 ActionGroup::make([
                     Action::make('Activate')

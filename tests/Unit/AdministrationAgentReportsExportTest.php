@@ -46,6 +46,30 @@ it('devuelve csv de comisiones de agentes con columna Estatus', function (): voi
         ->and($response->streamedContent())->toContain('Nat. nombre beneficiario');
 });
 
+it('devuelve csv de comisiones por jerarquía con columnas de cadena y porcentajes', function (): void {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('administration.agents.reports.export', [
+            'report' => 'commission_hierarchy',
+            'format' => 'csv',
+        ]))
+        ->assertOk()
+        ->assertHeaderContains('content-type', 'text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Código agente referencia')
+        ->toContain('Cadena jerárquica')
+        ->toContain('% TDEC renovación')
+        ->toContain('Rol en jerarquía');
+
+    expect($response->headers->get('content-disposition'))
+        ->toContain('attachment')
+        ->toContain('.csv');
+});
+
 it('devuelve csv de estatus de agentes sin error de agregación', function (): void {
     $user = User::factory()->create();
 

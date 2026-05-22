@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\AnulateAgentQuotes;
+use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendNotificationBirthday;
 use App\Jobs\UpdateAffiliateIlsRemainingDays;
@@ -36,13 +37,19 @@ Schedule::job(new SendCollaboratorAnniversaryNotification, 'system')->dailyAt('8
  * Se ejecutara todos los dias cada 6 horas
  * Hora de inicio = 8:00am
  */
-Schedule::job(new ValidateDateToRenew, 'renew')->dailyAt('00:00');
+// Schedule::job(new ValidateDateToRenew, 'renew')->dailyAt('00:00');
 
 /**
  * Tarea para recalcular días restantes hacia el próximo mes en false
  * de la cobranza anual. Se ejecuta todos los días a las 6:00am.
  */
 Schedule::job(new UpdateAnnualCollectionRemainingDays, 'system')->dailyAt('6:00');
+
+/**
+ * Prepara renovaciones individuales: recalcula tarifas por edad y crea registro en renovations
+ * cuando faltan 30 o más días para la fecha de renovación (effective_date + 1 año).
+ */
+Schedule::job(new PrepareAffiliationRenovations, 'renew')->dailyAt('6:00');
 
 /**
  * Recalcula días restantes hasta dateEnd (vaucher ILS) en familiares afiliados.

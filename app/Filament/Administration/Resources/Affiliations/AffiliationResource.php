@@ -5,16 +5,17 @@ namespace App\Filament\Administration\Resources\Affiliations;
 use App\Filament\Administration\Resources\Affiliations\Pages\CreateAffiliation;
 use App\Filament\Administration\Resources\Affiliations\Pages\EditAffiliation;
 use App\Filament\Administration\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Administration\Resources\Affiliations\Pages\ViewAffiliation;
 use App\Filament\Administration\Resources\Affiliations\RelationManagers\AffiliatesRelationManager;
 use App\Filament\Administration\Resources\Affiliations\RelationManagers\PaidMembershipsRelationManager;
 use App\Filament\Administration\Resources\Affiliations\Schemas\AffiliationForm;
+use App\Filament\Administration\Resources\Affiliations\Schemas\AffiliationInfolist;
 use App\Filament\Administration\Resources\Affiliations\Tables\AffiliationsTable;
 use App\Models\Affiliation;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -26,7 +27,9 @@ class AffiliationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user';
 
-    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+    protected static ?int $navigationSort = 1;
+
+    protected static string|UnitEnum|null $navigationGroup = 'AFILIACIONES';
 
     /**
      * Muestra un badge con la palabra NEW y el conteo de afiliados
@@ -50,10 +53,14 @@ class AffiliationResource extends Resource
         return 'verdeApple';
     }
 
-
     public static function form(Schema $schema): Schema
     {
         return AffiliationForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return AffiliationInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -65,7 +72,7 @@ class AffiliationResource extends Resource
     {
         return [
             AffiliatesRelationManager::class,
-            PaidMembershipsRelationManager::class
+            PaidMembershipsRelationManager::class,
         ];
     }
 
@@ -74,6 +81,7 @@ class AffiliationResource extends Resource
         return [
             'index' => ListAffiliations::route('/'),
             'create' => CreateAffiliation::route('/create'),
+            'view' => ViewAffiliation::route('/{record}'),
             'edit' => EditAffiliation::route('/{record}/edit'),
         ];
     }

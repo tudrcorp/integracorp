@@ -2,7 +2,7 @@
 
 namespace App\Filament\Administration\Resources\AffiliationCorporates\Tables;
 
-use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Http\Controllers\AffiliationCorporateController;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
@@ -28,10 +28,8 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\View;
 
 class AffiliationCorporatesTable
 {
@@ -49,6 +47,7 @@ class AffiliationCorporatesTable
             ->defaultSort('created_at', 'desc')
             ->heading('AFILIACIONES CORPORATIVAS')
             ->description('Lista de afiliaciones corporativas registradas en el sistema')
+            ->recordUrl(fn (AffiliationCorporate $record): string => AffiliationCorporateResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('status')
                     ->label('Estatus')
@@ -78,26 +77,10 @@ class AffiliationCorporatesTable
                     ->searchable()
                     ->sortable()
                     ->sortable()
-                    ->tooltip('Ver ficha de afiliación corporativa')
+                    ->tooltip('Clic para ver ficha de afiliación corporativa')
                     ->extraAttributes([
                         'class' => 'cursor-pointer',
-                    ])
-                    ->action(
-                        Action::make('view_affiliation_corporate_profile')
-                            ->label('Ver ficha')
-                            ->icon('heroicon-o-eye')
-                            ->color('primary')
-                            ->modalHeading('Afiliación Corporativa')
-                            ->modalDescription('Ficha principal con información clave en estilo iOS.')
-                            ->modalWidth('5xl')
-                            ->modalSubmitAction(false)
-                            ->modalCancelActionLabel('Cerrar')
-                            ->modalContent(function (AffiliationCorporate $record): ViewContract {
-                                return View::make('filament.administration.affiliation-corporates.affiliation-corporate-quick-profile', [
-                                    'affiliationCorporate' => $record->loadMissing(['agency', 'agent', 'country', 'state', 'city']),
-                                ]);
-                            }),
-                    ),
+                    ]),
                 TextColumn::make('name_corporate')
                     ->label('Cliente Corporativo')
                     ->badge()
