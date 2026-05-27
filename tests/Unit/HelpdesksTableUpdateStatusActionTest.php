@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 it('HelpdesksTable define la acción updateStatus con HelpdeskTaskStatusOptions', function () {
-    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Tables/HelpdesksTable.php';
-    $contents = file_get_contents($path);
-    expect($contents)->toContain("Action::make('updateStatus')")
+    $tablePath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Tables/HelpdesksTable.php';
+    $actionsPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Actions/HelpdeskTicketModalActions.php';
+
+    expect(file_get_contents($tablePath))->toContain('makeUpdateStatusAction()');
+
+    expect(file_get_contents($actionsPath))
         ->toContain('HelpdeskTaskStatusOptions::forSelect')
+        ->toContain('currentUserIsTicketAssignee($record)')
         ->toContain('HelpdeskTaskStatusOptions::sanitizeStatusForSave')
+        ->toContain('statusModalDescription')
         ->toContain('fi-helpdesk-ios-section')
-        ->toContain('->native(true)')
         ->toContain('helpdesk-status-native-select');
 });

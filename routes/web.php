@@ -26,6 +26,8 @@ use App\Http\Controllers\PdfController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
 use App\Http\Controllers\TarjetaAfiliacionController;
+use App\Http\Controllers\TelemedicineSchemaDocumentationController;
+use App\Http\Controllers\TelemedicineSchemaDocumentationTemporaryLinkController;
 use App\Http\Controllers\UtilsController;
 use App\Mail\NotificationRenewAffiliationMail;
 use App\Models\AgentDocument;
@@ -75,6 +77,14 @@ Route::get('/at/c', function () {
 Route::get('/w/p', function () {
     return view('welcome-public');
 })->name('welcome.public');
+
+Route::get('/docs/telemedicina/esquema', TelemedicineSchemaDocumentationController::class)
+    ->middleware('signed')
+    ->name('telemedicine.schema.documentation');
+
+Route::get('/operations/docs/telemedicina/esquema/enlace-temporal', TelemedicineSchemaDocumentationTemporaryLinkController::class)
+    ->middleware(['web', 'auth'])
+    ->name('telemedicine.schema.documentation.link');
 
 Route::get('/ay/c', function () {
     return view('create-agency');

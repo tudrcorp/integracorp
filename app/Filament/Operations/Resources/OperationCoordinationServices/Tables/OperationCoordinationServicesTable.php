@@ -22,6 +22,10 @@ use App\Services\OperationQuoteGeneratorPdfService;
 use App\Services\OperationServiceOrderPdfService;
 use App\Services\OperationServiceOrderQuotePdfService;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Operations\OperationServiceOrderProviderFormFields;
+use App\Support\Operations\OperationServiceOrderProviderSelection;
+use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
+use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
@@ -375,6 +379,7 @@ class OperationCoordinationServicesTable
                 'quote_total_profit_usd' => null,
                 'order_number' => 'ORD-'.str_pad((string) (((int) (OperationServiceOrder::max('id') ?? 0)) + 1), 4, '0', STR_PAD_LEFT),
                 'telemedicine_priority_id' => $record->telemedicine_priority_id,
+                'doctor_nurse_id' => null,
                 'supplier_id' => null,
                 'supplier_external' => null,
                 'operation_inventory_ubication_id' => null,
@@ -604,55 +609,55 @@ class OperationCoordinationServicesTable
                                             ]),
                                     ])
                                     ->columnSpanFull(),
-                                Grid::make(2)
+                                Section::make('Datos de la orden de servicio')
+                                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                                    ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
                                     ->schema([
-                                        TextInput::make('order_number')
-                                            ->label('Número de orden')
-                                            ->required(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->maxLength(255),
-                                        Select::make('telemedicine_priority_id')
-                                            ->label('Prioridad')
-                                            ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
-                                            ->required(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->native(false),
-                                        Select::make('supplier_id')
-                                            ->label('Proveedor TDG')
-                                            ->options(Supplier::query()->orderBy('name', 'asc')->pluck('name', 'id'))
-                                            ->searchable()
-                                            ->preload()
-                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->native(false),
-                                        TextInput::make('supplier_external')
-                                            ->label('Proveedor externo')
-                                            ->maxLength(255)
-                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order')),
-                                        Select::make('operation_inventory_ubication_id')
-                                            ->label('Ubicación inventario (medicamentos)')
-                                            ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
-                                            ->searchable()
-                                            ->preload()
-                                            ->visible(fn (OperationCoordinationService $record, Get $get): bool => (bool) $get('create_service_order') && self::serviceOrderType($record) === 'MEDICAMENTOS')
-                                            ->native(false)
-                                            ->columnSpanFull(),
-                                        TextInput::make('service_order_description')
-                                            ->label('Descripción de la orden')
-                                            ->required(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->maxLength(500)
-                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->columnSpanFull(),
-                                        Textarea::make('service_order_observations')
-                                            ->label('Observaciones de la orden')
-                                            ->rows(3)
-                                            ->maxLength(2000)
-                                            ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
-                                            ->columnSpanFull(),
-                                    ]),
+                                        Grid::make(2)
+                                            ->schema([
+                                                TextInput::make('order_number')
+                                                    ->label('Número de orden')
+                                                    ->required()
+                                                    ->maxLength(255),
+                                                Select::make('telemedicine_priority_id')
+                                                    ->label('Prioridad')
+                                                    ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                                    ->required()
+                                                    ->native(false),
+                                                Select::make('operation_inventory_ubication_id')
+                                                    ->label('Ubicación inventario (medicamentos)')
+                                                    ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->visible(fn (OperationCoordinationService $record): bool => self::serviceOrderType($record) === 'MEDICAMENTOS')
+                                                    ->native(false)
+                                                    ->columnSpanFull(),
+                                                TextInput::make('service_order_description')
+                                                    ->label('Descripción de la orden')
+                                                    ->required()
+                                                    ->maxLength(500)
+                                                    ->columnSpanFull(),
+                                                Textarea::make('service_order_observations')
+                                                    ->label('Observaciones de la orden')
+                                                    ->rows(3)
+                                                    ->maxLength(2000)
+                                                    ->columnSpanFull(),
+                                            ]),
+                                        ...OperationServiceOrderProviderFormFields::components(),
+                                    ])
+                                    ->columnSpanFull(),
                             ])
                             ->columns(1)
                             ->columnSpanFull(),
                     ]),
+                Step::make('Proveedor no convenido')
+                    ->description('Registro del nuevo proveedor en el sistema')
+                    ->icon(Heroicon::OutlinedUserPlus)
+                    ->extraAttributes([
+                        'class' => OperationServiceOrderUnregisteredProviderFormFields::WIZARD_STEP_CLASS,
+                    ])
+                    ->visible(fn (Get $get): bool => (bool) $get('create_service_order') && (bool) $get('register_unregistered_provider'))
+                    ->schema(OperationServiceOrderUnregisteredProviderFormFields::wizardStepSchema()),
                 Step::make('Negociación')
                     ->description('Tipo y estatus')
                     ->icon(Heroicon::OutlinedChatBubbleLeftRight)
@@ -1194,12 +1199,21 @@ class OperationCoordinationServicesTable
                             'managed_service_item_keys' => [],
                             'order_number' => 'ORD-'.str_pad((string) (((int) (OperationServiceOrder::max('id') ?? 0)) + 1), 4, '0', STR_PAD_LEFT),
                             'telemedicine_priority_id' => $record->telemedicine_priority_id,
+                            'doctor_nurse_id' => null,
                             'supplier_id' => null,
                             'supplier_external' => null,
+                            'register_unregistered_provider' => false,
+                            'unregistered_provider_type' => null,
+                            'unregistered_name' => null,
+                            'unregistered_rif' => null,
+                            'unregistered_phone' => null,
+                            'unregistered_correo_principal' => null,
+                            'unregistered_ubicacion_principal' => null,
                             'operation_inventory_ubication_id' => null,
                             'service_order_description' => null,
                             'service_order_observations' => null,
                             'manage_quote_bcv_rate' => self::referenciaTasaBcvDesdeApi(),
+                            'manage_quote_line_items' => [],
                             'manage_quote_costo_dolares' => null,
                             'manage_quote_costo_bolivares' => null,
                             'manage_quote_porcentaje_ganancia' => null,
@@ -1268,6 +1282,17 @@ class OperationCoordinationServicesTable
                                                 ->bulkToggleable()
                                                 ->searchable()
                                                 ->live()
+                                                ->afterStateUpdated(function (OperationCoordinationService $record, Get $get, Set $set, mixed $state): void {
+                                                    $set(
+                                                        'manage_quote_line_items',
+                                                        self::buildManageQuoteLineItemsDefault(
+                                                            $record,
+                                                            $state,
+                                                            (array) ($get('manage_quote_line_items') ?? [])
+                                                        )
+                                                    );
+                                                    self::syncManageQuoteAggregates($get, $set);
+                                                })
                                                 ->columns(1)
                                                 ->required()
                                                 ->helperText('Use la búsqueda para filtrar por nombre. Puede seleccionar varios ítems a la vez.')
@@ -1379,18 +1404,6 @@ class OperationCoordinationServicesTable
                                                                 ->required()
                                                                 ->prefixIcon(Heroicon::OutlinedBolt)
                                                                 ->native(false),
-                                                            Select::make('supplier_id')
-                                                                ->label('Proveedor TDG')
-                                                                ->options(Supplier::query()->orderBy('name', 'asc')->pluck('name', 'id'))
-                                                                ->searchable()
-                                                                ->preload()
-                                                                ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
-                                                                ->native(false),
-                                                            TextInput::make('supplier_external')
-                                                                ->label('Proveedor externo')
-                                                                ->prefixIcon(Heroicon::OutlinedGlobeAlt)
-                                                                ->placeholder('Nombre si el suministro es externo')
-                                                                ->maxLength(255),
                                                             Select::make('operation_inventory_ubication_id')
                                                                 ->label('Ubicación inventario (medicamentos)')
                                                                 ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
@@ -1414,11 +1427,20 @@ class OperationCoordinationServicesTable
                                                                 ->maxLength(2000)
                                                                 ->columnSpanFull(),
                                                         ]),
+                                                    ...OperationServiceOrderProviderFormFields::components(),
                                                 ])
                                                 ->columnSpanFull(),
                                         ])
                                         ->columnSpanFull(),
                                 ]),
+                            Step::make('Proveedor no convenido')
+                                ->description('Registro del nuevo proveedor en el sistema')
+                                ->icon(Heroicon::OutlinedUserPlus)
+                                ->extraAttributes([
+                                    'class' => OperationServiceOrderUnregisteredProviderFormFields::WIZARD_STEP_CLASS,
+                                ])
+                                ->visible(fn (OperationCoordinationService $record, Get $get): bool => self::shouldShowUnregisteredProviderWizardStep($record, $get))
+                                ->schema(OperationServiceOrderUnregisteredProviderFormFields::wizardStepSchema()),
                             Step::make('Cotización')
                                 ->description('Obligatoria para ítems no cubiertos')
                                 ->icon(Heroicon::OutlinedCurrencyDollar)
@@ -1471,66 +1493,89 @@ class OperationCoordinationServicesTable
                                                 ])
                                                 ->columnSpanFull(),
                                             Section::make('Parámetros de cotización')
-                                                ->description('Ingrese el costo base y la utilidad. Los totales se calculan en tiempo real.')
+                                                ->description('Ingrese el precio unitario en USD de cada ítem. El sistema calcula bolívares con la tasa BCV y el total con la ganancia.')
                                                 ->icon(Heroicon::OutlinedCalculator)
                                                 ->iconColor('warning')
                                                 ->extraAttributes(['class' => 'fi-manage-quote-params-section'])
                                                 ->schema([
+                                                    TextInput::make('manage_quote_bcv_rate')
+                                                        ->label('Tasa BCV del día')
+                                                        ->prefix('Bs.')
+                                                        ->numeric()
+                                                        ->readOnly()
+                                                        ->dehydrated()
+                                                        ->default(fn (): ?float => self::referenciaTasaBcvDesdeApi())
+                                                        ->helperText('Referencia automática desde API BCV.')
+                                                        ->extraAttributes(['class' => 'fi-manage-quote-readonly-field'])
+                                                        ->columnSpanFull(),
+                                                    Repeater::make('manage_quote_line_items')
+                                                        ->label('Precios unitarios por ítem')
+                                                        ->addable(false)
+                                                        ->deletable(false)
+                                                        ->reorderable(false)
+                                                        ->columns(['default' => 1, 'md' => 3])
+                                                        ->afterStateHydrated(function (
+                                                            mixed $state,
+                                                            OperationCoordinationService $record,
+                                                            Get $get,
+                                                            Set $set
+                                                        ): void {
+                                                            self::ensureManageQuoteLineItemsPopulated($record, $get, $set, $state);
+                                                        })
+                                                        ->schema([
+                                                            Hidden::make('key')
+                                                                ->dehydrated(),
+                                                            Hidden::make('category')
+                                                                ->dehydrated(),
+                                                            TextInput::make('label')
+                                                                ->label('Ítem')
+                                                                ->disabled()
+                                                                ->dehydrated(),
+                                                            TextInput::make('unit_price_usd')
+                                                                ->label('Precio unitario (USD)')
+                                                                ->prefix('US$')
+                                                                ->numeric()
+                                                                ->required()
+                                                                ->minValue(0.01)
+                                                                ->live(debounce: 400)
+                                                                ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
+                                                                    $rate = self::decimalOrNull($get('../../manage_quote_bcv_rate'));
+                                                                    $usd = self::decimalOrNull($state);
+                                                                    $set(
+                                                                        'unit_price_ves',
+                                                                        ($rate !== null && $usd !== null)
+                                                                            ? round($usd * $rate, 2)
+                                                                            : null
+                                                                    );
+                                                                    self::syncManageQuoteAggregates($get, $set);
+                                                                }),
+                                                            TextInput::make('unit_price_ves')
+                                                                ->label('Equivalente (Bs.)')
+                                                                ->prefix('Bs.')
+                                                                ->numeric()
+                                                                ->readOnly()
+                                                                ->dehydrated()
+                                                                ->extraAttributes(['class' => 'fi-manage-quote-readonly-field']),
+                                                        ])
+                                                        ->columnSpanFull(),
                                                     Grid::make(['default' => 1, 'lg' => 5])
                                                         ->schema([
                                                             Grid::make(1)
                                                                 ->columnSpan(['lg' => 3])
                                                                 ->schema([
-                                                                    Grid::make(['default' => 1, 'sm' => 2])
-                                                                        ->schema([
-                                                                            TextInput::make('manage_quote_bcv_rate')
-                                                                                ->label('Tasa BCV del día')
-                                                                                ->prefix('Bs.')
-                                                                                ->numeric()
-                                                                                ->readOnly()
-                                                                                ->dehydrated()
-                                                                                ->default(fn (): ?float => self::referenciaTasaBcvDesdeApi())
-                                                                                ->helperText('Referencia automática desde API BCV.')
-                                                                                ->extraAttributes(['class' => 'fi-manage-quote-readonly-field']),
-                                                                            TextInput::make('manage_quote_costo_bolivares')
-                                                                                ->label('Equivalente en bolívares')
-                                                                                ->prefix('Bs.')
-                                                                                ->numeric()
-                                                                                ->readOnly()
-                                                                                ->dehydrated()
-                                                                                ->helperText('Costo USD × tasa BCV.')
-                                                                                ->extraAttributes(['class' => 'fi-manage-quote-readonly-field']),
-                                                                        ]),
-                                                                    Grid::make(['default' => 1, 'sm' => 2])
-                                                                        ->schema([
-                                                                            TextInput::make('manage_quote_costo_dolares')
-                                                                                ->label('Costo base en dólares')
-                                                                                ->prefix('US$')
-                                                                                ->numeric()
-                                                                                ->required()
-                                                                                ->live(debounce: 400)
-                                                                                ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
-                                                                                    $rate = self::decimalOrNull($get('manage_quote_bcv_rate'));
-                                                                                    $usd = self::decimalOrNull($state);
-
-                                                                                    if ($rate === null || $usd === null) {
-                                                                                        $set('manage_quote_costo_bolivares', null);
-
-                                                                                        return;
-                                                                                    }
-
-                                                                                    $set('manage_quote_costo_bolivares', round($usd * $rate, 2));
-                                                                                })
-                                                                                ->helperText('Monto de referencia del proveedor o costo operativo.'),
-                                                                            TextInput::make('manage_quote_porcentaje_ganancia')
-                                                                                ->label('Porcentaje de ganancia')
-                                                                                ->prefix('%')
-                                                                                ->numeric()
-                                                                                ->default(0)
-                                                                                ->minValue(0)
-                                                                                ->live(debounce: 400)
-                                                                                ->helperText('Utilidad aplicada sobre el costo base.'),
-                                                                        ]),
+                                                                    Hidden::make('manage_quote_costo_dolares')
+                                                                        ->dehydrated(),
+                                                                    Hidden::make('manage_quote_costo_bolivares')
+                                                                        ->dehydrated(),
+                                                                    TextInput::make('manage_quote_porcentaje_ganancia')
+                                                                        ->label('Porcentaje de ganancia')
+                                                                        ->prefix('%')
+                                                                        ->numeric()
+                                                                        ->default(0)
+                                                                        ->minValue(0)
+                                                                        ->live(debounce: 400)
+                                                                        ->afterStateUpdated(fn (Get $get, Set $set): mixed => self::syncManageQuoteAggregates($get, $set))
+                                                                        ->helperText('Utilidad aplicada sobre la suma de precios unitarios en USD.'),
                                                                 ]),
                                                             Placeholder::make('manage_quote_summary_panel')
                                                                 ->hiddenLabel()
@@ -1544,7 +1589,7 @@ class OperationCoordinationServicesTable
                                 ]),
                         ])
                         ->action(fn (OperationCoordinationService $record, array $data): mixed => self::manageSelectedServiceItems($record, $data))
-                        ->disabled(fn (OperationCoordinationService $record): bool => self::manageServiceSelectableOptions($record) === []),
+                        ->disabled(fn (OperationCoordinationService $record): bool => self::manageServiceActionIsDisabled($record)),
                     Action::make('manage_service_quote')
                         ->label('Gestionar Cotización')
                         ->icon(Heroicon::OutlinedDocumentCurrencyDollar)
@@ -1649,17 +1694,6 @@ class OperationCoordinationServicesTable
                                                 ->required(fn (Get $get): bool => self::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
                                                 ->prefixIcon(Heroicon::OutlinedBolt)
                                                 ->native(false),
-                                            Select::make('supplier_id')
-                                                ->label('Proveedor TDG')
-                                                ->options(Supplier::query()->orderBy('name', 'asc')->pluck('name', 'id'))
-                                                ->searchable()
-                                                ->preload()
-                                                ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
-                                                ->native(false),
-                                            TextInput::make('supplier_external')
-                                                ->label('Proveedor externo')
-                                                ->prefixIcon(Heroicon::OutlinedGlobeAlt)
-                                                ->maxLength(255),
                                             Select::make('operation_inventory_ubication_id')
                                                 ->label('Ubicación inventario (medicamentos)')
                                                 ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
@@ -1681,6 +1715,8 @@ class OperationCoordinationServicesTable
                                                 ->maxLength(2000)
                                                 ->columnSpanFull(),
                                         ]),
+                                    ...OperationServiceOrderProviderFormFields::selectionComponents(),
+                                    ...OperationServiceOrderUnregisteredProviderFormFields::inlineRegistrationSchema(),
                                 ])
                                 ->columnSpanFull(),
                         ])
@@ -1692,6 +1728,23 @@ class OperationCoordinationServicesTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function shouldShowUnregisteredProviderWizardStep(
+        OperationCoordinationService $record,
+        Get $get
+    ): bool {
+        if (! (bool) $get('register_unregistered_provider')) {
+            return false;
+        }
+
+        $coveredKeys = self::coveredSelectedManagementItemKeys($record, $get('managed_service_item_keys'));
+
+        if ($coveredKeys === []) {
+            return false;
+        }
+
+        return self::resolveServiceOrderTypeFromManagementKeys($coveredKeys) !== null;
     }
 
     private static function serviceOrderType(OperationCoordinationService $record): ?string
@@ -1978,8 +2031,17 @@ class OperationCoordinationServicesTable
      *     selectable: bool
      * }>
      */
+    private static function manageServiceActionIsDisabled(OperationCoordinationService $record): bool
+    {
+        TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
+
+        return self::manageServiceSelectableOptions($record) === [];
+    }
+
     private static function associatedServiceItemsForManagement(OperationCoordinationService $record): Collection
     {
+        TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
+
         $items = collect();
 
         $record->telemedicinePatientMedications()
@@ -2129,19 +2191,17 @@ class OperationCoordinationServicesTable
 
     private static function manageQuoteSummaryPanel(Get $get): HtmlString
     {
-        $subtotal = self::manageQuoteSubtotal($get('manage_quote_costo_dolares'));
-        $porcentaje = self::decimalOrNull($get('manage_quote_porcentaje_ganancia')) ?? 0.0;
-        $total = self::manageQuoteTotal(
-            $get('manage_quote_costo_dolares'),
-            $get('manage_quote_porcentaje_ganancia')
-        );
-        $bcvRate = self::decimalOrNull($get('manage_quote_bcv_rate'));
+        $subtotal = self::manageQuoteSubtotalFromLineItems(self::manageQuoteLineItemsState($get))
+            ?? self::manageQuoteSubtotal(self::manageQuoteFormFieldState($get, 'manage_quote_costo_dolares'));
+        $porcentaje = self::decimalOrNull(self::manageQuoteFormFieldState($get, 'manage_quote_porcentaje_ganancia')) ?? 0.0;
+        $total = self::manageQuoteTotal($subtotal, $porcentaje);
+        $bcvRate = self::decimalOrNull(self::manageQuoteFormFieldState($get, 'manage_quote_bcv_rate'));
         $ganancia = ($subtotal !== null && $total !== null) ? round($total - $subtotal, 2) : null;
         $totalBs = ($total !== null && $bcvRate !== null) ? round($total * $bcvRate, 2) : null;
 
         $rows = [
             [
-                'label' => 'Costo base',
+                'label' => 'Subtotal ítems',
                 'value' => self::formatManageQuoteAmountPreview($subtotal),
                 'tone' => 'slate',
             ],
@@ -2196,9 +2256,160 @@ class OperationCoordinationServicesTable
         return round($costo, 2);
     }
 
-    private static function manageQuoteTotal(mixed $costoDolares, mixed $porcentajeGanancia): ?float
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function manageQuoteLineItemsState(Get $get): array
     {
-        $subtotal = self::manageQuoteSubtotal($costoDolares);
+        foreach (['manage_quote_line_items', '../../manage_quote_line_items', '../../../manage_quote_line_items'] as $path) {
+            $value = $get($path);
+
+            if (is_array($value) && $value !== []) {
+                return $value;
+            }
+        }
+
+        return [];
+    }
+
+    private static function manageQuoteFormFieldState(Get $get, string $field): mixed
+    {
+        foreach (['', '../../', '../../../'] as $prefix) {
+            $value = $get($prefix.$field);
+
+            if ($value !== null && $value !== '') {
+                return $value;
+            }
+        }
+
+        return $get($field);
+    }
+
+    private static function manageQuoteAggregateSetPathPrefix(Get $get): string
+    {
+        $rateAtRoot = self::decimalOrNull($get('manage_quote_bcv_rate'));
+        $rateAtFormSibling = self::decimalOrNull($get('../../manage_quote_bcv_rate'));
+
+        if ($rateAtFormSibling !== null && $rateAtRoot === null) {
+            return '../../';
+        }
+
+        return '';
+    }
+
+    private static function syncManageQuoteAggregates(Get $get, Set $set): void
+    {
+        $lineItems = self::manageQuoteLineItemsState($get);
+        $subtotal = self::manageQuoteSubtotalFromLineItems($lineItems);
+        $rate = self::decimalOrNull(self::manageQuoteFormFieldState($get, 'manage_quote_bcv_rate'));
+        $prefix = self::manageQuoteAggregateSetPathPrefix($get);
+
+        $set($prefix.'manage_quote_costo_dolares', $subtotal);
+        $set(
+            $prefix.'manage_quote_costo_bolivares',
+            ($subtotal !== null && $rate !== null) ? round($subtotal * $rate, 2) : null
+        );
+    }
+
+    private static function ensureManageQuoteLineItemsPopulated(
+        OperationCoordinationService $record,
+        Get $get,
+        Set $set,
+        mixed $state
+    ): void {
+        $existing = is_array($state) ? $state : [];
+        $expected = self::buildManageQuoteLineItemsDefault(
+            $record,
+            $get('managed_service_item_keys'),
+            $existing
+        );
+
+        if ($expected === []) {
+            return;
+        }
+
+        $existingKeys = array_values(array_map(
+            fn (array $row): string => (string) ($row['key'] ?? ''),
+            $existing
+        ));
+        $expectedKeys = array_values(array_map(
+            fn (array $row): string => (string) ($row['key'] ?? ''),
+            $expected
+        ));
+
+        if ($existingKeys !== $expectedKeys) {
+            $set('manage_quote_line_items', $expected);
+            self::syncManageQuoteAggregates($get, $set);
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lineItems
+     */
+    private static function manageQuoteSubtotalFromLineItems(array $lineItems): ?float
+    {
+        if ($lineItems === []) {
+            return null;
+        }
+
+        $sum = 0.0;
+        $hasPrice = false;
+
+        foreach ($lineItems as $lineItem) {
+            $unitUsd = self::decimalOrNull($lineItem['unit_price_usd'] ?? null);
+
+            if ($unitUsd === null) {
+                continue;
+            }
+
+            $hasPrice = true;
+            $sum += $unitUsd;
+        }
+
+        if (! $hasPrice) {
+            return null;
+        }
+
+        return round($sum, 2);
+    }
+
+    /**
+     * @param  array<int, string>  $selectedKeys
+     * @param  array<int, array<string, mixed>>  $existingLineItems
+     * @return array<int, array<string, mixed>>
+     */
+    private static function buildManageQuoteLineItemsDefault(
+        OperationCoordinationService $record,
+        mixed $selectedKeys,
+        array $existingLineItems = []
+    ): array {
+        $nonCoveredKeys = self::nonCoveredSelectedManagementItemKeys($record, $selectedKeys);
+        $existingByKey = collect($existingLineItems)
+            ->filter(fn (mixed $row): bool => is_array($row) && filled($row['key'] ?? null))
+            ->keyBy(fn (array $row): string => (string) $row['key']);
+
+        return self::associatedServiceItemsForManagement($record)
+            ->filter(fn (array $item): bool => in_array($item['key'], $nonCoveredKeys, true))
+            ->map(function (array $item) use ($existingByKey): array {
+                $existing = $existingByKey->get($item['key']);
+                $unitUsd = self::decimalOrNull($existing['unit_price_usd'] ?? null);
+
+                return [
+                    'key' => $item['key'],
+                    'category' => $item['category'],
+                    'label' => $item['label'],
+                    'detail' => $item['detail'],
+                    'unit_price_usd' => $unitUsd,
+                    'unit_price_ves' => self::decimalOrNull($existing['unit_price_ves'] ?? null),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private static function manageQuoteTotal(mixed $subtotalUsd, mixed $porcentajeGanancia): ?float
+    {
+        $subtotal = self::decimalOrNull($subtotalUsd);
 
         if ($subtotal === null) {
             return null;
@@ -2549,17 +2760,27 @@ class OperationCoordinationServicesTable
         }
 
         if ($shouldCreateQuote) {
-            $costoUsd = self::decimalOrNull($data['manage_quote_costo_dolares'] ?? null);
+            $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
+
+            if ($lineItems === []) {
+                $lineItems = self::buildManageQuoteLineItemsDefault($record, $nonCoveredKeys, []);
+                $data['manage_quote_line_items'] = $lineItems;
+            }
+
+            $costoUsd = self::manageQuoteSubtotalFromLineItems($lineItems)
+                ?? self::decimalOrNull($data['manage_quote_costo_dolares'] ?? null);
 
             if ($costoUsd === null || $costoUsd <= 0) {
                 Notification::make()
                     ->title('Cotización')
-                    ->body('Indique un costo en dólares mayor a cero para los ítems no cubiertos.')
+                    ->body('Indique el precio unitario en dólares (mayor a cero) para cada ítem no cubierto seleccionado.')
                     ->warning()
                     ->send();
 
                 return null;
             }
+
+            $data['manage_quote_costo_dolares'] = $costoUsd;
 
             $bcvRate = self::decimalOrNull($data['manage_quote_bcv_rate'] ?? null);
 
@@ -2576,7 +2797,7 @@ class OperationCoordinationServicesTable
 
         $managedCount = 0;
         $quoteItemsPayload = $shouldCreateQuote
-            ? self::buildManageQuoteItemsPayload($record, $nonCoveredKeys)
+            ? self::buildManageQuoteItemsPayload($record, $nonCoveredKeys, (array) ($data['manage_quote_line_items'] ?? []))
             : [];
 
         DB::transaction(function () use (
@@ -2674,6 +2895,44 @@ class OperationCoordinationServicesTable
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    private static function buildServiceOrderPayload(
+        OperationCoordinationService $record,
+        array $data,
+        string $serviceOrderType
+    ): ?array {
+        $providerError = OperationServiceOrderProviderSelection::validationMessage($data);
+
+        if ($providerError !== null) {
+            Notification::make()
+                ->title('Proveedor de la orden')
+                ->body($providerError)
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        $providers = OperationServiceOrderProviderSelection::resolveProviders($data);
+
+        return [
+            'order_number' => $data['order_number'] ?? null,
+            'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? $record->telemedicine_priority_id,
+            'doctor_nurse_id' => $providers['doctor_nurse_id'],
+            'supplier_id' => $providers['supplier_id'],
+            'supplier_external' => $providers['supplier_external'],
+            'operation_inventory_ubication_id' => $data['operation_inventory_ubication_id'] ?? null,
+            'description' => $data['service_order_description'] ?? null,
+            'service_type' => $serviceOrderType,
+            'status' => 'EN GESTION',
+            'observations' => $data['service_order_observations'] ?? null,
+            'created_by' => Auth::user()?->name,
+            'updated_by' => Auth::user()?->name,
+        ];
+    }
+
+    /**
      * @param  array<int, string>  $coveredKeys
      */
     private static function createServiceOrderFromManageModal(
@@ -2698,19 +2957,11 @@ class OperationCoordinationServicesTable
             return false;
         }
 
-        $payload = [
-            'order_number' => $data['order_number'] ?? null,
-            'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? $record->telemedicine_priority_id,
-            'supplier_id' => $data['supplier_id'] ?? null,
-            'supplier_external' => $data['supplier_external'] ?? null,
-            'operation_inventory_ubication_id' => $data['operation_inventory_ubication_id'] ?? null,
-            'description' => $data['service_order_description'] ?? null,
-            'service_type' => $serviceOrderType,
-            'status' => 'EN GESTION',
-            'observations' => $data['service_order_observations'] ?? null,
-            'created_by' => Auth::user()?->name,
-            'updated_by' => Auth::user()?->name,
-        ];
+        $payload = self::buildServiceOrderPayload($record, $data, $serviceOrderType);
+
+        if ($payload === null) {
+            return false;
+        }
 
         if ($serviceOrderType === 'MEDICAMENTOS') {
             $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [
@@ -2730,20 +2981,34 @@ class OperationCoordinationServicesTable
 
     /**
      * @param  array<int, string>  $nonCoveredKeys
+     * @param  array<int, array<string, mixed>>  $lineItems
      * @return array<int, array<string, mixed>>
      */
-    private static function buildManageQuoteItemsPayload(OperationCoordinationService $record, array $nonCoveredKeys): array
-    {
+    private static function buildManageQuoteItemsPayload(
+        OperationCoordinationService $record,
+        array $nonCoveredKeys,
+        array $lineItems = []
+    ): array {
+        $lineItemsByKey = collect($lineItems)
+            ->filter(fn (mixed $row): bool => is_array($row) && filled($row['key'] ?? null))
+            ->keyBy(fn (array $row): string => (string) $row['key']);
+
         return self::associatedServiceItemsForManagement($record)
             ->filter(fn (array $item): bool => in_array($item['key'], $nonCoveredKeys, true))
-            ->map(fn (array $item): array => [
-                'key' => $item['key'],
-                'category' => $item['category'],
-                'label' => $item['label'],
-                'detail' => $item['detail'],
-                'coverage_label' => $item['coverage_label'],
-                'status' => $item['status'],
-            ])
+            ->map(function (array $item) use ($lineItemsByKey): array {
+                $line = $lineItemsByKey->get($item['key']);
+
+                return [
+                    'key' => $item['key'],
+                    'category' => $item['category'],
+                    'label' => $item['label'],
+                    'detail' => $item['detail'],
+                    'coverage_label' => $item['coverage_label'],
+                    'status' => $item['status'],
+                    'unit_price_usd' => self::decimalOrNull($line['unit_price_usd'] ?? null),
+                    'unit_price_ves' => self::decimalOrNull($line['unit_price_ves'] ?? null),
+                ];
+            })
             ->values()
             ->all();
     }
@@ -2757,7 +3022,9 @@ class OperationCoordinationServicesTable
         string $quoteType,
         array $items
     ): void {
-        $costoUsd = self::decimalOrNull($data['manage_quote_costo_dolares'] ?? null);
+        $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
+        $costoUsd = self::manageQuoteSubtotalFromLineItems($lineItems)
+            ?? self::decimalOrNull($data['manage_quote_costo_dolares'] ?? null);
         $bcvRate = self::decimalOrNull($data['manage_quote_bcv_rate'] ?? null);
 
         if ($costoUsd === null || $costoUsd <= 0 || $bcvRate === null || $bcvRate <= 0 || $items === []) {
@@ -2765,9 +3032,9 @@ class OperationCoordinationServicesTable
         }
 
         $porcentaje = self::decimalOrNull($data['manage_quote_porcentaje_ganancia'] ?? 0) ?? 0.0;
-        $costoBs = self::decimalOrNull($data['manage_quote_costo_bolivares'] ?? null) ?? round($costoUsd * $bcvRate, 2);
         $subtotal = self::manageQuoteSubtotal($costoUsd) ?? 0.0;
-        $total = self::manageQuoteTotal($costoUsd, $porcentaje) ?? 0.0;
+        $total = self::manageQuoteTotal($subtotal, $porcentaje) ?? 0.0;
+        $costoBs = round($total * $bcvRate, 2);
 
         $quote = OperationQuoteGenerator::query()->create([
             'telemedicine_patient_id' => $record->telemedicine_patient_id,
@@ -2805,7 +3072,11 @@ class OperationCoordinationServicesTable
         array $nonCoveredKeys,
         string $quoteType
     ): bool {
-        $items = self::buildManageQuoteItemsPayload($record, $nonCoveredKeys);
+        $items = self::buildManageQuoteItemsPayload(
+            $record,
+            $nonCoveredKeys,
+            (array) ($data['manage_quote_line_items'] ?? [])
+        );
 
         if ($items === []) {
             Notification::make()
@@ -2858,8 +3129,16 @@ class OperationCoordinationServicesTable
             'approved_quote_id' => null,
             'order_number' => self::nextServiceOrderNumber(),
             'telemedicine_priority_id' => $record->telemedicine_priority_id,
+            'doctor_nurse_id' => null,
             'supplier_id' => null,
             'supplier_external' => null,
+            'register_unregistered_provider' => false,
+            'unregistered_provider_type' => null,
+            'unregistered_name' => null,
+            'unregistered_rif' => null,
+            'unregistered_phone' => null,
+            'unregistered_correo_principal' => null,
+            'unregistered_ubicacion_principal' => null,
             'operation_inventory_ubication_id' => null,
             'service_order_description' => null,
             'service_order_observations' => null,
@@ -3167,19 +3446,11 @@ class OperationCoordinationServicesTable
             return 0;
         }
 
-        $payload = [
-            'order_number' => $data['order_number'] ?? null,
-            'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? $record->telemedicine_priority_id,
-            'supplier_id' => $data['supplier_id'] ?? null,
-            'supplier_external' => $data['supplier_external'] ?? null,
-            'operation_inventory_ubication_id' => $data['operation_inventory_ubication_id'] ?? null,
-            'description' => $data['service_order_description'] ?? null,
-            'service_type' => $quote->type_service,
-            'status' => 'EN GESTION',
-            'observations' => $data['service_order_observations'] ?? null,
-            'created_by' => Auth::user()?->name,
-            'updated_by' => Auth::user()?->name,
-        ];
+        $payload = self::buildServiceOrderPayload($record, $data, (string) $quote->type_service);
+
+        if ($payload === null) {
+            return 0;
+        }
 
         if ($quote->type_service === 'MEDICAMENTOS') {
             $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [
@@ -3278,19 +3549,11 @@ class OperationCoordinationServicesTable
             return;
         }
 
-        $payload = [
-            'order_number' => $data['order_number'] ?? null,
-            'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? $record->telemedicine_priority_id,
-            'supplier_id' => $data['supplier_id'] ?? null,
-            'supplier_external' => $data['supplier_external'] ?? null,
-            'operation_inventory_ubication_id' => $data['operation_inventory_ubication_id'] ?? null,
-            'description' => $data['service_order_description'] ?? null,
-            'service_type' => $type,
-            'status' => 'EN GESTION',
-            'observations' => $data['service_order_observations'] ?? null,
-            'created_by' => Auth::user()?->name,
-            'updated_by' => Auth::user()?->name,
-        ];
+        $payload = self::buildServiceOrderPayload($record, $data, $type);
+
+        if ($payload === null) {
+            return;
+        }
 
         $createQuote = (bool) ($data['create_associated_quote'] ?? false);
         if ($createQuote) {

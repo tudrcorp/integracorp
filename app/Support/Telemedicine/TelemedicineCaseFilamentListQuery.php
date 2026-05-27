@@ -54,7 +54,11 @@ final class TelemedicineCaseFilamentListQuery
     }
 
     /**
-     * Misma exclusión por última consulta + ambulancia que el widget del escritorio (solo contexto ATENMEDI).
+     * Widget del escritorio (panel telemedicina): casos del médico en sesión.
+     *
+     * - Contexto ATENMEDI (departamento usuario o {@see TelemedicineDoctor::$managed_by} = ATENMEDI): solo {@see TelemedicineCase::$managed_by} = ATENMEDI.
+     * - Excluye casos en alta médica a nivel caso.
+     * - En ATENMEDI: excluye casos cuya última consulta tenga derivado traslado en ambulancia.
      */
     public static function applyDashboardWidgetCaseConstraints(Builder $query): Builder
     {
@@ -68,7 +72,7 @@ final class TelemedicineCaseFilamentListQuery
             ->where('telemedicine_doctor_id', $user->doctor_id)
             ->where('status', '!=', 'ALTA MEDICA');
 
-        if (self::userDepartmentsIncludeAtenmedi($user)) {
+        if (self::userIsInAtenmediTelemedicinaContext($user)) {
             $query->where('managed_by', 'ATENMEDI');
         }
 

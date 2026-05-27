@@ -8,7 +8,9 @@ use App\Http\Controllers\HelpdeskExportCsvController;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Support\HelpdeskDocumentPaths;
+use App\Support\HelpdeskPlainText;
 use App\Support\HelpdeskTableTeamColumns;
+use App\Support\HelpdeskTaskStatusOptions;
 use App\Support\HelpdeskTimelineBuilder;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -84,9 +86,10 @@ class HelpdesksTable
                 TextColumn::make('description')
                     ->label('Descripción')
                     ->icon('heroicon-m-document-text')
+                    ->formatStateUsing(fn (?string $state): string => HelpdeskPlainText::fromHtml($state))
                     ->searchable()
                     ->limit(40)
-                    ->extraAttributes(fn (HelpDesk $record): array => filled($description = trim((string) $record->description))
+                    ->extraAttributes(fn (HelpDesk $record): array => filled($description = HelpdeskPlainText::fromHtml($record->description))
                         ? [
                             'x-tooltip' => '{ content: '.Js::from($description).', theme: $store.theme, delay: [1000, 0], maxWidth: 360 }',
                         ]
@@ -132,29 +135,11 @@ class HelpdesksTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Estatus')
-                    ->icon(fn (?string $state): ?string => match ($state) {
-                        'PENDIENTE POR INICIAR' => 'heroicon-m-clock',
-                        'EN PROCESO' => 'heroicon-m-arrow-path',
-                        'TERMINADO' => 'heroicon-m-check-circle',
-                        'CANCELADO' => 'heroicon-m-x-circle',
-                        default => null,
-                    })
-                    ->iconColor(fn (?string $state): ?string => match ($state) {
-                        'PENDIENTE POR INICIAR' => 'warning',
-                        'EN PROCESO' => 'primary',
-                        'TERMINADO' => 'success',
-                        'CANCELADO' => 'danger',
-                        default => null,
-                    })
+                    ->formatStateUsing(fn (?string $state): string => HelpdeskTaskStatusOptions::all()[$state] ?? (string) $state)
+                    ->icon(fn (?string $state): ?string => HelpdeskTaskStatusOptions::icon($state))
+                    ->iconColor(fn (?string $state): ?string => HelpdeskTaskStatusOptions::iconColor($state))
                     ->badge()
-                    ->color(function ($record) {
-                        return match ($record->status) {
-                            'PENDIENTE POR INICIAR' => 'warning',
-                            'EN PROCESO' => 'primary',
-                            'TERMINADO' => 'success',
-                            'CANCELADO' => 'danger',
-                        };
-                    })
+                    ->color(fn (HelpDesk $record): string => HelpdeskTaskStatusOptions::badgeColor($record->status))
                     ->searchable(),
                 TextColumn::make('updated_at')
                     ->label('Fecha de Actualización')

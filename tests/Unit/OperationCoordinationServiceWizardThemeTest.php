@@ -8,8 +8,10 @@ it('el theme define estilos del wizard de coordinación de servicios con bordes 
         ->and($theme)->toContain('.fi-coordination-service-wizard .fi-input-wrp')
         ->and($theme)->toContain('border border-zinc-200/90')
         ->and($theme)->toContain('.fi-coordination-manage-items-wizard')
-        ->and($theme)->toContain('flex flex-col gap-5')
         ->and($theme)->toContain('.fi-coordination-manage-items-modal .fi-modal-content')
+        ->and($theme)->toContain('.fi-coordination-manage-items-modal .fi-modal-footer')
+        ->and($theme)->toContain('58rem')
         ->and($theme)->toContain('.fi-modal:has(.fi-coordination-manage-items-modal) .fi-modal-window-ctn')
-        ->and($theme)->toContain('.fi-manage-quote-summary');
+        ->and($theme)->toContain('.fi-manage-quote-summary')
+        ->and($theme)->toContain('.fi-unregistered-provider-wizard-step');
 });

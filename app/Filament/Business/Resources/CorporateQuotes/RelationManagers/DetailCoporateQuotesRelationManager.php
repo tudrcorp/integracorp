@@ -1,75 +1,91 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\CorporateQuotes\RelationManagers;
 
-use App\Models\Agent;
-use App\Models\Agency;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
-use App\Models\CorporateQuoteData;
-use Filament\Actions\CreateAction;
-use App\Models\AffiliationCorporate;
-use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use App\Http\Controllers\UtilsController;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Collection;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Facades\Log;
 
 class DetailCoporateQuotesRelationManager extends RelationManager
 {
     protected static string $relationship = 'detailCoporateQuotes';
 
-    protected static ?string $title = 'COTIZACIÓN';
-    
+    protected static ?string $title = 'Cotización';
+
     public function table(Table $table): Table
     {
         return $table
-            ->heading('TABLA DE SELECCIÓN MULTIPLE')
-            ->description('En esta tabla se muestran los planes y coberturas cotizados. Para realizar una pre afiliación multiple debes seleccionar dos o mas planes y por cada plan debe seleccionar solo una cobertura, de lo contrario no se realizara la pre afiliación.')
-            ->recordTitleAttribute('individual_quote_id')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with(['plan', 'ageRange', 'coverage'])
+                ->orderBy('plan_id')
+                ->orderBy('age_range_id'))
+            ->heading('Detalles de la cotización corporativa')
+            ->description('Selecciona planes y coberturas para generar la preafiliación corporativa (simple o múltiple).')
+            ->recordTitleAttribute('corporate_quote_id')
+            ->emptyStateHeading('Sin detalles de cotización')
+            ->emptyStateDescription('Todavía no se han generado planes/coberturas para esta cotización.')
+            ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
+            ->striped()
+            ->defaultSort('subtotal_anual', 'desc')
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50])
             ->columns([
                 TextColumn::make('plan.description')
                     ->label('Plan')
+                    ->badge()
+                    ->color('primary')
+                    ->searchable()
                     ->sortable(),
                 TextColumn::make('ageRange.range')
                     ->label('Rango de Edad')
+                    ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
+                    ->badge()
+                    ->color('gray')
                     ->searchable()
+                    ->weight(FontWeight::SemiBold)
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('fee')
                     ->label('Tarifa individual')
                     ->alignCenter()
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn ($record): string => (int) $record->total_persons.' '.((int) $record->total_persons === 1 ? 'persona' : 'personas'))
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_anual')
                     ->label('Total anual')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn ($record): string => (int) $record->total_persons.' '.((int) $record->total_persons === 1 ? 'persona' : 'personas'))
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_biannual')
                     ->label('Total semestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn ($record): string => (int) $record->total_persons.' '.((int) $record->total_persons === 1 ? 'persona' : 'personas'))
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_quarterly')
                     ->label('Total trimestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn ($record): string => (int) $record->total_persons.' '.((int) $record->total_persons === 1 ? 'persona' : 'personas'))
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('status')
@@ -77,218 +93,97 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-APROBADA' => 'verde',
+                            'PRE-APROBADA' => 'warning',
                             'APROBADA' => 'success',
-                            'EJECUTADA' => 'azul',
-                            'ACTIVA-PENDIENTE' => 'azul',
+                            'EJECUTADA', 'ACTIVA-PENDIENTE' => 'info',
+                            default => 'gray',
                         };
                     })
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
             ])
-            //agrupar por planes y por coberturas
-            ->defaultGroup('ageRange.range')
+            ->defaultGroup('plan.description')
             ->filters([
                 SelectFilter::make('plan_id')
-                    ->label('Lista de planes')
+                    ->label('Plan')
                     ->multiple()
                     ->preload()
                     ->relationship('plan', 'description')
                     ->attribute('plan_id'),
                 SelectFilter::make('coverage_id')
-                    ->label('Lista de coberturas')
+                    ->label('Cobertura')
                     ->multiple()
                     ->preload()
                     ->relationship('coverage', 'price')
                     ->attribute('coverage_id'),
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options([
+                        'PRE-APROBADA' => 'Pre-aprobada',
+                        'APROBADA' => 'Aprobada',
+                        'EJECUTADA' => 'Ejecutada',
+                        'ACTIVA-PENDIENTE' => 'Activa pendiente',
+                    ]),
             ])
-            // ->headerActions([
-            //     Action::make('update_quote')
-            //         ->label('Actualizar cotización')
-            //         ->icon('fluentui-document-sync-16')
-            //         ->color('success')
-            //         ->requiresConfirmation()
-            //         ->modalDescription('')
-            //         ->action(function (RelationManager $livewire) {
-            //             // dd($livewire->ownerRecord->id);
-            //             $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
-            //             if ($exit_request <= 0) {
-            //                 Notification::make()
-            //                     ->title('No exite cotización asociada a la solicitud')
-            //                     ->danger()
-            //                     ->send();
-            //                 return;
-            //             }
-            //             $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
-
-            //             if ($createCorporateQuote) {
-            //                 Notification::make()
-            //                     ->title('Cotización creada con éxito')
-            //                     ->success()
-            //                     ->send();
-            //             } else {
-            //                 Notification::make()
-            //                     ->title('Error al crear la cotización')
-            //                     ->danger()
-            //                     ->send();
-            //             }
-            //         })
-            // ])
+            ->deferFilters(false)
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('pre_affiliation_multiple')
-                        ->label('Preafiliacion Multiple')
-                        ->icon('heroicon-s-check-circle')
+                        ->label('Generar preafiliación')
+                        ->icon(Heroicon::OutlinedCheckCircle)
                         ->color('success')
                         ->requiresConfirmation()
+                        ->modalHeading('Generar preafiliación corporativa')
+                        ->modalDescription('Si seleccionas 1 registro, se abrirá preafiliación simple. Con 2 o más, se abrirá preafiliación múltiple.')
                         ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records, RelationManager $livewire) {
-
+                        ->action(function (EloquentCollection $records, RelationManager $livewire) {
                             try {
+                                if ($records->isEmpty()) {
+                                    Notification::make()
+                                        ->title('Sin selección')
+                                        ->body('Debes seleccionar al menos un detalle para continuar.')
+                                        ->warning()
+                                        ->send();
 
-                                // dd($records, $records->count(), $records->toArray(), $livewire->ownerRecord);
-
-                                //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+                                    return;
+                                }
 
                                 session()->get('data_records', []);
-
                                 session()->put('data_records', $records->toArray());
-
-                                $data_records = session()->get('data_records');
-
-                                /**
-                                 * Actualizo el status a APROBADA
-                                 */
 
                                 $livewire->ownerRecord->status = 'APROBADA';
                                 $livewire->ownerRecord->save();
 
                                 $record = $records->first();
+                                if ($record === null) {
+                                    Notification::make()
+                                        ->title('Sin datos')
+                                        ->body('No se pudo identificar el detalle seleccionado.')
+                                        ->warning()
+                                        ->send();
 
-                                if ($records->count() == 1) {
+                                    return;
+                                }
+
+                                if ($records->count() === 1) {
                                     return redirect()->route('filament.business.resources.affiliation-corporates.create', ['id' => $record->corporate_quote_id, 'plan_id' => $record->plan_id]);
                                 }
 
-                                if ($records->count() > 1) {
-                                    return redirect()->route('filament.business.resources.affiliation-corporates.create', ['id' => $record->plan_id, 'plan_id' => null]);
-                                }
-
-
-                                // $data_records = session()->get('data_records', []);
-                                // session()->put('data_records', $data_records);
-
-                                // dd($data_records, $data_records[0]['corporate_quote_id']);
-
-                                /** 2. Guardar los datos de la pre afiliacion */
-                                // $preAfiliation = new AffiliationCorporate();
-
-                                // $preAfiliation->code                = $this->getCode();
-                                // $preAfiliation->corporate_quote_id  = $data_records[0]['corporate_quote_id'];
-                                // $preAfiliation->type                = count($data_records) > 1 ? 'MULTIPLE' : null;
-                                // $preAfiliation->plan_id             = count($data_records) > 1 ? null : $data_records[0]['plan_id'];
-                                // $preAfiliation->coverage_id         = count($data_records) > 1 ? null : $data_records[0]['coverage_id'];
-                                // $preAfiliation->full_name_con       = $data['full_name_con'];
-                                // $preAfiliation->rif                 = $data['rif'];
-                                // $preAfiliation->email_con           = $data['email_con'];
-                                // $preAfiliation->phone_con           = $data['phone_con'];
-                                // // $preAfiliation->total_persons = array_sum(array_column($data, 'total_persons'));
-                                // $preAfiliation->agent_id            = Auth::user()->agent_id;
-                                // $preAfiliation->code_agency         = $this->getCodeAgency();
-                                // $preAfiliation->owner_code          = $this->getOwnerCode();
-                                // $preAfiliation->created_by          = Auth::user()->name;
-                                // $preAfiliation->status              = 'PRE-APROBADA';
-                                // //------------------------------------------------------------------------------------------------------------------------
-                                // $preAfiliation->save();
-
-                                // /** 1.- Cargo la data de la pre afiliacion en la tabla de afiliados */
-                                // for ($i = 0; $i < count($data_records); $i++) {
-
-                                //     /** Guardar los datos en la tabla de afiliados */
-                                //     $detailsAfiliationPlans = AfilliationCorporatePlan::create([
-                                //         'affiliation_corporate_id'  => $preAfiliation->id,
-                                //         'code_affiliation'          => $preAfiliation->code,
-                                //         'plan_id'                   => $data_records[$i]['plan_id'],
-                                //         'coverage_id'               => $data_records[$i]['coverage_id'],
-                                //         'age_range_id'              => $data_records[$i]['age_range_id'],
-                                //         'total_persons'             => $data_records[$i]['total_persons'],
-                                //         'fee'                       => $data_records[$i]['fee'],
-                                //         'subtotal_anual'            => $data_records[$i]['subtotal_anual'],
-                                //         'subtotal_quarterly'        => $data_records[$i]['subtotal_quarterly'],
-                                //         'subtotal_biannual'         => $data_records[$i]['subtotal_biannual'],
-                                //         'subtotal_monthly'          => $data_records[$i]['subtotal_monthly'],
-                                //         'status'                    => 'PRE-APROBADA',
-                                //         'created_by'                => Auth::user()->name,
-                                //     ]);
-
-                                // }
-
+                                return redirect()->route('filament.business.resources.affiliation-corporates.create', ['id' => $livewire->ownerRecord->id, 'plan_id' => null]);
                             } catch (\Throwable $th) {
-                                dd($th);
-                                // $parte_entera = 0;
+                                Log::error('BUSINESS: Falla al generar preafiliación desde detalle de cotización corporativa', [
+                                    'corporate_quote_id' => $livewire->ownerRecord->id,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('No se pudo generar la preafiliación')
+                                    ->body('Ocurrió un error inesperado. Intenta nuevamente o contacta a soporte.')
+                                    ->danger()
+                                    ->send();
                             }
-                        })
+                        }),
                 ]),
             ]);
-    }
-
-    public function getOwnerCode()
-    {
-        try {
-
-            /**
-             * Logica para asignar el owner_code
-             * ---------------------------------------------------------------------------------------------------------
-             */
-            $owner      = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
-            $jerarquia  = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
-
-            /**
-             * Cuando el agente pertenece a una AGENCIA GENERAL
-             * -----------------------------------------------------
-             */
-            if ($owner != $jerarquia && $jerarquia != 'TDG-100') {
-                return $jerarquia;
-            }
-
-            /**
-             * Cuando el agente pertenece a una AGENCIA MASTER
-             * -----------------------------------------------------
-             */
-            if ($owner != $jerarquia && $jerarquia == 'TDG-100') {
-                return $owner;
-            }
-        } catch (\Throwable $th) {
-            dd($th);
-            // return null;
-        }
-    }
-
-    public function getCodeAgency()
-    {
-        try {
-
-            return Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
-        } catch (\Throwable $th) {
-            dd($th);
-            // return null;
-        }
-    }
-
-    public function getCode()
-    {
-        try {
-
-            if (AffiliationCorporate::max('id') == null) {
-                $parte_entera = 0;
-            } else {
-                $parte_entera = AffiliationCorporate::max('id');
-            }
-
-            $code = 'TDEC-AFC-000' . $parte_entera + 1;
-
-            return $code;
-        } catch (\Throwable $th) {
-            dd($th);
-            // $parte_entera = 0;
-        }
     }
 }

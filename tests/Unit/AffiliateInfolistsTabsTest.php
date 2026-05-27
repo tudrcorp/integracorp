@@ -8,8 +8,11 @@ it('infolist de afiliado usa pestañas', function (): void {
     expect($c)
         ->toContain('Tabs::make')
         ->toContain('persistTab')
-        ->toContain("Tab::make('Resumen')")
+        ->toContain('TABS_CONTAINER')
+        ->toContain('SECTION_CARD')
+        ->toContain("Tab::make('Datos personales')")
         ->toContain("Tab::make('Afiliación')")
+        ->toContain("Tab::make('Cuestionario médico')")
         ->toContain('affiliateInfolistTabs');
 });
 
@@ -19,6 +22,8 @@ it('infolist de afiliado corporativo usa pestañas', function (): void {
     expect($c)
         ->toContain('Tabs::make')
         ->toContain('persistTab')
+        ->toContain('TABS_CONTAINER')
+        ->toContain('SECTION_CARD')
         ->toContain("Tab::make('Datos del afiliado')")
         ->toContain('affiliateCorporateInfolistTabs');
 });

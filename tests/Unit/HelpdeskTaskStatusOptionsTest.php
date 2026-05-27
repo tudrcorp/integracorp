@@ -5,55 +5,75 @@ declare(strict_types=1);
 use App\Models\HelpDesk;
 use App\Support\HelpdeskTaskStatusOptions;
 
-it('en alta no ofrece TERMINADO ni CANCELADO', function () {
-    $options = HelpdeskTaskStatusOptions::forSelect(null, 'María');
-
-    expect($options)->toHaveKeys(['PENDIENTE POR INICIAR', 'EN PROCESO'])
-        ->and($options)->not->toHaveKey('TERMINADO')
-        ->and($options)->not->toHaveKey('CANCELADO');
-});
-
-it('en edición el creador ve los cuatro estados', function () {
+it('el creador del ticket solo ve terminado y cancelado en el modal', function (): void {
     $record = new HelpDesk;
     $record->created_by = 'Ana';
     $record->status = 'EN PROCESO';
 
-    $options = HelpdeskTaskStatusOptions::forSelect($record, 'Ana');
+    $options = HelpdeskTaskStatusOptions::forSelect($record, 'Ana', isAssignee: false);
 
-    expect($options)->toHaveCount(4)->toHaveKeys(['TERMINADO', 'CANCELADO']);
+    expect($options)->toHaveCount(2)
+        ->toHaveKeys(['TERMINADO', 'CANCELADO'])
+        ->not->toHaveKey('EN PROCESO');
 });
 
-it('en edición quien no creó la tarea no ve TERMINADO ni CANCELADO salvo que el estado actual sea terminal', function () {
-    $open = new HelpDesk;
-    $open->created_by = 'Ana';
-    $open->status = 'EN PROCESO';
-
-    expect(HelpdeskTaskStatusOptions::forSelect($open, 'Pedro'))->toHaveCount(2);
-
-    $done = new HelpDesk;
-    $done->created_by = 'Ana';
-    $done->status = 'TERMINADO';
-
-    $opts = HelpdeskTaskStatusOptions::forSelect($done, 'Pedro');
-    expect($opts)->toHaveKey('TERMINADO')->not->toHaveKey('CANCELADO');
-});
-
-it('sanitizeStatusForSave impide estado no permitido para quien no es el creador', function () {
+it('el asignado ve estados operativos sin terminado ni cancelado', function (): void {
     $record = new HelpDesk;
     $record->created_by = 'Ana';
     $record->status = 'EN PROCESO';
 
-    $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'TERMINADO', 'Pedro');
+    $options = HelpdeskTaskStatusOptions::forSelect($record, 'Pedro', isAssignee: true);
+
+    expect($options)->toHaveCount(7)
+        ->toHaveKey('EN DESARROLLO')
+        ->not->toHaveKey('TERMINADO')
+        ->not->toHaveKey('CANCELADO');
+});
+
+it('si es creador y asignado ve todos los estados', function (): void {
+    $record = new HelpDesk;
+    $record->created_by = 'Ana';
+    $record->status = 'EN PROCESO';
+
+    expect(HelpdeskTaskStatusOptions::forSelect($record, 'Ana', isAssignee: true))->toHaveCount(9);
+});
+
+it('sanitize impide al asignado guardar terminado', function (): void {
+    $record = new HelpDesk;
+    $record->created_by = 'Ana';
+    $record->status = 'EN PROCESO';
+
+    $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'TERMINADO', 'Pedro', isAssignee: true);
 
     expect($sanitized)->toBe('EN PROCESO');
 });
 
-it('sanitizeStatusForSave permite al creador cerrar el ticket', function () {
+it('sanitize permite al asignado avanzar a desarrollo', function (): void {
     $record = new HelpDesk;
     $record->created_by = 'Ana';
     $record->status = 'EN PROCESO';
 
-    $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'TERMINADO', 'Ana');
+    $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'EN DESARROLLO', 'Pedro', isAssignee: true);
+
+    expect($sanitized)->toBe('EN DESARROLLO');
+});
+
+it('sanitize permite al creador cerrar el ticket', function (): void {
+    $record = new HelpDesk;
+    $record->created_by = 'Ana';
+    $record->status = 'EN PROCESO';
+
+    $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'TERMINADO', 'Ana', isAssignee: false);
 
     expect($sanitized)->toBe('TERMINADO');
+});
+
+it('sanitize impide al creador usar estados operativos', function (): void {
+    $record = new HelpDesk;
+    $record->created_by = 'Ana';
+    $record->status = 'EN PROCESO';
+
+    $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'EN DESARROLLO', 'Ana', isAssignee: false);
+
+    expect($sanitized)->toBe('EN PROCESO');
 });

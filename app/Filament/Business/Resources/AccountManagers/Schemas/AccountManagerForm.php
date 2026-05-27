@@ -11,104 +11,124 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 
 class AccountManagerForm
 {
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Datos personales')
-                    ->icon('heroicon-s-user-circle')
-                    ->description('Identificación y datos básicos del ejecutivo o account manager.')
-                    ->schema([
-                        Grid::make(['default' => 1, 'lg' => 3])
+                Tabs::make('accountManagerFormTabs')
+                    ->columnSpanFull()
+                    ->persistTab()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
+                    ->tabs([
+                        Tab::make('Datos personales')
+                            ->icon(Heroicon::OutlinedUserCircle)
                             ->schema([
-                                TextInput::make('full_name')
-                                    ->label('Nombre completo')
-                                    ->prefixIcon('heroicon-m-user')
-                                    ->required()
-                                    ->maxLength(255),
-                                TextInput::make('ci')
-                                    ->label('Cédula de identidad')
-                                    ->prefixIcon('heroicon-m-identification')
-                                    ->unique(
-                                        table: AccountManager::class,
-                                        column: 'ci',
-                                    )
-                                    ->required()
-                                    ->extraAlpineAttributes([
-                                        'onkeydown' => "if([' ', '.'].includes(event.key) || /^[a-zA-Z]$/.test(event.key)) event.preventDefault()",
-                                        'onpaste' => "event.preventDefault(); const text = (event.clipboardData || window.clipboardData).getData('text'); event.target.value = text.replace(/[^0-9]/g, '')",
+                                Section::make('Datos personales')
+                                    ->icon('heroicon-s-user-circle')
+                                    ->description('Identificación y datos básicos del ejecutivo o account manager.')
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 3])
+                                            ->schema([
+                                                TextInput::make('full_name')
+                                                    ->label('Nombre completo')
+                                                    ->prefixIcon('heroicon-m-user')
+                                                    ->required()
+                                                    ->maxLength(255),
+                                                TextInput::make('ci')
+                                                    ->label('Cédula de identidad')
+                                                    ->prefixIcon('heroicon-m-identification')
+                                                    ->unique(
+                                                        table: AccountManager::class,
+                                                        column: 'ci',
+                                                    )
+                                                    ->required()
+                                                    ->extraAlpineAttributes([
+                                                        'onkeydown' => "if([' ', '.'].includes(event.key) || /^[a-zA-Z]$/.test(event.key)) event.preventDefault()",
+                                                        'onpaste' => "event.preventDefault(); const text = (event.clipboardData || window.clipboardData).getData('text'); event.target.value = text.replace(/[^0-9]/g, '')",
+                                                    ])
+                                                    ->regex('/^[0-9]*$/')
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                        'unique' => 'Esta cédula ya está registrada. Usa otro número.',
+                                                        'regex' => 'La cédula solo debe contener números (sin letras, espacios ni puntos).',
+                                                    ]),
+                                                DatePicker::make('birth_date')
+                                                    ->label('Fecha de nacimiento')
+                                                    ->required()
+                                                    ->format('d/m/Y')
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                    ]),
+                                            ]),
                                     ])
-                                    ->regex('/^[0-9]*$/')
-                                    ->validationMessages([
-                                        'required' => 'Campo requerido',
-                                        'unique' => 'Esta cédula ya está registrada. Usa otro número.',
-                                        'regex' => 'La cédula solo debe contener números (sin letras, espacios ni puntos).',
-                                    ]),
-                                DatePicker::make('birth_date')
-                                    ->label('Fecha de nacimiento')
-                                    ->required()
-                                    ->format('d/m/Y')
-                                    ->validationMessages([
-                                        'required' => 'Campo requerido',
-                                    ]),
+                                    ->columnSpanFull(),
                             ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Contacto')
-                    ->icon('heroicon-s-phone')
-                    ->description('Medios de contacto y ubicación.')
-                    ->schema([
-                        Grid::make(['default' => 1, 'lg' => 2])
+                        Tab::make('Contacto')
+                            ->icon(Heroicon::OutlinedPhone)
                             ->schema([
-                                Select::make('country_code')
-                                    ->label('Código de país')
-                                    ->prefixIcon('heroicon-m-flag')
-                                    ->options(fn () => UtilsController::getCountries())
-                                    ->hiddenOn('edit')
-                                    ->default('+58')
-                                    ->live(onBlur: true),
-                                TextInput::make('phone')
-                                    ->label('Teléfono')
-                                    ->prefixIcon('heroicon-s-phone')
-                                    ->tel()
-                                    ->maxLength(32)
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(function ($state, callable $set, Get $get): void {
-                                        $countryCode = $get('country_code');
-                                        if ($countryCode) {
-                                            $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', (string) $state), '0');
-                                            $set('phone', $countryCode.$cleanNumber);
-                                        }
-                                    })
-                                    ->validationMessages([
-                                        'required' => 'Campo requerido',
-                                    ]),
+                                Section::make('Contacto')
+                                    ->icon('heroicon-s-phone')
+                                    ->description('Medios de contacto y ubicación.')
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->schema([
+                                                Select::make('country_code')
+                                                    ->label('Código de país')
+                                                    ->prefixIcon('heroicon-m-flag')
+                                                    ->options(fn () => UtilsController::getCountries())
+                                                    ->hiddenOn('edit')
+                                                    ->default('+58')
+                                                    ->live(onBlur: true),
+                                                TextInput::make('phone')
+                                                    ->label('Teléfono')
+                                                    ->prefixIcon('heroicon-s-phone')
+                                                    ->tel()
+                                                    ->maxLength(32)
+                                                    ->live(onBlur: true)
+                                                    ->afterStateUpdated(function ($state, callable $set, Get $get): void {
+                                                        $countryCode = $get('country_code');
+                                                        if ($countryCode) {
+                                                            $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', (string) $state), '0');
+                                                            $set('phone', $countryCode.$cleanNumber);
+                                                        }
+                                                    })
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                    ]),
+                                            ]),
+                                        TextInput::make('email')
+                                            ->label('Correo electrónico')
+                                            ->prefixIcon('heroicon-m-envelope')
+                                            ->email()
+                                            ->unique(
+                                                table: AccountManager::class,
+                                                column: 'email',
+                                            )
+                                            ->required()
+                                            ->maxLength(255),
+                                        Textarea::make('address')
+                                            ->label('Dirección')
+                                            ->rows(3)
+                                            ->columnSpanFull()
+                                            ->maxLength(500),
+                                    ])
+                                    ->columns(1)
+                                    ->columnSpanFull(),
                             ]),
-                        TextInput::make('email')
-                            ->label('Correo electrónico')
-                            ->prefixIcon('heroicon-m-envelope')
-                            ->email()
-                            ->unique(
-                                table: AccountManager::class,
-                                column: 'email',
-                            )
-                            ->required()
-                            ->maxLength(255),
-                        Textarea::make('address')
-                            ->label('Dirección')
-                            ->rows(3)
-                            ->columnSpanFull()
-                            ->maxLength(500),
-                    ])
-                    ->columns(1)
-                    ->columnSpanFull(),
+                    ]),
 
                 Hidden::make('created_by')->default(fn (): ?string => Auth::user()?->name),
                 Hidden::make('updated_by'),

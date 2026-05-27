@@ -233,13 +233,21 @@ final class HelpdeskTicketModalActions
             ->form(function (HelpDesk $record): array {
                 return [
                     Section::make('Estado')
-                        ->description('Solo quien creó el ticket puede marcarlo como Terminado o Cancelado.')
+                        ->description(fn (HelpDesk $record): string => HelpdeskTaskStatusOptions::statusModalDescription(
+                            $record,
+                            Auth::user()?->name,
+                            self::currentUserIsTicketAssignee($record)
+                        ))
                         ->icon('heroicon-m-flag')
                         ->schema([
                             Select::make('status')
                                 ->label('Estado')
                                 ->prefixIcon('heroicon-m-flag')
-                                ->options(HelpdeskTaskStatusOptions::forSelect($record, Auth::user()?->name))
+                                ->options(fn (HelpDesk $record): array => HelpdeskTaskStatusOptions::forSelect(
+                                    $record,
+                                    Auth::user()?->name,
+                                    self::currentUserIsTicketAssignee($record)
+                                ))
                                 ->required()
                                 ->native(true)
                                 ->extraInputAttributes([
@@ -262,7 +270,12 @@ final class HelpdeskTicketModalActions
 
                 $previousStatus = (string) $record->status;
                 $newStatus = (string) ($data['status'] ?? $record->status);
-                $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, $newStatus, $user->name);
+                $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave(
+                    $record,
+                    $newStatus,
+                    $user->name,
+                    self::currentUserIsTicketAssignee($record)
+                );
 
                 if ($sanitized === $record->status) {
                     SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATE_SKIPPED', 'marketing.helpdesks.update-status', [

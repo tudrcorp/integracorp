@@ -16,6 +16,7 @@ class OperationServiceOrderPdfService
             'operationCoordinationService.state',
             'operationCoordinationService.city',
             'supplier',
+            'doctorNurse',
             'telemedicinePriority',
             'operationInventoryUbication',
             'operationServiceOrderItems',

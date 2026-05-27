@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\Suppliers\Schemas;
 
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
+use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -243,7 +244,9 @@ class SupplierInfolist
                                                     ->icon(Heroicon::OutlinedMapPin)
                                                     ->columnSpan(['default' => 1, 'lg' => 2, 'xl' => 2])
                                                     ->wrap()
-                                                    ->placeholder('—'),
+                                                    ->placeholder('—')
+                                                    ->helperText('Use el icono del mapa para buscar o actualizar la dirección.')
+                                                    ->suffixAction(OperationsLocationMapAction::forSupplier()),
                                                 TextEntry::make('convenio_pago')
                                                     ->label('Convenio de pago')
                                                     ->icon(Heroicon::OutlinedBanknotes)

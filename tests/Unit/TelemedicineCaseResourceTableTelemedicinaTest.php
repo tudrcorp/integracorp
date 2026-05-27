@@ -23,6 +23,24 @@ it('TelemedicineCaseFilamentListQuery aplica managed_by ATENMEDI con contexto mÃ
         ->and($contents)->toContain("->where('managed_by', 'ATENMEDI')");
 });
 
+it('widget del escritorio filtra managed_by ATENMEDI con contexto mÃ©dico ATENMEDI', function (): void {
+    $widgetPath = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Widgets/TelemedicineCaseTableDash.php';
+    $queryPath = dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineCaseFilamentListQuery.php';
+    $contents = file_get_contents($queryPath);
+
+    expect(file_get_contents($widgetPath))
+        ->toContain('TelemedicineCaseFilamentListQuery::applyDashboardWidgetCaseConstraints');
+
+    $widgetMethodStart = (int) strpos($contents, 'function applyDashboardWidgetCaseConstraints');
+    $nextMethodStart = (int) strpos($contents, 'public static function atenmediUserBlockedFromUpdatingConsultation');
+    $widgetMethod = substr($contents, $widgetMethodStart, $nextMethodStart - $widgetMethodStart);
+
+    expect($widgetMethod)
+        ->toContain('userIsInAtenmediTelemedicinaContext($user)')
+        ->toContain("->where('managed_by', 'ATENMEDI')")
+        ->not->toContain('userDepartmentsIncludeAtenmedi($user)');
+});
+
 it('exclusiones por consulta alta y ambulancia solo aplican en contexto ATENMEDI', function (): void {
     $path = dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineCaseFilamentListQuery.php';
     $contents = file_get_contents($path);

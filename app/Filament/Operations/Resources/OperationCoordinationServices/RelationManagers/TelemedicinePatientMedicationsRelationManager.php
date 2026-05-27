@@ -306,7 +306,7 @@ class TelemedicinePatientMedicationsRelationManager extends RelationManager
                                                             ->placeholder('Seleccione proveedor interno')
                                                             ->prefixIcon(Heroicon::OutlinedBuildingOffice2),
                                                         TextInput::make('supplier_external')
-                                                            ->label('Proveedor externo')
+                                                            ->label('Proveedor No Convenido')
                                                             ->placeholder('Nombre si el suministro es externo')
                                                             ->prefixIcon(Heroicon::OutlinedBuildingOffice2),
                                                     ]),

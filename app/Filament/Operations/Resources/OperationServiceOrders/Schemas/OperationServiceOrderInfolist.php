@@ -98,11 +98,14 @@ class OperationServiceOrderInfolist
                                     ->schema([
                                         Fieldset::make('Información comercial')
                                             ->schema([
+                                                TextEntry::make('doctorNurse.name')
+                                                    ->label('Proveedor natural')
+                                                    ->placeholder('-'),
                                                 TextEntry::make('supplier.name')
-                                                    ->label('Proveedor TDG')
+                                                    ->label('Proveedor jurídico')
                                                     ->placeholder('-'),
                                                 TextEntry::make('supplier_external')
-                                                    ->label('Proveedor externo')
+                                                    ->label('Proveedor No Convenido')
                                                     ->placeholder('-'),
                                                 TextEntry::make('description')
                                                     ->label('Descripción')

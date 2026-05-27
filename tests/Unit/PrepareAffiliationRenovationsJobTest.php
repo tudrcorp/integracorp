@@ -16,8 +16,14 @@ it('define ventana de renovación de 30 días y actor del sistema', function ():
         ->toContain('$daysUntilRenewal <= self::RENEWAL_PERIOD_DAYS')
         ->not->toContain('Sin afiliados elegibles')
         ->toContain('PRE-APROBADA')
-        ->toContain('updateOrCreate')
-        ->toContain('is_negotiation_candidate');
+        ->toContain('Renovation::query()->updateOrCreate')
+        ->toContain('is_negotiation_candidate')
+        ->toContain('calculateAffiliateAmounts')
+        ->toContain('solo lectura en `affiliations`')
+        ->not->toContain('applyIdealToSpecialPlanTransition')
+        ->not->toContain('applyAmountsToAffiliate')
+        ->not->toContain('$affiliation->save')
+        ->not->toContain('recalculateAffiliationTotalsFromRenewalAffiliates');
 });
 
 it('programa la tarea diaria a las 6:00', function (): void {
@@ -25,5 +31,6 @@ it('programa la tarea diaria a las 6:00', function (): void {
 
     expect($source)
         ->toContain('PrepareAffiliationRenovations')
-        ->toContain("dailyAt('6:00')");
+        ->toContain("dailyAt('6:00')")
+        ->toContain('No actualiza ni elimina registros de afiliaciones');
 });

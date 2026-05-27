@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Schemas;
 
+use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\AffiliateCorporate;
 use Carbon\Carbon;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -18,9 +19,11 @@ use Filament\Support\Icons\Heroicon;
 
 class AffiliateCorporateInfolist
 {
-    private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
-    private const IOS_INNER_CLASS = 'rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+    private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
     private const IOS_TABLE_WRAP_CLASS = 'rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-white/10 dark:bg-gray-900/40 overflow-hidden';
 
@@ -54,323 +57,324 @@ class AffiliateCorporateInfolist
         return $schema
             ->columns(1)
             ->components([
-                Section::make('Afiliado corporativo')
-                    ->description(fn (AffiliateCorporate $record): string => self::affiliateFullName($record).' · '.$record->age.' años · '.(string) ($record->sex ?? '—'))
-                    ->icon(Heroicon::OutlinedUserCircle)
-                    ->schema([
-                        Tabs::make('affiliateCorporateInfolistTabs')
-                            ->columnSpanFull()
-                            ->persistTab()
-                            ->tabs([
-                                Tab::make('Datos del afiliado')
+                Tabs::make('affiliateCorporateInfolistTabs')
+                    ->columnSpanFull()
+                    ->persistTab()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
+                    ->tabs([
+                        Tab::make('Datos del afiliado')
+                            ->icon(Heroicon::OutlinedUserCircle)
+                            ->schema([
+                                Section::make('Datos del afiliado')
+                                    ->description(fn (AffiliateCorporate $record): string => self::affiliateFullName($record).' · '.$record->age.' años · '.(string) ($record->sex ?? '—'))
                                     ->icon(Heroicon::OutlinedUserCircle)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
                                     ->schema([
-                                        Section::make('Datos del afiliado')
-                                            ->icon(Heroicon::OutlinedUserCircle)
+                                        Grid::make(1)
                                             ->extraAttributes([
-                                                'class' => self::IOS_SECTION_CLASS,
+                                                'class' => self::IOS_INNER_CLASS,
                                             ])
                                             ->schema([
-                                                Grid::make(1)
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_INNER_CLASS,
-                                                    ])
+                                                TextEntry::make('first_name')
+                                                    ->label('Nombre')
+                                                    ->size('lg')
+                                                    ->weight('semibold')
+                                                    ->color('gray')
+                                                    ->placeholder('—'),
+                                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                                                     ->schema([
-                                                        TextEntry::make('first_name')
-                                                            ->label('Nombre')
-                                                            ->size('lg')
-                                                            ->weight('semibold')
-                                                            ->color('gray')
-                                                            ->placeholder('—'),
-                                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                                                            ->schema([
-                                                                TextEntry::make('last_name')
-                                                                    ->label('Apellido')
-                                                                    ->weight('medium')
-                                                                    ->placeholder('—'),
-                                                                TextEntry::make('nro_identificacion')
-                                                                    ->label('Identificación')
-                                                                    ->prefix('V-')
-                                                                    ->icon(Heroicon::OutlinedIdentification)
-                                                                    ->copyable()
-                                                                    ->badge()
-                                                                    ->color('success'),
-                                                                TextEntry::make('birth_date')
-                                                                    ->label('Fecha de nacimiento')
-                                                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                                                    ->formatStateUsing(function (mixed $state): ?string {
-                                                                        if (blank($state)) {
-                                                                            return null;
-                                                                        }
-                                                                        try {
-                                                                            return Carbon::parse($state)->format('d/m/Y');
-                                                                        } catch (\Throwable) {
-                                                                            return (string) $state;
-                                                                        }
-                                                                    })
-                                                                    ->placeholder('—'),
-                                                                TextEntry::make('age')
-                                                                    ->label('Edad')
-                                                                    ->suffix(' años')
-                                                                    ->alignCenter(),
-                                                                TextEntry::make('sex')
-                                                                    ->label('Sexo')
-                                                                    ->badge()
-                                                                    ->color('gray'),
-                                                                TextEntry::make('phone')
-                                                                    ->label('Teléfono')
-                                                                    ->icon(Heroicon::OutlinedPhone)
-                                                                    ->copyable(),
-                                                                TextEntry::make('email')
-                                                                    ->label('Correo')
-                                                                    ->icon(Heroicon::OutlinedEnvelope)
-                                                                    ->copyable()
-                                                                    ->wrap(),
-                                                                TextEntry::make('address')
-                                                                    ->label('Dirección')
-                                                                    ->icon(Heroicon::OutlinedMapPin)
-                                                                    ->columnSpan(['default' => 1, 'lg' => 2])
-                                                                    ->wrap(),
-                                                                TextEntry::make('created_at')
-                                                                    ->label('Registro')
-                                                                    ->icon(Heroicon::OutlinedClock)
-                                                                    ->dateTime('d/m/Y H:i'),
-                                                            ]),
-                                                    ]),
-                                            ]),
-                                    ]),
-                                Tab::make('Emergencia')
-                                    ->icon(Heroicon::OutlinedExclamationTriangle)
-                                    ->schema([
-                                        Section::make('Emergencia')
-                                            ->icon(Heroicon::OutlinedExclamationTriangle)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_SECTION_CLASS,
-                                            ])
-                                            ->schema([
-                                                Grid::make(['default' => 1, 'sm' => 2])
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_INNER_CLASS,
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('full_name_emergency')
-                                                            ->label('Contacto')
-                                                            ->icon(Heroicon::OutlinedUser)
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('phone_emergency')
-                                                            ->label('Teléfono')
-                                                            ->icon(Heroicon::OutlinedPhone)
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                    ]),
-                                            ]),
-                                    ]),
-                                Tab::make('Corporativo')
-                                    ->icon(Heroicon::OutlinedBuildingOffice2)
-                                    ->schema([
-                                        Section::make('Corporativo')
-                                            ->description('Empresa contratante.')
-                                            ->icon(Heroicon::OutlinedBuildingOffice2)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_SECTION_CLASS,
-                                            ])
-                                            ->schema([
-                                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_INNER_CLASS,
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('affiliationCorporate.name_corporate')
-                                                            ->label('Razón social')
-                                                            ->icon(Heroicon::OutlinedBuildingLibrary)
+                                                        TextEntry::make('last_name')
+                                                            ->label('Apellido')
                                                             ->weight('medium')
-                                                            ->badge()
-                                                            ->color('primary')
                                                             ->placeholder('—'),
-                                                        TextEntry::make('affiliationCorporate.rif')
-                                                            ->label('RIF')
+                                                        TextEntry::make('nro_identificacion')
+                                                            ->label('Identificación')
+                                                            ->prefix('V-')
                                                             ->icon(Heroicon::OutlinedIdentification)
                                                             ->copyable()
                                                             ->badge()
-                                                            ->color('info')
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('affiliationCorporate.phone')
-                                                            ->label('Teléfono')
-                                                            ->icon(Heroicon::OutlinedPhone)
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('affiliationCorporate.email')
-                                                            ->label('Correo')
-                                                            ->icon(Heroicon::OutlinedEnvelope)
-                                                            ->copyable()
-                                                            ->placeholder('—')
-                                                            ->columnSpan(['default' => 1, 'lg' => 2]),
-                                                        TextEntry::make('affiliationCorporate.address')
-                                                            ->label('Dirección')
-                                                            ->icon(Heroicon::OutlinedMapPin)
-                                                            ->columnSpanFull()
-                                                            ->wrap(),
-                                                    ]),
-                                            ]),
-                                    ]),
-                                Tab::make('Afiliación y plan')
-                                    ->icon(Heroicon::OutlinedRectangleStack)
-                                    ->schema([
-                                        Section::make('Afiliación y plan')
-                                            ->description('Datos del plan y cobranzas vinculadas al código de afiliación corporativa.')
-                                            ->icon(Heroicon::OutlinedRectangleStack)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_SECTION_CLASS,
-                                            ])
-                                            ->schema([
-                                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_INNER_CLASS,
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('affiliationCorporate.code')
-                                                            ->label('Código afiliación')
-                                                            ->icon(Heroicon::OutlinedHashtag)
-                                                            ->badge()
-                                                            ->color('primary'),
-                                                        TextEntry::make('plan.description')
-                                                            ->label('Plan')
-                                                            ->badge()
-                                                            ->color('primary')
-                                                            ->wrap(),
-                                                        TextEntry::make('plan.businessUnit.definition')
-                                                            ->label('Unidad de negocio')
-                                                            ->badge()
-                                                            ->color('gray'),
-                                                        TextEntry::make('coverage.price')
-                                                            ->label('Cobertura')
-                                                            ->money('USD'),
-                                                        TextEntry::make('affiliationCorporate.effective_date')
-                                                            ->label('Vigencia')
+                                                            ->color('success'),
+                                                        TextEntry::make('birth_date')
+                                                            ->label('Fecha de nacimiento')
                                                             ->icon(Heroicon::OutlinedCalendarDays)
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('affiliationCorporate.service_providers')
-                                                            ->label('Proveedores')
                                                             ->formatStateUsing(function (mixed $state): ?string {
                                                                 if (blank($state)) {
                                                                     return null;
                                                                 }
-                                                                if (is_array($state)) {
-                                                                    return implode(', ', array_filter(array_map('strval', $state)));
+                                                                try {
+                                                                    return Carbon::parse($state)->format('d/m/Y');
+                                                                } catch (\Throwable) {
+                                                                    return (string) $state;
                                                                 }
-
-                                                                return (string) $state;
                                                             })
-                                                            ->placeholder('—')
-                                                            ->columnSpan(['default' => 1, 'lg' => 3])
-                                                            ->wrap(),
-                                                        TextEntry::make('status')
-                                                            ->label('Estatus afiliado')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('age')
+                                                            ->label('Edad')
+                                                            ->suffix(' años')
+                                                            ->alignCenter(),
+                                                        TextEntry::make('sex')
+                                                            ->label('Sexo')
                                                             ->badge()
-                                                            ->color(fn (?string $state): string => self::statusColor($state)),
-                                                    ]),
-                                                RepeatableEntry::make('affiliationCorporate.billingCollections')
-                                                    ->label('Próximos pagos y estatus de cobranza')
-                                                    ->placeholder('No hay cobranzas registradas para este código de afiliación.')
-                                                    ->columnSpanFull()
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_TABLE_WRAP_CLASS,
-                                                    ])
-                                                    ->table([
-                                                        TableColumn::make('Vencimiento'),
-                                                        TableColumn::make('Estado cobranza'),
-                                                        TableColumn::make('Frecuencia'),
-                                                        TableColumn::make('Próx. pago (reg.)'),
-                                                        TableColumn::make('Monto'),
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('expiration_date')
-                                                            ->label('Vencimiento')
-                                                            ->icon(Heroicon::OutlinedCalendarDays)
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('status')
-                                                            ->label('Estado cobranza')
-                                                            ->badge()
-                                                            ->color(fn (?string $state): string => self::billingCollectionStatusColor($state))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('payment_frequency')
-                                                            ->label('Frecuencia')
-                                                            ->badge()
-                                                            ->color('gray')
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('next_payment_date')
-                                                            ->label('Próx. pago (reg.)')
-                                                            ->icon(Heroicon::OutlinedCalendar)
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('total_amount')
-                                                            ->label('Monto')
-                                                            ->money('USD')
-                                                            ->placeholder('—'),
-                                                    ]),
-                                            ]),
-                                    ]),
-                                Tab::make('Contacto en empresa')
-                                    ->icon(Heroicon::OutlinedPhone)
-                                    ->schema([
-                                        Section::make('Contacto en empresa')
-                                            ->icon(Heroicon::OutlinedPhone)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_SECTION_CLASS,
-                                            ])
-                                            ->schema([
-                                                Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_INNER_CLASS,
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('affiliationCorporate.full_name_contact')
-                                                            ->label('Nombre')
-                                                            ->icon(Heroicon::OutlinedUser)
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('affiliationCorporate.nro_identificacion_contact')
-                                                            ->label('Identificación')
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('affiliationCorporate.email_contact')
+                                                            ->color('gray'),
+                                                        TextEntry::make('phone')
+                                                            ->label('Teléfono')
+                                                            ->icon(Heroicon::OutlinedPhone)
+                                                            ->copyable(),
+                                                        TextEntry::make('email')
                                                             ->label('Correo')
                                                             ->icon(Heroicon::OutlinedEnvelope)
                                                             ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('affiliationCorporate.phone_contact')
-                                                            ->label('Teléfono')
-                                                            ->icon(Heroicon::OutlinedPhone)
-                                                            ->copyable()
-                                                            ->placeholder('—'),
+                                                            ->wrap(),
+                                                        TextEntry::make('address')
+                                                            ->label('Dirección')
+                                                            ->icon(Heroicon::OutlinedMapPin)
+                                                            ->columnSpan(['default' => 1, 'lg' => 2])
+                                                            ->wrap()
+                                                            ->suffixAction(OperationsLocationMapAction::forAffiliateCorporate()),
+                                                        TextEntry::make('created_at')
+                                                            ->label('Registro')
+                                                            ->icon(Heroicon::OutlinedClock)
+                                                            ->dateTime('d/m/Y H:i'),
                                                     ]),
                                             ]),
                                     ]),
-                                Tab::make('Beneficios del plan')
-                                    ->icon(Heroicon::OutlinedQueueList)
+                            ]),
+                        Tab::make('Emergencia')
+                            ->icon(Heroicon::OutlinedExclamationTriangle)
+                            ->schema([
+                                Section::make('Emergencia')
+                                    ->icon(Heroicon::OutlinedExclamationTriangle)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
                                     ->schema([
-                                        Section::make('Beneficios del plan')
-                                            ->icon(Heroicon::OutlinedQueueList)
+                                        Grid::make(['default' => 1, 'sm' => 2])
                                             ->extraAttributes([
-                                                'class' => self::IOS_SECTION_CLASS,
+                                                'class' => self::IOS_INNER_CLASS,
                                             ])
                                             ->schema([
-                                                Grid::make(['default' => 1, 'lg' => 2])
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_INNER_CLASS,
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('plan.benefitPlans.description')
-                                                            ->label('Beneficios')
-                                                            ->badge()
-                                                            ->color('success')
-                                                            ->listWithLineBreaks()
-                                                            ->columnSpan(1),
-                                                        TextEntry::make('plan.benefitPlans.limit.description')
-                                                            ->label('Límites por beneficio')
-                                                            ->badge()
-                                                            ->color('gray')
-                                                            ->listWithLineBreaks()
-                                                            ->columnSpan(1),
-                                                    ]),
+                                                TextEntry::make('full_name_emergency')
+                                                    ->label('Contacto')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('phone_emergency')
+                                                    ->label('Teléfono')
+                                                    ->icon(Heroicon::OutlinedPhone)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Corporativo')
+                            ->icon(Heroicon::OutlinedBuildingOffice2)
+                            ->schema([
+                                Section::make('Corporativo')
+                                    ->description('Empresa contratante.')
+                                    ->icon(Heroicon::OutlinedBuildingOffice2)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('affiliationCorporate.name_corporate')
+                                                    ->label('Razón social')
+                                                    ->icon(Heroicon::OutlinedBuildingLibrary)
+                                                    ->weight('medium')
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliationCorporate.rif')
+                                                    ->label('RIF')
+                                                    ->icon(Heroicon::OutlinedIdentification)
+                                                    ->copyable()
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliationCorporate.phone')
+                                                    ->label('Teléfono')
+                                                    ->icon(Heroicon::OutlinedPhone)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliationCorporate.email')
+                                                    ->label('Correo')
+                                                    ->icon(Heroicon::OutlinedEnvelope)
+                                                    ->copyable()
+                                                    ->placeholder('—')
+                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                TextEntry::make('affiliationCorporate.address')
+                                                    ->label('Dirección')
+                                                    ->icon(Heroicon::OutlinedMapPin)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->suffixAction(OperationsLocationMapAction::forAffiliationCorporateOnAffiliateCorporate()),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Afiliación y plan')
+                            ->icon(Heroicon::OutlinedRectangleStack)
+                            ->schema([
+                                Section::make('Afiliación y plan')
+                                    ->description('Datos del plan y cobranzas vinculadas al código de afiliación corporativa.')
+                                    ->icon(Heroicon::OutlinedRectangleStack)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('affiliationCorporate.code')
+                                                    ->label('Código afiliación')
+                                                    ->icon(Heroicon::OutlinedHashtag)
+                                                    ->badge()
+                                                    ->color('primary'),
+                                                TextEntry::make('plan.description')
+                                                    ->label('Plan')
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->wrap(),
+                                                TextEntry::make('plan.businessUnit.definition')
+                                                    ->label('Unidad de negocio')
+                                                    ->badge()
+                                                    ->color('gray'),
+                                                TextEntry::make('coverage.price')
+                                                    ->label('Cobertura')
+                                                    ->money('USD'),
+                                                TextEntry::make('affiliationCorporate.effective_date')
+                                                    ->label('Vigencia')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliationCorporate.service_providers')
+                                                    ->label('Proveedores')
+                                                    ->formatStateUsing(function (mixed $state): ?string {
+                                                        if (blank($state)) {
+                                                            return null;
+                                                        }
+                                                        if (is_array($state)) {
+                                                            return implode(', ', array_filter(array_map('strval', $state)));
+                                                        }
+
+                                                        return (string) $state;
+                                                    })
+                                                    ->placeholder('—')
+                                                    ->columnSpan(['default' => 1, 'lg' => 3])
+                                                    ->wrap(),
+                                                TextEntry::make('status')
+                                                    ->label('Estatus afiliado')
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => self::statusColor($state)),
+                                            ]),
+                                        RepeatableEntry::make('affiliationCorporate.billingCollections')
+                                            ->label('Próximos pagos y estatus de cobranza')
+                                            ->placeholder('No hay cobranzas registradas para este código de afiliación.')
+                                            ->columnSpanFull()
+                                            ->extraAttributes([
+                                                'class' => self::IOS_TABLE_WRAP_CLASS,
+                                            ])
+                                            ->table([
+                                                TableColumn::make('Vencimiento'),
+                                                TableColumn::make('Estado cobranza'),
+                                                TableColumn::make('Frecuencia'),
+                                                TableColumn::make('Próx. pago (reg.)'),
+                                                TableColumn::make('Monto'),
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('expiration_date')
+                                                    ->label('Vencimiento')
+                                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('status')
+                                                    ->label('Estado cobranza')
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => self::billingCollectionStatusColor($state))
+                                                    ->placeholder('—'),
+                                                TextEntry::make('payment_frequency')
+                                                    ->label('Frecuencia')
+                                                    ->badge()
+                                                    ->color('gray')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('next_payment_date')
+                                                    ->label('Próx. pago (reg.)')
+                                                    ->icon(Heroicon::OutlinedCalendar)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('total_amount')
+                                                    ->label('Monto')
+                                                    ->money('USD')
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Contacto en empresa')
+                            ->icon(Heroicon::OutlinedPhone)
+                            ->schema([
+                                Section::make('Contacto en empresa')
+                                    ->icon(Heroicon::OutlinedPhone)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('affiliationCorporate.full_name_contact')
+                                                    ->label('Nombre')
+                                                    ->icon(Heroicon::OutlinedUser)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliationCorporate.nro_identificacion_contact')
+                                                    ->label('Identificación')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliationCorporate.email_contact')
+                                                    ->label('Correo')
+                                                    ->icon(Heroicon::OutlinedEnvelope)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliationCorporate.phone_contact')
+                                                    ->label('Teléfono')
+                                                    ->icon(Heroicon::OutlinedPhone)
+                                                    ->copyable()
+                                                    ->placeholder('—'),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Beneficios del plan')
+                            ->icon(Heroicon::OutlinedQueueList)
+                            ->schema([
+                                Section::make('Beneficios del plan')
+                                    ->icon(Heroicon::OutlinedQueueList)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('plan.benefitPlans.description')
+                                                    ->label('Beneficios')
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->listWithLineBreaks()
+                                                    ->columnSpan(1),
+                                                TextEntry::make('plan.benefitPlans.limit.description')
+                                                    ->label('Límites por beneficio')
+                                                    ->badge()
+                                                    ->color('gray')
+                                                    ->listWithLineBreaks()
+                                                    ->columnSpan(1),
                                             ]),
                                     ]),
                             ]),

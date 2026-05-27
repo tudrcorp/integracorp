@@ -2,21 +2,30 @@
 
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Pages;
 
+use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
 use App\Models\AffiliateCorporate;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 
 class ViewAffiliateCorporate extends ViewRecord
 {
+    use AppliesOperationsAddressFromMaps;
+
     protected static string $resource = AffiliateCorporateResource::class;
+
+    public function getFooter(): ?ViewContract
+    {
+        return view('filament.operations.shared.location-maps-loader');
+    }
 
     protected function resolveRecord(int|string $key): Model
     {
         /** @var AffiliateCorporate $record */
         $record = parent::resolveRecord($key);
-        $record->loadMissing(['affiliationCorporate.billingCollections']);
+        $record->loadMissing(['affiliationCorporate.billingCollections', 'affiliationCorporate']);
 
         return $record;
     }

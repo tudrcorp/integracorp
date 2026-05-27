@@ -89,13 +89,16 @@ it('marca candidata a negociación cuando un afiliado excede el rango ideal', fu
         ->and($result['message'])->toBe(AffiliationAffiliateFeeCalculator::NEGOTIATION_MESSAGE_IDEAL_OUT_OF_RANGE);
 });
 
-it('el job registra campos de negociación y transición de plan', function (): void {
+it('el job registra negociación en renovations sin persistir en affiliations', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/PrepareAffiliationRenovations.php');
 
     expect($source)
         ->toContain('evaluateIdealToSpecialPlanTransition')
-        ->toContain('applyIdealToSpecialPlanTransition')
         ->toContain('is_negotiation_candidate')
         ->toContain('negotiation_notes')
-        ->toContain('previous_plan_id');
+        ->toContain('previous_plan_id')
+        ->toContain('affiliationSnapshotForFeeCalculation')
+        ->not->toContain('applyIdealToSpecialPlanTransition')
+        ->not->toContain('applyAmountsToAffiliate')
+        ->not->toContain('$affiliation->save');
 });

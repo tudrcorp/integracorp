@@ -1518,6 +1518,215 @@
       inset 0 1px 0 rgb(255 255 255 / 0.08);
   }
 
+  /* Helpdesk: pestaña tipo de ticket */
+  .fi-helpdesk-ticket-type-intro {
+    border-radius: 1rem;
+    border: 1px solid rgb(59 130 246 / 0.22);
+    background: linear-gradient(
+      135deg,
+      rgb(239 246 255 / 0.95) 0%,
+      rgb(255 255 255 / 0.9) 100%
+    );
+    padding: 0.875rem 1rem;
+  }
+
+  .fi-helpdesk-ticket-type-intro__title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: rgb(15 23 42);
+  }
+
+  .fi-helpdesk-ticket-type-intro__text {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: rgb(71 85 105);
+  }
+
+  .dark .fi-helpdesk-ticket-type-intro {
+    border-color: rgb(96 165 250 / 0.28);
+    background: linear-gradient(
+      135deg,
+      rgb(30 58 138 / 0.35) 0%,
+      rgb(24 24 27 / 0.75) 100%
+    );
+  }
+
+  .dark .fi-helpdesk-ticket-type-intro__title {
+    color: rgb(248 250 252);
+  }
+
+  .dark .fi-helpdesk-ticket-type-intro__text {
+    color: rgb(203 213 225);
+  }
+
+  .fi-helpdesk-ticket-type-panel .fi-fo-radio {
+    gap: 0.5rem;
+  }
+
+  .fi-helpdesk-ticket-type-fields .fi-fo-field-wrp-label {
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+
+  .fi-helpdesk-ticket-type-hero {
+    border-radius: 1rem;
+    border: 1px solid rgb(0 0 0 / 0.06);
+    padding: 0.875rem 1rem;
+    margin-top: 0.25rem;
+  }
+
+  .fi-helpdesk-ticket-type-hero--danger {
+    background: linear-gradient(135deg, rgb(255 241 242) 0%, rgb(255 255 255) 100%);
+    border-color: rgb(254 205 211);
+  }
+
+  .fi-helpdesk-ticket-type-hero--info {
+    background: linear-gradient(135deg, rgb(240 249 255) 0%, rgb(255 255 255) 100%);
+    border-color: rgb(186 230 253);
+  }
+
+  .fi-helpdesk-ticket-type-hero--warning {
+    background: linear-gradient(135deg, rgb(255 251 235) 0%, rgb(255 255 255) 100%);
+    border-color: rgb(253 230 138);
+  }
+
+  .fi-helpdesk-ticket-type-hero--primary {
+    background: linear-gradient(135deg, rgb(238 242 255) 0%, rgb(255 255 255) 100%);
+    border-color: rgb(199 210 254);
+  }
+
+  .fi-helpdesk-ticket-type-hero--success {
+    background: linear-gradient(135deg, rgb(236 253 245) 0%, rgb(255 255 255) 100%);
+    border-color: rgb(167 243 208);
+  }
+
+  .fi-helpdesk-ticket-type-hero__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .fi-helpdesk-ticket-type-hero__badge {
+    flex-shrink: 0;
+    width: 0.625rem;
+    height: 0.625rem;
+    margin-top: 0.35rem;
+    border-radius: 9999px;
+    background: rgb(100 116 139);
+    box-shadow: 0 0 0 3px rgb(100 116 139 / 0.2);
+  }
+
+  .fi-helpdesk-ticket-type-hero--danger .fi-helpdesk-ticket-type-hero__badge {
+    background: rgb(244 63 94);
+    box-shadow: 0 0 0 3px rgb(244 63 94 / 0.25);
+  }
+
+  .fi-helpdesk-ticket-type-hero--info .fi-helpdesk-ticket-type-hero__badge {
+    background: rgb(14 165 233);
+    box-shadow: 0 0 0 3px rgb(14 165 233 / 0.25);
+  }
+
+  .fi-helpdesk-ticket-type-hero--warning .fi-helpdesk-ticket-type-hero__badge {
+    background: rgb(245 158 11);
+    box-shadow: 0 0 0 3px rgb(245 158 11 / 0.25);
+  }
+
+  .fi-helpdesk-ticket-type-hero--primary .fi-helpdesk-ticket-type-hero__badge {
+    background: rgb(99 102 241);
+    box-shadow: 0 0 0 3px rgb(99 102 241 / 0.25);
+  }
+
+  .fi-helpdesk-ticket-type-hero--success .fi-helpdesk-ticket-type-hero__badge {
+    background: rgb(16 185 129);
+    box-shadow: 0 0 0 3px rgb(16 185 129 / 0.25);
+  }
+
+  .fi-helpdesk-ticket-type-hero__title {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: rgb(15 23 42);
+  }
+
+  .fi-helpdesk-ticket-type-hero__subtitle {
+    font-size: 0.8125rem;
+    color: rgb(100 116 139);
+    margin-top: 0.1rem;
+  }
+
+  .fi-helpdesk-ticket-type-hero__definition {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: rgb(51 65 85);
+  }
+
+  .fi-helpdesk-ticket-type-hero__example,
+  .fi-helpdesk-ticket-type-hero__hint {
+    margin-top: 0.45rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: rgb(71 85 105);
+  }
+
+  .fi-helpdesk-ticket-type-hero__example span,
+  .fi-helpdesk-ticket-type-hero__hint span {
+    font-weight: 650;
+    color: rgb(15 23 42);
+  }
+
+  .fi-helpdesk-ticket-type-empty {
+    margin-top: 0.25rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: rgb(100 116 139);
+    padding: 0.5rem;
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero__title,
+  .dark .fi-helpdesk-ticket-type-hero__example span,
+  .dark .fi-helpdesk-ticket-type-hero__hint span {
+    color: rgb(248 250 252);
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero__definition {
+    color: rgb(226 232 240);
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero__subtitle,
+  .dark .fi-helpdesk-ticket-type-hero__example,
+  .dark .fi-helpdesk-ticket-type-hero__hint,
+  .dark .fi-helpdesk-ticket-type-empty {
+    color: rgb(148 163 184);
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero--danger {
+    background: linear-gradient(135deg, rgb(76 5 25 / 0.45) 0%, rgb(24 24 27 / 0.9) 100%);
+    border-color: rgb(190 18 60 / 0.35);
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero--info {
+    background: linear-gradient(135deg, rgb(12 74 110 / 0.4) 0%, rgb(24 24 27 / 0.9) 100%);
+    border-color: rgb(14 165 233 / 0.35);
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero--warning {
+    background: linear-gradient(135deg, rgb(120 53 15 / 0.4) 0%, rgb(24 24 27 / 0.9) 100%);
+    border-color: rgb(245 158 11 / 0.35);
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero--primary {
+    background: linear-gradient(135deg, rgb(49 46 129 / 0.45) 0%, rgb(24 24 27 / 0.9) 100%);
+    border-color: rgb(129 140 248 / 0.35);
+  }
+
+  .dark .fi-helpdesk-ticket-type-hero--success {
+    background: linear-gradient(135deg, rgb(6 78 59 / 0.45) 0%, rgb(24 24 27 / 0.9) 100%);
+    border-color: rgb(16 185 129 / 0.35);
+  }
+
   /* Bloque inset dentro del formulario helpdesk (grupos de campos) */
   .fi-helpdesk-ios-inset,
   .fi-info-free-ios-inset {
@@ -2986,7 +3195,7 @@
    * El contenedor externo no debe hacer scroll (Filament wizard usa scrollIntoView al cambiar paso).
    */
   .fi-modal:has(.fi-coordination-manage-items-modal) .fi-modal-window-ctn {
-    @apply overflow-hidden overscroll-contain py-4 sm:py-6;
+    @apply overflow-hidden overscroll-contain pt-4 pb-2 sm:pt-6 sm:pb-3;
     align-items: center;
   }
 
@@ -2999,16 +3208,20 @@
   }
 
   .fi-coordination-manage-items-modal .fi-modal-content {
-    @apply min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain scroll-smooth px-4 py-4 sm:px-6 sm:py-5;
+    @apply min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain scroll-smooth px-4 pt-4 pb-2 sm:px-6 sm:pt-5 sm:pb-3;
     isolation: isolate;
   }
 
+  /*
+   * El wizard ya muestra Anterior / Confirmar en .fi-sc-wizard-footer;
+   * el pie del modal duplicaba botones y dejaba hueco inferior.
+   */
   .fi-coordination-manage-items-modal .fi-modal-footer {
-    @apply relative z-20 shrink-0 gap-3 border-t border-black/[0.06] bg-white px-4 py-4 dark:border-white/[0.08] dark:bg-gray-950 sm:px-6;
+    display: none;
   }
 
   .fi-coordination-manage-items-wizard {
-    @apply flex flex-col gap-5;
+    @apply flex flex-col gap-3;
   }
 
   .fi-coordination-manage-items-wizard .fi-sc-wizard-header {
@@ -3023,8 +3236,47 @@
     @apply flex flex-col gap-4;
   }
 
-  .fi-coordination-manage-items-wizard .fi-sc-wizard-footer {
-    @apply mt-2 shrink-0 border-t border-black/[0.05] pt-4 dark:border-white/[0.06];
+  .fi-coordination-manage-items-modal .fi-coordination-manage-items-wizard.fi-sc-wizard .fi-sc-wizard-footer {
+    @apply mt-2 shrink-0 flex-wrap items-center justify-end gap-2 border-t border-black/[0.05] pt-3 pb-0 dark:border-white/[0.06];
+  }
+
+  .fi-coordination-manage-items-modal .fi-coordination-manage-items-wizard.fi-sc-wizard .fi-sc-wizard-footer > div:empty {
+    display: none;
+  }
+
+  /*
+   * Paso «Proveedor no convenido»: selects visibles dentro del modal con scroll.
+   * El contenido del modal usa overflow-y-auto; los paneles Choices se recortan sin esto.
+   */
+  .fi-coordination-manage-items-modal .fi-modal-content:has(.fi-unregistered-provider-wizard-step .fi-fo-select [aria-expanded='true']) {
+    overflow: visible;
+  }
+
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step.fi-sc-wizard-step,
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step .fi-sc-section,
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step .fi-section-content-ctn,
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-location.fi-sc-section,
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-location .fi-section-content-ctn {
+    overflow: visible;
+  }
+
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step .fi-fo-field:has(.fi-fo-select) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step .fi-fo-field:has(.fi-fo-select-trigger:focus-within),
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step .fi-fo-field:has(.fi-fo-select [aria-expanded='true']) {
+    z-index: 100;
+  }
+
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step .fi-dropdown-panel,
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-wizard-step .fi-fo-select-list {
+    z-index: 110;
+  }
+
+  .fi-coordination-manage-items-modal .fi-unregistered-provider-location select.fi-select-input {
+    @apply min-h-11 w-full rounded-xl;
   }
 
   .fi-coordination-manage-items-wizard .fi-fo-checkbox-list.fi-manage-service-items-checkbox-list {
