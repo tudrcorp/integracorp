@@ -75,6 +75,8 @@ it('OperationCoordinationServicesTable define modal para gestionar ítems con co
         ->toContain('Width::SevenExtraLarge')
         ->toContain('fi-coordination-manage-items-modal')
         ->toContain('fi-coordination-manage-items-wizard')
+        ->toContain('modalSubmitActionLabel(\'Confirmar gestión\')')
+        ->toContain('FilamentIosButton::extraClassForFilamentColor(\'success\')')
         ->toContain('manage_service_items_context')
         ->toContain('manage_service_order_context')
         ->toContain('extraAlpineAttributes')

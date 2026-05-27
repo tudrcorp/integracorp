@@ -372,11 +372,13 @@
         <table class="grid">
             <tr>
                 <td>
-                    <div class="label">Proveedor TDG</div>
+                    <div class="label">Proveedor natural</div>
+                    <div class="value">{{ $order->doctorNurse?->name ?? '—' }}</div>
+                    <div class="label">Proveedor jurídico</div>
                     <div class="value-muted">{{ $order->supplier?->name ?? '—' }}</div>
                 </td>
                 <td>
-                    <div class="label">Proveedor externo</div>
+                    <div class="label">Proveedor No Convenido</div>
                     <div class="value-muted">{{ $order->supplier_external ?? '—' }}</div>
                 </td>
             </tr>

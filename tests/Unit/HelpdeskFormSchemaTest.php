@@ -21,6 +21,8 @@ it('en edición solo el creador es editable y el resto queda deshabilitado', fun
     $src = file_get_contents($path);
     expect($src)->toContain("->disabledOn('edit')")
         ->toContain("Tabs::make('helpdeskFormTabs')")
+        ->toContain("Tab::make('Tipo de ticket')")
+        ->toContain("Radio::make('ticket_type')")
         ->toContain('fi-helpdesk-ios-section')
         ->toContain('persistTabInQueryString')
         ->toContain('Creador del ticket')

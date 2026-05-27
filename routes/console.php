@@ -6,7 +6,6 @@ use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendNotificationBirthday;
 use App\Jobs\UpdateAffiliateIlsRemainingDays;
 use App\Jobs\UpdateAnnualCollectionRemainingDays;
-use App\Jobs\ValidateDateToRenew;
 use Illuminate\Support\Facades\Schedule;
 
 /**
@@ -21,23 +20,6 @@ Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
  * Se ejecuta todos los días a las 8:00.
  */
 Schedule::job(new SendCollaboratorAnniversaryNotification, 'system')->dailyAt('8:00');
-
-/**
- * Tarea que se ejecuta para enviar los medicamentos asignados al paciente
- * en el proceso de la telemedicina
- *
- * Se ejecutara todos los dias cada 6 horas
- * Hora de inicio = 8:00am
- */
-// Schedule::job(new SendNotificationRemenberMedication, 'system')->everySixHours();
-
-/**
- * Tarea que se ejecuta para validar las afiliacione que esta para renovar
- *
- * Se ejecutara todos los dias cada 6 horas
- * Hora de inicio = 8:00am
- */
-// Schedule::job(new ValidateDateToRenew, 'renew')->dailyAt('00:00');
 
 /**
  * Tarea para recalcular días restantes hacia el próximo mes en false

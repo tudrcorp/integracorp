@@ -23,7 +23,14 @@ it('OperationCoordinationServiceInfolist muestra document_types desde la fila de
         ->toContain("RepeatableEntry::make('uploaded_documents')")
         ->toContain("TextEntry::make('document_types')")
         ->toContain('->badge()')
-        ->toContain('Sin tipo asociado');
+        ->toContain('Sin tipo asociado')
+        ->toContain("TextEntry::make('document_name')")
+        ->toContain('uploadedDocumentRowFromComponent')
+        ->toContain('uploadedDocumentDownloadPrefixActions')
+        ->toContain('OutlinedArrowDownTray')
+        ->toContain('iconButton()')
+        ->toContain("asset('storage/'")
+        ->not->toContain('renderDownloadButton');
 });
 
 it('OperationCoordinationService model soporta uploaded_documents', function (): void {

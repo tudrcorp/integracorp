@@ -2,15 +2,24 @@
 
 namespace App\Filament\Operations\Resources\Affiliates\Pages;
 
+use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\Affiliates\AffiliateResource;
 use App\Models\Affiliate;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 
 class ViewAffiliate extends ViewRecord
 {
+    use AppliesOperationsAddressFromMaps;
+
     protected static string $resource = AffiliateResource::class;
+
+    public function getFooter(): ?ViewContract
+    {
+        return view('filament.operations.shared.location-maps-loader');
+    }
 
     // protected static ?string $title = 'Información Detallada del Afiliado';
 

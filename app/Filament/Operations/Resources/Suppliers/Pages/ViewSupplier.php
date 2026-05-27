@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\Suppliers\Pages;
 
+use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Models\Supplier;
 use App\Support\SecurityAudit;
@@ -20,9 +21,16 @@ use Illuminate\Support\Str;
 
 class ViewSupplier extends ViewRecord
 {
+    use AppliesOperationsAddressFromMaps;
+
     protected static string $resource = SupplierResource::class;
 
     protected static ?string $title = 'Ficha Técnica del Proveedor';
+
+    public function getFooter(): ?ViewContract
+    {
+        return view('filament.operations.suppliers.supplier-location-maps-loader');
+    }
 
     protected function resolveRecord(int|string $key): Model
     {

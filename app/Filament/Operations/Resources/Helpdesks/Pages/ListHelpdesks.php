@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\Helpdesks\Pages;
 
+use App\Filament\Concerns\ManagesHelpdeskWorkGroupsOnList;
 use App\Filament\Operations\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Operations\Resources\Helpdesks\HelpdeskResource;
 use App\Filament\Operations\Resources\Helpdesks\Tables\HelpdesksTable;
@@ -9,6 +10,7 @@ use App\Filament\Operations\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChar
 use App\Filament\Operations\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk;
 use App\Models\HelpdeskFlowProcessFile;
 use App\Models\HelpdeskVideoTutorialFile;
+use App\Support\HelpdeskWorkGroupHeaderAction;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -22,6 +24,7 @@ use Illuminate\Support\Facades\Storage;
 class ListHelpdesks extends ListRecords
 {
     use ExposesTableToWidgets;
+    use ManagesHelpdeskWorkGroupsOnList;
 
     protected static string $resource = HelpdeskResource::class;
 
@@ -385,6 +388,7 @@ class ListHelpdesks extends ListRecords
                         )
                         ->send();
                 }),
+            HelpdeskWorkGroupHeaderAction::make(),
             CreateAction::make()
                 ->label('Crear ticket de soporte')
                 ->icon('heroicon-s-plus')

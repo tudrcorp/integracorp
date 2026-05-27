@@ -115,6 +115,8 @@
                 <th>Ítem</th>
                 <th>Detalle</th>
                 <th>Cobertura</th>
+                <th>P. unit. (USD)</th>
+                <th>P. unit. (Bs.)</th>
             </tr>
         </thead>
         <tbody>
@@ -124,10 +126,12 @@
                     <td>{{ $item['label'] ?? '—' }}</td>
                     <td>{{ $item['detail'] ?? '—' }}</td>
                     <td>{{ $item['coverage_label'] ?? '—' }}</td>
+                    <td>US$ {{ number_format((float) ($item['unit_price_usd'] ?? 0), 2, ',', '.') }}</td>
+                    <td>Bs. {{ number_format((float) ($item['unit_price_ves'] ?? 0), 2, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4">Sin ítems registrados.</td>
+                    <td colspan="6">Sin ítems registrados.</td>
                 </tr>
             @endforelse
         </tbody>

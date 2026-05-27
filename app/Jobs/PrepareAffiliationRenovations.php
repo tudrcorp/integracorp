@@ -16,6 +16,10 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Prepara propuestas de renovación en la tabla `renovations` (solo lectura en `affiliations` y `affiliates`).
+ * El analista valida y aplica cambios manualmente; este job no debe alterar el expediente vigente.
+ */
 class PrepareAffiliationRenovations implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -44,13 +48,13 @@ class PrepareAffiliationRenovations implements ShouldQueue
         $processed = 0;
         $upserted = 0;
         $inRenewalPeriod = 0;
-        $affiliatesUpdated = 0;
+        $affiliatesPriced = 0;
         $skippedNoEffectiveDate = 0;
 
         Affiliation::query()
             ->where('status', self::AFFILIATION_STATUS_ACTIVE)
             ->with(['affiliates' => fn ($query) => $query->whereIn('status', self::AFFILIATE_STATUSES_FOR_RENEWAL)])
-            ->chunkById(100, function ($affiliations) use ($calculator, $today, &$processed, &$upserted, &$inRenewalPeriod, &$affiliatesUpdated, &$skippedNoEffectiveDate): void {
+            ->chunkById(100, function ($affiliations) use ($calculator, $today, &$processed, &$upserted, &$inRenewalPeriod, &$affiliatesPriced, &$skippedNoEffectiveDate): void {
                 foreach ($affiliations as $affiliation) {
                     $processed++;
 
@@ -89,7 +93,7 @@ class PrepareAffiliationRenovations implements ShouldQueue
                         && ($calculator->isInitialPlanWithoutCoverage($affiliation) || filled($affiliation->coverage_id));
 
                     if ($isInRenewalPeriod && ! $canRecalculateFees) {
-                        Log::warning('PrepareAffiliationRenovations: sin cobertura, solo actualiza conteo de días', [
+                        Log::warning('PrepareAffiliationRenovations: sin cobertura, solo persiste conteo de días en renovations', [
                             'affiliation_id' => $affiliation->id,
                             'code' => $affiliation->code,
                         ]);
@@ -101,27 +105,13 @@ class PrepareAffiliationRenovations implements ShouldQueue
                     );
                     $isNegotiationCandidate = $planTransition['requires_negotiation'];
                     $negotiationNotes = $planTransition['message'];
-                    $previousPlanId = null;
-
-                    if ($isNegotiationCandidate && $canRecalculateFees) {
-                        $previousPlanId = (int) $affiliation->plan_id;
-                        $calculator->applyIdealToSpecialPlanTransition(
-                            $affiliation,
-                            self::AFFILIATE_STATUSES_FOR_RENEWAL,
-                        );
-                        $affiliation->refresh();
-                        $affiliation->load(['affiliates' => fn ($query) => $query->whereIn('status', self::AFFILIATE_STATUSES_FOR_RENEWAL)]);
-
-                        Log::info('PrepareAffiliationRenovations: transición Plan Ideal a Plan Especial', [
-                            'affiliation_id' => $affiliation->id,
-                            'code' => $affiliation->code,
-                            'out_of_range_affiliate_ids' => $planTransition['out_of_range_affiliate_ids'],
-                        ]);
-                    }
+                    $previousPlanId = $isNegotiationCandidate ? (int) $affiliation->plan_id : null;
 
                     $renewalPlanId = $isNegotiationCandidate
                         ? AffiliationAffiliateFeeCalculator::SPECIAL_PLAN_ID
                         : (int) $affiliation->plan_id;
+
+                    $affiliationForFees = $this->affiliationSnapshotForFeeCalculation($affiliation, $isNegotiationCandidate);
 
                     $subtotalAnual = 0.0;
                     $titularAnnualFee = null;
@@ -130,17 +120,18 @@ class PrepareAffiliationRenovations implements ShouldQueue
 
                     foreach ($affiliation->affiliates as $affiliate) {
                         if ($canRecalculateFees) {
-                            if ($calculator->applyAmountsToAffiliate($affiliation, $affiliate)) {
-                                $affiliate->refresh();
-                                $affiliatesUpdated++;
-                                $subtotalAnual += (float) $affiliate->fee;
+                            $amounts = $calculator->calculateAffiliateAmounts($affiliationForFees, $affiliate);
+
+                            if ($amounts !== null) {
+                                $affiliatesPriced++;
+                                $subtotalAnual += $amounts['annual_fee'];
 
                                 if ($affiliate->relationship === 'TITULAR') {
-                                    $titularAnnualFee = (float) $affiliate->fee;
-                                    $titularAgeRangeId = $affiliate->age_range_id;
+                                    $titularAnnualFee = $amounts['annual_fee'];
+                                    $titularAgeRangeId = $amounts['age_range_id'];
                                 }
                             } else {
-                                Log::warning('PrepareAffiliationRenovations: tarifa no encontrada para afiliado', [
+                                Log::warning('PrepareAffiliationRenovations: tarifa no encontrada para afiliado (solo renovations)', [
                                     'affiliation_id' => $affiliation->id,
                                     'affiliate_id' => $affiliate->id,
                                     'age' => $calculator->resolveAffiliateAge($affiliate),
@@ -161,12 +152,6 @@ class PrepareAffiliationRenovations implements ShouldQueue
                     if ($affiliateCount === 0) {
                         $subtotalAnual = (float) ($affiliation->fee_anual ?? 0);
                         $titularAnnualFee = $subtotalAnual;
-                    }
-
-                    if ($canRecalculateFees && $affiliateCount > 0) {
-                        $this->recalculateAffiliationTotalsFromRenewalAffiliates($affiliation, $calculator);
-                        $affiliation->refresh();
-                        $subtotalAnual = (float) $affiliation->fee_anual;
                     }
 
                     $paymentFrequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
@@ -212,28 +197,27 @@ class PrepareAffiliationRenovations implements ShouldQueue
             'processed' => $processed,
             'upserted' => $upserted,
             'in_renewal_period' => $inRenewalPeriod,
-            'affiliates_updated' => $affiliatesUpdated,
+            'affiliates_priced_in_snapshot' => $affiliatesPriced,
             'skipped_no_effective_date' => $skippedNoEffectiveDate,
             'run_date' => $today->toDateString(),
         ]);
     }
 
-    private function recalculateAffiliationTotalsFromRenewalAffiliates(
+    /**
+     * Copia en memoria para simular Plan Especial en la propuesta sin persistir en affiliations.
+     */
+    private function affiliationSnapshotForFeeCalculation(
         Affiliation $affiliation,
-        AffiliationAffiliateFeeCalculator $calculator,
-    ): void {
-        $sumAnnualFees = (float) $affiliation->affiliates()
-            ->whereIn('status', self::AFFILIATE_STATUSES_FOR_RENEWAL)
-            ->sum('fee');
+        bool $isNegotiationCandidate,
+    ): Affiliation {
+        if (! $isNegotiationCandidate) {
+            return $affiliation;
+        }
 
-        $frequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
+        $snapshot = $affiliation->replicate();
+        $snapshot->plan_id = AffiliationAffiliateFeeCalculator::SPECIAL_PLAN_ID;
 
-        $affiliation->fee_anual = round($sumAnnualFees, 2);
-        $affiliation->total_amount = $calculator->totalAmountForPaymentFrequency($affiliation->fee_anual, $frequency);
-        $affiliation->family_members = $affiliation->affiliates()
-            ->whereIn('status', self::AFFILIATE_STATUSES_FOR_RENEWAL)
-            ->count();
-        $affiliation->save();
+        return $snapshot;
     }
 
     public function failed(?Throwable $exception): void

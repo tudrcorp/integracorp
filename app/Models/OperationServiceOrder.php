@@ -14,6 +14,7 @@ class OperationServiceOrder extends Model
     protected $fillable = [
         'operation_coordination_service_id',
         'supplier_id',
+        'doctor_nurse_id',
         'telemedicine_priority_id',
         'order_number',
         'supplier_external',
@@ -56,6 +57,11 @@ class OperationServiceOrder extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function doctorNurse()
+    {
+        return $this->belongsTo(DoctorNurse::class);
     }
 
     public function telemedicinePriority()

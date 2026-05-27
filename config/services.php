@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    /*
+     * Clave usada en mapas de proveedores (Filament) y vistas públicas.
+     * APIs requeridas en Google Cloud para la misma clave:
+     * - Maps JavaScript API
+     * - Places API
+     * - Directions API (rutas y tiempos de recorrido)
+     * Si la clave tiene "Restricciones de API", incluya las tres en la lista permitida.
+     */
+    'google_maps' => [
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
+        'default_lat' => (float) env('GOOGLE_MAPS_DEFAULT_LAT', 10.4806),
+        'default_lng' => (float) env('GOOGLE_MAPS_DEFAULT_LNG', -66.9036),
+    ],
+
 ];

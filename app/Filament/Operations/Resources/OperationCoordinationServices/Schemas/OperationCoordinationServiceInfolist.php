@@ -8,6 +8,7 @@ use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -17,11 +18,11 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
+use Illuminate\Support\HtmlString;
 
 class OperationCoordinationServiceInfolist
 {
@@ -364,21 +365,22 @@ class OperationCoordinationServiceInfolist
                                             ->table([
                                                 TableColumn::make('Documento')->width('30%'),
                                                 TableColumn::make('Tipo(s)')->width('28%'),
-                                                TableColumn::make('Archivo')->width('20%'),
                                                 TableColumn::make('Fecha')->width('12%'),
                                             ])
                                             ->schema([
                                                 TextEntry::make('document_name')
                                                     ->label('Documento')
-                                                    ->html()
-                                                    ->formatStateUsing(function (TextEntry $component, mixed $state): string {
-                                                        $row = $component->getConstantState();
+                                                    ->formatStateUsing(function (TextEntry $component, mixed $state): Htmlable|string {
+                                                        $row = self::uploadedDocumentRowFromComponent($component);
 
-                                                        return self::renderDocumentNameCell(
-                                                            is_array($row) ? ($row['document_name'] ?? $state) : $state,
-                                                            is_array($row) ? $row : null,
-                                                        );
+                                                        return new HtmlString(self::renderDocumentNameCell(
+                                                            self::uploadedDocumentDisplayName($row, $state),
+                                                            $row,
+                                                        ));
                                                     })
+                                                    ->prefixActions([
+                                                        fn (TextEntry $component): array => self::uploadedDocumentDownloadPrefixActions($component),
+                                                    ])
                                                     ->placeholder('—'),
                                                 TextEntry::make('document_types')
                                                     ->label('Tipo(s)')
@@ -388,16 +390,6 @@ class OperationCoordinationServiceInfolist
                                                         ? trim((string) $state)
                                                         : null)
                                                     ->placeholder('Sin tipo asociado'),
-                                                TextEntry::make('file_path')
-                                                    ->label('Archivo')
-                                                    ->formatStateUsing(fn (mixed $state): string => filled($state)
-                                                        ? basename((string) $state)
-                                                        : '—')
-                                                    ->url(fn (mixed $state): ?string => filled($state)
-                                                        ? URL::to(Storage::url((string) $state))
-                                                        : null)
-                                                    ->openUrlInNewTab()
-                                                    ->placeholder('—'),
                                                 TextEntry::make('uploaded_at')
                                                     ->label('Fecha')
                                                     ->formatStateUsing(fn (mixed $state): string => self::formatUploadedAt($state))
@@ -438,25 +430,99 @@ class OperationCoordinationServiceInfolist
             ]);
     }
 
-    private static function renderDocumentNameCell(mixed $state, mixed $record): string
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function uploadedDocumentRowFromComponent(TextEntry $component): ?array
     {
-        $name = trim((string) $state);
-        $filePath = is_array($record) ? trim((string) ($record['file_path'] ?? '')) : '';
-        $extension = strtoupper((string) pathinfo($filePath, PATHINFO_EXTENSION));
+        $containerState = $component->getContainer()->getConstantState();
 
-        if ($name === '') {
-            $name = 'Documento sin nombre';
+        if (is_array($containerState)) {
+            return $containerState;
         }
 
-        $meta = $extension !== '' ? $extension : 'Archivo';
+        if (is_object($containerState)) {
+            return (array) $containerState;
+        }
 
-        return '<div class="flex items-center gap-2">'
+        $legacyState = $component->getConstantState();
+
+        return is_array($legacyState) ? $legacyState : null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $row
+     */
+    private static function uploadedDocumentDisplayName(?array $row, mixed $state): string
+    {
+        $name = is_array($row) ? trim((string) ($row['document_name'] ?? '')) : '';
+
+        if ($name === '') {
+            $name = trim((string) $state);
+        }
+
+        return $name !== '' ? $name : 'Documento sin nombre';
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    private static function uploadedDocumentDownloadPrefixActions(TextEntry $component): array
+    {
+        $row = self::uploadedDocumentRowFromComponent($component);
+        $downloadUrl = self::resolveUploadedDocumentDownloadUrlFromRecord($row);
+
+        if ($downloadUrl === null) {
+            return [];
+        }
+
+        $name = self::uploadedDocumentDisplayName($row, null);
+
+        return [
+            Action::make('downloadUploadedDocument')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->iconButton()
+                ->color('info')
+                ->tooltip('Descargar '.($name !== '' ? $name : 'documento'))
+                ->url($downloadUrl)
+                ->openUrlInNewTab(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $record
+     */
+    private static function renderDocumentNameCell(string $name, ?array $record): string
+    {
+        $filePath = $record !== null ? trim((string) ($record['file_path'] ?? '')) : '';
+        $extension = strtoupper((string) pathinfo($filePath, PATHINFO_EXTENSION));
+        $downloadUrl = self::resolveUploadedDocumentDownloadUrlFromRecord($record);
+
+        $meta = $extension !== '' ? $extension : 'Archivo';
+        $hasDownload = $downloadUrl !== null;
+
+        $content = '<div class="flex items-center gap-2">'
             .'<span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500 dark:text-cyan-300">📄</span>'
             .'<div class="min-w-0">'
-            .'<p class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">'.e($name).'</p>'
-            .'<p class="text-[11px] text-gray-500 dark:text-gray-400">'.e($meta).'</p>'
+            .'<p class="truncate text-sm font-semibold '.($hasDownload
+                ? 'text-cyan-600 dark:text-cyan-300'
+                : 'text-gray-900 dark:text-gray-100').'">'.e($name).'</p>'
+            .'<p class="text-[11px] text-gray-500 dark:text-gray-400">'.e($meta)
+            .($hasDownload ? ' · Use el icono para descargar' : '').'</p>'
             .'</div>'
             .'</div>';
+
+        if (! $hasDownload) {
+            return $content;
+        }
+
+        $downloadName = $filePath !== '' ? basename($filePath) : $name;
+
+        return '<a href="'.e($downloadUrl).'" target="_blank" rel="noopener noreferrer" '
+            .'download="'.e($downloadName).'" title="Descargar '.e($name).'" '
+            .'class="group block rounded-lg transition hover:bg-cyan-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40">'
+            .$content
+            .'</a>';
     }
 
     private static function renderDocumentTypesBadges(mixed $state): string
@@ -514,22 +580,22 @@ class OperationCoordinationServiceInfolist
         }
     }
 
-    private static function renderDownloadButton(mixed $record): string
+    /**
+     * @param  array<string, mixed>|null  $record
+     */
+    private static function resolveUploadedDocumentDownloadUrlFromRecord(?array $record): ?string
     {
-        if (! is_array($record)) {
-            return '<span class="text-gray-400">No disponible</span>';
+        if ($record === null) {
+            return null;
         }
 
         $filePath = trim((string) ($record['file_path'] ?? ''));
 
         if ($filePath === '' || ! Storage::disk('public')->exists($filePath)) {
-            return '<span class="text-gray-400">No disponible</span>';
+            return null;
         }
 
-        $downloadUrl = URL::to(Storage::url($filePath));
-        $fileName = Str::limit(basename($filePath), 22);
-
-        return '<a href="'.e($downloadUrl).'" title="Descargar '.e($fileName).'" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-600 transition hover:bg-cyan-500/20 dark:text-cyan-300">⬇ Descargar</a>';
+        return asset('storage/'.$filePath);
     }
 
     private static function medicationsSummary(OperationCoordinationService $record): string

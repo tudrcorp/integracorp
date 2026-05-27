@@ -274,7 +274,7 @@ class OperationServiceOrdersTable
                     ->limit(28)
                     ->tooltip(fn ($record) => $record->supplier?->name),
                 TextColumn::make('supplier_external')
-                    ->label('Proveedor externo')
+                    ->label('Proveedor No Convenido')
                     ->searchable()
                     ->placeholder('—'),
                 TextColumn::make('description')
@@ -441,7 +441,7 @@ class OperationServiceOrdersTable
                                         ->preload()
                                         ->native(false),
                                     TextInput::make('single_supplier_external')
-                                        ->label('Proveedor externo')
+                                        ->label('Proveedor No Convenido')
                                         ->maxLength(255),
                                     CheckboxList::make('single_quote_item_ids')
                                         ->label('Medicamentos a cotizar')
@@ -468,7 +468,7 @@ class OperationServiceOrdersTable
                                                 ->preload()
                                                 ->native(false),
                                             TextInput::make('supplier_external')
-                                                ->label('Proveedor externo')
+                                                ->label('Proveedor No Convenido')
                                                 ->maxLength(255),
                                             CheckboxList::make('item_ids')
                                                 ->label('Medicamentos para este proveedor')

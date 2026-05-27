@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderItem;
 use App\Models\TelemedicinePatient;
+use App\Support\Operations\OperationServiceOrderProviderSelection;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +17,23 @@ class OperationServiceOrderController extends Controller
     //
     public static function create(array $data, array $ownerRecord, Collection $records): bool
     {
-        // dd($records);
+        $providerError = OperationServiceOrderProviderSelection::validationMessage($data);
+
+        if ($providerError !== null) {
+            Notification::make()
+                ->title('Proveedor de la orden')
+                ->body($providerError)
+                ->warning()
+                ->send();
+
+            return false;
+        }
+
+        $providers = OperationServiceOrderProviderSelection::resolveProviders($data);
+        $data['doctor_nurse_id'] = $providers['doctor_nurse_id'];
+        $data['supplier_id'] = $providers['supplier_id'];
+        $data['supplier_external'] = $providers['supplier_external'];
+
         DB::transaction(function () use ($data, $ownerRecord, $records) {
             try {
                 $medicationsList = $data['medications_list'] ?? [];
@@ -37,6 +54,7 @@ class OperationServiceOrderController extends Controller
                 $operationServiceOrder = OperationServiceOrder::create([
                     'operation_coordination_service_id' => $ownerRecord['id'],
                     'supplier_id' => $data['supplier_id'] ?? null,
+                    'doctor_nurse_id' => $data['doctor_nurse_id'] ?? null,
                     'supplier_external' => $data['supplier_external'] ?? null,
                     'operation_inventory_ubication_id' => $data['operation_inventory_ubication_id'] ?? null,
                     'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? null,

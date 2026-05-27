@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Models\RrhhColaborador;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -14,6 +15,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
@@ -43,6 +45,36 @@ final class HelpdeskFormSchema
             ->all();
     }
 
+    /**
+     * Todos los colaboradores del directorio RRHH, excepto exclusiones de grupos de trabajo.
+     *
+     * @return array<int, string>
+     */
+    public static function rrhhColaboradorOptionsForHelpdeskWorkGroups(): array
+    {
+        return RrhhColaborador::query()
+            ->orderBy('fullName')
+            ->get(['id', 'fullName'])
+            ->reject(
+                static fn (RrhhColaborador $colaborador): bool => self::isExcludedFromHelpdeskWorkGroups(
+                    (string) $colaborador->fullName
+                )
+            )
+            ->mapWithKeys(
+                static fn (RrhhColaborador $colaborador): array => [
+                    (int) $colaborador->id => (string) $colaborador->fullName,
+                ]
+            )
+            ->all();
+    }
+
+    public static function isExcludedFromHelpdeskWorkGroups(?string $fullName): bool
+    {
+        $normalized = mb_strtoupper(preg_replace('/[^A-Z0-9]+/u', ' ', trim((string) $fullName)) ?? '');
+
+        return str_contains($normalized, 'CAYETANO') && str_contains($normalized, 'BATRES');
+    }
+
     public static function configure(Schema $schema, bool $assigneesRequired = true): Schema
     {
         return $schema
@@ -59,9 +91,9 @@ final class HelpdeskFormSchema
                             ->icon('heroicon-o-ticket')
                             ->schema(self::ticketTabSchema($assigneesRequired)),
 
-                        Tab::make('Equipo de ejecución')
-                            ->icon('heroicon-o-user-group')
-                            ->schema(self::executionTeamTabSchema()),
+                        Tab::make('Tipo de ticket')
+                            ->icon('heroicon-o-tag')
+                            ->schema(self::ticketTypeTabSchema()),
                     ]),
             ]);
     }
@@ -76,7 +108,7 @@ final class HelpdeskFormSchema
                 ->hiddenLabel()
                 ->content(new HtmlString(
                     '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
-                    .'<span class="font-semibold text-gray-900 dark:text-white">Paso 1 — Ticket.</span> '
+                    .'<span class="font-semibold text-gray-900 dark:text-white">Paso 1 — Detalle del ticket.</span> '
                     .'Describe el problema con claridad, define prioridad y asigna responsables. '
                     .'Los campos marcados con <span class="text-danger-600 dark:text-danger-400">*</span> son obligatorios.'
                     .'</p>'
@@ -239,6 +271,58 @@ final class HelpdeskFormSchema
     /**
      * @return array<int, mixed>
      */
+    private static function ticketTypeTabSchema(): array
+    {
+        return [
+            Placeholder::make('ticket_type_intro')
+                ->hiddenLabel()
+                ->content(HelpdeskTicketType::tabIntro())
+                ->columnSpanFull(),
+
+            Section::make('Su selección')
+                ->description('Marque una opción. El resumen se confirma al instante.')
+                ->icon('heroicon-o-check-circle')
+                ->iconColor('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SECTION_CLASS.' fi-helpdesk-ticket-type-panel',
+                ])
+                ->schema([
+                    Grid::make(1)
+                        ->extraAttributes(['class' => self::IOS_INNER_CLASS.' fi-helpdesk-ticket-type-fields'])
+                        ->schema([
+                            Radio::make('ticket_type')
+                                ->label('Tipo de ticket')
+                                ->required()
+                                ->live()
+                                ->options(HelpdeskTicketType::options())
+                                ->descriptions(HelpdeskTicketType::radioDescriptions())
+                                ->columns(1)
+                                ->validationMessages([
+                                    'required' => 'Seleccione el tipo de ticket antes de continuar.',
+                                ])
+                                ->columnSpanFull()
+                                ->disabledOn('edit'),
+
+                            Placeholder::make('ticket_type_selected_guide')
+                                ->hiddenLabel()
+                                ->visible(fn (Get $get): bool => filled($get('ticket_type')))
+                                ->content(fn (Get $get): HtmlString => HelpdeskTicketType::selectedTypeGuide($get('ticket_type')))
+                                ->columnSpanFull(),
+
+                            Placeholder::make('ticket_type_empty_hint')
+                                ->hiddenLabel()
+                                ->visible(fn (Get $get): bool => blank($get('ticket_type')))
+                                ->content(HelpdeskTicketType::emptySelectionHint())
+                                ->columnSpanFull(),
+                        ]),
+                ])
+                ->columnSpanFull(),
+        ];
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
     private static function executionTeamTabSchema(): array
     {
         return [
@@ -246,7 +330,7 @@ final class HelpdeskFormSchema
                 ->hiddenLabel()
                 ->content(new HtmlString(
                     '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
-                    .'<span class="font-semibold text-gray-900 dark:text-white">Paso 2 — Equipo (opcional).</span> '
+                    .'<span class="font-semibold text-gray-900 dark:text-white">Paso 3 — Equipo (opcional).</span> '
                     .'Agrupe colaboradores bajo un nombre de equipo cuando varias personas ejecuten la misma tarea en paralelo.'
                     .'</p>'
                 ))

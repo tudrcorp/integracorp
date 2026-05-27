@@ -8,18 +8,12 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
-use App\Models\User;
-use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
-use Filament\Support\Enums\IconSize;
-use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -462,149 +456,6 @@ class TelemedicineCaseTableDash extends TableWidget
             ->headerActions([
                 //
             ])
-            // ->recordActions([
-            //     $openCaseConsultationsAction,
-            //     ActionGroup::make([
-
-            //         // ...Actions History
-            //         Action::make('view_history')
-            //             ->label('Historia Clínica')
-            //             ->icon('heroicon-s-book-open')
-            //             ->color('primary')
-            //             ->action(fn (TelemedicineCase $record): mixed => $this->openHistoriaClinicaFromCaseModal($record->id)),
-
-            //         // ...Actions consultation
-            //         Action::make('consultation')
-            //             ->label('Consulta Inicial')
-            //             ->icon('healthicons-f-call-centre')
-            //             ->color('success')
-            //             ->disabled(fn (TelemedicineCase $record): bool => self::consultaInicialDisabledForCase($record))
-            //             ->action(fn (TelemedicineCase $record): mixed => $this->openConsultaInicialFromCaseModal($record->id))
-            //             ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'ASIGNADO'),
-
-            //         // ...Actions follow up
-            //         Action::make('add_follow_up')
-            //             ->label('Hacer Seguimiento')
-            //             ->icon('healthicons-f-health-literacy')
-            //             ->color('success')
-            //             ->action(function (TelemedicineCase $record) {
-            //                 $case = TelemedicineCase::where('code', $record->code)->first();
-            //                 $patient = TelemedicinePatient::where('id', $record->telemedicine_patient_id)->first();
-            //                 $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $record->telemedicine_patient_id)->exists();
-
-            //                 session()->forget('case');
-            //                 session()->forget('patient');
-            //                 session()->forget('exit_record');
-            //                 session()->forget('consultation');
-
-            //                 // Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
-            //                 session(['case' => $case]);
-            //                 session(['patient' => $patient]);
-            //                 session(['exit_record' => $exit_record]);
-
-            //                 Log::info(session()->get('case'));
-            //                 Log::info(session()->get('patient'));
-            //                 Log::info(session()->get('exit_record'));
-
-            //                 return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
-            //             })
-            //             ->hidden(function (TelemedicineCase $record) {
-            //                 return $record->status != 'EN SEGUIMIENTO';
-            //             }),
-
-            //         Action::make('view_last')
-            //             ->label('Ver ultimo Seguimiento')
-            //             ->icon('heroicon-s-eye')
-            //             ->color('')
-            //             ->action(function (TelemedicineCase $record) {
-
-            //                 $last = TelemedicineConsultationPatient::where('telemedicine_case_id', $record->id)->latest()->first();
-
-            //                 return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.view', ['record' => $last->id]);
-
-            //             })
-            //             ->hidden(function (TelemedicineCase $record) {
-            //                 $last = TelemedicineConsultationPatient::where('telemedicine_case_id', $record->id)->latest()->first();
-            //                 if ($last == null) {
-            //                     return true;
-            //                 }
-
-            //                 return false;
-            //             }),
-
-            //         Action::make('addObservation')
-            //             ->label('Agregar Observaciones')
-            //             ->icon('heroicon-s-hand-raised')
-            //             ->color('warning')
-            //             ->modalWidth(Width::Large)
-            //             ->modalHeading('Observaciones del caso')
-            //             ->modalDescription('Registra una nota asociada a este caso. Quedará vinculada al historial para el equipo clínico y operaciones.')
-            //             ->modalSubmitActionLabel('Registrar observación')
-            //             ->modalIcon('heroicon-s-hand-raised')
-            //             ->modalIconColor('warning')
-            //             ->modalSubmitAction(
-            //                 fn (Action $action) => $action
-            //                     ->color('warning')
-            //                     ->extraAttributes([
-            //                         'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
-            //                     ])
-            //             )
-            //             ->modalCancelAction(
-            //                 fn (Action $action) => $action
-            //                     ->color('gray')
-            //                     ->extraAttributes([
-            //                         'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-            //                     ])
-            //             )
-            //             ->modalCancelActionLabel('Cancelar')
-            //             ->extraModalWindowAttributes([
-            //                 'class' => 'fi-telemedicine-observation-modal-window',
-            //             ], merge: false)
-            //             ->form([
-            //                 Textarea::make('observation')
-            //                     ->label('Texto de la observación')
-            //                     ->placeholder('Contexto clínico, acuerdos, seguimiento pendiente o notas administrativas…')
-            //                     ->helperText('Mínimo 2 caracteres. Evita datos sensibles innecesarios; usa lenguaje profesional.')
-            //                     ->required()
-            //                     ->minLength(2)
-            //                     ->maxLength(5000)
-            //                     ->rows(6)
-            //                     ->columnSpanFull(),
-            //             ])
-            //             ->action(function (TelemedicineCase $record, array $data) {
-
-            //                 try {
-            //                     $observation = new ObservationCase;
-            //                     $observation->description = $data['observation'];
-            //                     $observation->telemedicine_case_id = $record->id;
-            //                     $observation->created_by = Auth::user()->id;
-
-            //                     $observation->save();
-
-            //                     Notification::make()
-            //                         ->body('Las observaciones fueron registradas exitosamente.')
-            //                         ->success()
-            //                         ->send();
-
-            //                 } catch (\Throwable $th) {
-            //                     Log::error($th->getMessage());
-            //                     Notification::make()
-            //                         ->body('Ocurrió un error al registrar las observaciones.')
-            //                         ->danger()
-            //                         ->send();
-            //                 }
-
-            //             })
-            //             ->hidden(function (TelemedicineCase $record) {
-            //                 return $record->status == 'EJECUTADA' || $record->status == 'APROBADA';
-            //             }),
-
-            //     ])
-            //         ->icon(Heroicon::OutlinedEllipsisHorizontalCircle)
-            //         ->iconSize(IconSize::Large)
-            //         ->color('gray')
-            //         ->tooltip('Opciones del caso'),
-            // ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     //
