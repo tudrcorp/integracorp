@@ -22,10 +22,22 @@
                     $isCurrent = ($item['panel_id'] ?? null) !== null && $item['panel_id'] === $currentPanelId;
                     $tone = (int) $item['tone'];
                     $z = $index + 1;
+                    $isAccessible = ($item['accessible'] ?? true) === true;
                 @endphp
                 <a
-                    href="{{ $item['url'] }}"
-                    class="fi-business-panel-stepper-segment fi-business-panel-stepper-segment--tone-{{ $tone }} @if ($item['kind'] === 'ticket') fi-business-panel-stepper-segment--ticket @endif @if (($item['panel_id'] ?? null) === 'business') fi-business-panel-stepper-segment--business @endif @if (($item['panel_id'] ?? null) === 'operations') fi-business-panel-stepper-segment--operations @endif @if (($item['panel_id'] ?? null) === 'marketing') fi-business-panel-stepper-segment--marketing @endif @if ($isCurrent) fi-business-panel-stepper-segment--current @endif"
+                    @if ($isAccessible)
+                        href="{{ $item['url'] }}"
+                    @else
+                        href="#"
+                        x-on:click.prevent="
+                            new FilamentNotification()
+                                .title(@js(__('Sin acceso al módulo')))
+                                .body(@js($item['denied_message'] ?? InternalPanelsQuickNavigation::panelAccessDeniedMessage($item['label'])))
+                                .warning()
+                                .send()
+                        "
+                    @endif
+                    class="fi-business-panel-stepper-segment fi-business-panel-stepper-segment--tone-{{ $tone }} @if ($item['kind'] === 'ticket') fi-business-panel-stepper-segment--ticket @endif @if (($item['panel_id'] ?? null) === 'business') fi-business-panel-stepper-segment--business @endif @if (($item['panel_id'] ?? null) === 'operations') fi-business-panel-stepper-segment--operations @endif @if (($item['panel_id'] ?? null) === 'marketing') fi-business-panel-stepper-segment--marketing @endif @if ($isCurrent) fi-business-panel-stepper-segment--current @endif @if (! $isAccessible) fi-business-panel-stepper-segment--restricted @endif"
                     style="z-index: {{ $z }};"
                     @if ($item['kind'] === 'ticket')
                         title="{{ __('Crear ticket de soporte') }}"

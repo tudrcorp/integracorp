@@ -71,6 +71,45 @@ it('shows negocios and operaciones when departament includes NEGOCIOS and OPERAC
         ->and($panelIds)->not->toContain('marketing');
 });
 
+it('marks superadmin panel links inaccessible when module department is not assigned', function (): void {
+    $user = User::factory()->create([
+        'email' => 'superadmin-no-module-'.uniqid('', true).'@tudrencasa.com',
+        'departament' => ['SUPERADMIN'],
+        'status' => 'ACTIVO',
+        'is_admin' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    $panels = collect(InternalPanelsQuickNavigation::navigationItems('business'))
+        ->where('kind', 'panel')
+        ->keyBy('panel_id');
+
+    expect($panels->keys()->all())
+        ->toContain('marketing')
+        ->and($panels->get('marketing')['accessible'])->toBeFalse()
+        ->and($panels->get('marketing')['denied_message'])
+        ->toContain('No tiene acceso al módulo Marketing');
+});
+
+it('marks superadmin panel links accessible when module department is assigned', function (): void {
+    $user = User::factory()->create([
+        'email' => 'superadmin-with-negocios-'.uniqid('', true).'@tudrencasa.com',
+        'departament' => ['SUPERADMIN', 'NEGOCIOS'],
+        'status' => 'ACTIVO',
+        'is_admin' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    $panels = collect(InternalPanelsQuickNavigation::navigationItems('business'))
+        ->where('kind', 'panel')
+        ->keyBy('panel_id');
+
+    expect($panels->get('business')['accessible'])->toBeTrue()
+        ->and($panels->get('marketing')['accessible'])->toBeFalse();
+});
+
 it('shows projects quick access for SUPERADMIN inside projects panel', function (): void {
     $user = User::factory()->create([
         'email' => 'superadmin-projects-nav-'.uniqid('', true).'@tudrencasa.com',
@@ -100,4 +139,13 @@ it('shows projects quick access for SUPERADMIN inside projects panel', function 
         ->toContain('administration')
         ->toContain('operations')
         ->toContain('marketing');
+});
+
+it('uses filament notification when superadmin clicks a module without access', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/panels/internal-quick-nav.blade.php');
+
+    expect($source)
+        ->toContain('FilamentNotification')
+        ->toContain('fi-business-panel-stepper-segment--restricted')
+        ->toContain('denied_message');
 });
