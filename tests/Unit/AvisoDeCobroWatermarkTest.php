@@ -15,5 +15,7 @@ it('incluye marca de agua y layout dompdf en aviso de cobro individual', functio
         ->toContain('text-align: right')
         ->toContain('footer-banner')
         ->toContain('Documento: V-')
+        ->toContain('TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN')
+        ->toContain('affiliates_count')
         ->toContain('table-layout: fixed');
 });

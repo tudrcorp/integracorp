@@ -364,6 +364,12 @@
                         </tr>
                     @endfor
 
+                    <tr class="affiliates-row">
+                        <td colspan="2">
+                            TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN: {{ (int) ($data['affiliates_count'] ?? 0) }}
+                        </td>
+                    </tr>
+
                     <tr class="total-row">
                         <td colspan="2">Monto Total: {{ number_format($data['total_amount'], 2) }}US$</td>
                     </tr>

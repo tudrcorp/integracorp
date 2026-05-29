@@ -4688,6 +4688,50 @@
   .tdg-office-picker__check--farmadoc-san-bernardino {
     @apply text-orange-600 dark:text-orange-300;
   }
+
+  .fi-ta-cell-activity-identity {
+    @apply min-w-0 max-w-2xl whitespace-normal;
+  }
+
+  .fi-ta-cell-activity-identity .fi-ta-cell-content {
+    @apply block min-w-0 max-w-full overflow-hidden whitespace-normal;
+  }
+
+  .fi-projects-activity-identity__description {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  .fi-ta-cell-due-timeline,
+  .fi-ta-header-cell-due-timeline,
+  .fi-projects-activities-due-cell {
+    @apply min-w-[18rem] w-[18rem] max-w-[20rem] whitespace-normal;
+  }
+
+  .fi-ta-cell-due-timeline .fi-ta-cell-content {
+    @apply block min-w-full max-w-full;
+  }
+
+  .fi-ta-cell-group-identity {
+    @apply min-w-0 max-w-2xl whitespace-normal;
+  }
+
+  .fi-ta-cell-group-identity .fi-ta-cell-content {
+    @apply block min-w-0 max-w-full overflow-hidden whitespace-normal;
+  }
+
+  .fi-projects-group-identity__description {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .fi-ta-cell-team-members,
+  .fi-ta-cell-team-workload,
+  .fi-projects-groups-members-cell,
+  .fi-projects-groups-workload-cell {
+    @apply whitespace-normal;
+  }
 }
 
 

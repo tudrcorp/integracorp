@@ -70,3 +70,34 @@ it('shows negocios and operaciones when departament includes NEGOCIOS and OPERAC
         ->and($panelIds)->toContain('operations')
         ->and($panelIds)->not->toContain('marketing');
 });
+
+it('shows projects quick access for SUPERADMIN inside projects panel', function (): void {
+    $user = User::factory()->create([
+        'email' => 'superadmin-projects-nav-'.uniqid('', true).'@tudrencasa.com',
+        'departament' => ['SUPERADMIN'],
+        'status' => 'ACTIVO',
+        'is_admin' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    $items = InternalPanelsQuickNavigation::navigationItems('projects');
+
+    expect($items)->not->toBeEmpty()
+        ->and($items[0]['kind'])->toBe('ticket')
+        ->and($items[0]['label'])->toBe('Crear ticket')
+        ->and($items[0]['url'])->toContain('business')
+        ->and($items[0]['url'])->toContain('helpdesk');
+
+    $panelIds = collect($items)
+        ->where('kind', 'panel')
+        ->pluck('panel_id')
+        ->all();
+
+    expect($panelIds)
+        ->toContain('projects')
+        ->toContain('business')
+        ->toContain('administration')
+        ->toContain('operations')
+        ->toContain('marketing');
+});

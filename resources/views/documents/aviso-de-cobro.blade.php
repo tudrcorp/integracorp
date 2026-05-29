@@ -295,7 +295,8 @@
                                     ASISTENCIA MEDICA<br>
                                 @endif
                                 COBERTURA GEOGRAFICA – LOCAL VENEZUELA<br>
-                                AFILIADO: {{ $data['full_name_ti'] }}
+                                AFILIADO: {{ $data['full_name_ti'] }}<br>
+                                TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN: {{ (int) ($data['affiliates_count'] ?? 0) }}
                             </p>
                         </td>
                         <td class="amount-col">{{ number_format($data['total_amount'], 2) }}US$</td>

@@ -8,6 +8,7 @@ use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\AnnualCollection;
 use App\Models\Collection;
+use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -333,6 +334,7 @@ class AnnualCollectionsTable
                     'plan' => $record->plan?->description,
                     'coverage' => $record->coverage?->price ?? null,
                     'frequency' => $record->payment_frequency,
+                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forAffiliationCode($record->affiliation_code, false),
                 ];
 
                 return CollectionController::regenerateAvisoDeCobro($array_data);
@@ -352,6 +354,7 @@ class AnnualCollectionsTable
                     'plan' => $planes['affiliation_corporate_plans'] ?? [],
                     'coverage' => $record->coverage?->price ?? null,
                     'frequency' => $record->payment_frequency,
+                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forAffiliationCode($record->affiliation_code, true),
                 ];
 
                 return CollectionController::regenerateAvisoDeCobroCorporate($array_data);

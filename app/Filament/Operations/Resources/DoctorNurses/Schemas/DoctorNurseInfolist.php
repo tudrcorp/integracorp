@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\DoctorNurses\Schemas;
 
+use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -203,6 +204,9 @@ class DoctorNurseInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
+
+                        SupplierBeneficiaryBankingInfolist::bankingTab(self::SECTION_CARD, self::IOS_INNER_CLASS),
+
                         Tab::make('Trazabilidad')
                             ->icon('heroicon-o-clipboard-document-list')
                             ->schema([

@@ -9,6 +9,7 @@ use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
+use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -300,6 +301,9 @@ class SupplierInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
+
+                        SupplierBeneficiaryBankingInfolist::bankingTab(self::SECTION_CARD, self::IOS_INNER_CLASS),
+
                         Tab::make('Sucursales')
                             ->icon('heroicon-o-building-library')
                             ->schema([

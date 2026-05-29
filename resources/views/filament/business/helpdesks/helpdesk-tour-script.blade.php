@@ -1,5 +1,5 @@
 @php
-    $shouldLoad = request()->is('business/helpdesks*', 'administration/helpdesks*', 'marketing/helpdesks*', 'operations/helpdesks*');
+    $shouldLoad = request()->is('business/helpdesks*', 'administration/helpdesks*', 'marketing/helpdesks*', 'operations/helpdesks*', 'projects/helpdesks*');
 @endphp
 
 @if ($shouldLoad)

@@ -24,8 +24,8 @@
             <div class="mt-4 grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Espacios de la agenda TDG">
                 @foreach ([
                 'offices' => ['icon' => 'heroicon-o-building-office-2', 'title' => 'Oficinas', 'hint' => 'Central Lido y Farmadoc'],
-                'guards' => ['icon' => 'heroicon-o-shield-check', 'title' => 'Guardias', 'hint' => 'Horarios 2.1 y 2.2 Operaciones'],
-                'departments' => ['icon' => 'heroicon-o-squares-2x2', 'title' => 'Departamentos', 'hint' => 'Agenda de trabajo diaria'],
+                'guards' => ['icon' => 'heroicon-o-shield-check', 'title' => 'Guardias', 'hint' => '2.1, 2.2 diurnas y guardia nocturna'],
+                'departments' => ['icon' => 'heroicon-o-squares-2x2', 'title' => 'Departamentos', 'hint' => 'Colaboradores de sistemas por área'],
                 ] as $workspaceKey => $workspaceMeta)
                 <button type="button" wire:click="setModalWorkspace('{{ $workspaceKey }}')" class="rounded-2xl border px-3 py-3 text-left transition
                         {{ $modalWorkspace === $workspaceKey
@@ -46,7 +46,7 @@
         </header>
 
         <div class="min-h-0 flex-1 overflow-y-auto p-5">
-            @if (in_array($modalWorkspace, ['offices', 'guards'], true))
+            @if (in_array($modalWorkspace, ['offices', 'guards', 'departments'], true))
             <div class="relative mb-4">
                 <x-filament::icon icon="heroicon-o-magnifying-glass" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input type="search" wire:model.live.debounce.300ms="collaboratorSearch" placeholder="Buscar colaborador por nombre o correo..." class="w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm dark:border-white/10 dark:bg-slate-800 dark:text-slate-100">
@@ -136,28 +136,38 @@
                 </div>
                 @endforeach
             </div>
+
+            @include('filament.business.pages.partials.tdg-office-replication-panel')
             @endif
 
             @if ($modalWorkspace === 'guards')
             <div class="mb-4 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-400/30 dark:bg-amber-500/10">
                 <label class="inline-flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
                     <input type="checkbox" wire:model.live="useSameGuardCollaborator" class="rounded border-amber-400 text-amber-600 focus:ring-amber-400/50">
-                    Usar el mismo colaborador para ambos horarios de guardia
+                    Usar el mismo colaborador para guardias 2.1 y 2.2 (horario diurno)
                 </label>
                 <p class="mt-1 text-xs text-amber-800/90 dark:text-amber-100/80">
-                    Lista completa de colaboradores activos. Usa el buscador del modal para filtrar por nombre o correo.
+                    La guardia nocturna se asigna de forma independiente. Usa el buscador del modal para filtrar colaboradores.
                 </p>
             </div>
 
-            <div class="grid gap-4 lg:grid-cols-2">
+            <div class="grid gap-4 lg:grid-cols-3">
                 @foreach ($this->guardShiftOptions as $shiftValue => $shiftLabel)
                 @php
+                $guardShift = \App\Enums\TdgCalendarGuardShift::tryFrom($shiftValue);
                 $selectedId = $guardAssignmentsForm[$shiftValue] ?? null;
                 $selectedCollaborator = $this->resolveSelectedCollaborator(is_numeric($selectedId) ? (int) $selectedId : null);
                 $isSecondaryLocked = $useSameGuardCollaborator && $shiftValue === \App\Enums\TdgCalendarGuardShift::IlsCapitado->value;
+                $isNocturnal = $guardShift?->isNocturnalShift() ?? false;
                 @endphp
-                <div wire:key="tdg-guard-card-{{ $shiftValue }}" class="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-slate-950/40 {{ $isSecondaryLocked ? 'opacity-90' : '' }}">
-                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-violet-600 dark:text-violet-300">Guardia operaciones</p>
+                <div wire:key="tdg-guard-card-{{ $shiftValue }}" class="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-slate-950/40 {{ $isSecondaryLocked ? 'opacity-90' : '' }} {{ $isNocturnal ? 'ring-1 ring-indigo-200/80 dark:ring-indigo-500/30' : '' }}">
+                    <p @class([
+                        'text-xs font-semibold uppercase tracking-[0.12em]',
+                        'text-indigo-600 dark:text-indigo-300' => $isNocturnal,
+                        'text-violet-600 dark:text-violet-300' => ! $isNocturnal,
+                    ])>
+                        {{ $isNocturnal ? 'Guardia nocturna' : 'Guardia operaciones' }}
+                    </p>
                     <h4 class="mt-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">{{ $shiftLabel }}</h4>
 
                     <div class="mt-4 rounded-xl border border-slate-200/80 bg-white/90 p-3 dark:border-white/10 dark:bg-slate-900/80">
@@ -210,11 +220,13 @@
                 </div>
                 @endforeach
             </div>
+
+            @include('filament.business.pages.partials.tdg-guard-replication-panel')
             @endif
 
             @if ($modalWorkspace === 'departments')
             <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">
-                Selecciona uno o varios departamentos para este día. Cada departamento tiene un color en el calendario.
+                Selecciona los departamentos del día y asigna uno o más colaboradores del área de <span class="font-semibold text-slate-700 dark:text-slate-200">sistemas</span> que los atenderán.
             </p>
 
             <div class="flex flex-wrap gap-2">
@@ -231,17 +243,93 @@
             </div>
 
             @if ($departmentAssignmentsForm !== [])
-            <div class="mt-4 rounded-2xl border border-slate-200/80 bg-white/90 p-3 dark:border-white/10 dark:bg-slate-900/70">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">Departamentos seleccionados</p>
-                <div class="mt-2 flex flex-wrap gap-2">
-                    @foreach ($departmentAssignmentsForm as $departmentValue)
-                    @php $meta = $this->departmentCatalog[$departmentValue] ?? []; @endphp
-                    <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold {{ $meta['chip_class'] ?? '' }}">
-                        {{ $meta['label'] ?? $departmentValue }}
-                    </span>
-                    @endforeach
+            <div class="mt-5 grid gap-4 lg:grid-cols-2">
+                @foreach ($departmentAssignmentsForm as $departmentValue)
+                @php
+                $meta = $this->departmentCatalog[$departmentValue] ?? [];
+                $selectedCollaborators = $this->resolveSelectedDepartmentCollaborators($departmentValue);
+                $selectedCount = count($selectedCollaborators);
+                @endphp
+                <div wire:key="tdg-department-card-{{ $departmentValue }}" class="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-slate-950/40">
+                    <div class="flex items-start gap-2">
+                        <span class="{{ $meta['dot_class'] ?? 'tdg-dept-chip__dot tdg-dept-chip__dot--default' }} mt-1"></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Departamento</p>
+                            <h4 class="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $meta['label'] ?? $departmentValue }}</h4>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 rounded-xl border border-slate-200/80 bg-white/90 p-3 dark:border-white/10 dark:bg-slate-900/80">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                Colaboradores de sistemas
+                                @if ($selectedCount > 0)
+                                <span class="ml-1 rounded-full bg-cyan-100 px-1.5 py-0.5 text-[10px] text-cyan-800 dark:bg-cyan-500/25 dark:text-cyan-100">{{ $selectedCount }}</span>
+                                @endif
+                            </p>
+                            @if ($selectedCount > 0)
+                            <button type="button" wire:click="clearDepartmentCollaborators('{{ $departmentValue }}')" class="rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
+                                Limpiar todos
+                            </button>
+                            @endif
+                        </div>
+
+                        @if ($selectedCount > 0)
+                        <div class="mt-2 space-y-2">
+                            @foreach ($selectedCollaborators as $selectedCollaborator)
+                            <div wire:key="department-selected-{{ $departmentValue }}-{{ $selectedCollaborator['id'] }}" class="flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-cyan-50/50 px-2 py-2 dark:border-cyan-400/30 dark:bg-cyan-500/10">
+                                @include('filament.business.pages.partials.tdg-colaborador-avatar', ['colaborador' => $selectedCollaborator, 'size' => 'sm'])
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{{ $selectedCollaborator['name'] }}</p>
+                                    <p class="truncate text-[10px] text-slate-500 dark:text-slate-400">{{ $selectedCollaborator['email'] ?: 'Sin correo' }}</p>
+                                </div>
+                                <button type="button" wire:click="removeDepartmentCollaborator('{{ $departmentValue }}', {{ $selectedCollaborator['id'] }})" class="rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
+                                    Quitar
+                                </button>
+                            </div>
+                            @endforeach
+                        </div>
+                        @else
+                        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                            Sin asignar. Elige colaboradores del área de sistemas en la lista.
+                        </p>
+                        @endif
+                    </div>
+
+                    <p class="mt-3 text-[10px] text-slate-500 dark:text-slate-400">
+                        Clic para agregar o quitar. Varios colaboradores pueden atender el mismo departamento.
+                    </p>
+
+                    <div class="mt-2 max-h-44 space-y-2 overflow-y-auto pr-1">
+                        @forelse ($this->filteredCollaboratorOptionsForDepartment($departmentValue) as $collaborator)
+                        @php
+                        $isCollaboratorSelected = $this->isDepartmentCollaboratorSelected($departmentValue, (int) $collaborator['id']);
+                        @endphp
+                        <button type="button" wire:key="department-picker-{{ $departmentValue }}-{{ $collaborator['id'] }}" wire:click="assignDepartmentCollaborator('{{ $departmentValue }}', {{ $collaborator['id'] }})" class="flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition
+                                        {{ $isCollaboratorSelected
+                                            ? 'border-cyan-400 bg-cyan-50/90 shadow-[0_6px_16px_rgba(34,211,238,0.18)] dark:border-cyan-400/50 dark:bg-cyan-500/15'
+                                            : 'border-slate-200/80 bg-white hover:border-cyan-300 hover:bg-cyan-50/60 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-cyan-400/40' }}">
+                            @include('filament.business.pages.partials.tdg-colaborador-avatar', ['colaborador' => $collaborator])
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{{ $collaborator['name'] }}</span>
+                                <span class="block truncate text-[11px] text-slate-500 dark:text-slate-400">{{ $collaborator['email'] ?: 'Sin correo' }}</span>
+                            </span>
+                        </button>
+                        @empty
+                        <p class="rounded-xl border border-dashed border-slate-200/80 px-3 py-4 text-center text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
+                            No hay colaboradores activos en el departamento de sistemas.
+                        </p>
+                        @endforelse
+                    </div>
                 </div>
+                @endforeach
             </div>
+
+            @include('filament.business.pages.partials.tdg-department-replication-panel')
+            @else
+            <p class="mt-4 rounded-xl border border-dashed border-slate-200/80 px-4 py-6 text-center text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
+                Selecciona al menos un departamento para asignar colaboradores de sistemas.
+            </p>
             @endif
             @endif
         </div>

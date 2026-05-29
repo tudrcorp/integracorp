@@ -11,6 +11,7 @@ use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Commission;
 use App\Models\Sale;
+use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
@@ -192,6 +193,7 @@ class PaidMembershipController extends Controller
                         'plan' => $record->plan->description,
                         'coverage' => $record->coverage->price ?? null,
                         'frequency' => $record->affiliation->payment_frequency,
+                        'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                     ];
 
                     dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
@@ -268,6 +270,7 @@ class PaidMembershipController extends Controller
                             'plan' => $record->plan->description,
                             'coverage' => $record->coverage->price ?? null,
                             'frequency' => $record->affiliation->payment_frequency,
+                            'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                         ];
 
                         Log::info($array_data);
@@ -345,6 +348,7 @@ class PaidMembershipController extends Controller
                         'plan' => $record->plan->description,
                         'coverage' => $record->coverage->price ?? null,
                         'frequency' => $record->affiliation->payment_frequency,
+                        'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                     ];
 
                     /** Ejecutamos el job */
@@ -412,6 +416,7 @@ class PaidMembershipController extends Controller
                             'plan' => $record->plan->description,
                             'coverage' => $record->coverage->price ?? null,
                             'frequency' => $record->affiliation->payment_frequency,
+                            'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                         ];
 
                         /** Ejecutamos el job */
@@ -440,6 +445,7 @@ class PaidMembershipController extends Controller
                     'plan' => $record->plan->description,
                     'coverage' => $record->coverage->price ?? null,
                     'frequency' => $record->affiliation->payment_frequency,
+                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                 ];
 
                 /**ACTUALIZO EL ESTATUS DEL COMPROBANTE */
@@ -838,6 +844,7 @@ class PaidMembershipController extends Controller
                     'plan' => $record->plan->description,
                     'coverage' => $record->coverage->price ?? null,
                     'frequency' => $record->affiliation->payment_frequency,
+                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                 ];
 
                 /**ACTUALIZO EL ESTATUS DEL COMPROBANTE */

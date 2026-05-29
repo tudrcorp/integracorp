@@ -78,6 +78,10 @@
             @endif
 
             <div class="relative z-10 overflow-x-auto">
+                @php
+                    $isTdgCalendar = method_exists($this, 'shouldShowTdgAgendaFilters') && $this->shouldShowTdgAgendaFilters();
+                @endphp
+
                 @if ($this->viewMode === 'week')
                     @php
                         $timelineStartMinutes = 6 * 60;
@@ -119,15 +123,15 @@
                                         @if (
                                             ! empty($day['social_badges'])
                                             && isset($day['social_badges'][0]['chip_class'])
-                                            && ($day['department_label_mode'] ?? 'short') !== 'full'
+                                            && ($isTdgCalendar || ($day['department_label_mode'] ?? 'short') !== 'full')
                                         )
                                             <div class="flex flex-wrap items-center justify-center gap-1">
                                                 @foreach ($day['social_badges'] as $badge)
                                                     <span
-                                                        title="{{ $badge['label'] ?? 'Departamento' }}"
+                                                        title="{{ $badge['display_label'] ?? $badge['short_label'] ?? 'Departamento' }}"
                                                         class="inline-flex size-5 items-center justify-center rounded-full text-[8px] font-bold text-white ring-2 {{ $badge['dot_class'] ?? 'bg-slate-500 ring-slate-300/70' }}"
                                                     >
-                                                        {{ $badge['short_label'] ?? '' }}
+                                                        {{ $badge['display_label'] ?? $badge['short_label'] ?? '' }}
                                                     </span>
                                                 @endforeach
                                             </div>
@@ -400,15 +404,15 @@
                                             @if (
                                                 ! empty($day['department_badges'])
                                                 && $day['is_current_month']
-                                                && ($day['department_label_mode'] ?? 'short') !== 'full'
+                                                && ($isTdgCalendar || ($day['department_label_mode'] ?? 'short') !== 'full')
                                             )
                                                 <div class="flex flex-wrap justify-end gap-1">
                                                     @foreach ($day['department_badges'] as $badge)
                                                         <span
-                                                            title="{{ $badge['label'] ?? 'Departamento' }}"
+                                                            title="{{ $badge['display_label'] ?? $badge['short_label'] ?? 'Departamento' }}"
                                                             class="inline-flex size-5 items-center justify-center rounded-full text-[8px] font-bold text-white ring-2 {{ $badge['dot_class'] ?? 'bg-slate-500 ring-slate-300/70' }}"
                                                         >
-                                                            {{ $badge['short_label'] ?? '' }}
+                                                            {{ $badge['display_label'] ?? $badge['short_label'] ?? '' }}
                                                         </span>
                                                     @endforeach
                                                 </div>
@@ -437,15 +441,38 @@
                                                 </div>
                                             @endif
 
-                                            @if (($day['activity_count'] ?? 0) > 0 && ! empty($day['avatars']) && ! ($day['is_filtered_out'] ?? false))
+                                            @if (($day['activity_count'] ?? 0) > 0 && ! ($day['is_filtered_out'] ?? false))
+                                                @if (filled($day['task_primary']) || filled($day['task_secondary']))
+                                                <div class="space-y-1">
+                                                    @if (filled($day['task_primary']))
+                                                        <p class="truncate text-xs font-semibold text-slate-700 dark:text-slate-200">{{ $day['task_primary'] }}</p>
+                                                    @endif
+                                                    @if (filled($day['task_secondary']))
+                                                        <p class="truncate text-[11px] text-slate-500 dark:text-slate-400">{{ $day['task_secondary'] }}</p>
+                                                    @endif
+                                                </div>
+                                                @endif
+
+                                                @if (
+                                                    ! empty($day['avatars'])
+                                                    && method_exists($this, 'shouldShowTdgAgendaFilters')
+                                                    && $this->shouldShowTdgAgendaFilters()
+                                                )
                                                 <div class="mt-2 flex items-center justify-end gap-2">
-                                                    @if (method_exists($this, 'shouldShowTdgAgendaFilters') && $this->shouldShowTdgAgendaFilters())
-                                                        @include('filament.business.pages.partials.tdg-calendar-day-avatars', [
-                                                            'avatars' => collect($day['avatars'] ?? [])->take(4)->all(),
-                                                            'overflowCount' => $day['avatars_overflow'] ?? 0,
-                                                            'tooltipLines' => $day['avatars_tooltip'] ?? [],
-                                                        ])
-                                                    @else
+                                                    @include('filament.business.pages.partials.tdg-calendar-day-avatars', [
+                                                        'avatars' => collect($day['avatars'] ?? [])->take(4)->all(),
+                                                        'overflowCount' => $day['avatars_overflow'] ?? 0,
+                                                        'tooltipLines' => $day['avatars_tooltip'] ?? [],
+                                                        'tooltipTitle' => ($day['department_label_mode'] ?? 'short') === 'full'
+                                                            ? 'Colaboradores de sistemas'
+                                                            : 'Colaboradores del día',
+                                                    ])
+                                                </div>
+                                                @elseif (
+                                                    ! empty($day['avatars'])
+                                                    && ! (method_exists($this, 'shouldShowTdgAgendaFilters') && $this->shouldShowTdgAgendaFilters())
+                                                )
+                                                <div class="mt-2 flex items-center justify-end gap-2">
                                                     <div class="flex -space-x-2">
                                                         @foreach ($day['avatars'] as $avatar)
                                                         @php
@@ -486,17 +513,8 @@
                                                             </div>
                                                         @endforeach
                                                     </div>
-                                                    @endif
                                                 </div>
-                                            @elseif (filled($day['task_primary']) || filled($day['task_secondary']))
-                                                <div class="space-y-1">
-                                                    @if (filled($day['task_primary']))
-                                                        <p class="truncate text-xs font-semibold text-slate-700 dark:text-slate-200">{{ $day['task_primary'] }}</p>
-                                                    @endif
-                                                    @if (filled($day['task_secondary']))
-                                                        <p class="truncate text-[11px] text-slate-500 dark:text-slate-400">{{ $day['task_secondary'] }}</p>
-                                                    @endif
-                                                </div>
+                                                @endif
                                             @endif
 
                                             <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/90 dark:bg-[#1a2233]">

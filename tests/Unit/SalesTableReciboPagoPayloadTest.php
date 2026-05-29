@@ -29,6 +29,16 @@ it('la accion regenerar pdf usa modal de vista previa', function (): void {
         ->toContain('runRegenerateReciboPago');
 });
 
+it('incluye el total de afiliados en el payload de regeneracion individual', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Sales/Tables/SalesTable.php');
+
+    expect($source)
+        ->toContain('withCount(\'affiliates\')')
+        ->toContain('withCount(\'corporateAffiliates\')')
+        ->toContain('AffiliationDocumentAffiliatesCount::')
+        ->toContain('affiliates_count');
+});
+
 it('la accion descargar pdf usa modal de vista previa del recibo existente', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Sales/Tables/SalesTable.php');
 

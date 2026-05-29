@@ -9,6 +9,7 @@ use App\Models\Agency;
 use App\Models\Collection;
 use App\Models\Commission;
 use App\Models\Sale;
+use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
@@ -181,6 +182,7 @@ class PaidMembershipCorporateController extends Controller
                         'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                         'coverage' => $record->coverage->price ?? null,
                         'frequency' => $record->affiliation_corporate->payment_frequency,
+                        'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                     ];
 
                     dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
@@ -254,6 +256,7 @@ class PaidMembershipCorporateController extends Controller
                             'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                             'coverage' => $record->coverage->price ?? null,
                             'frequency' => $record->affiliation_corporate->payment_frequency,
+                            'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                         ];
 
                         /** Ejecutamos el job */
@@ -319,6 +322,7 @@ class PaidMembershipCorporateController extends Controller
                         'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                         'coverage' => $record->coverage->price ?? null,
                         'frequency' => $record->affiliation_corporate->payment_frequency,
+                        'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                     ];
 
                     /** Ejecutamos el job */
@@ -385,6 +389,7 @@ class PaidMembershipCorporateController extends Controller
                             'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                             'coverage' => $record->coverage->price ?? null,
                             'frequency' => $record->affiliation_corporate->payment_frequency,
+                            'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                         ];
 
                         /** Ejecutamos el job */
@@ -408,6 +413,7 @@ class PaidMembershipCorporateController extends Controller
                     'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                     'coverage' => $record->coverage->price ?? null,
                     'frequency' => $record->affiliation_corporate->payment_frequency,
+                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                 ];
                 // dd($array_data);
 
@@ -736,6 +742,7 @@ class PaidMembershipCorporateController extends Controller
                     'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                     'coverage' => $record->coverage->price ?? null,
                     'frequency' => $record->affiliation_corporate->payment_frequency,
+                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                 ];
 
                 /**ACTUALIZO EL ESTATUS DEL COMPROBANTE */

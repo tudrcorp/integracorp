@@ -49,6 +49,7 @@ final class TdgCalendarDepartmentCatalog
         return [
             'label' => $department->label(),
             'short_label' => $shortLabel,
+            'display_label' => $shortLabel,
             'color' => $color,
             'modifier' => $modifier,
             'chip_class' => "{$base} is-selected",
@@ -60,9 +61,17 @@ final class TdgCalendarDepartmentCatalog
     /**
      * @return array{label: string, short_label: string, color: string, modifier: string, chip_class: string, idle_chip_class: string, dot_class: string}
      */
+    public static function displayLabel(string $department): string
+    {
+        return self::for($department)['short_label'];
+    }
+
+    /**
+     * @return array{label: string, short_label: string, color: string, modifier: string, chip_class: string, idle_chip_class: string, dot_class: string, display_label: string}
+     */
     public static function for(string $department): array
     {
-        return self::metadata()[$department] ?? [
+        $entry = self::metadata()[$department] ?? [
             'label' => strtoupper($department),
             'short_label' => strtoupper(substr($department, 0, 3)),
             'color' => '#64748b',
@@ -70,6 +79,11 @@ final class TdgCalendarDepartmentCatalog
             'chip_class' => 'tdg-dept-chip tdg-dept-chip--default is-selected',
             'idle_chip_class' => 'tdg-dept-chip tdg-dept-chip--default is-idle',
             'dot_class' => 'tdg-dept-chip__dot tdg-dept-chip__dot--default',
+        ];
+
+        return [
+            ...$entry,
+            'display_label' => $entry['short_label'],
         ];
     }
 }

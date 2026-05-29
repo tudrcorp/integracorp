@@ -7,6 +7,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -41,7 +42,7 @@ class RrhhColaboradorForm
                             ->icon('heroicon-m-user-circle')
                             ->schema([
                                 Section::make('Perfil')
-                                    ->description('Imagen de avatar utilizada en listados, asignaciones y firmas internas.')
+                                    ->description('Avatar, funciones del puesto y contexto visible en listados, asignaciones y firmas internas.')
                                     ->icon('heroicon-m-user-circle')
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
@@ -61,6 +62,13 @@ class RrhhColaboradorForm
                                             ->extraAttributes([
                                                 'class' => 'rounded-2xl border border-dashed border-slate-300/80 bg-slate-50/70 p-2 dark:border-slate-700 dark:bg-slate-800/50',
                                             ])
+                                            ->columnSpanFull(),
+                                        Textarea::make('funciones')
+                                            ->label('Funciones del colaborador')
+                                            ->required()
+                                            ->rows(8)
+                                            ->placeholder('Describe las funciones, responsabilidades y alcance del puesto.')
+                                            ->helperText('Campo obligatorio. Usa este espacio para documentar el rol operativo del colaborador.')
                                             ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),

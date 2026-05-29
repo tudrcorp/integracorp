@@ -10,6 +10,7 @@ use App\Enums\TdgCalendarOffice;
 use App\Models\RrhhColaborador;
 use App\Models\TdgCalendarDay;
 use App\Models\TdgCalendarDepartmentAssignment;
+use App\Models\TdgCalendarDepartmentColaboradorAssignment;
 use App\Models\TdgCalendarGuardAssignment;
 use App\Models\TdgCalendarOfficeAssignment;
 use App\Support\TdgCalendarDepartmentCatalog;
@@ -48,6 +49,8 @@ trait InteractsWithTdgHybridCalendar
 
     public string $agendaFilterDepartment = '';
 
+    public string $agendaFilterSystemsColaborador = '';
+
     /**
      * @var array<string, array<int, int>>
      */
@@ -63,11 +66,40 @@ trait InteractsWithTdgHybridCalendar
      */
     public array $departmentAssignmentsForm = [];
 
+    /**
+     * @var array<string, array<int, int>>
+     */
+    public array $departmentCollaboratorAssignmentsForm = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $officeReplicationDates = [];
+
+    public string $officeReplicationMonth = '';
+
+    /**
+     * @var array<int, string>
+     */
+    public array $guardReplicationDates = [];
+
+    public string $guardReplicationMonth = '';
+
+    /**
+     * @var array<int, string>
+     */
+    public array $departmentReplicationDates = [];
+
+    public string $departmentReplicationMonth = '';
+
     /** @var array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>|null */
     protected ?array $collaboratorOptionsCache = null;
 
     /** @var array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>|null */
     protected ?array $operationsCollaboratorOptionsCache = null;
+
+    /** @var array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>|null */
+    protected ?array $systemsCollaboratorOptionsCache = null;
 
     /** @var array<string, array<string, mixed>>|null */
     protected ?array $tdgMonthDayPayloadCache = null;
@@ -77,6 +109,13 @@ trait InteractsWithTdgHybridCalendar
         $this->resetOfficeAssignmentsForm();
         $this->resetGuardAssignmentsForm();
         $this->departmentAssignmentsForm = [];
+        $this->departmentCollaboratorAssignmentsForm = [];
+        $this->officeReplicationDates = [];
+        $this->officeReplicationMonth = now()->format('Y-m');
+        $this->guardReplicationDates = [];
+        $this->guardReplicationMonth = now()->format('Y-m');
+        $this->departmentReplicationDates = [];
+        $this->departmentReplicationMonth = now()->format('Y-m');
     }
 
     public function calendarDayInteractionsEnabled(): bool
@@ -91,7 +130,7 @@ trait InteractsWithTdgHybridCalendar
 
     public function usesDepartmentFullLabelsInCalendar(): bool
     {
-        return $this->resolveAgendaFilterCategory() === 'departments';
+        return $this->agendaFilterCategory === 'departments';
     }
 
     public function getHasActiveAgendaFiltersProperty(): bool
@@ -105,6 +144,7 @@ trait InteractsWithTdgHybridCalendar
         $this->agendaFilterOffice = '';
         $this->agendaFilterGuardShift = '';
         $this->agendaFilterDepartment = '';
+        $this->agendaFilterSystemsColaborador = '';
         $this->tdgMonthDayPayloadCache = null;
     }
 
@@ -113,9 +153,11 @@ trait InteractsWithTdgHybridCalendar
         if ($this->agendaFilterCategory === 'offices') {
             $this->agendaFilterGuardShift = '';
             $this->agendaFilterDepartment = '';
+            $this->agendaFilterSystemsColaborador = '';
         } elseif ($this->agendaFilterCategory === 'guards') {
             $this->agendaFilterOffice = '';
             $this->agendaFilterDepartment = '';
+            $this->agendaFilterSystemsColaborador = '';
         } elseif ($this->agendaFilterCategory === 'departments') {
             $this->agendaFilterOffice = '';
             $this->agendaFilterGuardShift = '';
@@ -123,6 +165,7 @@ trait InteractsWithTdgHybridCalendar
             $this->agendaFilterOffice = '';
             $this->agendaFilterGuardShift = '';
             $this->agendaFilterDepartment = '';
+            $this->agendaFilterSystemsColaborador = '';
         }
 
         $this->tdgMonthDayPayloadCache = null;
@@ -134,6 +177,7 @@ trait InteractsWithTdgHybridCalendar
             $this->agendaFilterCategory = 'offices';
             $this->agendaFilterGuardShift = '';
             $this->agendaFilterDepartment = '';
+            $this->agendaFilterSystemsColaborador = '';
         }
 
         $this->tdgMonthDayPayloadCache = null;
@@ -145,6 +189,7 @@ trait InteractsWithTdgHybridCalendar
             $this->agendaFilterCategory = 'guards';
             $this->agendaFilterOffice = '';
             $this->agendaFilterDepartment = '';
+            $this->agendaFilterSystemsColaborador = '';
         }
 
         $this->tdgMonthDayPayloadCache = null;
@@ -158,6 +203,11 @@ trait InteractsWithTdgHybridCalendar
             $this->agendaFilterGuardShift = '';
         }
 
+        $this->tdgMonthDayPayloadCache = null;
+    }
+
+    public function updatedAgendaFilterSystemsColaborador(): void
+    {
         $this->tdgMonthDayPayloadCache = null;
     }
 
@@ -209,6 +259,305 @@ trait InteractsWithTdgHybridCalendar
         }
 
         $this->officeAssignmentsForm[$office] = [];
+    }
+
+    public function getOfficeReplicationMonthLabelProperty(): string
+    {
+        return $this->replicationMonthLabel($this->officeReplicationMonth);
+    }
+
+    /**
+     * @return array<int, array{date: string, day_number: int, is_current_month: bool, is_source_day: bool, is_selected: bool, is_disabled: bool}>
+     */
+    public function getOfficeReplicationCalendarDaysProperty(): array
+    {
+        return $this->buildReplicationCalendarDays($this->officeReplicationMonth, $this->officeReplicationDates);
+    }
+
+    public function getGuardReplicationMonthLabelProperty(): string
+    {
+        return $this->replicationMonthLabel($this->guardReplicationMonth);
+    }
+
+    /**
+     * @return array<int, array{date: string, day_number: int, is_current_month: bool, is_source_day: bool, is_selected: bool, is_disabled: bool}>
+     */
+    public function getGuardReplicationCalendarDaysProperty(): array
+    {
+        return $this->buildReplicationCalendarDays($this->guardReplicationMonth, $this->guardReplicationDates);
+    }
+
+    public function previousGuardReplicationMonth(): void
+    {
+        $this->guardReplicationMonth = $this->resolveReplicationMonthCursor($this->guardReplicationMonth)
+            ->subMonth()
+            ->format('Y-m');
+    }
+
+    public function nextGuardReplicationMonth(): void
+    {
+        $this->guardReplicationMonth = $this->resolveReplicationMonthCursor($this->guardReplicationMonth)
+            ->addMonth()
+            ->format('Y-m');
+    }
+
+    public function toggleGuardReplicationDate(string $date): void
+    {
+        $this->guardReplicationDates = $this->toggleReplicationDate($date, $this->guardReplicationDates);
+    }
+
+    public function toggleGuardReplicationWeekday(int $isoWeekday): void
+    {
+        $this->guardReplicationDates = $this->toggleReplicationWeekday(
+            $isoWeekday,
+            $this->guardReplicationMonth,
+            $this->guardReplicationDates,
+        );
+    }
+
+    public function clearGuardReplicationDates(): void
+    {
+        $this->guardReplicationDates = [];
+    }
+
+    public function replicateGuardAssignmentsToSelectedDays(): void
+    {
+        $targetDates = $this->resolveReplicationTargetDates($this->guardReplicationDates);
+
+        if ($targetDates->isEmpty()) {
+            Notification::make()
+                ->title('Selecciona días destino')
+                ->body('Elige al menos un día en el mini calendario para replicar las guardias.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $guardSnapshot = $this->resolveGuardAssignmentsSnapshot();
+
+        if (! $this->guardAssignmentsFormHasCollaborators($guardSnapshot)) {
+            Notification::make()
+                ->title('Sin colaboradores en guardias')
+                ->body('Asigna al menos una guardia en el día origen antes de replicar.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $replicatedCount = 0;
+
+        foreach ($targetDates as $targetDate) {
+            $day = TdgCalendarDay::query()->firstOrCreate(
+                ['calendar_date' => $targetDate],
+                ['updated_by_user_id' => Auth::id()],
+            );
+
+            $day->update(['updated_by_user_id' => Auth::id()]);
+            $this->syncGuardAssignments($day, $guardSnapshot);
+            $replicatedCount++;
+        }
+
+        $this->tdgMonthDayPayloadCache = null;
+        $this->guardReplicationDates = [];
+
+        Notification::make()
+            ->title('Guardias replicadas')
+            ->body($replicatedCount === 1
+                ? 'Las guardias se copiaron a 1 día.'
+                : "Las guardias se copiaron a {$replicatedCount} días.")
+            ->success()
+            ->send();
+    }
+
+    public function getDepartmentReplicationMonthLabelProperty(): string
+    {
+        return $this->replicationMonthLabel($this->departmentReplicationMonth);
+    }
+
+    /**
+     * @return array<int, array{date: string, day_number: int, is_current_month: bool, is_source_day: bool, is_selected: bool, is_disabled: bool}>
+     */
+    public function getDepartmentReplicationCalendarDaysProperty(): array
+    {
+        return $this->buildReplicationCalendarDays($this->departmentReplicationMonth, $this->departmentReplicationDates);
+    }
+
+    public function previousDepartmentReplicationMonth(): void
+    {
+        $this->departmentReplicationMonth = $this->resolveReplicationMonthCursor($this->departmentReplicationMonth)
+            ->subMonth()
+            ->format('Y-m');
+    }
+
+    public function nextDepartmentReplicationMonth(): void
+    {
+        $this->departmentReplicationMonth = $this->resolveReplicationMonthCursor($this->departmentReplicationMonth)
+            ->addMonth()
+            ->format('Y-m');
+    }
+
+    public function toggleDepartmentReplicationDate(string $date): void
+    {
+        $this->departmentReplicationDates = $this->toggleReplicationDate($date, $this->departmentReplicationDates);
+    }
+
+    public function toggleDepartmentReplicationWeekday(int $isoWeekday): void
+    {
+        $this->departmentReplicationDates = $this->toggleReplicationWeekday(
+            $isoWeekday,
+            $this->departmentReplicationMonth,
+            $this->departmentReplicationDates,
+        );
+    }
+
+    public function clearDepartmentReplicationDates(): void
+    {
+        $this->departmentReplicationDates = [];
+    }
+
+    public function replicateDepartmentAssignmentsToSelectedDays(): void
+    {
+        $targetDates = $this->resolveReplicationTargetDates($this->departmentReplicationDates);
+
+        if ($targetDates->isEmpty()) {
+            Notification::make()
+                ->title('Selecciona días destino')
+                ->body('Elige al menos un día en el mini calendario para replicar la agenda de departamentos.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $departmentSnapshot = $this->normalizeDepartmentCollaboratorAssignmentsForm(
+            $this->departmentCollaboratorAssignmentsForm,
+        );
+        $departmentListSnapshot = collect($this->departmentAssignmentsForm)
+            ->filter(fn (string $department): bool => $department !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($departmentListSnapshot === [] || ! $this->departmentCollaboratorAssignmentsFormHasCollaborators($departmentSnapshot)) {
+            Notification::make()
+                ->title('Sin colaboradores de sistemas')
+                ->body('Selecciona departamentos y asigna al menos un colaborador del área de sistemas antes de replicar.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $replicatedCount = 0;
+
+        foreach ($targetDates as $targetDate) {
+            $day = TdgCalendarDay::query()->firstOrCreate(
+                ['calendar_date' => $targetDate],
+                ['updated_by_user_id' => Auth::id()],
+            );
+
+            $day->update(['updated_by_user_id' => Auth::id()]);
+            $this->syncDepartmentAssignments($day, $departmentListSnapshot);
+            $this->syncDepartmentCollaboratorAssignments($day, $departmentSnapshot, $departmentListSnapshot);
+            $replicatedCount++;
+        }
+
+        $this->tdgMonthDayPayloadCache = null;
+        $this->departmentReplicationDates = [];
+
+        Notification::make()
+            ->title('Departamentos replicados')
+            ->body($replicatedCount === 1
+                ? 'La agenda de departamentos se copió a 1 día.'
+                : "La agenda de departamentos se copió a {$replicatedCount} días.")
+            ->success()
+            ->send();
+    }
+
+    public function previousOfficeReplicationMonth(): void
+    {
+        $this->officeReplicationMonth = $this->resolveReplicationMonthCursor($this->officeReplicationMonth)
+            ->subMonth()
+            ->format('Y-m');
+    }
+
+    public function nextOfficeReplicationMonth(): void
+    {
+        $this->officeReplicationMonth = $this->resolveReplicationMonthCursor($this->officeReplicationMonth)
+            ->addMonth()
+            ->format('Y-m');
+    }
+
+    public function toggleOfficeReplicationDate(string $date): void
+    {
+        $this->officeReplicationDates = $this->toggleReplicationDate($date, $this->officeReplicationDates);
+    }
+
+    public function toggleOfficeReplicationWeekday(int $isoWeekday): void
+    {
+        $this->officeReplicationDates = $this->toggleReplicationWeekday(
+            $isoWeekday,
+            $this->officeReplicationMonth,
+            $this->officeReplicationDates,
+        );
+    }
+
+    public function clearOfficeReplicationDates(): void
+    {
+        $this->officeReplicationDates = [];
+    }
+
+    public function replicateOfficeAssignmentsToSelectedDays(): void
+    {
+        $targetDates = $this->resolveReplicationTargetDates($this->officeReplicationDates);
+
+        if ($targetDates->isEmpty()) {
+            Notification::make()
+                ->title('Selecciona días destino')
+                ->body('Elige al menos un día en el mini calendario para replicar la configuración de oficinas.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $officeSnapshot = $this->normalizeOfficeAssignmentsForm($this->officeAssignmentsForm);
+
+        if (! $this->officeAssignmentsFormHasCollaborators($officeSnapshot)) {
+            Notification::make()
+                ->title('Sin colaboradores en oficinas')
+                ->body('Asigna colaboradores a las oficinas del día origen antes de replicar.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $replicatedCount = 0;
+
+        foreach ($targetDates as $targetDate) {
+            $day = TdgCalendarDay::query()->firstOrCreate(
+                ['calendar_date' => $targetDate],
+                ['updated_by_user_id' => Auth::id()],
+            );
+
+            $day->update(['updated_by_user_id' => Auth::id()]);
+            $this->syncOfficeAssignments($day, $officeSnapshot);
+            $replicatedCount++;
+        }
+
+        $this->tdgMonthDayPayloadCache = null;
+        $this->officeReplicationDates = [];
+
+        Notification::make()
+            ->title('Configuración replicada')
+            ->body($replicatedCount === 1
+                ? 'Las asignaciones de oficinas se copiaron a 1 día.'
+                : "Las asignaciones de oficinas se copiaron a {$replicatedCount} días.")
+            ->success()
+            ->send();
     }
 
     public function isOfficeCollaboratorSelected(string $office, int $colaboradorId): bool
@@ -290,12 +639,23 @@ trait InteractsWithTdgHybridCalendar
      */
     public function colaboradorIdsAssignedToOtherGuardShifts(string $excludeShift): array
     {
-        if ($this->useSameGuardCollaborator) {
-            return [];
-        }
+        $excludeShiftEnum = TdgCalendarGuardShift::tryFrom($excludeShift);
 
         return collect($this->guardAssignmentsForm)
-            ->reject(fn (mixed $id, string $shift): bool => $shift === $excludeShift)
+            ->reject(function (mixed $id, string $shift) use ($excludeShift, $excludeShiftEnum): bool {
+                if ($shift === $excludeShift) {
+                    return true;
+                }
+
+                if (! $this->useSameGuardCollaborator) {
+                    return false;
+                }
+
+                $shiftEnum = TdgCalendarGuardShift::tryFrom($shift);
+
+                return $excludeShiftEnum?->isDaytimeOperationsShift()
+                    && $shiftEnum?->isDaytimeOperationsShift();
+            })
             ->filter(fn (mixed $id): bool => filled($id))
             ->map(fn (mixed $id): int => (int) $id)
             ->unique()
@@ -338,9 +698,7 @@ trait InteractsWithTdgHybridCalendar
             return;
         }
 
-        if (! $this->useSameGuardCollaborator) {
-            $this->removeColaboradorFromOtherGuardShifts($guardShift, $colaboradorId);
-        }
+        $this->removeColaboradorFromOtherGuardShifts($guardShift, $colaboradorId);
 
         $this->guardAssignmentsForm[$guardShift] = $colaboradorId;
 
@@ -380,6 +738,12 @@ trait InteractsWithTdgHybridCalendar
         $this->selectedWeekDate = $this->selectedDate;
         $this->modalWorkspace = in_array($workspace, ['offices', 'guards', 'departments'], true) ? $workspace : 'offices';
         $this->collaboratorSearch = '';
+        $this->officeReplicationDates = [];
+        $this->officeReplicationMonth = Carbon::parse($this->selectedDate)->format('Y-m');
+        $this->guardReplicationDates = [];
+        $this->guardReplicationMonth = Carbon::parse($this->selectedDate)->format('Y-m');
+        $this->departmentReplicationDates = [];
+        $this->departmentReplicationMonth = Carbon::parse($this->selectedDate)->format('Y-m');
         $this->hydrateDayFormsFromDatabase();
         $this->isDayModalOpen = true;
     }
@@ -388,6 +752,9 @@ trait InteractsWithTdgHybridCalendar
     {
         $this->isDayModalOpen = false;
         $this->collaboratorSearch = '';
+        $this->officeReplicationDates = [];
+        $this->guardReplicationDates = [];
+        $this->departmentReplicationDates = [];
         $this->tdgMonthDayPayloadCache = null;
     }
 
@@ -427,6 +794,9 @@ trait InteractsWithTdgHybridCalendar
             'guardAssignmentsForm.*' => ['nullable', 'integer', 'exists:rrhh_colaboradors,id'],
             'departmentAssignmentsForm' => ['array'],
             'departmentAssignmentsForm.*' => [Rule::in(TdgCalendarDepartment::values())],
+            'departmentCollaboratorAssignmentsForm' => ['array'],
+            'departmentCollaboratorAssignmentsForm.*' => ['array'],
+            'departmentCollaboratorAssignmentsForm.*.*' => ['integer', 'exists:rrhh_colaboradors,id'],
             'useSameGuardCollaborator' => ['boolean'],
         ]);
 
@@ -497,6 +867,7 @@ trait InteractsWithTdgHybridCalendar
         $this->syncOfficeAssignments($day);
         $this->syncGuardAssignments($day);
         $this->syncDepartmentAssignments($day);
+        $this->syncDepartmentCollaboratorAssignments($day);
 
         $this->tdgMonthDayPayloadCache = null;
         $this->hydrateDayFormsFromDatabase();
@@ -568,7 +939,10 @@ trait InteractsWithTdgHybridCalendar
                 : [
                     'filtered_assignment_count' => 0,
                     'department_badges' => [],
+                    'filter_avatars' => [],
                 ];
+
+            $weekVisuals = $this->buildTdgDayVisuals(true, $matchesFilters ? $payload : null);
 
             $days[] = [
                 'date' => $dateKey,
@@ -576,10 +950,15 @@ trait InteractsWithTdgHybridCalendar
                 'day_number' => (int) $cursor->format('j'),
                 'is_today' => $cursor->isToday(),
                 'is_selected' => $dateKey === $this->selectedWeekDate,
-                'activity_count' => (int) $scoped['filtered_assignment_count'],
+                'activity_count' => (int) ($weekVisuals['activity_count'] ?? $scoped['filtered_assignment_count']),
+                'task_primary' => $weekVisuals['task_primary'] ?? null,
+                'task_secondary' => $weekVisuals['task_secondary'] ?? null,
+                'avatars' => $weekVisuals['avatars'] ?? [],
+                'avatars_overflow' => $weekVisuals['avatars_overflow'] ?? 0,
+                'avatars_tooltip' => $weekVisuals['avatars_tooltip'] ?? [],
                 'social_platforms' => [],
                 'social_badges' => $scoped['department_badges'],
-                'department_label_mode' => $this->usesDepartmentFullLabelsInCalendar() ? 'full' : 'short',
+                'department_label_mode' => $weekVisuals['department_label_mode'] ?? 'short',
                 'is_filtered_out' => $this->hasActiveAgendaFilters && ($payload === null || ! $matchesFilters),
             ];
 
@@ -614,7 +993,19 @@ trait InteractsWithTdgHybridCalendar
     }
 
     /**
-     * @return array<string, array{label: string, short_label: string, color: string, chip_class: string, dot_class: string}>
+     * @return array<string, string>
+     */
+    public function getDepartmentFilterOptionsProperty(): array
+    {
+        return collect($this->departmentCatalog)
+            ->mapWithKeys(fn (array $meta, string $department): array => [
+                $department => (string) ($meta['display_label'] ?? $meta['short_label'] ?? ''),
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<string, array{label: string, short_label: string, display_label: string, color: string, chip_class: string, dot_class: string}>
      */
     public function getDepartmentCatalogProperty(): array
     {
@@ -662,6 +1053,24 @@ trait InteractsWithTdgHybridCalendar
         }
 
         return $this->operationsCollaboratorOptionsCache;
+    }
+
+    /**
+     * @return array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>
+     */
+    public function getSystemsCollaboratorOptionsProperty(): array
+    {
+        if ($this->systemsCollaboratorOptionsCache !== null) {
+            return $this->systemsCollaboratorOptionsCache;
+        }
+
+        $this->systemsCollaboratorOptionsCache = $this->querySystemsColaboradores()
+            ->orderBy('fullName')
+            ->get(['id', 'fullName', 'emailCorporativo', 'emailPersonal', 'avatar'])
+            ->map(fn (RrhhColaborador $colaborador): array => $this->mapColaboradorOption($colaborador))
+            ->all();
+
+        return $this->systemsCollaboratorOptionsCache;
     }
 
     /**
@@ -726,12 +1135,123 @@ trait InteractsWithTdgHybridCalendar
                 ->values()
                 ->all();
 
+            unset($this->departmentCollaboratorAssignmentsForm[$department]);
+
             return;
         }
 
         $this->departmentAssignmentsForm = $current
             ->push($department)
             ->unique()
+            ->values()
+            ->all();
+
+        if (! array_key_exists($department, $this->departmentCollaboratorAssignmentsForm)) {
+            $this->departmentCollaboratorAssignmentsForm[$department] = [];
+        }
+    }
+
+    public function assignDepartmentCollaborator(string $department, int $colaboradorId): void
+    {
+        if (! in_array($department, TdgCalendarDepartment::values(), true)) {
+            return;
+        }
+
+        if (! in_array($department, $this->departmentAssignmentsForm, true)) {
+            $this->departmentAssignmentsForm = collect($this->departmentAssignmentsForm)
+                ->push($department)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        $current = collect($this->departmentCollaboratorAssignmentsForm[$department] ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0);
+
+        if ($current->contains($colaboradorId)) {
+            $this->departmentCollaboratorAssignmentsForm[$department] = $current
+                ->reject(fn (int $id): bool => $id === $colaboradorId)
+                ->values()
+                ->all();
+
+            return;
+        }
+
+        $this->departmentCollaboratorAssignmentsForm[$department] = $current
+            ->push($colaboradorId)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function removeDepartmentCollaborator(string $department, int $colaboradorId): void
+    {
+        if (! array_key_exists($department, $this->departmentCollaboratorAssignmentsForm)) {
+            return;
+        }
+
+        $this->departmentCollaboratorAssignmentsForm[$department] = collect($this->departmentCollaboratorAssignmentsForm[$department] ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->reject(fn (int $id): bool => $id === $colaboradorId)
+            ->values()
+            ->all();
+    }
+
+    public function clearDepartmentCollaborators(string $department): void
+    {
+        if (! array_key_exists($department, $this->departmentCollaboratorAssignmentsForm)) {
+            return;
+        }
+
+        $this->departmentCollaboratorAssignmentsForm[$department] = [];
+    }
+
+    public function isDepartmentCollaboratorSelected(string $department, int $colaboradorId): bool
+    {
+        return in_array($colaboradorId, $this->departmentCollaboratorAssignmentsForm[$department] ?? [], true);
+    }
+
+    /**
+     * @return array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>
+     */
+    public function resolveSelectedDepartmentCollaborators(string $department): array
+    {
+        $ids = collect($this->departmentCollaboratorAssignmentsForm[$department] ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        return collect($this->systemsCollaboratorOptions)
+            ->whereIn('id', $ids)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>
+     */
+    public function filteredCollaboratorOptionsForDepartment(string $department): array
+    {
+        $available = collect($this->systemsCollaboratorOptions)
+            ->reject(fn (array $collaborator): bool => $this->isDepartmentCollaboratorSelected($department, (int) $collaborator['id']));
+
+        $term = Str::lower(trim($this->collaboratorSearch));
+
+        if ($term === '') {
+            return $available->take(30)->values()->all();
+        }
+
+        return $available
+            ->filter(function (array $collaborator) use ($term): bool {
+                $name = Str::lower((string) ($collaborator['name'] ?? ''));
+                $email = Str::lower((string) ($collaborator['email'] ?? ''));
+
+                return Str::contains($name, $term) || Str::contains($email, $term);
+            })
+            ->take(40)
             ->values()
             ->all();
     }
@@ -787,10 +1307,18 @@ trait InteractsWithTdgHybridCalendar
         $usesFullDepartmentLabels = $this->usesDepartmentFullLabelsInCalendar();
         $resolveDepartmentDisplayLabel = fn (array $badge): string => $usesFullDepartmentLabels
             ? (string) ($badge['label'] ?? $badge['short_label'] ?? '')
-            : (string) ($badge['short_label'] ?? '');
+            : (string) ($badge['display_label'] ?? $badge['short_label'] ?? '');
         $primaryDepartment = isset($departmentBadges[0]) ? $resolveDepartmentDisplayLabel($departmentBadges[0]) : null;
         $secondaryDepartment = isset($departmentBadges[1]) ? $resolveDepartmentDisplayLabel($departmentBadges[1]) : null;
         $category = $this->resolveAgendaFilterCategory();
+
+        if ($category === 'departments') {
+            $departmentColaboradorCount = $this->countDepartmentColaboradorAssignmentsForFilter(
+                collect($payload['department_colaborador_assignments'] ?? []),
+            );
+            $departmentBadgeCount = count($departmentBadges);
+            $assignmentCount = max($departmentColaboradorCount, $departmentBadgeCount, $assignmentCount);
+        }
 
         $progressWidth = $assignmentCount === 0
             ? 0
@@ -805,12 +1333,18 @@ trait InteractsWithTdgHybridCalendar
 
         return [
             'activity_count' => $assignmentCount,
-            'task_primary' => $primaryDepartment,
-            'task_secondary' => $secondaryDepartment,
+            'task_primary' => $usesFullDepartmentLabels ? $primaryDepartment : null,
+            'task_secondary' => $usesFullDepartmentLabels ? $secondaryDepartment : null,
             'avatars' => $avatars,
             'progress_width' => $progressWidth,
             'progress_tone' => $progressTone,
-            'has_indicator' => $matchesFilters && ($officeCount > 0 || $guardCount > 0 || $departmentBadges !== [] || $officeBadges !== []),
+            'has_indicator' => $matchesFilters && (
+                $officeCount > 0
+                || $guardCount > 0
+                || $departmentBadges !== []
+                || $officeBadges !== []
+                || $filterAvatars !== []
+            ),
             'social_platforms' => [],
             'social_badges' => [],
             'has_social_publications' => false,
@@ -847,6 +1381,40 @@ trait InteractsWithTdgHybridCalendar
         }
 
         return '';
+    }
+
+    protected function resolveAgendaFilterSystemsColaboradorId(): ?int
+    {
+        if ($this->agendaFilterCategory !== 'departments') {
+            return null;
+        }
+
+        $colaboradorId = (int) $this->agendaFilterSystemsColaborador;
+
+        return $colaboradorId > 0 ? $colaboradorId : null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getSystemsColaboradorFilterOptionsProperty(): array
+    {
+        return collect($this->systemsCollaboratorOptions)
+            ->mapWithKeys(fn (array $colaborador): array => [
+                (string) $colaborador['id'] => (string) $colaborador['name'],
+            ])
+            ->all();
+    }
+
+    public function getAgendaFilterSystemsColaboradorLabelProperty(): ?string
+    {
+        $colaboradorId = $this->resolveAgendaFilterSystemsColaboradorId();
+
+        if ($colaboradorId === null) {
+            return null;
+        }
+
+        return $this->systemsColaboradorFilterOptions[(string) $colaboradorId] ?? null;
     }
 
     /**
@@ -892,12 +1460,19 @@ trait InteractsWithTdgHybridCalendar
                 'filtered_assignment_count' => $this->countGuardAssignmentsForFilter($guardAssignments),
             ],
             'departments' => [
-                'department_badges' => $this->filterDepartmentBadgesForCategory($departmentBadges->all()),
+                'department_badges' => $this->filterDepartmentBadgesForCategory($departmentBadges->all(), $payload),
                 'office_badges' => [],
                 'office_count' => 0,
                 'guard_count' => 0,
-                'filter_avatars' => [],
-                'filtered_assignment_count' => count($this->filterDepartmentBadgesForCategory($departmentBadges->all())),
+                'filter_avatars' => $this->buildDepartmentColaboradorAvatarsFromPayload(
+                    collect($payload['department_colaborador_assignments'] ?? []),
+                ),
+                'filtered_assignment_count' => max(
+                    $this->countDepartmentColaboradorAssignmentsForFilter(
+                        collect($payload['department_colaborador_assignments'] ?? []),
+                    ),
+                    count($this->filterDepartmentBadgesForCategory($departmentBadges->all(), $payload)),
+                ),
             ],
             default => [
                 'department_badges' => $payload['department_badges'] ?? [],
@@ -924,9 +1499,29 @@ trait InteractsWithTdgHybridCalendar
         return match ($category) {
             'offices' => $this->countOfficeAssignmentsForFilter(collect($payload['office_assignments'] ?? [])) > 0,
             'guards' => $this->countGuardAssignmentsForFilter(collect($payload['guard_assignments'] ?? [])) > 0,
-            'departments' => count($this->filterDepartmentBadgesForCategory($payload['department_badges'] ?? [])) > 0,
+            'departments' => $this->dayMatchesDepartmentAgendaFilters($payload),
             default => true,
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function dayMatchesDepartmentAgendaFilters(array $payload): bool
+    {
+        $assignmentCount = $this->countDepartmentColaboradorAssignmentsForFilter(
+            collect($payload['department_colaborador_assignments'] ?? []),
+        );
+
+        if ($assignmentCount > 0) {
+            return true;
+        }
+
+        if ($this->resolveAgendaFilterSystemsColaboradorId() !== null) {
+            return false;
+        }
+
+        return count($this->filterDepartmentBadgesForCategory($payload['department_badges'] ?? [], $payload)) > 0;
     }
 
     /**
@@ -1011,14 +1606,91 @@ trait InteractsWithTdgHybridCalendar
      * @param  array<int, array<string, mixed>>  $departmentBadges
      * @return array<int, array<string, mixed>>
      */
-    protected function filterDepartmentBadgesForCategory(array $departmentBadges): array
+    /**
+     * @param  array<string, mixed>|null  $payload
+     * @return array<int, array<string, mixed>>
+     */
+    protected function filterDepartmentBadgesForCategory(array $departmentBadges, ?array $payload = null): array
     {
-        if ($this->agendaFilterDepartment === '') {
-            return $departmentBadges;
+        $badges = collect($departmentBadges);
+
+        if ($this->agendaFilterDepartment !== '') {
+            $badges = $badges->filter(
+                fn (array $badge): bool => ($badge['platform'] ?? '') === $this->agendaFilterDepartment,
+            );
         }
 
-        return collect($departmentBadges)
-            ->filter(fn (array $badge): bool => ($badge['platform'] ?? '') === $this->agendaFilterDepartment)
+        $colaboradorId = $this->resolveAgendaFilterSystemsColaboradorId();
+
+        if ($colaboradorId === null) {
+            return $badges->values()->all();
+        }
+
+        $departmentsForColaborador = $this->resolveDepartmentsForSystemsColaboradorFromPayload($payload, $colaboradorId);
+
+        if ($departmentsForColaborador === []) {
+            return [];
+        }
+
+        $filtered = $badges
+            ->filter(fn (array $badge): bool => in_array((string) ($badge['platform'] ?? ''), $departmentsForColaborador, true))
+            ->values();
+
+        if ($filtered->isNotEmpty()) {
+            return $filtered->all();
+        }
+
+        return collect($departmentsForColaborador)
+            ->map(function (string $department): array {
+                $meta = TdgCalendarDepartmentCatalog::for($department);
+
+                return [
+                    'platform' => $department,
+                    'modifier' => $meta['modifier'],
+                    'label' => $meta['label'],
+                    'short_label' => $meta['short_label'],
+                    'display_label' => $meta['display_label'] ?? $meta['short_label'],
+                    'color' => $meta['color'],
+                    'chip_class' => $meta['chip_class'],
+                    'dot_class' => $meta['dot_class'],
+                    'media' => [],
+                    'media_count' => 0,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $payload
+     * @return array<int, string>
+     */
+    protected function resolveDepartmentsForSystemsColaboradorFromPayload(?array $payload, int $colaboradorId): array
+    {
+        if ($payload === null) {
+            return [];
+        }
+
+        return collect($payload['department_colaborador_assignments'] ?? [])
+            ->filter(function (mixed $assignment) use ($colaboradorId): bool {
+                if (! $assignment instanceof TdgCalendarDepartmentColaboradorAssignment) {
+                    return false;
+                }
+
+                if ((int) $assignment->rrhh_colaborador_id !== $colaboradorId) {
+                    return false;
+                }
+
+                $department = $assignment->department?->value ?? (string) $assignment->getRawOriginal('department');
+
+                if ($this->agendaFilterDepartment !== '' && $department !== $this->agendaFilterDepartment) {
+                    return false;
+                }
+
+                return $department !== '';
+            })
+            ->map(fn (TdgCalendarDepartmentColaboradorAssignment $assignment): string => $assignment->department?->value ?? (string) $assignment->getRawOriginal('department'))
+            ->unique()
             ->values()
             ->all();
     }
@@ -1087,9 +1759,13 @@ trait InteractsWithTdgHybridCalendar
                     ->values()
                     ->implode(', ');
 
+                $detailFallback = $this->resolveAgendaFilterCategory() === 'departments'
+                    ? 'Sin departamento'
+                    : 'Sin oficina';
+
                 return [
                     'name' => (string) $avatar['name'],
-                    'offices' => $offices !== '' ? $offices : 'Sin oficina',
+                    'offices' => $offices !== '' ? $offices : $detailFallback,
                 ];
             })
             ->all();
@@ -1119,6 +1795,7 @@ trait InteractsWithTdgHybridCalendar
                 'officeAssignments.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar',
                 'guardAssignments.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar',
                 'departmentAssignments',
+                'departmentColaboradorAssignments.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar',
             ])
             ->get();
 
@@ -1136,6 +1813,7 @@ trait InteractsWithTdgHybridCalendar
                         'modifier' => $meta['modifier'],
                         'label' => $meta['label'],
                         'short_label' => $meta['short_label'],
+                        'display_label' => $meta['display_label'] ?? $meta['short_label'],
                         'color' => $meta['color'],
                         'chip_class' => $meta['chip_class'],
                         'dot_class' => $meta['dot_class'],
@@ -1149,7 +1827,8 @@ trait InteractsWithTdgHybridCalendar
             $officeBadges = $this->buildOfficeBadgesForDay($day);
             $officeCount = $day->officeAssignments->count();
             $guardCount = $day->guardAssignments->count();
-            $departmentCount = count($departmentBadges);
+            $departmentColaboradorCount = $day->departmentColaboradorAssignments->count();
+            $departmentCount = max(count($departmentBadges), $departmentColaboradorCount);
             $filterAvatars = $this->buildFilterAvatarsForDay($day, $departmentBadges);
             $filteredAssignmentCount = $this->countFilteredAssignmentsForDay(
                 $day,
@@ -1166,6 +1845,7 @@ trait InteractsWithTdgHybridCalendar
                 'office_badges' => $officeBadges,
                 'office_assignments' => $day->officeAssignments,
                 'guard_assignments' => $day->guardAssignments,
+                'department_colaborador_assignments' => $day->departmentColaboradorAssignments,
                 'filter_avatars' => $filterAvatars,
             ];
         }
@@ -1183,11 +1863,12 @@ trait InteractsWithTdgHybridCalendar
         $this->resetOfficeAssignmentsForm();
         $this->resetGuardAssignmentsForm();
         $this->departmentAssignmentsForm = [];
+        $this->departmentCollaboratorAssignmentsForm = [];
         $this->useSameGuardCollaborator = false;
 
         $day = TdgCalendarDay::query()
             ->whereDate('calendar_date', $this->selectedDate)
-            ->with(['officeAssignments', 'guardAssignments', 'departmentAssignments'])
+            ->with(['officeAssignments', 'guardAssignments', 'departmentAssignments', 'departmentColaboradorAssignments'])
             ->first();
 
         if ($day === null) {
@@ -1222,6 +1903,23 @@ trait InteractsWithTdgHybridCalendar
             ->map(fn (TdgCalendarDepartmentAssignment $assignment): string => $assignment->department?->value ?? (string) $assignment->getRawOriginal('department'))
             ->values()
             ->all();
+
+        foreach ($day->departmentColaboradorAssignments as $assignment) {
+            $department = $assignment->department?->value ?? (string) $assignment->getRawOriginal('department');
+            $colaboradorId = (int) $assignment->rrhh_colaborador_id;
+
+            if (! in_array($department, $this->departmentAssignmentsForm, true)) {
+                $this->departmentAssignmentsForm[] = $department;
+            }
+
+            if (! isset($this->departmentCollaboratorAssignmentsForm[$department])) {
+                $this->departmentCollaboratorAssignmentsForm[$department] = [];
+            }
+
+            if (! in_array($colaboradorId, $this->departmentCollaboratorAssignmentsForm[$department], true)) {
+                $this->departmentCollaboratorAssignmentsForm[$department][] = $colaboradorId;
+            }
+        }
     }
 
     private function resetOfficeAssignmentsForm(): void
@@ -1242,9 +1940,19 @@ trait InteractsWithTdgHybridCalendar
 
     private function removeColaboradorFromOtherGuardShifts(string $guardShift, int $colaboradorId): void
     {
+        $currentShift = TdgCalendarGuardShift::tryFrom($guardShift);
+
         foreach (TdgCalendarGuardShift::values() as $otherShift) {
             if ($otherShift === $guardShift) {
                 continue;
+            }
+
+            if ($this->useSameGuardCollaborator) {
+                $otherShiftEnum = TdgCalendarGuardShift::tryFrom($otherShift);
+
+                if ($currentShift?->isDaytimeOperationsShift() && $otherShiftEnum?->isDaytimeOperationsShift()) {
+                    continue;
+                }
             }
 
             if ((int) ($this->guardAssignmentsForm[$otherShift] ?? 0) === $colaboradorId) {
@@ -1268,9 +1976,11 @@ trait InteractsWithTdgHybridCalendar
         }
     }
 
-    private function syncOfficeAssignments(TdgCalendarDay $day): void
+    private function syncOfficeAssignments(TdgCalendarDay $day, ?array $officeAssignmentsForm = null): void
     {
-        $desired = collect($this->officeAssignmentsForm)
+        $form = $officeAssignmentsForm ?? $this->officeAssignmentsForm;
+
+        $desired = collect($form)
             ->flatMap(function (mixed $colaboradorIds, string $office): Collection {
                 $ids = is_array($colaboradorIds)
                     ? $colaboradorIds
@@ -1297,9 +2007,11 @@ trait InteractsWithTdgHybridCalendar
         }
     }
 
-    private function syncGuardAssignments(TdgCalendarDay $day): void
+    private function syncGuardAssignments(TdgCalendarDay $day, ?array $guardAssignmentsForm = null): void
     {
-        $desired = collect($this->guardAssignmentsForm)
+        $form = $guardAssignmentsForm ?? $this->guardAssignmentsForm;
+
+        $desired = collect($form)
             ->filter(fn (mixed $colaboradorId): bool => filled($colaboradorId))
             ->map(fn (mixed $colaboradorId, string $shift): array => [
                 'guard_shift' => $shift,
@@ -1323,9 +2035,12 @@ trait InteractsWithTdgHybridCalendar
         }
     }
 
-    private function syncDepartmentAssignments(TdgCalendarDay $day): void
+    /**
+     * @param  array<int, string>|null  $departmentAssignmentsForm
+     */
+    private function syncDepartmentAssignments(TdgCalendarDay $day, ?array $departmentAssignmentsForm = null): void
     {
-        $departments = collect($this->departmentAssignmentsForm)
+        $departments = collect($departmentAssignmentsForm ?? $this->departmentAssignmentsForm)
             ->filter(fn (string $department): bool => $department !== '')
             ->unique()
             ->values();
@@ -1346,6 +2061,51 @@ trait InteractsWithTdgHybridCalendar
     }
 
     /**
+     * @param  array<string, array<int, int>>|null  $departmentCollaboratorAssignmentsForm
+     * @param  array<int, string>|null  $departmentAssignmentsForm
+     */
+    private function syncDepartmentCollaboratorAssignments(
+        TdgCalendarDay $day,
+        ?array $departmentCollaboratorAssignmentsForm = null,
+        ?array $departmentAssignmentsForm = null,
+    ): void {
+        $allowedDepartments = collect($departmentAssignmentsForm ?? $this->departmentAssignmentsForm)
+            ->filter(fn (string $department): bool => $department !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $form = $departmentCollaboratorAssignmentsForm ?? $this->departmentCollaboratorAssignmentsForm;
+
+        $desired = collect($form)
+            ->only($allowedDepartments)
+            ->flatMap(function (mixed $colaboradorIds, string $department): Collection {
+                $ids = is_array($colaboradorIds)
+                    ? $colaboradorIds
+                    : (filled($colaboradorIds) ? [(int) $colaboradorIds] : []);
+
+                return collect($ids)
+                    ->map(fn (mixed $id): int => (int) $id)
+                    ->filter(fn (int $id): bool => $id > 0)
+                    ->unique()
+                    ->map(fn (int $id): array => [
+                        'department' => $department,
+                        'rrhh_colaborador_id' => $id,
+                    ]);
+            });
+
+        $day->departmentColaboradorAssignments()->delete();
+
+        foreach ($desired as $assignment) {
+            TdgCalendarDepartmentColaboradorAssignment::query()->create([
+                'tdg_calendar_day_id' => $day->id,
+                'department' => $assignment['department'],
+                'rrhh_colaborador_id' => $assignment['rrhh_colaborador_id'],
+            ]);
+        }
+    }
+
+    /**
      * @return Builder<RrhhColaborador>
      */
     private function queryActiveColaboradores(): Builder
@@ -1358,6 +2118,17 @@ trait InteractsWithTdgHybridCalendar
     }
 
     /**
+     * @return Builder<RrhhColaborador>
+     */
+    private function querySystemsColaboradores(): Builder
+    {
+        return $this->queryActiveColaboradores()
+            ->whereHas('departamento', function (Builder $query): void {
+                $query->whereRaw('UPPER(description) LIKE ?', ['%SISTEMA%']);
+            });
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $departmentBadges
      * @return array<int, array{name:string|null,email:string|null,avatar_url:string|null,initials:string,activity_titles:array<int,string>}>
      */
@@ -1366,7 +2137,7 @@ trait InteractsWithTdgHybridCalendar
         return match ($this->resolveAgendaFilterCategory()) {
             'offices' => $this->buildOfficeFilterAvatarsFromPayload(collect($day->officeAssignments)),
             'guards' => $this->buildGuardColaboradorAvatarsFromPayload(collect($day->guardAssignments)),
-            'departments' => [],
+            'departments' => $this->buildDepartmentColaboradorAvatarsFromPayload(collect($day->departmentColaboradorAssignments)),
             default => collect($this->buildOfficeFilterAvatarsFromPayload(collect($day->officeAssignments)))
                 ->merge($this->buildGuardColaboradorAvatarsFromPayload(collect($day->guardAssignments)))
                 ->unique(fn (array $avatar): string => Str::lower((string) ($avatar['name'] ?? '')))
@@ -1430,7 +2201,9 @@ trait InteractsWithTdgHybridCalendar
         return match ($this->resolveAgendaFilterCategory()) {
             'offices' => $this->countOfficeAssignmentsForFilter(collect($day->officeAssignments)),
             'guards' => $this->countGuardAssignmentsForFilter(collect($day->guardAssignments)),
-            'departments' => count($this->filterDepartmentBadgesForCategory($departmentBadges)),
+            'departments' => $this->countDepartmentColaboradorAssignmentsForFilter(
+                collect($day->departmentColaboradorAssignments),
+            ),
             default => $day->officeAssignments->count()
                 + $day->guardAssignments->count()
                 + count($departmentBadges),
@@ -1486,6 +2259,326 @@ trait InteractsWithTdgHybridCalendar
     /**
      * @return array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}
      */
+    private function replicationMonthLabel(string $monthYm): string
+    {
+        try {
+            return Carbon::parse($monthYm.'-01')->translatedFormat('F Y');
+        } catch (\Throwable) {
+            return now()->translatedFormat('F Y');
+        }
+    }
+
+    private function resolveReplicationMonthCursor(string $monthYm): Carbon
+    {
+        try {
+            return Carbon::parse($monthYm.'-01')->startOfMonth();
+        } catch (\Throwable) {
+            return now()->startOfMonth();
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $selectedDates
+     * @return array<int, array{date: string, day_number: int, is_current_month: bool, is_source_day: bool, is_selected: bool, is_disabled: bool}>
+     */
+    private function buildReplicationCalendarDays(string $monthYm, array $selectedDates): array
+    {
+        $month = $this->resolveReplicationMonthCursor($monthYm);
+        $start = $month->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
+        $end = $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        $sourceDate = Carbon::parse($this->selectedDate)->toDateString();
+        $days = [];
+        $cursor = $start->copy();
+
+        while ($cursor->lessThanOrEqualTo($end)) {
+            $dateKey = $cursor->toDateString();
+
+            $days[] = [
+                'date' => $dateKey,
+                'day_number' => (int) $cursor->format('j'),
+                'is_current_month' => $cursor->isSameMonth($month),
+                'is_source_day' => $dateKey === $sourceDate,
+                'is_selected' => in_array($dateKey, $selectedDates, true),
+                'is_disabled' => $dateKey === $sourceDate,
+            ];
+
+            $cursor->addDay();
+        }
+
+        return $days;
+    }
+
+    /**
+     * @param  array<int, string>  $selectedDates
+     * @return array<int, string>
+     */
+    private function toggleReplicationDate(string $date, array $selectedDates): array
+    {
+        $normalizedDate = Carbon::parse($date)->toDateString();
+
+        if ($normalizedDate === Carbon::parse($this->selectedDate)->toDateString()) {
+            return $selectedDates;
+        }
+
+        if (in_array($normalizedDate, $selectedDates, true)) {
+            return collect($selectedDates)
+                ->reject(fn (string $value): bool => $value === $normalizedDate)
+                ->values()
+                ->all();
+        }
+
+        return collect($selectedDates)
+            ->push($normalizedDate)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $selectedDates
+     * @return array<int, string>
+     */
+    private function toggleReplicationWeekday(int $isoWeekday, string $monthYm, array $selectedDates): array
+    {
+        if ($isoWeekday < 1 || $isoWeekday > 7) {
+            return $selectedDates;
+        }
+
+        $month = $this->resolveReplicationMonthCursor($monthYm);
+        $sourceDate = Carbon::parse($this->selectedDate)->toDateString();
+        $datesInMonth = collect();
+        $cursor = $month->copy()->startOfMonth();
+
+        while ($cursor->isSameMonth($month)) {
+            if ($cursor->isoWeekday() === $isoWeekday && $cursor->toDateString() !== $sourceDate) {
+                $datesInMonth->push($cursor->toDateString());
+            }
+
+            $cursor->addDay();
+        }
+
+        if ($datesInMonth->isEmpty()) {
+            return $selectedDates;
+        }
+
+        $allSelected = $datesInMonth->every(
+            fn (string $date): bool => in_array($date, $selectedDates, true),
+        );
+
+        if ($allSelected) {
+            return collect($selectedDates)
+                ->reject(fn (string $date): bool => $datesInMonth->contains($date))
+                ->values()
+                ->all();
+        }
+
+        return collect($selectedDates)
+            ->merge($datesInMonth)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $selectedDates
+     * @return Collection<int, string>
+     */
+    private function resolveReplicationTargetDates(array $selectedDates): Collection
+    {
+        return collect($selectedDates)
+            ->map(fn (string $date): string => Carbon::parse($date)->toDateString())
+            ->reject(fn (string $date): bool => $date === Carbon::parse($this->selectedDate)->toDateString())
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * @return array<string, int|null>
+     */
+    private function resolveGuardAssignmentsSnapshot(): array
+    {
+        $form = $this->normalizeGuardAssignmentsForm($this->guardAssignmentsForm);
+
+        if ($this->useSameGuardCollaborator) {
+            $proveedoresId = $form[TdgCalendarGuardShift::Proveedores->value] ?? null;
+
+            if ($proveedoresId !== null) {
+                $form[TdgCalendarGuardShift::IlsCapitado->value] = $proveedoresId;
+            }
+        }
+
+        return $form;
+    }
+
+    /**
+     * @param  array<string, int|null>  $guardAssignmentsForm
+     */
+    private function guardAssignmentsFormHasCollaborators(array $guardAssignmentsForm): bool
+    {
+        return collect($guardAssignmentsForm)
+            ->contains(fn (mixed $id): bool => filled($id) && (int) $id > 0);
+    }
+
+    /**
+     * @param  array<string, int|null>  $guardAssignmentsForm
+     * @return array<string, int|null>
+     */
+    private function normalizeGuardAssignmentsForm(array $guardAssignmentsForm): array
+    {
+        $normalized = [];
+
+        foreach (TdgCalendarGuardShift::values() as $shift) {
+            $value = $guardAssignmentsForm[$shift] ?? null;
+            $normalized[$shift] = filled($value) && (int) $value > 0 ? (int) $value : null;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, array<int, int>>  $officeAssignmentsForm
+     * @return array<string, array<int, int>>
+     */
+    private function normalizeOfficeAssignmentsForm(array $officeAssignmentsForm): array
+    {
+        $normalized = [];
+
+        foreach (TdgCalendarOffice::values() as $office) {
+            $normalized[$office] = collect($officeAssignmentsForm[$office] ?? [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, array<int, int>>  $officeAssignmentsForm
+     */
+    private function officeAssignmentsFormHasCollaborators(array $officeAssignmentsForm): bool
+    {
+        return collect($officeAssignmentsForm)
+            ->flatten()
+            ->contains(fn (mixed $id): bool => filled($id) && (int) $id > 0);
+    }
+
+    /**
+     * @param  array<string, array<int, int>>  $departmentCollaboratorAssignmentsForm
+     * @return array<string, array<int, int>>
+     */
+    private function normalizeDepartmentCollaboratorAssignmentsForm(array $departmentCollaboratorAssignmentsForm): array
+    {
+        $normalized = [];
+
+        foreach (TdgCalendarDepartment::values() as $department) {
+            $normalized[$department] = collect($departmentCollaboratorAssignmentsForm[$department] ?? [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, array<int, int>>  $departmentCollaboratorAssignmentsForm
+     */
+    private function departmentCollaboratorAssignmentsFormHasCollaborators(array $departmentCollaboratorAssignmentsForm): bool
+    {
+        return collect($departmentCollaboratorAssignmentsForm)
+            ->flatten()
+            ->contains(fn (mixed $id): bool => filled($id) && (int) $id > 0);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, TdgCalendarDepartmentColaboradorAssignment>  $assignments
+     * @return array<int, array{name: string|null, email: string|null, avatar_url: string|null, initials: string, activity_titles: array<int, string>}>
+     */
+    private function buildDepartmentColaboradorAvatarsFromPayload(Collection $assignments): array
+    {
+        /** @var array<int, array{name: string|null, email: string|null, avatar_url: string|null, initials: string, activity_titles: array<int, string>}> $byColaboradorId */
+        $byColaboradorId = [];
+
+        foreach ($assignments as $assignment) {
+            $department = $assignment->department?->value ?? (string) $assignment->getRawOriginal('department');
+
+            if ($this->agendaFilterDepartment !== '' && $department !== $this->agendaFilterDepartment) {
+                continue;
+            }
+
+            if ($assignment->colaborador === null) {
+                continue;
+            }
+
+            $colaboradorId = (int) $assignment->rrhh_colaborador_id;
+            $systemsColaboradorId = $this->resolveAgendaFilterSystemsColaboradorId();
+
+            if ($systemsColaboradorId !== null && $colaboradorId !== $systemsColaboradorId) {
+                continue;
+            }
+            $meta = TdgCalendarDepartmentCatalog::for($department);
+            $departmentLabel = $this->usesDepartmentFullLabelsInCalendar()
+                ? (string) ($meta['label'] ?? $meta['short_label'] ?? '')
+                : (string) ($meta['display_label'] ?? $meta['short_label'] ?? strtoupper(substr($department, 0, 3)));
+
+            if (! array_key_exists($colaboradorId, $byColaboradorId)) {
+                $byColaboradorId[$colaboradorId] = $this->buildCalendarAvatarData(
+                    $assignment->colaborador,
+                    $departmentLabel,
+                );
+
+                continue;
+            }
+
+            $titles = $byColaboradorId[$colaboradorId]['activity_titles'];
+
+            if (! in_array($departmentLabel, $titles, true)) {
+                $byColaboradorId[$colaboradorId]['activity_titles'][] = $departmentLabel;
+            }
+        }
+
+        return collect($byColaboradorId)
+            ->filter(fn (array $avatar): bool => filled($avatar['name']))
+            ->sortBy(fn (array $avatar): string => Str::lower((string) $avatar['name']))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, TdgCalendarDepartmentColaboradorAssignment>  $assignments
+     */
+    private function countDepartmentColaboradorAssignmentsForFilter(Collection $assignments): int
+    {
+        return $assignments
+            ->filter(function (mixed $assignment): bool {
+                if (! $assignment instanceof TdgCalendarDepartmentColaboradorAssignment) {
+                    return false;
+                }
+
+                $department = $assignment->department?->value ?? (string) $assignment->getRawOriginal('department');
+
+                if ($this->agendaFilterDepartment !== '' && $department !== $this->agendaFilterDepartment) {
+                    return false;
+                }
+
+                $systemsColaboradorId = $this->resolveAgendaFilterSystemsColaboradorId();
+
+                if ($systemsColaboradorId !== null && (int) $assignment->rrhh_colaborador_id !== $systemsColaboradorId) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->count();
+    }
+
     private function mapColaboradorOption(RrhhColaborador $colaborador): array
     {
         $avatar = is_string($colaborador->avatar) ? trim($colaborador->avatar) : '';
