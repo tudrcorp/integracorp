@@ -24,7 +24,7 @@ final class InternalPanelsQuickNavigation
     private const INTERNAL_HOST_PANEL_IDS = ['business', 'administration', 'operations', 'marketing', 'projects'];
 
     /**
-     * @return list<array{kind: string, url: string, label: string, subtitle: string, tone: int, panel_id: ?string}>
+     * @return list<array{kind: string, url: string, label: string, subtitle: string, tone: int, panel_id: ?string, accessible: bool, denied_message: ?string}>
      */
     public static function navigationItems(?string $hostPanelId = null): array
     {
@@ -52,6 +52,8 @@ final class InternalPanelsQuickNavigation
                 'subtitle' => 'Soporte Helpdesk',
                 'tone' => 0,
                 'panel_id' => null,
+                'accessible' => true,
+                'denied_message' => null,
             ];
         }
 
@@ -69,10 +71,12 @@ final class InternalPanelsQuickNavigation
 
             if ($isSuperAdmin) {
                 $visible = true;
+                $accessible = $user->canAccessPanel($panel);
             } else {
                 $requiredDepartment = $definition['department'];
                 $hasDepartment = in_array($requiredDepartment, $departments, true);
-                $visible = $hasDepartment && $user->canAccessPanel($panel);
+                $accessible = $user->canAccessPanel($panel);
+                $visible = $hasDepartment && $accessible;
             }
 
             if (! $visible) {
@@ -86,6 +90,8 @@ final class InternalPanelsQuickNavigation
                 'subtitle' => $definition['subtitle'],
                 'tone' => ($panelVisualIndex % 3) + 1,
                 'panel_id' => $panelId,
+                'accessible' => $accessible,
+                'denied_message' => $accessible ? null : self::panelAccessDeniedMessage($definition['label']),
             ];
             $panelVisualIndex++;
         }
@@ -111,6 +117,11 @@ final class InternalPanelsQuickNavigation
         }
 
         return $out;
+    }
+
+    public static function panelAccessDeniedMessage(string $moduleLabel): string
+    {
+        return "No tiene acceso al módulo {$moduleLabel}. Solicite la asignación correspondiente al administrador del sistema.";
     }
 
     /**
