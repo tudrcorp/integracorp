@@ -8,12 +8,14 @@ enum TdgCalendarGuardShift: string
 {
     case Proveedores = 'proveedores';
     case IlsCapitado = 'ils_capitado';
+    case Nocturna = 'nocturna';
 
     public function label(): string
     {
         return match ($this) {
             self::Proveedores => '2.1 8AM-5PM PROVEEDORES - 24H@TUDRENCASA.COM',
             self::IlsCapitado => '2.2 8AM-5PM ILS/CAPITADO - 24H@TUDRENCASA.COM',
+            self::Nocturna => '3.0 GUARDIA NOCTURNA - 24H@TUDRENCASA.COM',
         };
     }
 
@@ -22,7 +24,18 @@ enum TdgCalendarGuardShift: string
         return match ($this) {
             self::Proveedores => 'Guardia 2.1 Proveedores',
             self::IlsCapitado => 'Guardia 2.2 ILS/Capitado',
+            self::Nocturna => 'Guardia 3.0 Nocturna',
         };
+    }
+
+    public function isDaytimeOperationsShift(): bool
+    {
+        return $this === self::Proveedores || $this === self::IlsCapitado;
+    }
+
+    public function isNocturnalShift(): bool
+    {
+        return $this === self::Nocturna;
     }
 
     /**

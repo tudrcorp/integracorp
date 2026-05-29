@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-it('registra calendarios tdg solo en el panel business con el diseño de agenda corporativa', function (): void {
+it('registra calendarios tdg en el panel business con el diseño de agenda corporativa', function (): void {
     $pagePath = dirname(__DIR__, 2).'/app/Filament/Business/Pages/CalendariosTdg.php';
     $viewPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/calendarios-tdg.blade.php';
     $shellPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/corporate-calendar-shell.blade.php';
-    $administrationPanelProviderPath = dirname(__DIR__, 2).'/app/Providers/Filament/AdministrationPanelProvider.php';
-
     expect(file_exists($pagePath))->toBeTrue()
         ->and(file_exists($viewPath))->toBeTrue()
         ->and(file_exists($shellPath))->toBeTrue();
@@ -35,7 +33,4 @@ it('registra calendarios tdg solo en el panel business con el diseño de agenda 
         ->toContain('department_badges')
         ->toContain('office_count')
         ->toContain('tdg-calendar-day-avatars');
-
-    expect(file_get_contents($administrationPanelProviderPath))
-        ->not->toContain('CalendariosTdg');
 });

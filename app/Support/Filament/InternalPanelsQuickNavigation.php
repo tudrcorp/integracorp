@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Accesos directos tipo stepper (Negocios, Administración, Operaciones, Marketing):
+ * Accesos directos tipo stepper (Negocios, Administración, Operaciones, Marketing, Proyectos):
  * crear ticket en el panel actual + accesos a otros módulos según departament y canAccessPanel; SUPERADMIN ve todos.
  */
 final class InternalPanelsQuickNavigation
 {
     /** @var list<string> */
-    private const INTERNAL_HOST_PANEL_IDS = ['business', 'administration', 'operations', 'marketing'];
+    private const INTERNAL_HOST_PANEL_IDS = ['business', 'administration', 'operations', 'marketing', 'projects'];
 
     /**
      * @return list<array{kind: string, url: string, label: string, subtitle: string, tone: int, panel_id: ?string}>
@@ -38,25 +38,22 @@ final class InternalPanelsQuickNavigation
             return [];
         }
 
-        $helpdeskResourceClass = self::helpdeskResourceClassForHost($resolvedHost);
-        if ($helpdeskResourceClass === null) {
-            return [];
-        }
-
         $departments = self::normalizedDepartments($user);
         $isSuperAdmin = in_array('SUPERADMIN', $departments, true);
 
         $items = [];
 
-        $ticketUrl = $helpdeskResourceClass::getUrl('create', [], false, $resolvedHost);
-        $items[] = [
-            'kind' => 'ticket',
-            'url' => $ticketUrl,
-            'label' => 'Crear ticket',
-            'subtitle' => 'Soporte Helpdesk',
-            'tone' => 0,
-            'panel_id' => null,
-        ];
+        $ticketUrl = self::ticketUrlForHost($resolvedHost);
+        if ($ticketUrl !== null) {
+            $items[] = [
+                'kind' => 'ticket',
+                'url' => $ticketUrl,
+                'label' => 'Crear ticket',
+                'subtitle' => 'Soporte Helpdesk',
+                'tone' => 0,
+                'panel_id' => null,
+            ];
+        }
 
         $panelVisualIndex = 0;
         foreach (self::panelDefinitions() as $definition) {
@@ -126,6 +123,7 @@ final class InternalPanelsQuickNavigation
             ['id' => 'administration', 'department' => 'ADMINISTRACION', 'route' => 'filament.administration.pages.dashboard', 'label' => 'Administración', 'subtitle' => 'Finanzas y control'],
             ['id' => 'operations', 'department' => 'OPERACIONES', 'route' => 'filament.operations.pages.dashboard', 'label' => 'Operaciones', 'subtitle' => 'Coordinación y logística'],
             ['id' => 'marketing', 'department' => 'MARKETING', 'route' => 'filament.marketing.pages.dashboard', 'label' => 'Marketing', 'subtitle' => 'Campañas y afiliaciones'],
+            ['id' => 'projects', 'department' => 'PROYECTOS', 'route' => 'filament.projects.pages.dashboard', 'label' => 'Proyectos', 'subtitle' => 'Gestión de proyectos'],
         ];
     }
 
@@ -141,6 +139,22 @@ final class InternalPanelsQuickNavigation
             'marketing' => MarketingHelpdeskResource::class,
             default => null,
         };
+    }
+
+    private static function ticketUrlForHost(string $hostPanelId): ?string
+    {
+        $helpdeskResourceClass = self::helpdeskResourceClassForHost($hostPanelId);
+        if ($helpdeskResourceClass !== null) {
+            return $helpdeskResourceClass::getUrl('create', [], false, $hostPanelId);
+        }
+
+        // El panel projects no tiene HelpdeskResource propio, por lo que
+        // delega la creación al módulo de Negocios.
+        if ($hostPanelId === 'projects') {
+            return BusinessHelpdeskResource::getUrl('create', [], false, 'business');
+        }
+
+        return null;
     }
 
     private static function resolvePanel(string $id): ?Panel

@@ -342,6 +342,7 @@
                                     {{ $data['plan'] }}<br>
                                     ASISTENCIA MEDICA<br>
                                 @endif
+                                TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN: {{ (int) ($data['affiliates_count'] ?? 0) }}<br>
                                 PERÍODO DE VIGENCIA DESDE EL {{ $vigenciaDesde }} HASTA EL {{ $vigenciaHasta }}
                             </p>
                         </td>

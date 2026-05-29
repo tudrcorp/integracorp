@@ -21,5 +21,12 @@ it('usa tabs y estilos alineados con infolist de agentes y agencias', function (
         ->toContain('SECTION_CARD')
         ->toContain('persistTab')
         ->toContain("Tab::make('Proveedor')")
-        ->toContain("Tab::make('Órdenes de servicio')");
+        ->toContain("Tab::make('Órdenes de servicio')")
+        ->toContain('SupplierBeneficiaryBankingInfolist::bankingTab');
+
+    $bankingSource = file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/Operations/SupplierBeneficiaryBankingInfolist.php');
+
+    expect($bankingSource)
+        ->toContain('local_beneficiary_name')
+        ->toContain('extra_beneficiary_swift');
 });

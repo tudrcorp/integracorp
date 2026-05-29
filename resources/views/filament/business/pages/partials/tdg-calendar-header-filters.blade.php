@@ -49,13 +49,29 @@
 
         @if ($agendaFilterCategory === 'departments')
             <div class="md:col-span-2">
-                <label class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Departamento</label>
+                <label class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Colaborador de sistemas</label>
+                <select
+                    wire:model.live="agendaFilterSystemsColaborador"
+                    class="w-full rounded-xl border border-cyan-200/80 bg-white px-3 py-2 text-sm text-slate-800 dark:border-cyan-400/30 dark:bg-slate-950 dark:text-slate-100"
+                >
+                    <option value="">Todos los colaboradores de sistemas</option>
+                    @foreach ($this->systemsColaboradorFilterOptions as $colaboradorId => $colaboradorName)
+                        <option value="{{ $colaboradorId }}">{{ $colaboradorName }}</option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    Filtra el mes por la agenda de atención de un integrante del área de sistemas.
+                </p>
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Departamento atendido</label>
                 <select
                     wire:model.live="agendaFilterDepartment"
                     class="w-full rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100"
                 >
                     <option value="">Todos los departamentos</option>
-                    @foreach ($this->departmentOptions as $value => $label)
+                    @foreach ($this->departmentFilterOptions as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
@@ -86,11 +102,16 @@
                     {{ \App\Enums\TdgCalendarGuardShift::tryFrom($agendaFilterGuardShift)?->shortLabel() ?? $agendaFilterGuardShift }}
                 </span>
             @endif
+            @if ($agendaFilterCategory === 'departments' && $agendaFilterSystemsColaborador !== '' && $this->agendaFilterSystemsColaboradorLabel)
+                <span class="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-semibold text-cyan-900 dark:bg-cyan-500/20 dark:text-cyan-100">
+                    {{ $this->agendaFilterSystemsColaboradorLabel }}
+                </span>
+            @endif
             @if ($agendaFilterCategory === 'departments' && $agendaFilterDepartment !== '')
                 @php $deptMeta = $this->departmentCatalog[$agendaFilterDepartment] ?? []; @endphp
                 <span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold {{ $deptMeta['chip_class'] ?? '' }}">
                     <span class="inline-flex size-2 rounded-full {{ $deptMeta['dot_class'] ?? 'bg-slate-400' }}"></span>
-                    {{ $deptMeta['label'] ?? $agendaFilterDepartment }}
+                    {{ $deptMeta['display_label'] ?? $deptMeta['short_label'] ?? $agendaFilterDepartment }}
                 </span>
             @endif
             <button

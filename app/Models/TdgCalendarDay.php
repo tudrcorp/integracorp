@@ -41,4 +41,9 @@ class TdgCalendarDay extends Model
     {
         return $this->hasMany(TdgCalendarDepartmentAssignment::class);
     }
+
+    public function departmentColaboradorAssignments(): HasMany
+    {
+        return $this->hasMany(TdgCalendarDepartmentColaboradorAssignment::class);
+    }
 }

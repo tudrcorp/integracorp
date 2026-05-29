@@ -13,6 +13,8 @@ it('incluye marca de agua y layout dompdf en aviso de pago', function (): void {
         ->toContain('footer-legal')
         ->toContain('footer-banner')
         ->toContain('Recibo de Pago: Nro.')
+        ->toContain('TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN')
+        ->toContain('affiliates_count')
         ->toContain('sello-nuevo.png')
         ->toContain('table-layout: fixed');
 });

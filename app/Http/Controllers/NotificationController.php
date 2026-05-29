@@ -679,6 +679,108 @@ class NotificationController extends Controller
         }
     }
 
+    public static function sendReciboDePago(string $phone, string $invoiceNumber): bool
+    {
+        try {
+            $nameDoc = 'RDP-'.$invoiceNumber.'.pdf';
+            $filePath = public_path('storage/reciboDePago/'.$nameDoc);
+
+            if (! file_exists($filePath)) {
+                Log::error('VENTAS: WhatsApp recibo de pago — el archivo no existe.', [
+                    'path' => $filePath,
+                    'invoice_number' => $invoiceNumber,
+                    'phone' => $phone,
+                ]);
+
+                return false;
+            }
+
+            $body = <<<HTML
+            *Estimado(a)*,
+
+            Le enviamos el recibo de pago correspondiente a la venta registrada en TuDrEnCasa.
+
+            *Recibo de pago Nro. {$invoiceNumber}*
+
+            Si tiene alguna consulta, contáctenos:
+
+            📱 WhatsApp: (+58) 424 222 0056
+            ✉️ afiliaciones@tudrencasa.com
+
+            Atentamente,
+            Administración Tu Dr. Group 🫱🏼‍🫲🏼
+            HTML;
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'to' => $phone,
+                'filename' => $nameDoc,
+                'document' => config('parameters.PUBLIC_URL').'/reciboDePago/'.$nameDoc,
+                'caption' => $body,
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL_DOCUMENT'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error('VENTAS: Error de conexión cURL al enviar recibo de pago por WhatsApp', [
+                    'error' => $err,
+                    'to' => $phone,
+                    'invoice_number' => $invoiceNumber,
+                ]);
+
+                return false;
+            }
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                Log::info('VENTAS: Recibo de pago enviado por WhatsApp.', [
+                    'phone' => $phone,
+                    'invoice_number' => $invoiceNumber,
+                    'api_response' => $response,
+                ]);
+
+                return true;
+            }
+
+            Log::warning('VENTAS: API respondió con error al enviar recibo de pago por WhatsApp', [
+                'http_code' => $httpCode,
+                'response' => $response,
+                'phone' => $phone,
+                'invoice_number' => $invoiceNumber,
+            ]);
+
+            return false;
+        } catch (\Throwable $th) {
+            Log::critical('VENTAS: Fallo crítico al enviar recibo de pago por WhatsApp', [
+                'message' => $th->getMessage(),
+                'phone' => $phone,
+                'invoice_number' => $invoiceNumber,
+            ]);
+
+            return false;
+        }
+    }
+
     /**
      * Show the form for creating a new resource.
      *

@@ -29,6 +29,8 @@ it('aplica estilo iOS al formulario y acciones de colaboradores', function (): v
         ->toContain("Tab::make('Contacto')")
         ->toContain("Tab::make('Datos bancarios')")
         ->toContain("Tab::make('Documentos')")
+        ->toContain("Textarea::make('funciones')")
+        ->toContain('Funciones del colaborador')
         ->toContain("FileUpload::make('documents')")
         ->toContain('->multiple()')
         ->toContain("Section::make('Perfil')")
@@ -83,6 +85,15 @@ it('agrega columna documents nullable en rrhh_colaboradors via migracion', funct
     expect(is_string($contents))->toBeTrue()
         ->and($contents)->toContain("hasColumn('rrhh_colaboradors', 'documents')")
         ->and($contents)->toContain("->json('documents')->nullable()");
+});
+
+it('agrega funciones longtext a rrhh_colaboradors via migracion', function (): void {
+    $path = dirname(__DIR__, 2).'/database/migrations/2026_05_28_111606_add_funciones_to_rrhh_colaboradors_table.php';
+    $contents = file_get_contents($path);
+
+    expect(is_string($contents))->toBeTrue()
+        ->and($contents)->toContain("hasColumn('rrhh_colaboradors', 'funciones')")
+        ->and($contents)->toContain("->longText('funciones')->nullable()");
 });
 
 it('agrega birth_date y age a rrhh_colaboradors via migracion', function (): void {

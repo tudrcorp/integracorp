@@ -14,6 +14,10 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain("Schema::create('tdg_calendar_guard_assignments'")
         ->toContain("Schema::create('tdg_calendar_department_assignments'");
 
+    expect(file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_05_28_122847_create_tdg_calendar_department_colaborador_assignments_table.php'))
+        ->toContain('tdg_calendar_department_colaborador_assignments')
+        ->toContain('tdg_dept_colab_day_dept_unique');
+
     expect(file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_05_22_010355_allow_multiple_colaboradores_per_tdg_calendar_office.php'))
         ->toContain('tdg_calendar_office_day_office_colaborador_unique');
 
@@ -24,7 +28,10 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Enums/TdgCalendarGuardShift.php'))
         ->toContain('2.1 8AM-5PM PROVEEDORES - 24H@TUDRENCASA.COM')
-        ->toContain('2.2 8AM-5PM ILS/CAPITADO - 24H@TUDRENCASA.COM');
+        ->toContain('2.2 8AM-5PM ILS/CAPITADO - 24H@TUDRENCASA.COM')
+        ->toContain("case Nocturna = 'nocturna'")
+        ->toContain('3.0 GUARDIA NOCTURNA')
+        ->toContain('isNocturnalShift');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Enums/TdgCalendarDepartment.php'))
         ->toContain("case Comercial = 'comercial'")
@@ -58,6 +65,33 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('colaboradorIdsAssignedToOtherGuardShifts')
         ->toContain('colaboradorIdsAssignedToOtherOffices')
         ->toContain('removeColaboradorFromOtherOffices')
+        ->toContain('replicateOfficeAssignmentsToSelectedDays')
+        ->toContain('replicateGuardAssignmentsToSelectedDays')
+        ->toContain('replicateDepartmentAssignmentsToSelectedDays')
+        ->toContain('assignDepartmentCollaborator')
+        ->toContain('removeDepartmentCollaborator')
+        ->toContain('resolveSelectedDepartmentCollaborators')
+        ->toContain('filteredCollaboratorOptionsForDepartment')
+        ->toContain('getSystemsCollaboratorOptionsProperty')
+        ->toContain('querySystemsColaboradores')
+        ->toContain('departmentCollaboratorAssignmentsForm')
+        ->toContain('syncDepartmentCollaboratorAssignments')
+        ->toContain('buildDepartmentColaboradorAvatarsFromPayload')
+        ->toContain('getSystemsColaboradorFilterOptionsProperty')
+        ->toContain('updatedAgendaFilterSystemsColaborador')
+        ->toContain('department_colaborador_assignments')
+        ->toContain('agendaFilterSystemsColaborador')
+        ->toContain('resolveAgendaFilterSystemsColaboradorId')
+        ->toContain('dayMatchesDepartmentAgendaFilters')
+        ->toContain('toggleOfficeReplicationDate')
+        ->toContain('toggleGuardReplicationDate')
+        ->toContain('toggleDepartmentReplicationDate')
+        ->toContain('toggleOfficeReplicationWeekday')
+        ->toContain('toggleGuardReplicationWeekday')
+        ->toContain('getOfficeReplicationCalendarDaysProperty')
+        ->toContain('getGuardReplicationCalendarDaysProperty')
+        ->toContain('getDepartmentReplicationCalendarDaysProperty')
+        ->toContain('isDaytimeOperationsShift')
         ->toContain('Un colaborador no puede asistir a más de una oficina')
         ->toContain('assignGuardCollaborator')
         ->toContain('agendaFilterCategory')
@@ -74,32 +108,77 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('office_count')
         ->toContain('avatars_tooltip')
         ->toContain('usesDepartmentFullLabelsInCalendar')
-        ->toContain('department_label_mode');
+        ->toContain("? 'full' : 'short'")
+        ->toContain('task_primary');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/TdgCalendarDepartmentCatalog.php'))
+        ->toContain('display_label');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/corporate-calendar-shell.blade.php'))
+        ->toContain('$isTdgCalendar')
+        ->toContain('display_label')
+        ->toContain('Colaboradores de sistemas')
+        ->toContain('filled($day[\'task_primary\'])');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/TdgCalendarOfficeCatalog.php'))
         ->toContain('TdgCalendarOfficeCatalog')
         ->toContain('LIDO')
         ->toContain('farmadoc-delicias');
 
-    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-calendar-day-avatars.blade.php'))
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/components/collaborator-avatar-stack.blade.php'))
         ->toContain('overflowCount')
-        ->toContain('tooltipLines')
         ->toContain('+{{ $overflowCount }}')
-        ->toContain('Colaboradores del día')
         ->toContain('tdg-calendar-avatar-stack__tooltip-list')
         ->toContain('overflow-y-auto');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-calendar-day-avatars.blade.php'))
+        ->toContain('x-collaborator-avatar-stack')
+        ->toContain('tooltipLines')
+        ->toContain('Colaboradores del día');
 
     expect(file_get_contents($modalPath))
         ->toContain('setModalWorkspace')
         ->toContain('filteredCollaboratorOptionsForGuardShift')
-        ->toContain('Lista completa de colaboradores activos')
+        ->toContain('guardia nocturna se asigna de forma independiente')
         ->toContain('assignOfficeCollaborator')
         ->toContain('removeOfficeCollaborator')
+        ->toContain('lg:grid-cols-3')
+        ->toContain('Guardia nocturna')
+        ->toContain('tdg-guard-replication-panel')
         ->toContain('Colaboradores asignados')
         ->toContain('tdg-colaborador-avatar')
         ->toContain('toggleDepartment')
+        ->toContain('assignDepartmentCollaborator')
+        ->toContain('filteredCollaboratorOptionsForDepartment')
+        ->toContain('Colaboradores de sistemas')
+        ->toContain('tdg-department-replication-panel')
         ->toContain('idle_chip_class')
         ->toContain('saveDayAssignments');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-office-replication-panel.blade.php'))
+        ->toContain('replicateOfficeAssignmentsToSelectedDays')
+        ->toContain('toggleOfficeReplicationDate')
+        ->toContain('toggleOfficeReplicationWeekday')
+        ->toContain('officeReplicationCalendarDays')
+        ->toContain('Replicar configuración');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-guard-replication-panel.blade.php'))
+        ->toContain('replicateGuardAssignmentsToSelectedDays')
+        ->toContain('toggleGuardReplicationDate')
+        ->toContain('guardReplicationCalendarDays')
+        ->toContain('Replicar guardias');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-department-replication-panel.blade.php'))
+        ->toContain('replicateDepartmentAssignmentsToSelectedDays')
+        ->toContain('toggleDepartmentReplicationDate')
+        ->toContain('departmentReplicationCalendarDays')
+        ->toContain('Replicar departamentos');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Models/TdgCalendarDepartmentColaboradorAssignment.php'))
+        ->toContain('TdgCalendarDepartmentColaboradorAssignment');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Models/TdgCalendarDay.php'))
+        ->toContain('departmentColaboradorAssignments');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-calendar-header-filters.blade.php'))
         ->toContain('agendaFilterCategory')
@@ -108,5 +187,9 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('Solo departamentos')
         ->toContain('agendaFilterOffice')
         ->toContain('agendaFilterGuardShift')
-        ->toContain('agendaFilterDepartment');
+        ->toContain('agendaFilterDepartment')
+        ->toContain('agendaFilterSystemsColaborador')
+        ->toContain('systemsColaboradorFilterOptions')
+        ->toContain('Colaborador de sistemas')
+        ->toContain('departmentFilterOptions');
 });

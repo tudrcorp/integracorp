@@ -2,31 +2,30 @@
 
 namespace App\Filament\Resources\Collections\Tables;
 
-use Carbon\Carbon;
-use App\Models\Collection;
-use Filament\Tables\Table;
-use App\Models\Affiliation;
-use Filament\Actions\Action;
-use App\Mail\MailAvisoDeCobro;
-use App\Jobs\CreateAvisoDeCobro;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Tables\Filters\Filter;
-use App\Models\AffiliationCorporate;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Filament\Actions\BulkActionGroup;
-use Filament\Schemas\Components\Grid;
-use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
-use Filament\Tables\Columns\TextColumn;
+use App\Jobs\CreateAvisoDeCobro;
+use App\Mail\MailAvisoDeCobro;
+use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
+use App\Models\Collection;
+use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Schemas\Components\Grid;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class CollectionsTable
 {
@@ -100,8 +99,8 @@ class CollectionsTable
                     ->badge()
                     ->color(function ($state) {
                         return match ($state) {
-                            'PLAN INICIAL'  => 'azul',
-                            'PLAN IDEAL'    => 'azulOscuro',
+                            'PLAN INICIAL' => 'azul',
+                            'PLAN IDEAL' => 'azulOscuro',
                             'PLAN ESPECIAL' => 'verde',
                             default => 'secondary',
                         };
@@ -181,30 +180,30 @@ class CollectionsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
                     }),
                 SelectFilter::make('payment_frequency')
                     ->options([
-                        'ANUAL'      => 'ANUAL',
-                        'SEMESTRAL'  => 'SEMESTRAL',
+                        'ANUAL' => 'ANUAL',
+                        'SEMESTRAL' => 'SEMESTRAL',
                         'TRIMESTRAL' => 'TRIMESTRAL',
-                        'MENSUAL'    => 'MENSUAL',
+                        'MENSUAL' => 'MENSUAL',
                     ])
                     ->label('Frecuencia de Pago'),
                 SelectFilter::make('plan_id')
@@ -212,27 +211,27 @@ class CollectionsTable
                     ->label('Planes'),
                 SelectFilter::make('payment_method')
                     ->options([
-                        'EFECTIVO US$'      => 'EFECTIVO US$',
-                        'ZELLE'             => 'ZELLE',
-                        'PAGO MOVIL VES'    => 'PAGO MOVIL VES',
-                        'TRANSFERENCIA VES' => 'TRANSFERENCIA VES'
+                        'EFECTIVO US$' => 'EFECTIVO US$',
+                        'ZELLE' => 'ZELLE',
+                        'PAGO MOVIL VES' => 'PAGO MOVIL VES',
+                        'TRANSFERENCIA VES' => 'TRANSFERENCIA VES',
                     ])
                     ->label('Metodo de Pago'),
                 SelectFilter::make('status')
                     ->options([
                         'POR PAGAR' => 'POR PAGAR',
-                        'PAGADO'    => 'PAGADO',
+                        'PAGADO' => 'PAGADO',
                     ])
                     ->label('Estatus'),
                 SelectFilter::make('bank')
                     ->options([
-                        'CHASE BANK'                => 'CHASE BANK',
-                        'BANK OF AMERICA'           => 'BANK OF AMERICA',
-                        'BANESCO, S.A-US$'          => 'BANESCO, S.A - US$',
-                        'BANCAMIGA - US$'           => 'BANCAMIGA - US$',
-                        'BANCAMIGA - VES'           => 'BANCAMIGA - VES',
-                        'BANCO DE VENEZUELA - US$'  => 'BANCO DE VENEZUELA - US$',
-                        'BANCO DE VENEZUELA - VES'  => 'BANCO DE VENEZUELA - VES',
+                        'CHASE BANK' => 'CHASE BANK',
+                        'BANK OF AMERICA' => 'BANK OF AMERICA',
+                        'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
+                        'BANCAMIGA - US$' => 'BANCAMIGA - US$',
+                        'BANCAMIGA - VES' => 'BANCAMIGA - VES',
+                        'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
+                        'BANCO DE VENEZUELA - VES' => 'BANCO DE VENEZUELA - VES',
                     ])
                     ->label('Banco'),
 
@@ -260,14 +259,14 @@ class CollectionsTable
                                         ->maxLength(255)
                                         ->label('Teléfono')
                                         ->tel()
-                                        ->placeholder('04127869087')
-                                ])
+                                        ->placeholder('04127869087'),
+                                ]),
                         ])
                         ->action(function (Collection $record, array $data) {
 
                             try {
 
-                                $name_pdf = 'ADP-' . $record->collection_invoice_number . '.pdf';
+                                $name_pdf = 'ADP-'.$record->collection_invoice_number.'.pdf';
 
                                 if ($data['email'] == null) {
                                     Mail::to($record->affiliate_email)->send(new MailAvisoDeCobro($name_pdf));
@@ -310,7 +309,7 @@ class CollectionsTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn(Collection $record) => $record->status == 'PAGADO'),
+                        ->hidden(fn (Collection $record) => $record->status == 'PAGADO'),
 
                     /**DESCARGAR PDF */
                     Action::make('download_pdf')
@@ -324,7 +323,8 @@ class CollectionsTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/avisoDeCobro/ADP-' . $record->collection_invoice_number . '.pdf');
+                                $path = public_path('storage/avisoDeCobro/ADP-'.$record->collection_invoice_number.'.pdf');
+
                                 return response()->download($path);
                                 /**
                                  * LOG
@@ -360,17 +360,21 @@ class CollectionsTable
 
                                 /**Ejecutamos el Job para crea el aviso de cobro */
                                 $array_data = [
-                                    'invoice_number'    => $record->collection_invoice_number,
-                                    'emission_date'     => $record->next_payment_date,
-                                    'full_name_ti'      => $record->affiliate_full_name,
-                                    'ci_rif_ti'         => $record->affiliate_ci_rif,
-                                    'address_ti'        => $address->adress_ti,
-                                    'phone_ti'          => $record->affiliate_phone,
-                                    'email_ti'          => $record->affiliate_email,
-                                    'total_amount'      => $record->total_amount,
-                                    'plan'              => $record->plan->description,
-                                    'coverage'          => $record->coverage->price ?? null,
-                                    'frequency'         => $record->payment_frequency,
+                                    'invoice_number' => $record->collection_invoice_number,
+                                    'emission_date' => $record->next_payment_date,
+                                    'full_name_ti' => $record->affiliate_full_name,
+                                    'ci_rif_ti' => $record->affiliate_ci_rif,
+                                    'address_ti' => $address->adress_ti,
+                                    'phone_ti' => $record->affiliate_phone,
+                                    'email_ti' => $record->affiliate_email,
+                                    'total_amount' => $record->total_amount,
+                                    'plan' => $record->plan->description,
+                                    'coverage' => $record->coverage->price ?? null,
+                                    'frequency' => $record->payment_frequency,
+                                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forAffiliationCode(
+                                        $record->affiliation_code,
+                                        $record->type === 'AFILIACION CORPORATIVA',
+                                    ),
                                 ];
                                 // dd($array_data);
                                 dispatch(new CreateAvisoDeCobro($array_data));
@@ -382,13 +386,13 @@ class CollectionsTable
                                     ->iconColor('success')
                                     ->success()
                                     ->send();
-                                
+
                             } catch (\Throwable $th) {
                                 dd($th);
                             }
                         }),
-                        
-            ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

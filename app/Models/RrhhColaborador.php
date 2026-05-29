@@ -36,6 +36,7 @@ class RrhhColaborador extends Model
         'created_by',
         'updated_by',
         'avatar',
+        'funciones',
         'sueldo',
         'user_id',
         'documents',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 
@@ -82,6 +83,7 @@ class CollectionController extends Controller
                 'plan' => $planes['affiliation_corporate_plans'] ?? [],
                 'coverage' => $collection->coverage?->price,
                 'frequency' => $collection->payment_frequency,
+                'affiliates_count' => AffiliationDocumentAffiliatesCount::forAffiliationCode($collection->affiliation_code, true),
             ];
             $view = 'documents.aviso-de-cobro-corporativo';
         } else {
@@ -98,6 +100,7 @@ class CollectionController extends Controller
                 'plan' => $collection->plan?->description,
                 'coverage' => $collection->coverage?->price,
                 'frequency' => $collection->payment_frequency,
+                'affiliates_count' => AffiliationDocumentAffiliatesCount::forAffiliationCode($collection->affiliation_code, false),
             ];
             $view = 'documents.aviso-de-cobro';
         }

@@ -3,6 +3,10 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\ProjectManagement\Concerns\HasProjectManagementAssignments;
+use App\Models\ProjectManagement\Concerns\HasProjectManagementExecutions;
+use App\Models\ProjectManagement\Concerns\InteractsWithProjectManagementDocuments;
+use App\Models\ProjectManagement\Concerns\InteractsWithProjectManagementNotes;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Filament\Panel\Concerns\HasAvatars;
@@ -16,6 +20,11 @@ class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasAvatars, HasFactory, Notifiable;
+
+    use HasProjectManagementAssignments;
+    use HasProjectManagementExecutions;
+    use InteractsWithProjectManagementDocuments;
+    use InteractsWithProjectManagementNotes;
 
     /**
      * The attributes that are mass assignable.
@@ -165,6 +174,12 @@ class User extends Authenticatable implements FilamentUser
                 $this->status = 'ACTIVO';
         }
 
+        if ($panel->getId() === 'projects') {
+            return str_ends_with($this->email, '@tudrencasa.com') &&
+                in_array('PROYECTOS', $this->departament) == 1 &&
+                $this->status = 'ACTIVO';
+        }
+
         return true;
 
     }
@@ -179,5 +194,15 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsToMany(Permission::class, 'user_permissions')
             ->withPivot(['created_by', 'updated_by'])
             ->withTimestamps();
+    }
+
+    public function authoredProjectNotes(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\ProjectManagement\NotesLog::class, 'user_id');
+    }
+
+    public function uploadedProjectDocuments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\ProjectManagement\Document::class, 'uploaded_by');
     }
 }

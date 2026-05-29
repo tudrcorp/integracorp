@@ -9,6 +9,10 @@ use App\Http\Controllers\SaleController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Sale;
+use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use App\Support\Filament\Administration\SaleReciboPagoEmailRecipients;
+use App\Support\Filament\Administration\SaleReciboPagoTestDeliveryForm;
+use App\Support\Filament\Administration\SaleReciboPagoWhatsAppRecipients;
 use App\Support\SecurityAudit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -531,7 +535,11 @@ class SalesTable
         $hasta = self::formatVigenciaDateForPdf($vigencia['hasta'] ?? null);
 
         if ($record->type === 'AFILIACION INDIVIDUAL') {
-            $afiliacion = Affiliation::query()->where('code', $sale->affiliation_code)->with('paid_memberships')->first();
+            $afiliacion = Affiliation::query()
+                ->where('code', $sale->affiliation_code)
+                ->withCount('affiliates')
+                ->with('paid_memberships')
+                ->first();
 
             return [
                 'invoice_number' => $sale->invoice_number,
@@ -547,6 +555,7 @@ class SalesTable
                 'plan' => $sale->plan?->description,
                 'coverage' => $sale->coverage?->price,
                 'frequency' => $sale->payment_frequency,
+                'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($afiliacion),
                 'desde' => $desde,
                 'hasta' => $hasta,
             ];
@@ -555,6 +564,7 @@ class SalesTable
         if ($record->type === 'AFILIACION CORPORATIVA') {
             $afiliacion = AffiliationCorporate::query()
                 ->where('code', $sale->affiliation_code)
+                ->withCount('corporateAffiliates')
                 ->with(['paid_membership_corporates', 'affiliationCorporatePlans'])
                 ->first();
 
@@ -572,6 +582,7 @@ class SalesTable
                 'plan' => $afiliacion?->affiliationCorporatePlans?->toArray() ?? [],
                 'coverage' => $sale->coverage?->price,
                 'frequency' => $sale->payment_frequency,
+                'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($afiliacion),
                 'desde' => $desde,
                 'hasta' => $hasta,
             ];
@@ -594,6 +605,242 @@ class SalesTable
             return Carbon::parse($value)->format('d/m/Y');
         } catch (Throwable) {
             return (string) $value;
+        }
+    }
+
+    public static function sendReciboPagoDeliveryAction(): Action
+    {
+        return Action::make('send_recibo_pago')
+            ->label('Enviar recibo')
+            ->icon('heroicon-o-paper-airplane')
+            ->color('primary')
+            ->modalHeading('Enviar recibo de pago')
+            ->modalDescription('Elija el canal de envío, revise los destinatarios o active el modo prueba para validar el servicio.')
+            ->modalIcon('heroicon-o-paper-airplane')
+            ->modalWidth(Width::FiveExtraLarge)
+            ->form(fn (Sale $record): array => SaleReciboPagoTestDeliveryForm::unifiedActionSchema($record))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cancelar')
+            ->disabled(fn (Sale $record): bool => ! self::hasReciboPagoPdf($record))
+            ->extraModalFooterActions(fn (Action $action): array => [
+                $action->makeModalSubmitAction('confirm_recibo_email', arguments: ['channel' => 'email'])
+                    ->label('Confirmar envío por correo')
+                    ->icon('heroicon-o-envelope')
+                    ->color('primary'),
+                $action->makeModalSubmitAction('confirm_recibo_whatsapp', arguments: ['channel' => 'whatsapp'])
+                    ->label('Confirmar envío por WhatsApp')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('success'),
+            ])
+            ->action(function (Sale $record, array $data, array $arguments): void {
+                if (($arguments['channel'] ?? null) === 'email') {
+                    self::sendReciboPagoEmail($record, SaleReciboPagoTestDeliveryForm::normalizeEmailFormData($data));
+
+                    return;
+                }
+
+                if (($arguments['channel'] ?? null) === 'whatsapp') {
+                    self::sendReciboPagoWhatsApp($record, SaleReciboPagoTestDeliveryForm::normalizeWhatsAppFormData($data));
+                }
+            });
+    }
+
+    public static function sendReciboPagoEmailAction(): Action
+    {
+        return Action::make('send_recibo_pago_email')
+            ->label('Enviar recibo por correo')
+            ->icon('heroicon-o-paper-airplane')
+            ->color('primary')
+            ->modalHeading('Enviar recibo de pago por correo')
+            ->modalDescription('Revise los destinatarios o active el modo prueba para validar el servicio de correo.')
+            ->modalIcon('heroicon-o-envelope')
+            ->modalWidth(Width::TwoExtraLarge)
+            ->form(fn (Sale $record): array => SaleReciboPagoTestDeliveryForm::emailActionSchema($record))
+            ->modalSubmitActionLabel('Confirmar envío')
+            ->modalCancelActionLabel('Cancelar')
+            ->disabled(fn (Sale $record): bool => ! self::hasReciboPagoPdf($record))
+            ->action(function (Sale $record, array $data): void {
+                self::sendReciboPagoEmail($record, $data);
+            });
+    }
+
+    public static function canSendReciboPagoEmail(Sale $record, bool $testMode = false): bool
+    {
+        if (! self::hasReciboPagoPdf($record)) {
+            return false;
+        }
+
+        if ($testMode) {
+            return true;
+        }
+
+        return SaleReciboPagoEmailRecipients::resolve($record)['has_recipients'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function sendReciboPagoEmail(Sale $record, array $data = []): void
+    {
+        $testMode = SaleReciboPagoTestDeliveryForm::isTestModeFromData($data);
+        $recipients = SaleReciboPagoEmailRecipients::resolve($record);
+
+        self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_EMAIL_ATTEMPTED', 'administration.sales.send-receipt-email', $record, [
+            'test_mode' => $testMode,
+            'test_email' => $testMode ? ($data['test_email'] ?? null) : null,
+            'recipient_emails' => $recipients['emails'],
+            'cc_emails' => $testMode ? [] : $recipients['cc_emails'],
+            'has_recipients' => $recipients['has_recipients'],
+            'has_pdf' => $recipients['has_pdf'],
+        ]);
+
+        try {
+            SaleReciboPagoEmailRecipients::send(
+                $record,
+                testMode: $testMode,
+                testEmail: $testMode ? (string) ($data['test_email'] ?? '') : null,
+            );
+
+            self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_EMAIL_SENT', 'administration.sales.send-receipt-email', $record, [
+                'test_mode' => $testMode,
+                'recipient_emails' => $testMode
+                    ? array_filter([(string) ($data['test_email'] ?? '')])
+                    : $recipients['emails'],
+                'cc_emails' => $testMode ? [] : $recipients['cc_emails'],
+            ]);
+
+            LogController::log(Auth::user()->id, 'Envío de recibo de pago por correo', 'Modulo Ventas', 'ENVIAR');
+
+            Notification::make()
+                ->title($testMode ? 'Correo de prueba enviado' : 'Correo enviado')
+                ->body($testMode
+                    ? 'El recibo de pago fue enviado al correo de prueba indicado.'
+                    : 'El recibo de pago fue enviado al agente, a la agencia y en copia al equipo interno.')
+                ->success()
+                ->send();
+        } catch (Throwable $th) {
+            self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_EMAIL_FAILED', 'administration.sales.send-receipt-email', $record, [
+                'error_message' => $th->getMessage(),
+                'error_class' => $th::class,
+            ]);
+
+            LogController::log(Auth::user()->id, 'EXCEPTION', 'administration.sales.send-receipt-email', $th->getMessage());
+
+            Notification::make()
+                ->title('No se pudo enviar el correo')
+                ->body($th->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    public static function sendReciboPagoWhatsAppAction(): Action
+    {
+        return Action::make('send_recibo_pago_whatsapp')
+            ->label('Enviar recibo por WhatsApp')
+            ->icon('heroicon-o-chat-bubble-left-right')
+            ->color('success')
+            ->modalHeading('Enviar recibo de pago por WhatsApp')
+            ->modalDescription('Revise los destinatarios o active el modo prueba para validar el servicio de WhatsApp.')
+            ->modalIcon('heroicon-o-chat-bubble-left-right')
+            ->modalWidth(Width::TwoExtraLarge)
+            ->form(fn (Sale $record): array => SaleReciboPagoTestDeliveryForm::whatsAppActionSchema($record))
+            ->modalSubmitActionLabel('Confirmar envío')
+            ->modalCancelActionLabel('Cancelar')
+            ->disabled(fn (Sale $record): bool => ! self::hasReciboPagoPdf($record))
+            ->action(function (Sale $record, array $data): void {
+                self::sendReciboPagoWhatsApp($record, $data);
+            });
+    }
+
+    public static function canSendReciboPagoWhatsApp(Sale $record, bool $testMode = false): bool
+    {
+        if (! self::hasReciboPagoPdf($record)) {
+            return false;
+        }
+
+        if ($testMode) {
+            return true;
+        }
+
+        return SaleReciboPagoWhatsAppRecipients::resolve($record)['has_recipients'];
+    }
+
+    public static function hasReciboPagoPdf(Sale $record): bool
+    {
+        return is_file(self::reciboPagoPdfPath($record));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function sendReciboPagoWhatsApp(Sale $record, array $data = []): void
+    {
+        $testMode = SaleReciboPagoTestDeliveryForm::isTestModeFromData($data);
+        $recipients = SaleReciboPagoWhatsAppRecipients::resolve($record);
+
+        self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_WHATSAPP_ATTEMPTED', 'administration.sales.send-receipt-whatsapp', $record, [
+            'test_mode' => $testMode,
+            'test_phone' => $testMode ? ($data['test_phone'] ?? null) : null,
+            'targets' => collect($recipients['targets'])->map(fn (array $target): array => [
+                'role' => $target['role'],
+                'name' => $target['name'],
+                'phone' => $target['phone'],
+            ])->all(),
+            'has_recipients' => $recipients['has_recipients'],
+            'has_pdf' => $recipients['has_pdf'],
+        ]);
+
+        try {
+            $report = SaleReciboPagoWhatsAppRecipients::send(
+                $record,
+                testMode: $testMode,
+                testPhone: $testMode ? (string) ($data['test_phone'] ?? '') : null,
+            );
+
+            self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_WHATSAPP_SENT', 'administration.sales.send-receipt-whatsapp', $record, [
+                'test_mode' => $testMode,
+                'dispatched' => $report['dispatched'],
+                'failed' => $report['failed'],
+                'failures' => $report['failures'],
+            ]);
+
+            LogController::log(Auth::user()->id, 'Envío de recibo de pago por WhatsApp', 'Modulo Ventas', 'ENVIAR');
+
+            if ($testMode) {
+                Notification::make()
+                    ->title('WhatsApp de prueba enviado')
+                    ->body('El recibo de pago fue enviado al teléfono de prueba indicado.')
+                    ->success()
+                    ->send();
+
+                return;
+            }
+
+            $body = 'El recibo fue enviado por WhatsApp a '.$report['dispatched'].' destinatario(s).';
+
+            if ($report['failed'] > 0) {
+                $body .= ' '.$report['failed'].' envío(s) no se completaron.';
+            }
+
+            Notification::make()
+                ->title($report['failed'] > 0 ? 'Envío parcial' : 'WhatsApp enviado')
+                ->body($body)
+                ->color($report['failed'] > 0 ? 'warning' : 'success')
+                ->send();
+        } catch (Throwable $th) {
+            self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_WHATSAPP_FAILED', 'administration.sales.send-receipt-whatsapp', $record, [
+                'error_message' => $th->getMessage(),
+                'error_class' => $th::class,
+            ]);
+
+            LogController::log(Auth::user()->id, 'EXCEPTION', 'administration.sales.send-receipt-whatsapp', $th->getMessage());
+
+            Notification::make()
+                ->title('No se pudo enviar por WhatsApp')
+                ->body($th->getMessage())
+                ->danger()
+                ->send();
         }
     }
 

@@ -10,6 +10,7 @@ return [
     App\Providers\Filament\MarketingPanelProvider::class,
     App\Providers\Filament\MasterPanelProvider::class,
     App\Providers\Filament\OperationsPanelProvider::class,
+    App\Providers\Filament\ProjectsPanelProvider::class,
     App\Providers\Filament\TelemedicinaPanelProvider::class,
     App\Providers\VoltServiceProvider::class,
 ];

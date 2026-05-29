@@ -15,5 +15,7 @@ it('incluye marca de agua con logo al 85% en aviso de cobro corporativo', functi
         ->toContain('bottom: 30mm')
         ->toContain('text-align: right')
         ->toContain('footer-banner')
+        ->toContain('TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN')
+        ->toContain('affiliates_count')
         ->toContain('table-layout: fixed');
 });
