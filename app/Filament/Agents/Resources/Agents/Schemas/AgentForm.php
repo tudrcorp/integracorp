@@ -547,17 +547,16 @@ class AgentForm
                         ->schema([
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {
-                                    return 'Este acuerdo establece la relación entre la Agencia o Agente y Tu Dr. Group ( quien en adelante se denominará la Compañía ) los cuales 
-                                            se sujetarán a los siguientes términos: La Compañía le ha asignado a la Agencia o Agente un número de identificación ( arriba mencionado ), 
-                                            bajo el cual se registrará el negocio proveniente de dicha Agencia o Agente. 
-                                            Este Acuerdo será efectivo a partir de la fecha de suscripción en la Compañía. Cualquiera de las partes puede terminar este Acuerdo con un 
-                                            preaviso mínimo de sesenta (60) días, siempre y cuando notifique su intención por escrito. 
-                                            La Compañía se reserva el derecho a terminar este Acuerdo por motivo de actos fraudulentos o el incumplimiento de cualquiera de las normas 
-                                            contenidas en el mismo. 
-                                            La Agencia tiene la potestad de definir la comisión por venta que reciben los agentes bajo su estructura. 
-                                            Forma parte integrante e indivisible de este acuerdo: el Addendum contentivo de las normas particulares que rigen la relación, los documentos 
-                                            complementarios de identificación de la Agencia o el Agente, los datos oficiales de identificación de las cuentas bancarias dispuestas para el 
-                                            pago de comisiones y cualquier otro documento que se adjunte en el trascurso de la relación comercial.';
+                                    return 'Este acuerdo establece la relación entre la Agencia o Agente y Tu Dr. Group 
+                                    (quien en adelante se denominará la Compañía) los cuales se sujetarán a los siguientes términos: 
+                                    La Compañía le ha asignado a la Agencia o Agente un número de identificación, bajo el cual se registrará el negocio proveniente de dicha Agencia o Agente. 
+                                    Este Acuerdo será efectivo a partir de la fecha de suscripción en la Compañía. 
+                                    Cualquiera de las partes puede terminar este Acuerdo con un preaviso mínimo de sesenta (60) días, siempre y cuando notifique su intención por escrito. 
+                                    La Compañía se reserva el derecho a terminar este Acuerdo por motivo de actos fraudulentos o el incumplimiento de los principios universales de ética y profesionalismo. 
+                                    La Agencia tiene la potestad de definir la comisión por venta que reciben los agentes bajo su estructura. 
+                                    Forma parte integrante de este acuerdo: los documentos complementarios de identificación de la Agencia o el Agente, 
+                                    los datos oficiales de identificación de las cuentas bancarias dispuestas para el pago de comisiones y 
+                                    cualquier otro documento que se adjunte en el trascurso de la relación comercial.';
                                 })
                                 ->icon('heroicon-m-folder-plus')
                                 ->schema([
