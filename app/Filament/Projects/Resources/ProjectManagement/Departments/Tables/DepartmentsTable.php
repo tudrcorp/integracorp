@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Projects\Resources\ProjectManagement\Departments\Tables;
 
+use App\Filament\Projects\Resources\ProjectManagement\Departments\DepartmentResource;
 use App\Models\ProjectManagement\Department;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -21,41 +25,79 @@ class DepartmentsTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->heading('Departamentos')
-            ->description('Estructura organizacional para asignaciones y ejecución de actividades.')
+            ->description('Unidades organizacionales con carga de actividades asignadas y seguimiento de cierre.')
             ->emptyStateHeading('No hay departamentos registrados')
-            ->emptyStateDescription('Crea el primero con «Crear Departamento» para comenzar a organizar equipos.')
+            ->emptyStateDescription('Crea el primero para asignar actividades por departamento y medir su avance operativo.')
+            ->emptyStateIcon('heroicon-o-building-office-2')
             ->recordTitle(fn (Department $record): string => $record->name)
+            ->recordUrl(
+                fn (Department $record): string => DepartmentResource::getUrl('view', ['record' => $record], panel: 'projects'),
+            )
+            ->extraAttributes([
+                'class' => 'fi-projects-departments-table',
+            ])
+            ->modifyQueryUsing(
+                fn (Builder $query): Builder => $query->withCount([
+                    'executedActivities',
+                    'executedActivities as executed_activities_done_count' => fn (Builder $activitiesQuery): Builder => $activitiesQuery->where('status', 'done'),
+                    'executedActivities as executed_activities_open_count' => fn (Builder $activitiesQuery): Builder => $activitiesQuery->where('status', '!=', 'done'),
+                ]),
+            )
             ->columns([
-                TextColumn::make('id')
-                    ->label('ID')
-                    ->icon('heroicon-m-hashtag')
+                ViewColumn::make('department_identity')
+                    ->label('Departamento')
+                    ->view('filament.projects.tables.columns.department-identity')
+                    ->grow()
+                    ->extraCellAttributes([
+                        'class' => 'fi-projects-departments-identity-cell min-w-0 max-w-2xl align-middle !whitespace-normal',
+                    ])
+                    ->extraHeaderAttributes([
+                        'class' => 'fi-projects-departments-identity-cell min-w-0 max-w-2xl',
+                    ])
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $nestedQuery) use ($search): void {
+                            $nestedQuery
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere('description', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('name', $direction);
+                    }),
+                ViewColumn::make('department_workload')
+                    ->label('Carga')
+                    ->view('filament.projects.tables.columns.department-workload')
+                    ->extraCellAttributes([
+                        'class' => 'fi-projects-departments-workload-cell min-w-[12rem] max-w-[14rem] align-middle !whitespace-normal',
+                    ])
+                    ->extraHeaderAttributes([
+                        'class' => 'fi-projects-departments-workload-cell min-w-[12rem]',
+                    ])
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('executed_activities_count', $direction);
+                    }),
+                TextColumn::make('executed_activities_count')
+                    ->label('Actividades')
+                    ->counts('executedActivities')
                     ->badge()
-                    ->color('gray')
+                    ->color(fn (int $state): string => match (true) {
+                        $state >= 10 => 'warning',
+                        $state > 0 => 'success',
+                        default => 'gray',
+                    })
+                    ->alignCenter()
                     ->sortable()
-                    ->alignCenter(),
-                TextColumn::make('name')
-                    ->label('Nombre')
-                    ->icon('heroicon-m-building-office-2')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('600')
-                    ->wrap(),
-                TextColumn::make('description')
-                    ->label('Descripción')
-                    ->icon('heroicon-m-document-text')
-                    ->limit(60)
-                    ->placeholder('—')
-                    ->tooltip(fn (Department $record): ?string => $record->description),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Creado')
-                    ->icon('heroicon-m-calendar-days')
-                    ->dateTime('d/m/Y H:i')
-                    ->description(fn (Department $record): string => $record->created_at->diffForHumans())
-                    ->sortable(),
+                    ->since()
+                    ->description(fn (Department $record): string => $record->created_at->format('d/m/Y H:i'))
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('updated_at')
                     ->label('Actualizado')
-                    ->icon('heroicon-m-arrow-path')
-                    ->dateTime('d/m/Y H:i')
+                    ->since()
+                    ->description(fn (Department $record): string => $record->updated_at->format('d/m/Y H:i'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -72,23 +114,42 @@ class DepartmentsTable
                             ->orWhere('description', '')),
                         blank: fn (Builder $query): Builder => $query,
                     ),
+                TernaryFilter::make('con_actividades')
+                    ->label('Actividades asignadas')
+                    ->placeholder('Todos')
+                    ->trueLabel('Con actividades')
+                    ->falseLabel('Sin actividades')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->has('executedActivities'),
+                        false: fn (Builder $query): Builder => $query->doesntHave('executedActivities'),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
+                Filter::make('sin_cierre')
+                    ->label('Sin actividades cerradas')
+                    ->query(fn (Builder $query): Builder => $query
+                        ->whereHas('executedActivities', fn (Builder $activitiesQuery): Builder => $activitiesQuery->where('status', '!=', 'done'))
+                        ->whereDoesntHave('executedActivities', fn (Builder $activitiesQuery): Builder => $activitiesQuery->where('status', 'done'))),
                 Filter::make('creado_hoy')
                     ->label('Creados hoy')
                     ->query(fn (Builder $query): Builder => $query->whereDate('created_at', Carbon::today())),
             ])
+            ->filtersFormColumns(2)
             ->recordActions([
                 ViewAction::make()
                     ->label('Ver')
-                    ->icon('heroicon-m-eye'),
+                    ->icon('heroicon-m-eye')
+                    ->color('gray'),
                 EditAction::make()
                     ->label('Editar')
-                    ->icon('heroicon-m-pencil-square'),
+                    ->icon('heroicon-m-pencil-square')
+                    ->color('primary'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->striped();
+            ->striped()
+            ->paginated([10, 25, 50]);
     }
 }

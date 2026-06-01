@@ -2370,9 +2370,19 @@ class NotificationController extends Controller
  
             HTML;
 
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp((string) $phone);
+
+            if ($cleanPhone === null) {
+                Log::warning('TELEMEDICINA: Teléfono inválido para mensaje previo de documentos.', [
+                    'phone' => $phone,
+                ]);
+
+                return false;
+            }
+
             $params = [
                 'token' => config('parameters.TOKEN'),
-                'to' => '04127018390',
+                'to' => $cleanPhone,
                 'body' => $body,
             ];
             $curl = curl_init();
@@ -2413,31 +2423,58 @@ class NotificationController extends Controller
 
     public static function sendDocumentsToPatient($phone, $type_document, $name_pdf)
     {
+        $caption = match ($type_document) {
+            'imagenologia' => 'REFERENCIA ESTUDIOS IMAGENOLOGIA',
+            'laboratorios' => 'REFERENCIA EXAMENES DE LABORATORIO',
+            'medicamentos' => 'RECIPE / INDICACIONES',
+            'especialista' => 'REFERENCIA A ESPECIALISTA',
+            default => 'DOCUMENTO DE TELEMEDICINA',
+        };
 
+        return self::sendTelemedicineDocumentWhatsApp((string) $phone, (string) $name_pdf, $caption);
+    }
+
+    public static function sendPublicStorageDocumentWhatsApp(string $phone, string $relativePath, string $caption): bool
+    {
+        $relativePath = ltrim($relativePath, '/');
+        $filename = basename($relativePath);
+
+        return self::sendTelemedicineDocumentWhatsApp($phone, $filename, $caption, $relativePath);
+    }
+
+    public static function sendTelemedicineDocumentWhatsApp(string $phone, string $namePdf, string $caption, ?string $relativePath = null): bool
+    {
         try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
+            $relativePath = ltrim((string) ($relativePath ?? 'telemedicina-doc/'.$namePdf), '/');
+            $filePath = public_path('storage/'.$relativePath);
+            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.$relativePath;
 
-            if ($type_document == 'imagenologia') {
-                $name_doc = 'REFERENCIA ESTUDIOS IMAGENOLOGIA';
+            if ($cleanPhone === null) {
+                Log::warning('TELEMEDICINA: Teléfono inválido para envío de documento por WhatsApp.', [
+                    'phone' => $phone,
+                    'file' => $namePdf,
+                ]);
+
+                return false;
             }
-            if ($type_document == 'laboratorios') {
-                $name_doc = 'REFERENCIA EXAMENES DE LABORATORIO';
 
-            }
-            if ($type_document == 'medicamentos') {
-                $name_doc = 'RECIPE / INDICACIONES';
+            if (! file_exists($filePath)) {
+                Log::error('TELEMEDICINA: WhatsApp Doc Error: El archivo no existe en la ruta especificada.', [
+                    'path' => $filePath,
+                    'file' => $namePdf,
+                    'phone' => $cleanPhone,
+                ]);
 
-            }
-            if ($type_document == 'especialista') {
-                $name_doc = 'REFERENCIA A ESPECIALISTA';
-
+                return false;
             }
 
             $params = [
                 'token' => config('parameters.TOKEN'),
-                'to' => '04127018390',
-                'filename' => $name_pdf,
-                'document' => config('parameters.PUBLIC_URL_DOC_TELEMEDICINA').$name_pdf,
-                'caption' => $name_doc,
+                'to' => $cleanPhone,
+                'filename' => $namePdf,
+                'document' => $documentUrl,
+                'caption' => $caption,
             ];
             $curl = curl_init();
             curl_setopt_array($curl, [
@@ -2458,20 +2495,72 @@ class NotificationController extends Controller
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
             if ($err) {
-                Log::error($err);
+                Log::error('TELEMEDICINA: Error de conexión cURL al enviar documento por WhatsApp', [
+                    'error' => $err,
+                    'to' => $cleanPhone,
+                    'file' => $namePdf,
+                    'document_url' => $documentUrl,
+                ]);
 
                 return false;
-            } else {
-                Log::info($response);
-
-                return true;
             }
+
+            if (! self::whatsAppApiResponseSucceeded($response)) {
+                Log::warning('TELEMEDICINA: WhatsApp API respondió con error al enviar documento', [
+                    'http_code' => $httpCode,
+                    'response' => $response,
+                    'phone' => $cleanPhone,
+                    'file' => $namePdf,
+                    'document_url' => $documentUrl,
+                ]);
+
+                return false;
+            }
+
+            Log::info('TELEMEDICINA: Documento enviado por WhatsApp con éxito.', [
+                'phone' => $cleanPhone,
+                'doc' => $namePdf,
+                'document_url' => $documentUrl,
+                'api_response' => $response,
+            ]);
+
+            return true;
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            Log::error('TELEMEDICINA: Fallo crítico al enviar documento por WhatsApp', [
+                'message' => $th->getMessage(),
+                'phone' => $phone,
+                'file' => $namePdf,
+            ]);
+
+            return false;
         }
+    }
+
+    private static function whatsAppApiResponseSucceeded(mixed $response): bool
+    {
+        if (! is_string($response) || trim($response) === '') {
+            return false;
+        }
+
+        $decoded = json_decode($response, true);
+
+        if (! is_array($decoded)) {
+            return false;
+        }
+
+        if (array_key_exists('error', $decoded) && filled($decoded['error'])) {
+            return false;
+        }
+
+        if (($decoded['sent'] ?? null) === 'true' || ($decoded['sent'] ?? null) === true) {
+            return true;
+        }
+
+        return isset($decoded['id']) || isset($decoded['message']);
     }
 }

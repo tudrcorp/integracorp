@@ -19,5 +19,5 @@ it('el modal de consultas del caso centraliza historia, consulta inicial y obser
         ->and($widget)->toContain("'showAddObservationInModal'")
         ->and($widget)->toContain("'showConsultaInicialCardInModal'")
         ->and($widget)->toContain('->isEmpty()')
-        ->and($widget)->toContain("->orWhere('telemedicine_doctor_follow_up_id', \$user->doctor_id)");
+        ->and($widget)->toContain("Action::make('openCaseConsultations')");
 });

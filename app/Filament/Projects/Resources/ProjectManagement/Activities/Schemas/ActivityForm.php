@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Activities\Schemas;
 
+use App\Models\ProjectManagement\Department;
 use App\Models\ProjectManagement\Group;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityAppearance;
 use App\Support\Filament\ProjectManagement\ProjectManagementCollaboratorSelect;
@@ -112,7 +113,7 @@ class ActivityForm
                     ]),
                     ProjectManagementFilamentSchemas::section(
                         'Responsable de ejecución',
-                        'Asigna la actividad a colaboradores individuales o a un equipo existente.',
+                        'Asigna la actividad a colaboradores, a un equipo o a un departamento.',
                         'heroicon-o-user-circle',
                     )->schema([
                         ProjectManagementFilamentSchemas::innerGrid([
@@ -121,10 +122,12 @@ class ActivityForm
                                 ->options([
                                     'collaborator' => 'Colaborador(es)',
                                     'team' => 'Equipo',
+                                    'department' => 'Departamento',
                                 ])
                                 ->icons([
                                     'collaborator' => Heroicon::OutlinedUser,
                                     'team' => Heroicon::OutlinedUserGroup,
+                                    'department' => Heroicon::OutlinedBuildingOffice2,
                                 ])
                                 ->inline()
                                 ->live()
@@ -134,6 +137,18 @@ class ActivityForm
                             ProjectManagementCollaboratorSelect::make('assigned_collaborator_ids', 'Colaboradores asignados')
                                 ->visible(fn (Get $get): bool => $get('assignment_type') === 'collaborator')
                                 ->required(fn (Get $get): bool => $get('assignment_type') === 'collaborator')
+                                ->columnSpanFull(),
+                            Select::make('executor_department_id')
+                                ->label('Departamento')
+                                ->prefixIcon('heroicon-m-building-office-2')
+                                ->options(fn (): array => Department::query()
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->visible(fn (Get $get): bool => $get('assignment_type') === 'department')
+                                ->required(fn (Get $get): bool => $get('assignment_type') === 'department')
                                 ->columnSpanFull(),
                             Select::make('executor_group_id')
                                 ->label('Equipo')

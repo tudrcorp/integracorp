@@ -80,10 +80,19 @@ class TelemedicineCasesTable
                     ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('patient_address')
                     ->label('Dirección')
+                    ->icon(Heroicon::OutlinedMapPin)
                     ->toggleable()
                     ->wrap()
                     ->searchable()
-                    ->extraCellAttributes(['class' => 'py-3 max-w-[12rem]']),
+                    ->tooltip(fn (TelemedicineCase $record): ?string => filled($record->patient_address)
+                        ? trim((string) $record->patient_address)
+                        : null)
+                    ->extraHeaderAttributes([
+                        'class' => 'telemedicine-case-address-column min-w-[20rem] w-[22rem]',
+                    ])
+                    ->extraCellAttributes([
+                        'class' => 'telemedicine-case-address-column py-3 align-top min-w-[20rem] w-[22rem] max-w-[26rem] whitespace-normal',
+                    ]),
                 TextColumn::make('assigned_by')
                     ->label('Asignado por')
                     ->toggleable(isToggledHiddenByDefault: true)

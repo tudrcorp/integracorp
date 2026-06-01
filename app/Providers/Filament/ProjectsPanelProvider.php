@@ -143,19 +143,19 @@ class ProjectsPanelProvider extends PanelProvider
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.projects.partials.affiliation-documents-panel-script')
             )
-            ->renderHook(
-                PanelsRenderHook::BODY_END,
-                fn () => view('filament.projects.helpdesks.helpdesk-tour-script')
-            )
+            // ->renderHook(
+            //     PanelsRenderHook::BODY_END,
+            //     fn () => view('filament.projects.helpdesks.helpdesk-tour-script')
+            // )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.panels.internal-quick-nav')
-            )
-            ->renderHook(
-                PanelsRenderHook::CONTENT_START,
-                fn () => view('filament.hooks.projects-helpdesk-tickets-ticker-wrapper', [
-                    'fullWidth' => true,
-                ])
             );
+        // ->renderHook(
+        //     PanelsRenderHook::CONTENT_START,
+        //     fn () => view('filament.hooks.projects-helpdesk-tickets-ticker-wrapper', [
+        //         'fullWidth' => true,
+        //     ])
+        // );
     }
 }

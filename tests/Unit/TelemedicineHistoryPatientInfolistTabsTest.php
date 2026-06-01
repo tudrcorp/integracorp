@@ -29,6 +29,10 @@ it('infolist de historia clínica en panel Telemedicina usa pestañas por bloque
         ->toContain('Tab::make')
         ->toContain('persistTab')
         ->toContain('telemedicineHistoryPatientTelemedicinaInfolistTabs')
+        ->toContain('TABS_CONTAINER')
+        ->toContain('SECTION_CARD')
         ->toContain('Información general')
+        ->toContain('Paciente principal')
+        ->toContain('telemedicinePatient.full_name')
         ->toContain('Ginecológicos');
 });

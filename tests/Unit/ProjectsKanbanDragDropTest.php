@@ -8,8 +8,11 @@ it('registra drag and drop en kanban con actualizacion de estatus', function ():
 
     expect(file_get_contents($pagePath))
         ->toContain('public function moveActivity(int $activityId, string $status): void')
-        ->toContain("->update(['status' => \$status])")
-        ->toContain('skipRender()')
+        ->toContain('archiveActivityFromKanban')
+        ->toContain('archivedFilter')
+        ->toContain('ProjectManagementKanbanActivitiesQuery')
+        ->toContain('ARCHIVED_FILTERS')
+        ->not->toContain('skipRender()')
         ->toContain('Notification::make()');
 
     expect(file_get_contents($viewPath))
@@ -19,5 +22,9 @@ it('registra drag and drop en kanban con actualizacion de estatus', function ():
         ->toContain('kanban-card-fallback')
         ->toContain('runPickupMotion')
         ->toContain('kanban-card-surface')
-        ->toContain('startPickupTiltTracking');
+        ->toContain('startPickupTiltTracking')
+        ->toContain('archiveActivityFromKanban')
+        ->toContain('wire:confirm')
+        ->toContain('wire:model.live="archivedFilter"')
+        ->toContain('archivedFilterOptions');
 });

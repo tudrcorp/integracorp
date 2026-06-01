@@ -29,11 +29,47 @@ it('calcula porcentaje preciso del plazo segun fecha limite', function (): void 
 });
 
 it('documenta barra de plazo con porcentaje y detalle en vista de actividades', function (): void {
-    $viewPath = dirname(__DIR__, 2).'/resources/views/filament/projects/tables/columns/activity-due.blade.php';
+    $viewPath = dirname(__DIR__, 2).'/resources/views/components/projects/activity-due-progress.blade.php';
 
     expect(file_get_contents($viewPath))
         ->toContain('progress_detail')
         ->toContain('aria-valuetext')
         ->toContain('Consumo del plazo')
         ->toContain('min-w-[18rem]');
+});
+
+it('define resumen de ejecucion kanban para actividades finalizadas', function (): void {
+    $tablePath = dirname(__DIR__, 2).'/app/Support/Filament/ProjectManagement/ProjectManagementActivityTable.php';
+
+    expect(file_get_contents($tablePath))
+        ->toContain('kanbanDoneExecutionSummary')
+        ->toContain("if (\$activity->status !== 'done')")
+        ->toContain('started_label')
+        ->toContain('finished_label')
+        ->toContain('optimal_label')
+        ->toContain('elapsed_label')
+        ->toContain('within_range')
+        ->toContain('kanbanDaysLabel');
+});
+
+it('kanban oculta acciones y muestra resumen en actividades finalizadas', function (): void {
+    $viewPath = dirname(__DIR__, 2).'/resources/views/filament/projects/pages/kanban.blade.php';
+
+    expect(file_get_contents($viewPath))
+        ->toContain("if (\$activity->status === 'done')")
+        ->toContain('@else')
+        ->toContain('kanbanDoneExecutionSummary')
+        ->toContain('within_range')
+        ->toContain('Plazo óptimo')
+        ->toContain('Ejecución')
+        ->toContain('started_label')
+        ->toContain('archiveActivityFromKanban')
+        ->toContain('kanban-priority-badge--high')
+        ->toContain('heroicon-m-archive-box')
+        ->toContain('text-red-700')
+        ->toContain('x-projects.kanban-activity-assignees')
+        ->toContain('mountAction(\'addActivityNote\'');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Projects/Pages/Kanban.php'))
+        ->not->toContain('skipRender()');
 });

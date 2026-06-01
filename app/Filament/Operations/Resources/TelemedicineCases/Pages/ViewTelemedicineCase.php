@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\TelemedicineCases\Pages;
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\TelemedicineCase;
+use App\Support\Telemedicine\TelemedicineCaseDocumentSendAction;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -49,5 +50,10 @@ class ViewTelemedicineCase extends ViewRecord
         }
 
         return $actions;
+    }
+
+    public function sendCaseDocumentAction(): Action
+    {
+        return TelemedicineCaseDocumentSendAction::make();
     }
 }

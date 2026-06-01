@@ -44,7 +44,6 @@ class GroupsTable
                 ViewColumn::make('group_identity')
                     ->label('Equipo')
                     ->view('filament.projects.tables.columns.group-identity')
-                    ->grow()
                     ->extraCellAttributes([
                         'class' => 'min-w-0 max-w-2xl align-middle !whitespace-normal',
                     ])

@@ -4742,6 +4742,58 @@
   .fi-projects-groups-workload-cell {
     @apply whitespace-normal;
   }
+
+  .fi-ta-cell-department-identity,
+  .fi-ta-header-cell-department-identity,
+  .fi-projects-departments-identity-cell {
+    @apply min-w-0 max-w-2xl whitespace-normal;
+  }
+
+  .fi-ta-cell-department-identity .fi-ta-cell-content {
+    @apply block min-w-0 max-w-full overflow-hidden whitespace-normal;
+  }
+
+  .fi-projects-department-identity__description {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  .fi-projects-department-identity__accent {
+    background: linear-gradient(180deg, var(--department-color), color-mix(in srgb, var(--department-color) 60%, transparent));
+  }
+
+  .fi-projects-department-identity__icon {
+    border-color: color-mix(in srgb, var(--department-color) 34%, transparent);
+    background: color-mix(in srgb, var(--department-color) 14%, transparent);
+    color: var(--department-color);
+  }
+
+  .fi-projects-department-identity__badge {
+    @apply inline-flex shrink-0 items-center rounded-full border border-gray-200/80 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-gray-300;
+  }
+
+  .fi-projects-department-identity__flag {
+    @apply inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+  }
+
+  .fi-projects-department-identity__flag--active {
+    @apply bg-amber-500/15 text-amber-700 dark:text-amber-300;
+  }
+
+  .fi-projects-department-identity__flag--done {
+    @apply bg-emerald-500/15 text-emerald-700 dark:text-emerald-300;
+  }
+
+  .fi-projects-department-workload__percent {
+    background: color-mix(in srgb, var(--department-color) 16%, transparent);
+  }
+
+  .fi-ta-cell-department-workload,
+  .fi-ta-header-cell-department-workload,
+  .fi-projects-departments-workload-cell {
+    @apply min-w-[12rem] max-w-[14rem] whitespace-normal;
+  }
 }
 
 

@@ -35,7 +35,7 @@
             </div>
 
             <div class="activity-description-highlight__body px-4 py-4 sm:px-5 sm:py-5">
-                <p class="activity-description-highlight__text text-justify whitespace-pre-wrap text-sm font-medium leading-7 sm:text-[0.9375rem] sm:leading-8">
+                <p class="activity-description-highlight__text text-justify text-sm font-medium leading-7 sm:text-[0.9375rem] sm:leading-8">
                     {{ $description }}
                 </p>
             </div>

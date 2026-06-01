@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Activities\Concerns;
 
+use App\Models\ProjectManagement\Department;
 use App\Models\ProjectManagement\Group;
 use App\Models\RrhhColaborador;
 use App\Support\Filament\ProjectManagement\ProjectManagementGroupMembers;
@@ -18,7 +19,13 @@ trait InteractsWithActivityAssignmentForm
     {
         $assignmentType = (string) ($data['assignment_type'] ?? 'collaborator');
 
-        if ($assignmentType === 'team') {
+        if ($assignmentType === 'department') {
+            $department = Department::query()->find((int) ($data['executor_department_id'] ?? 0));
+
+            $data['executor_type'] = Department::class;
+            $data['executor_id'] = (int) ($department?->id ?? 0);
+            $data['assigned_collaborator_ids'] = [];
+        } elseif ($assignmentType === 'team') {
             $group = Group::query()->find((int) ($data['executor_group_id'] ?? 0));
 
             $data['executor_type'] = Group::class;
@@ -39,7 +46,7 @@ trait InteractsWithActivityAssignmentForm
             $data['executor_id'] = $collaboratorIds[0] ?? null;
         }
 
-        unset($data['executor_group_id']);
+        unset($data['executor_group_id'], $data['executor_department_id']);
 
         return $data;
     }
@@ -50,7 +57,11 @@ trait InteractsWithActivityAssignmentForm
      */
     protected function hydrateActivityAssignmentFormData(array $data): array
     {
-        if (($data['executor_type'] ?? null) === Group::class && filled($data['executor_id'] ?? null)) {
+        if (($data['executor_type'] ?? null) === Department::class && filled($data['executor_id'] ?? null)) {
+            $data['assignment_type'] = 'department';
+            $data['executor_department_id'] = (int) $data['executor_id'];
+            $data['assigned_collaborator_ids'] = [];
+        } elseif (($data['executor_type'] ?? null) === Group::class && filled($data['executor_id'] ?? null)) {
             $group = Group::query()->find((int) $data['executor_id']);
 
             $data['assignment_type'] = 'team';

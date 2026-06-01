@@ -1,5 +1,7 @@
 @props([
     'activity',
+    'inline' => false,
+    'align' => 'start',
 ])
 
 @php
@@ -17,8 +19,12 @@
 @endphp
 
 <x-collaborator-avatar-stack
-    class="kanban-activity-assignees mt-3"
-    align="start"
+    @class([
+        'kanban-activity-assignees',
+        'mt-3' => ! $inline,
+        'shrink-0' => $inline,
+    ])
+    :align="$align"
     :avatars="$assignment['visible_members'] ?? []"
     :overflow-count="$assignment['overflow_count'] ?? 0"
     :tooltip-title="$tooltipTitle"

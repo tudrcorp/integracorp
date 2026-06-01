@@ -11,7 +11,10 @@ it('Telemedicina TelemedicineCasesTable usa consulta centralizada y estilo iOS d
         ->and($contents)->toContain('telemedicine-case-table-ios')
         ->and($contents)->toContain('TelemedicinePriorityFilamentBadge::')
         ->and($contents)->toContain('->emptyStateHeading(')
-        ->and($contents)->toContain('->with([');
+        ->and($contents)->toContain('->with([')
+        ->and($contents)->toContain('telemedicine-case-address-column')
+        ->and($contents)->toContain("TextColumn::make('patient_address')")
+        ->and($contents)->not->toContain('max-w-[12rem]');
 });
 
 it('TelemedicineCaseFilamentListQuery aplica managed_by ATENMEDI con contexto médico ATENMEDI', function (): void {

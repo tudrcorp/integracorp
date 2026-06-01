@@ -146,6 +146,7 @@ class ActivitiesTable
                     ->options([
                         'collaborator' => 'Colaborador(es)',
                         'team' => 'Equipo',
+                        'department' => 'Departamento',
                     ]),
                 Filter::make('vencidas')
                     ->label('Plazo vencido')
@@ -191,5 +192,16 @@ class ActivitiesTable
             ])
             ->striped()
             ->paginated([10, 25, 50]);
+    }
+
+    public static function configureForKanban(Table $table): Table
+    {
+        return static::configure($table)
+            ->heading('Actividades')
+            ->description('Listado operativo con prioridad, plazo, asignación y contexto del proyecto.')
+            ->searchable(false)
+            ->filters([])
+            ->filtersFormColumns(1)
+            ->queryStringIdentifier('kanbanActivities');
     }
 }

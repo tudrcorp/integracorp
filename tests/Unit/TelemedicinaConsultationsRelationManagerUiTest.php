@@ -14,5 +14,6 @@ it('relation manager de consultas en panel telemedicina replica estilos y lógic
         ->toContain('coverageStatusBadgeHtml')
         ->toContain('svgIconShieldCheck')
         ->toContain("ColumnGroup::make('Cobertura', [")
-        ->toContain('TelemedicineMedicationCoverage::isCovered');
+        ->toContain('TelemedicineMedicationCoverage::isCovered')
+        ->toContain('telemedicine-case-table-ios');
 });

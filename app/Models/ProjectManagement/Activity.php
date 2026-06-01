@@ -30,14 +30,21 @@ class Activity extends Model
         'executor_type',
         'executor_id',
         'due_date',
+        'kanban_archived_at',
     ];
 
     protected function casts(): array
     {
         return [
             'due_date' => 'date',
+            'kanban_archived_at' => 'datetime',
             'assigned_collaborator_ids' => 'array',
         ];
+    }
+
+    public function isArchivedFromKanban(): bool
+    {
+        return $this->kanban_archived_at !== null;
     }
 
     public function project(): BelongsTo
