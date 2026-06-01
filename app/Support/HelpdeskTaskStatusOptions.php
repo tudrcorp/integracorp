@@ -103,11 +103,11 @@ final class HelpdeskTaskStatusOptions
         }
 
         if ($isAssignee && ! $isCreator) {
-            return 'Como responsable de ejecución, puede avanzar el ticket por los estados operativos (sin Terminado ni Cancelado).';
+            return 'Como analista asignado, seleccione el nuevo estado y registre una nota con el motivo o la explicación del cambio.';
         }
 
         if ($isCreator && $isAssignee) {
-            return 'Usted es creador y asignado: puede usar cualquier estado del flujo.';
+            return 'Usted es creador y asignado: puede usar cualquier estado del flujo. Debe documentar el motivo del cambio en la nota obligatoria.';
         }
 
         return 'Seleccione el nuevo estado operativo del ticket.';

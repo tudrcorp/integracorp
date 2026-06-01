@@ -1571,6 +1571,168 @@
     color: rgb(203 213 225);
   }
 
+  /* Helpdesk infolist: descripción — fondo plano, sin gradientes (lectura prolongada) */
+  .fi-helpdesk-description-card {
+    border-radius: 1rem;
+    padding: 1rem 1.15rem 0.85rem;
+    background: rgb(248 250 252);
+    border: 1px solid rgb(226 232 240);
+    box-shadow: none;
+  }
+
+  .fi-helpdesk-description-card .fi-in-entry {
+    gap: 0.5rem;
+  }
+
+  .fi-helpdesk-description-card .fi-in-entry-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: rgb(71 85 105);
+  }
+
+  .fi-helpdesk-description-card .fi-in-entry-content-ctn,
+  .fi-helpdesk-description-card .fi-in-entry-content {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .fi-helpdesk-description-card .fi-in-entry-helper-text {
+    margin-top: 0.65rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid rgb(226 232 240);
+    font-size: 0.75rem;
+    color: rgb(100 116 139);
+  }
+
+  .dark .fi-helpdesk-description-card {
+    background: rgb(39 39 42 / 0.55);
+    border-color: rgb(63 63 70);
+  }
+
+  .dark .fi-helpdesk-description-card .fi-in-entry-label {
+    color: rgb(161 161 170);
+  }
+
+  .dark .fi-helpdesk-description-card .fi-in-entry-helper-text {
+    border-top-color: rgb(63 63 70);
+    color: rgb(161 161 170);
+  }
+
+  .fi-helpdesk-description-card__body {
+    margin-top: 0.15rem;
+  }
+
+  .fi-helpdesk-description-card__prose {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: rgb(51 65 85);
+  }
+
+  .fi-helpdesk-description-card__prose p {
+    margin: 0 0 0.65rem;
+  }
+
+  .fi-helpdesk-description-card__prose p:last-child {
+    margin-bottom: 0;
+  }
+
+  .fi-helpdesk-description-card__prose ul,
+  .fi-helpdesk-description-card__prose ol {
+    margin: 0.35rem 0 0.65rem 1.1rem;
+    padding: 0;
+  }
+
+  .fi-helpdesk-description-card__prose li {
+    margin: 0.2rem 0;
+  }
+
+  .fi-helpdesk-description-card__prose strong {
+    color: rgb(15 23 42);
+    font-weight: 650;
+  }
+
+  .fi-helpdesk-description-card__prose a {
+    color: rgb(37 99 235);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .fi-helpdesk-description-card__empty {
+    border-radius: 0.875rem;
+    border: 1px dashed rgb(203 213 225);
+    background: rgb(255 255 255 / 0.65);
+    padding: 1.5rem 1rem;
+    text-align: center;
+  }
+
+  .fi-helpdesk-description-card__empty-title {
+    font-size: 0.875rem;
+    font-weight: 650;
+    color: rgb(51 65 85);
+  }
+
+  .fi-helpdesk-description-card__empty-text {
+    margin-top: 0.35rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: rgb(100 116 139);
+  }
+
+  .dark .fi-helpdesk-description-card__prose {
+    color: rgb(212 212 216);
+  }
+
+  .dark .fi-helpdesk-description-card__prose strong {
+    color: rgb(228 228 231);
+    font-weight: 600;
+  }
+
+  .dark .fi-helpdesk-description-card__prose a {
+    color: rgb(147 197 253);
+  }
+
+  .dark .fi-helpdesk-description-card__empty {
+    border-color: rgb(63 63 70);
+    background: rgb(255 255 255 / 0.04);
+  }
+
+  .dark .fi-helpdesk-description-card__empty-title {
+    color: rgb(226 232 240);
+  }
+
+  .dark .fi-helpdesk-description-card__empty-text {
+    color: rgb(148 163 184);
+  }
+
+  .fi-helpdesk-technology-terms {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: rgb(51 65 85);
+  }
+
+  .fi-helpdesk-technology-terms__lead {
+    font-weight: 500;
+    color: rgb(15 23 42);
+  }
+
+  .fi-helpdesk-technology-terms__closing {
+    font-weight: 600;
+    color: rgb(15 23 42);
+  }
+
+  .dark .fi-helpdesk-technology-terms {
+    color: rgb(203 213 225);
+  }
+
+  .dark .fi-helpdesk-technology-terms__lead,
+  .dark .fi-helpdesk-technology-terms__closing {
+    color: rgb(248 250 252);
+  }
+
   .fi-helpdesk-ticket-type-panel .fi-fo-radio {
     gap: 0.5rem;
   }
@@ -1792,11 +1954,48 @@
     min-height: 6rem;
   }
 
-  /* Helpdesk — historial de notas en infolist */
+  /* Helpdesk — historial de notas (infolist + modal Ver notas) */
+  .fi-helpdesk-notes-modal .helpdesk-notes-surface,
+  .helpdesk-notes-surface,
   .helpdesk-notes-infolist {
     max-width: 100%;
+    width: 100%;
   }
 
+  /* Anula estilos prose de Filament sobre el historial HTML */
+  .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card,
+  .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__head,
+  .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__head {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.625rem !important;
+  }
+
+  .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__identity,
+  .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__identity {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.125rem !important;
+    min-width: 0;
+  }
+
+  .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__name,
+  .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__name {
+    display: block !important;
+  }
+
+  .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__time,
+  .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__time {
+    display: block !important;
+  }
+
+  .helpdesk-notes-surface .helpdesk-notes-summary,
   .helpdesk-notes-infolist .helpdesk-notes-summary {
     display: flex;
     align-items: center;
@@ -1808,6 +2007,7 @@
     background: rgb(236 253 245 / 0.9);
   }
 
+  .helpdesk-notes-surface .helpdesk-notes-summary--empty,
   .helpdesk-notes-infolist .helpdesk-notes-summary--empty {
     margin-bottom: 0;
     padding: 0;
@@ -1817,11 +2017,13 @@
     color: rgb(107 114 128);
   }
 
+  .helpdesk-notes-surface .helpdesk-notes-summary__icon,
   .helpdesk-notes-infolist .helpdesk-notes-summary__icon {
     font-size: 1.125rem;
     line-height: 1;
   }
 
+  .helpdesk-notes-surface .helpdesk-notes-summary__text,
   .helpdesk-notes-infolist .helpdesk-notes-summary__text {
     display: flex;
     flex-direction: column;
@@ -1829,6 +2031,7 @@
     min-width: 0;
   }
 
+  .helpdesk-notes-surface .helpdesk-notes-summary__title,
   .helpdesk-notes-infolist .helpdesk-notes-summary__title {
     font-size: 0.65rem;
     font-weight: 700;
@@ -1837,12 +2040,14 @@
     color: rgb(4 120 87);
   }
 
+  .helpdesk-notes-surface .helpdesk-notes-summary__count,
   .helpdesk-notes-infolist .helpdesk-notes-summary__count {
     font-size: 0.8125rem;
     font-weight: 600;
     color: rgb(6 78 59);
   }
 
+  .helpdesk-notes-surface .helpdesk-notes-feed,
   .helpdesk-notes-infolist .helpdesk-notes-feed {
     display: flex;
     flex-direction: column;
@@ -1852,12 +2057,14 @@
     list-style: none;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card,
   .helpdesk-notes-infolist .helpdesk-note-card {
     position: relative;
     margin: 0;
     padding: 0 0 0 1.125rem;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card::before,
   .helpdesk-notes-infolist .helpdesk-note-card::before {
     content: '';
     position: absolute;
@@ -1869,10 +2076,12 @@
     background: linear-gradient(180deg, rgb(14 165 233 / 0.45), rgb(14 165 233 / 0.08));
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card:last-child::before,
   .helpdesk-notes-infolist .helpdesk-note-card:last-child::before {
     display: none;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card::after,
   .helpdesk-notes-infolist .helpdesk-note-card::after {
     content: '';
     position: absolute;
@@ -1885,6 +2094,7 @@
     box-shadow: 0 0 0 3px rgb(255 255 255), 0 0 0 4px rgb(14 165 233 / 0.25);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__shell,
   .helpdesk-notes-infolist .helpdesk-note-card__shell {
     border-radius: 0.875rem;
     padding: 0.75rem 0.875rem 0.875rem;
@@ -1896,6 +2106,7 @@
       box-shadow 0.15s ease;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card:first-child .helpdesk-note-card__shell,
   .helpdesk-notes-infolist .helpdesk-note-card:first-child .helpdesk-note-card__shell {
     border-color: rgb(125 211 252 / 0.65);
     box-shadow:
@@ -1903,11 +2114,19 @@
       0 4px 14px rgb(14 165 233 / 0.1);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__shell:hover,
   .helpdesk-notes-infolist .helpdesk-note-card__shell:hover {
     border-color: rgb(186 230 253);
     box-shadow: 0 4px 12px rgb(15 23 42 / 0.06);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__shell:focus-within,
+  .helpdesk-notes-infolist .helpdesk-note-card__shell:focus-within {
+    outline: 2px solid rgb(14 165 233 / 0.35);
+    outline-offset: 2px;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-card__head,
   .helpdesk-notes-infolist .helpdesk-note-card__head {
     display: flex;
     align-items: center;
@@ -1915,6 +2134,7 @@
     margin-bottom: 0.5rem;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__avatar,
   .helpdesk-notes-infolist .helpdesk-note-card__avatar {
     flex-shrink: 0;
     display: flex;
@@ -1931,6 +2151,7 @@
     border: 1px solid rgb(147 197 253 / 0.5);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__identity,
   .helpdesk-notes-infolist .helpdesk-note-card__identity {
     flex: 1;
     min-width: 0;
@@ -1939,6 +2160,7 @@
     gap: 0.1rem;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__name,
   .helpdesk-notes-infolist .helpdesk-note-card__name {
     font-size: 0.8125rem;
     font-weight: 700;
@@ -1949,6 +2171,7 @@
     text-overflow: ellipsis;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__time,
   .helpdesk-notes-infolist .helpdesk-note-card__time {
     font-size: 0.6875rem;
     font-weight: 500;
@@ -1957,6 +2180,7 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__badge,
   .helpdesk-notes-infolist .helpdesk-note-card__badge {
     flex-shrink: 0;
     padding: 0.2rem 0.5rem;
@@ -1968,30 +2192,35 @@
     line-height: 1.2;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__badge--note,
   .helpdesk-notes-infolist .helpdesk-note-card__badge--note {
     color: rgb(4 120 87);
     background: rgb(209 250 229);
     border: 1px solid rgb(110 231 183 / 0.5);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__badge--status,
   .helpdesk-notes-infolist .helpdesk-note-card__badge--status {
     color: rgb(29 78 216);
     background: rgb(219 234 254);
     border: 1px solid rgb(147 197 253 / 0.55);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__badge--priority,
   .helpdesk-notes-infolist .helpdesk-note-card__badge--priority {
     color: rgb(146 64 14);
     background: rgb(254 243 199);
     border: 1px solid rgb(252 211 77 / 0.55);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__badge--legacy,
   .helpdesk-notes-infolist .helpdesk-note-card__badge--legacy {
     color: rgb(71 85 105);
     background: rgb(241 245 249);
     border: 1px solid rgb(203 213 225 / 0.6);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__body,
   .helpdesk-notes-infolist .helpdesk-note-card__body {
     padding-left: 2.875rem;
     font-size: 0.9375rem;
@@ -2001,19 +2230,38 @@
     word-break: break-word;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__body p,
   .helpdesk-notes-infolist .helpdesk-note-card__body p {
     margin: 0;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__body p + p,
   .helpdesk-notes-infolist .helpdesk-note-card__body p + p {
     margin-top: 0.375rem;
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__body strong,
   .helpdesk-notes-infolist .helpdesk-note-card__body strong {
     font-weight: 700;
     color: rgb(15 23 42);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card__content a,
+  .helpdesk-notes-infolist .helpdesk-note-card__content a {
+    color: rgb(37 99 235);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-card__content ul,
+  .helpdesk-notes-surface .helpdesk-note-card__content ol,
+  .helpdesk-notes-infolist .helpdesk-note-card__content ul,
+  .helpdesk-notes-infolist .helpdesk-note-card__content ol {
+    margin: 0.35rem 0 0;
+    padding-left: 1.25rem;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-card__callout,
   .helpdesk-notes-infolist .helpdesk-note-card__callout {
     padding: 0.5rem 0.625rem;
     border-radius: 0.5rem;
@@ -2021,11 +2269,135 @@
     border-left: 3px solid rgb(59 130 246);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card--status_change .helpdesk-note-card__callout,
   .helpdesk-notes-infolist .helpdesk-note-card--status_change .helpdesk-note-card__callout {
     background: rgb(239 246 255 / 0.95);
     border-left-color: rgb(37 99 235);
   }
 
+  .helpdesk-notes-surface .helpdesk-note-card--status_change .helpdesk-note-card__body,
+  .helpdesk-notes-infolist .helpdesk-note-card--status_change .helpdesk-note-card__body {
+    padding-left: 0;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-flow,
+  .helpdesk-notes-infolist .helpdesk-note-status-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.65rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-pill,
+  .helpdesk-notes-infolist .helpdesk-note-status-pill {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.3rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    line-height: 1.25;
+    color: rgb(30 64 175);
+    background: rgb(255 255 255);
+    border: 1px solid rgb(147 197 253 / 0.55);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-pill--new,
+  .helpdesk-notes-infolist .helpdesk-note-status-pill--new {
+    color: rgb(6 78 59);
+    background: rgb(209 250 229);
+    border-color: rgb(110 231 183 / 0.55);
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-arrow,
+  .helpdesk-notes-infolist .helpdesk-note-status-arrow {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: rgb(100 116 139);
+    line-height: 1;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-reason,
+  .helpdesk-notes-infolist .helpdesk-note-status-reason {
+    margin-top: 0.15rem;
+    padding-top: 0.55rem;
+    border-top: 1px dashed rgb(191 219 254 / 0.85);
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-reason__label,
+  .helpdesk-notes-infolist .helpdesk-note-status-reason__label {
+    margin: 0 0 0.35rem;
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(37 99 235);
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-reason__text,
+  .helpdesk-notes-infolist .helpdesk-note-status-reason__text {
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: rgb(51 65 85);
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-reason__text p,
+  .helpdesk-notes-infolist .helpdesk-note-status-reason__text p {
+    margin: 0;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-status-reason__text p + p,
+  .helpdesk-notes-infolist .helpdesk-note-status-reason__text p + p {
+    margin-top: 0.35rem;
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-card__content,
+  .helpdesk-notes-infolist .helpdesk-note-card__content {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: rgb(51 65 85);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-status-pill,
+  .dark .helpdesk-notes-infolist .helpdesk-note-status-pill {
+    color: rgb(191 219 254);
+    background: rgb(30 41 59);
+    border-color: rgb(59 130 246 / 0.4);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-status-pill--new,
+  .dark .helpdesk-notes-infolist .helpdesk-note-status-pill--new {
+    color: rgb(167 243 208);
+    background: rgb(6 78 59 / 0.45);
+    border-color: rgb(52 211 153 / 0.35);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-status-arrow,
+  .dark .helpdesk-notes-infolist .helpdesk-note-status-arrow {
+    color: rgb(148 163 184);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-status-reason,
+  .dark .helpdesk-notes-infolist .helpdesk-note-status-reason {
+    border-top-color: rgb(51 65 85);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-status-reason__label,
+  .dark .helpdesk-notes-infolist .helpdesk-note-status-reason__label {
+    color: rgb(147 197 253);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-status-reason__text,
+  .dark .helpdesk-notes-infolist .helpdesk-note-status-reason__text {
+    color: rgb(203 213 225);
+  }
+
+  .helpdesk-notes-surface .helpdesk-note-legacy,
   .helpdesk-notes-infolist .helpdesk-note-legacy {
     padding: 0.75rem 1rem;
     border-radius: 0.875rem;
@@ -2036,70 +2408,191 @@
     border: 1px dashed rgb(203 213 225);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-notes-summary,
   .dark .helpdesk-notes-infolist .helpdesk-notes-summary {
     border-color: rgb(16 185 129 / 0.28);
     background: rgb(6 78 59 / 0.35);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-notes-summary__title,
   .dark .helpdesk-notes-infolist .helpdesk-notes-summary__title {
     color: rgb(110 231 183);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-notes-summary__count,
   .dark .helpdesk-notes-infolist .helpdesk-notes-summary__count {
     color: rgb(167 243 208);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card::before,
   .dark .helpdesk-notes-infolist .helpdesk-note-card::before {
     background: linear-gradient(180deg, rgb(56 189 248 / 0.5), rgb(56 189 248 / 0.06));
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card::after,
   .dark .helpdesk-notes-infolist .helpdesk-note-card::after {
     background: rgb(56 189 248);
     box-shadow: 0 0 0 3px rgb(15 23 42), 0 0 0 4px rgb(56 189 248 / 0.35);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card__shell,
   .dark .helpdesk-notes-infolist .helpdesk-note-card__shell {
     background: rgb(30 41 59 / 0.55);
     border-color: rgb(51 65 85 / 0.85);
     box-shadow: none;
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card:first-child .helpdesk-note-card__shell,
   .dark .helpdesk-notes-infolist .helpdesk-note-card:first-child .helpdesk-note-card__shell {
-    border-color: rgb(56 189 248 / 0.35);
-    box-shadow: 0 0 0 1px rgb(56 189 248 / 0.12);
+    border-color: rgb(56 189 248 / 0.4);
+    box-shadow:
+      0 0 0 1px rgb(56 189 248 / 0.15),
+      0 6px 18px rgb(14 165 233 / 0.12);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card__shell:hover,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__shell:hover {
+    border-color: rgb(56 189 248 / 0.45);
+    background: rgb(30 41 59 / 0.72);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__shell:focus-within,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__shell:focus-within {
+    outline-color: rgb(56 189 248 / 0.45);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__avatar,
   .dark .helpdesk-notes-infolist .helpdesk-note-card__avatar {
     color: rgb(191 219 254);
     background: linear-gradient(145deg, rgb(30 58 138 / 0.5), rgb(30 64 175 / 0.35));
     border-color: rgb(59 130 246 / 0.35);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card__name,
   .dark .helpdesk-notes-infolist .helpdesk-note-card__name {
     color: rgb(248 250 252);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card__time,
   .dark .helpdesk-notes-infolist .helpdesk-note-card__time {
     color: rgb(148 163 184);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card__body,
   .dark .helpdesk-notes-infolist .helpdesk-note-card__body {
     color: rgb(226 232 240);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card__body strong,
   .dark .helpdesk-notes-infolist .helpdesk-note-card__body strong {
-    color: rgb(255 255 255);
+    color: rgb(248 250 252);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card__callout,
   .dark .helpdesk-notes-infolist .helpdesk-note-card__callout {
-    background: rgb(30 58 138 / 0.25);
+    background: rgb(30 58 138 / 0.28);
     border-left-color: rgb(96 165 250);
   }
 
+  .dark .helpdesk-notes-surface .helpdesk-note-card--status_change .helpdesk-note-card__callout,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card--status_change .helpdesk-note-card__callout {
+    background: rgb(30 58 138 / 0.38);
+    border-left-color: rgb(59 130 246);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__content,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__content {
+    color: rgb(203 213 225);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__content a,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__content a {
+    color: rgb(125 211 252);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__content a:hover,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__content a:hover {
+    color: rgb(186 230 253);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-notes-summary--empty,
+  .dark .helpdesk-notes-infolist .helpdesk-notes-summary--empty {
+    color: rgb(148 163 184);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__badge--note,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__badge--note {
+    color: rgb(110 231 183);
+    background: rgb(6 78 59 / 0.55);
+    border-color: rgb(52 211 153 / 0.35);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__badge--status,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__badge--status {
+    color: rgb(147 197 253);
+    background: rgb(30 58 138 / 0.45);
+    border-color: rgb(59 130 246 / 0.4);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__badge--priority,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__badge--priority {
+    color: rgb(253 230 138);
+    background: rgb(120 53 15 / 0.45);
+    border-color: rgb(245 158 11 / 0.35);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-card__badge--legacy,
+  .dark .helpdesk-notes-infolist .helpdesk-note-card__badge--legacy {
+    color: rgb(203 213 225);
+    background: rgb(51 65 85 / 0.55);
+    border-color: rgb(100 116 139 / 0.4);
+  }
+
+  .dark .helpdesk-notes-surface .helpdesk-note-legacy,
   .dark .helpdesk-notes-infolist .helpdesk-note-legacy {
     color: rgb(203 213 225);
-    background: rgb(15 23 42 / 0.5);
+    background: rgb(15 23 42 / 0.55);
     border-color: rgb(71 85 105);
+  }
+
+  /* Modal e infolist: anula prose/links de Filament en dark */
+  .dark .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__body,
+  .dark .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__content,
+  .dark .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__body,
+  .dark .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__content {
+    color: rgb(226 232 240) !important;
+  }
+
+  .dark .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__body strong,
+  .dark .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__content strong,
+  .dark .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__body strong,
+  .dark .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__content strong {
+    color: rgb(248 250 252) !important;
+  }
+
+  .dark .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__body p,
+  .dark .fi-in-entry-content .helpdesk-notes-surface .helpdesk-note-card__content p,
+  .dark .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__body p,
+  .dark .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__content p {
+    color: inherit;
+  }
+
+  .dark .fi-helpdesk-notes-modal .helpdesk-note-card::after,
+  .dark .fi-helpdesk-notes-modal__feed .helpdesk-note-card::after {
+    box-shadow:
+      0 0 0 3px rgb(17 24 39),
+      0 0 0 4px rgb(56 189 248 / 0.35);
+  }
+
+  .dark .fi-helpdesk-notes-modal__feed {
+    background: rgb(17 24 39 / 0.55);
+  }
+
+  .dark .fi-helpdesk-ios-section .helpdesk-notes-infolist .helpdesk-note-card::after {
+    box-shadow:
+      0 0 0 3px rgb(15 23 42),
+      0 0 0 4px rgb(56 189 248 / 0.35);
   }
 
   /* Marketing — infolist iOS (InfoFree, Capemiac, ContactList): tarjetas + inset + filas */
@@ -4793,6 +5286,38 @@
   .fi-ta-header-cell-department-workload,
   .fi-projects-departments-workload-cell {
     @apply min-w-[12rem] max-w-[14rem] whitespace-normal;
+  }
+
+  /*
+   * Avatar RRHH: editor compacto (sin panel X/Y/ancho/rotación) para evitar desbordamiento.
+   * Se mantiene imageEditor() para el lápiz de FilePond; el layout imita crop-only de Filament.
+   */
+  .rrhh-colaborador-avatar-upload .fi-fo-file-upload-editor {
+    @apply flex items-center justify-center overflow-hidden p-2 sm:p-4;
+
+    & .fi-fo-file-upload-editor-window {
+      @apply mx-auto flex h-auto max-h-[min(92dvh,40rem)] w-full max-w-lg flex-col overflow-hidden;
+    }
+
+    & .fi-fo-file-upload-editor-image-ctn {
+      @apply m-2 max-h-[min(58dvh,22rem)] min-h-0 w-full flex-none overflow-hidden;
+    }
+
+    & .fi-fo-file-upload-editor-image {
+      @apply block h-auto max-h-[min(58dvh,22rem)] w-full max-w-full object-contain;
+    }
+
+    & .fi-fo-file-upload-editor-control-panel {
+      @apply h-auto w-full max-w-none flex-none shrink-0;
+    }
+
+    & .fi-fo-file-upload-editor-control-panel-main {
+      display: none;
+    }
+
+    & .fi-fo-file-upload-editor-control-panel-footer {
+      @apply justify-center gap-3 border-t border-gray-200/80 px-4 py-3 dark:border-white/10;
+    }
   }
 }
 

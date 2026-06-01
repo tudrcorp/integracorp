@@ -31,7 +31,50 @@ class TelemedicineCaseInfolist
 
     private const IOS_PATIENT_HERO_INNER = 'relative rounded-[1.25rem] border border-white/90 bg-white/90 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95),0_10px_28px_-10px_rgba(15,23,42,0.1)] backdrop-blur-md dark:border-white/12 dark:bg-white/[0.07] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_12px_32px_-12px_rgba(0,0,0,0.35)] sm:p-6';
 
+    private const IOS_ADDRESS_CARD = 'rounded-[1.25rem] border border-emerald-200/75 bg-gradient-to-br from-emerald-50/95 via-white to-slate-50/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92),0_10px_28px_-12px_rgba(16,185,129,0.18)] ring-1 ring-emerald-300/40 dark:border-emerald-500/30 dark:from-emerald-950/35 dark:via-gray-900/90 dark:to-slate-950/90 dark:ring-emerald-400/25 sm:p-5';
+
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
+    private static function formatAddress(?string $state): ?string
+    {
+        if (! filled($state)) {
+            return null;
+        }
+
+        return trim((string) $state);
+    }
+
+    private static function locationSummary(TelemedicineCase $record): ?string
+    {
+        $line = collect([
+            $record->country?->name,
+            $record->state?->definition,
+            $record->city?->definition,
+        ])
+            ->filter()
+            ->unique()
+            ->implode(' · ');
+
+        return filled($line) ? $line : null;
+    }
+
+    private static function mapsSearchUrl(TelemedicineCase $record): ?string
+    {
+        $query = collect([
+            self::formatAddress($record->patient_address),
+            $record->city?->definition,
+            $record->state?->definition,
+            $record->country?->name,
+        ])
+            ->filter()
+            ->implode(', ');
+
+        if (! filled($query)) {
+            return null;
+        }
+
+        return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($query);
+    }
 
     private static function statusColor(?string $status): string
     {
@@ -102,17 +145,40 @@ class TelemedicineCaseInfolist
                                                     ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                                                     ->placeholder('—'),
                                             ]),
-                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 5])
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_ADDRESS_CARD,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('patient_address')
+                                                    ->label('Dirección de residencia')
+                                                    ->icon(Heroicon::OutlinedMapPin)
+                                                    ->iconColor('success')
+                                                    ->weight('semibold')
+                                                    ->size(TextSize::Medium)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->copyable()
+                                                    ->copyMessage('Dirección copiada')
+                                                    ->formatStateUsing(fn (?string $state): ?string => self::formatAddress($state))
+                                                    ->helperText(function (TelemedicineCase $record): ?string {
+                                                        $summary = self::locationSummary($record);
+
+                                                        return filled($summary) ? 'Ubicación: '.$summary : null;
+                                                    })
+                                                    ->hint(fn (TelemedicineCase $record): ?string => filled(self::formatAddress($record->patient_address))
+                                                        ? 'Abrir en Google Maps'
+                                                        : null)
+                                                    ->hintIcon(Heroicon::OutlinedArrowTopRightOnSquare)
+                                                    ->url(fn (TelemedicineCase $record): ?string => self::mapsSearchUrl($record))
+                                                    ->openUrlInNewTab()
+                                                    ->placeholder('Sin dirección registrada en el caso'),
+                                            ]),
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                                             ->extraAttributes([
                                                 'class' => self::IOS_INNER_CLASS,
                                             ])
                                             ->schema([
-                                                TextEntry::make('patient_address')
-                                                    ->label('Dirección')
-                                                    ->icon(Heroicon::OutlinedHome)
-                                                    ->columnSpanFull()
-                                                    ->wrap()
-                                                    ->placeholder('—'),
                                                 TextEntry::make('patient_phone')
                                                     ->label('Teléfono principal')
                                                     ->icon(Heroicon::OutlinedDevicePhoneMobile)

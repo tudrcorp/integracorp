@@ -3,6 +3,7 @@
 namespace App\Filament\Administration\Resources\RrhhColaboradors\Pages;
 
 use App\Filament\Administration\Resources\RrhhColaboradors\RrhhColaboradorResource;
+use App\Models\RrhhColaborador;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
@@ -35,6 +36,12 @@ class CreateRrhhColaborador extends CreateRecord
     {
         $data['created_by'] = Auth::user()?->name ?? ($data['created_by'] ?? '');
         $data['updated_by'] = Auth::user()?->name ?? ($data['updated_by'] ?? '');
+
+        if (array_key_exists('birth_date', $data)) {
+            $normalized = RrhhColaborador::normalizeBirthDateInput($data['birth_date']);
+            $data['birth_date'] = $normalized;
+            $data['age'] = RrhhColaborador::completedYearsFromBirthDate($normalized);
+        }
 
         return $data;
     }

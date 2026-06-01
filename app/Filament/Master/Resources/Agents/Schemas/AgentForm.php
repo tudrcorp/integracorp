@@ -394,13 +394,14 @@ class AgentForm
                             ->icon('heroicon-o-building-library')
                             ->schema([
                                 Section::make('Información Bancaria Local(VES)')
+                                    ->description('Datos bancarios para recibir pagos en moneda nacional')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         TextInput::make('local_beneficiary_name')
                                             ->label('Nombre/Razón Social del Beneficiario')
                                             ->afterStateUpdatedJs(<<<'JS'
-                                    $set('local_beneficiary_name', $state.toUpperCase());
-                                JS)
+                                            $set('local_beneficiary_name', $state.toUpperCase());
+                                        JS)
                                             ->live(onBlur: true)
                                             ->prefixIcon('heroicon-s-identification')
                                             ->maxLength(255),
@@ -446,6 +447,7 @@ class AgentForm
                                                     'BANFANB' => 'BANFANB',
                                                     'BANCARIBE' => 'BANCARIBE',
                                                     'BANCO ACTIVO' => 'BANCO ACTIVO',
+                                                    'BANCO VENEZOLANO DE CREDITO' => 'BANCO VENEZOLANO DE CREDITO',
                                                 ]),
                                             Select::make('local_beneficiary_account_type')
                                                 ->label('Tipo de Cuenta del Beneficiario')
@@ -455,6 +457,7 @@ class AgentForm
                                                     'CORRIENTE' => 'CORRIENTE',
                                                 ]),
                                         ])->columnSpanFull()->columns(3),
+
                                         Fieldset::make('Cuenta Nacional, Moneda Intenacional(US$, EUR)')->schema([
                                             TextInput::make('local_beneficiary_account_number_mon_inter')
                                                 ->label('Número de Cuenta del Beneficiario')
@@ -492,19 +495,21 @@ class AgentForm
                                                     'CORRIENTE' => 'CORRIENTE',
                                                 ]),
                                         ])->columnSpanFull()->columns(3),
+
                                     ])->columnSpanFull()->columns(3),
                             ]),
-                        Tab::make('Datos Bancarios(US$)')
+                        Tab::make('Información Bancaria Extra(US$)')
                             ->icon('heroicon-o-globe-alt')
                             ->schema([
-                                Section::make('Datos Bancarios(US$)')
+                                Section::make('Información Bancaria Extra(US$)')
+                                    ->description('Datos bancarios para recibir pagos en moneda extranjera')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
                                         TextInput::make('extra_beneficiary_name')
                                             ->label('Nombre/Razon Social')
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('extra_beneficiary_name', strtoupper($state));
-                                            })
+                                            ->afterStateUpdatedJs(<<<'JS'
+                                            $set('extra_beneficiary_name', $state.toUpperCase());
+                                        JS)
                                             ->live(onBlur: true)
                                             ->prefixIcon('heroicon-s-identification')
                                             ->maxLength(255),
@@ -617,7 +622,7 @@ class AgentForm
                                             ->live(onBlur: true)
                                             ->prefixIcon('heroicon-s-identification')
                                             ->maxLength(255),
-                                    ])->columnSpanFull()->columns(4),
+                                    ])->columnSpanFull()->columns(3),
                             ]),
                     ]),
             ]);

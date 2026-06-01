@@ -26,21 +26,11 @@ it('asigna color de badge filament por tipo de ticket', function (): void {
         ->and(HelpdeskTicketType::label(HelpdeskTicketType::INCIDENT))->toBe('Incidencia');
 });
 
-it('resume la definicion en una linea por tipo', function (): void {
+it('catalogo de tipos incluye campos de guia sin ejemplo', function (): void {
     $incident = HelpdeskTicketType::catalog()[HelpdeskTicketType::INCIDENT];
 
-    expect(strlen($incident['definition']))->toBeLessThan(120)
-        ->and($incident)->toHaveKeys(['title', 'subtitle', 'definition', 'example', 'not_this', 'tone']);
-});
-
-it('muestra guia compacta al seleccionar incidencia', function (): void {
-    $html = HelpdeskTicketType::selectedTypeGuide(HelpdeskTicketType::INCIDENT)->toHtml();
-
-    expect($html)
-        ->toContain('fi-helpdesk-ticket-type-hero')
-        ->toContain('Incidencia')
-        ->toContain('error 500')
-        ->toContain('No usar si:');
+    expect($incident)->toHaveKeys(['title', 'subtitle', 'definition', 'not_this', 'tone'])
+        ->and($incident)->not->toHaveKey('example');
 });
 
 it('integra pestana tipo de ticket con radio en el schema', function (): void {
@@ -51,5 +41,7 @@ it('integra pestana tipo de ticket con radio en el schema', function (): void {
         ->toContain("Tab::make('Tipo de ticket')")
         ->toContain("Radio::make('ticket_type')")
         ->toContain('fi-helpdesk-ticket-type-panel')
-        ->not->toContain('ticket_type_matrix');
+        ->not->toContain('ticket_type_matrix')
+        ->not->toContain('ticket_type_selected_guide')
+        ->not->toContain('selectedTypeGuide');
 });

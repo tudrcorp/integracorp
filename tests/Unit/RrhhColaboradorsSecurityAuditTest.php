@@ -18,5 +18,7 @@ it('registra trazas de seguridad al crear y actualizar colaboradores', function 
         ->toContain('SecurityAudit::log')
         ->toContain('AUDIT_ADMIN_RRHH_COLABORADOR_UPDATED')
         ->toContain('AUDIT_ADMIN_RRHH_COLABORADOR_UPDATE_FAILED')
+        ->toContain('AUDIT_ADMIN_RRHH_COLABORADOR_AVATAR_UPDATED')
+        ->toContain('AUDIT_ADMIN_RRHH_COLABORADOR_AVATAR_UPDATE_FAILED')
         ->toContain('changed_fields');
 });

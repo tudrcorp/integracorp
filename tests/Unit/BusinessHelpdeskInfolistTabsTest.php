@@ -13,7 +13,7 @@ it('organiza el infolist helpdesk en pestañas con equipo de ejecución', functi
         ->toContain("Tab::make('Adjunto')")
         ->toContain("Tab::make('Notas')")
         ->toContain('observation_summary')
-        ->toContain('helpdesk-notes-infolist')
+        ->toContain('HelpdeskObservationHtmlRenderer::render')
         ->toContain("TextEntry::make('team')")
         ->toContain("RepeatableEntry::make('team_members')")
         ->toContain('telefono_corporativo')

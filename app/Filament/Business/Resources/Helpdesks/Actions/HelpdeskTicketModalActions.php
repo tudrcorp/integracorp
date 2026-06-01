@@ -7,6 +7,7 @@ use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\HelpdeskObservationAppender;
+use App\Support\HelpdeskStatusChangeNote;
 use App\Support\HelpdeskTaskStatusOptions;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
@@ -231,12 +232,14 @@ final class HelpdeskTicketModalActions
                 'status' => $record->status,
             ])
             ->form(function (HelpDesk $record): array {
-                return [
+                $isAssignee = self::currentUserIsTicketAssignee($record);
+
+                $components = [
                     Section::make('Estado')
                         ->description(fn (HelpDesk $record): string => HelpdeskTaskStatusOptions::statusModalDescription(
                             $record,
                             Auth::user()?->name,
-                            self::currentUserIsTicketAssignee($record)
+                            $isAssignee
                         ))
                         ->icon('heroicon-m-flag')
                         ->schema([
@@ -246,7 +249,7 @@ final class HelpdeskTicketModalActions
                                 ->options(fn (HelpDesk $record): array => HelpdeskTaskStatusOptions::forSelect(
                                     $record,
                                     Auth::user()?->name,
-                                    self::currentUserIsTicketAssignee($record)
+                                    $isAssignee
                                 ))
                                 ->required()
                                 ->native(true)
@@ -260,6 +263,20 @@ final class HelpdeskTicketModalActions
                             'class' => self::IOS_SECTION_CLASS,
                         ]),
                 ];
+
+                if ($isAssignee) {
+                    $components[] = Section::make('Explicación del cambio')
+                        ->description('Documente las razones o el contexto del nuevo estado. La nota quedará en el historial del ticket.')
+                        ->icon('heroicon-m-chat-bubble-left-right')
+                        ->schema(HelpdeskStatusChangeNote::assigneeExplanationEditor())
+                        ->columns(1)
+                        ->columnSpanFull()
+                        ->extraAttributes([
+                            'class' => self::IOS_SECTION_CLASS,
+                        ]);
+                }
+
+                return $components;
             })
             ->successNotification(null)
             ->action(function (HelpDesk $record, array $data): void {
@@ -295,11 +312,39 @@ final class HelpdeskTicketModalActions
                     return;
                 }
 
+                $isAssignee = self::currentUserIsTicketAssignee($record);
+
+                if ($isAssignee) {
+                    $explanationError = HelpdeskStatusChangeNote::validateAssigneeExplanation($data['status_explanation'] ?? null);
+
+                    if ($explanationError !== null) {
+                        SecurityAudit::log('AUDIT_HELPDESK_STATUS_UPDATE_FAILED', 'business.helpdesks.update-status', [
+                            'panel' => 'business',
+                            'helpdesk_id' => $record->getKey(),
+                            'reason' => 'missing_assignee_explanation',
+                            'updated_by' => $user->name,
+                        ]);
+
+                        Notification::make()
+                            ->title($explanationError['title'])
+                            ->body($explanationError['body'])
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+                }
+
                 $record->status = $sanitized;
                 $record->updated_by = $user->name;
                 $record->save();
                 $record->refresh();
-                $statusNote = '<p>Estado del ticket actualizado de <strong>'.e($previousStatus).'</strong> a <strong>'.e($sanitized).'</strong>.</p>';
+                $statusNote = HelpdeskStatusChangeNote::buildObservationHtml(
+                    $previousStatus,
+                    $sanitized,
+                    $data['status_explanation'] ?? null,
+                    $isAssignee,
+                );
                 HelpdeskObservationAppender::append($record, $statusNote, $user->name);
 
                 $isCreatorUpdating = trim((string) $record->created_by) === trim((string) $user->name);

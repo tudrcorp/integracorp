@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Auth;
 
 class RrhhColaboradorForm
 {
-    private const IOS_SECTION_CLASS = 'rounded-3xl border border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/70';
+    private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
+    private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
 
     private const IOS_TEXT_INPUT_CLASS = 'min-h-11 rounded-none border-slate-300/90 bg-white/95 text-sm shadow-sm transition duration-200 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:ring-sky-400/20';
 
@@ -29,6 +31,27 @@ class RrhhColaboradorForm
      */
     private const IOS_SELECT_MATCH_INPUT_HEIGHT_CLASS = '[&_.fi-select-input]:!min-h-11 [&_.fi-select-input-btn]:!min-h-11';
 
+    public static function avatarUploadField(): FileUpload
+    {
+        return FileUpload::make('avatar')
+            ->label('Foto de perfil')
+            ->avatar()
+            ->image()
+            ->imageEditor()
+            ->circleCropper()
+            ->automaticallyOpenImageEditorForAspectRatio()
+            ->directory('avatars-colaboradores')
+            ->disk('public')
+            ->visibility('public')
+            ->maxSize(2048)
+            ->imagePreviewHeight('200')
+            ->helperText('Formatos: JPG o PNG. Máx. 2 MB. Recomendación: imagen cuadrada con fondo claro.')
+            ->extraAttributes([
+                'class' => 'rrhh-colaborador-avatar-upload',
+            ])
+            ->columnSpanFull();
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -37,32 +60,20 @@ class RrhhColaboradorForm
                 Tabs::make('rrhhColaboradorFormTabs')
                     ->columnSpanFull()
                     ->persistTab()
+                    ->extraAttributes([
+                        'class' => self::TABS_CONTAINER,
+                    ])
                     ->tabs([
                         Tab::make('Perfil')
                             ->icon('heroicon-m-user-circle')
                             ->schema([
                                 Section::make('Perfil')
-                                    ->description('Avatar, funciones del puesto y contexto visible en listados, asignaciones y firmas internas.')
+                                    ->description('Funciones del puesto y contexto visible en listados. La foto de perfil se gestiona con el botón «Foto de perfil» en la parte superior.')
                                     ->icon('heroicon-m-user-circle')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
-                                        FileUpload::make('avatar')
-                                            ->label('Foto de perfil')
-                                            ->avatar()
-                                            ->image()
-                                            ->imageEditor()
-                                            ->circleCropper()
-                                            ->directory('avatars-colaboradores')
-                                            ->visibility('public')
-                                            ->maxSize(2048)
-                                            ->imagePreviewHeight('240')
-                                            ->helperText('Formatos: JPG o PNG. Máx. 2 MB. Recomendación: imagen cuadrada con fondo claro.')
-                                            ->extraAttributes([
-                                                'class' => 'rounded-2xl border border-dashed border-slate-300/80 bg-slate-50/70 p-2 dark:border-slate-700 dark:bg-slate-800/50',
-                                            ])
-                                            ->columnSpanFull(),
                                         Textarea::make('funciones')
                                             ->label('Funciones del colaborador')
                                             ->required()
@@ -80,7 +91,7 @@ class RrhhColaboradorForm
                                     ->description('Identidad, talla y composición familiar del colaborador.')
                                     ->icon('heroicon-m-identification')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make([
@@ -125,7 +136,7 @@ class RrhhColaboradorForm
                                                     ]),
                                                 DatePicker::make('birth_date')
                                                     ->label('Fecha de nacimiento')
-                                                    ->format('d/m/Y')
+                                                    ->format('Y-m-d')
                                                     ->native(false)
                                                     ->placeholder('Seleccione fecha')
                                                     ->displayFormat('d/m/Y')
@@ -207,7 +218,7 @@ class RrhhColaboradorForm
                                     ->description('Área, cargo y estado activo del perfil dentro de la empresa.')
                                     ->icon('heroicon-m-briefcase')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make([
@@ -281,7 +292,7 @@ class RrhhColaboradorForm
                                     ->description('Canales de contacto personal y corporativo actualizados.')
                                     ->icon('heroicon-m-phone')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make([
@@ -346,7 +357,7 @@ class RrhhColaboradorForm
                                     ->description('Cuenta bancaria para nómina')
                                     ->icon('heroicon-m-banknotes')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         Grid::make([
@@ -400,7 +411,7 @@ class RrhhColaboradorForm
                                     ->description('Constancias, contratos u otros archivos del expediente. Puede adjuntar varios archivos.')
                                     ->icon('heroicon-m-document-text')
                                     ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
+                                        'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
                                         FileUpload::make('documents')

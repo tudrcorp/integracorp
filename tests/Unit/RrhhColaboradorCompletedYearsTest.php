@@ -15,3 +15,9 @@ it('calcula años cumplidos desde birth_date', function (): void {
 
     Carbon::setTestNow();
 });
+
+it('normaliza birth_date en formato d/m/Y a Y-m-d', function (): void {
+    expect(RrhhColaborador::normalizeBirthDateInput('19/12/1959'))->toBe('1959-12-19')
+        ->and(RrhhColaborador::normalizeBirthDateInput('1959-12-19'))->toBe('1959-12-19')
+        ->and(RrhhColaborador::normalizeBirthDateInput(null))->toBeNull();
+});

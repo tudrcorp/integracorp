@@ -91,3 +91,14 @@ it('OperationCoordinationServicesTable define modal para gestionar ítems con co
         ->toContain('coveredSelectedManagementItemKeys')
         ->toContain('createServiceOrderFromManageModal');
 });
+
+it('OperationCoordinationServicesTable muestra código de caso TM con badge y enlace a vista', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("TextColumn::make('telemedicineCase.code')")
+        ->toContain('TelemedicineCaseResource::getUrl')
+        ->toContain('healthicons-f-health-literacy')
+        ->toContain("'telemedicineCase'");
+});

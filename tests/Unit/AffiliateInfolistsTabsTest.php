@@ -25,5 +25,6 @@ it('infolist de afiliado corporativo usa pestañas', function (): void {
         ->toContain('TABS_CONTAINER')
         ->toContain('SECTION_CARD')
         ->toContain("Tab::make('Datos del afiliado')")
-        ->toContain('affiliateCorporateInfolistTabs');
+        ->toContain('affiliateCorporateInfolistTabs')
+        ->toContain('IOS_ADDRESS_CARD');
 });

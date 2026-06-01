@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Support;
 use App\Models\Affiliate;
 use App\Models\AffiliateCorporate;
 use App\Models\Supplier;
+use App\Support\Operations\OperationsMapSearchAddress;
 use Filament\Actions\Action;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -45,7 +46,7 @@ final class OperationsLocationMapAction
             contextResolver: fn (Affiliate $record): array => self::buildContext(
                 recordId: $record->getKey(),
                 recordLabel: (string) ($record->full_name ?? 'Afiliado'),
-                initialAddress: $record->address,
+                initialAddress: OperationsMapSearchAddress::forAffiliate($record),
                 livewireApplyMethod: 'applyAffiliateLocationFromMaps',
                 addressInputLabel: 'Dirección del afiliado',
                 saveButtonLabel: 'Guardar en afiliado',
@@ -67,7 +68,7 @@ final class OperationsLocationMapAction
             contextResolver: fn (AffiliateCorporate $record): array => self::buildContext(
                 recordId: $record->getKey(),
                 recordLabel: trim((string) ($record->first_name ?? '').' '.(string) ($record->last_name ?? '')) ?: 'Afiliado corporativo',
-                initialAddress: $record->address,
+                initialAddress: OperationsMapSearchAddress::forAffiliateCorporate($record),
                 livewireApplyMethod: 'applyAffiliateCorporateLocationFromMaps',
                 addressInputLabel: 'Dirección del afiliado',
                 saveButtonLabel: 'Guardar en afiliado',
@@ -93,7 +94,9 @@ final class OperationsLocationMapAction
                 return self::buildContext(
                     recordId: 'ac-'.$corporateId,
                     recordLabel: (string) ($corporate?->name_corporate ?? 'Empresa'),
-                    initialAddress: $corporate?->address,
+                    initialAddress: $corporate !== null
+                        ? OperationsMapSearchAddress::forAffiliationCorporate($corporate)
+                        : null,
                     livewireApplyMethod: 'applyAffiliationCorporateLocationFromMaps',
                     addressInputLabel: 'Dirección de la empresa',
                     saveButtonLabel: 'Guardar en corporativo',

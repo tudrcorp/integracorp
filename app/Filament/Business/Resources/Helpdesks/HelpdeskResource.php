@@ -10,6 +10,7 @@ use App\Filament\Business\Resources\Helpdesks\Schemas\HelpdeskForm;
 use App\Filament\Business\Resources\Helpdesks\Schemas\HelpdeskInfolist;
 use App\Filament\Business\Resources\Helpdesks\Tables\HelpdesksTable;
 use App\Models\HelpDesk;
+use App\Support\HelpdeskBusinessTicketCreationGate;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -49,6 +50,24 @@ class HelpdeskResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['rrhhColaboradores']);
+    }
+
+    public static function canSeeCreateTicketButton(): bool
+    {
+        if (! parent::canCreate()) {
+            return false;
+        }
+
+        return HelpdeskBusinessTicketCreationGate::allowsCreation()->shouldShowCreateTicketButton();
+    }
+
+    public static function canCreate(): bool
+    {
+        if (! parent::canCreate()) {
+            return false;
+        }
+
+        return HelpdeskBusinessTicketCreationGate::allowsCreation()->allowed;
     }
 
     /**

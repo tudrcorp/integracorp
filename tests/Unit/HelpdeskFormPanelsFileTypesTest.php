@@ -19,6 +19,10 @@ it('permite adjuntar pdf y powerpoints en helpdesk para business administration 
     $shared = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskFormSchema.php');
 
     expect($shared)
+        ->toContain("Tab::make('Compromiso de atención')")
+        ->toContain('HelpdeskTechnologyTermsNotice::ACCEPTANCE_FIELD');
+
+    expect($shared)
         ->toContain("'application/pdf'")
         ->toContain("'application/vnd.ms-powerpoint'")
         ->toContain("'application/vnd.openxmlformats-officedocument.presentationml.presentation'");
