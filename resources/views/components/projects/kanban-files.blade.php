@@ -1,13 +1,17 @@
-@props([
-    'files',
-    'category' => 'all',
-    'layout' => 'grid',
-    'pinnedFileIds' => [],
-])
-
 @php
+    $files = $files ?? [];
+    $category = $category ?? 'all';
+    $layout = $layout ?? 'grid';
+    $pinnedFileIds = $pinnedFileIds ?? [];
     $counts = $files['counts'] ?? ['all' => 0, 'images' => 0, 'documents' => 0];
     $items = $files['files'] ?? [];
+    $normalizedPinnedFileIds = collect($pinnedFileIds)
+        ->map(fn (mixed $id): int => (int) $id)
+        ->filter(fn (int $id): bool => $id > 0)
+        ->unique()
+        ->values()
+        ->all();
+    $pinnedCount = count($normalizedPinnedFileIds);
     $tabs = [
         'all' => ['label' => 'Todos', 'count' => $counts['all'] ?? 0, 'icon' => 'folder'],
         'image' => ['label' => 'Imágenes', 'count' => $counts['images'] ?? 0, 'icon' => 'photo'],
@@ -52,6 +56,12 @@
         </nav>
 
         <div class="flex flex-wrap items-center gap-3">
+            @if ($pinnedCount > 0)
+                <span class="kanban-files-pinned-hint inline-flex items-center gap-1.5 rounded-full border border-amber-300/50 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800 dark:border-amber-500/35 dark:bg-amber-500/15 dark:text-amber-200">
+                    <x-heroicon-s-star class="size-3.5 text-amber-500" />
+                    {{ $pinnedCount }} {{ $pinnedCount === 1 ? 'favorito primero' : 'favoritos primero' }}
+                </span>
+            @endif
             <label class="kanban-files-sort flex items-center gap-2 text-xs font-medium">
                 <span>Ordenar:</span>
                 <select wire:model.live="filesSort" class="kanban-files-sort__select rounded-xl px-3 py-2 text-xs font-semibold">
@@ -95,8 +105,11 @@
         @elseif ($layout === 'list')
             <div class="kanban-files-list space-y-3">
                 @foreach ($items as $file)
-                    @php $isPinned = in_array($file['id'], $pinnedFileIds, true); @endphp
-                    <article wire:key="kanban-file-list-{{ $file['id'] }}" @class(['kanban-files-card kanban-files-card--list', 'kanban-files-card--pinned' => $isPinned])>
+                    @php
+                        $fileId = (int) $file['id'];
+                        $isPinned = in_array($fileId, $normalizedPinnedFileIds, true);
+                    @endphp
+                    <article wire:key="kanban-file-list-{{ $fileId }}" @class(['kanban-files-card kanban-files-card--list', 'kanban-files-card--pinned' => $isPinned])>
                         <div class="kanban-files-card__preview kanban-files-card__preview--list">
                             @if ($file['category'] === 'image')
                                 <x-heroicon-o-photo class="size-6" />
@@ -110,8 +123,19 @@
 
                         <div class="min-w-0 flex-1">
                             <p class="kanban-files-card__name truncate text-sm font-semibold">{{ $file['name'] }}</p>
+                            <p class="kanban-files-card__activity mt-0.5 truncate text-xs font-medium">
+                                <x-heroicon-m-clipboard-document-list class="mr-1 inline size-3.5 align-[-2px] opacity-70" />
+                                <a
+                                    href="{{ $file['activity_view_url'] }}"
+                                    class="kanban-files-card__activity-link hover:underline"
+                                    title="Ver actividad"
+                                >
+                                    {{ $file['activity_title'] }}
+                                </a>
+                            </p>
                             <p class="kanban-files-card__meta mt-0.5 truncate text-xs">
-                                {{ $file['project_name'] }} · {{ $file['activity_title'] }}
+                                <span class="inline-block size-1.5 rounded-full align-middle" style="background: {{ $file['project_color'] }};"></span>
+                                {{ $file['project_name'] }}
                             </p>
                             <p class="kanban-files-card__date mt-1 text-[11px]">{{ $file['uploaded_at'] }} · {{ $file['size_label'] }}</p>
                         </div>
@@ -125,13 +149,10 @@
                                     :overflow-count="$file['assignees']['overflow_count'] ?? 0"
                                 />
                             @endif
-                            <button type="button" wire:click="togglePinFile({{ $file['id'] }})" class="kanban-files-icon-btn" title="Favorito">
-                                @if ($isPinned)
-                                    <x-heroicon-s-star class="size-4 text-amber-400" />
-                                @else
-                                    <x-heroicon-o-star class="size-4" />
-                                @endif
-                            </button>
+                            @include('filament.projects.partials.kanban-file-pin-button', [
+                                'fileId' => $fileId,
+                                'normalizedPinnedFileIds' => $normalizedPinnedFileIds,
+                            ])
                             <a href="{{ $file['download_url'] }}" target="_blank" rel="noopener" class="kanban-files-icon-btn" title="Abrir archivo">
                                 <x-heroicon-o-arrow-down-tray class="size-4" />
                             </a>
@@ -145,16 +166,16 @@
         @else
             <div class="kanban-files-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 @foreach ($items as $file)
-                    @php $isPinned = in_array($file['id'], $pinnedFileIds, true); @endphp
-                    <article wire:key="kanban-file-grid-{{ $file['id'] }}" @class(['kanban-files-card kanban-files-card--grid group', 'kanban-files-card--pinned' => $isPinned])>
+                    @php
+                        $fileId = (int) $file['id'];
+                        $isPinned = in_array($fileId, $normalizedPinnedFileIds, true);
+                    @endphp
+                    <article wire:key="kanban-file-grid-{{ $fileId }}" @class(['kanban-files-card kanban-files-card--grid group', 'kanban-files-card--pinned' => $isPinned])>
                         <div class="kanban-files-card__top flex items-start justify-between gap-2">
-                            <button type="button" wire:click="togglePinFile({{ $file['id'] }})" class="kanban-files-icon-btn" title="Favorito">
-                                @if ($isPinned)
-                                    <x-heroicon-s-star class="size-4 text-amber-400" />
-                                @else
-                                    <x-heroicon-o-star class="size-4" />
-                                @endif
-                            </button>
+                            @include('filament.projects.partials.kanban-file-pin-button', [
+                                'fileId' => $fileId,
+                                'normalizedPinnedFileIds' => $normalizedPinnedFileIds,
+                            ])
 
                             <div class="flex items-center gap-1.5">
                                 <span class="kanban-files-sync-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
@@ -189,6 +210,16 @@
                             <div class="flex items-end justify-between gap-2">
                                 <div class="min-w-0 flex-1">
                                     <p class="kanban-files-card__name truncate text-sm font-semibold">{{ $file['name'] }}</p>
+                                    <p class="kanban-files-card__activity mt-1 truncate text-[11px] font-medium leading-snug">
+                                        <x-heroicon-m-clipboard-document-list class="mr-1 inline size-3.5 align-[-2px] opacity-70" />
+                                        <a
+                                            href="{{ $file['activity_view_url'] }}"
+                                            class="kanban-files-card__activity-link hover:underline"
+                                            title="Ver actividad"
+                                        >
+                                            {{ $file['activity_title'] }}
+                                        </a>
+                                    </p>
                                     <p class="kanban-files-card__date mt-1 text-[11px]">{{ $file['uploaded_at'] }}</p>
                                     <p class="kanban-files-card__context mt-1 truncate text-[10px] font-medium">
                                         <span class="inline-block size-1.5 rounded-full align-middle" style="background: {{ $file['project_color'] }};"></span>
@@ -428,6 +459,28 @@
 
     .kanban-files-card--pinned {
         border-color: var(--kf-card-pinned-border);
+        box-shadow:
+            var(--kf-card-shadow),
+            0 0 0 1px rgba(250, 204, 21, 0.2),
+            0 10px 28px -16px rgba(250, 204, 21, 0.35);
+    }
+
+    .kanban-files-pin-btn--active {
+        color: rgb(250 204 21);
+        background: rgba(250, 204, 21, 0.2);
+        box-shadow:
+            0 0 0 1px rgba(250, 204, 21, 0.55),
+            0 0 16px rgba(250, 204, 21, 0.45);
+    }
+
+    .kanban-files-pin-btn--active:hover {
+        color: rgb(253 224 71);
+        background: rgba(250, 204, 21, 0.28);
+    }
+
+    .kanban-files-pin-btn__icon--active {
+        color: rgb(250 204 21);
+        filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.85));
     }
 
     .kanban-files-card--grid {
@@ -465,6 +518,15 @@
 
     .kanban-files-card__name {
         color: var(--kf-name-text);
+    }
+
+    .kanban-files-card__activity,
+    .kanban-files-card__activity-link {
+        color: var(--kf-name-text);
+    }
+
+    .kanban-files-card__activity-link:hover {
+        color: var(--kf-tab-active);
     }
 
     .kanban-files-card__meta,
@@ -530,19 +592,4 @@
         color: var(--kf-empty-text);
     }
 
-    .kanban-files-card {
-        animation: kanban-files-card-in 420ms cubic-bezier(0.25, 1, 0.5, 1) both;
-    }
-
-    @keyframes kanban-files-card-in {
-        from {
-            opacity: 0;
-            transform: translateY(8px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
 </style>

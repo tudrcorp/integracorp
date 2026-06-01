@@ -27,7 +27,8 @@ it('aplica mejoras de ux en tablas del modulo de proyectos', function (): void {
 
         if (str_contains($relativePath, 'Subprojects/')
             || str_contains($relativePath, 'Activities/')
-            || str_contains($relativePath, 'Groups/')) {
+            || str_contains($relativePath, 'Groups/')
+            || str_contains($relativePath, 'Departments/')) {
             expect($content)
                 ->toContain('->recordUrl(')
                 ->toContain('->paginated([10, 25, 50])')

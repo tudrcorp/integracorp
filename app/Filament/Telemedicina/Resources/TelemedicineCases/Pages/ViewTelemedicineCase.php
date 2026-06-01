@@ -2,13 +2,14 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Pages;
 
-use Filament\Actions\Action;
-use App\Models\TelemedicineCase;
-use Filament\Actions\EditAction;
-use App\Models\TelemedicinePatient;
-use Filament\Resources\Pages\ViewRecord;
-use App\Models\TelemedicineHistoryPatient;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
+use App\Models\TelemedicineCase;
+use App\Models\TelemedicineHistoryPatient;
+use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\TelemedicineCaseDocumentSendAction;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewTelemedicineCase extends ViewRecord
 {
@@ -25,18 +26,18 @@ class ViewTelemedicineCase extends ViewRecord
                 ->icon('healthicons-f-health-literacy')
                 ->color('success')
                 ->action(function () {
-                    
+
                     $ownerRecord = $this->record;
-                    
-                    $case        = TelemedicineCase::where('code', $ownerRecord->code)->first();
-                    $patient     = TelemedicinePatient::where('id', $ownerRecord->telemedicine_patient_id)->first();
+
+                    $case = TelemedicineCase::where('code', $ownerRecord->code)->first();
+                    $patient = TelemedicinePatient::where('id', $ownerRecord->telemedicine_patient_id)->first();
                     $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $ownerRecord->telemedicine_patient_id)->exists();
 
                     session()->forget('case');
                     session()->forget('patient');
                     session()->forget('exit_record');
 
-                    //Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
+                    // Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
                     session(['case' => $case]);
                     session(['patient' => $patient]);
                     session(['exit_record' => $exit_record]);
@@ -46,22 +47,28 @@ class ViewTelemedicineCase extends ViewRecord
                 ->hidden(function () {
                     return $this->record->status == 'ALTA MEDICA';
                 }),
-                Action::make('returnToConsultation')
-                    ->label('Volver a Consulta')
-                    ->icon('heroicon-s-arrow-right')
-                    ->color('warning')
-                    ->action(function () {
-                        if(session()->has('historyCasesToDetails')) {
-                            //retunr back page
-                            session()->forget('historyCasesToDetails');
-                            $patient = session()->get('patient');
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
-                            // session()->forget('historyCasesToDetails');
-                        }
-                    })
-                    ->hidden(function () {
-                        return !session()->has('historyCasesToDetails');
-                    }),
+            Action::make('returnToConsultation')
+                ->label('Volver a Consulta')
+                ->icon('heroicon-s-arrow-right')
+                ->color('warning')
+                ->action(function () {
+                    if (session()->has('historyCasesToDetails')) {
+                        // retunr back page
+                        session()->forget('historyCasesToDetails');
+                        $patient = session()->get('patient');
+
+                        return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
+                        // session()->forget('historyCasesToDetails');
+                    }
+                })
+                ->hidden(function () {
+                    return ! session()->has('historyCasesToDetails');
+                }),
         ];
+    }
+
+    public function sendCaseDocumentAction(): Action
+    {
+        return TelemedicineCaseDocumentSendAction::make();
     }
 }

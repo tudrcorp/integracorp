@@ -15,12 +15,15 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class TelemedicineCaseResource extends Resource
 {
     protected static ?string $model = TelemedicineCase::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-call-centre';
+
+    protected static string|UnitEnum|null $navigationGroup = 'GESTIÓN TELEMÉDICA';
 
     protected static ?string $pluralLabel = 'Gestión de Casos de Telemedicína';
 

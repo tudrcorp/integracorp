@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Projects\Pages;
 
 use App\Filament\Projects\Resources\ProjectManagement\Activities\ActivityResource;
+use App\Filament\Projects\Resources\ProjectManagement\Activities\Tables\ActivitiesTable;
 use App\Models\ProjectManagement\Activity;
 use App\Models\ProjectManagement\Project;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityAssignmentDisplay;
+use App\Support\Filament\ProjectManagement\ProjectManagementKanbanActivitiesQuery;
 use App\Support\Filament\ProjectManagement\ProjectManagementKanbanActivityModalActions;
 use App\Support\Filament\ProjectManagement\ProjectManagementKanbanFiles;
 use App\Support\Filament\ProjectManagement\ProjectManagementKanbanTimeline;
@@ -15,13 +17,18 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Tables;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use UnitEnum;
 
-class Kanban extends Page
+class Kanban extends Page implements HasTable
 {
+    use Tables\Concerns\InteractsWithTable;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-view-columns';
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTION DE PROYECTOS';
@@ -42,6 +49,8 @@ class Kanban extends Page
 
     public string $sortBy = 'priority_desc';
 
+    public string $archivedFilter = 'active';
+
     public string $viewMode = 'board';
 
     public string $filesCategory = 'all';
@@ -55,6 +64,11 @@ class Kanban extends Page
      */
     public array $pinnedFileIds = [];
 
+    public function mount(): void
+    {
+        $this->pinnedFileIds = $this->loadPinnedFileIdsFromSession();
+    }
+
     /**
      * @var array<string, string>
      */
@@ -66,12 +80,12 @@ class Kanban extends Page
     ];
 
     /**
-     * @var array<string, int>
+     * @var array<string, string>
      */
-    private const PRIORITY_ORDER = [
-        'high' => 3,
-        'medium' => 2,
-        'low' => 1,
+    private const ARCHIVED_FILTERS = [
+        'active' => 'En tablero',
+        'archived' => 'Archivadas',
+        'all' => 'Todas',
     ];
 
     public function getHeading(): string|Htmlable|null
@@ -101,7 +115,16 @@ class Kanban extends Page
         return trim($this->search) !== ''
             || $this->projectFilter !== 'all'
             || $this->statusFilter !== 'all'
+            || $this->archivedFilter !== 'active'
             || $this->sortBy !== 'priority_desc';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getArchivedFilterOptionsProperty(): array
+    {
+        return self::ARCHIVED_FILTERS;
     }
 
     /**
@@ -117,48 +140,62 @@ class Kanban extends Page
      */
     public function getFilteredActivitiesProperty(): Collection
     {
-        $activities = Activity::query()
-            ->with(['project:id,name,icon,color', 'subproject:id,name', 'executor'])
-            ->when(
-                trim($this->search) !== '',
-                fn (Builder $query): Builder => $query->where(function (Builder $nestedQuery): void {
-                    $searchTerm = '%'.trim($this->search).'%';
-                    $nestedQuery
-                        ->where('title', 'like', $searchTerm)
-                        ->orWhere('description', 'like', $searchTerm)
-                        ->orWhereHas('project', fn (Builder $projectQuery): Builder => $projectQuery->where('name', 'like', $searchTerm))
-                        ->orWhereHas('subproject', fn (Builder $subprojectQuery): Builder => $subprojectQuery->where('name', 'like', $searchTerm));
-                }),
-            )
-            ->when(
-                $this->projectFilter !== 'all',
-                fn (Builder $query): Builder => $query->where('project_id', (int) $this->projectFilter),
-            )
-            ->when(
-                $this->statusFilter !== 'all',
-                fn (Builder $query): Builder => $query->where('status', $this->statusFilter),
-            )
-            ->get();
+        $activities = $this->getKanbanActivitiesQuery()->get();
 
         ProjectManagementActivityAssignmentDisplay::preload($activities);
 
-        if ($this->sortBy === 'due_asc') {
-            return $activities->sortBy(fn (Activity $activity): string => (string) ($activity->due_date?->format('Y-m-d') ?? '9999-12-31'))->values();
-        }
-
-        if ($this->sortBy === 'due_desc') {
-            return $activities->sortByDesc(fn (Activity $activity): string => (string) ($activity->due_date?->format('Y-m-d') ?? '0000-01-01'))->values();
-        }
-
-        if ($this->sortBy === 'priority_desc') {
-            return $activities->sortByDesc(fn (Activity $activity): int => self::PRIORITY_ORDER[$activity->priority] ?? 0)->values();
-        }
-
-        if ($this->sortBy === 'priority_asc') {
-            return $activities->sortBy(fn (Activity $activity): int => self::PRIORITY_ORDER[$activity->priority] ?? 0)->values();
-        }
-
         return $activities;
+    }
+
+    public function table(Table $table): Table
+    {
+        return ActivitiesTable::configureForKanban($table);
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return $this->getKanbanActivitiesQuery();
+    }
+
+    protected function getKanbanActivitiesQuery(): Builder
+    {
+        $query = ProjectManagementKanbanActivitiesQuery::base();
+
+        ProjectManagementKanbanActivitiesQuery::applyFilters(
+            $query,
+            $this->search,
+            $this->archivedFilter,
+            $this->projectFilter,
+            $this->statusFilter,
+        );
+
+        return ProjectManagementKanbanActivitiesQuery::applySort($query, $this->sortBy);
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedProjectFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedArchivedFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSortBy(): void
+    {
+        $this->tableSort = null;
+        $this->resetPage();
     }
 
     /**
@@ -197,25 +234,30 @@ class Kanban extends Page
             trim($this->search),
         );
 
-        if ($this->pinnedFileIds !== []) {
-            $pinned = collect($payload['files'])
-                ->filter(fn (array $file): bool => in_array($file['id'], $this->pinnedFileIds, true))
-                ->sortBy(fn (array $file): int => array_search($file['id'], $this->pinnedFileIds, true))
-                ->values();
-
-            $rest = collect($payload['files'])
-                ->reject(fn (array $file): bool => in_array($file['id'], $this->pinnedFileIds, true))
-                ->values();
-
-            $payload['files'] = $pinned->merge($rest)->all();
-        }
+        $payload['files'] = ProjectManagementKanbanFiles::prioritizePinned(
+            $payload['files'],
+            $this->normalizedPinnedFileIds,
+        );
 
         return $payload;
     }
 
+    /**
+     * @return array<int, int>
+     */
+    public function getNormalizedPinnedFileIdsProperty(): array
+    {
+        return collect($this->pinnedFileIds)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function setViewMode(string $viewMode): void
     {
-        if (! in_array($viewMode, ['board', 'timeline', 'files'], true)) {
+        if (! in_array($viewMode, ['board', 'timeline', 'files', 'list'], true)) {
             return;
         }
 
@@ -240,29 +282,57 @@ class Kanban extends Page
         $this->filesLayout = $filesLayout;
     }
 
-    public function togglePinFile(int $fileId): void
+    public function updatedPinnedFileIds(): void
     {
-        if ($fileId <= 0) {
+        $this->pinnedFileIds = collect($this->pinnedFileIds)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->persistPinnedFileIdsToSession();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function loadPinnedFileIdsFromSession(): array
+    {
+        $stored = session($this->pinnedFileIdsSessionKey(), []);
+
+        if (! is_array($stored)) {
+            return [];
+        }
+
+        return collect($stored)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function persistPinnedFileIdsToSession(): void
+    {
+        if (auth()->id() === null) {
             return;
         }
 
-        if (in_array($fileId, $this->pinnedFileIds, true)) {
-            $this->pinnedFileIds = array_values(array_filter(
-                $this->pinnedFileIds,
-                fn (int $id): bool => $id !== $fileId,
-            ));
+        session([$this->pinnedFileIdsSessionKey() => $this->normalizedPinnedFileIds]);
+    }
 
-            return;
-        }
-
-        $this->pinnedFileIds[] = $fileId;
+    private function pinnedFileIdsSessionKey(): string
+    {
+        return 'projects.kanban.pinned_file_ids.'.(string) auth()->id();
     }
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'projectFilter', 'statusFilter', 'sortBy']);
+        $this->reset(['search', 'projectFilter', 'statusFilter', 'archivedFilter', 'sortBy']);
         $this->projectFilter = 'all';
         $this->statusFilter = 'all';
+        $this->archivedFilter = 'active';
         $this->sortBy = 'priority_desc';
     }
 
@@ -313,13 +383,47 @@ class Kanban extends Page
             return;
         }
 
-        $activity->update(['status' => $status]);
-
-        $this->skipRender();
+        $activity->update([
+            'status' => $status,
+            'kanban_archived_at' => $status === 'done' ? $activity->kanban_archived_at : null,
+        ]);
 
         Notification::make()
             ->title('Actividad movida')
             ->body('Estatus actualizado a '.self::STATUSES[$status].'.')
+            ->success()
+            ->send();
+    }
+
+    public function archiveActivityFromKanban(int $activityId): void
+    {
+        $activity = Activity::query()->find($activityId);
+
+        if ($activity === null) {
+            return;
+        }
+
+        if ($activity->status !== 'done') {
+            Notification::make()
+                ->title('Solo actividades finalizadas')
+                ->body('Únicamente puede archivar actividades en estatus Finalizada.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if ($activity->kanban_archived_at !== null) {
+            return;
+        }
+
+        $activity->update([
+            'kanban_archived_at' => now(),
+        ]);
+
+        Notification::make()
+            ->title('Actividad archivada')
+            ->body('La actividad ya no aparecerá en el Kanban. Sigue disponible en el proyecto.')
             ->success()
             ->send();
     }

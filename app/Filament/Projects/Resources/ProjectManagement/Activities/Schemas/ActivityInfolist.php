@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Projects\Resources\ProjectManagement\Activities\Schemas;
 
 use App\Models\ProjectManagement\Activity;
+use App\Models\ProjectManagement\Department;
 use App\Models\ProjectManagement\Group;
 use App\Models\RrhhColaborador;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityInfolistDisplay;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityTable;
 use App\Support\Filament\ProjectManagement\ProjectManagementCollaboratorSelect;
+use App\Support\Filament\ProjectManagement\ProjectManagementDepartmentAssignment;
 use App\Support\Filament\ProjectManagement\ProjectManagementFilamentSchemas;
 use App\Support\Filament\ProjectManagement\ProjectManagementGroupMembers;
 use Filament\Infolists\Components\TextEntry;
@@ -119,7 +121,7 @@ class ActivityInfolist
                     ]),
                     ProjectManagementFilamentSchemas::section(
                         'Ejecutor',
-                        'Equipo o colaboradores responsables de la ejecución.',
+                        'Equipo, departamento o colaboradores responsables de la ejecución.',
                         'heroicon-o-user-circle',
                     )->schema([
                         ProjectManagementFilamentSchemas::innerGrid([
@@ -128,9 +130,22 @@ class ActivityInfolist
                                 ->badge()
                                 ->formatStateUsing(fn (string $state): string => match ($state) {
                                     'team' => 'Equipo',
+                                    'department' => 'Departamento',
                                     default => 'Colaborador(es)',
                                 })
-                                ->color(fn (string $state): string => $state === 'team' ? 'info' : 'success'),
+                                ->color(fn (string $state): string => match ($state) {
+                                    'team' => 'info',
+                                    'department' => 'warning',
+                                    default => 'success',
+                                }),
+                            TextEntry::make('assigned_department_name')
+                                ->label('Departamento asignado')
+                                ->state(fn (Activity $record): ?string => self::resolveDepartment($record)?->name)
+                                ->visible(fn (Activity $record): bool => ($record->assignment_type ?? 'collaborator') === 'department')
+                                ->badge()
+                                ->color('warning')
+                                ->placeholder('—')
+                                ->columnSpanFull(),
                             TextEntry::make('assigned_team_name')
                                 ->label('Equipo asignado')
                                 ->state(fn (Activity $record): ?string => self::resolveTeam($record)?->name)
@@ -155,7 +170,7 @@ class ActivityInfolist
                             TextEntry::make('assigned_collaborators')
                                 ->label('Colaboradores asignados')
                                 ->state(fn (Activity $record): array => self::resolveCollaboratorNames($record)->all())
-                                ->visible(fn (Activity $record): bool => ($record->assignment_type ?? 'collaborator') !== 'team')
+                                ->visible(fn (Activity $record): bool => ! in_array($record->assignment_type ?? 'collaborator', ['team', 'department'], true))
                                 ->listWithLineBreaks()
                                 ->bulleted()
                                 ->placeholder('Sin colaboradores asignados')
@@ -261,6 +276,15 @@ class ActivityInfolist
                     ]),
                 ]),
         ]);
+    }
+
+    private static function resolveDepartment(Activity $record): ?Department
+    {
+        if (! ProjectManagementDepartmentAssignment::isDepartmentActivity($record)) {
+            return null;
+        }
+
+        return ProjectManagementDepartmentAssignment::resolveDepartmentForActivity($record);
     }
 
     private static function resolveTeam(Activity $record): ?Group

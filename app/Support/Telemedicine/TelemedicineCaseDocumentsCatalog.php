@@ -6,6 +6,7 @@ namespace App\Support\Telemedicine;
 
 use App\Models\OperationCoordinationClinicDocument;
 use App\Models\OperationCoordinationService;
+use App\Models\OperationDocumentList;
 use App\Models\OperationQuoteGenerator;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderQuote;
@@ -20,6 +21,36 @@ use Illuminate\Support\Str;
 
 final class TelemedicineCaseDocumentsCatalog
 {
+    /**
+     * @return array<string, mixed>
+     */
+    public static function hubViewContext(TelemedicineCase $case): array
+    {
+        $case->loadMissing('telemedicinePatient');
+
+        $documentFilters = Schema::hasTable('operation_document_lists')
+            ? OperationDocumentList::query()
+                ->pluck('name')
+                ->filter(static fn (mixed $name): bool => is_string($name) && trim($name) !== '')
+                ->map(static fn (string $name): string => trim($name))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all()
+            : [];
+
+        return [
+            'documents' => self::entries($case),
+            'documentFilters' => $documentFilters,
+            'caseCode' => filled($case->code)
+                ? (string) $case->code
+                : 'Caso #'.$case->id,
+            'defaultPhone' => (string) ($case->patient_phone ?: $case->telemedicinePatient?->phone ?: ''),
+            'defaultEmail' => (string) ($case->telemedicinePatient?->email ?: $case->telemedicinePatient?->email_contact ?: ''),
+            'patientName' => (string) ($case->patient_name ?: $case->telemedicinePatient?->full_name ?: 'Paciente'),
+        ];
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */

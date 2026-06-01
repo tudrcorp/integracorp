@@ -8,12 +8,16 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -59,11 +63,30 @@ class TelemedicineCaseTableDash extends TableWidget
         }
 
         $case = TelemedicineCase::query()
+            ->with('telemedicineDoctor')
             ->whereKey($consultation->telemedicine_case_id)
-            ->where('telemedicine_doctor_id', $user->doctor_id)
+            ->where('status', '!=', 'ALTA MEDICA')
             ->first();
 
         if ($case === null) {
+            Notification::make()
+                ->title('No autorizado')
+                ->danger()
+                ->send();
+
+            return null;
+        }
+
+        if (! TelemedicineCaseFilamentListQuery::dashboardUserCanInteractWithCase($user, $case)) {
+            TelemedicineCaseFilamentListQuery::notifyTdgCaseUnderAtenmediDoctor($case);
+
+            return null;
+        }
+
+        if (
+            ! TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext($user)
+            && $case->telemedicine_doctor_id !== $user->doctor_id
+        ) {
             Notification::make()
                 ->title('No autorizado')
                 ->danger()
@@ -317,6 +340,12 @@ class TelemedicineCaseTableDash extends TableWidget
     {
         $openCaseConsultationsAction = Action::make('openCaseConsultations')
             ->label('Consultas del caso')
+            ->authorize(fn (TelemedicineCase $record): bool => TelemedicineCaseFilamentListQuery::dashboardUserCanInteractWithCase(Auth::user(), $record))
+            ->authorizeIndividualRecords()
+            ->authorizationMessage(fn (TelemedicineCase $record): string => 'Este caso está a cargo del doctor '
+                .TelemedicineCaseFilamentListQuery::atenmediDoctorDisplayNameForCase($record)
+                .' de ATENMEDI. No puede editarlo desde TDG.')
+            ->authorizationNotification()
             ->modalHeading(fn (TelemedicineCase $record): string => 'Consultas del caso '.$record->code)
             ->modalDescription('Arriba tiene accesos directos a historia clínica, consulta inicial y observaciones. Debajo: lista de consultas (la más reciente arriba) y detalle o actualización según corresponda. El menú ⋯ de la fila conserva el resto de acciones.')
             ->modalIcon(Heroicon::OutlinedClipboardDocumentList)
@@ -363,7 +392,9 @@ class TelemedicineCaseTableDash extends TableWidget
 
         return $table
             ->defaultSort('created_at', 'desc')
-            ->heading('Casos Asignados')
+            ->heading(fn (): string => TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext(Auth::user())
+                ? 'Casos de telemedicina'
+                : 'Casos asignados')
             // ->description('Toca el número de caso: modal con consultas, historia, consulta inicial y seguimiento. El menú ⋯ mantiene el resto de acciones. Si eres ATENMEDI, aquí no aparecen casos en alta médica ni aquellos cuya última consulta tenga derivado «Traslado en ambulancia».')
             ->emptyStateHeading('Sin casos asignados')
             ->emptyStateDescription('Cuando te asignen pacientes, aparecerán aquí con el mismo estilo de lista de iOS.')
@@ -372,17 +403,20 @@ class TelemedicineCaseTableDash extends TableWidget
             ->query(fn (): Builder => TelemedicineCaseFilamentListQuery::applyDashboardWidgetCaseConstraints(
                 TelemedicineCase::query()
             ))
+            ->recordClasses(function (TelemedicineCase $record): array {
+                $classes = [
+                    TelemedicinePriorityFilamentBadge::recordRowClasses($record->priority?->name),
+                ];
+
+                if (! TelemedicineCaseFilamentListQuery::dashboardUserCanInteractWithCase(Auth::user(), $record)) {
+                    $classes[] = 'telemedicine-case-row-readonly';
+                }
+
+                return $classes;
+            })
             ->extraAttributes([
                 'class' => 'telemedicine-case-table-ios',
             ])
-            ->modifyUngroupedRecordActionsUsing(function (Action $action): void {
-                if ($action->getName() === 'openCaseConsultations') {
-                    $action->extraAttributes([
-                        'class' => 'hidden',
-                        'aria-hidden' => 'true',
-                    ]);
-                }
-            })
             ->columns([
                 TextColumn::make('code')
                     ->label('Nro. de caso')
@@ -392,7 +426,9 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->color('success')
                     ->weight(FontWeight::SemiBold)
                     ->searchable()
-                    ->tooltip('Consultas de este caso')
+                    ->tooltip(fn (TelemedicineCase $record): string => TelemedicineCaseFilamentListQuery::dashboardUserCanInteractWithCase(Auth::user(), $record)
+                        ? 'Consultas de este caso'
+                        : 'Solo lectura: caso en manos de ATENMEDI')
                     ->action($openCaseConsultationsAction)
                     ->extraCellAttributes([
                         'class' => 'py-3',
@@ -456,6 +492,152 @@ class TelemedicineCaseTableDash extends TableWidget
             ->headerActions([
                 //
             ])
+            ->recordActions([
+                ActionGroup::make([
+                    Action::make('view_history')
+                        ->label('Historia Clínica')
+                        ->icon('heroicon-s-book-open')
+                        ->color('primary')
+                        ->action(function (TelemedicineCase $record): mixed {
+                            if (! $this->guardDashboardCaseInteraction($record)) {
+                                return null;
+                            }
+
+                            return $this->openHistoriaClinicaFromCaseModal($record->id);
+                        }),
+
+                    Action::make('consultation')
+                        ->label('Consulta Inicial')
+                        ->icon('healthicons-f-call-centre')
+                        ->color('success')
+                        ->disabled(fn (TelemedicineCase $record): bool => self::consultaInicialDisabledForCase($record))
+                        ->action(function (TelemedicineCase $record): mixed {
+                            if (! $this->guardDashboardCaseInteraction($record)) {
+                                return null;
+                            }
+
+                            return $this->openConsultaInicialFromCaseModal($record->id);
+                        })
+                        ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'ASIGNADO'),
+
+                    Action::make('add_follow_up')
+                        ->label('Hacer Seguimiento')
+                        ->icon('healthicons-f-health-literacy')
+                        ->color('success')
+                        ->action(function (TelemedicineCase $record) {
+                            if (! $this->guardDashboardCaseInteraction($record)) {
+                                return null;
+                            }
+                            $case = TelemedicineCase::query()->where('code', $record->code)->first();
+                            $patient = TelemedicinePatient::query()->whereKey($record->telemedicine_patient_id)->first();
+                            $exitRecord = TelemedicineHistoryPatient::query()
+                                ->where('telemedicine_patient_id', $record->telemedicine_patient_id)
+                                ->exists();
+
+                            session()->forget('case');
+                            session()->forget('patient');
+                            session()->forget('exit_record');
+                            session()->forget('consultation');
+
+                            session(['case' => $case]);
+                            session(['patient' => $patient]);
+                            session(['exit_record' => $exitRecord]);
+
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
+                        })
+                        ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'EN SEGUIMIENTO'),
+
+                    Action::make('view_last')
+                        ->label('Ver ultimo Seguimiento')
+                        ->icon('heroicon-s-eye')
+                        ->color('')
+                        ->action(function (TelemedicineCase $record) {
+                            if (! $this->guardDashboardCaseInteraction($record)) {
+                                return null;
+                            }
+
+                            $last = TelemedicineConsultationPatient::query()
+                                ->where('telemedicine_case_id', $record->id)
+                                ->latest()
+                                ->first();
+
+                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.view', ['record' => $last->id]);
+                        })
+                        ->hidden(function (TelemedicineCase $record): bool {
+                            $last = TelemedicineConsultationPatient::query()
+                                ->where('telemedicine_case_id', $record->id)
+                                ->latest()
+                                ->first();
+
+                            return $last === null;
+                        }),
+
+                    Action::make('addObservation')
+                        ->label('Agregar Observaciones')
+                        ->icon('heroicon-s-hand-raised')
+                        ->color('warning')
+                        ->modalWidth(Width::Large)
+                        ->modalHeading('Observaciones del caso')
+                        ->modalDescription('Registra una nota asociada a este caso. Quedará vinculada al historial para el equipo clínico y operaciones.')
+                        ->modalSubmitActionLabel('Registrar observación')
+                        ->modalIcon('heroicon-s-hand-raised')
+                        ->modalIconColor('warning')
+                        ->modalSubmitAction(
+                            fn (Action $action) => $action
+                                ->color('warning')
+                                ->extraAttributes([
+                                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                                ])
+                        )
+                        ->modalCancelAction(
+                            fn (Action $action) => $action
+                                ->color('gray')
+                                ->extraAttributes([
+                                    'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                                ])
+                        )
+                        ->modalCancelActionLabel('Cancelar')
+                        ->extraModalWindowAttributes([
+                            'class' => 'fi-telemedicine-observation-modal-window',
+                        ], merge: false)
+                        ->form([
+                            Textarea::make('observation')
+                                ->label('Texto de la observación')
+                                ->placeholder('Contexto clínico, acuerdos, seguimiento pendiente o notas administrativas…')
+                                ->helperText('Mínimo 2 caracteres. Evita datos sensibles innecesarios; usa lenguaje profesional.')
+                                ->required()
+                                ->minLength(2)
+                                ->maxLength(5000)
+                                ->rows(6)
+                                ->columnSpanFull(),
+                        ])
+                        ->action(function (TelemedicineCase $record, array $data): void {
+                            if (! $this->guardDashboardCaseInteraction($record)) {
+                                return;
+                            }
+
+                            try {
+                                $observation = new ObservationCase;
+                                $observation->description = $data['observation'];
+                                $observation->telemedicine_case_id = $record->id;
+                                $observation->created_by = Auth::user()?->id;
+
+                                $observation->save();
+
+                                Notification::make()
+                                    ->body('Las observaciones fueron registradas exitosamente.')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $th) {
+                                Log::error($th->getMessage());
+                                Notification::make()
+                                    ->body('Ocurrió un error al registrar las observaciones.')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                ]),
+            ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     //
@@ -477,13 +659,31 @@ class TelemedicineCaseTableDash extends TableWidget
         }
 
         $record = TelemedicineCase::query()
+            ->with('telemedicineDoctor')
             ->whereKey($caseId)
-            ->where(function (Builder $q) use ($user): void {
-                $q->where('telemedicine_doctor_id', $user->doctor_id);
-            })
+            ->where('status', '!=', 'ALTA MEDICA')
             ->first();
 
         if ($record === null) {
+            Notification::make()
+                ->title('No autorizado')
+                ->body('No se encontró el caso o no está disponible.')
+                ->danger()
+                ->send();
+
+            return null;
+        }
+
+        if (! TelemedicineCaseFilamentListQuery::dashboardUserCanInteractWithCase($user, $record)) {
+            TelemedicineCaseFilamentListQuery::notifyTdgCaseUnderAtenmediDoctor($record);
+
+            return null;
+        }
+
+        if (
+            ! TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext($user)
+            && $record->telemedicine_doctor_id !== $user->doctor_id
+        ) {
             Notification::make()
                 ->title('No autorizado')
                 ->body('No se encontró el caso o no está asignado a su usuario.')
@@ -494,6 +694,17 @@ class TelemedicineCaseTableDash extends TableWidget
         }
 
         return $record;
+    }
+
+    private function guardDashboardCaseInteraction(TelemedicineCase $record): bool
+    {
+        if (TelemedicineCaseFilamentListQuery::dashboardUserCanInteractWithCase(Auth::user(), $record)) {
+            return true;
+        }
+
+        TelemedicineCaseFilamentListQuery::notifyTdgCaseUnderAtenmediDoctor($record);
+
+        return false;
     }
 
     private static function consultaInicialDisabledForCase(TelemedicineCase $record): bool

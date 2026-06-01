@@ -9,6 +9,7 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicineServiceList;
 use App\Models\User;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -54,11 +55,11 @@ final class TelemedicineCaseFilamentListQuery
     }
 
     /**
-     * Widget del escritorio (panel telemedicina): casos del médico en sesión.
+     * Widget del escritorio (panel telemedicina).
      *
-     * - Contexto ATENMEDI (departamento usuario o {@see TelemedicineDoctor::$managed_by} = ATENMEDI): solo {@see TelemedicineCase::$managed_by} = ATENMEDI.
-     * - Excluye casos en alta médica a nivel caso.
-     * - En ATENMEDI: excluye casos cuya última consulta tenga derivado traslado en ambulancia.
+     * - Médico TDG ({@see TelemedicineDoctor::$managed_by} = TDG): todos los casos con estado distinto de ALTA MEDICA.
+     * - Contexto ATENMEDI: casos asignados al médico en sesión y {@see TelemedicineCase::$managed_by} = ATENMEDI; excluye traslado en ambulancia en última consulta.
+     * - Resto: casos asignados al médico en sesión, sin alta médica a nivel caso.
      */
     public static function applyDashboardWidgetCaseConstraints(Builder $query): Builder
     {
@@ -68,9 +69,13 @@ final class TelemedicineCaseFilamentListQuery
             return $query->whereRaw('0 = 1');
         }
 
-        $query
-            ->where('telemedicine_doctor_id', $user->doctor_id)
-            ->where('status', '!=', 'ALTA MEDICA');
+        $query->where('status', '!=', 'ALTA MEDICA');
+
+        if (self::userIsInTdgTelemedicinaContext($user)) {
+            return $query->with(['telemedicineDoctor', 'priority']);
+        }
+
+        $query->where('telemedicine_doctor_id', $user->doctor_id);
 
         if (self::userIsInAtenmediTelemedicinaContext($user)) {
             $query->where('managed_by', 'ATENMEDI');
@@ -78,7 +83,77 @@ final class TelemedicineCaseFilamentListQuery
 
         self::excludeCasesWhereLatestConsultationDriftIsTrasladoAmbulanciaForAtenmediDoctor($query);
 
-        return $query;
+        return $query->with(['priority', 'telemedicineDoctor']);
+    }
+
+    /**
+     * TDG puede abrir y editar el caso salvo que esté bajo un médico o gestión ATENMEDI.
+     */
+    public static function dashboardUserCanInteractWithCase(mixed $user, TelemedicineCase $case): bool
+    {
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        if (! self::userIsInTdgTelemedicinaContext($user)) {
+            return true;
+        }
+
+        return ! self::caseIsUnderAtenmediDoctor($case);
+    }
+
+    public static function notifyTdgCaseUnderAtenmediDoctor(TelemedicineCase $case): void
+    {
+        $doctorName = self::atenmediDoctorDisplayNameForCase($case);
+
+        Notification::make()
+            ->title('Caso en manos de ATENMEDI')
+            ->body("Este caso está a cargo del doctor {$doctorName} de ATENMEDI. No puede editarlo desde TDG.")
+            ->warning()
+            ->send();
+    }
+
+    public static function userIsInTdgTelemedicinaContext(mixed $user): bool
+    {
+        if (! $user instanceof User || $user->doctor_id === null) {
+            return false;
+        }
+
+        return TelemedicineDoctor::query()
+            ->whereKey($user->doctor_id)
+            ->where('managed_by', 'TDG')
+            ->exists();
+    }
+
+    public static function caseIsUnderAtenmediDoctor(TelemedicineCase $case): bool
+    {
+        if (strtoupper(trim((string) $case->managed_by)) === 'ATENMEDI') {
+            return true;
+        }
+
+        if (! $case->relationLoaded('telemedicineDoctor')) {
+            $case->loadMissing('telemedicineDoctor');
+        }
+
+        $doctor = $case->telemedicineDoctor;
+
+        return $doctor !== null
+            && strtoupper(trim((string) $doctor->managed_by)) === 'ATENMEDI';
+    }
+
+    public static function atenmediDoctorDisplayNameForCase(TelemedicineCase $case): string
+    {
+        if (! $case->relationLoaded('telemedicineDoctor')) {
+            $case->loadMissing('telemedicineDoctor');
+        }
+
+        $name = trim((string) ($case->telemedicineDoctor?->full_name ?? ''));
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return 'ATENMEDI';
     }
 
     /**

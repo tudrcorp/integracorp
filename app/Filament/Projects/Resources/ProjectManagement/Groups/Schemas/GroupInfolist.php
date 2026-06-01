@@ -6,11 +6,13 @@ namespace App\Filament\Projects\Resources\ProjectManagement\Groups\Schemas;
 
 use App\Models\ProjectManagement\Group;
 use App\Support\Filament\ProjectManagement\ProjectManagementFilamentSchemas;
-use App\Support\Filament\ProjectManagement\ProjectManagementGroupTable;
+use App\Support\Filament\ProjectManagement\ProjectManagementGroupInfolistDisplay;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\View as ViewFactory;
+use Illuminate\Support\HtmlString;
 
 class GroupInfolist
 {
@@ -36,29 +38,22 @@ class GroupInfolist
                                 ->columnSpanFull(),
                         ], ['default' => 1, 'lg' => 2]),
                     ]),
-                ]),
-            Tab::make('Integrantes')
-                ->icon(Heroicon::OutlinedUsers)
-                ->schema([
                     ProjectManagementFilamentSchemas::section(
-                        'Integrantes del equipo',
-                        'Listado optimizado de colaboradores asociados al equipo.',
+                        'Integrantes',
+                        'Colaboradores asociados al equipo de trabajo.',
                         'heroicon-o-users',
                     )->schema([
-                        ProjectManagementFilamentSchemas::innerGrid([
-                            TextEntry::make('team_size')
-                                ->label('Total de integrantes')
-                                ->state(fn (Group $record): int => ProjectManagementGroupTable::resolveMemberNames($record)->count())
-                                ->badge()
-                                ->color(fn (int $state): string => $state > 0 ? 'success' : 'gray'),
-                            TextEntry::make('team_members')
-                                ->label('Integrantes')
-                                ->state(fn (Group $record): array => self::resolveMemberNames($record)->all())
-                                ->listWithLineBreaks()
-                                ->bulleted()
-                                ->placeholder('Sin integrantes asignados')
-                                ->columnSpanFull(),
-                        ], ['default' => 1, 'lg' => 1]),
+                        TextEntry::make('members_highlight')
+                            ->hiddenLabel()
+                            ->html()
+                            ->state(function (Group $record): HtmlString {
+                                $payload = ProjectManagementGroupInfolistDisplay::membersPayload($record);
+
+                                return new HtmlString(
+                                    ViewFactory::make('filament.projects.infolists.group-members-highlight', $payload)->render(),
+                                );
+                            })
+                            ->columnSpanFull(),
                     ]),
                 ]),
             Tab::make('Auditoría')

@@ -108,6 +108,10 @@ final class ProjectManagementActivityAssignmentDisplay
         $collaboratorIds = [];
 
         foreach ($activities as $activity) {
+            if (ProjectManagementDepartmentAssignment::isDepartmentActivity($activity)) {
+                continue;
+            }
+
             if (ProjectManagementGroupMembers::isTeamActivity($activity)) {
                 $group = ProjectManagementGroupMembers::resolveGroupForActivity($activity);
 
@@ -168,6 +172,17 @@ final class ProjectManagementActivityAssignmentDisplay
      */
     private static function resolve(Activity $activity, Collection $groups, Collection $collaborators): array
     {
+        if (ProjectManagementDepartmentAssignment::isDepartmentActivity($activity)) {
+            $department = ProjectManagementDepartmentAssignment::resolveDepartmentForActivity($activity);
+
+            return self::buildPayload(
+                mode: 'department',
+                heading: 'Departamento ejecutor',
+                title: $department?->name ?? 'Departamento asignado',
+                members: [],
+            );
+        }
+
         if (ProjectManagementGroupMembers::isTeamActivity($activity)) {
             $group = ProjectManagementGroupMembers::resolveGroupForActivity($activity, $groups);
             $members = ProjectManagementGroupMembers::profilesForActivity($activity, $collaborators, $group);

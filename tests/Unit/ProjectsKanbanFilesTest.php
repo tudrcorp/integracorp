@@ -26,11 +26,19 @@ it('construye payload de archivos del kanban con categorias y metadatos', functi
         ->toContain('setFilesCategory')
         ->toContain('filesSort')
         ->toContain('setFilesLayout')
-        ->toContain('togglePinFile')
+        ->toContain('filament.projects.partials.kanban-file-pin-button')
+        ->toContain('kanban-files-pinned-hint')
         ->toContain('kanban-files-grid')
         ->toContain('kanban-files-list')
         ->toContain('collaborator-avatar-stack')
+        ->toContain('kanban-files-card__activity')
+        ->toContain('activity_title')
+        ->toContain('activity_view_url')
+        ->toContain('kanban-files-pin-btn--active')
         ->toContain(':is(.dark, .dark *) .kanban-files');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/ProjectManagement/ProjectManagementKanbanFiles.php'))
+        ->toContain('prioritizePinned');
 });
 
 it('expone vista files en kanban con cambio de modo y favoritos', function (): void {
@@ -42,11 +50,12 @@ it('expone vista files en kanban con cambio de modo y favoritos', function (): v
         ->toContain('ProjectManagementKanbanFiles::build')
         ->toContain("public string \$filesCategory = 'all'")
         ->toContain("public string \$filesLayout = 'grid'")
-        ->toContain('togglePinFile')
-        ->toContain("in_array(\$viewMode, ['board', 'timeline', 'files'], true)");
+        ->toContain('updatedPinnedFileIds')
+        ->toContain('getNormalizedPinnedFileIdsProperty')
+        ->toContain("in_array(\$viewMode, ['board', 'timeline', 'files', 'list'], true)");
 
     expect(file_get_contents($viewPath))
         ->toContain("wire:click=\"setViewMode('files')\"")
-        ->toContain('x-projects.kanban-files')
-        ->toContain(':files="$this->filesPayload"');
+        ->toContain("include('components.projects.kanban-files'")
+        ->toContain("'pinnedFileIds' => \$this->pinnedFileIds");
 });

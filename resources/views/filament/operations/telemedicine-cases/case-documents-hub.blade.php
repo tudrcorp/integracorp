@@ -1,6 +1,9 @@
 @php
     $documents = $documents ?? [];
     $caseCode = (string) ($caseCode ?? '—');
+    $defaultPhone = (string) ($defaultPhone ?? '');
+    $defaultEmail = (string) ($defaultEmail ?? '');
+    $patientName = (string) ($patientName ?? 'Paciente');
     $documentFilters = collect($documentFilters ?? [])
         ->filter(fn (mixed $value): bool => is_string($value) && trim($value) !== '')
         ->map(fn (string $value): string => trim($value))
@@ -223,14 +226,38 @@
                                 <span x-show="doc.uploaded_at_relative" x-text="' · ' + doc.uploaded_at_relative"></span>
                             </p>
                         </div>
-                        <a
-                            :href="doc.download_url"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-800 transition hover:bg-cyan-500/20 dark:text-cyan-200"
-                        >
-                            Descargar
-                        </a>
+                        <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                :disabled="!doc.exists"
+                                @click="$wire.mountAction('sendCaseDocument', {
+                                    file_path: doc.file_path,
+                                    document_name: doc.document_name,
+                                    focus: 'both',
+                                    default_phone: @js($defaultPhone),
+                                    default_email: @js($defaultEmail),
+                                    patient_name: @js($patientName),
+                                })"
+                                :class="doc.exists
+                                    ? 'border-violet-400/50 bg-violet-500/10 text-violet-800 hover:bg-violet-500/20 dark:text-violet-200'
+                                    : 'cursor-not-allowed border-gray-200/60 bg-gray-100/80 text-gray-400 opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-gray-500'"
+                                class="inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition"
+                                title="Enviar por WhatsApp o correo"
+                            >
+                                Enviar documentos
+                            </button>
+                            <a
+                                :href="doc.download_url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                :class="doc.exists
+                                    ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-800 hover:bg-cyan-500/20 dark:text-cyan-200'
+                                    : 'pointer-events-none border-gray-200/60 bg-gray-100/80 text-gray-400 opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-gray-500'"
+                                class="inline-flex items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-xs font-bold transition"
+                            >
+                                Descargar
+                            </a>
+                        </div>
                     </div>
                 </article>
             </template>

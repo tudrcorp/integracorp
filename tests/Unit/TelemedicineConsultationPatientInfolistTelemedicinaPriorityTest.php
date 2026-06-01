@@ -8,6 +8,6 @@ it('usa TelemedicinePriorityFilamentBadge para color e icono de prioridad en inf
 
     expect($contents)
         ->toContain('use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;')
-        ->toContain('TelemedicinePriorityFilamentBadge::color($state)')
-        ->toContain('TelemedicinePriorityFilamentBadge::icon($state)');
+        ->toContain('TelemedicinePriorityFilamentBadge::color(')
+        ->toContain('TelemedicinePriorityFilamentBadge::icon(');
 });

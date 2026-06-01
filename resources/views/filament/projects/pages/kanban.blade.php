@@ -10,9 +10,18 @@
                 <div class="space-y-2">
                     <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-slate-400">Tasks</p>
                     <h2 class="text-3xl font-semibold text-gray-950 dark:text-white">Kanban</h2>
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
-                        <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">Overview</span>
-                        <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">Lists</span>
+                    <div class="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide">
+                        <button
+                            type="button"
+                            wire:click="setViewMode('list')"
+                            @class([
+                                'rounded-full border px-3 py-1 transition duration-200',
+                                'border-primary-200 bg-primary-50 font-medium text-primary-700 dark:border-indigo-500/40 dark:bg-indigo-500/20 dark:text-indigo-200' => $viewMode === 'list',
+                                'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/10' => $viewMode !== 'list',
+                            ])
+                        >
+                            Listas
+                        </button>
                         <button
                             type="button"
                             wire:click="setViewMode('board')"
@@ -22,7 +31,7 @@
                                 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/10' => $viewMode !== 'board',
                             ])
                         >
-                            Board
+                            Tablero
                         </button>
                         <button
                             type="button"
@@ -33,7 +42,7 @@
                                 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/10' => $viewMode !== 'timeline',
                             ])
                         >
-                            Timeline
+                            Cronograma
                         </button>
                         <button
                             type="button"
@@ -44,7 +53,7 @@
                                 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/10' => $viewMode !== 'files',
                             ])
                         >
-                            Files
+                            Archivos
                         </button>
                     </div>
                 </div>
@@ -60,7 +69,7 @@
 
             <div class="mt-6 rounded-2xl border border-gray-100 bg-gray-50/90 p-3 md:p-4 dark:border-white/8 dark:bg-white/[0.02]">
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-12 xl:items-end">
-                    <x-projects.kanban-filter-field label="Buscar" col-span="xl:col-span-4">
+                    <x-projects.kanban-filter-field label="Buscar" col-span="xl:col-span-3">
                         <x-heroicon-m-magnifying-glass class="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                         <input
                             type="search"
@@ -79,7 +88,15 @@
                         </select>
                     </x-projects.kanban-filter-field>
 
-                    <x-projects.kanban-filter-field label="Proyecto" col-span="xl:col-span-3" :select="true">
+                    <x-projects.kanban-filter-field label="Visibilidad" col-span="xl:col-span-2" :select="true">
+                        <select wire:model.live="archivedFilter" class="{{ $kanbanSelectClass }}">
+                            @foreach ($this->archivedFilterOptions as $archivedKey => $archivedLabel)
+                                <option value="{{ $archivedKey }}">{{ $archivedLabel }}</option>
+                            @endforeach
+                        </select>
+                    </x-projects.kanban-filter-field>
+
+                    <x-projects.kanban-filter-field label="Proyecto" col-span="xl:col-span-2" :select="true">
                         <select wire:model.live="projectFilter" class="{{ $kanbanSelectClass }}">
                             <option value="all">Todos los proyectos</option>
                             @forelse ($this->projectOptions as $projectId => $projectName)
@@ -168,17 +185,28 @@
 
                                 <div class="kanban-card-surface">
                                 <div class="flex items-start justify-between gap-2">
-                                    <span
-                                        class="kanban-priority-badge inline-flex shrink-0 items-center rounded border px-1 py-px text-[9px] font-extrabold uppercase leading-none tracking-[0.14em] shadow-sm ring-1 ring-inset"
-                                        style="--activity-color: {{ $activityColor }};"
-                                    >
-                                        {{ match ($activity->priority) {
-                                            'high' => 'Alta',
-                                            'medium' => 'Media',
-                                            'low' => 'Baja',
-                                            default => 'N/A',
-                                        } }}
-                                    </span>
+                                    <div class="flex flex-wrap items-center gap-1">
+                                        <span
+                                            @class([
+                                                'kanban-priority-badge inline-flex shrink-0 items-center rounded border px-1 py-px text-[9px] font-extrabold uppercase leading-none tracking-[0.14em] shadow-sm ring-1 ring-inset',
+                                                'kanban-priority-badge--' . $activity->priority,
+                                            ])
+                                            style="--activity-color: {{ $activityColor }};"
+                                        >
+                                            {{ match ($activity->priority) {
+                                                'high' => 'Alta',
+                                                'medium' => 'Media',
+                                                'low' => 'Baja',
+                                                default => 'N/A',
+                                            } }}
+                                        </span>
+                                        @if ($activity->isArchivedFromKanban())
+                                            <span class="inline-flex shrink-0 items-center gap-0.5 rounded border border-gray-200/90 bg-gray-100/90 px-1 py-px text-[9px] font-bold uppercase leading-none tracking-wide text-gray-600 dark:border-white/15 dark:bg-white/10 dark:text-slate-300">
+                                                <x-heroicon-m-archive-box class="size-2.5" />
+                                                Archivada
+                                            </span>
+                                        @endif
+                                    </div>
                                     <x-heroicon-m-ellipsis-horizontal class="h-3.5 w-3.5 text-gray-400 dark:text-slate-500" />
                                 </div>
 
@@ -203,52 +231,101 @@
                                     {{ $activity->description ?: 'Sin descripción registrada.' }}
                                 </p>
 
-                                <x-projects.kanban-activity-assignees :activity="$activity" />
+                                @if ($activity->status === 'done')
+                                    @php
+                                        $executionSummary = \App\Support\Filament\ProjectManagement\ProjectManagementActivityTable::kanbanDoneExecutionSummary($activity);
+                                    @endphp
+                                    @if ($executionSummary)
+                                        <div
+                                            class="mt-4 space-y-2 rounded-xl border px-3 py-2.5 {{ $executionSummary['within_range'] ? 'border-emerald-200/80 bg-emerald-50/70 dark:border-emerald-500/25 dark:bg-emerald-500/10' : 'border-red-200/80 bg-red-50/70 dark:border-red-500/25 dark:bg-red-500/10' }}"
+                                        >
+                                            <div class="flex items-start justify-between gap-2 text-[10px] leading-tight text-gray-600 dark:text-slate-300">
+                                                <span>
+                                                    <span class="block font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Inicio</span>
+                                                    <span class="tabular-nums">{{ $executionSummary['started_label'] }}</span>
+                                                </span>
+                                                <span class="text-right">
+                                                    <span class="block font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Fin</span>
+                                                    <span class="tabular-nums">{{ $executionSummary['finished_label'] }}</span>
+                                                </span>
+                                            </div>
+                                            @if ($executionSummary['optimal_label'])
+                                                <p class="text-center text-[10px] text-gray-600 dark:text-slate-300">
+                                                    <span class="font-semibold text-gray-700 dark:text-slate-200">Plazo óptimo</span>
+                                                    <span class="mx-1 text-gray-400 dark:text-slate-500">·</span>
+                                                    <span class="tabular-nums font-medium">{{ $executionSummary['optimal_label'] }}</span>
+                                                </p>
+                                            @endif
+                                            <p class="text-center">
+                                                <span class="block text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">Ejecución</span>
+                                                <span class="text-sm font-bold tabular-nums {{ $executionSummary['within_range'] ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300' }}">
+                                                    {{ $executionSummary['elapsed_label'] }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    @endif
+                                    @unless ($activity->isArchivedFromKanban())
+                                        <div class="mt-2 flex justify-center">
+                                            <button
+                                                type="button"
+                                                wire:click.stop="archiveActivityFromKanban({{ $activity->id }})"
+                                                wire:confirm="¿Archivar esta actividad? Dejará de mostrarse en el Kanban, pero seguirá disponible en el proyecto."
+                                                class="inline-flex items-center gap-1 rounded-lg border border-gray-200/90 bg-white/80 px-2 py-1 text-[10px] font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-100 hover:text-gray-800 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/25 dark:hover:bg-white/10 dark:hover:text-white"
+                                                title="Ocultar del Kanban"
+                                            >
+                                                <x-heroicon-m-archive-box class="h-3.5 w-3.5" />
+                                                Archivar
+                                            </button>
+                                        </div>
+                                    @endunless
+                                @else
+                                    <x-projects.kanban-activity-assignees :activity="$activity" />
 
-                                <div class="mt-4 space-y-1.5 text-[11px] text-gray-500 dark:text-slate-400">
-                                    <div class="flex justify-end">
-                                        <span class="inline-flex items-center gap-1 whitespace-nowrap">
-                                            <x-heroicon-m-flag class="h-3.5 w-3.5" />
-                                            {{ $activity->due_date?->translatedFormat('d M') ?? 'Sin fecha' }}
-                                        </span>
+                                    <div class="mt-4 space-y-1.5 text-[11px] text-gray-500 dark:text-slate-400">
+                                        <div class="flex justify-end">
+                                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                                <x-heroicon-m-flag class="h-3.5 w-3.5" />
+                                                {{ $activity->due_date?->translatedFormat('d M') ?? 'Sin fecha' }}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center justify-end gap-2">
+                                            <a
+                                                href="{{ \App\Filament\Projects\Resources\ProjectManagement\Activities\ActivityResource::getUrl('view', ['record' => $activity], 'projects') }}"
+                                                class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                                                title="Ver actividad"
+                                            >
+                                                <x-heroicon-m-eye class="h-3.5 w-3.5" />
+                                                Ver
+                                            </a>
+                                            <button
+                                                type="button"
+                                                wire:click.stop="mountAction('addActivityNote', { activityId: {{ $activity->id }} })"
+                                                class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-gray-500 transition hover:bg-gray-100 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-amber-200"
+                                                title="Agregar notas"
+                                            >
+                                                <x-heroicon-m-chat-bubble-left-ellipsis class="h-3.5 w-3.5" />
+                                                Notas
+                                            </button>
+                                            <button
+                                                type="button"
+                                                wire:click.stop="mountAction('uploadActivityDocument', { activityId: {{ $activity->id }} })"
+                                                class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-gray-500 transition hover:bg-gray-100 hover:text-sky-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-sky-200"
+                                                title="Cargar documentos"
+                                            >
+                                                <x-heroicon-m-arrow-up-tray class="h-3.5 w-3.5" />
+                                                Docs
+                                            </button>
+                                            <a
+                                                href="{{ \App\Filament\Projects\Resources\ProjectManagement\Activities\ActivityResource::getUrl('edit', ['record' => $activity], 'projects') }}"
+                                                class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-primary-600 transition hover:bg-primary-50 hover:text-primary-700 dark:text-indigo-300 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-100"
+                                                title="Editar actividad"
+                                            >
+                                                <x-heroicon-m-arrow-right-circle class="h-3.5 w-3.5" />
+                                                Editar
+                                            </a>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center justify-end gap-2">
-                                        <a
-                                            href="{{ \App\Filament\Projects\Resources\ProjectManagement\Activities\ActivityResource::getUrl('view', ['record' => $activity], 'projects') }}"
-                                            class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
-                                            title="Ver actividad"
-                                        >
-                                            <x-heroicon-m-eye class="h-3.5 w-3.5" />
-                                            Ver
-                                        </a>
-                                        <button
-                                            type="button"
-                                            wire:click.stop="mountAction('addActivityNote', { activityId: {{ $activity->id }} })"
-                                            class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-gray-500 transition hover:bg-gray-100 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-amber-200"
-                                            title="Agregar notas"
-                                        >
-                                            <x-heroicon-m-chat-bubble-left-ellipsis class="h-3.5 w-3.5" />
-                                            Notas
-                                        </button>
-                                        <button
-                                            type="button"
-                                            wire:click.stop="mountAction('uploadActivityDocument', { activityId: {{ $activity->id }} })"
-                                            class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-gray-500 transition hover:bg-gray-100 hover:text-sky-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-sky-200"
-                                            title="Cargar documentos"
-                                        >
-                                            <x-heroicon-m-arrow-up-tray class="h-3.5 w-3.5" />
-                                            Docs
-                                        </button>
-                                        <a
-                                            href="{{ \App\Filament\Projects\Resources\ProjectManagement\Activities\ActivityResource::getUrl('edit', ['record' => $activity], 'projects') }}"
-                                            class="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium text-primary-600 transition hover:bg-primary-50 hover:text-primary-700 dark:text-indigo-300 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-100"
-                                            title="Editar actividad"
-                                        >
-                                            <x-heroicon-m-arrow-right-circle class="h-3.5 w-3.5" />
-                                            Editar
-                                        </a>
-                                    </div>
-                                </div>
+                                @endif
                                 </div>
                             </div>
                         @empty
@@ -263,13 +340,17 @@
         </section>
         @elseif ($viewMode === 'timeline')
             <x-projects.kanban-timeline :timeline="$this->timelinePayload" />
+        @elseif ($viewMode === 'list')
+            <div class="kanban-activities-table overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-950/5 dark:border-white/10 dark:bg-gray-950 dark:ring-white/10">
+                {{ $this->getTable()->render() }}
+            </div>
         @else
-            <x-projects.kanban-files
-                :files="$this->filesPayload"
-                :category="$filesCategory"
-                :layout="$filesLayout"
-                :pinned-file-ids="$pinnedFileIds"
-            />
+            @include('components.projects.kanban-files', [
+                'files' => $this->filesPayload,
+                'category' => $filesCategory,
+                'layout' => $filesLayout,
+                'pinnedFileIds' => $this->pinnedFileIds,
+            ])
         @endif
     </div>
 
@@ -354,14 +435,38 @@
         .kanban-priority-badge {
             border-color: color-mix(in srgb, var(--activity-color) 55%, transparent);
             background: color-mix(in srgb, var(--activity-color) 24%, #ffffff);
-            color: var(--activity-color);
+            color: color-mix(in srgb, var(--activity-color) 72%, #0f172a);
             --tw-ring-color: color-mix(in srgb, var(--activity-color) 30%, transparent);
             box-shadow: 0 1px 2px color-mix(in srgb, var(--activity-color) 28%, transparent);
         }
 
         .dark .kanban-priority-badge {
-            background: color-mix(in srgb, var(--activity-color) 32%, #161923);
-            box-shadow: 0 0 0 1px color-mix(in srgb, var(--activity-color) 35%, transparent), 0 1px 3px color-mix(in srgb, var(--activity-color) 40%, transparent);
+            border-color: rgb(100 116 139 / 0.45);
+            background: rgb(30 41 59 / 0.9);
+            color: rgb(241 245 249);
+            --tw-ring-color: rgb(100 116 139 / 0.35);
+            box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+        }
+
+        .dark .kanban-priority-badge--high {
+            border-color: rgb(248 113 113 / 0.55);
+            background: rgb(127 29 29 / 0.72);
+            color: rgb(254 202 202);
+            --tw-ring-color: rgb(248 113 113 / 0.35);
+        }
+
+        .dark .kanban-priority-badge--medium {
+            border-color: rgb(251 191 36 / 0.5);
+            background: rgb(120 53 15 / 0.55);
+            color: rgb(253 230 138);
+            --tw-ring-color: rgb(251 191 36 / 0.3);
+        }
+
+        .dark .kanban-priority-badge--low {
+            border-color: rgb(100 116 139 / 0.45);
+            background: rgb(30 41 59 / 0.85);
+            color: rgb(203 213 225);
+            --tw-ring-color: rgb(100 116 139 / 0.3);
         }
 
         .kanban-filter-select option {

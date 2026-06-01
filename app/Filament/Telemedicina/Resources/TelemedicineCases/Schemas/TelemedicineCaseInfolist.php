@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas;
 
 use App\Models\ObservationCase;
-use App\Models\OperationDocumentList;
 use App\Models\TelemedicineCase;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -18,7 +17,6 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Schema as SchemaFacade;
 use Illuminate\Support\Facades\View as ViewFactory;
 use Illuminate\Support\HtmlString;
 
@@ -265,26 +263,11 @@ class TelemedicineCaseInfolist
                                             ->hiddenLabel()
                                             ->html()
                                             ->state(function (TelemedicineCase $record): HtmlString {
-                                                $documents = TelemedicineCaseDocumentsCatalog::entries($record);
-                                                $documentFilters = SchemaFacade::hasTable('operation_document_lists')
-                                                    ? OperationDocumentList::query()
-                                                        ->pluck('name')
-                                                        ->filter(static fn (mixed $name): bool => is_string($name) && trim($name) !== '')
-                                                        ->map(static fn (string $name): string => trim($name))
-                                                        ->unique()
-                                                        ->sort()
-                                                        ->values()
-                                                        ->all()
-                                                    : [];
-
                                                 return new HtmlString(
-                                                    ViewFactory::make('filament.operations.telemedicine-cases.case-documents-hub', [
-                                                        'documents' => $documents,
-                                                        'documentFilters' => $documentFilters,
-                                                        'caseCode' => filled($record->code)
-                                                            ? (string) $record->code
-                                                            : 'Caso #'.$record->id,
-                                                    ])->render()
+                                                    ViewFactory::make(
+                                                        'filament.operations.telemedicine-cases.case-documents-hub',
+                                                        TelemedicineCaseDocumentsCatalog::hubViewContext($record),
+                                                    )->render()
                                                 );
                                             }),
                                     ])

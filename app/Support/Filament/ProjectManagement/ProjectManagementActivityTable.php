@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Filament\ProjectManagement;
 
 use App\Models\ProjectManagement\Activity;
+use App\Models\ProjectManagement\Department;
 use App\Models\ProjectManagement\Group;
 use App\Models\ProjectManagement\Project;
 use App\Models\RrhhColaborador;
@@ -76,6 +77,20 @@ final class ProjectManagementActivityTable
     public static function assignmentSummary(Activity $activity): array
     {
         $assignmentType = (string) ($activity->assignment_type ?? 'collaborator');
+
+        if ($assignmentType === 'department') {
+            $departmentName = $activity->relationLoaded('executor')
+                && $activity->executor instanceof Department
+                ? (string) $activity->executor->name
+                : 'Departamento asignado';
+
+            return [
+                'label' => $departmentName,
+                'subtitle' => 'Asignación por departamento',
+                'icon' => 'heroicon-o-building-office-2',
+                'tone' => 'warning',
+            ];
+        }
 
         if ($assignmentType === 'team') {
             $groupName = $activity->relationLoaded('executor')
@@ -277,5 +292,71 @@ final class ProjectManagementActivityTable
             'elapsed_days' => $window['elapsed_days'],
             'remaining_days' => $window['remaining_days'],
         ];
+    }
+
+    /**
+     * Resumen de tiempos para tarjetas Kanban en estatus finalizada.
+     *
+     * @return array{
+     *     started_label: string,
+     *     finished_label: string,
+     *     optimal_days: int|null,
+     *     optimal_label: string|null,
+     *     elapsed_days: int,
+     *     elapsed_label: string,
+     *     within_range: bool
+     * }|null
+     */
+    public static function kanbanDoneExecutionSummary(Activity $activity): ?array
+    {
+        if ($activity->status !== 'done') {
+            return null;
+        }
+
+        $assignedAt = $activity->created_at?->copy()->startOfDay();
+        $finishedAt = $activity->updated_at?->copy()->startOfDay();
+
+        if ($assignedAt === null || $finishedAt === null) {
+            return null;
+        }
+
+        if ($finishedAt->lt($assignedAt)) {
+            $finishedAt = $assignedAt->copy();
+        }
+
+        $elapsedDays = self::kanbanElapsedDaysBetween($assignedAt, $finishedAt);
+
+        $due = $activity->due_date?->copy()->startOfDay();
+        $optimalDays = null;
+
+        if ($due !== null && $due->gte($assignedAt)) {
+            $optimalDays = self::kanbanElapsedDaysBetween($assignedAt, $due);
+        }
+
+        $withinRange = $due === null || $finishedAt->lte($due);
+
+        return [
+            'started_label' => $assignedAt->translatedFormat('d M Y'),
+            'finished_label' => $finishedAt->translatedFormat('d M Y'),
+            'optimal_days' => $optimalDays,
+            'optimal_label' => $optimalDays !== null ? self::kanbanDaysLabel($optimalDays) : null,
+            'elapsed_days' => $elapsedDays,
+            'elapsed_label' => self::kanbanDaysLabel($elapsedDays),
+            'within_range' => $withinRange,
+        ];
+    }
+
+    private static function kanbanElapsedDaysBetween(Carbon $start, Carbon $end): int
+    {
+        if ($start->isSameDay($end)) {
+            return 1;
+        }
+
+        return max(1, (int) $start->diffInDays($end));
+    }
+
+    private static function kanbanDaysLabel(int $days): string
+    {
+        return $days === 1 ? '1 día' : "{$days} días";
     }
 }

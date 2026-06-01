@@ -13,6 +13,7 @@ use App\Jobs\GeneratePdfInformeMedicoCorto;
 use App\Jobs\GeneratePdfInformeMedicoLargo;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
+use App\Jobs\SendTelemedicineConsultationDocuments;
 use App\Models\OperationCoordinationService;
 use App\Models\OperationInventory;
 use App\Models\TelemedicineCase;
@@ -35,6 +36,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -689,7 +691,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     }
 
                     // Notificion al usuario de que los documentos estan siendo generados y qye luego los recibira via WP
-                    $this->sendNotifications($record);
+                    $this->sendNotifications();
+
+                    $pdfJobs = [];
 
                     if ($record['status'] == 'CONSULTA INICIAL') {
 
@@ -730,7 +734,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                             'signature' => $doctor['signature'],
                         ];
 
-                        GeneratePdfInformeMedicoCorto::dispatch($dataInformeCorteo, Auth::user(), 'informe-corto')->onQueue('telemedicina');
+                        $pdfJobs[] = new GeneratePdfInformeMedicoCorto($dataInformeCorteo, Auth::user(), 'informe-corto');
 
                         $dataInformeLargo = [
                             'fecha' => now()->format('d/m/Y'),
@@ -774,7 +778,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                             'saturacion' => $this->data['saturacion'],
                         ];
 
-                        GeneratePdfInformeMedicoLargo::dispatch($dataInformeLargo, Auth::user(), 'informe-largo')->onQueue('telemedicina');
+                        $pdfJobs[] = new GeneratePdfInformeMedicoLargo($dataInformeLargo, Auth::user(), 'informe-largo');
                     }
 
                     /**
@@ -788,7 +792,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                      */
                     if ($dataMedicamentos != []) {
 
-                        GeneratePdfMedicamentos::dispatch($dataMedicamentos, Auth::user(), 'medicamentos')->onQueue('telemedicina');
+                        $pdfJobs[] = new GeneratePdfMedicamentos($dataMedicamentos, Auth::user(), 'medicamentos');
 
                         // Genero el servicio de coordinacion
                         $registeredOperationCoordinationService = OperationCoordinationServiceController::createMedicineService($record, $doctor, $patient);
@@ -797,7 +801,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
                     if ($dataLaboratorios != []) {
 
-                        GeneratePdfLaboratorio::dispatch($dataLaboratorios, Auth::user(), 'laboratorios')->onQueue('telemedicina');
+                        $pdfJobs[] = new GeneratePdfLaboratorio($dataLaboratorios, Auth::user(), 'laboratorios');
 
                         $registeredOperationCoordinationService = OperationCoordinationServiceController::createLaboratoryService($record, $doctor, $patient);
 
@@ -805,7 +809,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
                     if ($dataEstudios != []) {
 
-                        GeneratePdfImagenologia::dispatch($dataEstudios, Auth::user(), 'imagenologia')->onQueue('telemedicina');
+                        $pdfJobs[] = new GeneratePdfImagenologia($dataEstudios, Auth::user(), 'imagenologia');
 
                         $registeredOperationCoordinationService = OperationCoordinationServiceController::createStudyService($record, $doctor, $patient);
 
@@ -813,10 +817,32 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
                     if ($dataEspecialistas != []) {
 
-                        GeneratePdfEspecialista::dispatch($dataEspecialistas, Auth::user(), 'especialista')->onQueue('telemedicina');
+                        $pdfJobs[] = new GeneratePdfEspecialista($dataEspecialistas, Auth::user(), 'especialista');
 
                         $registeredOperationCoordinationService = OperationCoordinationServiceController::createSpecialistService($record, $doctor, $patient);
 
+                    }
+
+                    if ($pdfJobs !== []) {
+                        $consultationId = (int) $record['id'];
+                        $userId = (int) Auth::id();
+                        $patientPhone = (string) ($patient['phone'] ?? $this->data['phone_ppal'] ?? '');
+                        $patientEmail = (string) ($patient['email'] ?? $patient['email_contact'] ?? '');
+                        $patientName = (string) ($patient['full_name'] ?? $record['full_name']);
+
+                        Bus::batch($pdfJobs)
+                            ->name('telemedicina-consultation-docs-'.$consultationId)
+                            ->then(function () use ($consultationId, $patientPhone, $patientEmail, $patientName, $userId): void {
+                                SendTelemedicineConsultationDocuments::dispatch(
+                                    $consultationId,
+                                    $patientPhone,
+                                    $patientEmail !== '' ? $patientEmail : null,
+                                    $patientName,
+                                    $userId,
+                                )->onQueue('telemedicina');
+                            })
+                            ->onQueue('telemedicina')
+                            ->dispatch();
                     }
 
                     /**

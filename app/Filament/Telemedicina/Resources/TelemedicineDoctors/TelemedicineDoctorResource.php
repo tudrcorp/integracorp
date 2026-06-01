@@ -13,14 +13,16 @@ use App\Models\TelemedicineDoctor;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class TelemedicineDoctorResource extends Resource
 {
     protected static ?string $model = TelemedicineDoctor::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-doctor-male';
+
+    protected static string|UnitEnum|null $navigationGroup = 'GESTIÓN TELEMÉDICA';
 
     protected static ?string $navigationLabel = 'Mi Perfil';
 

@@ -72,7 +72,7 @@ final class ProjectManagementKanbanFiles
                 $fileCategory = self::resolveCategory($document->file_type, $document->name);
 
                 return [
-                    'id' => $document->id,
+                    'id' => (int) $document->getKey(),
                     'name' => $document->name,
                     'extension' => self::resolveExtension($document->file_type, $document->name),
                     'size_label' => self::formatFileSize($document->file_size),
@@ -128,6 +128,33 @@ final class ProjectManagementKanbanFiles
             'counts' => $counts,
             'files' => $files,
         ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $files
+     * @param  array<int, int>  $pinnedIds
+     * @return array<int, array<string, mixed>>
+     */
+    public static function prioritizePinned(array $files, array $pinnedIds): array
+    {
+        if ($files === [] || $pinnedIds === []) {
+            return $files;
+        }
+
+        return collect($files)
+            ->values()
+            ->sortBy(function (array $file, int $originalIndex) use ($pinnedIds): array {
+                $fileId = (int) ($file['id'] ?? 0);
+                $pinnedIndex = array_search($fileId, $pinnedIds, true);
+
+                return [
+                    $pinnedIndex === false ? 1 : 0,
+                    $pinnedIndex === false ? $originalIndex : $pinnedIndex,
+                    $originalIndex,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**

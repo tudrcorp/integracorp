@@ -33,7 +33,12 @@ class ConsultationsRelationManager extends RelationManager
             ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
             ->striped()
             ->defaultSort('created_at', 'desc')
+            ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50])
+            ->recordActionsColumnLabel('')
+            ->extraAttributes([
+                'class' => 'telemedicine-case-table-ios telemedicine-case-consultations-relation-table',
+            ])
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'telemedicinePatientMedications.operationInventory',
             ]))
@@ -44,13 +49,15 @@ class ConsultationsRelationManager extends RelationManager
                     ->description(fn (TelemedicineConsultationPatient $record): string => $record->updated_at?->diffForHumans() ?? '')
                     ->sortable()
                     ->icon(Heroicon::OutlinedCalendarDays)
-                    ->iconColor('gray'),
+                    ->iconColor('gray')
+                    ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('telemedicine_case_code')
                     ->label('N.º de caso')
                     ->weight(FontWeight::Medium)
                     ->badge()
                     ->color('success')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('code_reference')
                     ->label('Referencia')
                     ->badge()
@@ -61,14 +68,16 @@ class ConsultationsRelationManager extends RelationManager
                     ->label('Paciente')
                     ->description(fn (TelemedicineConsultationPatient $record): string => 'Atendido por: Dr(a). '.($record->telemedicineDoctor?->full_name ?? '—'))
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('nro_identificacion')
                     ->label('Identificación')
                     ->prefix('V-')
                     ->alignCenter()
                     ->badge()
                     ->color('primary')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('telemedicineServiceList.name')
                     ->label('Servicio')
                     ->badge()
@@ -130,6 +139,7 @@ class ConsultationsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
+                    ->extraCellAttributes(['class' => 'py-3'])
                     ->color(fn (TelemedicineConsultationPatient $record): string => match ($record->status) {
                         'EN SEGUIMIENTO' => 'warning',
                         'CONSULTA INICIAL' => 'info',
