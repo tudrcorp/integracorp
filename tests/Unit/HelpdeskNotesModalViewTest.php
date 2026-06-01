@@ -24,6 +24,7 @@ it('renderiza el modal de notas helpdesk', function (): void {
 
     expect($html)->toContain('fi-helpdesk-notes-modal')
         ->and($html)->toContain('Última actualización')
-        ->and($html)->toContain('Línea 1')
+        ->and($html)->toContain('Historial de notas')
+        ->and($html)->toContain('helpdesk-notes-surface')
         ->and($html)->toContain('Equipo soporte');
 });

@@ -25,7 +25,7 @@
         </div>
         <div class="px-4 py-3">
             <p class="text-sm text-gray-600 dark:text-gray-300">
-                Los grupos definen equipos reutilizables y la cuota máxima de tickets que pueden recibir. Complete el formulario superior para crear uno nuevo.
+                Los grupos definen equipos reutilizables y la cuota máxima de tickets que pueden recibir. Cree grupos arriba o edite integrantes con «Editar grupo».
             </p>
         </div>
     </div>
@@ -39,6 +39,8 @@
                 ->values();
             $isActive = strtoupper((string) $group->status) === 'ACTIVO';
             $ticketQuota = (int) $group->total_tickets_assigned;
+            $ticketsUsed = $group->ticketsCreatedCount();
+            $quotaReached = $ticketQuota > 0 && $ticketsUsed >= $ticketQuota;
         @endphp
 
         <div
@@ -56,12 +58,19 @@
                         ])>
                             {{ $isActive ? 'Activo' : 'Inactivo' }}
                         </span>
-                        <span class="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-500/20 dark:text-sky-200" title="Cuota de tickets asignados al grupo">
-                            Cuota: {{ $ticketQuota === 1 ? '1 ticket' : $ticketQuota.' tickets' }}
+                        <span @class([
+                            'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                            'bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200' => ! $quotaReached,
+                            'bg-amber-100 text-amber-900 dark:bg-amber-500/25 dark:text-amber-100' => $quotaReached,
+                        ]) title="Tickets registrados / cuota máxima">
+                            {{ $ticketsUsed }} / {{ $ticketQuota === 1 ? '1 ticket' : $ticketQuota.' tickets' }}
                         </span>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         {{ $memberNames->count() }} integrante(s)
+                        @if ($quotaReached)
+                            · <span class="font-medium text-amber-700 dark:text-amber-300">Cuota agotada: los integrantes no pueden crear tickets hasta que Tecnología amplíe la cuota.</span>
+                        @endif
                         @if (filled($group->created_by))
                             · Creado por {{ $group->created_by }}
                         @endif
@@ -75,7 +84,25 @@
                         </p>
                     @endif
                 </div>
-                <div class="flex shrink-0 justify-end">
+                <div class="flex shrink-0 flex-wrap justify-end gap-2">
+                    @if (\App\Support\HelpdeskUserAccess::hasSystemsDepartment())
+                        <button
+                            type="button"
+                            wire:click="mountEditHelpdeskWorkGroup({{ $group->getKey() }})"
+                            title="Editar nombre, estado e integrantes del grupo"
+                            class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold tracking-tight text-white transition-all duration-200 hover:bg-indigo-700 active:scale-[0.98]"
+                        >
+                            Editar grupo
+                        </button>
+                        <button
+                            type="button"
+                            wire:click="mountUpdateHelpdeskWorkGroupQuota({{ $group->getKey() }})"
+                            title="Solo Tecnología (SISTEMAS) puede ampliar la cuota del grupo"
+                            class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold tracking-tight text-white transition-all duration-200 hover:bg-sky-700 active:scale-[0.98]"
+                        >
+                            Actualizar cuota
+                        </button>
+                    @endif
                     <button
                         type="button"
                         wire:click="mountDeleteHelpdeskWorkGroup({{ $group->getKey() }})"

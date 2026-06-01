@@ -18,7 +18,8 @@ it('aplica estilo iOS al formulario y acciones de colaboradores', function (): v
     $profileModalContents = file_get_contents($profileModalPath);
 
     expect($formContents)
-        ->toContain('IOS_SECTION_CLASS')
+        ->toContain('TABS_CONTAINER')
+        ->toContain('SECTION_CARD')
         ->toContain('IOS_SELECT_MATCH_INPUT_HEIGHT_CLASS')
         ->toContain('[&_.fi-select-input-btn]:!min-h-11')
         ->toContain("Tabs::make('rrhhColaboradorFormTabs')")
@@ -43,7 +44,21 @@ it('aplica estilo iOS al formulario y acciones de colaboradores', function (): v
         ->toContain('->maxDate(now())')
         ->toContain("'before_or_equal:today'")
         ->toContain("TextInput::make('age')")
-        ->toContain('afterStateUpdated');
+        ->toContain('afterStateUpdated')
+        ->toContain('public static function avatarUploadField');
+
+    $themePath = dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css';
+    $themeContents = file_get_contents($themePath);
+
+    expect($themeContents)
+        ->toContain('.rrhh-colaborador-avatar-upload .fi-fo-file-upload-editor')
+        ->toContain('fi-fo-file-upload-editor-control-panel-main')
+        ->toContain('max-w-lg');
+
+    expect($editPageContents)
+        ->toContain("Action::make('update_avatar')")
+        ->toContain('avatarUploadField')
+        ->toContain('AUDIT_ADMIN_RRHH_COLABORADOR_AVATAR_UPDATED');
 
     expect($tableContents)
         ->toContain('IOS_PRIMARY_BUTTON_CLASS')

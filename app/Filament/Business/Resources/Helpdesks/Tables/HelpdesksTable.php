@@ -10,8 +10,8 @@ use App\Models\RrhhColaborador;
 use App\Support\HelpdeskDocumentPaths;
 use App\Support\HelpdeskPlainText;
 use App\Support\HelpdeskTableTeamColumns;
+use App\Support\HelpdeskTableTicketTypeColumn;
 use App\Support\HelpdeskTaskStatusOptions;
-use App\Support\HelpdeskTicketType;
 use App\Support\HelpdeskTimelineBuilder;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -78,7 +78,7 @@ class HelpdesksTable
                 TextColumn::make('id')
                     ->label('ID')
                     ->icon('heroicon-m-hashtag')
-                    ->searchable()
+                    ->searchable(isIndividual: true)
                     ->sortable()
                     ->copyable()
                     ->weight('semiBold')
@@ -89,21 +89,14 @@ class HelpdesksTable
                     ->label('Descripción')
                     ->icon('heroicon-m-document-text')
                     ->formatStateUsing(fn (?string $state): string => HelpdeskPlainText::fromHtml($state))
-                    ->searchable()
+                    ->searchable(isIndividual: true)
                     ->limit(40)
                     ->extraAttributes(fn (HelpDesk $record): array => filled($description = HelpdeskPlainText::fromHtml($record->description))
                         ? [
                             'x-tooltip' => '{ content: '.Js::from($description).', theme: $store.theme, delay: [1000, 0], maxWidth: 520 }',
                         ]
                         : []),
-                TextColumn::make('ticket_type')
-                    ->label('Tipo de ticket')
-                    ->icon('heroicon-m-ticket')
-                    ->formatStateUsing(fn (?string $state): string => mb_strtoupper(HelpdeskTicketType::label($state)))
-                    ->badge()
-                    ->color(fn (?string $state): string => HelpdeskTicketType::filamentColor($state))
-                    ->sortable()
-                    ->searchable(),
+                HelpdeskTableTicketTypeColumn::make(individualSearch: true),
                 TextColumn::make('priority')
                     ->label('Prioridad')
                     ->icon(fn (?string $state): ?string => match ($state) {
@@ -126,23 +119,17 @@ class HelpdesksTable
                             'ALTA' => 'danger',
                         };
                     })
-                    ->searchable(),
+                    ->searchable(isIndividual: true),
                 TextColumn::make('rrhhColaboradores.fullName')
                     ->label('Asignados')
                     ->icon('heroicon-m-user')
                     ->listWithLineBreaks()
-                    ->searchable(),
+                    ->searchable(isIndividual: true),
                 // ...HelpdeskTableTeamColumns::make(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->icon('heroicon-m-user-circle')
-                    ->searchable(),
-                TextColumn::make('created_at')
-                    ->label('Fecha de Creación')
-                    ->icon('heroicon-m-calendar')
-                    ->description(fn ($record) => $record->created_at->diffForHumans())
-                    ->dateTime()
-                    ->sortable(),
+                    ->searchable(isIndividual: true),
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->formatStateUsing(fn (?string $state): string => HelpdeskTaskStatusOptions::all()[$state] ?? (string) $state)
@@ -150,13 +137,21 @@ class HelpdesksTable
                     ->iconColor(fn (?string $state): ?string => HelpdeskTaskStatusOptions::iconColor($state))
                     ->badge()
                     ->color(fn (HelpDesk $record): string => HelpdeskTaskStatusOptions::badgeColor($record->status))
+                    ->searchable(isIndividual: true),
+                TextColumn::make('created_at')
+                    ->label('Fecha de Creación')
+                    ->icon('heroicon-m-calendar')
+                    ->description(fn ($record) => $record->created_at->diffForHumans())
+                    ->dateTime()
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('updated_at')
                     ->label('Fecha de Actualización')
                     ->icon('heroicon-m-calendar-days')
                     ->description(fn ($record) => $record->updated_at->diffForHumans())
                     ->dateTime()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
             ])
             ->recordClasses(fn ($record): array => $record->status === 'TERMINADO'
                 ? []

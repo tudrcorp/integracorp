@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\RrhhColaborador;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
@@ -94,6 +94,11 @@ final class HelpdeskFormSchema
                         Tab::make('Tipo de ticket')
                             ->icon('heroicon-o-tag')
                             ->schema(self::ticketTypeTabSchema()),
+
+                        Tab::make('Compromiso de atención')
+                            ->icon('heroicon-o-shield-check')
+                            ->hiddenOn('edit')
+                            ->schema(self::technologyTermsTabSchema()),
                     ]),
             ]);
     }
@@ -124,18 +129,11 @@ final class HelpdeskFormSchema
                     Grid::make(1)
                         ->extraAttributes(['class' => self::IOS_INNER_CLASS])
                         ->schema([
-                            RichEditor::make('description')
+                            Textarea::make('description')
                                 ->label('¿Qué necesitas resolver?')
                                 ->placeholder('Ej.: error al cargar reporte, acceso a módulo, incidencia en póliza…')
                                 ->required()
-                                ->fileAttachments(false)
-                                ->toolbarButtons([
-                                    ['bold', 'italic', 'underline', 'strike', 'highlight'],
-                                    ['h2', 'h3'],
-                                    ['bulletList', 'orderedList', 'blockquote'],
-                                    ['link'],
-                                    ['undo', 'redo'],
-                                ])
+                                ->autosize()
                                 ->extraInputAttributes([
                                     'class' => 'min-h-[10rem]',
                                 ])
@@ -280,7 +278,7 @@ final class HelpdeskFormSchema
                 ->columnSpanFull(),
 
             Section::make('Su selección')
-                ->description('Marque una opción. El resumen se confirma al instante.')
+                ->description('Marque la opción que mejor describa su solicitud.')
                 ->icon('heroicon-o-check-circle')
                 ->iconColor('success')
                 ->extraAttributes([
@@ -302,17 +300,51 @@ final class HelpdeskFormSchema
                                 ])
                                 ->columnSpanFull()
                                 ->disabledOn('edit'),
+                        ]),
+                ])
+                ->columnSpanFull(),
+        ];
+    }
 
-                            Placeholder::make('ticket_type_selected_guide')
+    /**
+     * @return array<int, mixed>
+     */
+    private static function technologyTermsTabSchema(): array
+    {
+        return [
+            Placeholder::make('technology_terms_intro')
+                ->hiddenLabel()
+                ->content(new HtmlString(
+                    '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
+                    .'<span class="font-semibold text-gray-900 dark:text-white">Paso 3 — Compromiso de atención.</span> '
+                    .'Lea el siguiente aviso y confirme su aceptación para poder enviar el ticket.'
+                    .'</p>'
+                ))
+                ->columnSpanFull(),
+
+            Section::make('Departamento de Tecnología y Sistemas')
+                ->description('Proceso de evaluación y plazos de respuesta.')
+                ->icon('heroicon-o-computer-desktop')
+                ->iconColor('info')
+                ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
+                ->schema([
+                    Grid::make(1)
+                        ->extraAttributes(['class' => self::IOS_INNER_CLASS])
+                        ->schema([
+                            Placeholder::make('technology_terms_notice')
                                 ->hiddenLabel()
-                                ->visible(fn (Get $get): bool => filled($get('ticket_type')))
-                                ->content(fn (Get $get): HtmlString => HelpdeskTicketType::selectedTypeGuide($get('ticket_type')))
+                                ->content(HelpdeskTechnologyTermsNotice::bodyHtml())
                                 ->columnSpanFull(),
 
-                            Placeholder::make('ticket_type_empty_hint')
-                                ->hiddenLabel()
-                                ->visible(fn (Get $get): bool => blank($get('ticket_type')))
-                                ->content(HelpdeskTicketType::emptySelectionHint())
+                            Checkbox::make(HelpdeskTechnologyTermsNotice::ACCEPTANCE_FIELD)
+                                ->label(HelpdeskTechnologyTermsNotice::acceptanceLabel())
+                                ->accepted()
+                                ->required()
+                                ->dehydrated(false)
+                                ->validationMessages([
+                                    'accepted' => 'Debe aceptar el aviso para crear el ticket.',
+                                    'required' => 'Debe aceptar el aviso para crear el ticket.',
+                                ])
                                 ->columnSpanFull(),
                         ]),
                 ])

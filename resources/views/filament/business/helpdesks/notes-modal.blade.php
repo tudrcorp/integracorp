@@ -5,11 +5,9 @@
 @endphp
 
 <div class="fi-helpdesk-notes-modal space-y-4 px-0.5 py-1">
-    {{-- Metadatos: última actualización (estilo iOS / grupo de ajustes) --}}
     <div
         class="overflow-hidden rounded-[1.25rem] border border-gray-200/80 bg-gray-50/90 shadow-inner ring-1 ring-black/[0.03] dark:border-white/10 dark:bg-white/[0.06] dark:ring-white/[0.05]">
-        <div
-            class="flex items-center justify-between gap-3 border-b border-gray-200/70 px-4 py-3.5 dark:border-white/10">
+        <div class="flex items-center justify-between gap-3 border-b border-gray-200/70 px-4 py-3.5 dark:border-white/10">
             <div class="flex min-w-0 items-center gap-3">
                 <span
                     class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
@@ -52,22 +50,21 @@
         </div>
     </div>
 
-    {{-- Cuerpo de la nota --}}
     <div
-        class="overflow-hidden rounded-[1.35rem] border border-gray-200/80 bg-gradient-to-b from-white/95 to-gray-50/90 p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] ring-1 ring-black/[0.04] dark:border-white/10 dark:from-gray-950/90 dark:to-gray-900/80 dark:ring-white/[0.06]">
-        <div class="mb-3 flex items-center gap-2">
-            <span class="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
-                Nota / observación
-            </span>
+        class="fi-helpdesk-notes-modal__feed overflow-hidden rounded-[1.35rem] border border-gray-200/80 bg-white/95 p-3 shadow-sm ring-1 ring-black/[0.04] dark:border-white/10 dark:bg-gray-900/50 dark:shadow-none dark:ring-white/[0.08] sm:p-4">
+        <div class="mb-3 flex items-center justify-between gap-2 px-0.5">
+            <p class="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+                Historial de notas
+            </p>
+            @if ($hasNote)
+                <span class="text-[0.65rem] font-medium text-gray-400 dark:text-gray-500">Más reciente arriba</span>
+            @endif
         </div>
         @if ($hasNote)
-            <div
-                class="rounded-2xl bg-gray-100/90 px-4 py-3.5 text-sm leading-relaxed text-gray-800 shadow-inner ring-1 ring-black/[0.04] dark:bg-gray-900/60 dark:text-gray-100 dark:ring-white/[0.06]">
-                {!! \App\Support\HelpdeskObservationHtmlRenderer::render((string) $observation) !!}
-            </div>
+            {!! \App\Support\HelpdeskObservationHtmlRenderer::renderForModal((string) $observation) !!}
         @else
             <div
-                class="rounded-2xl border border-dashed border-gray-300/90 bg-white/60 px-4 py-10 text-center text-sm text-gray-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-gray-400">
+                class="rounded-2xl border border-dashed border-gray-300/90 bg-gray-50/80 px-4 py-10 text-center text-sm text-gray-500 dark:border-white/15 dark:bg-white/[0.03] dark:text-gray-400">
                 <p class="font-medium text-gray-600 dark:text-gray-300">Sin observaciones</p>
                 <p class="mt-1 text-xs">Aún no se ha añadido una nota interna a este ticket.</p>
             </div>

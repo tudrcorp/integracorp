@@ -32,8 +32,26 @@ it('renderiza bloque con formato enriquecido', function (): void {
 
     expect($html)->toContain('negrita')
         ->and($html)->toContain('😀')
+        ->and($html)->toContain('helpdesk-notes-surface')
         ->and($html)->toContain('helpdesk-notes-feed')
         ->and($html)->toContain('helpdesk-note-card');
+});
+
+it('renderiza cambio de estado con transicion y motivo estructurados', function (): void {
+    $obs = "[01/06/2026 19:12 · Gustavo Camacho]\n"
+        .'<p>Estado del ticket actualizado de <strong>EN PROCESO</strong> a <strong>PLANIFICADO</strong>.</p>'
+        .'<p><strong>Motivo del cambio (analista asignado):</strong></p>'
+        .'<p>El ticket se está planificando.</p>';
+
+    $html = HelpdeskObservationHtmlRenderer::render($obs);
+
+    expect($html)
+        ->toContain('helpdesk-note-status-flow')
+        ->toContain('helpdesk-note-status-pill')
+        ->toContain('helpdesk-note-status-reason')
+        ->toContain('EN PROCESO')
+        ->toContain('PLANIFICADO')
+        ->toContain('El ticket se está planificando');
 });
 
 it('renderiza tarjetas con tipo de entrada y avatar', function (): void {
@@ -48,6 +66,23 @@ it('renderiza tarjetas con tipo de entrada y avatar', function (): void {
         ->toContain('helpdesk-note-card__badge--status')
         ->toContain('helpdesk-note-card__badge--note')
         ->and(HelpdeskObservationHtmlRenderer::countEntries($obs))->toBe(2);
+});
+
+it('theme css no contiene selectores invalidos del historial de notas', function (): void {
+    $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    expect($css)->not->toContain('helpdesk-notes-surface .,')
+        ->and($css)->toContain('.helpdesk-notes-surface .helpdesk-note-card')
+        ->and($css)->toContain('.dark .helpdesk-notes-surface .helpdesk-note-card__badge--note');
+});
+
+it('theme css define estilos dark para badges y contenido de notas', function (): void {
+    $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    expect($css)
+        ->toContain('.dark .helpdesk-notes-surface .helpdesk-note-card__badge--priority')
+        ->toContain('.dark .helpdesk-notes-surface .helpdesk-note-card__content')
+        ->toContain('.dark .fi-helpdesk-notes-modal .helpdesk-notes-surface .helpdesk-note-card__body');
 });
 
 it('mergeObservation acepta cuerpo HTML', function (): void {

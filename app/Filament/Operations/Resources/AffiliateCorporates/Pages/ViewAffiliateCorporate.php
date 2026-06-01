@@ -25,7 +25,13 @@ class ViewAffiliateCorporate extends ViewRecord
     {
         /** @var AffiliateCorporate $record */
         $record = parent::resolveRecord($key);
-        $record->loadMissing(['affiliationCorporate.billingCollections', 'affiliationCorporate']);
+        $record->loadMissing([
+            'affiliationCorporate.billingCollections',
+            'affiliationCorporate.country',
+            'affiliationCorporate.state',
+            'affiliationCorporate.city',
+            'affiliationCorporate.region',
+        ]);
 
         return $record;
     }

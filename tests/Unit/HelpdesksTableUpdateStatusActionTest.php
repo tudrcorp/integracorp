@@ -14,5 +14,6 @@ it('HelpdesksTable define la acción updateStatus con HelpdeskTaskStatusOptions'
         ->toContain('HelpdeskTaskStatusOptions::sanitizeStatusForSave')
         ->toContain('statusModalDescription')
         ->toContain('fi-helpdesk-ios-section')
-        ->toContain('helpdesk-status-native-select');
+        ->toContain('helpdesk-status-native-select')
+        ->toContain('HelpdeskStatusChangeNote::assigneeExplanationEditor');
 });

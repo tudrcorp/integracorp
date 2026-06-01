@@ -43,7 +43,7 @@ it('define la acción manageHelpdeskWorkGroups con visibilidad por departamento'
         ->toContain("Action::make('manageHelpdeskWorkGroups')")
         ->toContain('HelpdeskUserAccess::hasSystemsDepartment()')
         ->toContain('HelpdeskGroup::query()->create')
-        ->toContain('HelpdeskTeamMembersPayload::fromColaboradorIds')
+        ->toContain('HelpdeskWorkGroupValidator::validate')
         ->toContain('HelpdeskWorkGroupFormSchema::components()');
 
     expect(file_get_contents($formPath))
@@ -60,8 +60,10 @@ it('registra vista modal de grupos de trabajo', function (): void {
     expect(file_exists($viewPath))->toBeTrue();
     expect(file_get_contents($viewPath))
         ->toContain('mountDeleteHelpdeskWorkGroup')
+        ->toContain('mountEditHelpdeskWorkGroup')
+        ->toContain('mountUpdateHelpdeskWorkGroupQuota')
         ->toContain('total_tickets_assigned')
-        ->toContain('Cuota:');
+        ->toContain('ticketsCreatedCount');
 });
 
 it('permite definir la cuota de tickets al crear un grupo', function (): void {
@@ -70,7 +72,7 @@ it('permite definir la cuota de tickets al crear un grupo', function (): void {
 
     expect(file_get_contents($actionPath))
         ->toContain('HelpdeskWorkGroupFormSchema::components()')
-        ->toContain("'total_tickets_assigned' => \$ticketQuota");
+        ->toContain("'total_tickets_assigned' => \$validation->ticketQuota");
 
     expect(file_get_contents($formPath))
         ->toContain("TextInput::make('total_tickets_assigned')")

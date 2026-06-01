@@ -14,6 +14,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\TextSize;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
@@ -23,6 +25,8 @@ final class HelpdeskInfolistSchema
     private const IOS_SECTION_CLASS = 'fi-helpdesk-ios-section';
 
     private const IOS_INNER_CLASS = 'fi-helpdesk-ios-inset';
+
+    private const IOS_DESCRIPTION_CARD = 'fi-helpdesk-description-card';
 
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
@@ -83,12 +87,37 @@ final class HelpdeskInfolistSchema
                                                 TextEntry::make('id')
                                                     ->label('N.º ticket')
                                                     ->icon('heroicon-m-hashtag')
-                                                    ->weight('semibold'),
-                                                TextEntry::make('description')
-                                                    ->label('Descripción')
-                                                    ->icon('heroicon-m-document-text')
-                                                    ->columnSpanFull()
-                                                    ->placeholder('—'),
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->weight(FontWeight::SemiBold)
+                                                    ->size(TextSize::Large)
+                                                    ->copyable()
+                                                    ->copyMessage('Número de ticket copiado'),
+                                                Grid::make(1)
+                                                    ->extraAttributes([
+                                                        'class' => self::IOS_DESCRIPTION_CARD,
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('description')
+                                                            ->label('Descripción del caso')
+                                                            ->icon('heroicon-m-document-text')
+                                                            ->iconColor('gray')
+                                                            ->weight(FontWeight::SemiBold)
+                                                            ->size(TextSize::Medium)
+                                                            ->html()
+                                                            ->columnSpanFull()
+                                                            ->copyable()
+                                                            ->copyMessage('Descripción copiada')
+                                                            ->formatStateUsing(fn (?string $state): HtmlString => HelpdeskDescriptionInfolistRenderer::format($state))
+                                                            ->helperText(fn (?string $state): ?string => HelpdeskDescriptionInfolistRenderer::characterSummary($state)),
+                                                    ]),
+                                                TextEntry::make('ticket_type')
+                                                    ->label('Tipo de ticket')
+                                                    ->icon('heroicon-m-ticket')
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => HelpdeskTicketType::filamentColor($state))
+                                                    ->formatStateUsing(fn (?string $state): string => HelpdeskTicketType::label($state))
+                                                    ->placeholder('Sin tipo'),
                                                 Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
                                                     ->schema([
                                                         TextEntry::make('priority')
@@ -319,7 +348,7 @@ final class HelpdeskInfolistSchema
                                                         }
 
                                                         return new HtmlString(
-                                                            '<div class="helpdesk-notes-infolist pl-3">'
+                                                            '<div class="helpdesk-notes-infolist pl-1">'
                                                             .HelpdeskObservationHtmlRenderer::render($raw)
                                                             .'</div>'
                                                         );

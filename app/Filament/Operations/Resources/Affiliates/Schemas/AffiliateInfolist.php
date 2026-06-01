@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\Affiliates\Schemas;
 
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\Affiliate;
+use App\Support\Operations\OperationsMapSearchAddress;
 use Carbon\Carbon;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -16,6 +17,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
 
 class AffiliateInfolist
@@ -26,7 +28,28 @@ class AffiliateInfolist
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
+    private const IOS_ADDRESS_CARD = 'rounded-[1.25rem] border border-emerald-200/75 bg-gradient-to-br from-emerald-50/95 via-white to-slate-50/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92),0_10px_28px_-12px_rgba(16,185,129,0.18)] ring-1 ring-emerald-300/40 dark:border-emerald-500/30 dark:from-emerald-950/35 dark:via-gray-900/90 dark:to-slate-950/90 dark:ring-emerald-400/25 sm:p-5';
+
     private const IOS_TABLE_WRAP_CLASS = 'rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-white/10 dark:bg-gray-900/40 overflow-hidden';
+
+    private static function formatAddress(?string $state): ?string
+    {
+        if (! filled($state)) {
+            return null;
+        }
+
+        return trim((string) $state);
+    }
+
+    private static function locationSummary(Affiliate $record): ?string
+    {
+        return OperationsMapSearchAddress::locationLine(
+            $record->country?->name,
+            $record->state?->definition,
+            $record->city?->definition,
+            filled($record->region) ? (string) $record->region : null,
+        );
+    }
 
     private static function statusColor(?string $state): string
     {
@@ -155,31 +178,64 @@ class AffiliateInfolist
                                                     ->icon(Heroicon::OutlinedEnvelope)
                                                     ->copyable()
                                                     ->wrap(),
-                                                TextEntry::make('address')
-                                                    ->label('Dirección')
-                                                    ->icon(Heroicon::OutlinedMapPin)
-                                                    ->columnSpan(['default' => 1, 'lg' => 2])
-                                                    ->wrap()
-                                                    ->suffixAction(OperationsLocationMapAction::forAffiliate()),
-                                                TextEntry::make('city.definition')
-                                                    ->label('Ciudad')
-                                                    ->icon(Heroicon::OutlinedBuildingOffice2)
-                                                    ->placeholder('—'),
-                                                TextEntry::make('country.name')
-                                                    ->label('País')
-                                                    ->icon(Heroicon::OutlinedGlobeAmericas)
-                                                    ->placeholder('—'),
-                                                TextEntry::make('state.definition')
-                                                    ->label('Estado / provincia')
-                                                    ->icon(Heroicon::OutlinedMap)
-                                                    ->placeholder('—'),
-                                                TextEntry::make('region')
-                                                    ->label('Región')
-                                                    ->placeholder('—'),
                                                 TextEntry::make('created_at')
                                                     ->label('Fecha de registro')
                                                     ->icon(Heroicon::OutlinedClock)
                                                     ->dateTime('d/m/Y H:i'),
+                                            ]),
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_ADDRESS_CARD,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('address')
+                                                    ->label('Dirección de residencia')
+                                                    ->icon(Heroicon::OutlinedMapPin)
+                                                    ->iconColor('success')
+                                                    ->weight('semibold')
+                                                    ->size(TextSize::Medium)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->copyable()
+                                                    ->copyMessage('Dirección copiada')
+                                                    ->formatStateUsing(fn (?string $state): ?string => self::formatAddress($state))
+                                                    ->helperText(function (Affiliate $record): ?string {
+                                                        $summary = self::locationSummary($record);
+
+                                                        return filled($summary) ? 'Ubicación: '.$summary : null;
+                                                    })
+                                                    ->placeholder('Sin dirección registrada')
+                                                    ->suffixAction(OperationsLocationMapAction::forAffiliate()),
+                                            ]),
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('city.definition')
+                                                    ->label('Ciudad')
+                                                    ->icon(Heroicon::OutlinedBuildingOffice2)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('state.definition')
+                                                    ->label('Estado / provincia')
+                                                    ->icon(Heroicon::OutlinedMap)
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('country.name')
+                                                    ->label('País')
+                                                    ->icon(Heroicon::OutlinedGlobeAmericas)
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('region')
+                                                    ->label('Región')
+                                                    ->icon(Heroicon::OutlinedSquares2x2)
+                                                    ->badge()
+                                                    ->color('gray')
+                                                    ->placeholder('—'),
                                             ]),
                                     ])
                                     ->columnSpanFull(),

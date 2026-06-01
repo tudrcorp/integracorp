@@ -32,7 +32,7 @@ final class HelpdeskWorkGroupHeaderAction
             ->slideOver()
             ->modalWidth(Width::ThreeExtraLarge)
             ->modalHeading('Grupos de trabajo')
-            ->modalDescription('Defina equipos, la cuota de tickets del grupo e integrantes del directorio RRHH.')
+            ->modalDescription('Departamento SISTEMAS: defina equipos, cuota de tickets e integrantes. Ampliar la cuota permite que el grupo vuelva a registrar tickets.')
             ->modalSubmitAction(false)
             ->modalCancelAction(
                 fn (Action $action): Action => $action
@@ -60,47 +60,13 @@ final class HelpdeskWorkGroupHeaderAction
                     return;
                 }
 
-                $name = trim((string) ($data['name'] ?? ''));
-                $status = trim((string) ($data['status'] ?? 'ACTIVO'));
-                $ticketQuota = max(0, (int) ($data['total_tickets_assigned'] ?? 0));
-                $teamColaboradorIds = $data['team_colaborador_ids'] ?? [];
+                $validation = HelpdeskWorkGroupValidator::validate($data);
 
-                if ($name === '') {
+                if (! $validation->valid) {
                     Notification::make()
                         ->warning()
-                        ->title('Nombre requerido')
-                        ->body('Indique un nombre para el grupo de trabajo.')
-                        ->send();
-
-                    return;
-                }
-
-                if (! is_array($teamColaboradorIds)) {
-                    $teamColaboradorIds = [];
-                }
-
-                $teamColaboradorIds = array_values(array_unique(array_map(
-                    static fn (mixed $value): int => (int) $value,
-                    array_filter($teamColaboradorIds, static fn (mixed $value): bool => filled($value))
-                )));
-
-                if (count($teamColaboradorIds) < 2) {
-                    Notification::make()
-                        ->warning()
-                        ->title('Integrantes insuficientes')
-                        ->body('Seleccione al menos dos colaboradores para el grupo.')
-                        ->send();
-
-                    return;
-                }
-
-                $members = HelpdeskTeamMembersPayload::fromColaboradorIds($teamColaboradorIds);
-
-                if (count($members) < 2) {
-                    Notification::make()
-                        ->warning()
-                        ->title('Colaboradores no válidos')
-                        ->body('Debe seleccionar al menos dos colaboradores activos en el directorio.')
+                        ->title($validation->errorTitle ?? 'Datos incompletos')
+                        ->body($validation->errorBody ?? 'Revise el formulario del grupo.')
                         ->send();
 
                     return;
@@ -109,10 +75,10 @@ final class HelpdeskWorkGroupHeaderAction
                 $userName = Auth::user()?->name;
 
                 HelpdeskGroup::query()->create([
-                    'name' => $name,
-                    'status' => in_array($status, ['ACTIVO', 'INACTIVO'], true) ? $status : 'ACTIVO',
-                    'total_tickets_assigned' => $ticketQuota,
-                    'team_members' => $members,
+                    'name' => $validation->name,
+                    'status' => $validation->status,
+                    'total_tickets_assigned' => $validation->ticketQuota,
+                    'team_members' => $validation->members,
                     'created_by' => is_string($userName) ? $userName : null,
                     'updated_by' => is_string($userName) ? $userName : null,
                 ]);
@@ -120,7 +86,7 @@ final class HelpdeskWorkGroupHeaderAction
                 Notification::make()
                     ->success()
                     ->title('Grupo creado')
-                    ->body('El grupo «'.$name.'» quedó registrado con cuota de '.$ticketQuota.' ticket(s) y '.count($members).' integrante(s).')
+                    ->body('El grupo «'.$validation->name.'» quedó registrado con cuota de '.$validation->ticketQuota.' ticket(s) y '.count($validation->members).' integrante(s).')
                     ->send();
             });
     }

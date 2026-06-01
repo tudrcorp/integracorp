@@ -10,6 +10,7 @@ use App\Models\RrhhColaborador;
 use App\Support\HelpdeskDocumentPaths;
 use App\Support\HelpdeskPlainText;
 use App\Support\HelpdeskTableTeamColumns;
+use App\Support\HelpdeskTableTicketTypeColumn;
 use App\Support\HelpdeskTaskStatusOptions;
 use App\Support\HelpdeskTimelineBuilder;
 use Carbon\Carbon;
@@ -94,6 +95,7 @@ class HelpdesksTable
                             'x-tooltip' => '{ content: '.Js::from($description).', theme: $store.theme, delay: [1000, 0], maxWidth: 360 }',
                         ]
                         : []),
+                HelpdeskTableTicketTypeColumn::make(),
                 TextColumn::make('priority')
                     ->label('Prioridad')
                     ->icon(fn (?string $state): ?string => match ($state) {

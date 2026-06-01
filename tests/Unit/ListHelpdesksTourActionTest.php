@@ -10,6 +10,9 @@ it('ListHelpdesks incluye acción de tutorial de uso en todos los módulos', fun
         dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/Helpdesks/Pages/ListHelpdesks.php',
     ];
 
+    $businessPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Pages/ListHelpdesks.php';
+    $createActionPath = dirname(__DIR__, 2).'/app/Support/HelpdeskBusinessCreateTicketHeaderAction.php';
+
     foreach ($paths as $path) {
         $contents = file_get_contents($path);
 
@@ -22,10 +25,22 @@ it('ListHelpdesks incluye acción de tutorial de uso en todos los módulos', fun
             ->toContain("->label('Tutorial de uso')")
             ->toContain("'id' => 'helpdesk-tour-btn'")
             ->toContain("'data-helpdesk-tour-trigger' => 'true'")
-            ->toContain("'id' => 'helpdesk-create-ticket-btn'")
-            ->toContain("'data-tour-shape' => 'pill'")
             ->not->toContain("TOUR_BUTTON_CLASS = 'ticket-btn-ios-shell");
+
+        if ($path === $businessPath) {
+            expect($contents)->toContain('HelpdeskBusinessCreateTicketHeaderAction::make()');
+        } else {
+            expect($contents)
+                ->toContain("'id' => 'helpdesk-create-ticket-btn'")
+                ->toContain("'data-tour-shape' => 'pill'");
+        }
     }
+
+    expect(file_get_contents($createActionPath))
+        ->toContain("'id' => 'helpdesk-create-ticket-btn'")
+        ->toContain("'data-tour-shape' => 'pill'")
+        ->toContain('canSeeCreateTicketButton')
+        ->toContain('HelpdeskBusinessTicketCreationGate::allowsCreation()');
 
     $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
 

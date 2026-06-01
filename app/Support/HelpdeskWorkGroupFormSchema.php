@@ -74,10 +74,10 @@ final class HelpdeskWorkGroupFormSchema
                                 ->required()
                                 ->numeric()
                                 ->minValue(0)
-                                ->default(0)
+                                ->default(HelpdeskBusinessTicketCreationGate::DEFAULT_GROUP_QUOTA)
                                 ->prefixIcon('heroicon-m-ticket')
                                 ->suffix('tickets')
-                                ->helperText('Máximo simultáneo para el grupo.'),
+                                ->helperText('Máximo de tickets que el grupo puede registrar. Solo Tecnología puede modificar la cuota después.'),
 
                             Select::make('team_colaborador_ids')
                                 ->label('Integrantes del grupo')
@@ -117,5 +117,46 @@ final class HelpdeskWorkGroupFormSchema
     public static function shouldCreateGroup(array $data): bool
     {
         return (bool) ($data['show_create_form'] ?? false);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    public static function editFormComponents(): array
+    {
+        return [
+            TextInput::make('name')
+                ->label('Nombre del grupo')
+                ->required()
+                ->maxLength(255)
+                ->prefixIcon('heroicon-m-user-group')
+                ->columnSpanFull(),
+
+            Select::make('status')
+                ->label('Estado')
+                ->required()
+                ->native(false)
+                ->options([
+                    'ACTIVO' => 'Activo',
+                    'INACTIVO' => 'Inactivo',
+                ])
+                ->prefixIcon('heroicon-m-signal'),
+
+            Select::make('team_colaborador_ids')
+                ->label('Integrantes del grupo')
+                ->multiple()
+                ->required()
+                ->rules(['array', 'min:2'])
+                ->validationMessages([
+                    'min' => 'Seleccione al menos dos colaboradores para el grupo.',
+                ])
+                ->options(HelpdeskFormSchema::rrhhColaboradorOptionsForHelpdeskWorkGroups())
+                ->searchable()
+                ->preload()
+                ->native(false)
+                ->prefixIcon('heroicon-m-users')
+                ->helperText('Agregue o quite integrantes. Mínimo 2 personas en el grupo.')
+                ->columnSpanFull(),
+        ];
     }
 }

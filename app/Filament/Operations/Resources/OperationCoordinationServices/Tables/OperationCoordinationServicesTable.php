@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Tables;
 
+use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderController;
 use App\Models\OperationCoordinationService;
@@ -47,6 +48,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -865,11 +867,37 @@ class OperationCoordinationServicesTable
             ->heading('Cuadro de Control')
             ->description('Lista de servicios medicos coordinados en el sistema')
             ->defaultSort('date_solicitud', 'desc')
-            ->modifyQueryUsing(fn ($query) => $query->with(['telemedicinePriority', 'telemedicineDoctor']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['telemedicinePriority', 'telemedicineDoctor', 'telemedicineCase']))
             ->columns([
-                TextColumn::make('id')
-                    ->label('ID')
-                    ->searchable(),
+                TextColumn::make('telemedicineCase.code')
+                    ->label('Código del caso')
+                    ->badge()
+                    ->color('primary')
+                    ->icon('healthicons-f-health-literacy')
+                    ->weight(FontWeight::SemiBold)
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper((string) $state) : '—')
+                    ->description(fn (OperationCoordinationService $record): ?string => filled($record->telemedicineCase?->patient_name)
+                        ? (string) $record->telemedicineCase->patient_name
+                        : null)
+                    ->tooltip(fn (OperationCoordinationService $record): ?string => filled($record->telemedicineCase?->code)
+                        ? 'Abrir ficha del caso de telemedicina'
+                        : 'Sin caso de telemedicina vinculado')
+                    ->url(function (OperationCoordinationService $record): ?string {
+                        $case = $record->telemedicineCase;
+
+                        if ($case === null) {
+                            return null;
+                        }
+
+                        return TelemedicineCaseResource::getUrl('view', ['record' => $case]);
+                    })
+                    ->extraCellAttributes(['class' => 'py-2 min-w-[8rem]'])
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer underline decoration-dotted underline-offset-2 hover:opacity-90',
+                    ]),
                 TextColumn::make('date_solicitud')
                     ->label('Fecha de Solicitud')
                     ->icon('heroicon-m-calendar-days')

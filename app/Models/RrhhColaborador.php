@@ -52,10 +52,16 @@ class RrhhColaborador extends Model
     protected static function booted(): void
     {
         static::saving(function (RrhhColaborador $model): void {
-            if ($model->birth_date !== null) {
-                $years = self::completedYearsFromBirthDate($model->birth_date);
-                $model->age = $years;
-                $model->fechaNacimiento = Carbon::parse($model->birth_date)->format('d/m/Y');
+            if ($model->birth_date !== null && $model->birth_date !== '') {
+                $normalizedBirthDate = self::normalizeBirthDateInput($model->birth_date);
+
+                if ($normalizedBirthDate === null) {
+                    return;
+                }
+
+                $model->birth_date = $normalizedBirthDate;
+                $model->age = self::completedYearsFromBirthDate($normalizedBirthDate);
+                $model->fechaNacimiento = Carbon::createFromFormat('Y-m-d', $normalizedBirthDate)->format('d/m/Y');
 
                 return;
             }
@@ -64,6 +70,40 @@ class RrhhColaborador extends Model
                 $model->age = null;
             }
         });
+    }
+
+    /**
+     * Normaliza entrada de fecha de nacimiento a Y-m-d para la columna date.
+     */
+    public static function normalizeBirthDateInput(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof CarbonInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $normalized)) {
+            return Carbon::parse($normalized)->format('Y-m-d');
+        }
+
+        try {
+            return Carbon::createFromFormat('d/m/Y', $normalized)->format('Y-m-d');
+        } catch (\Throwable) {
+            try {
+                return Carbon::parse($normalized)->format('Y-m-d');
+            } catch (\Throwable) {
+                return null;
+            }
+        }
     }
 
     /**
