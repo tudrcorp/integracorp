@@ -13,7 +13,7 @@ class ViewHelpdesk extends ViewRecord
 {
     protected static string $resource = HelpdeskResource::class;
 
-    protected static ?string $title = 'Ver ticket';
+    protected static ?string $title = 'Detalles del ticket';
 
     protected function getHeaderActions(): array
     {

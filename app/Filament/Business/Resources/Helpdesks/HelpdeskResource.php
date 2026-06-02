@@ -26,7 +26,7 @@ class HelpdeskResource extends Resource
 
     protected static ?string $navigationLabel = 'Helpdesk';
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-circle';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
 
     protected static string|UnitEnum|null $navigationGroup = null;
 
