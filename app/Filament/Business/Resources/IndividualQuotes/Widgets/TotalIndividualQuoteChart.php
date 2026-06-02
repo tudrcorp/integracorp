@@ -195,6 +195,7 @@ class TotalIndividualQuoteChart extends ChartWidget
                 DB::raw('count(*) as total'),
                 DB::raw('MAX(created_at) as last_quote_at'),
             ])
+            ->whereNotNull('agent_id')
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
             ->groupBy('agent_id')

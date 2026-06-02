@@ -7,6 +7,7 @@ namespace App\Filament\Business\Pages;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class GeneradorQrPersonalizado extends Page
@@ -22,4 +23,21 @@ class GeneradorQrPersonalizado extends Page
     protected static ?int $navigationSort = 99;
 
     protected string $view = 'filament.business.pages.generador-qr-personalizado';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return self::userCanAccessPage();
+    }
+
+    public static function canAccess(): bool
+    {
+        return self::userCanAccessPage();
+    }
+
+    private static function userCanAccessPage(): bool
+    {
+        $departments = (array) (Auth::user()?->departament ?? []);
+
+        return in_array('SUPERADMIN', $departments, true);
+    }
 }

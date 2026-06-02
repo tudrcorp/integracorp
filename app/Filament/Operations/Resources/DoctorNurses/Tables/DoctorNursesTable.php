@@ -13,6 +13,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontFamily;
@@ -301,6 +302,38 @@ class DoctorNursesTable
                         }
                         if (filled($data['city'] ?? null)) {
                             $i['city'] = 'Ciudad: '.$data['city'];
+                        }
+
+                        return $i;
+                    }),
+                Filter::make('created_at_range')
+                    ->label('Fecha de creación')
+                    ->form([
+                        DatePicker::make('from')
+                            ->label('Desde'),
+                        DatePicker::make('until')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (filled($data['from'] ?? null)) {
+                            $query->whereDate('created_at', '>=', $data['from']);
+                        }
+
+                        if (filled($data['until'] ?? null)) {
+                            $query->whereDate('created_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $i = [];
+
+                        if (filled($data['from'] ?? null)) {
+                            $i['from'] = 'Desde: '.$data['from'];
+                        }
+
+                        if (filled($data['until'] ?? null)) {
+                            $i['until'] = 'Hasta: '.$data['until'];
                         }
 
                         return $i;

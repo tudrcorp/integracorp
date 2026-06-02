@@ -203,8 +203,8 @@
 
         .infra-cert-badge-img {
             display: inline-block;
-            width: 22px;
-            height: 22px;
+            width: 18px;
+            height: 18px;
             vertical-align: middle;
         }
 
@@ -213,17 +213,17 @@
         }
 
         .infra-cert-badge-fallback-cell {
-            width: 22px;
-            height: 22px;
+            width: 18px;
+            height: 18px;
             background-color: #16a34a;
             color: #ffffff;
             text-align: center;
             vertical-align: middle;
-            font-size: 15px;
+            font-size: 12px;
             font-weight: bold;
             font-family: DejaVu Sans, sans-serif;
-            border-radius: 11px;
-            line-height: 22px;
+            border-radius: 9px;
+            line-height: 18px;
         }
 
         .infra-cert-columns {
