@@ -24,6 +24,7 @@ it('incluye interacción por clic y tooltip con nombre + cantidad', function ():
         ->toContain("component?.call('openMonthDetail', month)")
         ->toContain('->limit(15)')
         ->toContain("->groupBy('agent_id')")
+        ->toContain("->whereNotNull('agent_id')")
         ->toContain("->orderByDesc('last_quote_at')")
         ->toContain("->groupBy('code_agency')")
         ->toContain("'names' =>")

@@ -30,20 +30,20 @@
         .table th { font-weight: 700; color: #334155; }
         .text-center { text-align: center; }
         .infra-check-cell { vertical-align: middle; text-align: center; padding: 5px 4px; }
-        .infra-cert-badge-img { display: inline-block; width: 22px; height: 22px; vertical-align: middle; }
+        .infra-cert-badge-img { display: inline-block; width: 18px; height: 18px; vertical-align: middle; }
         .infra-cert-badge-fallback { margin: 0 auto; }
         .infra-cert-badge-fallback-cell {
-            width: 22px;
-            height: 22px;
+            width: 18px;
+            height: 18px;
             background-color: #16a34a;
             color: #ffffff;
             text-align: center;
             vertical-align: middle;
-            font-size: 15px;
+            font-size: 12px;
             font-weight: bold;
             font-family: DejaVu Sans, sans-serif;
-            border-radius: 11px;
-            line-height: 22px;
+            border-radius: 9px;
+            line-height: 18px;
         }
         .infra-cert-columns { width: 100%; display: table; table-layout: fixed; border-collapse: separate; border-spacing: 8px 0; }
         .infra-cert-col { display: table-cell; width: 33.33%; vertical-align: top; }

@@ -16,3 +16,16 @@ it('configura filtro de coordinador encargado por created_by', function (): void
         ->toContain("->label('Coordinador encargado:')")
         ->toContain("in_array('OPERACIONES', \$departaments, true)");
 });
+it('configura filtro de fecha desde y hasta', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/DoctorNurses/Tables/DoctorNursesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)->toContain("Filter::make('created_at_range')")
+        ->toContain("->label('Fecha de creación')")
+        ->toContain("DatePicker::make('from')")
+        ->toContain("->label('Desde')")
+        ->toContain("DatePicker::make('until')")
+        ->toContain("->label('Hasta')")
+        ->toContain("whereDate('created_at', '>=', \$data['from'])")
+        ->toContain("whereDate('created_at', '<=', \$data['until'])");
+});

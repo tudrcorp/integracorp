@@ -77,6 +77,7 @@ class SupplierClasificationChart extends ChartWidget
             ->selectRaw('supplier_clasificacion_id, COUNT(*) as cnt')
             ->groupBy('supplier_clasificacion_id')
             ->get();
+        
 
         if ($aggregates->isEmpty()) {
             return [

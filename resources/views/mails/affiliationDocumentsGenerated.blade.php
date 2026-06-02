@@ -63,8 +63,8 @@
                             </p>
 
                             <p style="margin:0 0 8px 0; font-weight:700; color:#111111;">💼 Departamento Comercial | Tu Doctor Group</p>
-                            <p style="margin:0 0 8px 0; color:#111111;">🌐 WhatsApp: (+58) 424 222 0056 / 424 227 1498</p>
-                            <p style="margin:0; color:#111111;">📩 Email: cotizaciones@tudrencasa.com / <a href="mailto:comercial@tudrencasa.com">comercial@tudrencasa.com</a></p>
+                            <p style="margin:0 0 8px 0; color:#111111;">📲 WhatsApp: (+58) 424 222 0056 / 424 227 1498</p>
+                            <p style="margin:0; color:#111111;">📩 Email: afiliaciones@tudrencasa.com / <a href="mailto:comercial@tudrencasa.com">comercial@tudrencasa.com</a></p>
                         </td>
                     </tr>
                 </table>

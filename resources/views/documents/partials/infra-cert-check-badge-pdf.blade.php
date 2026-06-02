@@ -1,8 +1,8 @@
 @if (filled($infraCheckBadgeDataUri ?? null))
     <img
         src="{{ $infraCheckBadgeDataUri }}"
-        width="22"
-        height="22"
+        width="18"
+        height="18"
         alt="Sí"
         class="infra-cert-badge-img"
     />
