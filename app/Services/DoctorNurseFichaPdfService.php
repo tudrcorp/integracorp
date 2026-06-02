@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\DoctorNurse;
+use App\Support\PdfCertifiedCheckBadge;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ class DoctorNurseFichaPdfService
     /**
      * v2: base64 en caché (driver database / UTF-8), igual que {@see SupplierFichaPdfService}.
      */
-    private const PDF_CACHE_KEY_PREFIX = 'doctor_nurse_ficha_pdf:v2:';
+    private const PDF_CACHE_KEY_PREFIX = 'doctor_nurse_ficha_pdf:v5:';
 
     private const PDF_CACHE_TTL_FALLBACK_SECONDS = 900;
 
@@ -78,6 +79,7 @@ class DoctorNurseFichaPdfService
         return Pdf::loadView('documents.doctor-nurse-ficha', [
             'doctorNurse' => $doctorNurse,
             'logoDataUri' => self::logoDataUri(),
+            'infraCheckBadgeDataUri' => PdfCertifiedCheckBadge::dataUri(),
             'generatedAt' => now()->timezone(config('app.timezone')),
         ])
             ->setPaper('a4', 'portrait')

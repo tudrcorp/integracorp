@@ -98,13 +98,16 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
             ], 422);
         }
 
+        $affiliationCorporate->loadMissing('agent', 'agency');
         $titular = filled($affiliationCorporate->name_corporate)
             ? (string) $affiliationCorporate->name_corporate
             : (string) $affiliationCorporate->code;
+        $recipientName = (string) ($affiliationCorporate->agent?->name ?? $affiliationCorporate->agency?->name_corporative ?? 'Aliado estratégico');
 
         $mailable = new AffiliationDocumentsGeneratedMail(
             titular: $titular,
             attachmentPaths: $paths,
+            recipientName: $recipientName,
         );
         $mailable->onQueue('default');
 

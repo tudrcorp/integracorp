@@ -19,6 +19,8 @@ class ListDownloadZones extends ListRecords
 
     protected static ?string $title = 'Zona de Descargas';
 
+    public ?string $activeTab = null;
+
     public function getTabs(): array
     {
         $tabs = [];

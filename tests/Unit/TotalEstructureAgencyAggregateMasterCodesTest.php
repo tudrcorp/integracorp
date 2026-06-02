@@ -7,7 +7,7 @@ use App\Models\Agency;
 use Illuminate\Support\Collection;
 
 it('solo agrega estructuras con Master activa existente en el consolidado', function (): void {
-    $widget = new class TotalEstructureAgencyAggregateMasterCodesTest TotalEstructureAgency
+    $widget = new class extends TotalEstructureAgency
     {
         /**
          * @param  Collection<int, Agency>  $agencies

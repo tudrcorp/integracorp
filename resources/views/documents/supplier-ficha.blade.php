@@ -197,20 +197,33 @@
 
         .infra-check-cell {
             vertical-align: middle;
+            text-align: center;
+            padding: 5px 4px;
         }
 
-        .infra-check-icon {
+        .infra-cert-badge-img {
             display: inline-block;
-            width: 14px;
-            height: 14px;
-            line-height: 0;
+            width: 22px;
+            height: 22px;
             vertical-align: middle;
         }
 
-        .infra-check-icon svg {
-            display: block;
-            width: 14px;
-            height: 14px;
+        .infra-cert-badge-fallback {
+            margin: 0 auto;
+        }
+
+        .infra-cert-badge-fallback-cell {
+            width: 22px;
+            height: 22px;
+            background-color: #16a34a;
+            color: #ffffff;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 15px;
+            font-weight: bold;
+            font-family: DejaVu Sans, sans-serif;
+            border-radius: 11px;
+            line-height: 22px;
         }
 
         .infra-cert-columns {
@@ -587,13 +600,8 @@
                                 @foreach ($columnaInfraestructura as $fila)
                                     <tr>
                                         <td>{{ $fila['nombre'] }}</td>
-                                        <td class="text-center infra-check-cell">
-                                            <span class="infra-check-icon" title="Sí" aria-hidden="true">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" role="img" aria-hidden="true">
-                                                    <circle cx="12" cy="12" r="12" fill="#22c55e"/>
-                                                    <path d="M6.8 12.3l3.1 3.1 7.6-7.7" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                                </svg>
-                                            </span>
+                                        <td class="infra-check-cell">
+                                            @include('documents.partials.infra-cert-check-badge-pdf')
                                         </td>
                                     </tr>
                                 @endforeach

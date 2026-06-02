@@ -590,21 +590,15 @@ class NotificationController extends Controller
 
             $body = <<<'HTML'
 
-            *Estimado(a)*.
+            Estimado(a) cliente,
 
-            Le confirmamos que el documento que acaba de recibir corresponde a la cotización solicitada, en la cual se detalla el plan(s) y sus tarifas.
+            Le confirmamos que a través de esta plataforma se ha generado el documento correspondiente a la cotización solicitada, en la cual se detallan los planes y sus tarifas.
 
-            Contáctanos para mayor información. 
+            Para mayor información, aclarar dudas o avanzar con la contratación, por favor póngase en contacto directamente con su asesor o agente.
 
-            📱 WhatsApp: (+58) 424 222 0056
-            ✉️ Email: 
-            cotizaciones@tudrencasa.com
-            comercial@tudrencasa.com
+            ¡Gracias por la confianza!
 
-            ¡Gracias por darnos la oportunidad de servirte!
-
-            Atentamente,
-            Gerencia Comercial Tu Dr. Group 🫱🏼‍🫲🏼 
+            Sistema de Cotizaciones Automáticas.
 
             HTML;
 

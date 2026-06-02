@@ -19,6 +19,8 @@ it('prepara datos de vista de tarjeta con etiqueta de plan y cobertura formatead
     ]);
 
     expect($data['plan_tarjeta_etiqueta'])->toBe('IDEAL')
+        ->and($data['plan_qr_filename'])->toBe('qr-plan-ideal.png')
+        ->and($data['plan_qr_size_px'])->toBe(84)
         ->and($data['cobertura_display'])->toBe('100,50 US$')
         ->and($data['name_first_part'])->not->toBeEmpty();
 });

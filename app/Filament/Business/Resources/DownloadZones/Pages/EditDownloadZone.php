@@ -10,6 +10,11 @@ class EditDownloadZone extends EditRecord
 {
     protected static string $resource = DownloadZoneResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return DownloadZoneResource::getUrl('index');
+    }
+
     protected function getHeaderActions(): array
     {
         return [

@@ -3,7 +3,9 @@
 namespace App\Filament\Business\Resources\CorporateQuotes\Pages;
 
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
-use App\Filament\Business\Resources\CorporateQuotes\Widgets\CorporateQuotesQuotesByUserPerMonthChart;
+use App\Filament\Business\Resources\CorporateQuotes\Widgets\StatsOverviewCorporateQuote;
+use App\Filament\Business\Resources\CorporateQuotes\Widgets\StatsOverviewTotalCorporateQuote;
+use App\Filament\Business\Resources\CorporateQuotes\Widgets\TotalCorporateQuoteChart;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -34,7 +36,9 @@ class ListCorporateQuotes extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            CorporateQuotesQuotesByUserPerMonthChart::class,
+            StatsOverviewTotalCorporateQuote::class,
+            StatsOverviewCorporateQuote::class,
+            TotalCorporateQuoteChart::class,
         ];
     }
 }

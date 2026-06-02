@@ -20,6 +20,7 @@ class AffiliationDocumentsGeneratedMail extends Mailable implements ShouldQueue
     public function __construct(
         public string $titular,
         public array $attachmentPaths,
+        public string $recipientName = 'Aliado estratégico',
     ) {}
 
     public function envelope(): Envelope
@@ -35,6 +36,7 @@ class AffiliationDocumentsGeneratedMail extends Mailable implements ShouldQueue
             view: 'mails.affiliationDocumentsGenerated',
             with: [
                 'titular' => $this->titular,
+                'recipientName' => $this->recipientName,
             ],
         );
     }

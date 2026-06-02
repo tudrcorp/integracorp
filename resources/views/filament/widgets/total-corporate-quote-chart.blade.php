@@ -8,10 +8,9 @@
     $filters = $this->getFilters();
     $isCollapsible = $this->isCollapsible();
     $type = $this->getType();
-    $legendItems = $this->getFilterLegendItems();
 @endphp
 
-<x-filament-widgets::widget class="fi-wi-chart">
+<x-filament-widgets::widget class="fi-wi-chart fi-agency-registrations-chart-like-suppliers">
     <x-filament::section
         :description="$description"
         :heading="$heading"
@@ -20,22 +19,24 @@
         @if ($filters || method_exists($this, 'getFiltersSchema'))
             <x-slot name="afterHeader">
                 @if ($filters)
-                    <x-filament::input.wrapper
-                        inline-prefix
-                        wire:target="filter"
-                        class="fi-wi-chart-filter"
-                    >
-                        <x-filament::input.select
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-filament::input.wrapper
                             inline-prefix
-                            wire:model.live="filter"
+                            wire:target="filter"
+                            class="fi-wi-chart-filter"
                         >
-                            @foreach ($filters as $value => $label)
-                                <option value="{{ $value }}">
-                                    {{ $label }}
-                                </option>
-                            @endforeach
-                        </x-filament::input.select>
-                    </x-filament::input.wrapper>
+                            <x-filament::input.select
+                                inline-prefix
+                                wire:model.live="filter"
+                            >
+                                @foreach ($filters as $value => $label)
+                                    <option value="{{ $value }}">
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </x-filament::input.select>
+                        </x-filament::input.wrapper>
+                    </div>
                 @endif
 
                 @if (method_exists($this, 'getFiltersSchema'))
@@ -69,11 +70,43 @@
                 wire:poll.{{ $pollingInterval }}="updateChartData"
             @endif
         >
+            @if ($this->selectedMonth)
+                <div
+                    class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+                >
+                    <span>
+                        Detalle ·
+                        {{ $this->detailView === 'agencies' ? 'Top 15 agencias' : 'Top 15 agentes' }} ·
+                        {{ ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][$this->selectedMonth - 1] ?? 'Mes' }}
+                        {{ $this->filter ?? now()->year }}
+                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-filament::button
+                            wire:click="toggleDetailView"
+                            wire:loading.attr="disabled"
+                            size="sm"
+                            color="primary"
+                        >
+                            {{ $this->detailView === 'agents' ? 'Agencias' : 'Agentes' }}
+                        </x-filament::button>
+                        <x-filament::button
+                            wire:click="resetToMonthly"
+                            wire:loading.attr="disabled"
+                            size="sm"
+                            color="gray"
+                            icon="heroicon-m-arrow-uturn-left"
+                        >
+                            Volver al histórico mensual
+                        </x-filament::button>
+                    </div>
+                </div>
+            @endif
+
             <div
                 x-load
                 x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
                 wire:ignore
-                wire:key="cq-quotes-by-user-per-month-{{ $this->filter ?? now()->year }}"
+                wire:key="cq-total-corporate-quote-{{ $this->filter ?? now()->year }}-{{ $this->selectedMonth ?? 'year' }}-{{ $this->detailView }}"
                 data-chart-type="{{ $type }}"
                 x-data="chart({
                             cachedData: @js($this->getCachedData()),
@@ -103,31 +136,6 @@
                 <span x-ref="borderColorElement" class="fi-wi-chart-border-color"></span>
                 <span x-ref="gridColorElement" class="fi-wi-chart-grid-color"></span>
                 <span x-ref="textColorElement" class="fi-wi-chart-text-color"></span>
-            </div>
-
-            <div
-                class="mt-4 w-full border-t border-gray-200 pt-3 text-center dark:border-white/10"
-                wire:key="cq-quotes-by-user-legend-{{ $this->filter ?? now()->year }}"
-            >
-                @if (count($legendItems) > 0)
-                    <ul class="m-0 flex w-full list-none flex-wrap items-center justify-center gap-x-3 gap-y-2 p-0 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                        @foreach ($legendItems as $item)
-                            <li class="inline-flex max-w-full items-center gap-1.5">
-                                <span
-                                    class="inline-block size-2.5 shrink-0 rounded-sm ring-1 ring-gray-950/10 dark:ring-white/10"
-                                    style="background-color: {{ $item['color'] }}"
-                                    aria-hidden="true"
-                                ></span>
-                                <span class="min-w-0 truncate font-medium text-gray-950 dark:text-white">{{ $item['label'] }}</span>
-                                <span class="shrink-0 tabular-nums text-gray-500 dark:text-gray-400">({{ $item['total'] }})</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                @elseif ($filters)
-                    <p class="m-0 text-xs text-gray-500 dark:text-gray-400">
-                        Ningún usuario con más de 1 cotización en este año.
-                    </p>
-                @endif
             </div>
         </div>
     </x-filament::section>

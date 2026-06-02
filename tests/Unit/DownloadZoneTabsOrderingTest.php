@@ -103,7 +103,27 @@ it('resuelve iconos conocidos por etiqueta de pestaña', function (): void {
     expect(DownloadZoneTabIcons::forTodosTab())->toBe(Heroicon::OutlinedSquaresPlus);
 });
 
-it('usa el layout de pestañas en cuadrícula en administración, operaciones, marketing, agentes, agencias y master', function (): void {
+it('importa estilos responsive de zona de descarga en el tema de cada panel', function (): void {
+    $panelThemes = [
+        'operaciones' => 'resources/css/filament/admin/theme.css',
+        'administración' => 'resources/css/filament/admin/theme.css',
+        'marketing' => 'resources/css/filament/admin/theme.css',
+        'business' => 'resources/css/filament/admin/theme.css',
+        'master' => 'resources/css/filament/admin/theme.css',
+        'agents' => 'resources/css/filament/agents/theme.css',
+        'general' => 'resources/css/filament/general/theme.css',
+    ];
+
+    foreach ($panelThemes as $panel => $themePath) {
+        $theme = file_get_contents(base_path($themePath));
+        expect($theme)->not->toBeFalse("El tema de {$panel} debe existir");
+
+        expect($theme)
+            ->toContain('download-zone-tabs.css');
+    }
+});
+
+it('usa el layout de pestañas en cuadrícula en business, administración, operaciones, marketing, agentes, general y master', function (): void {
     $listPages = [
         base_path('app/Filament/Business/Resources/DownloadZones/Pages/ListDownloadZones.php'),
         base_path('app/Filament/Administration/Resources/DownloadZones/Pages/ListDownloadZones.php'),
@@ -120,7 +140,8 @@ it('usa el layout de pestañas en cuadrícula en administración, operaciones, m
 
         expect($contents)
             ->toContain('use HasDownloadZoneTabsGridLayout;')
-            ->toContain('HasDownloadZoneTabsGridLayout');
+            ->toContain('HasDownloadZoneTabsGridLayout')
+            ->toContain('public ?string $activeTab = null;');
     }
 
     $trait = file_get_contents(base_path('app/Support/Filament/Concerns/HasDownloadZoneTabsGridLayout.php'));
@@ -134,6 +155,9 @@ it('usa el layout de pestañas en cuadrícula en administración, operaciones, m
     expect($styles)->not->toBeFalse();
 
     expect($styles)
+        ->toContain('grid-template-columns: repeat(2, minmax(0, 1fr))')
+        ->toContain('white-space: normal')
+        ->toContain('@media (min-width: 1024px)')
         ->toContain('grid-template-columns: repeat(5, max-content)')
         ->toContain('column-gap: 0.125rem')
         ->toContain('margin-inline: auto')
@@ -141,8 +165,9 @@ it('usa el layout de pestañas en cuadrícula en administración, operaciones, m
         ->toContain('font-size: 0.9375rem');
 });
 
-it('excluye la zona test en los tabs de marketing, operaciones y administración', function (): void {
+it('excluye la zona test en los tabs de business, marketing, operaciones y administración', function (): void {
     $files = [
+        base_path('app/Filament/Business/Resources/DownloadZones/Pages/ListDownloadZones.php'),
         base_path('app/Filament/Marketing/Resources/DownloadZones/Pages/ListDownloadZones.php'),
         base_path('app/Filament/Operations/Resources/DownloadZones/Pages/ListDownloadZones.php'),
         base_path('app/Filament/Administration/Resources/DownloadZones/Pages/ListDownloadZones.php'),

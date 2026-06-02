@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Supplier;
+use App\Support\PdfCertifiedCheckBadge;
 use Illuminate\Support\Facades\View;
 
 uses(Tests\TestCase::class);
@@ -37,15 +38,14 @@ it('certificacion de infraestructura muestra solo infraestructura y dispone en t
 
     $html = View::make('documents.supplier-ficha', [
         'supplier' => $supplier,
+        'infraCheckBadgeDataUri' => PdfCertifiedCheckBadge::dataUri(),
     ])->render();
 
     expect($html)
         ->toContain('Certificación de Infraestructura')
         ->toContain('Urgencias')
         ->toContain('Otras unidades especializadas')
-        ->toContain('infra-check-icon')
-        ->toContain('fill="#22c55e"')
-        ->toContain('stroke-linecap="round"')
+        ->toContain('infra-cert-badge-img')
         ->toContain('infra-cert-columns')
         ->not->toContain('Urgencias 24 h')
         ->not->toContain('Unidad de dolor');

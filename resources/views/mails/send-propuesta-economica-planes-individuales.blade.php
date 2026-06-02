@@ -31,26 +31,22 @@
                     <tr>
                         <td align="center" style="padding:10px 28px 4px 28px;">
                             <h1 style="margin:0; font-size:24px; line-height:1.25; color:#0f172a; font-weight:700;">
-                                Propuesta Economica
+                                Propuesta Económica
                             </h1>
                         </td>
                     </tr>
 
                     <tr>
                         <td align="center" style="padding:10px 28px 24px 28px; color:#334155; font-size:15px; line-height:1.65;">
-                            <p style="margin:0 0 12px 0;">Estimado(a), {{ $titular }}</p>
+                            <p style="margin:0 0 12px 0; font-weight:700;">Estimado(a) cliente,</p>
                             <p style="margin:0 0 12px 0;">
-                                Agradecemos su interés en nuestros Planes Individuales. A continuación, encontrará adjunto al presente correo el documento con la cotización detallada de las coberturas y tarifas correspondientes. No dude en contactarnos si tiene
-                                alguna duda o requiere información adicional.
+                                Le confirmamos que a través de esta plataforma se ha generado el documento correspondiente a la cotización solicitada, en la cual se detallan los planes y sus tarifas.
                             </p>
                             <p style="margin:0 0 12px 0;">
-                                Si tiene alguna duda o requiere informacion adicional...
+                                Para mayor información, aclarar dudas o avanzar con la contratación, por favor póngase en contacto directamente con su asesor o agente.
                             </p>
-                            <p>Contáctanos para mayor información.</p>
-                            <p>📱 WhatsApp: (+58) 424 227 1498</p>
-                            <p>✉️ Email: comercial@tudrencasa.com</p>
-                            <p style="margin:0;">Atentamente</p>
-                            <p>Departamento Comercial</p>
+                            <p style="margin:0 0 12px 0;">¡Gracias por la confianza!</p>
+                            <p style="margin:0; font-weight:700; color:#0f172a;">Sistema de Cotizaciones Automáticas.</p>
                         </td>
                     </tr>
                 </table>
@@ -58,7 +54,8 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
                     <tr>
                         <td align="center" style="padding:12px 18px 0 18px; color:#94a3b8; font-size:12px; line-height:1.5;">
-                            Gracias por confiar en nosotros para su proteccion y bienestar.
+                            Todos los usuarios de nuestros servicios en línea, se rigen por los términos de privacidad y confidencialidad de la información.<br>
+                            Todos los derechos reservados por Tu Doctor Group. Desarrollado por INTEGRACORP.
                         </td>
                     </tr>
                 </table>

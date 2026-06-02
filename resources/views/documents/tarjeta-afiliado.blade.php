@@ -160,6 +160,15 @@
             <div style="position: absolute; top: 10px; right: 75px; margin-top: 0px; padding: 0px; margin-left: 0px">
                 <img src="{{ public_path('storage/certificados/tarjeta-afiliado.png') }}" style="width: 100%;" alt="">
             </div>
+            @if (! empty($data['plan_qr_absolute_path']))
+                <div style="position: absolute; top: {{ $data['plan_qr_top_px'] }}px; right: {{ $data['plan_qr_right_px'] }}px; margin: 0; padding: 0;">
+                    <img
+                        src="{{ $data['plan_qr_absolute_path'] }}"
+                        style="width: {{ $data['plan_qr_size_px'] }}px; height: {{ $data['plan_qr_size_px'] }}px;"
+                        alt=""
+                    >
+                </div>
+            @endif
             <div style="position: absolute; top: 423px; right: 458px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['code'] }}
             </div>

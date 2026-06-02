@@ -196,6 +196,14 @@
             transition: filter .2s ease, transform .2s ease;
         }
 
+        .btn-whatsapp-primary {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border: 1px solid rgba(34, 197, 94, 0.55);
+            box-shadow: 0 12px 26px rgba(34, 197, 94, 0.28);
+            color: #f0fdf4;
+            margin-top: 0;
+        }
+
         .btn-whatsapp:hover {
             filter: brightness(1.08);
         }
@@ -251,19 +259,70 @@
             padding: 12px 14px;
             font-size: 13px;
             font-weight: 700;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
             animation: slideIn .45s ease, pulseGlow 1.2s ease;
         }
 
         .flash-ok {
             border: 1px solid rgba(52, 211, 153, 0.5);
-            background: rgba(16, 185, 129, 0.2);
-            color: #dcfce7;
+            background:
+                radial-gradient(circle at 20% 12%, rgba(52, 211, 153, 0.22) 0%, rgba(52, 211, 153, 0.06) 48%, rgba(16, 185, 129, 0.12) 100%);
+            color: #ecfdf5;
+            box-shadow:
+                0 14px 34px rgba(16, 185, 129, 0.14),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
         }
 
         .flash-no {
             border: 1px solid rgba(251, 113, 133, 0.5);
             background: rgba(244, 63, 94, 0.22);
             color: #ffe4e6;
+        }
+
+        .flash-icon {
+            width: 28px;
+            height: 28px;
+            flex: 0 0 28px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .flash-ok .flash-icon {
+            background: rgba(52, 211, 153, 0.18);
+            border: 1px solid rgba(52, 211, 153, 0.4);
+            color: #d1fae5;
+        }
+
+        .flash-no .flash-icon {
+            background: rgba(251, 113, 133, 0.18);
+            border: 1px solid rgba(251, 113, 133, 0.4);
+            color: #fecdd3;
+        }
+
+        .flash-text {
+            min-width: 0;
+        }
+
+        .flash-title {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.01em;
+        }
+
+        .flash-subtitle {
+            margin: 3px 0 0;
+            font-size: 12px;
+            font-weight: 700;
+            opacity: 0.88;
+            line-height: 1.3;
         }
 
         @keyframes slideIn {
@@ -281,9 +340,21 @@
 <body>
     <div class="safe-wrapper">
         @if ($flashState === \App\Enums\CorporateAgendaInvitationStatus::Accepted->value)
-            <div class="flash-ok">Aceptacion registrada correctamente.</div>
+            <div class="flash-ok" role="status" aria-live="polite">
+                <span class="flash-icon" aria-hidden="true">✓</span>
+                <span class="flash-text">
+                    <p class="flash-title">Aceptación registrada</p>
+                    <p class="flash-subtitle">Tu respuesta fue guardada correctamente.</p>
+                </span>
+            </div>
         @elseif ($flashState === \App\Enums\CorporateAgendaInvitationStatus::Rejected->value)
-            <div class="flash-no">Rechazo registrado correctamente.</div>
+            <div class="flash-no" role="status" aria-live="polite">
+                <span class="flash-icon" aria-hidden="true">!</span>
+                <span class="flash-text">
+                    <p class="flash-title">Rechazo registrado</p>
+                    <p class="flash-subtitle">Tu respuesta fue guardada correctamente.</p>
+                </span>
+            </div>
         @endif
 
         @php
@@ -354,18 +425,33 @@
                 </div>
 
                 <div class="actions">
-                    <button type="button" class="btn btn-accept" onclick="submitInvitationAction('accept')">Aceptar invitacion</button>
-                    <button type="button" class="btn btn-reject" onclick="submitInvitationAction('reject')">Rechazar invitacion</button>
+                    @if (in_array($statusValue, [
+                        \App\Enums\CorporateAgendaInvitationStatus::Accepted->value,
+                        \App\Enums\CorporateAgendaInvitationStatus::Rejected->value,
+                    ], true))
+                        <a class="btn-whatsapp btn-whatsapp-primary" href="https://wa.me/" target="_blank" rel="noopener noreferrer">
+                            <span>💬</span>
+                            <span>Volver a WhatsApp</span>
+                        </a>
+                    @else
+                        <button type="button" class="btn btn-accept" onclick="submitInvitationAction('accept')">Aceptar invitacion</button>
+                        <button type="button" class="btn btn-reject" onclick="submitInvitationAction('reject')">Rechazar invitacion</button>
+                    @endif
                 </div>
                 @error('action')
                     <p class="error">{{ $message }}</p>
                 @enderror
             </form>
 
-            <a class="btn-whatsapp" href="https://wa.me/" target="_blank" rel="noopener noreferrer">
-                <span>💬</span>
-                <span>Volver a WhatsApp</span>
-            </a>
+            @if (! in_array($statusValue, [
+                \App\Enums\CorporateAgendaInvitationStatus::Accepted->value,
+                \App\Enums\CorporateAgendaInvitationStatus::Rejected->value,
+            ], true))
+                <a class="btn-whatsapp" href="https://wa.me/" target="_blank" rel="noopener noreferrer">
+                    <span>💬</span>
+                    <span>Volver a WhatsApp</span>
+                </a>
+            @endif
         </div>
     </div>
 
