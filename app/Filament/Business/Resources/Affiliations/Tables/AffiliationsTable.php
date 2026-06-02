@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\Affiliations\Tables;
 use App\Filament\Exports\AffiliationExporter;
 use App\Filament\Resources\Affiliations\AffiliationResource;
 use App\Http\Controllers\AffiliationController;
+use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Mail\UploadPayment;
 use App\Models\Affiliation;
 use App\Models\Agency;
@@ -1023,6 +1024,41 @@ class AffiliationsTable
                                  * ruta: storage/
                                  */
                                 $path = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
+                                if (! is_file($path)) {
+                                    $record->loadMissing(['plan', 'coverage', 'affiliates']);
+                                    $generation = TarjetaAfiliacionController::generateTarjetaAfiliacion([
+                                        'name' => $record->full_name_ti,
+                                        'ci' => $record->nro_identificacion_ti,
+                                        'code' => $record->code,
+                                        'plan' => $record->plan?->description ?? '',
+                                        'frecuencia' => $record->payment_frequency,
+                                        'cobertura' => $record->coverage?->price ?? '',
+                                        'desde' => $record->effective_date ?? '',
+                                        'hasta' => empty($record->effective_date)
+                                            ? ''
+                                            : Carbon::createFromFormat('d/m/Y', $record->effective_date)->addYear()->format('d/m/Y'),
+                                    ], silent: true);
+
+                                    if ($generation !== true || ! is_file($path)) {
+                                        $titularAffiliate = $record->affiliates->first(
+                                            fn ($affiliate): bool => strcasecmp(
+                                                trim((string) $affiliate->nro_identificacion),
+                                                trim((string) $record->nro_identificacion_ti)
+                                            ) === 0
+                                        );
+                                        $candidateAffiliate = $titularAffiliate ?? $record->affiliates->first();
+                                        if ($candidateAffiliate !== null) {
+                                            $candidatePath = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$candidateAffiliate->id.'.pdf');
+                                            if (is_file($candidatePath)) {
+                                                $path = $candidatePath;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (! is_file($path)) {
+                                    throw new \RuntimeException('No se encontró la tarjeta generada. Regenera documentos para crearla nuevamente.');
+                                }
 
                                 Log::info('NEGOCIOS-AFILIACIONES: Descarga de tarjeta iniciada.', [
                                     'affiliation_id' => $record->id,

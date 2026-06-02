@@ -7,14 +7,19 @@ namespace App\Filament\Operations\Resources\DoctorNurses\Schemas;
 use App\Models\SupplierClasificacion;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingForm;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class DoctorNurseForm
 {
@@ -24,12 +29,86 @@ class DoctorNurseForm
 
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
+    /**
+     * @return array<string, list<array{key: string, desc: string, label: string}>>
+     */
+    private static function homeCareEquipmentCatalog(): array
+    {
+        return [
+            'instrumental' => [
+                ['key' => 'equip_diag_vital_signs', 'desc' => 'equip_desc_diag_vital_signs', 'label' => 'Estetoscopio y tensiómetro'],
+                ['key' => 'equip_diag_oximeter', 'desc' => 'equip_desc_diag_oximeter', 'label' => 'Oxímetro de pulso'],
+                ['key' => 'equip_diag_thermometer', 'desc' => 'equip_desc_diag_thermometer', 'label' => 'Termómetro digital o infrarrojo'],
+                ['key' => 'equip_diag_exam_kit', 'desc' => 'equip_desc_diag_exam_kit', 'label' => 'Estuche de diagnóstico (otoscopio/oftalmoscopio)'],
+                ['key' => 'equip_diag_glucometer', 'desc' => 'equip_desc_diag_glucometer', 'label' => 'Glucómetro'],
+                ['key' => 'equip_diag_flashlight_hammer', 'desc' => 'equip_desc_diag_flashlight_hammer', 'label' => 'Linterna de exploración y martillo de reflejos'],
+            ],
+            'material_descartable' => [
+                ['key' => 'equip_care_gloves', 'desc' => 'equip_desc_care_gloves', 'label' => 'Guantes de nitrilo o látex'],
+                ['key' => 'equip_care_antiseptics', 'desc' => 'equip_desc_care_antiseptics', 'label' => 'Antisépticos y limpieza'],
+                ['key' => 'equip_care_supplies', 'desc' => 'equip_desc_care_supplies', 'label' => 'Material de cura'],
+                ['key' => 'equip_care_sharps_container', 'desc' => 'equip_desc_care_sharps_container', 'label' => 'Contenedor de punzocortantes'],
+            ],
+            'apoyo_seguridad' => [
+                ['key' => 'equip_support_hygiene', 'desc' => 'equip_desc_support_hygiene', 'label' => 'Desinfectante de manos y jabón'],
+                ['key' => 'equip_support_scissors_forceps', 'desc' => 'equip_desc_support_scissors_forceps', 'label' => 'Tijeras y pinzas'],
+                ['key' => 'equip_support_prescriptions_stamps', 'desc' => 'equip_desc_support_prescriptions_stamps', 'label' => 'Recetas médicas y sellos profesionales'],
+            ],
+            'avanzados_urgencia' => [
+                ['key' => 'equip_adv_basic_medicines', 'desc' => 'equip_desc_adv_basic_medicines', 'label' => 'Medicamentos básicos'],
+                ['key' => 'equip_adv_catheters_aspiration', 'desc' => 'equip_desc_adv_catheters_aspiration', 'label' => 'Sondas y material de aspiración'],
+                ['key' => 'equip_adv_emergency_bag', 'desc' => 'equip_desc_adv_emergency_bag', 'label' => 'Maletín de urgencias'],
+            ],
+        ];
+    }
+
+    /**
+     * @param  list<array{key: string, desc: string, label: string}>  $items
+     */
+    private static function homeCareEquipmentGrid(array $items): Grid
+    {
+        $components = [];
+
+        foreach ($items as $item) {
+            $toggleKey = $item['key'];
+            $descKey = $item['desc'];
+
+            $components[] = Toggle::make($toggleKey)
+                ->label($item['label'])
+                ->live()
+                ->inline(false)
+                ->onIcon('heroicon-s-check')
+                ->onColor('success')
+                ->afterStateUpdated(function (?bool $state, callable $set) use ($descKey): void {
+                    if (! $state) {
+                        $set($descKey, null);
+                    }
+                });
+
+            $components[] = TextInput::make($descKey)
+                ->label('Detalle opcional')
+                ->placeholder('Observaciones o alcance del insumo/equipo')
+                ->hidden(fn (Get $get): bool => ! $get($toggleKey))
+                ->dehydrated()
+                ->maxLength(500);
+        }
+
+        return Grid::make(2)
+            ->extraAttributes([
+                'class' => self::INNER_CARD,
+            ])
+            ->schema($components);
+    }
+
     public static function configure(Schema $schema): Schema
     {
+        $equipmentCatalog = self::homeCareEquipmentCatalog();
+
         return $schema
             ->components([
                 Tabs::make('doctorNurseFormTabs')
                     ->columnSpanFull()
+                    ->persistTabInQueryString()
                     ->extraAttributes([
                         'class' => self::TABS_CONTAINER,
                     ])
@@ -88,6 +167,59 @@ class DoctorNurseForm
                                             ])
                                             ->schema(self::contactFields()),
                                     ])
+                                    ->columnSpanFull(),
+                            ]),
+
+                        Tab::make('Equipamiento')
+                            ->icon('heroicon-o-cpu-chip')
+                            ->schema([
+                                Placeholder::make('doctor_nurse_equipment_intro')
+                                    ->hiddenLabel()
+                                    ->content(new HtmlString(
+                                        '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
+                                        .'<span class="font-semibold text-gray-900 dark:text-white">Equipamiento.</span> '
+                                        .'Marca el equipamiento esencial para atención domiciliaria y agrega detalles cuando aplique.'
+                                        .'</p>'
+                                    ))
+                                    ->columnSpanFull(),
+
+                                Section::make('Equipamiento para atención domiciliaria')
+                                    ->description('Certificación de infraestructura esencial, material descartable y recursos de urgencia.')
+                                    ->icon('heroicon-o-cpu-chip')
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Fieldset::make('Instrumental de diagnóstico')
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
+                                            ->schema([
+                                                self::homeCareEquipmentGrid($equipmentCatalog['instrumental']),
+                                            ]),
+                                        Fieldset::make('Material descartable de cura')
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
+                                            ->schema([
+                                                self::homeCareEquipmentGrid($equipmentCatalog['material_descartable']),
+                                            ]),
+                                        Fieldset::make('Equipamiento de apoyo y seguridad')
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
+                                            ->schema([
+                                                self::homeCareEquipmentGrid($equipmentCatalog['apoyo_seguridad']),
+                                            ]),
+                                        Fieldset::make('Elementos avanzados o de urgencia')
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
+                                            ->schema([
+                                                self::homeCareEquipmentGrid($equipmentCatalog['avanzados_urgencia']),
+                                            ]),
+                                    ])
+                                    ->collapsible()
                                     ->columnSpanFull(),
                             ]),
 

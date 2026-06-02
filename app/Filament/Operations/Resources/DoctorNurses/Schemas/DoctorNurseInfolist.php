@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\DoctorNurses\Schemas;
 
+use App\Models\DoctorNurse;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -29,6 +31,91 @@ class DoctorNurseInfolist
             'INACTIVO', 'SUSPENDIDO', 'RECHAZADO' => 'danger',
             default => 'gray',
         };
+    }
+
+    /**
+     * @return array<string, list<array{key: string, label: string}>>
+     */
+    private static function homeCareEquipmentGroups(): array
+    {
+        return [
+            'Instrumental de diagnóstico' => [
+                ['key' => 'equip_diag_vital_signs', 'label' => 'Estetoscopio y tensiómetro'],
+                ['key' => 'equip_diag_oximeter', 'label' => 'Oxímetro de pulso'],
+                ['key' => 'equip_diag_thermometer', 'label' => 'Termómetro digital o infrarrojo'],
+                ['key' => 'equip_diag_exam_kit', 'label' => 'Estuche de diagnóstico (otoscopio/oftalmoscopio)'],
+                ['key' => 'equip_diag_glucometer', 'label' => 'Glucómetro'],
+                ['key' => 'equip_diag_flashlight_hammer', 'label' => 'Linterna de exploración y martillo de reflejos'],
+            ],
+            'Material descartable de cura' => [
+                ['key' => 'equip_care_gloves', 'label' => 'Guantes de nitrilo o látex'],
+                ['key' => 'equip_care_antiseptics', 'label' => 'Antisépticos y limpieza'],
+                ['key' => 'equip_care_supplies', 'label' => 'Material de cura'],
+                ['key' => 'equip_care_sharps_container', 'label' => 'Contenedor de punzocortantes'],
+            ],
+            'Equipamiento de apoyo y seguridad' => [
+                ['key' => 'equip_support_hygiene', 'label' => 'Desinfectante de manos y jabón'],
+                ['key' => 'equip_support_scissors_forceps', 'label' => 'Tijeras y pinzas'],
+                ['key' => 'equip_support_prescriptions_stamps', 'label' => 'Recetas médicas y sellos profesionales'],
+            ],
+            'Elementos avanzados o de urgencia' => [
+                ['key' => 'equip_adv_basic_medicines', 'label' => 'Medicamentos básicos'],
+                ['key' => 'equip_adv_catheters_aspiration', 'label' => 'Sondas y material de aspiración'],
+                ['key' => 'equip_adv_emergency_bag', 'label' => 'Maletín de urgencias'],
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{key: string, label: string}>
+     */
+    private static function homeCareEquipmentItems(): array
+    {
+        $items = [];
+
+        foreach (self::homeCareEquipmentGroups() as $groupItems) {
+            foreach ($groupItems as $item) {
+                $items[] = $item;
+            }
+        }
+
+        return $items;
+    }
+
+    private static function homeCareEquipmentDescriptionField(string $key): string
+    {
+        return (string) preg_replace('/^equip_/', 'equip_desc_', $key);
+    }
+
+    private static function homeCareEquipmentDescription(DoctorNurse $record, string $field): string
+    {
+        $text = (string) ($record->{$field} ?? '');
+
+        return $text !== '' ? 'Descripción: '.$text : 'Sin descripción registrada.';
+    }
+
+    /**
+     * @return array<int, IconEntry>
+     */
+    private static function homeCareEquipmentEntries(): array
+    {
+        $entries = [];
+
+        foreach (self::homeCareEquipmentItems() as $item) {
+            $fieldKey = $item['key'];
+            $descriptionField = self::homeCareEquipmentDescriptionField($fieldKey);
+
+            $entries[] = IconEntry::make($fieldKey)
+                ->boolean()
+                ->trueIcon(Heroicon::OutlinedCheckCircle)
+                ->falseIcon(Heroicon::OutlinedXCircle)
+                ->trueColor('success')
+                ->falseColor('gray')
+                ->label($item['label'])
+                ->helperText(fn (DoctorNurse $record): string => self::homeCareEquipmentDescription($record, $descriptionField));
+        }
+
+        return $entries;
     }
 
     public static function configure(Schema $schema): Schema
@@ -241,6 +328,24 @@ class DoctorNurseInfolist
                                                     ->dateTime('d/m/Y H:i')
                                                     ->placeholder('—'),
                                             ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Infraestructura domiciliaria')
+                            ->icon('heroicon-o-cpu-chip')
+                            ->schema([
+                                Section::make('Certificación de infraestructura domiciliaria')
+                                    ->description('Equipamiento declarado (sí / no y descripción).')
+                                    ->icon(Heroicon::OutlinedCpuChip)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3, 'xl' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema(self::homeCareEquipmentEntries()),
                                     ])
                                     ->columnSpanFull(),
                             ]),

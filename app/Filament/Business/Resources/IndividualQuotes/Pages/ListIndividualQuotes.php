@@ -3,11 +3,7 @@
 namespace App\Filament\Business\Resources\IndividualQuotes\Pages;
 
 use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
-use App\Filament\Business\Resources\IndividualQuotes\Widgets\IndividualQuotesAgencyAverageChart;
-use App\Filament\Business\Resources\IndividualQuotes\Widgets\IndividualQuotesAgentAverageChart;
-use App\Filament\Business\Resources\IndividualQuotes\Widgets\IndividualQuotesQuotesByUserPerMonthChart;
 use App\Filament\Business\Resources\IndividualQuotes\Widgets\StatsOverviewIndividualQuote;
-use App\Filament\Business\Resources\IndividualQuotes\Widgets\StatsOverviewIndividualQuoteAprobada;
 use App\Filament\Business\Resources\IndividualQuotes\Widgets\StatsOverviewTotalIndividualQuote;
 use App\Filament\Business\Resources\IndividualQuotes\Widgets\TotalIndividualQuoteChart;
 use Filament\Actions\CreateAction;
@@ -46,11 +42,7 @@ class ListIndividualQuotes extends ListRecords
         return [
             StatsOverviewTotalIndividualQuote::class,
             StatsOverviewIndividualQuote::class,
-            StatsOverviewIndividualQuoteAprobada::class,
             TotalIndividualQuoteChart::class,
-            IndividualQuotesAgentAverageChart::class,
-            IndividualQuotesAgencyAverageChart::class,
-            IndividualQuotesQuotesByUserPerMonthChart::class,
         ];
     }
 }

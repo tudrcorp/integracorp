@@ -22,7 +22,12 @@ it('usa tabs y estilos alineados con infolist de agentes y agencias', function (
         ->toContain('persistTab')
         ->toContain("Tab::make('Identidad')")
         ->toContain("Tab::make('Trazabilidad')")
-        ->toContain('SupplierBeneficiaryBankingInfolist::bankingTab');
+        ->toContain('SupplierBeneficiaryBankingInfolist::bankingTab')
+        ->toContain("Tab::make('Infraestructura domiciliaria')")
+        ->toContain('OutlinedXCircle')
+        ->toContain('homeCareEquipmentEntries()')
+        ->not->toContain('homeCareEquipmentFieldsets()')
+        ->not->toContain('hasCertifiedHomeCareEquipment');
 
     $bankingSource = file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/Operations/SupplierBeneficiaryBankingInfolist.php');
 

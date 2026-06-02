@@ -11,7 +11,7 @@ use Filament\Widgets\ChartWidget;
 use Filament\Widgets\StatsOverviewWidget;
 
 it('registra los widgets KPI en el listado de citas de negocio', function (): void {
-    $page = new class BusinessAppointmentsWidgetsRegistrationTest ListBusinessAppointments
+    $page = new class extends ListBusinessAppointments
     {
         public function exposedHeaderWidgets(): array
         {

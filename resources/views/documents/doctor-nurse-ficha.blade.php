@@ -21,6 +21,34 @@
         table.notes th, table.notes td { border: 1px solid #e2e8f0; padding: 6px; text-align: left; vertical-align: top; }
         table.notes th { background: #14532d; color: #fff; font-size: 9px; }
         .note-body { white-space: pre-wrap; word-break: break-word; }
+        .section-block { margin: 10px 0 14px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f9fafb; page-break-inside: avoid; }
+        .infra-group { margin-bottom: 10px; }
+        .infra-group-title { font-size: 9px; font-weight: 700; color: #14532d; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }
+        .table th, .table td { border: 1px solid #e2e8f0; padding: 4px 6px; text-align: left; vertical-align: middle; }
+        .table thead { background-color: #f0fdf4; }
+        .table th { font-weight: 700; color: #334155; }
+        .text-center { text-align: center; }
+        .infra-check-cell { vertical-align: middle; text-align: center; padding: 5px 4px; }
+        .infra-cert-badge-img { display: inline-block; width: 22px; height: 22px; vertical-align: middle; }
+        .infra-cert-badge-fallback { margin: 0 auto; }
+        .infra-cert-badge-fallback-cell {
+            width: 22px;
+            height: 22px;
+            background-color: #16a34a;
+            color: #ffffff;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 15px;
+            font-weight: bold;
+            font-family: DejaVu Sans, sans-serif;
+            border-radius: 11px;
+            line-height: 22px;
+        }
+        .infra-cert-columns { width: 100%; display: table; table-layout: fixed; border-collapse: separate; border-spacing: 8px 0; }
+        .infra-cert-col { display: table-cell; width: 33.33%; vertical-align: top; }
+        .infra-cert-col .table { width: 100%; }
+        .infra-equip-desc { margin-top: 3px; font-size: 8px; color: #475569; font-style: italic; line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
     </style>
 </head>
 <body>
@@ -40,6 +68,50 @@
     $stateLabel = $doctorNurse->state?->definition ?? $doctorNurse->state?->name ?? $doctorNurse->state ?? null;
     $cityLabel = $doctorNurse->city?->definition ?? $doctorNurse->city?->name ?? $doctorNurse->city ?? null;
     $notes = collect($doctorNurse->doctorNurseObservacions ?? [])->sortByDesc('created_at')->values();
+    $infraSi = static fn (mixed $v): bool => filter_var($v, FILTER_VALIDATE_BOOLEAN);
+    $filtrarCertificados = static function (array $items) use ($doctorNurse, $infraSi): \Illuminate\Support\Collection {
+        return collect($items)
+            ->filter(fn (array $item): bool => $infraSi($doctorNurse->{$item['field']} ?? false))
+            ->map(function (array $item) use ($doctorNurse): array {
+                $descField = (string) preg_replace('/^equip_/', 'equip_desc_', $item['field']);
+                $descripcion = trim((string) ($doctorNurse->{$descField} ?? ''));
+
+                return [
+                    'nombre' => $item['nombre'],
+                    'field' => $item['field'],
+                    'descripcion' => $descripcion !== '' ? $descripcion : null,
+                ];
+            })
+            ->values();
+    };
+    $gruposEquipamientoDomiciliario = [
+        'Instrumental de diagnóstico' => $filtrarCertificados([
+            ['nombre' => 'Estetoscopio y tensiómetro', 'field' => 'equip_diag_vital_signs'],
+            ['nombre' => 'Oxímetro de pulso', 'field' => 'equip_diag_oximeter'],
+            ['nombre' => 'Termómetro digital o infrarrojo', 'field' => 'equip_diag_thermometer'],
+            ['nombre' => 'Estuche de diagnóstico (otoscopio/oftalmoscopio)', 'field' => 'equip_diag_exam_kit'],
+            ['nombre' => 'Glucómetro', 'field' => 'equip_diag_glucometer'],
+            ['nombre' => 'Linterna de exploración y martillo de reflejos', 'field' => 'equip_diag_flashlight_hammer'],
+        ]),
+        'Material descartable de cura' => $filtrarCertificados([
+            ['nombre' => 'Guantes de nitrilo o látex', 'field' => 'equip_care_gloves'],
+            ['nombre' => 'Antisépticos y limpieza', 'field' => 'equip_care_antiseptics'],
+            ['nombre' => 'Material de cura', 'field' => 'equip_care_supplies'],
+            ['nombre' => 'Contenedor de punzocortantes', 'field' => 'equip_care_sharps_container'],
+        ]),
+        'Equipamiento de apoyo y seguridad' => $filtrarCertificados([
+            ['nombre' => 'Desinfectante de manos y jabón', 'field' => 'equip_support_hygiene'],
+            ['nombre' => 'Tijeras y pinzas', 'field' => 'equip_support_scissors_forceps'],
+            ['nombre' => 'Recetas médicas y sellos profesionales', 'field' => 'equip_support_prescriptions_stamps'],
+        ]),
+        'Elementos avanzados o de urgencia' => $filtrarCertificados([
+            ['nombre' => 'Medicamentos básicos', 'field' => 'equip_adv_basic_medicines'],
+            ['nombre' => 'Sondas y material de aspiración', 'field' => 'equip_adv_catheters_aspiration'],
+            ['nombre' => 'Maletín de urgencias', 'field' => 'equip_adv_emergency_bag'],
+        ]),
+    ];
+    $equipamientoDomiciliarioCertificado = collect($gruposEquipamientoDomiciliario)
+        ->flatMap(fn (\Illuminate\Support\Collection $items): \Illuminate\Support\Collection => $items);
 @endphp
 
 <div class="header">
@@ -90,6 +162,66 @@
     <tr><td class="k">Convenio de pago</td><td>{{ $val($doctorNurse->convenio_pago) }}</td></tr>
     <tr><td class="k">Tiempo de crédito</td><td>{{ $val($doctorNurse->tiempo_credito) }}</td></tr>
 </table>
+
+<h2>Certificación de infraestructura domiciliaria</h2>
+<div class="section-block">
+    @if ($equipamientoDomiciliarioCertificado->isEmpty())
+        <table class="table">
+            <tbody>
+                <tr>
+                    <td>Ningún equipamiento registrado como disponible.</td>
+                </tr>
+            </tbody>
+        </table>
+    @else
+        @foreach ($gruposEquipamientoDomiciliario as $grupoTitulo => $itemsGrupo)
+            @if ($itemsGrupo->isNotEmpty())
+                <div class="infra-group">
+                    <p class="infra-group-title">{{ $grupoTitulo }}</p>
+                    @php
+                        $totalGrupo = $itemsGrupo->count();
+                        $tamanoColumna = (int) max(1, ceil($totalGrupo / 2));
+                        $columnasGrupo = collect(range(0, 1))->map(
+                            fn (int $indice): \Illuminate\Support\Collection => $itemsGrupo->slice(
+                                $indice * $tamanoColumna,
+                                $tamanoColumna,
+                            ),
+                        )->filter(fn (\Illuminate\Support\Collection $columna): bool => $columna->isNotEmpty());
+                    @endphp
+                    <div class="infra-cert-columns">
+                        @foreach ($columnasGrupo as $columna)
+                            <div class="infra-cert-col">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Equipamiento</th>
+                                            <th style="width: 18%;">Certificado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($columna as $item)
+                                            <tr>
+                                                <td>
+                                                    {{ $item['nombre'] }}
+                                                    @if (filled($item['descripcion'] ?? null))
+                                                        <div class="infra-equip-desc">{{ $item['descripcion'] }}</div>
+                                                    @endif
+                                                </td>
+                                                <td class="infra-check-cell">
+                                                    @include('documents.partials.infra-cert-check-badge-pdf')
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        @endforeach
+    @endif
+</div>
 
 <div class="section-notes">
     <h2>2. Notas internas (más recientes primero)</h2>

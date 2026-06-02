@@ -353,6 +353,13 @@ Route::post('business/affiliations/documents/send-email/{affiliation}', [
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-documents.send-email');
 
+Route::post('business/affiliations/tarjeta-qr/associate-plan', [
+    TarjetaAfiliacionController::class,
+    'associatePlanQr',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-tarjeta-qr.associate-plan');
+
 Route::post('business/affiliation-corporates/documents/regenerate-async/{affiliationCorporate}', [
     AffiliationCorporateBusinessDocumentsController::class,
     'regenerateAsync',
@@ -829,6 +836,9 @@ Route::get('/generar-qr', function () {
     // 3. Pasar el código QR (formato SVG) a la vista
     return view('qr_display', compact('qrCode', 'url'));
 });
+
+Route::view('/crear-qr', 'qr_creator')
+    ->name('qr.creator');
 
 Route::get('/r4/banesco', function () {
 

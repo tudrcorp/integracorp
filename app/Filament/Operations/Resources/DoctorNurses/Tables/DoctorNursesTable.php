@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\DoctorNurses\Tables;
 
 use App\Http\Controllers\DoctorNurseExportCsvController;
 use App\Models\DoctorNurse;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -231,6 +232,23 @@ class DoctorNursesTable
                     ->relationship('supplierClasificacion', 'description')
                     ->searchable()
                     ->preload(),
+                SelectFilter::make('created_by')
+                    ->label('Coordinador encargado:')
+                    ->options(function (): array {
+                        return User::query()
+                            ->select(['name', 'departament'])
+                            ->orderBy('name')
+                            ->get()
+                            ->filter(function (User $user): bool {
+                                $departaments = is_array($user->departament)
+                                    ? $user->departament
+                                    : (filled($user->departament) ? [(string) $user->departament] : []);
+
+                                return in_array('OPERACIONES', $departaments, true);
+                            })
+                            ->pluck('name', 'name')
+                            ->toArray();
+                    }),
                 SelectFilter::make('status_convenio')
                     ->label('Convenio')
                     ->options(fn (): array => DoctorNurse::query()

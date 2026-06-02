@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Supplier;
+use App\Support\PdfCertifiedCheckBadge;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ class SupplierFichaPdfService
     /**
      * v1: base64 en caché (driver database / UTF-8).
      */
-    private const PDF_CACHE_KEY_PREFIX = 'supplier_ficha_pdf:v1:';
+    private const PDF_CACHE_KEY_PREFIX = 'supplier_ficha_pdf:v2:';
 
     private const PDF_CACHE_TTL_FALLBACK_SECONDS = 900;
 
@@ -70,6 +71,7 @@ class SupplierFichaPdfService
     {
         $html = View::make('documents.supplier-ficha', [
             'supplier' => self::supplierWithFichaRelations($supplier),
+            'infraCheckBadgeDataUri' => PdfCertifiedCheckBadge::dataUri(),
             'isPreview' => false,
         ])->render();
 

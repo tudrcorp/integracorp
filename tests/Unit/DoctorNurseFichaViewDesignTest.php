@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\DoctorNurse;
+use App\Support\PdfCertifiedCheckBadge;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\View;
 
@@ -18,6 +19,7 @@ it('la plantilla PDF de proveedor natural usa el diseño estandar con cabecera y
     $html = View::make('documents.doctor-nurse-ficha', [
         'doctorNurse' => $doctorNurse,
         'logoDataUri' => '',
+        'infraCheckBadgeDataUri' => PdfCertifiedCheckBadge::dataUri(),
         'generatedAt' => Carbon::create(2026, 5, 10, 23, 30, 0),
     ])->render();
 
