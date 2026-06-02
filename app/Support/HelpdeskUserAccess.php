@@ -8,7 +8,17 @@ use Illuminate\Contracts\Auth\Authenticatable;
 
 final class HelpdeskUserAccess
 {
+    public static function hasSuperAdminDepartment(?Authenticatable $user = null): bool
+    {
+        return self::departmentContains($user, 'SUPERADMIN');
+    }
+
     public static function hasSystemsDepartment(?Authenticatable $user = null): bool
+    {
+        return self::departmentContains($user, 'SISTEMAS');
+    }
+
+    public static function departmentContains(?Authenticatable $user, string $needle): bool
     {
         $user ??= auth()->user();
 
@@ -22,16 +32,29 @@ final class HelpdeskUserAccess
             $departments = [(string) $departments];
         }
 
+        $normalizedNeedle = self::normalizeDepartmentToken($needle);
+
+        if ($normalizedNeedle === '') {
+            return false;
+        }
+
         foreach ($departments as $department) {
-            if (! is_string($department)) {
+            if (! is_string($department) && ! is_numeric($department)) {
                 continue;
             }
 
-            if (str_contains(mb_strtoupper($department), 'SISTEMAS')) {
+            $normalized = self::normalizeDepartmentToken((string) $department);
+
+            if ($normalized !== '' && str_contains($normalized, $normalizedNeedle)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static function normalizeDepartmentToken(string $value): string
+    {
+        return strtoupper(str_replace([' ', '-', '_'], '', $value));
     }
 }

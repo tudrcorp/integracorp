@@ -11,6 +11,8 @@ trait LabelsHelpdeskCreateAnotherFormAction
     protected function getCreateAnotherFormAction(): Action
     {
         return parent::getCreateAnotherFormAction()
-            ->label('Crear otro');
+            ->label('Crear otro')
+            ->authorize(fn (): bool => static::getResource()::canCreate())
+            ->visible(fn (): bool => static::getResource()::canCreate());
     }
 }

@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Helpdesks\Pages;
 
 use App\Filament\Business\Resources\Helpdesks\HelpdeskResource;
+use App\Filament\Concerns\AssertsHelpdeskTicketCreationAccess;
 use App\Filament\Concerns\DispatchesHelpdeskCreateNotifications;
 use App\Filament\Concerns\LabelsHelpdeskCreateAnotherFormAction;
 use App\Filament\Concerns\PreparesHelpdeskColaboradorAssigneesOnCreate;
 use App\Filament\Concerns\PreparesHelpdeskTeamOnCreate;
-use App\Support\HelpdeskBusinessTicketCreationGate;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateHelpdesk extends CreateRecord
 {
+    use AssertsHelpdeskTicketCreationAccess;
     use DispatchesHelpdeskCreateNotifications;
     use LabelsHelpdeskCreateAnotherFormAction;
     use PreparesHelpdeskColaboradorAssigneesOnCreate;
@@ -23,17 +23,9 @@ class CreateHelpdesk extends CreateRecord
 
     protected static string $resource = HelpdeskResource::class;
 
-    public static function canAccess(array $parameters = []): bool
+    protected static function helpdeskTicketCreationEnforcesQuota(): bool
     {
-        return HelpdeskResource::canCreate();
-    }
-
-    protected function getCreateAnotherFormAction(): Action
-    {
-        return parent::getCreateAnotherFormAction()
-            ->label('Crear otro')
-            ->authorize(fn (): bool => HelpdeskResource::canCreate())
-            ->visible(fn (): bool => HelpdeskResource::canCreate());
+        return true;
     }
 
     /**
@@ -47,62 +39,6 @@ class CreateHelpdesk extends CreateRecord
         return $this->prepareHelpdeskTeamForCreate($data);
     }
 
-    public function mount(): void
-    {
-        parent::mount();
-
-        $this->assertBusinessHelpdeskCreationAllowedOrRedirect();
-    }
-
-    protected function beforeCreate(): void
-    {
-        $this->assertBusinessHelpdeskCreationAllowedOrHalt();
-        $this->validatePendingHelpdeskColaboradorAssigneesOrHalt();
-    }
-
-    protected function assertBusinessHelpdeskCreationAllowedOrRedirect(): void
-    {
-        $verdict = HelpdeskBusinessTicketCreationGate::allowsCreation();
-
-        if ($verdict->allowed) {
-            return;
-        }
-
-        Notification::make()
-            ->title('No puede crear tickets')
-            ->body($verdict->message)
-            ->icon('heroicon-m-no-symbol')
-            ->iconColor('danger')
-            ->danger()
-            ->persistent()
-            ->send();
-
-        $this->redirect(static::getResource()::getUrl('index'));
-    }
-
-    protected function assertBusinessHelpdeskCreationAllowedOrHalt(): void
-    {
-        $verdict = HelpdeskBusinessTicketCreationGate::allowsCreation();
-
-        if ($verdict->allowed) {
-            return;
-        }
-
-        Notification::make()
-            ->title('No puede crear tickets')
-            ->body($verdict->message)
-            ->icon('heroicon-m-no-symbol')
-            ->iconColor('danger')
-            ->danger()
-            ->send();
-
-        $this->halt();
-    }
-
-    /**
-     * Filament intenta redirigir a la ruta `view` tras crear; en este recurso esa ruta no queda
-     * registrada en el router (solo index, create y edit). Igual que al editar, volvemos al listado.
-     */
     protected function getRedirectUrl(): string
     {
         return static::getResource()::getUrl('index');

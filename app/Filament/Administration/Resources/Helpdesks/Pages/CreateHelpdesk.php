@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\Helpdesks\Pages;
 
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource;
+use App\Filament\Concerns\AssertsHelpdeskTicketCreationAccess;
 use App\Filament\Concerns\DispatchesHelpdeskCreateNotifications;
 use App\Filament\Concerns\LabelsHelpdeskCreateAnotherFormAction;
 use App\Filament\Concerns\PreparesHelpdeskColaboradorAssigneesOnCreate;
@@ -14,12 +15,18 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateHelpdesk extends CreateRecord
 {
+    use AssertsHelpdeskTicketCreationAccess;
     use DispatchesHelpdeskCreateNotifications;
     use LabelsHelpdeskCreateAnotherFormAction;
     use PreparesHelpdeskColaboradorAssigneesOnCreate;
     use PreparesHelpdeskTeamOnCreate;
 
     protected static string $resource = HelpdeskResource::class;
+
+    protected static function helpdeskTicketCreationEnforcesQuota(): bool
+    {
+        return false;
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -32,15 +39,6 @@ class CreateHelpdesk extends CreateRecord
         return $this->prepareHelpdeskTeamForCreate($data);
     }
 
-    protected function beforeCreate(): void
-    {
-        $this->validatePendingHelpdeskColaboradorAssigneesOrHalt();
-    }
-
-    /**
-     * Filament intenta redirigir a la ruta `view` tras crear; en este recurso esa ruta no queda
-     * registrada en el router (solo index, create y edit). Igual que al editar, volvemos al listado.
-     */
     protected function getRedirectUrl(): string
     {
         return static::getResource()::getUrl('index');

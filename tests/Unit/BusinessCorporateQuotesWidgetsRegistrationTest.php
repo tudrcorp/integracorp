@@ -8,7 +8,7 @@ use App\Filament\Business\Resources\CorporateQuotes\Widgets\StatsOverviewTotalCo
 use App\Filament\Business\Resources\CorporateQuotes\Widgets\TotalCorporateQuoteChart;
 
 it('registra los widgets de resumen y grafico en el listado de cotizaciones corporativas', function (): void {
-    $page = new class extends ListCorporateQuotes
+    $page = new class BusinessCorporateQuotesWidgetsRegistrationTest ListCorporateQuotes
     {
         public function exposedHeaderWidgets(): array
         {

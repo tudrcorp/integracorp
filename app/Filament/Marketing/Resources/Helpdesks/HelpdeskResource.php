@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\Helpdesks;
 
+use App\Filament\Concerns\AuthorizesHelpdeskTicketCreation;
 use App\Filament\Marketing\Resources\Helpdesks\Pages\CreateHelpdesk;
 use App\Filament\Marketing\Resources\Helpdesks\Pages\EditHelpdesk;
 use App\Filament\Marketing\Resources\Helpdesks\Pages\ListHelpdesks;
@@ -16,11 +17,12 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class HelpdeskResource extends Resource
 {
+    use AuthorizesHelpdeskTicketCreation;
+
     protected static ?string $model = HelpDesk::class;
 
     protected static ?string $navigationLabel = 'Helpdesk';
@@ -49,16 +51,6 @@ class HelpdeskResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['rrhhColaboradores']);
-    }
-
-    public static function currentUserIsHelpdeskTicketCreator(Model $record): bool
-    {
-        $user = Auth::user();
-        if ($user === null) {
-            return false;
-        }
-
-        return trim((string) $record->getAttribute('created_by')) === trim((string) $user->name);
     }
 
     public static function canEdit(Model $record): bool
