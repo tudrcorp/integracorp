@@ -191,6 +191,7 @@ final class HelpdeskInfolistSchema
                                                     ->placeholder('—'),
                                                 RepeatableEntry::make('team_members')
                                                     ->label('Colaboradores del equipo')
+                                                    ->formatStateUsing(fn (mixed $state): array => HelpdeskTeamMembersState::normalize($state))
                                                     ->table([
                                                         TableColumn::make('Colaborador'),
                                                         TableColumn::make('ID'),

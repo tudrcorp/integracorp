@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\HelpdeskTeamMembersCast;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -24,11 +25,17 @@ class HelpDesk extends Model
         'observation',
         'cc_colaboradores',
         'ticket_type',
+        'team',
+        'team_members',
     ];
 
-    protected $casts = [
-        'cc_colaboradores' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'cc_colaboradores' => 'array',
+            'team_members' => HelpdeskTeamMembersCast::class,
+        ];
+    }
 
     protected static function booted(): void
     {
