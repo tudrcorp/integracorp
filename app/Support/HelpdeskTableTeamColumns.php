@@ -24,12 +24,14 @@ final class HelpdeskTableTeamColumns
             TextColumn::make('team_members')
                 ->label('Integrantes del equipo')
                 ->icon('heroicon-m-users')
-                ->formatStateUsing(function (?array $state): string {
-                    if (! is_array($state) || $state === []) {
+                ->formatStateUsing(function (mixed $state): string {
+                    $members = HelpdeskTeamMembersState::normalize($state);
+
+                    if ($members === []) {
                         return '—';
                     }
 
-                    return collect($state)
+                    return collect($members)
                         ->map(static function (mixed $member): string {
                             if (! is_array($member)) {
                                 return '';
