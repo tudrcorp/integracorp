@@ -3,21 +3,19 @@
 declare(strict_types=1);
 
 it('replica el ordenamiento de tickets por status en todos los módulos', function () {
-    $expected = "CASE status\n                            WHEN 'PENDIENTE POR INICIAR' THEN 1\n                            WHEN 'EN PROCESO' THEN 2\n                            WHEN 'TERMINADO' THEN 3\n                            ELSE 4\n                        END";
+    $orderSql = \App\Support\HelpdeskTableConfigurator::statusOrderByCaseSql();
 
-    $root = dirname(__DIR__, 2);
+    expect($orderSql)
+        ->toContain("WHEN 'PENDIENTE POR INICIAR' THEN 1")
+        ->toContain("WHEN 'EN ANALISIS' THEN 3")
+        ->toContain("WHEN 'CANCELADO' THEN 9");
 
-    $paths = [
-        $root.'/app/Filament/Administration/Resources/Helpdesks/Tables/HelpdesksTable.php',
-        $root.'/app/Filament/Marketing/Resources/Helpdesks/Tables/HelpdesksTable.php',
-        $root.'/app/Filament/Operations/Resources/Helpdesks/Tables/HelpdesksTable.php',
-    ];
+    $panels = ['Administration', 'Marketing', 'Operations', 'Business'];
 
-    foreach ($paths as $path) {
+    foreach ($panels as $panel) {
+        $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Tables/HelpdesksTable.php";
         $contents = file_get_contents($path);
 
-        expect($contents)
-            ->not->toBeFalse()
-            ->toContain($expected);
+        expect($contents)->toContain('HelpdeskTableConfigurator::configure');
     }
 });
