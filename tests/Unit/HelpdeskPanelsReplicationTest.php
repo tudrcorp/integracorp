@@ -25,6 +25,14 @@ it('tablas helpdesk de administration, operations y marketing usan configurador 
     }
 });
 
+it('recursos helpdesk de todos los paneles validan creacion por grupo o SUPERADMIN', function (): void {
+    foreach (['Business', 'Administration', 'Operations', 'Marketing'] as $panel) {
+        $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/HelpdeskResource.php";
+
+        expect(file_get_contents($path))->toContain('AuthorizesHelpdeskTicketCreation');
+    }
+});
+
 it('acciones modales de todos los paneles incluyen nota obligatoria al cambiar estado', function (): void {
     $panels = ['Administration', 'Business', 'Marketing', 'Operations'];
 

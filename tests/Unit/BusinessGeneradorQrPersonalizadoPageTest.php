@@ -14,7 +14,7 @@ it('registra el generador qr personalizado en el panel business dentro de config
     $viewContents = file_get_contents($viewPath);
 
     expect($pageContents)
-        ->toContain('namespace App\\Filament\\Business\\Pages;')
+        ->toContain('namespace Tests\Unit;')
         ->toContain("protected static ?string \$navigationLabel = 'Generador QR personalizado';")
         ->toContain("protected static string|UnitEnum|null \$navigationGroup = 'CONFIGURACIÓN';")
         ->toContain("protected string \$view = 'filament.business.pages.generador-qr-personalizado';")

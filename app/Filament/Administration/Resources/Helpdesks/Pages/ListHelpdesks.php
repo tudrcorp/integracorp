@@ -10,9 +10,9 @@ use App\Filament\Administration\Resources\Helpdesks\Widgets\StatsOverviewHelpdes
 use App\Filament\Concerns\ManagesHelpdeskWorkGroupsOnList;
 use App\Models\HelpdeskFlowProcessFile;
 use App\Models\HelpdeskVideoTutorialFile;
+use App\Support\HelpdeskCreateTicketHeaderAction;
 use App\Support\HelpdeskWorkGroupHeaderAction;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
@@ -389,15 +389,7 @@ class ListHelpdesks extends ListRecords
                         ->send();
                 }),
             HelpdeskWorkGroupHeaderAction::make(),
-            CreateAction::make()
-                ->label('Crear ticket de soporte')
-                ->icon('heroicon-s-plus')
-                ->color('primary')
-                ->extraAttributes([
-                    'id' => 'helpdesk-create-ticket-btn',
-                    'data-tour-shape' => 'pill',
-                    'class' => self::TICKET_BUTTON_CLASS,
-                ]),
+            HelpdeskCreateTicketHeaderAction::make(HelpdeskResource::class),
         ];
     }
 

@@ -29,13 +29,14 @@ it('reconoce grupo inactivo', function (): void {
     expect($group->isActive())->toBeFalse();
 });
 
-it('permite crear tickets a usuarios del departamento sistemas sin cuota', function (): void {
-    $user = new User;
-    $user->departament = ['SISTEMAS'];
+it('en business el departamento sistemas sin grupo no puede crear hasta pertenecer a un grupo', function (): void {
+    $gate = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskTicketCreationGate.php');
 
-    expect(HelpdeskUserAccess::hasSystemsDepartment($user))->toBeTrue()
-        ->and(HelpdeskBusinessTicketCreationGate::allowsCreation($user)->allowed)->toBeTrue()
-        ->and(HelpdeskBusinessTicketCreationGate::allowsCreation($user)->bypassesQuota)->toBeTrue();
+    $businessGate = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskBusinessTicketCreationGate.php');
+
+    expect(HelpdeskUserAccess::hasSystemsDepartment(new User(['departament' => ['SISTEMAS']])))->toBeTrue()
+        ->and($businessGate)->toContain('enforceGroupQuota: true')
+        ->and($gate)->toContain('hasSystemsDepartment($user)');
 });
 
 it('define cuota por defecto de cinco tickets para grupos nuevos', function (): void {
@@ -69,24 +70,21 @@ it('panel business valida creacion con la regla de grupo y cuota', function (): 
     $traitPath = dirname(__DIR__, 2).'/app/Filament/Concerns/ManagesHelpdeskWorkGroupsOnList.php';
 
     expect(file_get_contents($resourcePath))
-        ->toContain('HelpdeskBusinessTicketCreationGate::allowsCreation')
-        ->toContain('public static function canCreate(): bool')
-        ->toContain('canSeeCreateTicketButton');
+        ->toContain('AuthorizesHelpdeskTicketCreation')
+        ->toContain('helpdeskEnforcesCreationQuota');
 
     expect(file_get_contents($createPath))
-        ->toContain('assertBusinessHelpdeskCreationAllowedOrHalt')
-        ->toContain('assertBusinessHelpdeskCreationAllowedOrRedirect')
-        ->toContain('public static function canAccess')
-        ->toContain('HelpdeskResource::canCreate()');
+        ->toContain('AssertsHelpdeskTicketCreationAccess')
+        ->toContain('helpdeskTicketCreationEnforcesQuota');
 
     $listPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Pages/ListHelpdesks.php';
 
     expect(file_get_contents($listPath))
         ->toContain('HelpdeskBusinessCreateTicketHeaderAction::make()');
 
-    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskBusinessCreateTicketHeaderAction.php'))
-        ->toContain('->visible(fn (): bool => HelpdeskResource::canSeeCreateTicketButton())')
-        ->toContain('HelpdeskBusinessTicketCreationGate::allowsCreation()')
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskCreateTicketHeaderAction.php'))
+        ->toContain('canSeeCreateTicketButton()')
+        ->toContain('HelpdeskTicketCreationGate::allowsCreation')
         ->toContain('No puede crear tickets');
 
     expect(file_get_contents($formPath))
