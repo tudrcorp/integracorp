@@ -4161,9 +4161,10 @@
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-body-shell {
+    @apply min-h-0 flex-1;
     display: grid;
     grid-template-rows: 1fr;
-    min-height: 0;
+    overflow: hidden;
     will-change: grid-template-rows, opacity;
     transition:
       grid-template-rows 0.22s cubic-bezier(0.32, 0.72, 0, 1),
@@ -4177,7 +4178,8 @@
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-body-shell > .fi-operations-case-chat-body {
-    min-height: 0;
+    @apply min-h-0;
+    height: 100%;
     overflow: hidden;
   }
 
@@ -4298,7 +4300,9 @@
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-body {
-    @apply grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(11.5rem,34%)_1fr];
+    @apply grid min-h-0 grid-cols-1 md:grid-cols-[minmax(11.5rem,34%)_1fr];
+    grid-template-rows: minmax(0, 1fr);
+    height: 100%;
     background: rgb(255 255 255 / 0.03);
     -webkit-backdrop-filter: blur(36px) saturate(185%);
     backdrop-filter: blur(36px) saturate(185%);
@@ -4309,7 +4313,7 @@
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-sidebar {
-    @apply flex min-h-0 flex-col md:border-e;
+    @apply flex h-full min-h-0 flex-col md:border-e;
     border-color: rgb(255 255 255 / 0.28);
     background: linear-gradient(
       180deg,
@@ -4511,7 +4515,7 @@
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-thread {
-    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+    @apply flex h-full min-h-0 min-w-0 flex-col overflow-hidden;
     background: rgb(255 255 255 / 0.04);
     -webkit-backdrop-filter: blur(44px) saturate(190%);
     backdrop-filter: blur(44px) saturate(190%);
@@ -4528,11 +4532,12 @@
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-thread-pane {
-    @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+    @apply grid min-h-0 flex-1 overflow-hidden;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-messages {
-    @apply min-h-0 flex-1 space-y-1.5 overflow-x-hidden overflow-y-auto px-3 pt-3 pb-4;
+    @apply flex min-h-0 flex-col justify-end space-y-1.5 overflow-x-hidden overflow-y-auto px-3 pt-3 pb-4;
     background-color: rgb(255 255 255 / 0.03);
     background-image: radial-gradient(rgb(148 163 184 / 0.12) 1px, transparent 1px);
     background-size: 14px 14px;
@@ -4540,6 +4545,10 @@
     backdrop-filter: blur(40px) saturate(185%);
     scroll-behavior: auto;
     scrollbar-width: none;
+  }
+
+  .fi-operations-case-chat--ios .fi-operations-case-chat-messages:has(.fi-operations-case-chat-thread-empty) {
+    @apply justify-center;
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-thread-header {
@@ -4663,7 +4672,8 @@
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-body > * {
-    min-height: 0;
+    @apply min-h-0;
+    height: 100%;
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-messages::-webkit-scrollbar {
