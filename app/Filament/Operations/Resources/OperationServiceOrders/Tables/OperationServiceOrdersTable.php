@@ -8,6 +8,7 @@ use App\Models\OperationServiceOrderItem;
 use App\Models\OperationServiceOrderQuote;
 use App\Models\Supplier;
 use App\Services\OperationServiceOrderMedicationQuotePdfService;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -27,6 +28,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -226,7 +228,13 @@ class OperationServiceOrdersTable
             ->heading('Órdenes de servicio')
             ->description('Listado de órdenes generadas por coordinación; el color de cada fila indica la prioridad asignada. Flujo: primero «Datos de pago»; al guardarlos podrás usar «Cargar soportes».')
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn ($query) => $query->with(['telemedicinePriority', 'supplier', 'approvedOperationQuote'])->withCount('operationServiceOrderQuotes'))
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                OperationsSupplierScope::applyServiceOrderListScope($query);
+
+                return $query
+                    ->with(['telemedicinePriority', 'supplier', 'telemedicineSupplier', 'approvedOperationQuote'])
+                    ->withCount('operationServiceOrderQuotes');
+            })
             ->columns([
                 TextColumn::make('order_number')
                     ->label('Nº orden')
@@ -259,6 +267,14 @@ class OperationServiceOrdersTable
                         'CANCELADO' => 'gray',
                         default => 'gray',
                     }),
+                TextColumn::make('managed_by')
+                    ->label('Gestionado por')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable()
+                    ->searchable()
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true))
+                    ->toggleable(),
                 TextColumn::make('telemedicinePriority.name')
                     ->label('Prioridad')
                     ->badge()

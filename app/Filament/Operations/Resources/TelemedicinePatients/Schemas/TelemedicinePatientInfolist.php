@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Schemas;
 
+use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\Benefit;
 use App\Models\TelemedicinePatient;
 use App\Support\FilamentDateDisplay;
+use App\Support\Operations\OperationsMapSearchAddress;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -23,6 +25,27 @@ class TelemedicinePatientInfolist
     private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+
+    private const IOS_ADDRESS_CARD = 'rounded-[1.25rem] border border-emerald-200/75 bg-gradient-to-br from-emerald-50/95 via-white to-slate-50/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92),0_10px_28px_-12px_rgba(16,185,129,0.18)] ring-1 ring-emerald-300/40 dark:border-emerald-500/30 dark:from-emerald-950/35 dark:via-gray-900/90 dark:to-slate-950/90 dark:ring-emerald-400/25 sm:p-5';
+
+    private static function formatAddress(?string $state): ?string
+    {
+        if (! filled($state)) {
+            return null;
+        }
+
+        return trim((string) $state);
+    }
+
+    private static function locationSummary(TelemedicinePatient $record): ?string
+    {
+        return OperationsMapSearchAddress::locationLine(
+            $record->country?->name,
+            $record->state?->definition,
+            $record->city?->definition,
+            filled($record->region) ? (string) $record->region : null,
+        );
+    }
 
     private const IOS_PATIENT_HERO_OUTER = 'relative overflow-hidden rounded-[1.75rem] border border-sky-200/75 bg-gradient-to-b from-sky-50/98 via-white to-slate-50/92 shadow-[0_18px_50px_-14px_rgba(14,165,233,0.28),0_1px_0_0_rgba(255,255,255,0.85)_inset] ring-1 ring-sky-300/45 backdrop-blur-[2px] dark:border-sky-500/30 dark:from-sky-950/55 dark:via-gray-900/96 dark:to-slate-950/92 dark:shadow-[0_22px_60px_-18px_rgba(56,189,248,0.14)] dark:ring-sky-400/25';
 
@@ -183,7 +206,36 @@ class TelemedicinePatientInfolist
                                                     ->icon(Heroicon::OutlinedAtSymbol)
                                                     ->copyable()
                                                     ->placeholder('—'),
+                                            ]),
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_ADDRESS_CARD,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('address')
+                                                    ->label('Dirección del paciente')
+                                                    ->icon(Heroicon::OutlinedMapPin)
+                                                    ->iconColor('success')
+                                                    ->weight('semibold')
+                                                    ->size(TextSize::Medium)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->copyable()
+                                                    ->copyMessage('Dirección copiada')
+                                                    ->formatStateUsing(fn (?string $state): ?string => self::formatAddress($state))
+                                                    ->helperText(function (TelemedicinePatient $record): ?string {
+                                                        $summary = self::locationSummary($record);
 
+                                                        return filled($summary) ? 'Ubicación: '.$summary : null;
+                                                    })
+                                                    ->placeholder('Sin dirección registrada')
+                                                    ->suffixAction(OperationsLocationMapAction::forTelemedicinePatient()),
+                                            ]),
+                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
                                                 TextEntry::make('city.definition')
                                                     ->label('Ciudad')
                                                     ->icon(Heroicon::OutlinedBuildingOffice2)
@@ -199,12 +251,6 @@ class TelemedicinePatientInfolist
                                                 TextEntry::make('region')
                                                     ->label('Región')
                                                     ->icon(Heroicon::OutlinedSquares2x2)
-                                                    ->placeholder('—'),
-                                                TextEntry::make('address')
-                                                    ->label('Dirección')
-                                                    ->icon(Heroicon::OutlinedHome)
-                                                    ->columnSpan(['default' => 1, 'sm' => 2, 'lg' => 4])
-                                                    ->wrap()
                                                     ->placeholder('—'),
                                             ]),
                                     ])

@@ -12,6 +12,7 @@ use App\Models\SupplierStatusConvenio;
 use App\Models\SupplierTipoClinica;
 use App\Models\SupplierTipoServicio;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingForm;
+use App\Support\Filament\Operations\SupplierIntegracorpManagementForm;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -623,6 +624,8 @@ class SupplierForm
                             ]),
 
                         SupplierBeneficiaryBankingForm::bankingTab(self::SECTION_CARD, self::INNER_CARD),
+
+                        SupplierIntegracorpManagementForm::formTab(self::SECTION_CARD, self::INNER_CARD),
 
                         Tab::make('Notas')
                             ->icon('heroicon-o-chat-bubble-left-right')

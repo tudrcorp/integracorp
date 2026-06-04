@@ -21,7 +21,8 @@ it('incluye tab de datos bancarios alineado al formulario de agentes', function 
     $modelPath = dirname(__DIR__, 2).'/app/Models/Supplier.php';
 
     expect(file_get_contents($formPath))
-        ->toContain('SupplierBeneficiaryBankingForm::bankingTab');
+        ->toContain('SupplierBeneficiaryBankingForm::bankingTab')
+        ->toContain('SupplierIntegracorpManagementForm::formTab');
 
     expect(file_get_contents($bankingPath))
         ->toContain("Tab::make('Datos bancarios')")

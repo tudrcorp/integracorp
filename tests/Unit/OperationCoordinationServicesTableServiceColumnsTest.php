@@ -66,30 +66,24 @@ it('OperationCoordinationServicesTable define acción modal de negociación y pr
         ->and($contents)->not->toContain('RecordActionsPosition::');
 });
 
-it('OperationCoordinationServicesTable define modal para gestionar ítems con cobertura y selección múltiple', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
-    $contents = file_get_contents($path);
+it('OperationCoordinationServicesTable enlaza a la página de gestión de ítems', function (): void {
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php');
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/ManageCoordinationServiceItemsForm.php');
 
-    expect($contents)
+    expect($table)
         ->toContain("Action::make('manage_service_items')")
-        ->toContain('Width::SevenExtraLarge')
-        ->toContain('fi-coordination-manage-items-modal')
+        ->toContain('ManageCoordinationServiceItems::getUrl')
+        ->toContain('CoordinationServiceItemsManager::manageServiceActionIsDisabled')
+        ->not->toContain('modalHeading(\'Gestionar ítems del servicio\')');
+
+    expect($form)
         ->toContain('fi-coordination-manage-items-wizard')
-        ->toContain('modalSubmitActionLabel(\'Confirmar gestión\')')
-        ->toContain('FilamentIosButton::extraClassForFilamentColor(\'success\')')
         ->toContain('manage_service_items_context')
-        ->toContain('manage_service_order_context')
-        ->toContain('extraAlpineAttributes')
-        ->toContain('manageServiceItemsContextHeader')
         ->toContain("Step::make('Selección de ítems')")
         ->toContain("Step::make('Orden de servicio')")
         ->toContain("Step::make('Cotización')")
-        ->toContain('nonCoveredSelectedManagementItemKeys')
-        ->toContain('createQuoteFromManageModal')
-        ->toContain('renderManagementItemsTable')
         ->toContain('CheckboxList::make(\'managed_service_item_keys\')')
-        ->toContain('coveredSelectedManagementItemKeys')
-        ->toContain('createServiceOrderFromManageModal');
+        ->toContain('CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys');
 });
 
 it('OperationCoordinationServicesTable muestra código de caso TM con badge y enlace a vista', function (): void {

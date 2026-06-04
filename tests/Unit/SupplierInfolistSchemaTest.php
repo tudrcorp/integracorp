@@ -22,6 +22,7 @@ it('usa tabs y estilos alineados con infolist de agentes y agencias', function (
         ->toContain('persistTab')
         ->toContain("Tab::make('Proveedor')")
         ->toContain("Tab::make('Órdenes de servicio')")
+        ->toContain('SupplierIntegracorpManagementTab::make()')
         ->toContain('SupplierBeneficiaryBankingInfolist::bankingTab');
 
     $bankingSource = file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/Operations/SupplierBeneficiaryBankingInfolist.php');

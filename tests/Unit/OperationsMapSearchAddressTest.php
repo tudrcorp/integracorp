@@ -9,6 +9,7 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
+use App\Models\TelemedicinePatient;
 use App\Support\Operations\OperationsMapSearchAddress;
 
 it('concatena dirección de calle y ubicación administrativa para el mapa', function (): void {
@@ -57,4 +58,17 @@ it('usa solo calle del afiliado corporativo cuando no hay ubicación en el regis
     $affiliate = new AffiliateCorporate(['address' => 'Urbanización Los Olivos']);
 
     expect(OperationsMapSearchAddress::forAffiliateCorporate($affiliate))->toBe('Urbanización Los Olivos');
+});
+
+it('concatena dirección del paciente de telemedicina para el mapa', function (): void {
+    $patient = new TelemedicinePatient([
+        'address' => 'AV. LIBERTADOR EDIF. TORRE A PISO 3',
+        'region' => 'CENTRO',
+    ]);
+    $patient->setRelation('country', new Country(['name' => 'VENEZUELA']));
+    $patient->setRelation('state', new State(['definition' => 'CARABOBO']));
+    $patient->setRelation('city', new City(['definition' => 'VALENCIA']));
+
+    expect(OperationsMapSearchAddress::forTelemedicinePatient($patient))
+        ->toBe('AV. LIBERTADOR EDIF. TORRE A PISO 3, VENEZUELA · CARABOBO · VALENCIA · CENTRO');
 });

@@ -3,7 +3,7 @@
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
-use App\Models\OperationCoordinationService;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component;
@@ -32,48 +32,48 @@ class ListOperationCoordinationServices extends ListRecords
     {
         return [
             'todas' => Tab::make('Todas')
-                ->badge(OperationCoordinationService::query()->count())
+                ->badge(OperationsSupplierScope::coordinationServiceQuery()->count())
                 ->badgeColor('gray')
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ]),
             'en_gestion' => Tab::make('EN GESTION')
-                ->badge(OperationCoordinationService::query()->where('status', 'EN GESTION')->count())
+                ->badge(OperationsSupplierScope::coordinationServiceQuery()->where('status', 'EN GESTION')->count())
                 ->badgeColor(Color::hex('#ffc107'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'EN GESTION')),
             'pendiente' => Tab::make('PENDIENTE')
-                ->badge(OperationCoordinationService::query()->where('status', 'PENDIENTE')->count())
+                ->badge(OperationsSupplierScope::coordinationServiceQuery()->where('status', 'PENDIENTE')->count())
                 ->badgeColor(Color::hex('#ffcc00'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'PENDIENTE')),
             'pendiente_resultados' => Tab::make('PENDIENTE POR RESULTADOS')
-                ->badge(OperationCoordinationService::query()->where('status', 'PENDIENTE POR RESULTADOS')->count())
+                ->badge(OperationsSupplierScope::coordinationServiceQuery()->where('status', 'PENDIENTE POR RESULTADOS')->count())
                 ->badgeColor(Color::hex('#ffcc00'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'PENDIENTE POR RESULTADOS')),
             'finalizado' => Tab::make('FINALIZADO')
-                ->badge(OperationCoordinationService::query()->where('status', 'FINALIZADO')->count())
+                ->badge(OperationsSupplierScope::coordinationServiceQuery()->where('status', 'FINALIZADO')->count())
                 ->badgeColor(Color::hex('#28cd41'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'FINALIZADO')),
             'cancelada' => Tab::make('CANCELADA')
-                ->badge(OperationCoordinationService::query()->whereIn('status', ['CANCELADA', 'CANCELADO'])->count())
+                ->badge(OperationsSupplierScope::coordinationServiceQuery()->whereIn('status', ['CANCELADA', 'CANCELADO'])->count())
                 ->badgeColor(Color::hex('#ff3b30'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('status', ['CANCELADA', 'CANCELADO'])),
             'novedad_admon' => Tab::make('NOVEDAD ADMON')
-                ->badge(OperationCoordinationService::query()->whereIn('status', ['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO'])->count())
+                ->badge(OperationsSupplierScope::coordinationServiceQuery()->whereIn('status', ['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO'])->count())
                 ->badgeColor(Color::hex('#ff3b30'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',

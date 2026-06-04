@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-it('OperationCoordinationServicesTable define paso de cotización para ítems no cubiertos', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
-    $contents = file_get_contents($path);
+it('el formulario de gestión de ítems define paso de cotización para ítems no cubiertos', function (): void {
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/ManageCoordinationServiceItemsForm.php');
 
-    expect($contents)
+    expect($form)
         ->toContain("Step::make('Cotización')")
         ->toContain('Obligatoria para ítems no cubiertos')
         ->toContain('nonCoveredSelectedManagementItemKeys')
@@ -16,31 +15,27 @@ it('OperationCoordinationServicesTable define paso de cotización para ítems no
         ->toContain('unit_price_ves')
         ->toContain('buildManageQuoteLineItemsDefault')
         ->toContain('syncManageQuoteAggregates')
-        ->toContain('manageQuoteSubtotalFromLineItems')
-        ->toContain('manage_quote_porcentaje_ganancia')
         ->toContain('manageQuoteSummaryPanel')
         ->toContain('Precios unitarios por ítem')
-        ->toContain('createQuoteFromManageModal')
+        ->toContain('manageServiceNonCoveredItemsNotice');
+});
+
+it('CoordinationServiceItemsManager valida cotización antes de gestionar ítems no cubiertos', function (): void {
+    $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
+
+    expect($manager)
+        ->toContain('$shouldCreateQuote = $nonCoveredKeys !== [] && $quoteType !== null')
+        ->toContain('Indique el precio unitario en dólares (mayor a cero) para cada ítem no cubierto seleccionado.')
+        ->toContain('Se registró la cotización para los ítems no cubiertos seleccionados.')
         ->toContain('persistManageQuote')
         ->toContain('buildManageQuoteItemsPayload')
         ->toContain('OperationQuoteGenerator::query()->create')
         ->toContain('OperationQuoteGenerator::STATUS_PENDING')
-        ->toContain('quote_pdf_path')
-        ->toContain('manageServiceNonCoveredItemsNotice');
-});
-
-it('OperationCoordinationServicesTable valida cotización antes de gestionar ítems no cubiertos', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
-    $contents = file_get_contents($path);
-
-    expect($contents)
-        ->toContain('$shouldCreateQuote = $nonCoveredKeys !== [] && $quoteType !== null')
-        ->toContain('Indique el precio unitario en dólares (mayor a cero) para cada ítem no cubierto seleccionado.')
-        ->toContain('Se registró la cotización para los ítems no cubiertos seleccionados.');
+        ->toContain('quote_pdf_path');
 });
 
 it('manageQuoteSubtotalFromLineItems suma precios unitarios en USD', function (): void {
-    $reflection = new ReflectionClass(\App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable::class);
+    $reflection = new ReflectionClass(\App\Support\Operations\CoordinationServiceItemsManager::class);
     $method = $reflection->getMethod('manageQuoteSubtotalFromLineItems');
     $method->setAccessible(true);
 
@@ -53,7 +48,7 @@ it('manageQuoteSubtotalFromLineItems suma precios unitarios en USD', function ()
 });
 
 it('manageQuoteTotal aplica porcentaje de ganancia sobre el subtotal', function (): void {
-    $reflection = new ReflectionClass(\App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable::class);
+    $reflection = new ReflectionClass(\App\Support\Operations\CoordinationServiceItemsManager::class);
     $method = $reflection->getMethod('manageQuoteTotal');
     $method->setAccessible(true);
 

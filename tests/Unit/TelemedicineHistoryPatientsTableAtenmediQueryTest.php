@@ -10,5 +10,6 @@ it('restringe historias a pacientes managed_by ATENMEDI cuando el usuario perten
         ->toContain('modifyQueryUsing')
         ->toContain("in_array('ATENMEDI', Auth::user()?->departament ?? [], true)")
         ->toContain("whereHas('telemedicinePatient'")
-        ->toContain("->where('managed_by', 'ATENMEDI')");
+        ->toContain("->where('managed_by', 'ATENMEDI')")
+        ->toContain('OperationsSupplierScope::applyToQuery($query)');
 });

@@ -96,6 +96,11 @@ class Agent extends Model
         'activate_monthly_frequency',
         'role',
 
+        'country_other_country',
+        'state_other_country',
+        'city_other_country',
+        'postal_code_other_country',
+        'address_other_country',
     ];
 
     /**
