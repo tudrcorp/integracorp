@@ -50,6 +50,15 @@ class RenovationInfolist
                                                     ->badge()
                                                     ->color('success')
                                                     ->copyable(),
+                                                TextEntry::make('affiliation.full_name_ti')
+                                                    ->label('Titular')
+                                                    ->icon('heroicon-m-user')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliation.nro_identificacion_ti')
+                                                    ->label('Cédula de identidad')
+                                                    ->icon('heroicon-m-identification')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
                                                 TextEntry::make('status')
                                                     ->label('Estatus')
                                                     ->badge()
@@ -197,10 +206,18 @@ class RenovationInfolist
                                         Grid::make(4)
                                             ->extraAttributes(['class' => self::IOS_INNER_CLASS])
                                             ->schema([
+                                                TextEntry::make('affiliation.agency.name_corporative')
+                                                    ->label('Agencia')
+                                                    ->icon('heroicon-m-building-office-2')
+                                                    ->placeholder('—'),
                                                 TextEntry::make('code_agency')
                                                     ->label('Código agencia')
                                                     ->badge()
                                                     ->color('gray'),
+                                                TextEntry::make('affiliation.agent.name')
+                                                    ->label('Agente')
+                                                    ->icon('heroicon-m-academic-cap')
+                                                    ->placeholder('—'),
                                                 TextEntry::make('agent_id')
                                                     ->label('Código agente')
                                                     ->badge()

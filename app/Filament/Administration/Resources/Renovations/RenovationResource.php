@@ -46,7 +46,16 @@ class RenovationResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery();
+        return parent::getEloquentQuery()->with([
+            'affiliation.agency',
+            'affiliation.agent',
+            'affiliation.plan',
+            'affiliation.coverage',
+            'plan',
+            'previousPlan',
+            'coverage',
+            'ageRange',
+        ]);
     }
 
     public static function canCreate(): bool

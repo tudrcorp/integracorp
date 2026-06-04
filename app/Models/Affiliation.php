@@ -164,6 +164,14 @@ class Affiliation extends Model
     }
 
     /**
+     * @return HasMany<\App\Models\AffiliationRenovationHistory, $this>
+     */
+    public function renovationHistories(): HasMany
+    {
+        return $this->hasMany(AffiliationRenovationHistory::class)->orderByDesc('accepted_at');
+    }
+
+    /**
      * Cobranzas asociadas al código de afiliación (`collections.affiliation_code`).
      *
      * @return HasMany<\App\Models\Collection, $this>
