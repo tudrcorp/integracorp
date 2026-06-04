@@ -39,7 +39,13 @@ class ViewAffiliation extends ViewRecord
     {
         $record = parent::resolveRecord($key);
 
-        $record->load('affiliationDocuments');
+        $record->load([
+            'affiliationDocuments',
+            'renovationHistories.plan',
+            'renovationHistories.previousPlan',
+            'renovationHistories.coverage',
+            'renovationHistories.affiliate',
+        ]);
 
         return $record;
     }

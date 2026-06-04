@@ -18,3 +18,14 @@ it('calcula tasa con saldo restante en USD (pago múltiple)', function (): void 
     expect(AffiliationPaymentBcvRateCalculator::rateFromVesAndRemainingUsd('1800', '50'))
         ->toBe('36');
 });
+
+it('permite editar tasa BCV en comprobante y pago multiple de afiliaciones administration', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Affiliations/Tables/AffiliationsTable.php');
+
+    expect($source)
+        ->toContain('bcvRateTextInput')
+        ->toContain('setCalculatedBcvRate')
+        ->toContain('tasa_bcv_manual')
+        ->not->toContain("->label('Tasa BCV (calculada)')")
+        ->not->toMatch('/TextInput::make\(\'tasa_bcv\'\)[\s\S]*?->disabled\(\)/');
+});

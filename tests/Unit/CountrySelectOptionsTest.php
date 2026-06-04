@@ -28,5 +28,14 @@ it('define helper reutilizable para selects de paises en español', function ():
         ->toContain('ICUDATA-region');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Agents/Resources/Agents/Schemas/AgentForm.php'))
+        ->toContain('use App\Support\CountrySelectOptions;')
+        ->toContain('CountrySelectOptions::exceptVenezuelaInSpanish()');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentForm.php'))
+        ->toContain('use App\Support\CountrySelectOptions;')
+        ->toContain('CountrySelectOptions::exceptVenezuelaInSpanish()');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agencies/Schemas/AgencyForm.php'))
+        ->toContain('use App\Support\CountrySelectOptions;')
         ->toContain('CountrySelectOptions::exceptVenezuelaInSpanish()');
 });

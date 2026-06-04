@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Affiliations\Schemas;
 
+use App\Filament\Shared\Affiliations\AffiliationRenovationHistoryInfolist;
 use App\Models\Affiliation;
 use App\Models\AffiliationDocument;
 use Filament\Actions\Action;
@@ -456,6 +457,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
+                        AffiliationRenovationHistoryInfolist::tab(self::IOS_SECTION_CLASS),
                         Tab::make('Expediente digital')
                             ->icon(Heroicon::OutlinedFolderOpen)
                             ->schema([
