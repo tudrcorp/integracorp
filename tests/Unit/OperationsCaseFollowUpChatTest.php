@@ -65,6 +65,9 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('min(88%')
         ->toContain('overflow-x-hidden')
         ->toContain('min-h-0 flex-1')
+        ->toContain('fi-operations-case-chat-body-shell')
+        ->toContain('grid-template-rows: minmax(0, 1fr) auto')
+        ->toContain('justify-end')
         ->toContain('shrink-0 border-t');
 });
 
