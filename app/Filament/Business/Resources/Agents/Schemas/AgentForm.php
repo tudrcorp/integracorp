@@ -12,6 +12,7 @@ use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
 use App\Models\User;
+use App\Support\CountrySelectOptions;
 use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -48,9 +49,9 @@ class AgentForm
     private static function auditHiddenFields(): array
     {
         return [
-            Hidden::make('created_by')->default(fn(): string => Auth::user()?->name ?? '')->hiddenOn('edit'),
+            Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('edit'),
             Hidden::make('updated_by')
-                ->default(fn(): string => Auth::user()?->name ?? '')
+                ->default(fn (): string => Auth::user()?->name ?? '')
                 ->hiddenOn('create'),
         ];
     }
@@ -107,14 +108,14 @@ class AgentForm
                                                     ->preload(),
                                                 Select::make('owner_agent')
                                                     ->label('Agente responsable')
-                                                    ->options(fn(): array => DB::table('agents')->select('name', 'id', 'status', 'agent_type_id')->where('agent_type_id', 2)->where('status', 'ACTIVO')->pluck('name', 'id')->all())
+                                                    ->options(fn (): array => DB::table('agents')->select('name', 'id', 'status', 'agent_type_id')->where('agent_type_id', 2)->where('status', 'ACTIVO')->pluck('name', 'id')->all())
                                                     ->searchable()
                                                     ->live()
-                                                    ->required(fn(Get $get): bool => (int) $get('agent_type_id') === 3)
+                                                    ->required(fn (Get $get): bool => (int) $get('agent_type_id') === 3)
                                                     ->validationMessages([
                                                         'required' => 'Debe seleccionar un agente responsable cuando el tipo sea sub agente.',
                                                     ])
-                                                    ->hidden(fn(Get $get): bool => (int) $get('agent_type_id') === 2)
+                                                    ->hidden(fn (Get $get): bool => (int) $get('agent_type_id') === 2)
                                                     ->preload()
                                                     ->helperText('Solo agentes activos tipo agente principal.'),
                                                 Select::make('owner_code')
@@ -148,9 +149,9 @@ class AgentForm
                                                     ])
                                                     ->preload(),
                                                 Select::make('ownerAccountManagers')
-                                                    ->hidden(fn(): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true))
+                                                    ->hidden(fn (): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true))
                                                     ->label('Account manager (administrador de cuenta)')
-                                                    ->options(fn(): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
+                                                    ->options(fn (): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
                                                     ->searchable()
                                                     ->required()
                                                     ->validationMessages([
@@ -398,7 +399,7 @@ class AgentForm
                                                         $countryCode = $get('country_code');
                                                         if ($countryCode) {
                                                             $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', (string) $state), '0');
-                                                            $set('phone', $countryCode . $cleanNumber);
+                                                            $set('phone', $countryCode.$cleanNumber);
                                                         }
                                                     }),
 
@@ -474,7 +475,7 @@ class AgentForm
                                                                 $set('city_id', null);
                                                                 $set('region', null);
                                                             })
-                                                            ->options(fn(): array => CountrySelectOptions::exceptVenezuelaInSpanish())
+                                                            ->options(fn (): array => CountrySelectOptions::exceptVenezuelaInSpanish())
                                                             ->searchable()
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                         TextInput::make('state_other_country')
@@ -834,7 +835,7 @@ class AgentForm
                                                     ->autosize(),
                                                 TextInput::make('created_by')
                                                     ->label('Responsable')
-                                                    ->default(fn(): string => Auth::user()?->name ?? '')
+                                                    ->default(fn (): string => Auth::user()?->name ?? '')
                                                     ->disabled()
                                                     ->dehydrated(),
                                                 TextInput::make('date')

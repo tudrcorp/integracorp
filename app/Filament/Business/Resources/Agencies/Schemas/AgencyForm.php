@@ -14,6 +14,7 @@ use App\Models\State;
 use App\Models\TravelAgency;
 use App\Models\TravelAgent;
 use App\Models\User;
+use App\Support\CountrySelectOptions;
 use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -50,9 +51,9 @@ class AgencyForm
     private static function auditHiddenFields(): array
     {
         return [
-            Hidden::make('created_by')->default(fn(): string => Auth::user()?->name ?? '')->hiddenOn('edit'),
+            Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('edit'),
             Hidden::make('updated_by')
-                ->default(fn(): string => Auth::user()?->name ?? '')
+                ->default(fn (): string => Auth::user()?->name ?? '')
                 ->hiddenOn('create'),
         ];
     }
@@ -103,14 +104,14 @@ class AgencyForm
                                                         $maxId = Agency::query()->max('id');
                                                         $base = $maxId === null ? 100 : 100 + (int) $maxId;
 
-                                                        return 'TDG-' . ($base + 1);
+                                                        return 'TDG-'.($base + 1);
                                                     })
                                                     ->disabled()
                                                     ->dehydrated()
                                                     ->maxLength(255),
                                                 Select::make('agency_type_id')
                                                     ->label('Tipo de agencia')
-                                                    ->options(fn(): array => AgencyType::query()->orderBy('definition')->pluck('definition', 'id')->all())
+                                                    ->options(fn (): array => AgencyType::query()->orderBy('definition')->pluck('definition', 'id')->all())
                                                     ->searchable()
                                                     ->live()
                                                     ->required()
@@ -133,7 +134,7 @@ class AgencyForm
                                                             })
                                                             ->all();
                                                     })
-                                                    ->hidden(fn(Get $get): bool => (int) $get('agency_type_id') === 1 || $get('agency_type_id') === null)
+                                                    ->hidden(fn (Get $get): bool => (int) $get('agency_type_id') === 1 || $get('agency_type_id') === null)
                                                     ->helperText('Solo agencias master. Si lo deja vacío, el sistema usará TDG-100 como agencia master.')
                                                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                                                         if ($state === null) {
@@ -153,9 +154,9 @@ class AgencyForm
                                                     ->validationMessages([
                                                         'required' => 'Campo requerido',
                                                     ])
-                                                    ->hidden(fn(): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true))
+                                                    ->hidden(fn (): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true))
                                                     ->label('Account manager')
-                                                    ->options(fn(): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
+                                                    ->options(fn (): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
                                                     ->searchable()
                                                     ->preload(),
                                                 Hidden::make('owner_code')
@@ -394,7 +395,7 @@ class AgencyForm
                                                         $countryCode = $get('country_code');
                                                         if ($countryCode) {
                                                             $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', (string) $state), '0');
-                                                            $set('phone', $countryCode . $cleanNumber);
+                                                            $set('phone', $countryCode.$cleanNumber);
                                                         }
                                                     }),
 
@@ -470,7 +471,7 @@ class AgencyForm
                                                                 $set('city_id', null);
                                                                 $set('region', null);
                                                             })
-                                                            ->options(fn(): array => CountrySelectOptions::exceptVenezuelaInSpanish())
+                                                            ->options(fn (): array => CountrySelectOptions::exceptVenezuelaInSpanish())
                                                             ->searchable()
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                         TextInput::make('state_other_country')
@@ -622,7 +623,7 @@ class AgencyForm
                                                         $countryCode = $get('country_code_2');
                                                         if ($countryCode) {
                                                             $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', (string) $state), '0');
-                                                            $set('phone_contact_2', $countryCode . $cleanNumber);
+                                                            $set('phone_contact_2', $countryCode.$cleanNumber);
                                                         }
                                                     })
                                                     ->columnSpan(['default' => 1, 'lg' => 2]),
@@ -956,7 +957,7 @@ class AgencyForm
                                                     ->autosize(),
                                                 TextInput::make('created_by')
                                                     ->label('Responsable')
-                                                    ->default(fn(): string => Auth::user()?->name ?? '')
+                                                    ->default(fn (): string => Auth::user()?->name ?? '')
                                                     ->disabled()
                                                     ->dehydrated(),
                                                 TextInput::make('date')
