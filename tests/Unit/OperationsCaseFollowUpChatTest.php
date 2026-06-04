@@ -5,11 +5,17 @@ declare(strict_types=1);
 it('registra el chat flotante de casos en el panel de operaciones', function (): void {
     $provider = file_get_contents(dirname(__DIR__, 2).'/app/Providers/Filament/OperationsPanelProvider.php');
     $quickNav = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/panels/internal-quick-nav.blade.php');
+    $hook = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/operations/hooks/case-follow-up-chat-panel.blade.php');
 
     expect($provider)
         ->toContain('case-follow-up-chat-panel')
         ->not->toContain('case-follow-up-chat-topbar')
         ->not->toContain('PanelsRenderHook::GLOBAL_SEARCH_AFTER');
+
+    expect($hook)
+        ->toContain('@auth')
+        ->toContain('@endauth')
+        ->not->toContain('@persist');
 
     expect($quickNav)
         ->toContain('operations-chat')
@@ -45,6 +51,9 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('lastKnownLatestMessageId')
         ->toContain('syncTimelineScrollOnPoll(): bool')
         ->toContain('dispatchScrollToLatestMessage(force: false)')
+        ->toContain('function restorePanel(')
+        ->toContain('operations-case-chat-closed')
+        ->toContain('operations-case-chat-opened')
         ->toContain('latestMessageIdForCase');
 
     expect($view)
@@ -53,6 +62,7 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('fi-operations-case-chat-window')
         ->not->toContain('fi-operations-case-chat-backdrop')
         ->toContain('fi-operations-case-chat--ios')
+        ->toContain('fi-operations-case-chat--glass')
         ->toContain('fi-operations-case-chat-body-shell')
         ->toContain('stickTimelineToLatest')
         ->toContain('pinTimelineToBottom')
@@ -68,6 +78,13 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('wire:model.live="messageBody"')
         ->toContain('x-ref="messagesEnd"')
         ->toContain('operations-case-chat-scroll-bottom')
+        ->toContain('fi-operations-case-chat-state')
+        ->toContain('isAuthenticatedOperationsArea')
+        ->toContain('isOperationsAuthPage')
+        ->toContain('restoreChatStateIfNeeded')
+        ->toContain('handleOperationsModuleNavigation')
+        ->toContain('livewire:navigated')
+        ->toContain('operations-case-chat-closed')
         ->not->toContain('wire:click="toggleMinimize"')
         ->not->toContain('fi-operations-case-chat-fab');
 
@@ -85,11 +102,13 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('Chat de seguimiento — tema claro')
         ->toContain('Chat de seguimiento — tema oscuro')
         ->toContain('html:not(.dark) .fi-operations-case-chat--ios.fi-operations-case-chat-window')
-        ->toContain('blur(176px) saturate(255%)')
+        ->toContain('blur(150px) saturate(180%)')
         ->toContain('html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-messages')
-        ->toContain('blur(156px) saturate(250%)')
+        ->toContain('blur(150px) saturate(180%)')
         ->toContain('.dark .fi-operations-case-chat--ios.fi-operations-case-chat-window')
-        ->toContain('blur(176px) saturate(250%) brightness(0.78)');
+        ->toContain('blur(150px) saturate(180%) brightness(0.78)')
+        ->toContain('Chat de seguimiento — glassmorphism 100%')
+        ->toContain('.fi-operations-case-chat--glass .fi-operations-case-chat-case-item');
 });
 
 it('persiste mensajes y lecturas en tablas dedicadas', function (): void {

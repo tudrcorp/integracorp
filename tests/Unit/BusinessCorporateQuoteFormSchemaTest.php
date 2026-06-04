@@ -14,3 +14,22 @@ it('usa pestañas con contenedor estilizado en el formulario de cotización corp
         ->not->toContain('Wizard::make')
         ->not->toContain('Step::make(');
 });
+
+it('requiere al menos un rango de edad seleccionado para crear la cotización', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/CorporateQuotes/Schemas/CorporateQuoteForm.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain('requireQuoteDetailsRule')
+        ->toContain('Debe seleccionar al menos un (1) rango de edad para crear la cotización.')
+        ->toContain('->rules(self::requireQuoteDetailsRule())');
+});
+
+it('requiere al menos una persona en la cotización', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/CorporateQuotes/Schemas/CorporateQuoteForm.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain('La cantidad de personas debe ser como mínimo una (1) persona.')
+        ->toContain('->minValue(1)');
+});

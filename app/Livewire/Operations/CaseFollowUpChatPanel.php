@@ -72,6 +72,7 @@ class CaseFollowUpChatPanel extends Component
         $this->refreshUnreadCounters();
         $this->syncScrollAnchorForSelectedCase();
         $this->dispatchScrollToLatestMessage();
+        $this->dispatch('operations-case-chat-opened');
     }
 
     public function closePanel(): void
@@ -80,6 +81,49 @@ class CaseFollowUpChatPanel extends Component
         $this->isMinimized = false;
         $this->lastKnownLatestMessageId = null;
         $this->resetValidation();
+
+        $this->dispatch('operations-case-chat-closed');
+    }
+
+    public function restorePanel(?int $caseId = null, bool $isMinimized = false): void
+    {
+        $this->isOpen = true;
+        $this->isMinimized = $isMinimized;
+
+        if ($caseId !== null) {
+            $this->selectCase($caseId);
+
+            if (! $isMinimized) {
+                $this->dispatchScrollToLatestMessage();
+            }
+
+            return;
+        }
+
+        if ($this->selectedCaseId !== null) {
+            $this->refreshUnreadCounters();
+            $this->syncScrollAnchorForSelectedCase();
+
+            if (! $isMinimized) {
+                $this->dispatchScrollToLatestMessage();
+            }
+
+            return;
+        }
+
+        $firstCase = CaseFollowUpChatManager::followUpCasesForChat()->first();
+
+        if ($firstCase instanceof TelemedicineCase) {
+            $this->selectCase($firstCase->id);
+
+            if (! $isMinimized) {
+                $this->dispatchScrollToLatestMessage();
+            }
+
+            return;
+        }
+
+        $this->refreshUnreadCounters();
     }
 
     public function toggleMinimize(): void
