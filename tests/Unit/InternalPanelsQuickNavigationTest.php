@@ -141,6 +141,38 @@ it('shows projects quick access for SUPERADMIN inside projects panel', function 
         ->toContain('marketing');
 });
 
+it('includes chat casos in operations quick navigation menu', function (): void {
+    $user = User::factory()->create([
+        'email' => 'ops-chat-nav-'.uniqid('', true).'@tudrencasa.com',
+        'departament' => ['OPERACIONES'],
+        'status' => 'ACTIVO',
+    ]);
+
+    $this->actingAs($user);
+
+    $chatItem = collect(InternalPanelsQuickNavigation::navigationItems('operations'))
+        ->firstWhere('kind', 'operations-chat');
+
+    expect($chatItem)->not->toBeNull()
+        ->and($chatItem['label'])->toBe('Chat casos')
+        ->and($chatItem['subtitle'])->toBe('Seguimiento activo');
+});
+
+it('does not include chat casos outside operations panel', function (): void {
+    $user = User::factory()->create([
+        'email' => 'business-chat-nav-'.uniqid('', true).'@tudrencasa.com',
+        'departament' => ['NEGOCIOS'],
+        'status' => 'ACTIVO',
+    ]);
+
+    $this->actingAs($user);
+
+    $chatItem = collect(InternalPanelsQuickNavigation::navigationItems('business'))
+        ->firstWhere('kind', 'operations-chat');
+
+    expect($chatItem)->toBeNull();
+});
+
 it('uses filament notification when superadmin clicks a module without access', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/panels/internal-quick-nav.blade.php');
 

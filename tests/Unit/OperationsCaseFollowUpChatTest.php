@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 it('registra el chat flotante de casos en el panel de operaciones', function (): void {
     $provider = file_get_contents(dirname(__DIR__, 2).'/app/Providers/Filament/OperationsPanelProvider.php');
+    $quickNav = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/panels/internal-quick-nav.blade.php');
 
     expect($provider)
         ->toContain('case-follow-up-chat-panel')
-        ->toContain('case-follow-up-chat-topbar')
-        ->toContain('PanelsRenderHook::GLOBAL_SEARCH_AFTER');
+        ->not->toContain('case-follow-up-chat-topbar')
+        ->not->toContain('PanelsRenderHook::GLOBAL_SEARCH_AFTER');
+
+    expect($quickNav)
+        ->toContain('operations-chat')
+        ->toContain("Livewire.dispatch('operations-case-chat-open')")
+        ->toContain('fi-business-panel-stepper-segment--operations-chat')
+        ->toContain('heroicon-o-chat-bubble-bottom-center-text');
 });
 
 it('centraliza la logica del chat de seguimiento en CaseFollowUpChatManager', function (): void {
@@ -36,16 +43,20 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('syncScrollAnchorForSelectedCase')
         ->toContain("#[On('operations-case-chat-open')]")
         ->toContain('lastKnownLatestMessageId')
-        ->toContain('syncTimelineScrollOnPoll')
+        ->toContain('syncTimelineScrollOnPoll(): bool')
+        ->toContain('dispatchScrollToLatestMessage(force: false)')
         ->toContain('latestMessageIdForCase');
 
     expect($view)
         ->toContain('wire:poll.3s="pollHeartbeat"')
         ->toContain('operationsCaseChatPanel')
         ->toContain('fi-operations-case-chat-window')
+        ->not->toContain('fi-operations-case-chat-backdrop')
         ->toContain('fi-operations-case-chat--ios')
         ->toContain('fi-operations-case-chat-body-shell')
         ->toContain('stickTimelineToLatest')
+        ->toContain('pinTimelineToBottom')
+        ->toContain('onMessagesScroll')
         ->toContain('bindMessagesObserver')
         ->toContain('toggleMinimize()')
         ->toContain('is-minimized')
@@ -67,8 +78,18 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('min-h-0 flex-1')
         ->toContain('fi-operations-case-chat-body-shell')
         ->toContain('grid-template-rows: minmax(0, 1fr) auto')
-        ->toContain('justify-end')
-        ->toContain('shrink-0 border-t');
+        ->toContain('fi-operations-case-chat-messages-inner')
+        ->toContain('touch-action: pan-y')
+        ->toContain('shrink-0 border-t')
+        ->not->toContain('fi-operations-case-chat-backdrop')
+        ->toContain('Chat de seguimiento — tema claro')
+        ->toContain('Chat de seguimiento — tema oscuro')
+        ->toContain('html:not(.dark) .fi-operations-case-chat--ios.fi-operations-case-chat-window')
+        ->toContain('blur(176px) saturate(255%)')
+        ->toContain('html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-messages')
+        ->toContain('blur(156px) saturate(250%)')
+        ->toContain('.dark .fi-operations-case-chat--ios.fi-operations-case-chat-window')
+        ->toContain('blur(176px) saturate(250%) brightness(0.78)');
 });
 
 it('persiste mensajes y lecturas en tablas dedicadas', function (): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\Renovation;
 use App\Support\AffiliationAffiliateFeeCalculator;
@@ -99,9 +100,10 @@ class PrepareAffiliationRenovations implements ShouldQueue
                         ]);
                     }
 
-                    $planTransition = $calculator->evaluateIdealToSpecialPlanTransition(
+                    $planTransition = $calculator->evaluateIdealToSpecialPlanTransitionForRenewal(
                         $affiliation,
                         $affiliation->affiliates,
+                        $today,
                     );
                     $isNegotiationCandidate = $planTransition['requires_negotiation'];
                     $negotiationNotes = $planTransition['message'];
@@ -117,10 +119,21 @@ class PrepareAffiliationRenovations implements ShouldQueue
                     $titularAnnualFee = null;
                     $titularAgeRangeId = null;
                     $affiliateCount = 0;
+                    $titularAffiliate = $this->resolveTitularAffiliate($affiliation);
+                    $titularBirthDate = $titularAffiliate !== null
+                        ? $calculator->parseBirthDate($titularAffiliate->birth_date)?->toDateString()
+                        : null;
+                    $titularAge = $titularAffiliate !== null
+                        ? $calculator->resolveAffiliateAgeForRenewal($titularAffiliate, $today)
+                        : null;
 
                     foreach ($affiliation->affiliates as $affiliate) {
                         if ($canRecalculateFees) {
-                            $amounts = $calculator->calculateAffiliateAmounts($affiliationForFees, $affiliate);
+                            $amounts = $calculator->calculateAffiliateAmountsForRenewal(
+                                $affiliationForFees,
+                                $affiliate,
+                                $today,
+                            );
 
                             if ($amounts !== null) {
                                 $affiliatesPriced++;
@@ -129,12 +142,15 @@ class PrepareAffiliationRenovations implements ShouldQueue
                                 if ($affiliate->relationship === 'TITULAR') {
                                     $titularAnnualFee = $amounts['annual_fee'];
                                     $titularAgeRangeId = $amounts['age_range_id'];
+                                    $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today);
+                                    $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
+                                        ?? $titularBirthDate;
                                 }
                             } else {
                                 Log::warning('PrepareAffiliationRenovations: tarifa no encontrada para afiliado (solo renovations)', [
                                     'affiliation_id' => $affiliation->id,
                                     'affiliate_id' => $affiliate->id,
-                                    'age' => $calculator->resolveAffiliateAge($affiliate),
+                                    'age' => $calculator->resolveAffiliateAgeForRenewal($affiliate, $today),
                                 ]);
                             }
                         } else {
@@ -143,6 +159,9 @@ class PrepareAffiliationRenovations implements ShouldQueue
                             if ($affiliate->relationship === 'TITULAR') {
                                 $titularAnnualFee = (float) $affiliate->fee;
                                 $titularAgeRangeId = $affiliate->age_range_id;
+                                $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today) ?? $titularAge;
+                                $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
+                                    ?? $titularBirthDate;
                             }
                         }
 
@@ -178,6 +197,8 @@ class PrepareAffiliationRenovations implements ShouldQueue
                             'negotiation_notes' => $negotiationNotes,
                             'previous_plan_id' => $previousPlanId,
                             'age_range_id' => (int) ($titularAgeRangeId ?? $affiliation->affiliates->first()?->age_range_id ?? 1),
+                            'birth_date' => $titularBirthDate,
+                            'age' => $titularAge,
                             'fee' => round($titularAnnualFee ?? $subtotalAnual, 2),
                             'subtotal_anual' => round($subtotalAnual, 2),
                             'subtotal_quarterly' => round($subtotalAnual / 4, 2),
@@ -201,6 +222,17 @@ class PrepareAffiliationRenovations implements ShouldQueue
             'skipped_no_effective_date' => $skippedNoEffectiveDate,
             'run_date' => $today->toDateString(),
         ]);
+    }
+
+    private function resolveTitularAffiliate(Affiliation $affiliation): ?Affiliate
+    {
+        $titular = $affiliation->affiliates->firstWhere('relationship', 'TITULAR');
+
+        if ($titular !== null) {
+            return $titular;
+        }
+
+        return $affiliation->affiliates->first();
     }
 
     /**

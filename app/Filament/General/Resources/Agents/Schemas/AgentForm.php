@@ -15,7 +15,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -65,7 +64,7 @@ class AgentForm
                                             ->options(Agent::select('name', 'id', 'status', 'agent_type_id', 'owner_code')->where('agent_type_id', 2)->where('status', 'ACTIVO')->where('owner_code', Auth::user()->code_agency)->pluck('name', 'id'))
                                             ->searchable()
                                             ->live()
-                                            ->hidden(fn (Get $get) => $get('agent_type_id') == 2)
+                                            ->hidden(fn(Get $get) => $get('agent_type_id') == 2)
                                             ->preload()
                                             ->helperText('Esta lista despliega solo los agentes activos'),
                                         Hidden::make('created_by')->default(Auth::user()->name),
@@ -173,18 +172,6 @@ class AgentForm
                                                 'email' => 'El campo es un email',
                                             ])
                                             ->maxLength(255),
-                                        TextInput::make('address')
-                                            ->label('Dirección')
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $set('address', strtoupper($state));
-                                            })
-                                            ->live(onBlur: true)
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->required()
-                                            ->validationMessages([
-                                                'required' => 'Campo Requerido',
-                                            ])
-                                            ->maxLength(255),
                                         Select::make('country_code')
                                             ->label('Código de país')
                                             ->options([
@@ -283,9 +270,17 @@ class AgentForm
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode.$cleanNumber);
+                                                    $set('phone', $countryCode . $cleanNumber);
                                                 }
                                             }),
+                                        TextInput::make('user_instagram')
+                                            ->label('Usuario de Instagram')
+                                            ->prefixIcon('heroicon-s-user')
+                                            ->maxLength(255),
+                                        TextInput::make('user_tdev')
+                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                                            ->prefixIcon('heroicon-s-identification')
+                                            ->maxLength(255),
 
                                         Fieldset::make('Dirección en Venezuela')
                                             ->schema([
@@ -301,7 +296,8 @@ class AgentForm
                                                     ->options(Country::all()->pluck('name', 'id'))
                                                     ->searchable()
                                                     ->disabled()
-                                                    ->default(183) // Venezuela
+                                                    ->default(189)
+                                                    // Venezuela
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 Select::make('state_id')
                                                     ->label('Estado')
@@ -382,16 +378,7 @@ class AgentForm
                                                     ->maxLength(255),
 
                                             ])->columnSpanFull()->columns(4),
-                                        
-                                        
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
-                                        TextInput::make('user_instagram')
-                                            ->label('Usuario de Instagram')
-                                            ->prefixIcon('heroicon-s-user')
-                                            ->maxLength(255),
+
                                     ])->columnSpanFull()->columns(4),
                             ]),
                         Tab::make('Información Bancaria Local(VES)')

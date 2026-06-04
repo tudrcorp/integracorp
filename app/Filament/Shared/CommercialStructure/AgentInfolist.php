@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Shared\CommercialStructure;
 
 use App\Models\Agent;
+use App\Models\Country;
 use App\Models\ObservationCommercialStructure;
+use App\Support\CountrySelectOptions;
+use App\Support\Filament\CommercialStructure\AgentAddressClipboardFormat;
 use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
@@ -16,6 +19,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\TextSize;
 use Illuminate\Support\HtmlString;
 
 class AgentInfolist
@@ -27,6 +31,10 @@ class AgentInfolist
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
     private const IOS_INSET_GROUP_CLASS = 'rounded-xl border border-slate-200/60 bg-slate-50/50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:p-4';
+
+    private const IOS_ADDRESS_VENEZUELA_CARD = 'rounded-[1.25rem] border border-emerald-200/75 bg-gradient-to-br from-emerald-50/95 via-white to-slate-50/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92),0_10px_28px_-12px_rgba(16,185,129,0.18)] ring-1 ring-emerald-300/40 dark:border-emerald-500/30 dark:from-emerald-950/35 dark:via-gray-900/90 dark:to-slate-950/90 dark:ring-emerald-400/25 sm:p-5';
+
+    private const IOS_ADDRESS_INTERNATIONAL_CARD = 'rounded-[1.25rem] border border-sky-200/75 bg-gradient-to-br from-sky-50/95 via-white to-slate-50/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92),0_10px_28px_-12px_rgba(14,165,233,0.16)] ring-1 ring-sky-300/40 dark:border-sky-500/30 dark:from-sky-950/35 dark:via-gray-900/90 dark:to-slate-950/90 dark:ring-sky-400/25 sm:p-5';
 
     private static function agentStatusColor(?string $state): string
     {
@@ -138,14 +146,132 @@ class AgentInfolist
                                                             ->badge()
                                                             ->color(fn (?string $state): string => self::agentStatusColor($state))
                                                             ->placeholder('—'),
-                                                        TextEntry::make('address')
-                                                            ->label('Dirección')
-                                                            ->icon('heroicon-m-home')
-                                                            ->placeholder('—')
-                                                            ->columnSpanFull(),
-
                                                     ]),
                                             ]),
+                                        Grid::make(['default' => 1, 'xl' => 2])
+                                            ->schema([
+                                                Grid::make(1)
+                                                    ->extraAttributes([
+                                                        'class' => self::IOS_ADDRESS_VENEZUELA_CARD,
+                                                    ])
+                                                    ->schema([
+                                                        Text::make('Dirección en Venezuela')
+                                                            ->icon('heroicon-o-map-pin')
+                                                            ->weight('semibold')
+                                                            ->color('success'),
+                                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                                            ->extraAttributes([
+                                                                'class' => self::IOS_INSET_GROUP_CLASS,
+                                                            ])
+                                                            ->schema([
+                                                                TextEntry::make('country.name')
+                                                                    ->label('País')
+                                                                    ->icon('heroicon-m-globe-americas')
+                                                                    ->badge()
+                                                                    ->color('success')
+                                                                    ->placeholder('—'),
+                                                                TextEntry::make('state.definition')
+                                                                    ->label('Estado')
+                                                                    ->icon('heroicon-m-map')
+                                                                    ->badge()
+                                                                    ->color('gray')
+                                                                    ->placeholder('—'),
+                                                                TextEntry::make('city.definition')
+                                                                    ->label('Ciudad')
+                                                                    ->icon('heroicon-m-building-office')
+                                                                    ->badge()
+                                                                    ->color('gray')
+                                                                    ->placeholder('—'),
+                                                            ]),
+                                                        TextEntry::make('address')
+                                                            ->label('Dirección fiscal')
+                                                            ->icon('heroicon-m-home')
+                                                            ->iconColor('success')
+                                                            ->weight('semibold')
+                                                            ->size(TextSize::Medium)
+                                                            ->wrap()
+                                                            ->formatStateUsing(fn (?string $state): ?string => self::formatAddress($state))
+                                                            ->helperText(fn (Agent $record): ?string => filled(self::venezuelaLocationSummary($record))
+                                                                ? 'Ubicación: '.self::venezuelaLocationSummary($record)
+                                                                : null)
+                                                            ->placeholder('Sin dirección registrada en Venezuela'),
+                                                        TextEntry::make('venezuela_address_copy')
+                                                            ->hiddenLabel()
+                                                            ->badge()
+                                                            ->color('success')
+                                                            ->icon('heroicon-o-clipboard-document')
+                                                            ->state('Copiar dirección')
+                                                            ->copyable()
+                                                            ->copyableState(fn (Agent $record): string => AgentAddressClipboardFormat::venezuela($record))
+                                                            ->copyMessage('Formato de correspondencia copiado')
+                                                            ->visible(fn (Agent $record): bool => AgentAddressClipboardFormat::canCopyVenezuela($record)),
+                                                    ]),
+                                                Grid::make(1)
+                                                    ->extraAttributes([
+                                                        'class' => self::IOS_ADDRESS_INTERNATIONAL_CARD,
+                                                    ])
+                                                    ->visible(fn (Agent $record): bool => self::hasInternationalAddress($record))
+                                                    ->schema([
+                                                        Text::make('Dirección en Otros Paises')
+                                                            ->icon('heroicon-o-globe-alt')
+                                                            ->weight('semibold')
+                                                            ->color('info'),
+                                                        Grid::make(['default' => 1, 'sm' => 2])
+                                                            ->extraAttributes([
+                                                                'class' => self::IOS_INSET_GROUP_CLASS,
+                                                            ])
+                                                            ->schema([
+                                                                TextEntry::make('country_other_country')
+                                                                    ->label('País')
+                                                                    ->icon('heroicon-m-globe-americas')
+                                                                    ->badge()
+                                                                    ->color('info')
+                                                                    ->formatStateUsing(fn (mixed $state): ?string => self::formatOtherCountryName($state))
+                                                                    ->placeholder('—'),
+                                                                TextEntry::make('state_other_country')
+                                                                    ->label('Estado / provincia')
+                                                                    ->icon('heroicon-m-map')
+                                                                    ->badge()
+                                                                    ->color('gray')
+                                                                    ->placeholder('—'),
+                                                                TextEntry::make('city_other_country')
+                                                                    ->label('Ciudad')
+                                                                    ->icon('heroicon-m-building-office')
+                                                                    ->badge()
+                                                                    ->color('gray')
+                                                                    ->placeholder('—'),
+                                                                TextEntry::make('postal_code_other_country')
+                                                                    ->label('Código postal')
+                                                                    ->icon('heroicon-m-identification')
+                                                                    ->badge()
+                                                                    ->color('gray')
+                                                                    ->placeholder('—'),
+                                                            ]),
+                                                        TextEntry::make('address_other_country')
+                                                            ->label('Dirección internacional')
+                                                            ->icon('heroicon-m-home')
+                                                            ->iconColor('info')
+                                                            ->weight('semibold')
+                                                            ->size(TextSize::Medium)
+                                                            ->wrap()
+                                                            ->formatStateUsing(fn (?string $state): ?string => self::formatAddress($state))
+                                                            ->helperText(fn (Agent $record): ?string => filled(self::internationalLocationSummary($record))
+                                                                ? 'Ubicación: '.self::internationalLocationSummary($record)
+                                                                : null)
+                                                            ->placeholder('Sin dirección internacional registrada'),
+                                                        TextEntry::make('international_address_copy')
+                                                            ->hiddenLabel()
+                                                            ->badge()
+                                                            ->color('info')
+                                                            ->icon('heroicon-o-clipboard-document')
+                                                            ->state('Copiar dirección')
+                                                            ->copyable()
+                                                            ->copyableState(fn (Agent $record): string => AgentAddressClipboardFormat::international($record))
+                                                            ->copyMessage('Formato de correspondencia copiado')
+                                                            ->visible(fn (Agent $record): bool => AgentAddressClipboardFormat::canCopyInternational($record)),
+                                                    ]),
+                                            ])
+                                            ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),
@@ -522,5 +648,65 @@ class AgentInfolist
         }
 
         return $record->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—';
+    }
+
+    private static function formatAddress(?string $state): ?string
+    {
+        if (! filled($state)) {
+            return null;
+        }
+
+        return trim($state);
+    }
+
+    private static function formatOtherCountryName(mixed $state): ?string
+    {
+        if (blank($state)) {
+            return null;
+        }
+
+        return CountrySelectOptions::exceptVenezuelaInSpanish()[(int) $state]
+            ?? Country::query()->whereKey($state)->value('name');
+    }
+
+    private static function hasInternationalAddress(Agent $record): bool
+    {
+        return filled($record->country_other_country)
+            || filled($record->state_other_country)
+            || filled($record->city_other_country)
+            || filled($record->postal_code_other_country)
+            || filled($record->address_other_country);
+    }
+
+    private static function venezuelaLocationSummary(Agent $record): ?string
+    {
+        $parts = array_values(array_filter([
+            $record->city?->definition,
+            $record->state?->definition,
+            $record->country?->name,
+        ], fn (?string $part): bool => filled($part)));
+
+        return $parts === [] ? null : implode(', ', $parts);
+    }
+
+    private static function internationalLocationSummary(Agent $record): ?string
+    {
+        $parts = array_values(array_filter([
+            $record->city_other_country,
+            $record->state_other_country,
+            self::formatOtherCountryName($record->country_other_country),
+        ], fn (?string $part): bool => filled($part)));
+
+        if ($parts === []) {
+            return null;
+        }
+
+        $summary = implode(', ', $parts);
+
+        if (filled($record->postal_code_other_country)) {
+            $summary .= ' · CP '.$record->postal_code_other_country;
+        }
+
+        return $summary;
     }
 }

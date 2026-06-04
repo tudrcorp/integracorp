@@ -189,12 +189,14 @@
                                     class="fi-operations-case-chat-messages"
                                     x-ref="messages"
                                     wire:key="ops-case-chat-messages-{{ $selectedCaseId }}"
-                                    x-init="resizeComposerInput(); $nextTick(() => scrollMessagesToBottom({ force: true }))"
+                                    x-init="resizeComposerInput(); bindMessagesScrollListener(); $nextTick(() => scrollMessagesToBottom({ force: true }))"
+                                    @scroll="onMessagesScroll()"
                                     aria-live="polite"
                                     aria-relevant="additions"
                                     wire:loading.class="is-syncing"
                                     wire:target="pollHeartbeat, sendMessage, selectCase"
                                 >
+                                <div class="fi-operations-case-chat-messages-inner">
                                 @php
                                     $previousDate = null;
                                 @endphp
@@ -247,6 +249,7 @@
                                     class="fi-operations-case-chat-messages-end"
                                     aria-hidden="true"
                                 ></div>
+                                </div>
                             </div>
 
                             <form
@@ -325,6 +328,7 @@
         messagesObserver: null,
         composerResizeObserver: null,
         pinTimelineToBottom: true,
+        messagesScrollListenerBound: false,
         livewireComponentId: null,
         minimized: false,
         restoring: false,
@@ -366,9 +370,15 @@
                     return;
                 }
 
+                const container = this.$refs.messages;
+                const preserveScrollTop = container && ! this.pinTimelineToBottom && ! this.pendingScrollForce
+                    ? container.scrollTop
+                    : null;
+
                 succeed(() => {
                     this.minimized = this.$wire.isMinimized ?? this.minimized;
                     this.bindMessagesObserver();
+                    this.bindMessagesScrollListener();
 
                     if (this.pendingScroll) {
                         const force = this.pendingScrollForce;
@@ -376,7 +386,10 @@
                         this.pendingScrollForce = false;
                         this.scheduleScrollAfterLayout({ force });
                     } else {
-                        this.$nextTick(() => this.resizeComposerInput());
+                        this.$nextTick(() => {
+                            this.resizeComposerInput();
+                            this.restoreMessagesScrollTop(preserveScrollTop);
+                        });
                     }
                 });
             });
@@ -386,6 +399,8 @@
                     return;
                 }
 
+                this.messagesScrollListenerBound = false;
+                this.pinTimelineToBottom = true;
                 this.stickTimelineToLatest({ force: true });
             });
 
@@ -405,9 +420,6 @@
             });
 
             this.bindComposerResizeObserver();
-
-            this.stickTimelineToLatest({ force: true });
-            this.$nextTick(() => this.resizeComposerInput());
         },
 
         async submitMessage() {
@@ -462,6 +474,15 @@
 
         stickTimelineToLatest(detail = {}) {
             const force = detail.force ?? true;
+
+            if (force) {
+                this.pinTimelineToBottom = true;
+            }
+
+            if (! force && ! this.pinTimelineToBottom) {
+                return;
+            }
+
             this.queueScrollToBottom({ force });
             this.scheduleScrollAfterLayout({ force });
         },
@@ -503,37 +524,51 @@
             }
         },
 
-        bindMessagesObserver() {
+        onMessagesScroll() {
             const container = this.$refs.messages;
 
             if (! container || this.minimized) {
-                if (this.messagesObserver) {
-                    this.messagesObserver.disconnect();
-                    this.messagesObserver = null;
-                }
-
                 return;
             }
 
-            if (this.messagesObserver) {
-                this.messagesObserver.disconnect();
+            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+            this.pinTimelineToBottom = distanceFromBottom <= 80;
+        },
+
+        bindMessagesScrollListener() {
+            const container = this.$refs.messages;
+
+            if (! container || this.messagesScrollListenerBound) {
+                return;
             }
 
-            this.messagesObserver = new MutationObserver(() => {
-                if (this.minimized) {
-                    return;
-                }
+            this.messagesScrollListenerBound = true;
+            this.onMessagesScroll();
+        },
 
-                window.clearTimeout(this.scrollDebounceTimer);
-                this.scrollDebounceTimer = window.setTimeout(() => {
-                    this.scheduleScrollAfterLayout({ force: true });
-                }, 48);
-            });
+        restoreMessagesScrollTop(scrollTop) {
+            if (scrollTop === null) {
+                return;
+            }
 
-            this.messagesObserver.observe(container, {
-                childList: true,
-                subtree: true,
+            this.$nextTick(() => {
+                requestAnimationFrame(() => {
+                    const container = this.$refs.messages;
+
+                    if (! container || this.pinTimelineToBottom) {
+                        return;
+                    }
+
+                    container.scrollTop = scrollTop;
+                });
             });
+        },
+
+        bindMessagesObserver() {
+            if (this.messagesObserver) {
+                this.messagesObserver.disconnect();
+                this.messagesObserver = null;
+            }
         },
 
         toggleMinimize() {
@@ -613,6 +648,10 @@
                 const container = this.$refs.messages;
 
                 if (! container) {
+                    return;
+                }
+
+                if (! force && ! this.pinTimelineToBottom) {
                     return;
                 }
 

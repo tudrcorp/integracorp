@@ -136,6 +136,20 @@ class RenovationsTable
                         ->date('d/m/Y')
                         ->description(fn (Renovation $record): ?string => $record->date_renewal?->diffForHumans())
                         ->sortable(),
+                    TextColumn::make('birth_date')
+                        ->label('Nacimiento')
+                        ->icon(Heroicon::OutlinedCake)
+                        ->date('d/m/Y')
+                        ->placeholder('—')
+                        ->toggleable(),
+                    TextColumn::make('age')
+                        ->label('Edad')
+                        ->icon(Heroicon::OutlinedUserCircle)
+                        ->numeric()
+                        ->alignCenter()
+                        ->suffix(' años')
+                        ->placeholder('—')
+                        ->sortable(),
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
                 ColumnGroup::make('Plan y montos', [

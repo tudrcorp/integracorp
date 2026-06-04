@@ -57,6 +57,27 @@ it('permanece vigente cuando faltan más de 30 días', function (): void {
     expect($days)->toBeGreaterThan(30);
 });
 
+it('calcula edad de renovación desde fecha de nacimiento a la fecha de corrida', function (): void {
+    $calculator = new AffiliationAffiliateFeeCalculator;
+    $reference = Carbon::createFromFormat('d/m/Y', '04/06/2026');
+    $affiliate = new \App\Models\Affiliate([
+        'birth_date' => '1990-03-15',
+        'age' => 25,
+    ]);
+
+    expect($calculator->resolveAffiliateAgeForRenewal($affiliate, $reference))->toBe(36);
+});
+
+it('usa edad almacenada en renovación solo si no hay fecha de nacimiento', function (): void {
+    $calculator = new AffiliationAffiliateFeeCalculator;
+    $reference = Carbon::createFromFormat('d/m/Y', '04/06/2026');
+    $affiliate = new \App\Models\Affiliate([
+        'age' => 42,
+    ]);
+
+    expect($calculator->resolveAffiliateAgeForRenewal($affiliate, $reference))->toBe(42);
+});
+
 it('calcula montos por frecuencia de pago', function (): void {
     $calculator = new AffiliationAffiliateFeeCalculator;
 

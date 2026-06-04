@@ -57,6 +57,19 @@ final class InternalPanelsQuickNavigation
             ];
         }
 
+        if ($resolvedHost === 'operations') {
+            $items[] = [
+                'kind' => 'operations-chat',
+                'url' => '#',
+                'label' => 'Chat casos',
+                'subtitle' => 'Seguimiento activo',
+                'tone' => 1,
+                'panel_id' => null,
+                'accessible' => true,
+                'denied_message' => null,
+            ];
+        }
+
         $panelVisualIndex = 0;
         foreach (self::panelDefinitions() as $definition) {
             $panelId = $definition['id'];

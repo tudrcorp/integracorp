@@ -186,26 +186,26 @@ class CaseFollowUpChatPanel extends Component
             $this->totalUnread = array_sum($this->unreadByCase);
         }
 
-        $this->syncTimelineScrollOnPoll();
-
-        if ($this->selectedCaseId !== null) {
-            $this->dispatchScrollToLatestMessage();
+        if ($this->syncTimelineScrollOnPoll()) {
+            $this->dispatchScrollToLatestMessage(force: false);
         }
     }
 
-    protected function syncTimelineScrollOnPoll(): void
+    protected function syncTimelineScrollOnPoll(): bool
     {
         if ($this->selectedCaseId === null) {
-            return;
+            return false;
         }
 
         $latestMessageId = CaseFollowUpChatManager::latestMessageIdForCase($this->selectedCaseId);
 
         if ($latestMessageId === $this->lastKnownLatestMessageId) {
-            return;
+            return false;
         }
 
         $this->lastKnownLatestMessageId = $latestMessageId;
+
+        return true;
     }
 
     protected function syncScrollAnchorForSelectedCase(): void
@@ -219,9 +219,9 @@ class CaseFollowUpChatPanel extends Component
         $this->lastKnownLatestMessageId = CaseFollowUpChatManager::latestMessageIdForCase($this->selectedCaseId);
     }
 
-    protected function dispatchScrollToLatestMessage(): void
+    protected function dispatchScrollToLatestMessage(bool $force = true): void
     {
-        $this->dispatch('operations-case-chat-scroll-bottom', force: true);
+        $this->dispatch('operations-case-chat-scroll-bottom', force: $force);
     }
 
     public function refreshTimeline(): void
