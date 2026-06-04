@@ -28,6 +28,37 @@ class IndividualQuoteForm
 {
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
+    /**
+     * @return array<int, \Closure(): \Closure(string, mixed, \Closure): void>
+     */
+    private static function requireQuoteDetailsRule(): array
+    {
+        return [
+            function (): \Closure {
+                return function (string $attribute, mixed $value, \Closure $fail): void {
+                    $selectedItems = collect($value ?? [])
+                        ->filter(fn (array $item): bool => filled($item['age_range_id'] ?? null));
+
+                    if ($selectedItems->isEmpty()) {
+                        $fail('Debe seleccionar al menos un (1) rango de edad para crear la cotización.');
+
+                        return;
+                    }
+
+                    $hasInvalidPersonCount = $selectedItems->contains(function (array $item): bool {
+                        $totalPersons = $item['total_persons'] ?? null;
+
+                        return ! is_numeric($totalPersons) || (int) $totalPersons < 1;
+                    });
+
+                    if ($hasInvalidPersonCount) {
+                        $fail('La cantidad de personas debe ser como mínimo una (1) persona.');
+                    }
+                };
+            },
+        ];
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -188,6 +219,7 @@ class IndividualQuoteForm
                                             ->label('Indique edad y número de afiliados al plan:')
                                             ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 1)->count())
                                             ->addable(false)
+                                            ->rules(self::requireQuoteDetailsRule())
                                             ->hidden(function (Get $get) {
                                                 if ($get('plan') == 1) {
                                                     return false;
@@ -240,6 +272,7 @@ class IndividualQuoteForm
                                             ->label('Indique edad y número de afiliados al plan:')
                                             ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 2)->count())
                                             ->addable(false)
+                                            ->rules(self::requireQuoteDetailsRule())
                                             ->hidden(function (Get $get) {
                                                 if ($get('plan') == 2) {
                                                     return false;
@@ -292,6 +325,7 @@ class IndividualQuoteForm
                                             ->label('Indique edad y número de afiliados al plan:')
                                             ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 3)->count())
                                             ->addable(false)
+                                            ->rules(self::requireQuoteDetailsRule())
                                             ->hidden(function (Get $get) {
                                                 if ($get('plan') == 3) {
                                                     return false;
@@ -340,6 +374,7 @@ class IndividualQuoteForm
                                         Repeater::make('details_quote')
                                             ->label('Indique los planes, la edad y número de personas:')
                                             ->addActionLabel('Añadir plan')
+                                            ->rules(self::requireQuoteDetailsRule())
                                             ->hidden(function (Get $get) {
                                                 if ($get('plan') == 'CM') {
                                                     return false;
@@ -378,7 +413,11 @@ class IndividualQuoteForm
                                                 TextInput::make('total_persons')
                                                     ->label('Cantidad de personas')
                                                     ->placeholder('Cantidad de personas')
-                                                    ->numeric(),
+                                                    ->numeric()
+                                                    ->minValue(1)
+                                                    ->validationMessages([
+                                                        'min' => 'La cantidad de personas debe ser como mínimo una (1) persona.',
+                                                    ]),
                                             ])->columns(2),
                                     ]),
                             ]),

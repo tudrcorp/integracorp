@@ -4034,8 +4034,8 @@
       inset 0 1px 0 rgb(255 255 255 / 1),
       0 0 0 1px rgb(0 0 0 / 0.04),
       0 4px 16px rgb(0 0 0 / 0.1);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat-topbar-btn {
@@ -4101,8 +4101,8 @@
       0 0 0 1px rgb(0 0 0 / 0.06),
       0 40px 100px -20px rgb(0 0 0 / 0.34),
       0 16px 48px rgb(0 0 0 / 0.16);
-    -webkit-backdrop-filter: blur(96px) saturate(215%) brightness(1.08);
-    backdrop-filter: blur(96px) saturate(215%) brightness(1.08);
+    -webkit-backdrop-filter: blur(150px) saturate(180%) brightness(1.08);
+    backdrop-filter: blur(150px) saturate(180%) brightness(1.08);
     transform: translateZ(0);
   }
 
@@ -4164,8 +4164,8 @@
       0 0 0 0.5px rgb(255 255 255 / 0.18),
       0 40px 100px -20px rgb(0 0 0 / 0.62),
       0 16px 48px rgb(0 0 0 / 0.42);
-    -webkit-backdrop-filter: blur(104px) saturate(225%) brightness(0.82);
-    backdrop-filter: blur(104px) saturate(225%) brightness(0.82);
+    -webkit-backdrop-filter: blur(150px) saturate(180%) brightness(0.82);
+    backdrop-filter: blur(150px) saturate(180%) brightness(0.82);
   }
 
   .dark .fi-operations-case-chat--ios.fi-operations-case-chat-window::before {
@@ -4249,8 +4249,8 @@
       rgb(255 255 255 / 0.18) 0%,
       rgb(249 249 249 / 0.08) 100%
     );
-    -webkit-backdrop-filter: blur(48px) saturate(190%);
-    backdrop-filter: blur(48px) saturate(190%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55);
   }
 
@@ -4307,8 +4307,8 @@
       inset 0 1px 0 rgb(255 255 255 / 0.65),
       0 1px 4px rgb(0 0 0 / 0.08),
       0 2px 8px rgb(0 122 255 / 0.12);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-ios-btn {
@@ -4334,8 +4334,8 @@
     grid-template-rows: minmax(0, 1fr);
     height: 100%;
     background: rgb(255 255 255 / 0.03);
-    -webkit-backdrop-filter: blur(36px) saturate(185%);
-    backdrop-filter: blur(36px) saturate(185%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-body {
@@ -4350,8 +4350,8 @@
       rgb(255 255 255 / 0.1) 0%,
       rgb(242 242 247 / 0.05) 100%
     );
-    -webkit-backdrop-filter: blur(44px) saturate(185%);
-    backdrop-filter: blur(44px) saturate(185%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow: inset -1px 0 0 rgb(255 255 255 / 0.28);
   }
 
@@ -4402,8 +4402,8 @@
     border: 0.5px solid rgb(255 255 255 / 0.45);
     background: rgb(255 255 255 / 0.14);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55);
-    -webkit-backdrop-filter: blur(32px) saturate(185%);
-    backdrop-filter: blur(32px) saturate(185%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-ios-search {
@@ -4547,8 +4547,8 @@
   .fi-operations-case-chat--ios .fi-operations-case-chat-thread {
     @apply flex h-full min-h-0 min-w-0 flex-col overflow-hidden;
     background: rgb(255 255 255 / 0.04);
-    -webkit-backdrop-filter: blur(44px) saturate(190%);
-    backdrop-filter: blur(44px) saturate(190%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow: inset 1px 0 0 rgb(255 255 255 / 0.28);
   }
 
@@ -4571,8 +4571,8 @@
     background-color: rgb(255 255 255 / 0.03);
     background-image: radial-gradient(rgb(148 163 184 / 0.12) 1px, transparent 1px);
     background-size: 14px 14px;
-    -webkit-backdrop-filter: blur(40px) saturate(185%);
-    backdrop-filter: blur(40px) saturate(185%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     scroll-behavior: auto;
@@ -4596,8 +4596,8 @@
       rgb(255 255 255 / 0.14) 0%,
       rgb(249 249 249 / 0.06) 100%
     );
-    -webkit-backdrop-filter: blur(44px) saturate(190%);
-    backdrop-filter: blur(44px) saturate(190%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5);
   }
 
@@ -4641,8 +4641,8 @@
   .fi-operations-case-chat--ios .fi-operations-case-chat-managed-badge {
     @apply rounded-full px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide;
     border: 0.5px solid rgb(255 255 255 / 0.35);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-managed-badge.is-atenmedi {
@@ -4814,8 +4814,8 @@
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.85),
       0 1px 4px rgb(0 0 0 / 0.08);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-message.is-theirs .fi-operations-case-chat-bubble {
@@ -4845,8 +4845,8 @@
       rgb(255 255 255 / 0.14) 0%,
       rgb(249 249 249 / 0.06) 100%
     );
-    -webkit-backdrop-filter: blur(52px) saturate(200%);
-    backdrop-filter: blur(52px) saturate(200%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.55),
       0 -8px 24px rgb(0 0 0 / 0.08);
@@ -4878,8 +4878,8 @@
     background: rgb(255 255 255 / 0.16);
     color: rgb(0 0 0 / 0.88);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
-    -webkit-backdrop-filter: blur(28px) saturate(185%);
-    backdrop-filter: blur(28px) saturate(185%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .fi-operations-case-chat--ios .fi-operations-case-chat-input::placeholder {
@@ -4992,8 +4992,8 @@
       0 0 0 1px rgb(0 0 0 / 0.1),
       0 48px 120px -16px rgb(15 23 42 / 0.32),
       0 20px 56px rgb(15 23 42 / 0.16);
-    -webkit-backdrop-filter: blur(176px) saturate(255%) brightness(1.05) contrast(1.05);
-    backdrop-filter: blur(176px) saturate(255%) brightness(1.05) contrast(1.05);
+    -webkit-backdrop-filter: blur(150px) saturate(180%) brightness(1.05) contrast(1.05);
+    backdrop-filter: blur(150px) saturate(180%) brightness(1.05) contrast(1.05);
   }
 
   html:not(.dark) .fi-operations-case-chat--ios.fi-operations-case-chat-window::before {
@@ -5017,8 +5017,8 @@
       rgb(255 255 255 / 0.42) 0%,
       rgb(255 255 255 / 0.18) 100%
     );
-    -webkit-backdrop-filter: blur(132px) saturate(240%);
-    backdrop-filter: blur(132px) saturate(240%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.75),
       inset 0 -0.5px 0 rgb(198 198 204 / 0.35);
@@ -5026,8 +5026,8 @@
 
   html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-body {
     background: rgb(255 255 255 / 0.06);
-    -webkit-backdrop-filter: blur(120px) saturate(230%);
-    backdrop-filter: blur(120px) saturate(230%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-sidebar {
@@ -5037,8 +5037,8 @@
       rgb(255 255 255 / 0.32) 0%,
       rgb(236 244 255 / 0.16) 100%
     );
-    -webkit-backdrop-filter: blur(144px) saturate(245%);
-    backdrop-filter: blur(144px) saturate(245%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow: inset -1px 0 0 rgb(255 255 255 / 0.48);
   }
 
@@ -5052,8 +5052,8 @@
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.72),
       0 1px 4px rgb(15 23 42 / 0.08);
-    -webkit-backdrop-filter: blur(100px) saturate(235%);
-    backdrop-filter: blur(100px) saturate(235%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-case-item.is-selected {
@@ -5066,14 +5066,14 @@
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.55),
       0 2px 12px rgb(0 122 255 / 0.18);
-    -webkit-backdrop-filter: blur(72px) saturate(220%);
-    backdrop-filter: blur(72px) saturate(220%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-thread {
     background: rgb(255 255 255 / 0.1);
-    -webkit-backdrop-filter: blur(144px) saturate(245%);
-    backdrop-filter: blur(144px) saturate(245%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow: inset 1px 0 0 rgb(255 255 255 / 0.45);
   }
 
@@ -5084,8 +5084,8 @@
       rgb(255 255 255 / 0.38) 0%,
       rgb(255 255 255 / 0.16) 100%
     );
-    -webkit-backdrop-filter: blur(132px) saturate(240%);
-    backdrop-filter: blur(132px) saturate(240%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.72),
       inset 0 -0.5px 0 rgb(198 198 204 / 0.32);
@@ -5107,8 +5107,8 @@
         transparent 100%
       );
     background-size: 14px 14px, 100% 100%;
-    -webkit-backdrop-filter: blur(156px) saturate(250%) contrast(1.04);
-    backdrop-filter: blur(156px) saturate(250%) contrast(1.04);
+    -webkit-backdrop-filter: blur(150px) saturate(180%) contrast(1.04);
+    backdrop-filter: blur(150px) saturate(180%) contrast(1.04);
   }
 
   html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-author {
@@ -5129,8 +5129,8 @@
       inset 0 1px 0 rgb(255 255 255 / 0.95),
       0 2px 8px rgb(15 23 42 / 0.12),
       0 6px 18px rgb(15 23 42 / 0.08);
-    -webkit-backdrop-filter: blur(72px) saturate(220%);
-    backdrop-filter: blur(72px) saturate(220%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-composer {
@@ -5140,8 +5140,8 @@
       rgb(255 255 255 / 0.38) 0%,
       rgb(255 255 255 / 0.14) 100%
     );
-    -webkit-backdrop-filter: blur(144px) saturate(250%);
-    backdrop-filter: blur(144px) saturate(250%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.72),
       0 -10px 28px rgb(15 23 42 / 0.08);
@@ -5154,8 +5154,8 @@
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.82),
       0 1px 4px rgb(15 23 42 / 0.08);
-    -webkit-backdrop-filter: blur(92px) saturate(230%);
-    backdrop-filter: blur(92px) saturate(230%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   html:not(.dark) .fi-operations-case-chat--ios .fi-operations-case-chat-input:focus {
@@ -5177,8 +5177,8 @@
       rgb(44 44 46 / 0.28) 45%,
       rgb(28 28 30 / 0.32) 100%
     );
-    -webkit-backdrop-filter: blur(176px) saturate(250%) brightness(0.78) contrast(1.08);
-    backdrop-filter: blur(176px) saturate(250%) brightness(0.78) contrast(1.08);
+    -webkit-backdrop-filter: blur(150px) saturate(180%) brightness(0.78) contrast(1.08);
+    backdrop-filter: blur(150px) saturate(180%) brightness(0.78) contrast(1.08);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-header {
@@ -5187,14 +5187,14 @@
       rgb(72 72 74 / 0.38) 0%,
       rgb(44 44 46 / 0.2) 100%
     );
-    -webkit-backdrop-filter: blur(132px) saturate(240%);
-    backdrop-filter: blur(132px) saturate(240%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-body {
     background: rgb(0 0 0 / 0.12);
-    -webkit-backdrop-filter: blur(120px) saturate(235%);
-    backdrop-filter: blur(120px) saturate(235%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-sidebar {
@@ -5203,14 +5203,14 @@
       rgb(58 58 60 / 0.34) 0%,
       rgb(28 28 30 / 0.18) 100%
     );
-    -webkit-backdrop-filter: blur(144px) saturate(245%);
-    backdrop-filter: blur(144px) saturate(245%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-thread {
     background: rgb(0 0 0 / 0.14);
-    -webkit-backdrop-filter: blur(144px) saturate(245%);
-    backdrop-filter: blur(144px) saturate(245%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-thread-header {
@@ -5219,14 +5219,14 @@
       rgb(58 58 60 / 0.36) 0%,
       rgb(28 28 30 / 0.18) 100%
     );
-    -webkit-backdrop-filter: blur(132px) saturate(240%);
-    backdrop-filter: blur(132px) saturate(240%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-messages {
     background-color: rgb(0 0 0 / 0.18);
-    -webkit-backdrop-filter: blur(156px) saturate(250%) contrast(1.06);
-    backdrop-filter: blur(156px) saturate(250%) contrast(1.06);
+    -webkit-backdrop-filter: blur(150px) saturate(180%) contrast(1.06);
+    backdrop-filter: blur(150px) saturate(180%) contrast(1.06);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-message.is-theirs .fi-operations-case-chat-bubble {
@@ -5235,8 +5235,8 @@
       rgb(88 88 90 / 0.72) 0%,
       rgb(58 58 60 / 0.58) 100%
     );
-    -webkit-backdrop-filter: blur(72px) saturate(225%);
-    backdrop-filter: blur(72px) saturate(225%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-composer {
@@ -5245,20 +5245,159 @@
       rgb(28 28 30 / 0.42) 0%,
       rgb(44 44 46 / 0.22) 100%
     );
-    -webkit-backdrop-filter: blur(144px) saturate(250%);
-    backdrop-filter: blur(144px) saturate(250%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-input {
     background: rgb(255 255 255 / 0.14);
-    -webkit-backdrop-filter: blur(92px) saturate(230%);
-    backdrop-filter: blur(92px) saturate(230%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   .dark .fi-operations-case-chat--ios .fi-operations-case-chat-ios-search {
     background: rgb(255 255 255 / 0.1);
-    -webkit-backdrop-filter: blur(100px) saturate(235%);
-    backdrop-filter: blur(100px) saturate(235%);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+  }
+
+  /*
+   * Chat de seguimiento — glassmorphism 100% (todos los subcomponentes).
+   */
+  .fi-operations-case-chat--glass.fi-operations-case-chat-window {
+    isolation: isolate;
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-case-item {
+    border: 0.5px solid transparent;
+    background: rgb(255 255 255 / 0.12);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-case-item:hover {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.22);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.65),
+      0 4px 16px rgb(15 23 42 / 0.08);
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-ios-btn {
+    border-color: rgb(255 255 255 / 0.62);
+    background: rgb(255 255 255 / 0.32);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.78),
+      0 2px 10px rgb(15 23 42 / 0.1);
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-sidebar-count {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.38);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.72),
+      0 2px 8px rgb(15 23 42 / 0.08);
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-empty-icon {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.28);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.72),
+      0 4px 16px rgb(15 23 42 / 0.08);
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-date-divider span {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.42);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.75),
+      0 2px 8px rgb(15 23 42 / 0.08);
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-managed-badge {
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+  }
+
+  html:not(.dark) .fi-operations-case-chat--glass .fi-operations-case-chat-send-btn {
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-case-item {
+    border: 0.5px solid transparent;
+    background: rgb(255 255 255 / 0.06);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-case-item:hover {
+    border-color: rgb(255 255 255 / 0.16);
+    background: rgb(255 255 255 / 0.1);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 4px 16px rgb(0 0 0 / 0.22);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-ios-btn {
+    border-color: rgb(255 255 255 / 0.18);
+    background: rgb(255 255 255 / 0.12);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.2),
+      0 2px 10px rgb(0 0 0 / 0.28);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-sidebar-count {
+    border-color: rgb(255 255 255 / 0.14);
+    background: rgb(255 255 255 / 0.1);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      0 2px 8px rgb(0 0 0 / 0.24);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-empty-icon {
+    border-color: rgb(255 255 255 / 0.14);
+    background: rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      0 4px 16px rgb(0 0 0 / 0.28);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-date-divider span {
+    border-color: rgb(255 255 255 / 0.12);
+    background: rgb(255 255 255 / 0.1);
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      0 2px 8px rgb(0 0 0 / 0.24);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-managed-badge {
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
+  }
+
+  .dark .fi-operations-case-chat--glass .fi-operations-case-chat-case-item.is-selected {
+    -webkit-backdrop-filter: blur(150px) saturate(180%);
+    backdrop-filter: blur(150px) saturate(180%);
   }
 
   /*

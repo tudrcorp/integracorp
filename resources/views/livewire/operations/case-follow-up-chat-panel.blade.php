@@ -30,7 +30,7 @@
 >
     @if ($isOpen)
         <div
-            class="fi-operations-case-chat-window fi-operations-case-chat--ios"
+            class="fi-operations-case-chat-window fi-operations-case-chat--ios fi-operations-case-chat--glass"
             :class="{ 'is-minimized': minimized, 'is-restoring': restoring, 'is-dragging': dragging }"
             :style="{ left: posX + 'px', top: posY + 'px', right: 'auto', bottom: 'auto' }"
             role="dialog"
@@ -333,6 +333,88 @@
         minimized: false,
         restoring: false,
         minimizeSyncTimer: null,
+        storageKey: 'fi-operations-case-chat-state',
+
+        isOperationsModule() {
+            return window.location.pathname.startsWith('/operations');
+        },
+
+        isOperationsAuthPage() {
+            const path = window.location.pathname.replace(/\/$/, '');
+
+            return /^\/operations\/(login|password-reset|register)(\/|$)/.test(path);
+        },
+
+        isAuthenticatedOperationsArea() {
+            return this.isOperationsModule() && ! this.isOperationsAuthPage();
+        },
+
+        readPersistedChatState() {
+            try {
+                const raw = sessionStorage.getItem(this.storageKey);
+
+                return raw ? JSON.parse(raw) : null;
+            } catch (_) {
+                return null;
+            }
+        },
+
+        persistChatState() {
+            if (! this.isAuthenticatedOperationsArea() || ! this.$wire.isOpen) {
+                return;
+            }
+
+            sessionStorage.setItem(this.storageKey, JSON.stringify({
+                isOpen: true,
+                isMinimized: this.$wire.isMinimized ?? false,
+                selectedCaseId: this.$wire.selectedCaseId ?? null,
+            }));
+        },
+
+        clearPersistedChatState() {
+            sessionStorage.removeItem(this.storageKey);
+        },
+
+        async restoreChatStateIfNeeded() {
+            if (! this.isAuthenticatedOperationsArea()) {
+                this.clearPersistedChatState();
+
+                return;
+            }
+
+            if (this.$wire.isOpen) {
+                this.persistChatState();
+
+                return;
+            }
+
+            const state = this.readPersistedChatState();
+
+            if (! state?.isOpen) {
+                return;
+            }
+
+            await this.$wire.restorePanel(
+                state.selectedCaseId ?? null,
+                state.isMinimized ?? false,
+            );
+
+            this.minimized = this.$wire.isMinimized ?? false;
+        },
+
+        handleOperationsModuleNavigation() {
+            if (! this.isAuthenticatedOperationsArea()) {
+                if (this.$wire.isOpen) {
+                    this.$wire.closePanel();
+                }
+
+                this.clearPersistedChatState();
+
+                return;
+            }
+
+            this.restoreChatStateIfNeeded();
+        },
 
         init() {
             this.minimized = this.$wire.isMinimized ?? false;
@@ -365,6 +447,34 @@
                 this.stickTimelineToLatest(detail);
             });
 
+            this.$wire.on('operations-case-chat-closed', () => {
+                this.clearPersistedChatState();
+            });
+
+            if (this.$wire.isOpen) {
+                this.persistChatState();
+            }
+
+            document.addEventListener('livewire:navigated', () => this.handleOperationsModuleNavigation());
+
+            document.addEventListener('click', (event) => {
+                const link = event.target.closest('a[href]');
+
+                if (! link) {
+                    return;
+                }
+
+                const href = link.getAttribute('href') ?? '';
+
+                if (href === '' || href.startsWith('#') || href.startsWith('javascript:')) {
+                    return;
+                }
+
+                if (! href.includes('/operations') || /\/operations\/(login|password-reset|register)(\/|$)/.test(href.replace(/\/$/, ''))) {
+                    this.clearPersistedChatState();
+                }
+            }, true);
+
             Livewire.hook('commit', ({ component, succeed }) => {
                 if (this.livewireComponentId === null || component.id !== this.livewireComponentId) {
                     return;
@@ -379,6 +489,12 @@
                     this.minimized = this.$wire.isMinimized ?? this.minimized;
                     this.bindMessagesObserver();
                     this.bindMessagesScrollListener();
+
+                    if (this.$wire.isOpen) {
+                        this.persistChatState();
+                    } else {
+                        this.clearPersistedChatState();
+                    }
 
                     if (this.pendingScroll) {
                         const force = this.pendingScrollForce;
