@@ -64,7 +64,7 @@ class AgentForm
                                                 ->options(Agent::select('name', 'id', 'status', 'agent_type_id', 'owner_code')->where('agent_type_id', 2)->where('status', 'ACTIVO')->where('owner_code', Auth::user()->code_agency)->pluck('name', 'id'))
                                                 ->searchable()
                                                 ->live()
-                                                ->hidden(fn (Get $get) => $get('agent_type_id') == 2)
+                                                ->hidden(fn(Get $get) => $get('agent_type_id') == 2)
                                                 ->preload()
                                                 ->helperText('Esta lista despliega solo los agentes activos y que este registrados en su organización'),
                                             /**Jerarquia */
@@ -269,9 +269,17 @@ class AgentForm
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode.$cleanNumber);
+                                                    $set('phone', $countryCode . $cleanNumber);
                                                 }
                                             }),
+                                        TextInput::make('user_instagram')
+                                            ->label('Usuario de Instagram')
+                                            ->prefixIcon('heroicon-s-user')
+                                            ->maxLength(255),
+                                        TextInput::make('user_tdev')
+                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                                            ->prefixIcon('heroicon-s-identification')
+                                            ->maxLength(255),
 
                                         Fieldset::make('Dirección en Venezuela')
                                             ->schema([
@@ -287,7 +295,8 @@ class AgentForm
                                                     ->options(Country::all()->pluck('name', 'id'))
                                                     ->searchable()
                                                     ->disabled()
-                                                    ->default(183) // Venezuela
+                                                    ->default(189)
+                                                    // Venezuela
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 Select::make('state_id')
                                                     ->label('Estado')
@@ -368,15 +377,7 @@ class AgentForm
                                                     ->maxLength(255),
 
                                             ])->columnSpanFull()->columns(4),
-                                        
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
-                                        TextInput::make('user_instagram')
-                                            ->label('Usuario de Instagram')
-                                            ->prefixIcon('heroicon-s-user')
-                                            ->maxLength(255),
+
                                     ])->columnSpanFull()->columns(3),
                             ]),
                         Tab::make('Comisiones')

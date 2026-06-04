@@ -59,7 +59,7 @@ class AgencyForm
                                                     $parte_entera = 100 + Agency::max('id');
                                                 }
 
-                                                return 'TDG-'.$parte_entera + 1;
+                                                return 'TDG-' . $parte_entera + 1;
                                             })
                                             ->required()
                                             ->disabled()
@@ -178,7 +178,7 @@ class AgencyForm
                                                 $countryCode = $get('country_code_ti');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone_ti', $countryCode.$cleanNumber);
+                                                    $set('phone_ti', $countryCode . $cleanNumber);
                                                 }
                                             }),
 
@@ -196,7 +196,8 @@ class AgencyForm
                                                     ->options(Country::all()->pluck('name', 'id'))
                                                     ->searchable()
                                                     ->disabled()
-                                                    ->default(183) // Venezuela
+                                                    ->default(189)
+                                                    // Venezuela
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 Select::make('state_id')
                                                     ->label('Estado')
@@ -277,15 +278,14 @@ class AgencyForm
                                                     ->maxLength(255),
 
                                             ])->columnSpanFull()->columns(4),
-                                       
-                                        
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
+
                                         TextInput::make('user_instagram')
                                             ->label('Usuario de Instagram')
                                             ->prefixIcon('heroicon-s-user')
+                                            ->maxLength(255),
+                                        TextInput::make('user_tdev')
+                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                                            ->prefixIcon('heroicon-s-identification')
                                             ->maxLength(255),
                                         TextInput::make('status')
                                             ->label('Estatus')
@@ -419,7 +419,7 @@ class AgencyForm
                                                 $countryCode = $get('country_code_2');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone_contact_2', $countryCode.$cleanNumber);
+                                                    $set('phone_contact_2', $countryCode . $cleanNumber);
                                                 }
                                             }),
                                         TextInput::make('email_contact_2')
@@ -434,7 +434,7 @@ class AgencyForm
                             ]),
                         Tab::make('Comisiones')
                             ->icon('heroicon-o-currency-dollar')
-                            ->hidden(fn (Get $get): bool => (int) $get('agency_type_id') === 1)
+                            ->hidden(fn(Get $get): bool => (int) $get('agency_type_id') === 1)
                             ->schema([
                                 Section::make('Comisiones')
                                     ->extraAttributes(['class' => self::SECTION_CARD])

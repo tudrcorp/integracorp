@@ -41,6 +41,12 @@ it('agrupa secciones alineadas al formulario y usa rejilla de cinco columnas', f
     expect($source)->toContain("Section::make('Información general de la agencia')");
     expect($source)->toContain("Section::make('Contacto alternativo')");
     expect($source)->toContain('Grid::make(5)');
+    expect($source)->toContain("Text::make('Dirección de la Agencia en Venezuela')");
+    expect($source)->toContain("Text::make('Dirección de la Agencia en Otros Paises')");
+    expect($source)->toContain('IOS_ADDRESS_VENEZUELA_CARD');
+    expect($source)->toContain('IOS_ADDRESS_INTERNATIONAL_CARD');
+    expect($source)->toContain("TextEntry::make('address_other_country')");
+    expect($source)->toContain('hasInternationalAddress');
 });
 
 it('incluye una pestaña de jerarquía para resolver general, master y TUDRENCASA', function (): void {

@@ -48,7 +48,7 @@ class AgentForm
 
         if ($ignoreAgentId !== null) {
             $userQuery->where(function ($query) use ($ignoreAgentId): void {
-                $query->where('code_agent', '!=', 'AGT-000'.$ignoreAgentId)
+                $query->where('code_agent', '!=', 'AGT-000' . $ignoreAgentId)
                     ->orWhereNull('code_agent');
             });
         }
@@ -266,7 +266,7 @@ class AgentForm
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode.$cleanNumber);
+                                                    $set('phone', $countryCode . $cleanNumber);
                                                 }
                                             }),
 
@@ -291,6 +291,14 @@ class AgentForm
                                                 'email' => 'El campo es un email',
                                             ])
                                             ->maxLength(255),
+                                        TextInput::make('user_instagram')
+                                            ->label('Usuario de Instagram')
+                                            ->prefixIcon('heroicon-s-user')
+                                            ->maxLength(255),
+                                        TextInput::make('user_tdev')
+                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
+                                            ->prefixIcon('heroicon-s-identification')
+                                            ->maxLength(255),
 
                                         Fieldset::make('Dirección en Venezuela')
                                             ->schema([
@@ -306,7 +314,8 @@ class AgentForm
                                                     ->options(Country::all()->pluck('name', 'id'))
                                                     ->searchable()
                                                     ->disabled()
-                                                    ->default(183) // Venezuela
+                                                    ->default(189)
+                                                    // Venezuela
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 Select::make('state_id')
                                                     ->label('Estado')
@@ -363,7 +372,7 @@ class AgentForm
                                                         $set('city_id', null);
                                                         $set('region', null);
                                                     })
-                                                    ->options(fn (): array => CountrySelectOptions::exceptVenezuelaInSpanish())
+                                                    ->options(fn(): array => CountrySelectOptions::exceptVenezuelaInSpanish())
                                                     ->searchable()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 TextInput::make('state_other_country')
@@ -388,14 +397,6 @@ class AgentForm
 
                                             ])->columnSpanFull()->columns(4),
 
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
-                                        TextInput::make('user_instagram')
-                                            ->label('Usuario de Instagram')
-                                            ->prefixIcon('heroicon-s-user')
-                                            ->maxLength(255),
                                         Hidden::make('created_by')->default(Auth::user()->name)->hiddenOn('edit'),
                                         Hidden::make('agent_type_id')->default(3),
                                         Hidden::make('status')->default('ACTIVO'),

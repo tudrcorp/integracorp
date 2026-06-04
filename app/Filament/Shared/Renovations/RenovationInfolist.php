@@ -122,6 +122,14 @@ class RenovationInfolist
                                                     ->formatStateUsing(fn ($state, Renovation $record): string => $record->coverage_id
                                                         ? 'US$ '.number_format((float) ($state ?? 0), 2)
                                                         : 'Plan inicial sin cobertura'),
+                                                TextEntry::make('birth_date')
+                                                    ->label('Fecha de nacimiento (titular)')
+                                                    ->date('d/m/Y')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('age')
+                                                    ->label('Edad a renovación')
+                                                    ->suffix(' años')
+                                                    ->placeholder('—'),
                                                 TextEntry::make('ageRange.range')
                                                     ->label('Rango de edad titular')
                                                     ->placeholder('—'),

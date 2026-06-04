@@ -63,5 +63,8 @@ it('aplica estilos de contenedor de tabs alineados a telemedicina', function ():
         ->toContain('TABS_CONTAINER')
         ->toContain('->persistTab()')
         ->toContain('SECTION_CARD')
-        ->toContain('rounded-[1.25rem]');
+        ->toContain('rounded-[1.25rem]')
+        ->toContain('IOS_ADDRESS_VENEZUELA_CARD')
+        ->toContain("Text::make('Dirección en Venezuela')")
+        ->toContain('AgentAddressClipboardFormat::venezuela');
 });
