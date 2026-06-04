@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TelemedicinePatient extends Model
@@ -39,6 +40,7 @@ class TelemedicinePatient extends Model
         'business_line_id',
         'name_corporate',
         'managed_by',
+        'supplier_id',
     ];
 
     public function businessLine()
@@ -162,5 +164,13 @@ class TelemedicinePatient extends Model
     public function operationInventoryMovements()
     {
         return $this->hasMany(OperationInventoryMovement::class);
+    }
+
+    /**
+     * @return BelongsTo<Supplier, $this>
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }

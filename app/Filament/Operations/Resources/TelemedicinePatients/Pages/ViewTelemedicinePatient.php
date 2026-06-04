@@ -2,13 +2,22 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 
+use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\View\View as ViewContract;
 
 class ViewTelemedicinePatient extends ViewRecord
 {
+    use AppliesOperationsAddressFromMaps;
+
     protected static string $resource = TelemedicinePatientResource::class;
+
+    public function getFooter(): ?ViewContract
+    {
+        return view('filament.operations.shared.location-maps-loader');
+    }
 
     protected static ?string $title = 'Ficha del Paciente';
 

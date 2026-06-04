@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\TelemedicineDoctors\Tables;
 
 use App\Models\TelemedicineDoctor;
 use App\Models\User;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -29,6 +30,8 @@ class TelemedicineDoctorsTable
             ->heading('Directorio médico')
             ->description('Datos de contacto, identificación profesional y especialidad. Use «Editar» para actualizar ficha o firma.')
             ->modifyQueryUsing(function (Builder $query): Builder {
+                OperationsSupplierScope::applyToQuery($query);
+
                 if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
                     $query->where('managed_by', 'ATENMEDI');
                 }

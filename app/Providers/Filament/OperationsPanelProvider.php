@@ -142,6 +142,10 @@ class OperationsPanelProvider extends PanelProvider
                 fn () => view('filament.panels.internal-quick-nav')
             )
             ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_AFTER,
+                fn () => view('filament.operations.hooks.case-follow-up-chat-topbar')
+            )
+            ->renderHook(
                 PanelsRenderHook::CONTENT_START,
                 fn () => view('filament.hooks.business-helpdesk-tickets-ticker-wrapper', [
                     'fullWidth' => true,
@@ -150,6 +154,10 @@ class OperationsPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.operations.helpdesks.helpdesk-tour-script')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.operations.hooks.case-follow-up-chat-panel')
             )
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');

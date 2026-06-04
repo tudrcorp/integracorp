@@ -12,6 +12,13 @@ it('tablas helpdesk de administration, operations y marketing usan configurador 
 
     $configurator = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskTableConfigurator.php');
 
+    expect($configurator)
+        ->toContain('recordPriorityRowClass')
+        ->toContain('fi-helpdesk-ta-priority--alta')
+        ->toContain('bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500')
+        ->toContain('bg-amber-50 dark:bg-amber-950/30 border-l-4 border-amber-500')
+        ->toContain('bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500');
+
     foreach ($panels as $panel => $path) {
         $contents = file_get_contents($path);
 

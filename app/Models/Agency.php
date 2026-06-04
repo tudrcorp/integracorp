@@ -88,6 +88,7 @@ class Agency extends Model
         'activate_monthly_frequency',
         'type_chart',
         'account_manager_id',
+        'address_complement',
 
     ];
 

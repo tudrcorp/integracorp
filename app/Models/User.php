@@ -56,6 +56,7 @@ class User extends Authenticatable implements FilamentUser
         'updated_by',
         'created_by',
         'doctor_id',
+        'supplier_id',
         'phone',
 
     ];
@@ -169,6 +170,15 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($panel->getId() === 'operations') {
+            if ($this->supplier_id !== null) {
+                $departaments = is_array($this->departament) ? $this->departament : [];
+
+                return ($this->status === 'ACTIVO' || $this->status == 'ACTIVO')
+                    && (in_array('OPERACIONES', $departaments, true)
+                        || in_array('TELEMEDICINA', $departaments, true)
+                        || in_array('PROVEEDOR AMD', $departaments, true));
+            }
+
             return str_ends_with($this->email, '@tudrencasa.com') &&
                 in_array('OPERACIONES', $this->departament) == 1 &&
                 $this->status = 'ACTIVO';
@@ -194,6 +204,14 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsToMany(Permission::class, 'user_permissions')
             ->withPivot(['created_by', 'updated_by'])
             ->withTimestamps();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Supplier, $this>
+     */
+    public function supplier(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function authoredProjectNotes(): \Illuminate\Database\Eloquent\Relations\HasMany

@@ -118,6 +118,7 @@ class Supplier extends Model
         'extra_beneficiary_swift',
         'extra_beneficiary_zelle',
         'extra_beneficiary_address',
+        'gestion_integracorp',
 
     ];
 
@@ -156,6 +157,7 @@ class Supplier extends Model
         'ascensor' => 'boolean',
         'robotica' => 'boolean',
         'otras_unidades_especiales' => 'boolean',
+        'gestion_integracorp' => 'boolean',
     ];
 
     public function city()
@@ -219,5 +221,61 @@ class Supplier extends Model
         return $this->hasMany(OperationServiceOrder::class, 'supplier_id')
             ->where('status', 'FINALIZADO')
             ->orderByDesc('created_at');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<User, $this>
+     */
+    public function integracorpUsers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(User::class, 'supplier_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<TelemedicineDoctor, $this>
+     */
+    public function telemedicineDoctors(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TelemedicineDoctor::class, 'supplier_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<TelemedicinePatient, $this>
+     */
+    public function telemedicinePatients(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TelemedicinePatient::class, 'supplier_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<TelemedicineCase, $this>
+     */
+    public function telemedicineCases(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TelemedicineCase::class, 'supplier_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<TelemedicineHistoryPatient, $this>
+     */
+    public function telemedicineHistoryPatients(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TelemedicineHistoryPatient::class, 'supplier_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<OperationCoordinationService, $this>
+     */
+    public function operationCoordinationServices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OperationCoordinationService::class, 'supplier_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<OperationServiceOrder, $this>
+     */
+    public function telemedicineOperationServiceOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OperationServiceOrder::class, 'telemedicine_supplier_id');
     }
 }

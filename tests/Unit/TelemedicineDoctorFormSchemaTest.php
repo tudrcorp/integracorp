@@ -12,14 +12,26 @@ it('configura el formulario de médicos de telemedicina sin error', function ():
     expect($configured)->toBeInstanceOf(Schema::class);
 });
 
-it('incluye selector de pertenencia entre ATENMEDI y TDG', function (): void {
+it('asocia el médico al proveedor del usuario y managed_by como texto en mayúsculas', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineDoctors/Schemas/TelemedicineDoctorForm.php';
-    $contents = file_get_contents($path);
+    $modelPath = dirname(__DIR__, 2).'/app/Models/TelemedicineDoctor.php';
+    $migrationPath = dirname(__DIR__, 2).'/database/migrations/2026_06_03_002011_add_supplier_id_to_telemedicine_doctors_table.php';
 
-    expect($contents)
-        ->toContain("Select::make('managed_by')")
-        ->toContain("'ATENMEDI' => 'ATENMEDI'")
-        ->toContain("'TDG' => 'TDG'");
+    expect(file_get_contents($path))
+        ->toContain("Select::make('supplier_id')")
+        ->toContain("->relationship('supplier', 'name')")
+        ->toContain('Auth::user()?->supplier_id')
+        ->toContain('->disabled()')
+        ->toContain("TextInput::make('managed_by')")
+        ->toContain('$state.toUpperCase()')
+        ->not->toContain("'ATENMEDI' => 'ATENMEDI'");
+
+    expect(file_get_contents($modelPath))
+        ->toContain("'supplier_id'")
+        ->toContain('function supplier()');
+
+    expect(file_get_contents($migrationPath))
+        ->toContain('supplier_id');
 });
 
 it('organiza el formulario en tabs con el mismo estilo del registro de agencias master', function (): void {

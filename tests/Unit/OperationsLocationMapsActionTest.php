@@ -49,7 +49,9 @@ it('AffiliateCorporateInfolist expone mapa en direcciones de afiliado y corporat
 
     expect($page)
         ->toContain('AppliesOperationsAddressFromMaps')
-        ->toContain('location-maps-loader');
+        ->toContain('location-maps-loader')
+        ->toContain('AssociateAffiliateCorporateWithTelemedicinePatientService::run')
+        ->toContain('ticket-btn-ios');
 
     expect($trait)
         ->toContain('applyAffiliateCorporateLocationFromMaps')
@@ -65,8 +67,10 @@ it('OperationsLocationMapAction define acciones para cada entidad', function ():
         ->toContain('forSupplier')
         ->toContain('forAffiliate')
         ->toContain('forAffiliateCorporate')
+        ->toContain('forTelemedicinePatient')
         ->toContain('forAffiliationCorporateOnAffiliateCorporate')
         ->toContain('applyAffiliateLocationFromMaps')
+        ->toContain('applyTelemedicinePatientLocationFromMaps')
         ->toContain('applyAffiliationCorporateLocationFromMaps');
 
     expect($sharedModal)

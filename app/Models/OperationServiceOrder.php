@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -27,6 +28,8 @@ class OperationServiceOrder extends Model
         'total_amount_ves',
         'payment_method',
         'status',
+        'managed_by',
+        'telemedicine_supplier_id',
         'observations',
         'created_by',
         'updated_by',
@@ -57,6 +60,14 @@ class OperationServiceOrder extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * @return BelongsTo<Supplier, $this>
+     */
+    public function telemedicineSupplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class, 'telemedicine_supplier_id');
     }
 
     public function doctorNurse()

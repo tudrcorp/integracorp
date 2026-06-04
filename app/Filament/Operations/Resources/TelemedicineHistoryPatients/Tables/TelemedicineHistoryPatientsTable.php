@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\TelemedicineHistoryPatients\Tables;
 
 use App\Models\TelemedicineHistoryPatient;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -31,6 +32,8 @@ class TelemedicineHistoryPatientsTable
                 if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
                     $query->whereHas('telemedicinePatient', fn (Builder $q): Builder => $q->where('managed_by', 'ATENMEDI'));
                 }
+
+                OperationsSupplierScope::applyToQuery($query);
 
                 return $query;
             })

@@ -23,6 +23,19 @@ trait AppliesOperationsAddressFromMaps
         );
     }
 
+    public function applyTelemedicinePatientLocationFromMaps(string $address): void
+    {
+        $this->persistAddressFromMaps(
+            address: $address,
+            successTitle: 'Dirección actualizada',
+            successBody: 'La dirección del paciente se guardó correctamente.',
+            persist: function (Model $record, string $normalizedAddress): void {
+                $record->address = $normalizedAddress;
+                $record->save();
+            },
+        );
+    }
+
     public function applyAffiliateLocationFromMaps(string $address): void
     {
         $this->persistAddressFromMaps(

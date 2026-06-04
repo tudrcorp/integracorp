@@ -10,6 +10,7 @@ use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
+use App\Support\Filament\Operations\SupplierIntegracorpManagementTab;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -640,6 +641,7 @@ class SupplierInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
+                        SupplierIntegracorpManagementTab::make(),
                         Tab::make('Bitácora')
                             ->icon('heroicon-o-clipboard-document-list')
                             ->schema([

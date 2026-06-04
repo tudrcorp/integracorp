@@ -13,6 +13,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
@@ -204,10 +205,6 @@ class AgencyForm
                                             ->live()
                                             ->searchable()
                                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                                            ->required()
-                                            ->validationMessages([
-                                                'required' => 'Campo Requerido',
-                                            ])
                                             ->preload(),
                                         TextInput::make('region')
                                             ->label('Región')
@@ -222,11 +219,16 @@ class AgencyForm
                                             })
                                             ->searchable()
                                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                                            ->required()
-                                            ->validationMessages([
-                                                'required' => 'Campo Requerido',
-                                            ])
                                             ->preload(),
+                                        Grid::make(1)->schema([
+                                            Textarea::make('address_complement')
+                                                ->label('Dirección Complementaria')
+                                                ->rows(3)
+                                                ->maxLength(255)
+                                                ->helperText('Este campo es opcional. Si el Pais, Región, Estado y Ciudad no se encuentran cargados en el sistema, por favor ingrese la dirección completa aquí.')
+
+                                                ->placeholder('Dirección completa.'),
+                                        ])->columnSpanFull(),
                                         TextInput::make('user_tdev')
                                             ->label('Usuario de Tu Doctor en Viajes (TDEV)')
                                             ->prefixIcon('heroicon-s-identification')
