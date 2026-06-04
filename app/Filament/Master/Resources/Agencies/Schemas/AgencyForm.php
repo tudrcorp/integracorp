@@ -9,6 +9,7 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
+use App\Support\CountrySelectOptions;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -180,55 +181,104 @@ class AgencyForm
                                                     $set('phone_ti', $countryCode.$cleanNumber);
                                                 }
                                             }),
-                                        Select::make('country_id')
-                                            ->label('País')
-                                            ->live()
-                                            ->options(Country::all()->pluck('name', 'id'))
-                                            ->searchable()
-                                            ->prefixIcon('heroicon-s-globe-europe-africa')
-                                            ->required()
-                                            ->validationMessages([
-                                                'required' => 'Campo Requerido',
-                                            ])
-                                            ->default(187)
-                                            ->preload(),
-                                        Select::make('state_id')
-                                            ->label('Estado')
-                                            ->options(function (Get $get) {
-                                                return State::where('country_id', $get('country_id'))->pluck('definition', 'id');
-                                            })
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $region_id = State::where('id', $state)->value('region_id');
-                                                $region = Region::where('id', $region_id)->value('definition');
-                                                $set('region', $region);
-                                            })
-                                            ->live()
-                                            ->searchable()
-                                            ->prefixIcon('heroicon-s-globe-europe-africa')
-                                            ->preload(),
-                                        TextInput::make('region')
-                                            ->label('Región')
-                                            ->prefixIcon('heroicon-m-map')
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->maxLength(255),
-                                        Select::make('city_id')
-                                            ->label('Ciudad')
-                                            ->options(function (Get $get) {
-                                                return City::where('country_id', $get('country_id'))->where('state_id', $get('state_id'))->pluck('definition', 'id');
-                                            })
-                                            ->searchable()
-                                            ->prefixIcon('heroicon-s-globe-europe-africa')
-                                            ->preload(),
-                                        Grid::make(1)->schema([
-                                            Textarea::make('address_complement')
-                                                ->label('Dirección Complementaria')
-                                                ->rows(3)
-                                                ->maxLength(255)
-                                                ->helperText('Este campo es opcional. Si el Pais, Región, Estado y Ciudad no se encuentran cargados en el sistema, por favor ingrese la dirección completa aquí.')
 
-                                                ->placeholder('Dirección completa.'),
-                                        ])->columnSpanFull(),
+                                        Fieldset::make('Dirección de la Agencia en Venezuela')
+                                            ->schema([
+
+                                                Select::make('country_id')
+                                                    ->label('País')
+                                                    ->live()
+                                                    ->afterStateUpdated(function (Set $set): void {
+                                                        $set('state_id', null);
+                                                        $set('city_id', null);
+                                                        $set('region', null);
+                                                    })
+                                                    ->options(Country::all()->pluck('name', 'id'))
+                                                    ->searchable()
+                                                    ->disabled()
+                                                    ->default(183) // Venezuela
+                                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
+                                                Select::make('state_id')
+                                                    ->label('Estado')
+                                                    ->options(function (Get $get): array {
+                                                        if (blank($get('country_id'))) {
+                                                            return [];
+                                                        }
+
+                                                        return State::query()
+                                                            ->where('country_id', $get('country_id'))
+                                                            ->orderBy('definition')
+                                                            ->pluck('definition', 'id')
+                                                            ->all();
+                                                    })
+                                                    ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                                        $regionId = State::query()->whereKey($state)->value('region_id');
+                                                        $region = Region::query()->whereKey($regionId)->value('definition');
+                                                        $set('region', $region);
+                                                        $set('city_id', null);
+                                                    })
+                                                    ->live()
+                                                    ->searchable()
+                                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                                    ->preload(),
+                                                Select::make('city_id')
+                                                    ->label('Ciudad')
+                                                    ->options(function (Get $get) {
+                                                        return City::where('country_id', $get('country_id'))->where('state_id', $get('state_id'))->pluck('definition', 'id');
+                                                    })
+                                                    ->searchable()
+                                                    ->prefixIcon('heroicon-s-globe-europe-africa')
+                                                    ->preload(),
+
+                                                Textarea::make('address')
+                                                    ->columnSpanFull()
+                                                    ->label('Dirección')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                                                            $set('address', $state.toUpperCase());
+                                                                                        JS)
+                                                    ->live(onBlur: true)
+                                                    ->rows(1)
+                                                    ->maxLength(255),
+
+                                            ])->columnSpanFull()->columns(3),
+                                        Fieldset::make('Dirección de la Agencia en Otros Paises')
+                                            ->schema([
+
+                                                Select::make('country_other_country')
+                                                    ->label('País')
+                                                    ->live()
+                                                    ->default(185)
+                                                    ->afterStateUpdated(function (Set $set): void {
+                                                        $set('state_id', null);
+                                                        $set('city_id', null);
+                                                        $set('region', null);
+                                                    })
+                                                    ->options(fn(): array => CountrySelectOptions::exceptVenezuelaInSpanish())
+                                                    ->searchable()
+                                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
+                                                TextInput::make('state_other_country')
+                                                    ->label('Estado')
+                                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
+                                                TextInput::make('city_other_country')
+                                                    ->label('Ciudad')
+                                                    ->prefixIcon('heroicon-s-globe-europe-africa'),
+                                                TextInput::make('postal_code_other_country')
+                                                    ->label('Código Postal')
+                                                    ->prefixIcon('heroicon-s-identification')
+                                                    ->maxLength(255),
+                                                Textarea::make('address_other_country')
+                                                    ->columnSpanFull()
+                                                    ->rows(1)
+                                                    ->label('Dirección')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                                                            $set('address_other_country', $state.toUpperCase());
+                                                                                        JS)
+                                                    ->live(onBlur: true)
+                                                    ->maxLength(255),
+
+                                            ])->columnSpanFull()->columns(4),
+                                       
+                                        
                                         TextInput::make('user_tdev')
                                             ->label('Usuario de Tu Doctor en Viajes (TDEV)')
                                             ->prefixIcon('heroicon-s-identification')
