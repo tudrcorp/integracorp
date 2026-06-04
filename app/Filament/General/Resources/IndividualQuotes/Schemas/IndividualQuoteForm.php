@@ -2,37 +2,63 @@
 
 namespace App\Filament\General\Resources\IndividualQuotes\Schemas;
 
-use App\Models\Plan;
-use App\Models\Agent;
-use App\Models\State;
-use App\Models\Agency;
-use App\Models\Region;
-use App\Models\AgeRange;
-use Filament\Schemas\Schema;
-use App\Models\IndividualQuote;
-use Illuminate\Support\HtmlString;
-use Illuminate\Support\Facades\Log;
-use Filament\Forms\Components\Radio;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
-use Filament\Forms\Components\Repeater;
-use Filament\Schemas\Components\Wizard;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
 use App\Http\Controllers\UtilsController;
-use Filament\Forms\Components\DatePicker;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Schemas\Components\Wizard\Step;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
+use App\Models\Agency;
+use App\Models\Agent;
+use App\Models\AgeRange;
+use App\Models\IndividualQuote;
+use App\Models\Plan;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
 
 class IndividualQuoteForm
 {
+    /**
+     * @return array<int, \Closure(): \Closure(string, mixed, \Closure): void>
+     */
+    private static function requireQuoteDetailsRule(): array
+    {
+        return [
+            function (): \Closure {
+                return function (string $attribute, mixed $value, \Closure $fail): void {
+                    $selectedItems = collect($value ?? [])
+                        ->filter(fn (array $item): bool => filled($item['age_range_id'] ?? null));
+
+                    if ($selectedItems->isEmpty()) {
+                        $fail('Debe seleccionar al menos un (1) rango de edad para crear la cotización.');
+
+                        return;
+                    }
+
+                    $hasInvalidPersonCount = $selectedItems->contains(function (array $item): bool {
+                        $totalPersons = $item['total_persons'] ?? null;
+
+                        return ! is_numeric($totalPersons) || (int) $totalPersons < 1;
+                    });
+
+                    if ($hasInvalidPersonCount) {
+                        $fail('La cantidad de personas debe ser como mínimo una (1) persona.');
+                    }
+                };
+            },
+        ];
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -55,7 +81,8 @@ class IndividualQuoteForm
                                                     } else {
                                                         $parte_entera = IndividualQuote::max('id');
                                                     }
-                                                    return 'COT-IND-000' . $parte_entera + 1;
+
+                                                    return 'COT-IND-000'.$parte_entera + 1;
                                                 })
                                                 ->disabled()
                                                 ->dehydrated()
@@ -77,12 +104,12 @@ class IndividualQuoteForm
 
                                             Select::make('country_code')
                                                 ->label('Código de país')
-                                                ->options(fn() => UtilsController::getCountries())
+                                                ->options(fn () => UtilsController::getCountries())
                                                 ->searchable()
                                                 ->default('+58')
                                                 ->live(onBlur: true)
                                                 ->validationMessages([
-                                                    'required'  => 'Campo Requerido',
+                                                    'required' => 'Campo Requerido',
                                                 ])
                                                 ->hiddenOn('edit'),
                                             TextInput::make('phone')
@@ -90,14 +117,14 @@ class IndividualQuoteForm
                                                 ->tel()
                                                 ->label('Número de teléfono')
                                                 ->validationMessages([
-                                                    'required'  => 'Campo Requerido',
+                                                    'required' => 'Campo Requerido',
                                                 ])
                                                 ->live(onBlur: true)
                                                 ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                                     $countryCode = $get('country_code');
                                                     if ($countryCode) {
                                                         $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                        $set('phone', $countryCode . $cleanNumber);
+                                                        $set('phone', $countryCode.$cleanNumber);
                                                     }
                                                 }),
                                             TextInput::make('email')
@@ -120,10 +147,11 @@ class IndividualQuoteForm
                                                 }),
                                         ])->columnSpanFull()->columns(2),
 
-                                    //...
-                                    //Jerarquia
+                                    // ...
+                                    // Jerarquia
                                     Hidden::make('ownerAccountManagers')->default(function () {
                                         $agency = Auth::user()->code_agency;
+
                                         return Agency::where('code', $agency)->first()->ownerAccountManagers;
                                     }),
                                     Hidden::make('status')->default('PRE-APROBADA'),
@@ -133,7 +161,7 @@ class IndividualQuoteForm
 
                                 ])
                                 ->columns(3)
-                                ->columnSpanFull()
+                                ->columnSpanFull(),
 
                         ]),
                     Step::make('PLANES A COTIZAR')
@@ -152,18 +180,18 @@ class IndividualQuoteForm
 
                                             $planesConBeneficios = Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->get()->pluck('description', 'id');
 
-                                            //agregar el plan livewire
+                                            // agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 
                                             return $planesConBeneficios;
                                         })
                                         ->descriptions([
-                                            1    => 'Edad: 0 a +99 años/ilimitado.',
-                                            2    => 'Edad: 0 a 85 años.',
-                                            3    => 'Edad: 0 a 85 años.',
-                                            'CM' => 'Seleccione más de dos (2) planes.'
-                                        ])
-                                ])
+                                            1 => 'Edad: 0 a +99 años/ilimitado.',
+                                            2 => 'Edad: 0 a 85 años.',
+                                            3 => 'Edad: 0 a 85 años.',
+                                            'CM' => 'Seleccione más de dos (2) planes.',
+                                        ]),
+                                ]),
                         ]),
                     Step::make('RANGO DE EDAD')
                         ->description('Rango de edad y/o población:')
@@ -178,17 +206,19 @@ class IndividualQuoteForm
                                     Repeater::make('details_quote_plan_inicial')
                                         ->grid(4)
                                         ->label('Indique edad y número de afiliados al plan:')
-                                        ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 1)->count())
+                                        ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 1)->count())
                                         ->addable(false)
+                                        ->rules(self::requireQuoteDetailsRule())
                                         ->hidden(function (Get $get) {
                                             if ($get('plan') == 1) {
                                                 return false;
                                             }
+
                                             return true;
                                         })
                                         ->table([
                                             TableColumn::make('Rango de Edad')->width('150px'),
-                                            TableColumn::make('Total de personas')
+                                            TableColumn::make('Total de personas'),
                                         ])
                                         ->schema([
                                             Hidden::make('plan_id')->default(1),
@@ -199,7 +229,7 @@ class IndividualQuoteForm
 
                                                 ->disableOptionWhen(function ($value, $state, Get $get) {
                                                     return collect($get('../*.age_range_id'))
-                                                        ->reject(fn($id) => $id == $state)
+                                                        ->reject(fn ($id) => $id == $state)
                                                         ->filter()
                                                         ->contains($value);
                                                 })
@@ -229,12 +259,14 @@ class IndividualQuoteForm
                                     Repeater::make('details_quote_plan_ideal')
                                         ->grid(2)
                                         ->label('Indique edad y número de afiliados al plan:')
-                                        ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 2)->count())
+                                        ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 2)->count())
                                         ->addable(false)
+                                        ->rules(self::requireQuoteDetailsRule())
                                         ->hidden(function (Get $get) {
                                             if ($get('plan') == 2) {
                                                 return false;
                                             }
+
                                             return true;
                                         })
                                         ->table([
@@ -249,7 +281,7 @@ class IndividualQuoteForm
                                                 ->live()
                                                 ->disableOptionWhen(function ($value, $state, Get $get) {
                                                     return collect($get('../*.age_range_id'))
-                                                        ->reject(fn($id) => $id == $state)
+                                                        ->reject(fn ($id) => $id == $state)
                                                         ->filter()
                                                         ->contains($value);
                                                 })
@@ -280,12 +312,14 @@ class IndividualQuoteForm
                                     Repeater::make('details_quote_plan_especial')
                                         ->grid(2)
                                         ->label('Indique edad y número de afiliados al plan:')
-                                        ->defaultItems(fn(Get $get) => AgeRange::where('plan_id', 3)->count())
+                                        ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 3)->count())
                                         ->addable(false)
+                                        ->rules(self::requireQuoteDetailsRule())
                                         ->hidden(function (Get $get) {
                                             if ($get('plan') == 3) {
                                                 return false;
                                             }
+
                                             return true;
                                         })
                                         ->table([
@@ -300,7 +334,7 @@ class IndividualQuoteForm
                                                 ->live()
                                                 ->disableOptionWhen(function ($value, $state, Get $get) {
                                                     return collect($get('../*.age_range_id'))
-                                                        ->reject(fn($id) => $id == $state)
+                                                        ->reject(fn ($id) => $id == $state)
                                                         ->filter()
                                                         ->contains($value);
                                                 })
@@ -329,10 +363,12 @@ class IndividualQuoteForm
                                     Repeater::make('details_quote')
                                         ->label('Indique los planes, la edad y número de personas:')
                                         ->addActionLabel('Añadir plan')
+                                        ->rules(self::requireQuoteDetailsRule())
                                         ->hidden(function (Get $get) {
                                             if ($get('plan') == 'CM') {
                                                 return false;
                                             }
+
                                             return true;
                                         })
                                         ->schema([
@@ -343,6 +379,7 @@ class IndividualQuoteForm
                                                 ->live()
                                                 ->options(function (Get $get) {
                                                     Log::info($get('plan'));
+
                                                     return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
                                                 })->columnSpan(3),
                                             Select::make('age_range_id')
@@ -356,23 +393,27 @@ class IndividualQuoteForm
                                                 ->prefixIcon('heroicon-s-globe-europe-africa')
                                                 ->disableOptionWhen(function ($value, $state, Get $get) {
                                                     return collect($get('../*.age_range_id'))
-                                                        ->reject(fn($id) => $id == $state)
+                                                        ->reject(fn ($id) => $id == $state)
                                                         ->filter()
                                                         ->contains($value);
                                                 })
                                                 ->validationMessages([
-                                                    'required'  => 'Campo Requerido',
+                                                    'required' => 'Campo Requerido',
                                                 ])
                                                 ->preload(),
                                             TextInput::make('total_persons')
                                                 ->label('Cantidad de personas')
                                                 ->placeholder('Cantidad de personas')
-                                                ->numeric(),
+                                                ->numeric()
+                                                ->minValue(1)
+                                                ->validationMessages([
+                                                    'min' => 'La cantidad de personas debe ser como mínimo una (1) persona.',
+                                                ]),
                                         ])->columns(2),
-                                ])
-                        ])
+                                ]),
+                        ]),
                 ])
-                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button
                         type="submit"
                         size="sm"
