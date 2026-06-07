@@ -31,8 +31,18 @@
                         style="z-index: {{ $z }};"
                         title="{{ __('Abrir chat de casos en seguimiento') }}"
                         aria-label="{{ __('Abrir chat de casos en seguimiento') }}"
+                        x-data="{ chatUnread: 0 }"
+                        x-on:operations-case-chat-unread-updated.window="chatUnread = Number($event.detail?.totalUnread ?? 0)"
+                        x-bind:class="{ 'has-chat-unread': chatUnread > 0 }"
                         x-on:click="Livewire.dispatch('operations-case-chat-open')"
                     >
+                        <span
+                            class="fi-business-panel-stepper-chat-unread-badge"
+                            x-show="chatUnread > 0"
+                            x-cloak
+                            x-text="chatUnread > 9 ? '9+' : chatUnread"
+                            aria-hidden="true"
+                        ></span>
                 @else
                 <a
                     @if ($isAccessible)

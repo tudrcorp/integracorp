@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\TelemedicineCases\Schemas;
 
 use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
+use App\Support\Operations\CaseMessagingAuditLog;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -144,41 +145,6 @@ class TelemedicineCaseInfolist
                                                     ->color('info')
                                                     ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                                                     ->placeholder('—'),
-                                            ]),
-                                        Grid::make(1)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_ADDRESS_CARD,
-                                            ])
-                                            ->schema([
-                                                TextEntry::make('patient_address')
-                                                    ->label('Dirección de residencia')
-                                                    ->icon(Heroicon::OutlinedMapPin)
-                                                    ->iconColor('success')
-                                                    ->weight('semibold')
-                                                    ->size(TextSize::Medium)
-                                                    ->columnSpanFull()
-                                                    ->wrap()
-                                                    ->copyable()
-                                                    ->copyMessage('Dirección copiada')
-                                                    ->formatStateUsing(fn (?string $state): ?string => self::formatAddress($state))
-                                                    ->helperText(function (TelemedicineCase $record): ?string {
-                                                        $summary = self::locationSummary($record);
-
-                                                        return filled($summary) ? 'Ubicación: '.$summary : null;
-                                                    })
-                                                    ->hint(fn (TelemedicineCase $record): ?string => filled(self::formatAddress($record->patient_address))
-                                                        ? 'Abrir en Google Maps'
-                                                        : null)
-                                                    ->hintIcon(Heroicon::OutlinedArrowTopRightOnSquare)
-                                                    ->url(fn (TelemedicineCase $record): ?string => self::mapsSearchUrl($record))
-                                                    ->openUrlInNewTab()
-                                                    ->placeholder('Sin dirección registrada en el caso'),
-                                            ]),
-                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
                                                 TextEntry::make('patient_phone')
                                                     ->label('Teléfono principal')
                                                     ->icon(Heroicon::OutlinedDevicePhoneMobile)
@@ -211,6 +177,29 @@ class TelemedicineCaseInfolist
                                                     ->badge()
                                                     ->color('success')
                                                     ->placeholder('—'),
+                                            ]),
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_ADDRESS_CARD,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('patient_address')
+                                                    ->label('Dirección de residencia')
+                                                    ->icon(Heroicon::OutlinedMapPin)
+                                                    ->iconColor('success')
+                                                    ->weight('semibold')
+                                                    ->size(TextSize::Medium)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->copyable()
+                                                    ->copyMessage('Dirección copiada')
+                                                    ->formatStateUsing(fn (?string $state): ?string => self::formatAddress($state))
+                                                    ->helperText(function (TelemedicineCase $record): ?string {
+                                                        $summary = self::locationSummary($record);
+
+                                                        return filled($summary) ? 'Ubicación: '.$summary : null;
+                                                    })
+                                                    ->placeholder('Sin dirección registrada en el caso'),
                                             ]),
                                     ])
                                     ->columnSpanFull(),
@@ -339,7 +328,7 @@ class TelemedicineCaseInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Bitácora')
+                        Tab::make('Bitácora Observaciones')
                             ->icon(Heroicon::OutlinedBookOpen)
                             ->schema([
                                 Section::make('Bitácora de observaciones')
@@ -425,6 +414,30 @@ class TelemedicineCaseInfolist
                                                         : 'Sin ediciones'),
                                             ])
                                             ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Bitácora Mensajería Interna')
+                            ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
+                            ->schema([
+                                Section::make('Bitácora de mensajería')
+                                    ->description('Historial completo de la conversación entre analistas durante el seguimiento del caso. Interfaz optimizada para consultas de auditoría.')
+                                    ->icon(Heroicon::OutlinedChatBubbleLeftEllipsis)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        TextEntry::make('case_messaging_audit_log')
+                                            ->hiddenLabel()
+                                            ->html()
+                                            ->state(function (TelemedicineCase $record): HtmlString {
+                                                return new HtmlString(
+                                                    ViewFactory::make(
+                                                        'filament.operations.telemedicine-cases.case-messaging-audit-log',
+                                                        CaseMessagingAuditLog::viewContext($record),
+                                                    )->render()
+                                                );
+                                            }),
                                     ])
                                     ->columnSpanFull(),
                             ]),

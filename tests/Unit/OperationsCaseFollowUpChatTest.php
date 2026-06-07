@@ -15,13 +15,16 @@ it('registra el chat flotante de casos en el panel de operaciones', function ():
     expect($hook)
         ->toContain('@auth')
         ->toContain('@endauth')
-        ->not->toContain('@persist');
+        ->toContain("@persist('operations-case-follow-up-chat-panel')")
+        ->not->toContain('fi-operations-case-chat-state');
 
     expect($quickNav)
         ->toContain('operations-chat')
         ->toContain("Livewire.dispatch('operations-case-chat-open')")
         ->toContain('fi-business-panel-stepper-segment--operations-chat')
-        ->toContain('heroicon-o-chat-bubble-bottom-center-text');
+        ->toContain('heroicon-o-chat-bubble-bottom-center-text')
+        ->toContain('fi-business-panel-stepper-chat-unread-badge')
+        ->toContain('operations-case-chat-unread-updated');
 });
 
 it('centraliza la logica del chat de seguimiento en CaseFollowUpChatManager', function (): void {
@@ -32,7 +35,9 @@ it('centraliza la logica del chat de seguimiento en CaseFollowUpChatManager', fu
         ->toContain('OperationsSupplierScope::applyToQuery')
         ->toContain('use App\\Support\\Filament\\Operations\\OperationsSupplierScope')
         ->toContain('function totalUnreadCount')
-        ->toContain('function latestMessageIdForCase');
+        ->toContain('function latestMessageIdForCase')
+        ->toContain('function latestIncomingMessageIdForUser')
+        ->toContain('function incomingMessagesAfterId');
 });
 
 it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', function (): void {
@@ -54,7 +59,12 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('function restorePanel(')
         ->toContain('operations-case-chat-closed')
         ->toContain('operations-case-chat-opened')
-        ->toContain('latestMessageIdForCase');
+        ->toContain('latestMessageIdForCase')
+        ->toContain('lastNotifiedIncomingMessageId')
+        ->toContain('notifyIncomingMessagesIfNeeded')
+        ->toContain('dispatchUnreadSnapshot')
+        ->toContain('operations-case-chat-incoming-message')
+        ->toContain('operations-case-chat-unread-updated');
 
     expect($view)
         ->toContain('wire:poll.3s="pollHeartbeat"')
@@ -78,15 +88,22 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('wire:model.live="messageBody"')
         ->toContain('x-ref="messagesEnd"')
         ->toContain('operations-case-chat-scroll-bottom')
-        ->toContain('fi-operations-case-chat-state')
         ->toContain('isAuthenticatedOperationsArea')
         ->toContain('isOperationsAuthPage')
-        ->toContain('restoreChatStateIfNeeded')
         ->toContain('handleOperationsModuleNavigation')
         ->toContain('livewire:navigated')
-        ->toContain('operations-case-chat-closed')
+        ->not->toContain('restoreChatStateIfNeeded')
+        ->not->toContain('fi-operations-case-chat-state')
+        ->not->toContain('persistChatState')
         ->not->toContain('wire:click="toggleMinimize"')
-        ->not->toContain('fi-operations-case-chat-fab');
+        ->not->toContain('fi-operations-case-chat-fab')
+        ->toContain('fi-operations-case-chat-header-unread-badge')
+        ->toContain('has-unread-alert')
+        ->toContain('has-incoming-pulse')
+        ->toContain('playIncomingSound')
+        ->toContain('showIncomingToast')
+        ->toContain('operations-case-chat-incoming-message')
+        ->toContain('operations-case-chat-unread-updated');
 
     expect($theme)
         ->toContain('overflow-wrap: anywhere')
@@ -108,7 +125,10 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('.dark .fi-operations-case-chat--ios.fi-operations-case-chat-window')
         ->toContain('blur(150px) saturate(180%) brightness(0.78)')
         ->toContain('Chat de seguimiento — glassmorphism 100%')
-        ->toContain('.fi-operations-case-chat--glass .fi-operations-case-chat-case-item');
+        ->toContain('.fi-operations-case-chat--glass .fi-operations-case-chat-case-item')
+        ->toContain('fi-operations-case-chat-header-unread-badge')
+        ->toContain('fi-business-panel-stepper-chat-unread-badge')
+        ->toContain('fi-ops-case-chat-incoming-pulse');
 });
 
 it('persiste mensajes y lecturas en tablas dedicadas', function (): void {

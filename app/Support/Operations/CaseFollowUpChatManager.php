@@ -264,6 +264,52 @@ final class CaseFollowUpChatManager
         return $previews;
     }
 
+    public static function latestIncomingMessageIdForUser(?User $user = null): ?int
+    {
+        $user ??= Auth::user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $latestId = self::incomingMessagesQuery($user)->max('id');
+
+        return $latestId !== null ? (int) $latestId : null;
+    }
+
+    /**
+     * @return Collection<int, TelemedicineCaseMessage>
+     */
+    public static function incomingMessagesAfterId(?User $user, ?int $afterId): Collection
+    {
+        $user ??= Auth::user();
+
+        if ($user === null) {
+            return new Collection;
+        }
+
+        return self::incomingMessagesQuery($user)
+            ->with(['user:id,name,email'])
+            ->when(
+                $afterId !== null,
+                fn (Builder $query): Builder => $query->where('id', '>', $afterId),
+            )
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * @return Builder<TelemedicineCaseMessage>
+     */
+    private static function incomingMessagesQuery(User $user): Builder
+    {
+        $caseIds = self::followUpCasesQuery($user)->pluck('id');
+
+        return TelemedicineCaseMessage::query()
+            ->whereIn('telemedicine_case_id', $caseIds)
+            ->where('user_id', '!=', $user->id);
+    }
+
     public static function managedByBadgeColor(?string $managedBy): string
     {
         return match (mb_strtoupper((string) $managedBy)) {
