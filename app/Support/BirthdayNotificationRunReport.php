@@ -126,7 +126,7 @@ final class BirthdayNotificationRunReport
                 $name,
                 $email,
                 null,
-                'Error al enviar email: '.$exception->getMessage(),
+                'Error al enviar email: ' . $exception->getMessage(),
                 $group,
             );
         }
@@ -259,7 +259,7 @@ final class BirthdayNotificationRunReport
     {
         $lines = [
             '📋 *Resumen de tarjetas de cumpleaños*',
-            '📅 '.now()->timezone(config('app.timezone'))->format('d/m/Y H:i'),
+            '📅 ' . now()->timezone(config('app.timezone'))->format('d/m/Y H:i'),
             '',
         ];
 
@@ -286,9 +286,9 @@ final class BirthdayNotificationRunReport
             $totalFailures += $failures;
 
             $lines[] = "*{$label}*";
-            $lines[] = '✅ WhatsApp encolados: '.$data['whatsapp'];
-            $lines[] = '✅ Email enviados: '.$data['email'];
-            $lines[] = '❌ Fallas: '.$failures;
+            $lines[] = '✅ WhatsApp encolados: ' . $data['whatsapp'];
+            $lines[] = '✅ Email enviados: ' . $data['email'];
+            $lines[] = '❌ Fallas: ' . $failures;
 
             if ($failures > 0) {
                 $lines[] = self::formatFailureBreakdown($data['failures']);
@@ -298,9 +298,9 @@ final class BirthdayNotificationRunReport
         }
 
         $lines[] = '*Totales*';
-        $lines[] = 'WhatsApp encolados: '.$totalWhatsapp;
-        $lines[] = 'Email enviados: '.$totalEmail;
-        $lines[] = 'Fallas: '.$totalFailures;
+        $lines[] = 'WhatsApp encolados: ' . $totalWhatsapp;
+        $lines[] = 'Email enviados: ' . $totalEmail;
+        $lines[] = 'Fallas: ' . $totalFailures;
 
         return implode("\n", $lines);
     }
@@ -325,7 +325,7 @@ final class BirthdayNotificationRunReport
 
         foreach ($labels as $key => $label) {
             if (($failures[$key] ?? 0) > 0) {
-                $parts[] = $label.': '.$failures[$key];
+                $parts[] = $label . ': ' . $failures[$key];
             }
         }
 
