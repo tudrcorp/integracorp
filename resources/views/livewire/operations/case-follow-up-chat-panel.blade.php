@@ -31,7 +31,13 @@
     @if ($isOpen)
         <div
             class="fi-operations-case-chat-window fi-operations-case-chat--ios fi-operations-case-chat--glass"
-            :class="{ 'is-minimized': minimized, 'is-restoring': restoring, 'is-dragging': dragging }"
+            :class="{
+                'is-minimized': minimized,
+                'is-restoring': restoring,
+                'is-dragging': dragging,
+                'has-unread-alert': ($wire.totalUnread ?? 0) > 0,
+                'has-incoming-pulse': incomingPulse,
+            }"
             :style="{ left: posX + 'px', top: posY + 'px', right: 'auto', bottom: 'auto' }"
             role="dialog"
             aria-modal="true"
@@ -65,9 +71,20 @@
                     </button>
 
                     <div class="fi-operations-case-chat-header-center">
-                        <h2 id="ops-case-chat-title" class="fi-operations-case-chat-title">
-                            Chat de seguimiento
-                        </h2>
+                        <div class="fi-operations-case-chat-header-title-row">
+                            <h2 id="ops-case-chat-title" class="fi-operations-case-chat-title">
+                                Chat de seguimiento
+                            </h2>
+                            @if ($totalUnread > 0)
+                                <span
+                                    class="fi-operations-case-chat-header-unread-badge"
+                                    wire:key="ops-case-chat-unread-badge-{{ $totalUnread }}"
+                                    aria-label="{{ $totalUnread }} mensaje{{ $totalUnread === 1 ? '' : 's' }} sin leer"
+                                >
+                                    {{ $totalUnread > 9 ? '9+' : $totalUnread }}
+                                </span>
+                            @endif
+                        </div>
                         <p class="fi-operations-case-chat-subtitle">
                             <span x-show="! minimized">En seguimiento</span>
                             <span x-show="minimized" x-cloak>Minimizado · doble clic para expandir</span>
@@ -333,7 +350,11 @@
         minimized: false,
         restoring: false,
         minimizeSyncTimer: null,
-        storageKey: 'fi-operations-case-chat-state',
+        incomingPulse: false,
+        incomingPulseTimer: null,
+        audioContext: null,
+        baseDocumentTitle: document.title,
+        unreadTitlePrefix: '',
 
         isOperationsModule() {
             return window.location.pathname.startsWith('/operations');
@@ -349,71 +370,10 @@
             return this.isOperationsModule() && ! this.isOperationsAuthPage();
         },
 
-        readPersistedChatState() {
-            try {
-                const raw = sessionStorage.getItem(this.storageKey);
-
-                return raw ? JSON.parse(raw) : null;
-            } catch (_) {
-                return null;
-            }
-        },
-
-        persistChatState() {
-            if (! this.isAuthenticatedOperationsArea() || ! this.$wire.isOpen) {
-                return;
-            }
-
-            sessionStorage.setItem(this.storageKey, JSON.stringify({
-                isOpen: true,
-                isMinimized: this.$wire.isMinimized ?? false,
-                selectedCaseId: this.$wire.selectedCaseId ?? null,
-            }));
-        },
-
-        clearPersistedChatState() {
-            sessionStorage.removeItem(this.storageKey);
-        },
-
-        async restoreChatStateIfNeeded() {
-            if (! this.isAuthenticatedOperationsArea()) {
-                this.clearPersistedChatState();
-
-                return;
-            }
-
-            if (this.$wire.isOpen) {
-                this.persistChatState();
-
-                return;
-            }
-
-            const state = this.readPersistedChatState();
-
-            if (! state?.isOpen) {
-                return;
-            }
-
-            await this.$wire.restorePanel(
-                state.selectedCaseId ?? null,
-                state.isMinimized ?? false,
-            );
-
-            this.minimized = this.$wire.isMinimized ?? false;
-        },
-
         handleOperationsModuleNavigation() {
-            if (! this.isAuthenticatedOperationsArea()) {
-                if (this.$wire.isOpen) {
-                    this.$wire.closePanel();
-                }
-
-                this.clearPersistedChatState();
-
-                return;
+            if (! this.isAuthenticatedOperationsArea() && this.$wire.isOpen) {
+                this.$wire.closePanel();
             }
-
-            this.restoreChatStateIfNeeded();
         },
 
         init() {
@@ -447,33 +407,24 @@
                 this.stickTimelineToLatest(detail);
             });
 
-            this.$wire.on('operations-case-chat-closed', () => {
-                this.clearPersistedChatState();
+            this.$wire.on('operations-case-chat-incoming-message', (payload = {}) => {
+                const detail = Array.isArray(payload) ? (payload[0] ?? {}) : (payload ?? {});
+                this.handleIncomingMessage(detail);
             });
 
-            if (this.$wire.isOpen) {
-                this.persistChatState();
-            }
+            this.$wire.on('operations-case-chat-unread-updated', (payload = {}) => {
+                const detail = Array.isArray(payload) ? (payload[0] ?? {}) : (payload ?? {});
+                const totalUnread = Number(detail.totalUnread ?? 0);
+                this.syncUnreadDocumentTitle(totalUnread);
+                window.dispatchEvent(new CustomEvent('operations-case-chat-unread-updated', {
+                    detail: { totalUnread },
+                }));
+            });
+
+            document.addEventListener('click', () => this.ensureAudioContext(), { once: true });
+            document.addEventListener('keydown', () => this.ensureAudioContext(), { once: true });
 
             document.addEventListener('livewire:navigated', () => this.handleOperationsModuleNavigation());
-
-            document.addEventListener('click', (event) => {
-                const link = event.target.closest('a[href]');
-
-                if (! link) {
-                    return;
-                }
-
-                const href = link.getAttribute('href') ?? '';
-
-                if (href === '' || href.startsWith('#') || href.startsWith('javascript:')) {
-                    return;
-                }
-
-                if (! href.includes('/operations') || /\/operations\/(login|password-reset|register)(\/|$)/.test(href.replace(/\/$/, ''))) {
-                    this.clearPersistedChatState();
-                }
-            }, true);
 
             Livewire.hook('commit', ({ component, succeed }) => {
                 if (this.livewireComponentId === null || component.id !== this.livewireComponentId) {
@@ -489,12 +440,6 @@
                     this.minimized = this.$wire.isMinimized ?? this.minimized;
                     this.bindMessagesObserver();
                     this.bindMessagesScrollListener();
-
-                    if (this.$wire.isOpen) {
-                        this.persistChatState();
-                    } else {
-                        this.clearPersistedChatState();
-                    }
 
                     if (this.pendingScroll) {
                         const force = this.pendingScrollForce;
@@ -797,6 +742,99 @@
             this.$nextTick(() => {
                 requestAnimationFrame(() => requestAnimationFrame(run));
             });
+        },
+
+        handleIncomingMessage(detail = {}) {
+            this.playIncomingSound();
+            this.triggerIncomingPulse();
+            this.showIncomingToast(detail);
+        },
+
+        showIncomingToast(detail = {}) {
+            if (typeof FilamentNotification === 'undefined') {
+                return;
+            }
+
+            const caseCode = detail.caseCode ?? 'Caso';
+            const authorName = detail.authorName ?? 'Analista';
+            const bodyPreview = detail.bodyPreview ?? '';
+            const newCount = Number(detail.newCount ?? 1);
+            const suffix = newCount > 1 ? ` (+${newCount - 1} más)` : '';
+
+            new FilamentNotification()
+                .title(`Nuevo mensaje · ${caseCode}`)
+                .body(`${authorName}: ${bodyPreview}${suffix}`)
+                .icon('heroicon-o-chat-bubble-left-right')
+                .info()
+                .duration(6500)
+                .send();
+        },
+
+        triggerIncomingPulse() {
+            this.incomingPulse = true;
+            window.clearTimeout(this.incomingPulseTimer);
+            this.incomingPulseTimer = window.setTimeout(() => {
+                this.incomingPulse = false;
+            }, 1400);
+        },
+
+        ensureAudioContext() {
+            if (this.audioContext || typeof window.AudioContext === 'undefined') {
+                return;
+            }
+
+            try {
+                this.audioContext = new window.AudioContext();
+            } catch (_) {}
+        },
+
+        playIncomingSound() {
+            this.ensureAudioContext();
+
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+
+                if (! AudioCtx) {
+                    return;
+                }
+
+                const ctx = this.audioContext ?? new AudioCtx();
+                this.audioContext = ctx;
+
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+
+                const now = ctx.currentTime;
+                const playTone = (frequency, startAt, duration, volume = 0.1) => {
+                    const oscillator = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(frequency, startAt);
+                    gain.gain.setValueAtTime(0.0001, startAt);
+                    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+                    oscillator.connect(gain);
+                    gain.connect(ctx.destination);
+                    oscillator.start(startAt);
+                    oscillator.stop(startAt + duration + 0.02);
+                };
+
+                playTone(880, now, 0.12, 0.11);
+                playTone(1174.66, now + 0.13, 0.16, 0.09);
+            } catch (_) {}
+        },
+
+        syncUnreadDocumentTitle(totalUnread = 0) {
+            const prefix = totalUnread > 0 ? `(${totalUnread > 9 ? '9+' : totalUnread}) ` : '';
+
+            if (this.unreadTitlePrefix === prefix) {
+                return;
+            }
+
+            this.unreadTitlePrefix = prefix;
+            document.title = prefix === '' ? this.baseDocumentTitle : `${prefix}${this.baseDocumentTitle}`;
         },
     }));
 </script>

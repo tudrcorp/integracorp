@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -33,9 +34,13 @@ class CaseFollowUpChatPanel extends Component
 
     public ?int $lastKnownLatestMessageId = null;
 
+    public ?int $lastNotifiedIncomingMessageId = null;
+
     public function mount(): void
     {
         $this->refreshUnreadCounters();
+        $this->lastNotifiedIncomingMessageId = CaseFollowUpChatManager::latestIncomingMessageIdForUser(Auth::user());
+        $this->dispatchUnreadSnapshot();
     }
 
     #[On('operations-case-chat-open')]
@@ -219,6 +224,8 @@ class CaseFollowUpChatPanel extends Component
     public function pollHeartbeat(): void
     {
         $this->refreshUnreadCounters();
+        $this->notifyIncomingMessagesIfNeeded();
+        $this->dispatchUnreadSnapshot();
 
         if (! $this->isOpen || $this->isMinimized) {
             return;
@@ -287,6 +294,47 @@ class CaseFollowUpChatPanel extends Component
         $cases = CaseFollowUpChatManager::followUpCasesForChat($user);
         $this->unreadByCase = CaseFollowUpChatManager::unreadCountsByCase($user, $cases);
         $this->totalUnread = array_sum($this->unreadByCase);
+    }
+
+    protected function notifyIncomingMessagesIfNeeded(): void
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            return;
+        }
+
+        $newMessages = CaseFollowUpChatManager::incomingMessagesAfterId($user, $this->lastNotifiedIncomingMessageId);
+
+        if ($newMessages->isEmpty()) {
+            return;
+        }
+
+        /** @var \App\Models\TelemedicineCaseMessage $latest */
+        $latest = $newMessages->last();
+        $this->lastNotifiedIncomingMessageId = (int) $latest->id;
+
+        $case = TelemedicineCase::query()->find($latest->telemedicine_case_id);
+        $authorName = $latest->user?->name ?? $latest->user?->email ?? 'Analista';
+
+        $this->dispatch(
+            'operations-case-chat-incoming-message',
+            messageId: (int) $latest->id,
+            caseId: (int) $latest->telemedicine_case_id,
+            caseCode: filled($case?->code) ? (string) $case->code : 'Caso #'.$latest->telemedicine_case_id,
+            authorName: (string) $authorName,
+            bodyPreview: Str::limit(trim((string) $latest->body), 80),
+            newCount: $newMessages->count(),
+            totalUnread: $this->totalUnread,
+        );
+    }
+
+    protected function dispatchUnreadSnapshot(): void
+    {
+        $this->dispatch(
+            'operations-case-chat-unread-updated',
+            totalUnread: $this->totalUnread,
+        );
     }
 
     /**

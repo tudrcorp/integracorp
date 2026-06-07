@@ -1858,6 +1858,10 @@ class UtilsController extends Controller
 
     public static function notificationFailed($type, $name, $email, $phone, $message, $group): void
     {
+        if (\App\Support\BirthdayNotificationRunReport::isActive()) {
+            \App\Support\BirthdayNotificationRunReport::recordFailure((string) $type, (string) $group, (string) $message);
+        }
+
         try {
             NotificationFailed::create([
                 'type' => $type,

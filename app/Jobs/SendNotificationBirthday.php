@@ -2,17 +2,14 @@
 
 namespace App\Jobs;
 
-use Throwable;
-use App\Models\AgentDocument;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Foundation\Queue\Queueable;
 use App\Services\NotificationMasiveService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SendNotificationBirthday implements ShouldQueue
 {
@@ -36,7 +33,7 @@ class SendNotificationBirthday implements ShouldQueue
 
     private function notification()
     {
-        $masiveNotification = new NotificationMasiveService();
+        $masiveNotification = new NotificationMasiveService;
         $masiveNotification->notificationBerthday();
     }
 
@@ -46,7 +43,7 @@ class SendNotificationBirthday implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info("NotificationBerthday: FAILED");
+        Log::info('NotificationBerthday: FAILED');
         Log::error($exception->getMessage());
     }
 }

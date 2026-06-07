@@ -6,6 +6,8 @@ use App\Http\Controllers\NotificationController;
 use App\Mail\CollaboratorAnniversaryMail;
 use App\Models\CollaboratorAnniversary;
 use App\Models\RrhhColaborador;
+use App\Support\Concerns\ReportsScheduledExecution;
+use App\Support\ScheduledTaskRunReport;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,7 +20,7 @@ use Throwable;
 
 class SendCollaboratorAnniversaryNotification implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, ReportsScheduledExecution, SerializesModels;
 
     /**
      * Execute the job.
@@ -26,18 +28,22 @@ class SendCollaboratorAnniversaryNotification implements ShouldQueue
      */
     public function handle(): void
     {
-        $today = now();
-        $collaborators = $this->getCollaboratorsWithAnniversaryToday($today);
+        $this->runWithScheduledReport('Aniversario de colaboradores', function (): void {
+            $today = now();
+            $collaborators = $this->getCollaboratorsWithAnniversaryToday($today);
 
-        if ($collaborators->isEmpty()) {
-            Log::info('SendCollaboratorAnniversaryNotification: No hay colaboradores con aniversario hoy.');
+            ScheduledTaskRunReport::addMetric('Colaboradores con aniversario hoy', $collaborators->count());
 
-            return;
-        }
+            if ($collaborators->isEmpty()) {
+                Log::info('SendCollaboratorAnniversaryNotification: No hay colaboradores con aniversario hoy.');
 
-        foreach ($collaborators as $collaborator) {
-            $this->sendNotifications($collaborator, $today);
-        }
+                return;
+            }
+
+            foreach ($collaborators as $collaborator) {
+                $this->sendNotifications($collaborator, $today);
+            }
+        });
     }
 
     /**
@@ -89,7 +95,6 @@ class SendCollaboratorAnniversaryNotification implements ShouldQueue
 
         $content = "¡Feliz aniversario! Hoy celebramos {$years} año(s) de trayectoria en la empresa. Gracias por tu dedicación y compromiso.";
 
-        // Imagen del aniversario: comparar id del colaborador con rrhh_colaborador_id en collaborator_anniversaries
         $anniversaryRecord = CollaboratorAnniversary::where('rrhh_colaborador_id', $collaborator->id)->first();
         $anniversaryImage = $anniversaryRecord?->image;
 
@@ -97,27 +102,34 @@ class SendCollaboratorAnniversaryNotification implements ShouldQueue
         if ($email) {
             try {
                 Mail::to($email)
-                ->cc('solrodriguez@tudrencasa.com')
-                ->send(new CollaboratorAnniversaryMail($name, $content, $anniversaryImage));
+                    ->cc('solrodriguez@tudrencasa.com')
+                    ->send(new CollaboratorAnniversaryMail($name, $content, $anniversaryImage));
+                ScheduledTaskRunReport::incrementMetric('Emails enviados');
                 Log::info("Email aniversario enviado a {$email} ({$name})");
             } catch (Throwable $e) {
+                ScheduledTaskRunReport::recordFailure('Error al enviar email');
                 Log::error("Error enviando email aniversario a {$email}: {$e->getMessage()}");
             }
+        } else {
+            ScheduledTaskRunReport::recordFailure('Email nulo o vacío');
         }
 
         $phone = $this->normalizePhone($collaborator->telefonoCorporativo ?? $collaborator->telefono ?? null);
         if ($phone) {
             try {
-                // Si tiene imagen en collaborator_anniversaries, enviar por WhatsApp con imagen; si no, solo texto
                 if (! empty($anniversaryImage)) {
                     NotificationController::notificationBirthday($name, $phone, $content, $anniversaryImage, 'image');
                 } else {
                     NotificationController::notificationBirthday($name, $phone, $content, '', 'url');
                 }
+                ScheduledTaskRunReport::incrementMetric('WhatsApp enviados');
                 Log::info("WhatsApp aniversario enviado a {$phone} ({$name})");
             } catch (Throwable $e) {
+                ScheduledTaskRunReport::recordFailure('Error al enviar WhatsApp');
                 Log::error("Error enviando WhatsApp aniversario a {$phone}: {$e->getMessage()}");
             }
+        } else {
+            ScheduledTaskRunReport::recordFailure('Teléfono nulo o vacío');
         }
     }
 
