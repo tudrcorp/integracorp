@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Operations;
 
+use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceQuotes;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Http\Controllers\OperationServiceOrderController;
 use App\Models\OperationCoordinationService;
@@ -29,6 +30,49 @@ final class CoordinationServiceQuoteManager
             ->where('operation_coordination_service_id', $record->id)
             ->latest('id')
             ->get();
+    }
+
+    public static function formatCoordinationQuoteNumber(int $quoteId): string
+    {
+        return 'COT-'.str_pad((string) $quoteId, 6, '0', STR_PAD_LEFT);
+    }
+
+    public static function approvalUrlForQuote(OperationCoordinationService $record, int $quoteId): string
+    {
+        return ManageCoordinationServiceQuotes::getUrl(['record' => $record->id]).'?quote_id='.$quoteId;
+    }
+
+    /**
+     * @return array<string, array{id: int, quote_number: string, url: string}>
+     */
+    public static function quoteLinksByClinicalItemKey(OperationCoordinationService $record): array
+    {
+        $map = [];
+
+        self::coordinationQuotes($record)
+            ->each(function (OperationQuoteGenerator $quote) use (&$map, $record): void {
+                $items = is_array($quote->items) ? $quote->items : [];
+
+                foreach ($items as $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+
+                    $key = trim((string) ($item['key'] ?? ''));
+
+                    if ($key === '' || isset($map[$key])) {
+                        continue;
+                    }
+
+                    $map[$key] = [
+                        'id' => (int) $quote->id,
+                        'quote_number' => self::formatCoordinationQuoteNumber((int) $quote->id),
+                        'url' => self::approvalUrlForQuote($record, (int) $quote->id),
+                    ];
+                }
+            });
+
+        return $map;
     }
 
     public static function nextServiceOrderNumber(): string
@@ -85,22 +129,13 @@ final class CoordinationServiceQuoteManager
                     'quote_id' => $quote->id,
                     'status' => $quote->status ?? OperationQuoteGenerator::STATUS_PENDING,
                     'has_service_order' => filled($quote->operation_service_order_id),
+                    'status_locked' => self::quoteStatusUpdateIsLocked($quote),
                 ])
                 ->all(),
             'selected_pending_quote_ids' => [],
             'approved_quote_id' => null,
             'order_number' => self::nextServiceOrderNumber(),
             'telemedicine_priority_id' => $record->telemedicine_priority_id,
-            'doctor_nurse_id' => null,
-            'supplier_id' => null,
-            'supplier_external' => null,
-            'register_unregistered_provider' => false,
-            'unregistered_provider_type' => null,
-            'unregistered_name' => null,
-            'unregistered_rif' => null,
-            'unregistered_phone' => null,
-            'unregistered_correo_principal' => null,
-            'unregistered_ubicacion_principal' => null,
             'operation_inventory_ubication_id' => null,
             'service_order_description' => null,
             'service_order_observations' => null,
@@ -121,6 +156,7 @@ final class CoordinationServiceQuoteManager
             $statusClass = match ($quote->status) {
                 OperationQuoteGenerator::STATUS_APPROVED => 'bg-emerald-100 text-emerald-800 ring-emerald-300/70 dark:bg-emerald-500/20 dark:text-emerald-100',
                 OperationQuoteGenerator::STATUS_REJECTED => 'bg-rose-100 text-rose-800 ring-rose-300/70 dark:bg-rose-500/20 dark:text-rose-100',
+                OperationQuoteGenerator::STATUS_PRIVATE_CARE => 'bg-gray-100 text-gray-800 ring-gray-300/70 dark:bg-gray-500/20 dark:text-gray-100',
                 default => 'bg-amber-100 text-amber-900 ring-amber-300/70 dark:bg-amber-500/20 dark:text-amber-100',
             };
 
@@ -165,6 +201,8 @@ final class CoordinationServiceQuoteManager
 
     public static function renderOperationQuotePreview(OperationQuoteGenerator $quote): HtmlString
     {
+        $quote->loadMissing('supplier');
+
         $items = collect(is_array($quote->items) ? $quote->items : []);
 
         $itemRows = $items->map(function (array $item): string {
@@ -201,9 +239,42 @@ final class CoordinationServiceQuoteManager
             .self::manageQuoteSummaryRow('Ganancia', number_format((float) $quote->porcentaje_ganancia, 2, '.', '').'%', 'amber')
             .self::manageQuoteSummaryRow('Subtotal', self::formatManageQuoteAmountPreview((float) $quote->subtotal), 'slate')
             .'</div>'
+            .self::renderQuoteSupplierPreviewBlock($quote)
             .$itemsTable
+            .(filled($quote->observations)
+                ? '<div class="rounded-xl border border-amber-200/80 bg-amber-50/60 px-3 py-2.5 dark:border-amber-500/20 dark:bg-amber-950/20">'
+                    .'<p class="text-xs font-semibold uppercase tracking-wide text-amber-800/80 dark:text-amber-200/70">Observaciones</p>'
+                    .'<p class="mt-1 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">'.e((string) $quote->observations).'</p>'
+                    .'</div>'
+                : '')
             .'</div>'
         );
+    }
+
+    public static function renderQuoteSupplierPreviewBlock(OperationQuoteGenerator $quote): string
+    {
+        $quote->loadMissing('supplier');
+
+        $supplierName = filled($quote->supplier?->name)
+            ? (string) $quote->supplier->name
+            : null;
+        $supplierAddress = filled($quote->supplier_address)
+            ? trim((string) $quote->supplier_address)
+            : null;
+
+        if ($supplierName === null && $supplierAddress === null) {
+            return '';
+        }
+
+        return '<div class="rounded-xl border border-sky-200/80 bg-sky-50/60 px-3 py-2.5 dark:border-sky-500/20 dark:bg-sky-950/20">'
+            .'<p class="text-xs font-semibold uppercase tracking-wide text-sky-800/80 dark:text-sky-200/70">Proveedor</p>'
+            .($supplierName !== null
+                ? '<p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">'.e($supplierName).'</p>'
+                : '')
+            .($supplierAddress !== null
+                ? '<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">'.e($supplierAddress).'</p>'
+                : '')
+            .'</div>';
     }
 
     /**
@@ -237,10 +308,234 @@ final class CoordinationServiceQuoteManager
         return self::pendingQuoteApprovalOptions($record) !== [];
     }
 
+    /**
+     * @return Collection<int, OperationQuoteGenerator>
+     */
+    public static function pendingQuotesForApproval(OperationCoordinationService $record): Collection
+    {
+        return self::coordinationQuotes($record)
+            ->load('supplier')
+            ->filter(fn (OperationQuoteGenerator $quote): bool => self::isQuotePendingForApproval($quote))
+            ->values();
+    }
+
+    public static function resolveBcvRateFromQuote(OperationQuoteGenerator $quote): ?float
+    {
+        $totalUsd = (float) ($quote->total ?? 0);
+
+        if ($totalUsd > 0 && (float) ($quote->costo_bolivares ?? 0) > 0) {
+            return round((float) $quote->costo_bolivares / $totalUsd, 4);
+        }
+
+        return OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function syncQuoteStatusesFromFormData(array &$data, OperationCoordinationService $record): void
+    {
+        $selected = array_map(intval(...), (array) ($data['selected_pending_quote_ids'] ?? []));
+        $entries = is_array($data['quote_statuses'] ?? null) ? $data['quote_statuses'] : [];
+        $lastSelectedForOrder = 0;
+
+        foreach ($entries as $index => $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $quoteId = (int) ($entry['quote_id'] ?? 0);
+            $hasOrder = (bool) ($entry['has_service_order'] ?? false);
+            $statusLocked = (bool) ($entry['status_locked'] ?? false);
+            $status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
+
+            if ($statusLocked) {
+                continue;
+            }
+
+            if (! $hasOrder && $status === OperationQuoteGenerator::STATUS_PENDING && in_array($quoteId, $selected, true)) {
+                $entries[$index]['status'] = OperationQuoteGenerator::STATUS_APPROVED;
+                $lastSelectedForOrder = $quoteId;
+            }
+        }
+
+        $data['quote_statuses'] = $entries;
+
+        if ($lastSelectedForOrder > 0 && count($selected) === 1) {
+            $data = self::prefillServiceOrderFormDataFromQuote($data, $record, $lastSelectedForOrder);
+
+            return;
+        }
+
+        if ($selected === []) {
+            $data['approved_quote_id'] = null;
+
+            return;
+        }
+
+        $data['approved_quote_id'] = (int) $selected[array_key_last($selected)];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function prefillServiceOrderFormDataFromQuote(
+        array $data,
+        OperationCoordinationService $record,
+        int $quoteId
+    ): array {
+        $quote = OperationQuoteGenerator::query()->find($quoteId);
+
+        if (! $quote instanceof OperationQuoteGenerator || filled($quote->operation_service_order_id)) {
+            return $data;
+        }
+
+        $itemsCount = count(is_array($quote->items) ? $quote->items : []);
+
+        $data['approved_quote_id'] = $quote->id;
+        $data['order_number'] = self::nextServiceOrderNumber();
+        $data['telemedicine_priority_id'] = $record->telemedicine_priority_id;
+        $data['service_order_description'] = sprintf(
+            'Orden por cotización #%d · %s · %d ítem(s) · Total %s',
+            $quote->id,
+            $quote->type_service,
+            $itemsCount,
+            self::formatManageQuoteAmountPreview((float) $quote->total)
+        );
+        $data['service_order_observations'] = sprintf(
+            'Generada automáticamente desde cotización #%d (costo base %s, ganancia %s%%).',
+            $quote->id,
+            self::formatManageQuoteAmountPreview((float) $quote->subtotal),
+            number_format((float) $quote->porcentaje_ganancia, 2, '.', '')
+        );
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function updatePendingQuote(
+        OperationQuoteGenerator $quote,
+        OperationCoordinationService $record,
+        array $data
+    ): bool {
+        if (! self::isQuotePendingForApproval($quote)) {
+            Notification::make()
+                ->title('Cotización no editable')
+                ->body('Solo puede editar cotizaciones pendientes sin orden de servicio vinculada.')
+                ->warning()
+                ->send();
+
+            return false;
+        }
+
+        $lineItems = (array) ($data['edit_quote_line_items'] ?? []);
+        $subtotal = OperationCoordinationServicesTable::decimalOrNull($data['edit_quote_costo_dolares'] ?? null)
+            ?? CoordinationServiceItemsManager::manageQuoteSubtotalFromLineItems($lineItems);
+        $bcvRate = OperationCoordinationServicesTable::decimalOrNull($data['edit_quote_bcv_rate'] ?? null)
+            ?? self::resolveBcvRateFromQuote($quote);
+        $porcentaje = OperationCoordinationServicesTable::decimalOrNull($data['edit_quote_porcentaje_ganancia'] ?? 0) ?? 0.0;
+        $supplierId = (int) ($data['edit_quote_supplier_id'] ?? 0);
+
+        if ($subtotal === null || $subtotal <= 0 || $bcvRate === null || $bcvRate <= 0) {
+            Notification::make()
+                ->title('Datos incompletos')
+                ->body('Revise el costo base, los precios unitarios y la tasa BCV de la cotización.')
+                ->warning()
+                ->send();
+
+            return false;
+        }
+
+        if ($supplierId <= 0) {
+            Notification::make()
+                ->title('Proveedor requerido')
+                ->body('Seleccione el proveedor de la cotización.')
+                ->warning()
+                ->send();
+
+            return false;
+        }
+
+        $subtotal = round($subtotal, 2);
+        $total = CoordinationServiceItemsManager::manageQuoteTotal($subtotal, $porcentaje) ?? 0.0;
+        $costoBs = round($total * $bcvRate, 2);
+        $supplierAddress = filled($data['edit_quote_supplier_address'] ?? null)
+            ? trim((string) $data['edit_quote_supplier_address'])
+            : CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($supplierId);
+        $updatedItems = self::mergeQuoteLineItemsIntoItemsPayload($quote, $lineItems, $bcvRate);
+
+        $quote->update([
+            'supplier_id' => $supplierId,
+            'supplier_address' => $supplierAddress,
+            'observations' => filled($data['edit_quote_observations'] ?? null)
+                ? trim((string) $data['edit_quote_observations'])
+                : null,
+            'items' => $updatedItems,
+            'costo_dolares' => $subtotal,
+            'costo_bolivares' => $costoBs,
+            'porcentaje_ganancia' => $porcentaje,
+            'subtotal' => $subtotal,
+            'total' => $total,
+            'updated_by' => Auth::user()?->name,
+        ]);
+
+        $quote->update([
+            'quote_pdf_path' => OperationQuoteGeneratorPdfService::store($quote->fresh(), $record, $bcvRate),
+        ]);
+
+        $record->neto = $subtotal;
+        $record->porcen_tdec = $porcentaje;
+        $record->quote_price = $total;
+        $record->updated_by = Auth::user()?->name;
+        $record->save();
+
+        return true;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lineItems
+     * @return array<int, array<string, mixed>>
+     */
+    private static function mergeQuoteLineItemsIntoItemsPayload(
+        OperationQuoteGenerator $quote,
+        array $lineItems,
+        float $bcvRate
+    ): array {
+        $original = collect(is_array($quote->items) ? $quote->items : [])->keyBy('key');
+
+        return collect($lineItems)
+            ->map(function (array $line) use ($original, $bcvRate): array {
+                $key = (string) ($line['key'] ?? '');
+                $orig = $original->get($key, []);
+                $unitUsd = OperationCoordinationServicesTable::decimalOrNull($line['unit_price_usd'] ?? null);
+                $unitVes = OperationCoordinationServicesTable::decimalOrNull($line['unit_price_ves'] ?? null)
+                    ?? ($unitUsd !== null ? round($unitUsd * $bcvRate, 2) : null);
+
+                return array_merge(is_array($orig) ? $orig : [], [
+                    'unit_price_usd' => $unitUsd,
+                    'unit_price_ves' => $unitVes,
+                ]);
+            })
+            ->values()
+            ->all();
+    }
+
     public static function isQuotePendingForApproval(OperationQuoteGenerator $quote): bool
     {
         return ($quote->status ?? OperationQuoteGenerator::STATUS_PENDING) === OperationQuoteGenerator::STATUS_PENDING
             && blank($quote->operation_service_order_id);
+    }
+
+    public static function quoteStatusUpdateIsLocked(OperationQuoteGenerator $quote): bool
+    {
+        if (filled($quote->operation_service_order_id)) {
+            return true;
+        }
+
+        return OperationQuoteGenerator::isTerminalStatus($quote->status);
     }
 
     public static function shouldShowQuoteInManagementRepeater(Get $get, mixed $selectedPendingIds): bool
@@ -315,11 +610,15 @@ final class CoordinationServiceQuoteManager
             return;
         }
 
-        if ($status !== OperationQuoteGenerator::STATUS_APPROVED) {
+        if (! in_array($status, [OperationQuoteGenerator::STATUS_APPROVED], true)) {
             $set(
                 'selected_pending_quote_ids',
                 array_values(array_filter($selected, fn (int $id): bool => $id !== $quoteId))
             );
+        }
+
+        if ($status === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
+            $set('approved_quote_id', null);
         }
     }
 
@@ -389,7 +688,12 @@ final class CoordinationServiceQuoteManager
 
             $quoteId = (int) ($entry['quote_id'] ?? 0);
             $hasOrder = (bool) ($entry['has_service_order'] ?? false);
+            $statusLocked = (bool) ($entry['status_locked'] ?? false);
             $status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
+
+            if ($statusLocked) {
+                continue;
+            }
 
             if (! $hasOrder && $status === OperationQuoteGenerator::STATUS_PENDING && in_array($quoteId, $selected, true)) {
                 $entries[$index]['status'] = OperationQuoteGenerator::STATUS_APPROVED;
@@ -427,7 +731,7 @@ final class CoordinationServiceQuoteManager
 
     public static function approvedQuoteOrderNotice(int $quoteId): HtmlString
     {
-        $quote = OperationQuoteGenerator::query()->find($quoteId);
+        $quote = OperationQuoteGenerator::query()->with('supplier')->find($quoteId);
 
         if (! $quote instanceof OperationQuoteGenerator) {
             return new HtmlString(
@@ -435,12 +739,53 @@ final class CoordinationServiceQuoteManager
             );
         }
 
+        $providerLine = filled($quote->supplier?->name)
+            ? '<p class="mt-2 text-sm opacity-90">Proveedor asignado en cotización: <strong>'.e((string) $quote->supplier->name).'</strong>'
+                .(filled($quote->supplier_address)
+                    ? ' · '.e((string) $quote->supplier_address)
+                    : '')
+                .'</p>'
+            : '<p class="mt-2 text-sm text-amber-800/90 dark:text-amber-200/80">Esta cotización no tiene proveedor asignado. Edítela antes de crear la orden.</p>';
+
         return new HtmlString(
             '<div class="rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/95 to-white px-4 py-3 text-sm text-emerald-950 dark:border-emerald-500/30 dark:from-emerald-950/35 dark:to-zinc-900/90 dark:text-emerald-50">'
             .'<p class="font-semibold">Orden para cotización #'.e((string) $quote->id).'</p>'
-            .'<p class="mt-1 opacity-90">Tipo <strong>'.e((string) $quote->type_service).'</strong> · Total '.e(self::formatManageQuoteAmountPreview((float) $quote->total)).'. Los campos se completaron automáticamente y puede ajustarlos antes de guardar.</p>'
+            .'<p class="mt-1 opacity-90">Tipo <strong>'.e((string) $quote->type_service).'</strong> · Total '.e(self::formatManageQuoteAmountPreview((float) $quote->total)).'. Los campos operativos se completaron automáticamente y puede ajustarlos antes de guardar.</p>'
+            .$providerLine
             .'</div>'
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public static function mergeOrderDataWithQuoteProvider(array $data, OperationQuoteGenerator $quote): ?array
+    {
+        $quote->loadMissing('supplier');
+
+        if (! filled($quote->supplier_id)) {
+            Notification::make()
+                ->title('Orden de servicio')
+                ->body('La cotización #'.$quote->id.' no tiene proveedor asignado. Edite la cotización y seleccione un proveedor antes de crear la orden.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        return array_merge($data, [
+            'supplier_id' => (int) $quote->supplier_id,
+            'doctor_nurse_id' => null,
+            'supplier_external' => null,
+            'register_unregistered_provider' => false,
+            'unregistered_provider_type' => null,
+            'unregistered_name' => null,
+            'unregistered_rif' => null,
+            'unregistered_phone' => null,
+            'unregistered_correo_principal' => null,
+            'unregistered_ubicacion_principal' => null,
+        ]);
     }
 
     public static function prefillServiceOrderFormFromQuote(Set $set, OperationCoordinationService $record, int $quoteId): void
@@ -510,8 +855,9 @@ final class CoordinationServiceQuoteManager
 
         $ordersCreated = 0;
         $createdOrderId = 0;
+        $privateCareItemsFinalized = 0;
 
-        DB::transaction(function () use ($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, &$ordersCreated, &$createdOrderId): void {
+        DB::transaction(function () use ($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, &$ordersCreated, &$createdOrderId, &$privateCareItemsFinalized): void {
             foreach ($entries as $entry) {
                 $quoteId = (int) ($entry['quote_id'] ?? 0);
                 $quote = OperationQuoteGenerator::query()->find($quoteId);
@@ -520,13 +866,18 @@ final class CoordinationServiceQuoteManager
                     continue;
                 }
 
-                if (filled($quote->operation_service_order_id)) {
+                if (self::quoteStatusUpdateIsLocked($quote)) {
                     continue;
                 }
 
-                $quote->status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
+                $status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
+                $quote->status = $status;
                 $quote->updated_by = Auth::user()?->name;
                 $quote->save();
+
+                if ($status === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
+                    $privateCareItemsFinalized += self::finalizeClinicalItemsForPrivateCareQuote($record, $quote);
+                }
             }
 
             if ($shouldCreateOrder) {
@@ -537,7 +888,11 @@ final class CoordinationServiceQuoteManager
                         continue;
                     }
 
-                    $orderData = $data;
+                    $orderData = self::mergeOrderDataWithQuoteProvider($data, $quote);
+
+                    if ($orderData === null) {
+                        continue;
+                    }
 
                     if ($index > 0) {
                         $orderData['order_number'] = self::nextServiceOrderNumber();
@@ -563,6 +918,10 @@ final class CoordinationServiceQuoteManager
             $body .= $ordersCreated === 1
                 ? ' Se creó la orden de servicio vinculada a la cotización aprobada.'
                 : ' Se crearon '.$ordersCreated.' órdenes de servicio.';
+        }
+
+        if ($privateCareItemsFinalized > 0) {
+            $body .= ' Se finalizaron '.$privateCareItemsFinalized.' ítem(s) clínico(s) por atención particular sin generar orden de servicio.';
         }
 
         Notification::make()
@@ -596,6 +955,48 @@ final class CoordinationServiceQuoteManager
         }
 
         return 0;
+    }
+
+    public static function finalizeClinicalItemsForPrivateCareQuote(
+        OperationCoordinationService $record,
+        OperationQuoteGenerator $quote
+    ): int {
+        $keys = collect(is_array($quote->items) ? $quote->items : [])
+            ->pluck('key')
+            ->filter(fn (mixed $key): bool => is_string($key) && $key !== '')
+            ->values()
+            ->all();
+
+        $records = OperationCoordinationServicesTable::selectedServiceOrderRecordsByType(
+            $record,
+            OperationCoordinationServicesTable::managementKeysToNumericIds($keys),
+            (string) $quote->type_service
+        );
+
+        if ($records->isEmpty()) {
+            return 0;
+        }
+
+        $terminalStatuses = ['FINALIZADO', 'CANCELADA', 'CANCELADO', 'CADUCADA'];
+        $updated = 0;
+
+        foreach ($records as $item) {
+            $currentStatus = mb_strtoupper(trim((string) ($item->status ?? '')));
+
+            if (in_array($currentStatus, $terminalStatuses, true)) {
+                continue;
+            }
+
+            $item->update(['status' => 'FINALIZADO']);
+            $updated++;
+        }
+
+        if ($updated > 0) {
+            $freshRecord = $record->fresh() ?? $record;
+            OperationServiceOrderCoordinationSync::refreshCoordinationStatus($freshRecord);
+        }
+
+        return $updated;
     }
 
     public static function createServiceOrderFromApprovedQuote(

@@ -5514,26 +5514,34 @@
   }
 
   /*
-   * Listado de pacientes (Operaciones): columna ID proveedor.
+   * Listado de pacientes (Operaciones): proveedor y paciente.
    */
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-id-cell {
-    @apply min-w-[10.5rem] border-l-[3px] border-primary-500/50 bg-gradient-to-r from-primary-50/90 via-primary-50/30 to-transparent py-2.5 pl-3 pr-2 dark:border-primary-400/45 dark:from-primary-950/45 dark:via-primary-950/15;
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-cell {
+    @apply min-w-[11rem] py-2;
   }
 
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-id-cell .fi-ta-text-item-label {
-    @apply text-[0.65rem] font-bold uppercase tracking-wider text-primary-700/90 dark:text-primary-300/90;
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-cell .fi-ta-text {
+    @apply gap-1;
   }
 
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-id-badge .fi-badge {
-    @apply px-3 py-1 font-mono text-sm font-bold tabular-nums tracking-tight shadow-md ring-2 ring-primary-500/20 transition hover:ring-primary-500/35 dark:ring-primary-400/25 dark:hover:ring-primary-400/40;
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-link .fi-badge {
+    @apply font-mono text-xs font-bold tabular-nums tracking-tight;
   }
 
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-id-cell .fi-ta-text-item-description {
-    @apply mt-1 max-w-[12rem] truncate text-xs font-semibold text-primary-900/80 dark:text-primary-100/85;
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-cell .fi-ta-text-item-description {
+    @apply mt-1 max-w-[14rem] text-xs leading-snug font-medium text-gray-600 dark:text-gray-300;
   }
 
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-id-cell:hover {
-    @apply from-primary-100/95 dark:from-primary-950/60;
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-link {
+    @apply cursor-pointer decoration-dotted underline-offset-2 hover:opacity-90;
+  }
+
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-name-cell .fi-ta-text-item-label {
+    @apply text-sm leading-snug;
+  }
+
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-name-cell .fi-ta-text-item-description {
+    @apply mt-0.5 text-xs font-medium text-gray-500 dark:text-gray-400;
   }
 
   /*
@@ -5799,89 +5807,196 @@
     @apply text-amber-200/75;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--medicamento {
+  .fi-coordination-clinical-items-header,
+  .fi-coordination-clinical-items-cell {
+    @apply align-top;
+    min-width: 22rem;
+    white-space: normal;
+  }
+
+  .fi-coordination-clinical-items-cell {
+    max-width: 30rem;
+  }
+
+  .fi-coordination-clinical-items-cell .fi-ta-text,
+  .fi-coordination-clinical-items-cell .fi-ta-text-item {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    -webkit-box-orient: unset !important;
+  }
+
+  .fi-coordination-clinical-items-compact {
+    @apply w-full py-1;
+  }
+
+  .fi-coordination-clinical-items-compact__header {
+    @apply mb-2 rounded-md bg-gray-100/90 px-2.5 py-1 text-[11px] font-semibold uppercase leading-snug tracking-wide text-gray-600 dark:bg-white/10 dark:text-gray-300;
+  }
+
+  .fi-coordination-clinical-items-list {
+    @apply m-0 flex list-none flex-col gap-1 p-0;
+  }
+
+  .fi-coordination-clinical-item {
+    @apply flex w-full min-w-0 max-w-full flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-200/90 bg-white px-2 py-1.5 transition-colors dark:border-white/10 dark:bg-white/[0.03];
+  }
+
+  .fi-coordination-clinical-item:hover {
+    @apply border-gray-300 bg-gray-50/80 dark:border-white/15 dark:bg-white/[0.06];
+  }
+
+  .fi-coordination-clinical-item--pending {
+    @apply border-l-[3px] border-l-rose-400 dark:border-l-rose-500;
+  }
+
+  .fi-coordination-clinical-item--progress {
+    @apply border-l-[3px] border-l-amber-400 dark:border-l-amber-500;
+  }
+
+  .fi-coordination-clinical-item--done {
+    @apply border-l-[3px] border-l-emerald-400 opacity-95 dark:border-l-emerald-500;
+  }
+
+  .fi-coordination-clinical-item--closed {
+    @apply border-l-[3px] border-l-gray-400 opacity-90 dark:border-l-gray-500;
+  }
+
+  .fi-coordination-clinical-item__lead {
+    @apply flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden;
+  }
+
+  .fi-coordination-clinical-item__category {
+    @apply flex w-11 shrink-0 items-center justify-center;
+  }
+
+  .fi-coordination-clinical-item__category > .fi-manage-service-badge {
+    @apply w-full justify-center;
+  }
+
+  .fi-coordination-clinical-item__label {
+    @apply min-w-0 flex-1 truncate text-[13px] font-medium leading-none text-gray-900 dark:text-gray-100;
+  }
+
+  .fi-coordination-clinical-item__trail {
+    @apply inline-flex shrink-0 items-center gap-1.5;
+  }
+
+  .fi-coordination-clinical-item__meta {
+    @apply inline-flex shrink-0 items-center gap-1;
+  }
+
+  .fi-coordination-clinical-item__manage {
+    @apply inline-flex shrink-0 items-center;
+  }
+
+  .fi-coordination-clinical-item__order {
+    @apply inline-flex shrink-0 items-center;
+  }
+
+  .fi-coordination-clinical-items-compact .fi-coordination-clinical-item-manage-link {
+    @apply inline-flex shrink-0 items-center justify-center rounded p-0.5 text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300;
+  }
+
+  .fi-coordination-clinical-items-compact .fi-coordination-clinical-item-order-link {
+    @apply inline-flex shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-700 underline-offset-2 ring-1 ring-inset ring-primary-200/90 transition hover:bg-primary-50 hover:text-primary-800 hover:underline dark:text-primary-300 dark:ring-primary-500/35 dark:hover:bg-primary-500/10 dark:hover:text-primary-200;
+  }
+
+  .fi-coordination-clinical-items-compact .fi-coordination-clinical-item-quote-link {
+    @apply inline-flex shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-800 underline-offset-2 ring-1 ring-inset ring-amber-200/90 transition hover:bg-amber-50 hover:text-amber-900 hover:underline dark:text-amber-300 dark:ring-amber-500/35 dark:hover:bg-amber-500/10 dark:hover:text-amber-200;
+  }
+
+  .fi-coordination-clinical-items-compact .fi-manage-service-badge {
+    @apply rounded-md px-1.5 py-0.5 text-[10px] leading-tight;
+  }
+
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--medicamento {
     @apply bg-violet-100 text-violet-800 ring-violet-300/70;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--medicamento {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--medicamento {
     @apply bg-violet-500/20 text-violet-100 ring-violet-400/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--laboratorio {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--laboratorio {
     @apply bg-cyan-100 text-cyan-900 ring-cyan-300/70;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--laboratorio {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--laboratorio {
     @apply bg-cyan-500/20 text-cyan-100 ring-cyan-400/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--estudio {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--estudio {
     @apply bg-indigo-100 text-indigo-900 ring-indigo-300/70;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--estudio {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--estudio {
     @apply bg-indigo-500/20 text-indigo-100 ring-indigo-400/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--especialista {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--especialista {
     @apply bg-fuchsia-100 text-fuchsia-900 ring-fuchsia-300/70;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--especialista {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--especialista {
     @apply bg-fuchsia-500/20 text-fuchsia-100 ring-fuchsia-400/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--covered {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--covered {
     @apply bg-emerald-100 text-emerald-800 ring-emerald-300/80;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--covered {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--covered {
     @apply bg-emerald-500/25 text-emerald-100 ring-emerald-500/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--not-covered {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--not-covered {
     @apply bg-rose-100 text-rose-800 ring-rose-300/80;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--not-covered {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--not-covered {
     @apply bg-rose-500/25 text-rose-100 ring-rose-500/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--status-done {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-done {
     @apply bg-emerald-100 text-emerald-800 ring-emerald-300/80;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--status-done {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-done {
     @apply bg-emerald-500/25 text-emerald-100 ring-emerald-500/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--status-pending {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-pending {
     @apply bg-rose-100 text-rose-800 ring-rose-300/80;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--status-pending {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-pending {
     @apply bg-rose-500/25 text-rose-100 ring-rose-500/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--status-progress {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-progress {
     @apply bg-amber-100 text-amber-900 ring-amber-300/80;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--status-progress {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-progress {
     @apply bg-amber-500/25 text-amber-100 ring-amber-500/35;
   }
 
-  .fi-coordination-manage-items-page .fi-manage-service-badge--default,
-  .fi-coordination-manage-items-page .fi-manage-service-badge--status-default {
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--default,
+  :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-default {
     @apply bg-gray-100 text-gray-800 ring-gray-300/70;
   }
 
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--default,
-  .dark .fi-coordination-manage-items-page .fi-manage-service-badge--status-default {
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--default,
+  .dark :is(.fi-coordination-manage-items-page, .fi-coordination-clinical-items-compact) .fi-manage-service-badge--status-default {
     @apply bg-white/10 text-gray-100 ring-white/20;
   }
 
@@ -6016,6 +6131,20 @@
   .fi-coordination-manage-items-page .fi-coordination-manage-items-wizard .fi-fo-checkbox-list.fi-manage-service-items-checkbox-list,
   .fi-coordination-manage-items-wizard .fi-fo-checkbox-list.fi-manage-service-items-checkbox-list {
     @apply gap-3;
+  }
+
+  .fi-coordination-manage-items-page .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled),
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled),
+  .fi-coordination-manage-items-page .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled):hover,
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled):hover {
+    @apply cursor-not-allowed border-dashed bg-gray-50/80 opacity-70 shadow-none dark:border-white/10 dark:bg-white/[0.02];
+  }
+
+  .fi-coordination-manage-items-page .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled) .fi-fo-checkbox-list-option-label,
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled) .fi-fo-checkbox-list-option-label,
+  .fi-coordination-manage-items-page .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled) .fi-fo-checkbox-list-option-description,
+  .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option:has(input:disabled) .fi-fo-checkbox-list-option-description {
+    @apply text-gray-500 dark:text-gray-400;
   }
 
   .fi-coordination-manage-items-page .fi-coordination-manage-items-wizard .fi-manage-service-items-checkbox-list .fi-fo-checkbox-list-option,
@@ -7752,6 +7881,19 @@
 
   .fi-case-messaging-audit-participant-chip.tone-rose .fi-case-messaging-audit-participant-avatar {
     @apply bg-rose-500/15 text-rose-700 dark:text-rose-200;
+  }
+
+  /* Vista de orden de servicio: acciones del header con wrap en pantallas estrechas */
+  .operation-service-order-view-page .fi-header {
+    @apply items-center gap-4 sm:items-center;
+  }
+
+  .operation-service-order-view-page .fi-header-actions-ctn {
+    @apply max-w-full flex-wrap justify-end gap-2 sm:max-w-xl lg:max-w-2xl;
+  }
+
+  .operation-service-order-view-page .fi-header-actions-ctn > .fi-ac {
+    @apply flex flex-wrap justify-end gap-2;
   }
 }
 

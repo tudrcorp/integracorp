@@ -55,7 +55,7 @@ class ManageCoordinationServiceItems extends Page
         abort_if(in_array('ATENMEDI', Auth::user()?->departament ?? []), 403);
 
         abort_unless(
-            CoordinationServiceItemsManager::manageServiceSelectableOptions($this->getRecord()) !== [],
+            CoordinationServiceItemsManager::hasManageServiceSelectableItems($this->getRecord()),
             404,
             'Esta coordinación no tiene ítems pendientes de gestión.'
         );

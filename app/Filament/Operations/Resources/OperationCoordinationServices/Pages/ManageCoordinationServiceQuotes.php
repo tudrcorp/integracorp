@@ -7,7 +7,9 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Schemas\ManageCoordinationServiceQuotesForm;
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
+use App\Models\OperationQuoteGenerator;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Operations\CoordinationServiceQuoteEditAction;
 use App\Support\Operations\CoordinationServiceQuoteManager;
 use Filament\Actions\Action;
 use Filament\Pages\Concerns\CanUseDatabaseTransactions;
@@ -59,6 +61,29 @@ class ManageCoordinationServiceQuotes extends Page
         );
 
         $this->fillForm();
+        $this->focusQuoteFromQueryString();
+    }
+
+    protected function focusQuoteFromQueryString(): void
+    {
+        $quoteId = request()->integer('quote_id');
+
+        if ($quoteId <= 0) {
+            return;
+        }
+
+        $quote = CoordinationServiceQuoteManager::coordinationQuotes($this->getRecord())
+            ->firstWhere('id', $quoteId);
+
+        if (! $quote instanceof OperationQuoteGenerator) {
+            return;
+        }
+
+        if (! CoordinationServiceQuoteManager::isQuotePendingForApproval($quote)) {
+            return;
+        }
+
+        $this->data['selected_pending_quote_ids'] = [$quoteId];
     }
 
     public function getTitle(): string|Htmlable
@@ -76,6 +101,78 @@ class ManageCoordinationServiceQuotes extends Page
     protected function fillForm(): void
     {
         $this->form->fill(CoordinationServiceQuoteManager::formDefaults($this->getRecord()));
+    }
+
+    public function editPendingQuoteAction(): Action
+    {
+        return CoordinationServiceQuoteEditAction::make()
+            ->action(function (array $arguments, array $data): void {
+                $quote = CoordinationServiceQuoteEditAction::resolvePendingQuote($arguments);
+
+                if (! CoordinationServiceQuoteManager::updatePendingQuote($quote, $this->getRecord(), $data)) {
+                    return;
+                }
+
+                $this->refreshFormAfterQuoteEdit();
+            });
+    }
+
+    protected function refreshFormAfterQuoteEdit(): void
+    {
+        $preserveKeys = [
+            'selected_pending_quote_ids',
+            'approved_quote_id',
+            'order_number',
+            'telemedicine_priority_id',
+            'operation_inventory_ubication_id',
+            'service_order_description',
+            'service_order_observations',
+        ];
+
+        $preserved = [];
+
+        foreach ($preserveKeys as $key) {
+            if (array_key_exists($key, $this->data ?? [])) {
+                $preserved[$key] = $this->data[$key];
+            }
+        }
+
+        $this->fillForm();
+
+        $data = $this->data ?? [];
+
+        foreach ($preserved as $key => $value) {
+            $data[$key] = $value;
+        }
+
+        CoordinationServiceQuoteManager::syncQuoteStatusesFromFormData($data, $this->getRecord());
+        $this->form->fill($data);
+    }
+
+    public function updatedDataSelectedPendingQuoteIds(): void
+    {
+        $data = $this->data ?? [];
+        CoordinationServiceQuoteManager::syncQuoteStatusesFromFormData($data, $this->getRecord());
+        $this->data = $data;
+    }
+
+    public function selectAllPendingQuotes(): void
+    {
+        $data = $this->data ?? [];
+        $data['selected_pending_quote_ids'] = CoordinationServiceQuoteManager::pendingQuotesForApproval($this->getRecord())
+            ->pluck('id')
+            ->map(intval(...))
+            ->all();
+        CoordinationServiceQuoteManager::syncQuoteStatusesFromFormData($data, $this->getRecord());
+        $this->data = $data;
+    }
+
+    public function deselectAllPendingQuotes(): void
+    {
+        $data = $this->data ?? [];
+        $data['selected_pending_quote_ids'] = [];
+        CoordinationServiceQuoteManager::syncQuoteStatusesFromFormData($data, $this->getRecord());
+        $this->data = $data;
     }
 
     public function form(Schema $schema): Schema

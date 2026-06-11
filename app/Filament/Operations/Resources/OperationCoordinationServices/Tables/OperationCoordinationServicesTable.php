@@ -52,8 +52,10 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\Support\Services\RelationshipOrderer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
@@ -870,7 +872,15 @@ class OperationCoordinationServicesTable
             ->modifyQueryUsing(function (Builder $query): Builder {
                 OperationsSupplierScope::applyCoordinationListScope($query);
 
-                return $query->with(['telemedicinePriority', 'telemedicineDoctor', 'telemedicineCase']);
+                return $query->with([
+                    'telemedicinePriority',
+                    'telemedicineDoctor',
+                    'telemedicineCase',
+                    'telemedicinePatientMedications.operationInventory:id,is_covered',
+                    'telemedicinePatientLabs',
+                    'telemedicinePatientStudies',
+                    'telemedicinePatientSpecialties',
+                ]);
             })
             ->columns([
                 TextColumn::make('telemedicineCase.code')
@@ -902,6 +912,22 @@ class OperationCoordinationServicesTable
                     ->extraAttributes([
                         'class' => 'cursor-pointer underline decoration-dotted underline-offset-2 hover:opacity-90',
                     ]),
+                TextColumn::make('clinical_management_items')
+                    ->label('Ítems clínicos')
+                    ->getStateUsing(
+                        fn (OperationCoordinationService $record): HtmlString => CoordinationServiceItemsManager::renderCoordinationClinicalItemsCompactList($record)
+                    )
+                    ->html()
+                    ->alignStart()
+                    ->extraHeaderAttributes([
+                        'class' => 'fi-coordination-clinical-items-header',
+                        'style' => 'min-width: 22rem;',
+                    ])
+                    ->extraCellAttributes([
+                        'class' => 'fi-coordination-clinical-items-cell py-2.5 align-top',
+                        'style' => 'min-width: 22rem; max-width: 30rem; white-space: normal; vertical-align: top;',
+                    ])
+                    ->tooltip('Detalle de medicamentos, laboratorios, estudios y especialidades asociados a esta coordinación.'),
                 TextColumn::make('date_solicitud')
                     ->label('Fecha de Solicitud')
                     ->icon('heroicon-m-calendar-days')
@@ -1181,7 +1207,36 @@ class OperationCoordinationServicesTable
                     ->datetime('d/m/Y')
                     ->sortable(),
             ])
-            ->recordClasses(fn ($record): array => [TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name)])
+            ->recordClasses(fn (OperationCoordinationService $record): array => self::recordRowClasses($record))
+            ->groups([
+                Group::make('telemedicineCase.code')
+                    ->label('Código del caso')
+                    ->collapsible()
+                    ->titlePrefixedWithLabel(false)
+                    ->getTitleFromRecordUsing(function (OperationCoordinationService $record): string {
+                        $code = mb_strtoupper(trim((string) ($record->telemedicineCase?->code ?? '')));
+
+                        if ($code === '') {
+                            return 'Sin caso vinculado';
+                        }
+
+                        $patientName = trim((string) ($record->telemedicineCase?->patient_name ?? ''));
+
+                        return $patientName !== '' ? $code.' · '.$patientName : $code;
+                    })
+                    ->getDescriptionFromRecordUsing(function (OperationCoordinationService $record): ?string {
+                        $doctorName = trim((string) ($record->telemedicineDoctor?->full_name ?? ''));
+
+                        return $doctorName !== '' ? 'Médico: '.$doctorName : null;
+                    })
+                    ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                        return $query->orderBy(
+                            app(RelationshipOrderer::class)->buildSubquery($query, 'telemedicineCase', 'created_at'),
+                            'desc',
+                        );
+                    }),
+            ])
+            ->collapsedGroupsByDefault()
             ->modifyUngroupedRecordActionsUsing(function (Action $action): void {
                 if ($action->getName() === 'selectTdgDoctorForAmbulanceFollowUp') {
                     $action->extraAttributes([
@@ -1699,5 +1754,17 @@ class OperationCoordinationServicesTable
         $order->associated_quote_pdf_path = $quotePath;
         $order->updated_by = Auth::user()?->name;
         $order->save();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function recordRowClasses(OperationCoordinationService $record): array
+    {
+        if (CoordinationServiceItemsManager::allAssociatedItemsAreClosed($record)) {
+            return [CoordinationServiceItemsManager::coordinationClosedRowClasses()];
+        }
+
+        return [TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name)];
     }
 }

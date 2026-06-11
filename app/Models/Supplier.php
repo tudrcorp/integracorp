@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Operations\OperationServiceOrderValidity;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
@@ -219,7 +220,7 @@ class Supplier extends Model
     public function finalizedOperationServiceOrders()
     {
         return $this->hasMany(OperationServiceOrder::class, 'supplier_id')
-            ->where('status', 'FINALIZADO')
+            ->whereIn('status', OperationServiceOrderValidity::closedStatuses())
             ->orderByDesc('created_at');
     }
 

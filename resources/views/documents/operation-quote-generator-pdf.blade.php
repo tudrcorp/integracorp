@@ -105,6 +105,16 @@
                 <div class="value">{{ $quote->status ?? 'PENDIENTE POR APROBAR' }}</div>
             </td>
         </tr>
+        <tr>
+            <td>
+                <div class="label">Proveedor</div>
+                <div class="value">{{ $quote->supplier?->name ?? '—' }}</div>
+            </td>
+            <td>
+                <div class="label">Dirección del proveedor</div>
+                <div class="value">{{ $quote->supplier_address ?? '—' }}</div>
+            </td>
+        </tr>
     </table>
 
     <p class="section-title">Ítems cotizados</p>
@@ -136,6 +146,11 @@
             @endforelse
         </tbody>
     </table>
+
+    @if(filled($quote->observations))
+        <p class="section-title">Observaciones</p>
+        <p style="margin: 0 0 12px 0; font-size: 8.5pt; line-height: 1.45; color: #374151;">{{ $quote->observations }}</p>
+    @endif
 
     <div class="summary">
         <div class="summary-row"><strong>Costo base (USD):</strong> US$ {{ number_format((float) ($quote->costo_dolares ?? 0), 2, ',', '.') }}</div>

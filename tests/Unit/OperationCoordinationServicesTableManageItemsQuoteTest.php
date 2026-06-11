@@ -17,6 +17,11 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->toContain('syncManageQuoteAggregates')
         ->toContain('manageQuoteSummaryPanel')
         ->toContain('Precios unitarios por ítem')
+        ->toContain('manage_quote_supplier_id')
+        ->toContain('manage_quote_supplier_address')
+        ->toContain('manage_quote_observations')
+        ->toContain('Observaciones de la cotización')
+        ->toContain('resolveManageQuoteSupplierAddress')
         ->toContain('manageServiceNonCoveredItemsNotice');
 });
 
@@ -31,7 +36,16 @@ it('CoordinationServiceItemsManager valida cotización antes de gestionar ítems
         ->toContain('buildManageQuoteItemsPayload')
         ->toContain('OperationQuoteGenerator::query()->create')
         ->toContain('OperationQuoteGenerator::STATUS_PENDING')
-        ->toContain('quote_pdf_path');
+        ->toContain('quote_pdf_path')
+        ->toContain('manage_quote_supplier_id')
+        ->toContain('supplier_address')
+        ->toContain('manage_quote_observations')
+        ->toContain("'observations'")
+        ->toContain('Seleccione el proveedor en los parámetros de cotización.');
+});
+
+it('resolveManageQuoteSupplierAddress devuelve null sin proveedor', function (): void {
+    expect(\App\Support\Operations\CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress(null))->toBeNull();
 });
 
 it('manageQuoteSubtotalFromLineItems suma precios unitarios en USD', function (): void {

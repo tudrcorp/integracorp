@@ -33,6 +33,8 @@ it('operation quote generator pdf blade renders without errors', function (): vo
 
     $quote = new OperationQuoteGenerator([
         'type_service' => 'LABORATORIOS',
+        'supplier_address' => 'Av. Principal, Caracas',
+        'observations' => 'Entrega en 48 horas. Requiere ayuno de 8 horas.',
         'status' => OperationQuoteGenerator::STATUS_PENDING,
         'costo_dolares' => 20,
         'costo_bolivares' => 2000,
@@ -61,7 +63,11 @@ it('operation quote generator pdf blade renders without errors', function (): vo
     expect($html)
         ->toContain('Cotización de servicios')
         ->toContain('Hemograma')
-        ->toContain('Tasa BCV aplicada');
+        ->toContain('Tasa BCV aplicada')
+        ->toContain('Proveedor')
+        ->toContain('Av. Principal, Caracas')
+        ->toContain('Observaciones')
+        ->toContain('Entrega en 48 horas');
 });
 
 it('migration agrega quote_pdf_path a operation_quote_generators', function (): void {

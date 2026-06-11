@@ -88,23 +88,28 @@ class TelemedicinePatientsTable
                 //     ->weight('medium')
                 //     ->description(fn (TelemedicinePatient $record): string => $record->managed_by ?? ''),
                 TextColumn::make('supplier_id')
-                    ->label('ID proveedor')
+                    ->label('Proveedor')
                     ->icon('heroicon-o-building-storefront')
-                    ->iconColor('primary')
+                    ->iconColor('gray')
                     ->badge()
-                    ->color(fn (mixed $state): string => filled($state)
-                        ? self::badgeColorFromString((string) $state, ['primary', 'info', 'success', 'warning'])
-                        : 'gray')
-                    ->formatStateUsing(fn (mixed $state): string => filled($state) ? '#'.(int) $state : '—')
-                    ->description(fn (TelemedicinePatient $record): string => filled($record->supplier?->name)
-                        ? (string) $record->supplier->name
-                        : 'Sin proveedor vinculado')
+                    ->color(fn (mixed $state): string => filled($state) ? 'primary' : 'gray')
+                    ->formatStateUsing(fn (mixed $state): string => filled($state) ? '#'.(int) $state : 'Sin proveedor')
+                    ->description(fn (TelemedicinePatient $record): ?string => self::supplierSummaryDescription($record))
                     ->tooltip(fn (TelemedicinePatient $record): ?string => filled($record->supplier_id)
-                        ? 'Ver proveedor #'.$record->supplier_id.($record->supplier?->name ? ' · '.$record->supplier->name : '')
+                        ? 'Abrir ficha del proveedor #'.$record->supplier_id
                         : 'Paciente sin proveedor asignado')
-                    ->weight(FontWeight::Bold)
+                    ->weight(FontWeight::SemiBold)
                     ->sortable()
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $innerQuery) use ($search): void {
+                            $innerQuery
+                                ->where('supplier_id', 'like', "%{$search}%")
+                                ->orWhereHas(
+                                    'supplier',
+                                    fn (Builder $supplierQuery): Builder => $supplierQuery->where('name', 'like', "%{$search}%"),
+                                );
+                        });
+                    })
                     ->copyable(fn (mixed $state): bool => filled($state))
                     ->copyableState(fn (mixed $state): ?string => filled($state) ? (string) (int) $state : null)
                     ->copyMessage('ID de proveedor copiado')
@@ -113,30 +118,27 @@ class TelemedicinePatientsTable
                         : null)
                     ->openUrlInNewTab()
                     ->extraCellAttributes([
-                        'class' => 'fi-telemedicine-patient-supplier-id-cell align-middle',
+                        'class' => 'fi-telemedicine-patient-supplier-cell align-top',
                     ])
                     ->extraAttributes([
-                        'class' => 'fi-telemedicine-patient-supplier-id-badge',
+                        'class' => 'fi-telemedicine-patient-supplier-link',
                     ])
-                    ->toggleable()
-                    ->visible(fn (): bool => OperationsSupplierScope::currentSupplierId() === null),
-                TextColumn::make('supplier.name')
-                    ->label('Proveedor')
-                    ->icon('heroicon-o-building-storefront')
-                    ->searchable()
-                    ->sortable()
-                    ->placeholder('—')
-                    ->limit(28)
-                    ->tooltip(fn (TelemedicinePatient $record): ?string => $record->supplier?->name)
                     ->toggleable()
                     ->visible(fn (): bool => OperationsSupplierScope::currentSupplierId() === null),
                 TextColumn::make('full_name')
                     ->label('Paciente')
                     ->icon('heroicon-o-user')
+                    ->iconColor('gray')
                     ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
                     ->searchable()
-                    ->weight('medium')
-                    ->description(fn (TelemedicinePatient $record): string => $record->nro_identificacion ?? ''),
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn (TelemedicinePatient $record): ?string => self::patientIdentificationDescription($record))
+                    ->extraCellAttributes([
+                        'class' => 'fi-telemedicine-patient-name-cell align-top min-w-[12rem]',
+                    ])
+                    ->tooltip(fn (TelemedicinePatient $record): ?string => filled($record->full_name)
+                        ? $record->full_name.($record->nro_identificacion ? ' · '.$record->nro_identificacion : '')
+                        : null),
                 TextColumn::make('nro_identificacion')
                     ->label('Identificación')
                     ->searchable()
@@ -762,19 +764,6 @@ class TelemedicinePatientsTable
                     //     ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI'),
                 ]),
             ])
-            ->recordClasses(function (TelemedicinePatient $record): array {
-                return match (mb_strtoupper((string) $record->managed_by)) {
-                    'ATENMEDI' => [
-                        'bg-emerald-50/60 dark:bg-emerald-950/20',
-                        'ring-1 ring-emerald-100/70 dark:ring-emerald-900/40',
-                    ],
-                    'TDG' => [
-                        'bg-sky-50/60 dark:bg-sky-950/20',
-                        'ring-1 ring-sky-100/70 dark:ring-sky-900/40',
-                    ],
-                    default => [],
-                };
-            })
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
@@ -798,6 +787,37 @@ class TelemedicinePatientsTable
                 ]),
             ])
             ->striped();
+    }
+
+    private static function supplierSummaryDescription(TelemedicinePatient $record): ?string
+    {
+        $supplierName = trim((string) ($record->supplier?->name ?? ''));
+
+        if ($supplierName === '') {
+            return 'Sin proveedor vinculado';
+        }
+
+        $managedBy = trim((string) ($record->managed_by ?? ''));
+
+        if ($managedBy !== '') {
+            return $supplierName.' ('.mb_strtoupper($managedBy).')';
+        }
+
+        return $supplierName;
+    }
+
+    private static function patientIdentificationDescription(TelemedicinePatient $record): ?string
+    {
+        $parts = array_values(array_filter([
+            filled($record->nro_identificacion) ? 'C.I. '.$record->nro_identificacion : null,
+            filled($record->phone) ? $record->phone : null,
+        ]));
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return implode(' · ', $parts);
     }
 
     /**

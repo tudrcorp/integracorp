@@ -9,9 +9,6 @@ use App\Models\OperationInventoryUbication;
 use App\Models\OperationQuoteGenerator;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceQuoteManager;
-use App\Support\Operations\OperationServiceOrderProviderFormFields;
-use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -22,6 +19,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\HtmlString;
@@ -46,25 +44,24 @@ final class ManageCoordinationServiceQuotesForm
                     ->iconColor('success')
                     ->visible(fn (ManageCoordinationServiceQuotes $livewire): bool => CoordinationServiceQuoteManager::hasPendingQuotesForApproval($livewire->getRecord()))
                     ->schema([
-                        CheckboxList::make('selected_pending_quote_ids')
-                            ->label('Cotizaciones pendientes')
-                            ->options(fn (ManageCoordinationServiceQuotes $livewire): array => CoordinationServiceQuoteManager::pendingQuoteApprovalOptions($livewire->getRecord()))
-                            ->descriptions(fn (ManageCoordinationServiceQuotes $livewire): array => CoordinationServiceQuoteManager::pendingQuoteApprovalDescriptions($livewire->getRecord()))
-                            ->bulkToggleable()
-                            ->searchable()
-                            ->live()
-                            ->afterStateUpdated(function (ManageCoordinationServiceQuotes $livewire, Get $get, Set $set, mixed $state): void {
-                                CoordinationServiceQuoteManager::syncQuoteStatusesFromPendingSelection(
-                                    $get,
-                                    $set,
-                                    $livewire->getRecord()
-                                );
-                            })
-                            ->columns(1)
-                            ->helperText('Puede aprobar varias cotizaciones del mismo tipo de servicio en un solo guardado.')
-                            ->extraAttributes([
-                                'class' => 'fi-coordination-manage-quotes-checkbox-list',
+                        Hidden::make('selected_pending_quote_ids')
+                            ->default([])
+                            ->dehydrated()
+                            ->columnSpanFull(),
+                        View::make('filament.operations.partials.pending-quotes-selection')
+                            ->viewData(fn (ManageCoordinationServiceQuotes $livewire): array => [
+                                'quotes' => CoordinationServiceQuoteManager::pendingQuotesForApproval($livewire->getRecord()),
+                                'selectedIds' => array_map(
+                                    intval(...),
+                                    (array) ($livewire->data['selected_pending_quote_ids'] ?? [])
+                                ),
                             ])
+                            ->columnSpanFull(),
+                        Placeholder::make('pending_quotes_selection_hint')
+                            ->hiddenLabel()
+                            ->content(fn (): HtmlString => new HtmlString(
+                                '<p class="text-xs text-gray-500 dark:text-gray-400">Puede aprobar varias cotizaciones del mismo tipo de servicio en un solo guardado. Use <strong>Editar</strong> para ajustar una cotización antes de seleccionarla.</p>'
+                            ))
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
@@ -76,6 +73,7 @@ final class ManageCoordinationServiceQuotesForm
                     ->schema([
                         Hidden::make('quote_id'),
                         Hidden::make('has_service_order'),
+                        Hidden::make('status_locked'),
                         Placeholder::make('quote_repeater_item_marker')
                             ->hiddenLabel()
                             ->content(fn (): HtmlString => new HtmlString('<span class="fi-quote-repeater-item-active" aria-hidden="true"></span>'))
@@ -91,7 +89,9 @@ final class ManageCoordinationServiceQuotesForm
                                 $livewire->data['selected_pending_quote_ids'] ?? []
                             ))
                             ->content(function (Get $get): HtmlString {
-                                $quote = OperationQuoteGenerator::query()->find((int) $get('quote_id'));
+                                $quote = OperationQuoteGenerator::query()
+                                    ->with('supplier')
+                                    ->find((int) $get('quote_id'));
 
                                 if (! $quote instanceof OperationQuoteGenerator) {
                                     return new HtmlString(
@@ -112,10 +112,13 @@ final class ManageCoordinationServiceQuotesForm
                                 $get,
                                 $livewire->data['selected_pending_quote_ids'] ?? []
                             ))
-                            ->disabled(fn (Get $get): bool => (bool) $get('has_service_order'))
-                            ->helperText(fn (Get $get): ?string => (bool) $get('has_service_order')
-                                ? 'Esta cotización ya tiene una orden de servicio vinculada.'
-                                : 'También puede rechazarla aquí; se quitará de la selección pendiente.')
+                            ->disabled(fn (Get $get): bool => (bool) $get('has_service_order') || (bool) $get('status_locked'))
+                            ->helperText(fn (Get $get): ?string => match (true) {
+                                (bool) $get('status_locked') => 'El estatus de esta cotización ya fue definido y no puede modificarse.',
+                                (bool) $get('has_service_order') => 'Esta cotización ya tiene una orden de servicio vinculada.',
+                                (string) $get('status') === OperationQuoteGenerator::STATUS_PRIVATE_CARE => 'Atención particular: finaliza la cotización y los ítems sin generar orden de servicio.',
+                                default => 'También puede rechazarla o marcarla como atención particular; se quitará de la selección pendiente.',
+                            })
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state, ManageCoordinationServiceQuotes $livewire): void {
                                 $quoteId = (int) $get('quote_id');
 
@@ -125,6 +128,10 @@ final class ManageCoordinationServiceQuotesForm
                                     $quoteId,
                                     $state
                                 );
+
+                                if ($state === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
+                                    return;
+                                }
 
                                 if ($state !== OperationQuoteGenerator::STATUS_APPROVED) {
                                     return;
@@ -139,7 +146,7 @@ final class ManageCoordinationServiceQuotesForm
                     ])
                     ->columnSpanFull(),
                 Section::make('Orden de servicio')
-                    ->description('Complete los datos operativos para la cotización aprobada.')
+                    ->description('Complete los datos operativos. El proveedor se tomará de la cotización aprobada.')
                     ->icon(Heroicon::OutlinedDocumentPlus)
                     ->iconColor('success')
                     ->visible(fn (Get $get): bool => CoordinationServiceQuoteManager::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
@@ -188,8 +195,6 @@ final class ManageCoordinationServiceQuotesForm
                                     ->maxLength(2000)
                                     ->columnSpanFull(),
                             ]),
-                        ...OperationServiceOrderProviderFormFields::selectionComponents(),
-                        ...OperationServiceOrderUnregisteredProviderFormFields::inlineRegistrationSchema(),
                     ])
                     ->columnSpanFull(),
             ]);

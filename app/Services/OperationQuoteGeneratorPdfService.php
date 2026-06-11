@@ -17,6 +17,8 @@ class OperationQuoteGeneratorPdfService
         OperationCoordinationService $coordination,
         float $bcvRate
     ): PdfDocument {
+        $quote->loadMissing('supplier');
+
         $logoPath = public_path('image/logoNewPdf.png');
         $logoDataUri = '';
         if (is_file($logoPath)) {

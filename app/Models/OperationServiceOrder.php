@@ -28,6 +28,7 @@ class OperationServiceOrder extends Model
         'total_amount_ves',
         'payment_method',
         'status',
+        'approved_at',
         'managed_by',
         'telemedicine_supplier_id',
         'observations',
@@ -45,6 +46,7 @@ class OperationServiceOrder extends Model
     protected function casts(): array
     {
         return [
+            'approved_at' => 'datetime',
             'total_items' => 'integer',
             'total_items_unit' => 'integer',
             'files' => 'array',
@@ -98,5 +100,14 @@ class OperationServiceOrder extends Model
     public function approvedOperationQuote(): HasOne
     {
         return $this->hasOne(OperationQuoteGenerator::class, 'operation_service_order_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (OperationServiceOrder $order): void {
+            if ($order->approved_at === null) {
+                $order->approved_at = now();
+            }
+        });
     }
 }

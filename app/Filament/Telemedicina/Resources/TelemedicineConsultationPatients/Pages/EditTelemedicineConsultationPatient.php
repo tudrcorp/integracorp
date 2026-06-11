@@ -9,6 +9,7 @@ use App\Jobs\GeneratePdfImagenologia;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Jobs\SendTelemedicinaDocument;
+use App\Models\OperationInventory;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDoctor;
@@ -20,6 +21,7 @@ use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
+use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -90,18 +92,34 @@ class EditTelemedicineConsultationPatient extends EditRecord
             // dd($finalArrLabs, $finalArrStudies, $finalArrSpecialist);
 
             // Arreglo de medicamento
-            if (! empty($medicationsArr) && $medicationsArr[0]['medicines'] != null) {
-                // Log::info('Medicamentos: ' . json_encode($medicationsArr));
+            if (! empty($medicationsArr)) {
                 for ($i = 0; $i < count($medicationsArr); $i++) {
+                    $row = $medicationsArr[$i];
+
+                    if (! is_array($row)) {
+                        continue;
+                    }
+
+                    $inventoryId = filled($row['operation_inventory_id'] ?? null)
+                        ? (int) $row['operation_inventory_id']
+                        : null;
+                    $manualMedicine = filled($row['medicines'] ?? null) ? (string) $row['medicines'] : null;
+
+                    if ($manualMedicine === null && $inventoryId === null) {
+                        continue;
+                    }
+
                     $medications = new TelemedicinePatientMedications;
                     $medications->telemedicine_consultation_patient_id = $record['id'];
                     $medications->telemedicine_patient_id = $record['telemedicine_patient_id'];
                     $medications->telemedicine_case_id = $record['telemedicine_case_id'];
                     $medications->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                    $medications->medicine = $medicationsArr[$i]['medicines'];
-                    $medications->indications = $medicationsArr[$i]['indications'];
-                    $medications->duration = $medicationsArr[$i]['duration'];
+                    $medications->medicine = $manualMedicine ?? OperationInventory::query()->whereKey($inventoryId)->value('name');
+                    $medications->indications = $row['indications'];
+                    $medications->duration = $row['duration'];
                     $medications->telemedicine_priority_id = $record['telemedicine_priority_id'];
+                    $medications->operation_inventory_id = $inventoryId;
+                    $medications->is_covered = TelemedicineMedicationCoverage::coverageForPersist($inventoryId);
                     $medications->assigned_by = Auth::user()->id;
                     $medications->save();
                 }

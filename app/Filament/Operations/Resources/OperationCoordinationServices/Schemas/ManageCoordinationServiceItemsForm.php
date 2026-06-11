@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Schema
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Models\OperationInventoryUbication;
+use App\Models\Supplier;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
@@ -88,15 +89,16 @@ final class ManageCoordinationServiceItemsForm
                     ])
                     ->columnSpanFull(),
                 Section::make('Selección para gestión')
-                    ->description('Marque uno o más ítems pendientes. Los cubiertos habilitan el paso de orden de servicio.')
+                    ->description('Marque uno o más ítems pendientes. Los ítems en gestión o finalizados aparecen deshabilitados.')
                     ->icon(Heroicon::OutlinedCheckCircle)
                     ->iconColor('success')
-                    ->visible(fn (ManageCoordinationServiceItems $livewire): bool => CoordinationServiceItemsManager::manageServiceSelectableOptions($livewire->getRecord()) !== [])
+                    ->visible(fn (ManageCoordinationServiceItems $livewire): bool => CoordinationServiceItemsManager::hasManageServiceItems($livewire->getRecord()))
                     ->schema([
                         CheckboxList::make('managed_service_item_keys')
                             ->label('Ítems disponibles')
-                            ->options(fn (ManageCoordinationServiceItems $livewire): array => CoordinationServiceItemsManager::manageServiceSelectableOptions($livewire->getRecord()))
-                            ->descriptions(fn (ManageCoordinationServiceItems $livewire): array => CoordinationServiceItemsManager::manageServiceSelectableDescriptions($livewire->getRecord()))
+                            ->options(fn (ManageCoordinationServiceItems $livewire): array => CoordinationServiceItemsManager::manageServiceItemOptions($livewire->getRecord()))
+                            ->descriptions(fn (ManageCoordinationServiceItems $livewire): array => CoordinationServiceItemsManager::manageServiceItemDescriptions($livewire->getRecord()))
+                            ->disableOptionWhen(fn (string $value, ManageCoordinationServiceItems $livewire): bool => ! CoordinationServiceItemsManager::isManagementItemKeySelectable($livewire->getRecord(), $value))
                             ->bulkToggleable()
                             ->searchable()
                             ->live()
@@ -123,13 +125,13 @@ final class ManageCoordinationServiceItemsForm
                 Placeholder::make('manage_service_items_empty')
                     ->label('Sin ítems pendientes')
                     ->content(fn (): HtmlString => CoordinationServiceItemsManager::manageServiceEmptyState())
-                    ->visible(fn (ManageCoordinationServiceItems $livewire): bool => CoordinationServiceItemsManager::manageServiceSelectableOptions($livewire->getRecord()) === [])
+                    ->visible(fn (ManageCoordinationServiceItems $livewire): bool => ! CoordinationServiceItemsManager::hasManageServiceItems($livewire->getRecord()))
                     ->columnSpanFull(),
                 Section::make('Resumen de selección')
                     ->description('Vista previa en tiempo real de los ítems que gestionará al confirmar.')
                     ->icon(Heroicon::OutlinedEye)
                     ->iconColor('info')
-                    ->visible(fn (ManageCoordinationServiceItems $livewire): bool => CoordinationServiceItemsManager::manageServiceSelectableOptions($livewire->getRecord()) !== [])
+                    ->visible(fn (ManageCoordinationServiceItems $livewire): bool => CoordinationServiceItemsManager::hasManageServiceItems($livewire->getRecord()))
                     ->schema([
                         Placeholder::make('manage_service_items_preview')
                             ->hiddenLabel()
@@ -316,6 +318,35 @@ final class ManageCoordinationServiceItemsForm
                                 ->iconColor('warning')
                                 ->extraAttributes(['class' => 'fi-manage-quote-params-section'])
                                 ->schema([
+                                    Grid::make(1)
+                                        ->schema([
+                                            Select::make('manage_quote_supplier_id')
+                                                ->label('Proveedor')
+                                                ->options(fn (): array => Supplier::query()
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id')
+                                                    ->all())
+                                                ->searchable()
+                                                ->preload()
+                                                ->required()
+                                                ->live()
+                                                ->native(false)
+                                                ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
+                                                ->afterStateUpdated(function (mixed $state, Set $set): void {
+                                                    $set(
+                                                        'manage_quote_supplier_address',
+                                                        CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($state)
+                                                    );
+                                                })
+                                                ->helperText('Seleccione el proveedor que cotiza los ítems no cubiertos.'),
+                                            TextInput::make('manage_quote_supplier_address')
+                                                ->label('Dirección del proveedor')
+                                                ->readOnly()
+                                                ->dehydrated()
+                                                ->placeholder('Se completa al seleccionar el proveedor')
+                                                ->prefixIcon(Heroicon::OutlinedMapPin),
+                                        ])
+                                        ->columnSpanFull(),
                                     TextInput::make('manage_quote_bcv_rate')
                                         ->label('Tasa BCV del día')
                                         ->prefix('Bs.')
@@ -400,6 +431,13 @@ final class ManageCoordinationServiceItemsForm
                                                 ->content(fn (Get $get): HtmlString => CoordinationServiceItemsManager::manageQuoteSummaryPanel($get))
                                                 ->columnSpan(['lg' => 2]),
                                         ]),
+                                    Textarea::make('manage_quote_observations')
+                                        ->label('Observaciones de la cotización')
+                                        ->placeholder('Indique notas relevantes para la gestión: condiciones del proveedor, plazos, requisitos del paciente, etc.')
+                                        ->rows(4)
+                                        ->maxLength(2000)
+                                        ->helperText('Opcional. Esta información quedará registrada en la cotización y en el PDF generado.')
+                                        ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
                         ])
