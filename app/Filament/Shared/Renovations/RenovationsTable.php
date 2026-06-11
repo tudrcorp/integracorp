@@ -578,7 +578,7 @@ class RenovationsTable
             Notification::make()
                 ->success()
                 ->title($result->accepted === 1 ? 'Renovación aceptada' : 'Renovaciones aceptadas')
-                ->body("Se aplicaron {$result->accepted} renovación(es) al expediente y se registraron en el historial.")
+                ->body("Se aplicaron {$result->accepted} renovación(es) al expediente, se registraron en el historial y se generaron las cobranzas POR PAGAR del nuevo período.")
                 ->send();
         }
 
