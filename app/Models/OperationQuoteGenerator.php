@@ -12,6 +12,8 @@ class OperationQuoteGenerator extends Model
 
     public const STATUS_REJECTED = 'RECHAZADA';
 
+    public const STATUS_PRIVATE_CARE = 'ATENCION PARTICULAR';
+
     protected $table = 'operation_quote_generators';
 
     protected $fillable = [
@@ -20,6 +22,9 @@ class OperationQuoteGenerator extends Model
         'operation_coordination_service_id',
         'operation_service_order_id',
         'type_service',
+        'supplier_id',
+        'supplier_address',
+        'observations',
         'status',
         'items',
         'costo_dolares',
@@ -51,6 +56,11 @@ class OperationQuoteGenerator extends Model
         return $this->belongsTo(OperationCoordinationService::class);
     }
 
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
     public function operationServiceOrder()
     {
         return $this->belongsTo(OperationServiceOrder::class);
@@ -65,7 +75,19 @@ class OperationQuoteGenerator extends Model
             self::STATUS_PENDING => 'Pendiente por aprobar',
             self::STATUS_APPROVED => 'Aprobada',
             self::STATUS_REJECTED => 'Rechazada',
+            self::STATUS_PRIVATE_CARE => 'Atención Particular',
         ];
+    }
+
+    public static function isTerminalStatus(?string $status): bool
+    {
+        $normalized = mb_strtoupper(trim((string) $status));
+
+        return in_array($normalized, [
+            self::STATUS_APPROVED,
+            self::STATUS_REJECTED,
+            self::STATUS_PRIVATE_CARE,
+        ], true);
     }
 
     public function createdBy()

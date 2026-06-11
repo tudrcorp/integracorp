@@ -64,6 +64,7 @@ class OperationServiceOrderController extends Controller
                     'description' => $data['description'] ?? null,
                     'service_type' => $serviceType,
                     'status' => $data['status'] ?? 'EN GESTION',
+                    'approved_at' => now(),
                     'observations' => $data['observations'] ?? null,
                     'order_number' => $data['order_number'],
                     'total_items' => $totalItems,

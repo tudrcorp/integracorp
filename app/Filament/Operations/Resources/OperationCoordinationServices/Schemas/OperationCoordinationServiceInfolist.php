@@ -7,6 +7,7 @@ use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
+use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -600,61 +601,113 @@ class OperationCoordinationServiceInfolist
 
     private static function medicationsSummary(OperationCoordinationService $record): string
     {
+        $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
+
         $items = $record->telemedicinePatientMedications()
             ->orderBy('id')
             ->with('operationInventory:id,is_covered')
             ->get(['medicine', 'indications', 'status', 'is_covered', 'operation_inventory_id'])
-            ->map(fn (TelemedicinePatientMedications $item): array => [
-                'title' => 'Medicamento: '.($item->medicine ?? 'Medicamento sin nombre'),
-                'detail' => 'Indicación: '.($item->indications ?? 'Sin indicación'),
-                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
-                'coverage' => TelemedicineMedicationCoverage::isCovered($item),
-            ]);
+            ->map(function (TelemedicinePatientMedications $item) use ($record, $orderLinks): array {
+                $label = (string) ($item->medicine ?? 'Medicamento sin nombre');
+                $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+
+                return [
+                    'title' => 'Medicamento: '.$label,
+                    'detail' => 'Indicación: '.($item->indications ?? 'Sin indicación'),
+                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                        $record,
+                        'Medicamento',
+                        $label,
+                        $rawStatus,
+                        $orderLinks,
+                    ),
+                    'coverage' => TelemedicineMedicationCoverage::isCovered($item),
+                ];
+            });
 
         return self::renderAssociatedItemsCards($items);
     }
 
     private static function laboratoriesSummary(OperationCoordinationService $record): string
     {
+        $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
+
         $items = $record->telemedicinePatientLabs()
             ->orderBy('id')
             ->get(['laboratory', 'type', 'status'])
-            ->map(fn (TelemedicinePatientLab $item): array => [
-                'title' => 'Laboratorio: '.($item->laboratory ?? 'Laboratorio sin nombre'),
-                'detail' => 'Tipo: '.($item->type ?? '—'),
-                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
-                'coverage' => self::catalogItemCoverageValue($item->type),
-            ]);
+            ->map(function (TelemedicinePatientLab $item) use ($record, $orderLinks): array {
+                $label = (string) ($item->laboratory ?? 'Laboratorio sin nombre');
+                $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+
+                return [
+                    'title' => 'Laboratorio: '.$label,
+                    'detail' => 'Tipo: '.($item->type ?? '—'),
+                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                        $record,
+                        'Laboratorio',
+                        $label,
+                        $rawStatus,
+                        $orderLinks,
+                    ),
+                    'coverage' => self::catalogItemCoverageValue($item->type),
+                ];
+            });
 
         return self::renderAssociatedItemsCards($items);
     }
 
     private static function studiesSummary(OperationCoordinationService $record): string
     {
+        $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
+
         $items = $record->telemedicinePatientStudies()
             ->orderBy('id')
             ->get(['study', 'type', 'status'])
-            ->map(fn (TelemedicinePatientStudy $item): array => [
-                'title' => 'Estudio: '.($item->study ?? 'Estudio sin nombre'),
-                'detail' => 'Tipo: '.($item->type ?? '—'),
-                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
-                'coverage' => self::catalogItemCoverageValue($item->type),
-            ]);
+            ->map(function (TelemedicinePatientStudy $item) use ($record, $orderLinks): array {
+                $label = (string) ($item->study ?? 'Estudio sin nombre');
+                $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+
+                return [
+                    'title' => 'Estudio: '.$label,
+                    'detail' => 'Tipo: '.($item->type ?? '—'),
+                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                        $record,
+                        'Estudio',
+                        $label,
+                        $rawStatus,
+                        $orderLinks,
+                    ),
+                    'coverage' => self::catalogItemCoverageValue($item->type),
+                ];
+            });
 
         return self::renderAssociatedItemsCards($items);
     }
 
     private static function specialtiesSummary(OperationCoordinationService $record): string
     {
+        $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
+
         $items = $record->telemedicinePatientSpecialties()
             ->orderBy('id')
             ->get(['specialty', 'type', 'status'])
-            ->map(fn (TelemedicinePatientSpecialty $item): array => [
-                'title' => 'Especialidad: '.($item->specialty ?? 'Especialidad sin nombre'),
-                'detail' => 'Tipo: '.($item->type ?? '—'),
-                'status' => (string) ($item->status ?? 'SIN ESTATUS'),
-                'coverage' => self::catalogItemCoverageValue($item->type),
-            ]);
+            ->map(function (TelemedicinePatientSpecialty $item) use ($record, $orderLinks): array {
+                $label = (string) ($item->specialty ?? 'Especialidad sin nombre');
+                $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+
+                return [
+                    'title' => 'Especialidad: '.$label,
+                    'detail' => 'Tipo: '.($item->type ?? '—'),
+                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                        $record,
+                        'Especialista',
+                        $label,
+                        $rawStatus,
+                        $orderLinks,
+                    ),
+                    'coverage' => self::catalogItemCoverageValue($item->type),
+                ];
+            });
 
         return self::renderAssociatedItemsCards($items);
     }
@@ -698,7 +751,7 @@ class OperationCoordinationServiceInfolist
                     'FINALIZADO' => 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-200',
                     'PENDIENTE' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
                     'EN GESTION' => 'border-orange-500/45 bg-orange-500/10 text-orange-700 dark:border-orange-400/45 dark:bg-orange-400/15 dark:text-orange-200',
-                    'CANCELADO', 'CANCELADA' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
+                    'CANCELADO', 'CANCELADA', 'CADUCADA' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
                     default => 'border-gray-400/40 bg-gray-500/10 text-gray-700 dark:border-gray-300/30 dark:bg-gray-400/15 dark:text-gray-200',
                 };
 

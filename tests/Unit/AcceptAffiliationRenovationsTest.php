@@ -16,7 +16,9 @@ it('define servicio de aceptación con transacción historial y eliminación de 
         ->toContain('effective_date')
         ->toContain('STATUS_RENOVATION_PERIOD')
         ->toContain('historyAttributesFromAppliedState')
-        ->toContain('applyManualCommercialConfig');
+        ->toContain('applyManualCommercialConfig')
+        ->toContain('createPendingCollectionsForRenewal')
+        ->toContain('AffiliationRenewalCollectionGenerator');
 });
 
 it('expone bulk y acción individual de aceptar en tabla compartida de renovaciones', function (): void {

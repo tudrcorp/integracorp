@@ -22,6 +22,7 @@ final class AcceptAffiliationRenovationsService
     public function __construct(
         private readonly AffiliationAffiliateFeeCalculator $calculator,
         private readonly RenovationManualAcceptancePricing $manualPricing,
+        private readonly AffiliationRenewalCollectionGenerator $renewalCollectionGenerator,
     ) {}
 
     /**
@@ -139,6 +140,15 @@ final class AcceptAffiliationRenovationsService
                 $newEffectiveDate,
                 $manualOptions,
             ),
+        );
+
+        $effectiveDate = $this->calculator->parseEffectiveDate($newEffectiveDate)
+            ?? $renovation->date_renewal->copy()->startOfDay();
+
+        $this->renewalCollectionGenerator->createPendingCollectionsForRenewal(
+            $affiliation->refresh(),
+            $effectiveDate,
+            $acceptedBy,
         );
 
         $renovation->delete();

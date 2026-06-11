@@ -2,6 +2,9 @@
 
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Schemas;
 
+use App\Models\OperationServiceOrder;
+use App\Support\Operations\OperationServiceOrderValidity;
+use App\Support\Operations\OperationServiceOrderViewActions;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -10,6 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +45,12 @@ class OperationServiceOrderInfolist
                                     ->icon(Heroicon::OutlinedClipboardDocumentList)
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
+                                        TextEntry::make('validity_highlight')
+                                            ->hiddenLabel()
+                                            ->state(fn (OperationServiceOrder $record): string => self::renderValidityHighlight($record))
+                                            ->html()
+                                            ->visible(fn (OperationServiceOrder $record): bool => OperationServiceOrderValidity::shouldHighlightVigencia($record))
+                                            ->columnSpanFull(),
                                         Fieldset::make('Datos principales')
                                             ->schema([
                                                 TextEntry::make('order_number')
@@ -57,35 +67,45 @@ class OperationServiceOrderInfolist
                                                 TextEntry::make('status')
                                                     ->label('Estado')
                                                     ->badge()
+                                                    ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) $state))) {
+                                                        'FINALIZADO' => 'success',
+                                                        'CADUCADA' => 'danger',
+                                                        'CANCELADA', 'CANCELADO' => 'gray',
+                                                        default => 'warning',
+                                                    })
+                                                    ->placeholder('-'),
+                                                TextEntry::make('approved_at')
+                                                    ->label('Fecha de aprobación')
+                                                    ->dateTime('d/m/Y H:i')
                                                     ->placeholder('-'),
                                                 TextEntry::make('service_type')
                                                     ->label('Tipo de servicio')
                                                     ->badge()
                                                     ->placeholder('-'),
-                                                TextEntry::make('operation_coordination_service_id')
-                                                    ->label('ID coordinación')
-                                                    ->numeric()
-                                                    ->placeholder('-'),
                                                 TextEntry::make('telemedicinePriority.name')
                                                     ->label('Prioridad')
                                                     ->badge()
                                                     ->placeholder('-'),
-                                                TextEntry::make('operationInventoryUbication.name')
-                                                    ->label('Ubicación de despacho')
-                                                    ->placeholder('-'),
-                                                TextEntry::make('total_items')
-                                                    ->label('Total ítems')
-                                                    ->numeric()
-                                                    ->badge()
-                                                    ->placeholder('-'),
-                                                TextEntry::make('total_items_unit')
-                                                    ->label('Total unidades')
-                                                    ->numeric()
-                                                    ->badge()
-                                                    ->placeholder('-'),
                                             ])
                                             ->columns(4),
+                                        Fieldset::make('Proveedor')
+                                            ->schema([
+                                                TextEntry::make('supplier_summary')
+                                                    ->label('Proveedor')
+                                                    ->state(fn (OperationServiceOrder $record): ?string => self::resolveSupplierName($record))
+                                                    ->placeholder('-'),
+                                                TextEntry::make('supplier_address_summary')
+                                                    ->label('Dirección')
+                                                    ->state(fn (OperationServiceOrder $record): ?string => self::resolveSupplierAddress($record))
+                                                    ->placeholder('-')
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2),
                                     ])
+                                    ->footerActions([
+                                        OperationServiceOrderViewActions::makeCancelAction(),
+                                    ])
+                                    ->footerActionsAlignment(Alignment::End)
                                     ->columnSpanFull(),
                             ]),
                         Tab::make('Comercial')
@@ -279,6 +299,117 @@ class OperationServiceOrderInfolist
                             ]),
                     ]),
             ]);
+    }
+
+    private static function renderValidityHighlight(OperationServiceOrder $record): string
+    {
+        $tone = OperationServiceOrderValidity::vigenciaTone($record) ?? 'info';
+        $remaining = OperationServiceOrderValidity::remainingDays($record);
+        $approvedAt = OperationServiceOrderValidity::approvedAt($record);
+        $expiresAt = OperationServiceOrderValidity::expiresAt($record);
+        $summary = OperationServiceOrderValidity::vigenciaLabel($record);
+        $shortLabel = OperationServiceOrderValidity::vigenciaShortLabel($record) ?? $summary;
+
+        $styles = match ($tone) {
+            'danger' => [
+                'shell' => 'border-red-400/90 bg-gradient-to-r from-red-50 via-rose-50/90 to-red-50 shadow-[0_12px_32px_-12px_rgba(239,68,68,0.45)] dark:border-red-500/50 dark:from-red-950/40 dark:via-rose-950/30 dark:to-red-950/40',
+                'badge' => 'bg-red-500/15 text-red-700 dark:text-red-200',
+                'title' => 'text-red-800 dark:text-red-200',
+                'meta' => 'text-red-700/80 dark:text-red-300/80',
+                'figure' => 'bg-red-500 text-white shadow-[0_8px_20px_-6px_rgba(239,68,68,0.65)]',
+            ],
+            'warning' => [
+                'shell' => 'border-amber-400/90 bg-gradient-to-r from-amber-50 via-yellow-50/90 to-amber-50 shadow-[0_12px_32px_-12px_rgba(245,158,11,0.4)] dark:border-amber-500/50 dark:from-amber-950/40 dark:via-yellow-950/25 dark:to-amber-950/40',
+                'badge' => 'bg-amber-500/15 text-amber-800 dark:text-amber-200',
+                'title' => 'text-amber-900 dark:text-amber-100',
+                'meta' => 'text-amber-800/80 dark:text-amber-200/80',
+                'figure' => 'bg-amber-500 text-white shadow-[0_8px_20px_-6px_rgba(245,158,11,0.55)]',
+            ],
+            default => [
+                'shell' => 'border-sky-400/80 bg-gradient-to-r from-sky-50 via-cyan-50/80 to-sky-50 shadow-[0_12px_32px_-12px_rgba(14,165,233,0.35)] dark:border-sky-500/45 dark:from-sky-950/35 dark:via-cyan-950/25 dark:to-sky-950/35',
+                'badge' => 'bg-sky-500/15 text-sky-800 dark:text-sky-200',
+                'title' => 'text-sky-900 dark:text-sky-100',
+                'meta' => 'text-sky-800/80 dark:text-sky-200/80',
+                'figure' => 'bg-sky-500 text-white shadow-[0_8px_20px_-6px_rgba(14,165,233,0.5)]',
+            ],
+        };
+
+        $figureLabel = match (true) {
+            $tone === 'danger' => '!',
+            $remaining !== null && $remaining > 0 => (string) $remaining,
+            default => '0',
+        };
+
+        $figureCaption = match (true) {
+            $tone === 'danger' => 'Vencida',
+            $remaining === 0 => 'Hoy',
+            $remaining === 1 => 'día',
+            default => 'días',
+        };
+
+        $datesLine = ($approvedAt !== null && $expiresAt !== null)
+            ? sprintf(
+                'Aprobada el %s · fecha límite %s · vigencia de %d días',
+                $approvedAt->format('d/m/Y'),
+                $expiresAt->format('d/m/Y'),
+                OperationServiceOrderValidity::VALIDITY_DAYS
+            )
+            : sprintf('Vigencia de %d días desde la fecha de aprobación', OperationServiceOrderValidity::VALIDITY_DAYS);
+
+        return '<div class="rounded-2xl border-2 p-4 '.$styles['shell'].'">'
+            .'<div class="flex flex-wrap items-center gap-4">'
+            .'<div class="flex h-[4.5rem] w-[4.5rem] shrink-0 flex-col items-center justify-center rounded-2xl '.$styles['figure'].'">'
+            .'<span class="text-2xl font-black leading-none">'.e($figureLabel).'</span>'
+            .'<span class="mt-0.5 text-[10px] font-bold uppercase tracking-wide opacity-90">'.e($figureCaption).'</span>'
+            .'</div>'
+            .'<div class="min-w-0 flex-1">'
+            .'<span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider '.$styles['badge'].'">'
+            .'Vigencia de la orden'
+            .'</span>'
+            .'<p class="mt-2 text-lg font-bold '.$styles['title'].'">'.e($shortLabel).'</p>'
+            .'<p class="mt-1 text-sm font-medium '.$styles['meta'].'">'.e($summary).'</p>'
+            .'<p class="mt-2 text-xs '.$styles['meta'].'">'.e($datesLine).'</p>'
+            .'</div>'
+            .'</div>'
+            .'</div>';
+    }
+
+    private static function resolveSupplierName(OperationServiceOrder $record): ?string
+    {
+        $record->loadMissing(['supplier', 'doctorNurse']);
+
+        if (filled($record->supplier?->name)) {
+            return (string) $record->supplier->name;
+        }
+
+        if (filled($record->doctorNurse?->name)) {
+            return (string) $record->doctorNurse->name;
+        }
+
+        if (filled($record->supplier_external)) {
+            return (string) $record->supplier_external;
+        }
+
+        return null;
+    }
+
+    private static function resolveSupplierAddress(OperationServiceOrder $record): ?string
+    {
+        $record->loadMissing(['supplier', 'doctorNurse', 'approvedOperationQuote']);
+
+        if (filled($record->approvedOperationQuote?->supplier_address)) {
+            return trim((string) $record->approvedOperationQuote->supplier_address);
+        }
+
+        if (filled($record->supplier?->ubicacion_principal)) {
+            return trim((string) $record->supplier->ubicacion_principal);
+        }
+
+        if (filled($record->doctorNurse?->ubicacion_principal)) {
+            return trim((string) $record->doctorNurse->ubicacion_principal);
+        }
+
+        return null;
     }
 
     private static function renderDocumentNameCell(mixed $state, mixed $record): string

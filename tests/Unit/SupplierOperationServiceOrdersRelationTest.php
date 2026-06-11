@@ -16,17 +16,17 @@ it('define la relacion hasMany operationServiceOrders con supplier_id', function
         ->and($relation->getRelated())->toBeInstanceOf(OperationServiceOrder::class);
 });
 
-it('finalizedOperationServiceOrders solo incluye estatus FINALIZADO', function (): void {
+it('finalizedOperationServiceOrders incluye ordenes finalizadas canceladas y caducadas', function (): void {
     $relation = (new Supplier)->finalizedOperationServiceOrders();
 
     expect($relation)->toBeInstanceOf(HasMany::class)
         ->and($relation->getForeignKeyName())->toBe('supplier_id');
 
     $statusWhere = collect($relation->getQuery()->getQuery()->wheres)->first(
-        fn (array $where): bool => ($where['type'] ?? '') === 'Basic'
+        fn (array $where): bool => ($where['type'] ?? '') === 'In'
             && (($where['column'] ?? '') === 'status' || ($where['column'] ?? '') === 'operation_service_orders.status')
-            && ($where['value'] ?? null) === 'FINALIZADO'
     );
 
-    expect($statusWhere)->not->toBeNull();
+    expect($statusWhere)->not->toBeNull()
+        ->and($statusWhere['values'] ?? [])->toContain('FINALIZADO', 'CANCELADA', 'CANCELADO', 'CADUCADA');
 });
