@@ -7222,11 +7222,110 @@
   }
 
   .tdg-hierarchy-flowchart__node--highlighted {
-    border-color: rgb(99 102 241 / 0.75);
+    position: relative;
+    z-index: 2;
+    border-width: 2px;
+    border-color: rgb(79 70 229);
+    background: linear-gradient(165deg, rgb(238 242 255) 0%, rgb(255 255 255) 55%);
     box-shadow:
-      0 0 0 1px rgb(99 102 241 / 0.35),
-      0 0 0 4px rgb(99 102 241 / 0.12),
-      0 18px 40px -16px rgb(79 70 229 / 0.45);
+      0 0 0 1px rgb(79 70 229 / 0.45),
+      0 0 0 5px rgb(99 102 241 / 0.22),
+      0 0 0 9px rgb(99 102 241 / 0.1),
+      0 22px 44px -14px rgb(79 70 229 / 0.55);
+  }
+
+  .dark .tdg-hierarchy-flowchart__node--highlighted {
+    border-color: rgb(129 140 248);
+    background: linear-gradient(165deg, rgb(49 46 129 / 0.55) 0%, rgb(15 23 42) 60%);
+    box-shadow:
+      0 0 0 1px rgb(129 140 248 / 0.55),
+      0 0 0 5px rgb(99 102 241 / 0.28),
+      0 0 0 9px rgb(99 102 241 / 0.12),
+      0 22px 44px -14px rgb(0 0 0 / 0.65);
+  }
+
+  .tdg-hierarchy-flowchart__node--highlighted .tdg-hierarchy-flowchart__node-glow {
+    opacity: 1;
+    inset: -0.35rem;
+    background: radial-gradient(circle at 50% 0%, rgb(99 102 241 / 0.35), transparent 68%);
+  }
+
+  .tdg-hierarchy-flowchart__node--highlighted-person {
+    transform: scale(1.045);
+    transform-origin: center top;
+  }
+
+  .tdg-hierarchy-flowchart__node--highlighted-person .tdg-hierarchy-flowchart__node-icon {
+    background: rgb(79 70 229);
+    box-shadow: 0 0 0 3px rgb(99 102 241 / 0.35);
+  }
+
+  .dark .tdg-hierarchy-flowchart__node--highlighted-person .tdg-hierarchy-flowchart__node-icon {
+    background: rgb(129 140 248);
+    box-shadow: 0 0 0 3px rgb(99 102 241 / 0.4);
+  }
+
+  .tdg-hierarchy-flowchart__node--highlighted-person .tdg-hierarchy-flowchart__node-name {
+    color: rgb(67 56 202);
+    font-weight: 800;
+  }
+
+  .dark .tdg-hierarchy-flowchart__node--highlighted-person .tdg-hierarchy-flowchart__node-name {
+    color: rgb(199 210 254);
+  }
+
+  .tdg-hierarchy-flowchart__node-highlight-ring {
+    position: absolute;
+    inset: -0.4rem;
+    z-index: -1;
+    border-radius: inherit;
+    border: 2px solid rgb(99 102 241 / 0.55);
+    animation: tdg-hierarchy-highlight-pulse 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .dark .tdg-hierarchy-flowchart__node-highlight-ring {
+    border-color: rgb(129 140 248 / 0.65);
+  }
+
+  @keyframes tdg-hierarchy-highlight-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.03);
+    }
+  }
+
+  .tdg-hierarchy-flowchart__node-highlight-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    margin-top: 0.35rem;
+    border-radius: 9999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgb(255 255 255);
+    background: linear-gradient(135deg, rgb(79 70 229), rgb(99 102 241));
+    box-shadow:
+      0 0 0 1px rgb(79 70 229 / 0.35),
+      0 6px 16px -8px rgb(79 70 229 / 0.75);
+  }
+
+  .dark .tdg-hierarchy-flowchart__node-highlight-badge {
+    color: rgb(15 23 42);
+    background: linear-gradient(135deg, rgb(165 180 252), rgb(129 140 248));
+    box-shadow:
+      0 0 0 1px rgb(129 140 248 / 0.45),
+      0 6px 16px -8px rgb(0 0 0 / 0.55);
   }
 
   .tdg-hierarchy-flowchart__node-header {
@@ -7300,6 +7399,20 @@
 
   .tdg-hierarchy-flowchart__node--slate .tdg-hierarchy-flowchart__node-avatar {
     color: rgb(71 85 105);
+  }
+
+  .tdg-hierarchy-flowchart__node--highlighted-person .tdg-hierarchy-flowchart__node-icon .tdg-hierarchy-flowchart__node-avatar {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    color: rgb(255 255 255);
+    line-height: 1;
+  }
+
+  .dark .tdg-hierarchy-flowchart__node--highlighted-person .tdg-hierarchy-flowchart__node-icon .tdg-hierarchy-flowchart__node-avatar {
+    color: rgb(15 23 42);
   }
 
   .tdg-hierarchy-flowchart__node-header-text {
@@ -7460,8 +7573,97 @@
 
   .tdg-hierarchy-flowchart--interactive {
     --tdg-hierarchy-card-width: clamp(9.25rem, 12cqi, 11rem);
+    --tdg-hierarchy-agent-focus-blur: 2.5px;
+    --tdg-hierarchy-agent-focus-dim: 0.42;
     gap: 0.25rem;
     width: 100%;
+  }
+
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node:not(.tdg-hierarchy-flowchart__node--focus-path):not(.tdg-hierarchy-flowchart__node--highlighted-person),
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__connector:not(.tdg-hierarchy-flowchart__connector--focus-path),
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable:not(.tdg-hierarchy-flowchart__expandable--focus-path) .tdg-hierarchy-flowchart__connector,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable:not(.tdg-hierarchy-flowchart__expandable--focus-path) .tdg-hierarchy-flowchart__expand-trigger,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable:not(.tdg-hierarchy-flowchart__expandable--focus-path) .tdg-hierarchy-flowchart__expand-active-indicator,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__tier:not(.tdg-hierarchy-flowchart__tier--focus-path) .tdg-hierarchy-flowchart__tier-label,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__branch-section-label,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-slider__controls {
+    filter: blur(var(--tdg-hierarchy-agent-focus-blur));
+    opacity: var(--tdg-hierarchy-agent-focus-dim);
+    transition:
+      filter 0.35s ease,
+      opacity 0.35s ease,
+      transform 0.35s ease;
+  }
+
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node:not(.tdg-hierarchy-flowchart__node--focus-path):not(.tdg-hierarchy-flowchart__node--highlighted-person) {
+    transform: scale(0.985);
+    transform-origin: center top;
+  }
+
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node--focus-path,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node--highlighted-person,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__connector--focus-path,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__general-stack--focus-path .tdg-hierarchy-flowchart__connector,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__general-stack--focus-path .tdg-hierarchy-flowchart__expand-trigger,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__general-stack--focus-path .tdg-hierarchy-flowchart__expand-active-indicator,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__agent-branch--focus-path .tdg-hierarchy-flowchart__connector,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__agent-branch--focus-path .tdg-hierarchy-flowchart__expand-trigger,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__agent-branch--focus-path .tdg-hierarchy-flowchart__expand-active-indicator,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable--focus-path .tdg-hierarchy-flowchart__connector,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable--focus-path .tdg-hierarchy-flowchart__expand-trigger,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable--focus-path .tdg-hierarchy-flowchart__expand-active-indicator,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__general-agents-panel--focus-path .tdg-hierarchy-flowchart__branch-section-label,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__subagents-panel--focus-path .tdg-hierarchy-flowchart__branch-section-label,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__tier--focus-path .tdg-hierarchy-flowchart__tier-label {
+    filter: none;
+    opacity: 1;
+  }
+
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node--focus-path,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__agent-branch--focus-path,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__general-stack--focus-path {
+    position: relative;
+    z-index: 3;
+  }
+
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node--focus-path:not(.tdg-hierarchy-flowchart__node--highlighted-person) {
+    transform: scale(1.02);
+    transform-origin: center top;
+    box-shadow:
+      0 0 0 1px rgb(15 23 42 / 0.06),
+      0 0 0 3px rgb(99 102 241 / 0.12),
+      0 14px 30px -16px rgb(15 23 42 / 0.28);
+  }
+
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node--highlighted-person,
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__agent-branch:has(.tdg-hierarchy-flowchart__node--highlighted-person) {
+    position: relative;
+    z-index: 4;
+    filter: none;
+    opacity: 1;
+  }
+
+  .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node--highlighted-person {
+    transform: scale(1.06);
+    transform-origin: center top;
+  }
+
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node:not(.tdg-hierarchy-flowchart__node--focus-path):not(.tdg-hierarchy-flowchart__node--highlighted-person),
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__connector:not(.tdg-hierarchy-flowchart__connector--focus-path),
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable:not(.tdg-hierarchy-flowchart__expandable--focus-path) .tdg-hierarchy-flowchart__connector,
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable:not(.tdg-hierarchy-flowchart__expandable--focus-path) .tdg-hierarchy-flowchart__expand-trigger,
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__expandable:not(.tdg-hierarchy-flowchart__expandable--focus-path) .tdg-hierarchy-flowchart__expand-active-indicator,
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__tier:not(.tdg-hierarchy-flowchart__tier--focus-path) .tdg-hierarchy-flowchart__tier-label,
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__branch-section-label,
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-slider__controls {
+    --tdg-hierarchy-agent-focus-dim: 0.34;
+  }
+
+  .dark .tdg-hierarchy-flowchart--agent-focus .tdg-hierarchy-flowchart__node--focus-path:not(.tdg-hierarchy-flowchart__node--highlighted-person) {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.08),
+      0 0 0 3px rgb(99 102 241 / 0.18),
+      0 14px 30px -16px rgb(0 0 0 / 0.55);
   }
 
   .tdg-hierarchy-flowchart--interactive .tdg-hierarchy-flowchart__node {
@@ -7492,6 +7694,10 @@
     height: 1.45rem;
     width: 1.45rem;
     border-radius: 0.4rem;
+  }
+
+  .tdg-hierarchy-flowchart--interactive .tdg-hierarchy-flowchart__node--highlighted-person .tdg-hierarchy-flowchart__node-icon .tdg-hierarchy-flowchart__node-avatar {
+    font-size: 0.56rem;
   }
 
   .tdg-hierarchy-flowchart--interactive .tdg-hierarchy-flowchart__node-icon-svg svg {
@@ -7908,6 +8114,15 @@
     flex: 0 0 var(--tdg-hierarchy-card-width, 11rem);
   }
 
+  .tdg-hierarchy-flowchart__branch-section--horizontal .tdg-hierarchy-slider,
+  .tdg-hierarchy-flowchart__general-agents-panel .tdg-hierarchy-slider,
+  .tdg-hierarchy-flowchart__subagents-panel .tdg-hierarchy-slider,
+  .tdg-hierarchy-flowchart__tier--general .tdg-hierarchy-slider {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .tdg-hierarchy-flowchart__branch-section--horizontal .tdg-hierarchy-slider {
     width: 100%;
   }
@@ -8118,7 +8333,8 @@
 
   .tdg-hierarchy-slider {
     width: 100%;
-    max-width: none;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .tdg-hierarchy-slider__controls {

@@ -24,7 +24,7 @@ class CommercialHierarchyFlowchart
     {
         $tree = self::buildInteractiveHierarchyTree($agency);
 
-        return self::renderDiagramShell($tree);
+        return self::renderDiagramShell($tree, self::resolveInitialExpandState($tree));
     }
 
     public static function renderForAgent(Agent $agent): HtmlString
@@ -49,7 +49,11 @@ class CommercialHierarchyFlowchart
         $highlightAgentId = $highlightAgentId > 0 ? $highlightAgentId : null;
         $tree = self::buildInteractiveHierarchyTree($linkedAgency, $highlightAgentId);
 
-        return self::renderDiagramShell($tree);
+        return self::renderDiagramShell(
+            $tree,
+            self::resolveInitialExpandState($tree, $highlightAgentId),
+            $highlightAgentId,
+        );
     }
 
     /**
@@ -59,8 +63,9 @@ class CommercialHierarchyFlowchart
      *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
      *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
      * }  $tree
+     * @param  array{masterAgentsOpen?: bool, activeGeneralBranch?: string|null, activeSubagentBranch?: string|null}  $initialExpandState
      */
-    private static function renderDiagramShell(array $tree): HtmlString
+    private static function renderDiagramShell(array $tree, array $initialExpandState = [], ?int $highlightAgentId = null): HtmlString
     {
         $diagram = '<div class="tdg-hierarchy-flowchart-shell">'
             .'<div class="tdg-hierarchy-flowchart-shell__header">'
@@ -77,7 +82,7 @@ class CommercialHierarchyFlowchart
             .'</div>'
             .'</div>'
             .'<div class="tdg-hierarchy-flowchart-shell__canvas">'
-            .self::renderInteractiveHierarchyTree($tree)
+            .self::renderInteractiveHierarchyTree($tree, $initialExpandState, $highlightAgentId)
             .'</div>'
             .'</div>';
 
@@ -212,8 +217,346 @@ class CommercialHierarchyFlowchart
      *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
      *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
      * }  $tree
+     * @return array{masterAgentsOpen: bool, activeGeneralBranch: string|null, activeSubagentBranch: string|null}
      */
-    private static function renderInteractiveHierarchyTree(array $tree): string
+    private static function resolveInitialExpandState(array $tree, ?int $highlightAgentId = null): array
+    {
+        $defaultState = [
+            'masterAgentsOpen' => false,
+            'activeGeneralBranch' => null,
+            'activeSubagentBranch' => null,
+        ];
+
+        if ($highlightAgentId !== null && $highlightAgentId > 0) {
+            $agentState = self::resolveInitialExpandStateForHighlightedAgent($tree, $highlightAgentId);
+
+            if ($agentState !== null) {
+                return $agentState;
+            }
+
+            return $defaultState;
+        }
+
+        foreach ($tree['generals'] ?? [] as $generalBranch) {
+            if (($generalBranch['agency']['is_highlighted'] ?? false) !== true) {
+                continue;
+            }
+
+            $agencyCode = trim((string) ($generalBranch['agency']['subtitle'] ?? ''));
+
+            if ($agencyCode === '') {
+                break;
+            }
+
+            $defaultState['activeGeneralBranch'] = self::alpineToggleKey('general-'.$agencyCode);
+
+            break;
+        }
+
+        return $defaultState;
+    }
+
+    /**
+     * @param  array{
+     *     headquarters?: array<string, mixed>|null,
+     *     master?: array<string, mixed>|null,
+     *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
+     *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
+     * }  $tree
+     * @return array{masterAgentsOpen: bool, activeGeneralBranch: string|null, activeSubagentBranch: string|null}|null
+     */
+    private static function resolveInitialExpandStateForHighlightedAgent(array $tree, int $highlightAgentId): ?array
+    {
+        foreach ($tree['master_direct_agents'] ?? [] as $branch) {
+            $branchState = self::resolveInitialExpandStateForAgentBranch(
+                branch: $branch,
+                collectionKey: 'master-direct',
+                highlightAgentId: $highlightAgentId,
+                activeGeneralBranch: null,
+                masterAgentsOpen: true,
+            );
+
+            if ($branchState !== null) {
+                return $branchState;
+            }
+        }
+
+        foreach ($tree['generals'] ?? [] as $generalBranch) {
+            $agencyCode = trim((string) ($generalBranch['agency']['subtitle'] ?? ''));
+
+            if ($agencyCode === '') {
+                continue;
+            }
+
+            $generalBranchKey = self::alpineToggleKey('general-'.$agencyCode);
+
+            foreach ($generalBranch['agents'] ?? [] as $branch) {
+                $branchState = self::resolveInitialExpandStateForAgentBranch(
+                    branch: $branch,
+                    collectionKey: $generalBranchKey,
+                    highlightAgentId: $highlightAgentId,
+                    activeGeneralBranch: $generalBranchKey,
+                    masterAgentsOpen: false,
+                );
+
+                if ($branchState !== null) {
+                    return $branchState;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}  $branch
+     * @return array{masterAgentsOpen: bool, activeGeneralBranch: string|null, activeSubagentBranch: string|null}|null
+     */
+    private static function resolveInitialExpandStateForAgentBranch(
+        array $branch,
+        string $collectionKey,
+        int $highlightAgentId,
+        ?string $activeGeneralBranch,
+        bool $masterAgentsOpen,
+    ): ?array {
+        $parentAgentKey = trim((string) ($branch['agent']['subtitle'] ?? ''));
+
+        if ($parentAgentKey === '') {
+            $parentAgentKey = md5((string) ($branch['agent']['name'] ?? ''));
+        }
+
+        if (self::hierarchyAgentNodeMatchesId($branch['agent'] ?? [], $highlightAgentId)) {
+            return [
+                'masterAgentsOpen' => $masterAgentsOpen,
+                'activeGeneralBranch' => $activeGeneralBranch,
+                'activeSubagentBranch' => null,
+            ];
+        }
+
+        foreach ($branch['subagents'] ?? [] as $subagent) {
+            if (! self::hierarchyAgentNodeMatchesId($subagent, $highlightAgentId)) {
+                continue;
+            }
+
+            return [
+                'masterAgentsOpen' => $masterAgentsOpen,
+                'activeGeneralBranch' => $activeGeneralBranch,
+                'activeSubagentBranch' => self::alpineToggleKey('subagent-'.$collectionKey.'-'.$parentAgentKey),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     */
+    private static function hierarchyAgentNodeMatchesId(array $node, int $agentId): bool
+    {
+        if ($agentId <= 0) {
+            return false;
+        }
+
+        $subtitle = trim((string) ($node['subtitle'] ?? ''));
+
+        if ($subtitle === '') {
+            return false;
+        }
+
+        if (preg_match('/AGT-000(\d+)/', $subtitle, $matches) !== 1) {
+            return false;
+        }
+
+        return (int) $matches[1] === $agentId;
+    }
+
+    /**
+     * @param  array{
+     *     headquarters?: array<string, mixed>|null,
+     *     master?: array<string, mixed>|null,
+     *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
+     *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
+     * }  $tree
+     * @return array{
+     *     highlight_headquarters: bool,
+     *     highlight_master: bool,
+     *     general_agency_code: string|null,
+     *     parent_agent_id: int|null,
+     *     is_master_direct: bool
+     * }|null
+     */
+    private static function resolveAgentFocusPath(array $tree, int $highlightAgentId): ?array
+    {
+        foreach ($tree['master_direct_agents'] ?? [] as $branch) {
+            if (self::hierarchyAgentNodeMatchesId($branch['agent'] ?? [], $highlightAgentId)) {
+                return [
+                    'highlight_headquarters' => ($tree['headquarters'] ?? null) !== null,
+                    'highlight_master' => ($tree['master'] ?? null) !== null,
+                    'general_agency_code' => null,
+                    'parent_agent_id' => null,
+                    'is_master_direct' => true,
+                ];
+            }
+
+            foreach ($branch['subagents'] ?? [] as $subagent) {
+                if (! self::hierarchyAgentNodeMatchesId($subagent, $highlightAgentId)) {
+                    continue;
+                }
+
+                return [
+                    'highlight_headquarters' => ($tree['headquarters'] ?? null) !== null,
+                    'highlight_master' => ($tree['master'] ?? null) !== null,
+                    'general_agency_code' => null,
+                    'parent_agent_id' => self::agentIdFromNodePayload($branch['agent'] ?? []),
+                    'is_master_direct' => true,
+                ];
+            }
+        }
+
+        foreach ($tree['generals'] ?? [] as $generalBranch) {
+            $agencyCode = trim((string) ($generalBranch['agency']['subtitle'] ?? ''));
+
+            foreach ($generalBranch['agents'] ?? [] as $branch) {
+                if (self::hierarchyAgentNodeMatchesId($branch['agent'] ?? [], $highlightAgentId)) {
+                    return [
+                        'highlight_headquarters' => ($tree['headquarters'] ?? null) !== null,
+                        'highlight_master' => ($tree['master'] ?? null) !== null,
+                        'general_agency_code' => $agencyCode !== '' ? $agencyCode : null,
+                        'parent_agent_id' => null,
+                        'is_master_direct' => false,
+                    ];
+                }
+
+                foreach ($branch['subagents'] ?? [] as $subagent) {
+                    if (! self::hierarchyAgentNodeMatchesId($subagent, $highlightAgentId)) {
+                        continue;
+                    }
+
+                    return [
+                        'highlight_headquarters' => ($tree['headquarters'] ?? null) !== null,
+                        'highlight_master' => ($tree['master'] ?? null) !== null,
+                        'general_agency_code' => $agencyCode !== '' ? $agencyCode : null,
+                        'parent_agent_id' => self::agentIdFromNodePayload($branch['agent'] ?? []),
+                        'is_master_direct' => false,
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{
+     *     highlight_headquarters: bool,
+     *     highlight_master: bool,
+     *     general_agency_code: string|null,
+     *     parent_agent_id: int|null,
+     *     is_master_direct: bool
+     * }  $focusPath
+     * @param  array{
+     *     headquarters?: array<string, mixed>|null,
+     *     master?: array<string, mixed>|null,
+     *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
+     *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
+     * }  $tree
+     */
+    private static function applyAgentFocusPathToTree(array &$tree, array $focusPath, int $highlightAgentId): void
+    {
+        $tree['focus_path_meta'] = $focusPath;
+
+        if ($focusPath['highlight_headquarters'] && ($tree['headquarters'] ?? null) !== null) {
+            $tree['headquarters']['is_focus_path'] = true;
+        }
+
+        if ($focusPath['highlight_master'] && ($tree['master'] ?? null) !== null) {
+            $tree['master']['is_focus_path'] = true;
+        }
+
+        $normalizedGeneralCode = strtoupper(trim((string) ($focusPath['general_agency_code'] ?? '')));
+
+        if ($normalizedGeneralCode !== '') {
+            foreach ($tree['generals'] as &$generalBranch) {
+                $branchCode = strtoupper(trim((string) ($generalBranch['agency']['subtitle'] ?? '')));
+
+                if ($branchCode !== $normalizedGeneralCode) {
+                    continue;
+                }
+
+                $generalBranch['is_focus_path'] = true;
+                $generalBranch['agency']['is_focus_path'] = true;
+
+                foreach ($generalBranch['agents'] as &$agentBranch) {
+                    self::markAgentBranchFocusPath($agentBranch, $focusPath['parent_agent_id'], $highlightAgentId);
+                }
+
+                unset($agentBranch);
+
+                break;
+            }
+
+            unset($generalBranch);
+
+            return;
+        }
+
+        if (! ($focusPath['is_master_direct'] ?? false)) {
+            return;
+        }
+
+        foreach ($tree['master_direct_agents'] as &$agentBranch) {
+            self::markAgentBranchFocusPath($agentBranch, $focusPath['parent_agent_id'], $highlightAgentId);
+        }
+
+        unset($agentBranch);
+    }
+
+    /**
+     * @param  array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}  $branch
+     */
+    private static function markAgentBranchFocusPath(array &$branch, ?int $parentAgentId, int $highlightAgentId): void
+    {
+        $branchAgentId = self::agentIdFromNodePayload($branch['agent'] ?? []);
+
+        if ($parentAgentId !== null && $branchAgentId === $parentAgentId) {
+            $branch['is_focus_path'] = true;
+            $branch['agent']['is_focus_path'] = true;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     */
+    private static function agentIdFromNodePayload(array $node): ?int
+    {
+        $subtitle = trim((string) ($node['subtitle'] ?? ''));
+
+        if ($subtitle === '' || preg_match('/AGT-000(\d+)/', $subtitle, $matches) !== 1) {
+            return null;
+        }
+
+        return (int) $matches[1];
+    }
+
+    private static function alpineInitialBranchValue(?string $branchKey): string
+    {
+        if ($branchKey === null || $branchKey === '') {
+            return 'null';
+        }
+
+        return "'".addslashes($branchKey)."'";
+    }
+
+    /**
+     * @param  array{
+     *     headquarters?: array<string, mixed>|null,
+     *     master?: array<string, mixed>|null,
+     *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
+     *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
+     * }  $tree
+     * @param  array{masterAgentsOpen?: bool, activeGeneralBranch?: string|null, activeSubagentBranch?: string|null}  $initialExpandState
+     */
+    private static function renderInteractiveHierarchyTree(array $tree, array $initialExpandState = [], ?int $highlightAgentId = null): string
     {
         $hasContent = ($tree['headquarters'] ?? null) !== null
             || ($tree['master'] ?? null) !== null
@@ -226,18 +569,45 @@ class CommercialHierarchyFlowchart
                 .'</div>';
         }
 
-        $html = '<div class="tdg-hierarchy-flowchart tdg-hierarchy-flowchart--interactive" x-data="{ masterAgentsOpen: false, activeGeneralBranch: null, activeSubagentBranch: null, toggleGeneralAgents(branchKey) { this.masterAgentsOpen = false; this.activeSubagentBranch = null; this.activeGeneralBranch = this.activeGeneralBranch === branchKey ? null : branchKey; }, toggleMasterAgents() { this.activeGeneralBranch = null; this.activeSubagentBranch = null; this.masterAgentsOpen = ! this.masterAgentsOpen; }, toggleSubagents(branchKey) { this.activeSubagentBranch = this.activeSubagentBranch === branchKey ? null : branchKey; } }">';
+        if ($highlightAgentId !== null && $highlightAgentId > 0) {
+            $focusPath = self::resolveAgentFocusPath($tree, $highlightAgentId);
+
+            if ($focusPath !== null) {
+                self::applyAgentFocusPathToTree($tree, $focusPath, $highlightAgentId);
+            }
+        }
+
+        $masterOnFocusPath = (bool) ($tree['master']['is_focus_path'] ?? false);
+        $headquartersOnFocusPath = (bool) ($tree['headquarters']['is_focus_path'] ?? false);
+        $masterAgentsOnFocusPath = (bool) ($tree['focus_path_meta']['is_master_direct'] ?? false);
+
+        $masterAgentsOpen = ($initialExpandState['masterAgentsOpen'] ?? false) ? 'true' : 'false';
+        $activeGeneralBranch = self::alpineInitialBranchValue($initialExpandState['activeGeneralBranch'] ?? null);
+        $activeSubagentBranch = self::alpineInitialBranchValue($initialExpandState['activeSubagentBranch'] ?? null);
+        $agentFocusClass = $highlightAgentId !== null && $highlightAgentId > 0
+            ? ' tdg-hierarchy-flowchart--agent-focus'
+            : '';
+
+        $html = '<div class="tdg-hierarchy-flowchart tdg-hierarchy-flowchart--interactive'.$agentFocusClass.'" x-data="{ masterAgentsOpen: '.$masterAgentsOpen.', activeGeneralBranch: '.$activeGeneralBranch.', activeSubagentBranch: '.$activeSubagentBranch.', toggleGeneralAgents(branchKey) { this.masterAgentsOpen = false; this.activeSubagentBranch = null; this.activeGeneralBranch = this.activeGeneralBranch === branchKey ? null : branchKey; }, toggleMasterAgents() { this.activeGeneralBranch = null; this.activeSubagentBranch = null; this.masterAgentsOpen = ! this.masterAgentsOpen; }, toggleSubagents(branchKey) { this.activeSubagentBranch = this.activeSubagentBranch === branchKey ? null : branchKey; } }">';
 
         if (($tree['headquarters'] ?? null) !== null) {
-            $html .= self::renderHierarchyTier('Matriz', self::renderHierarchyFlowNode($tree['headquarters']));
+            $html .= self::renderHierarchyTier(
+                'Matriz',
+                self::renderHierarchyFlowNode($tree['headquarters']),
+                tierFocusPath: $headquartersOnFocusPath,
+            );
         }
 
         if (($tree['master'] ?? null) !== null) {
             if (($tree['headquarters'] ?? null) !== null) {
-                $html .= self::renderHierarchyFlowConnector();
+                $html .= self::renderHierarchyFlowConnector(onFocusPath: $headquartersOnFocusPath && $masterOnFocusPath);
             }
 
-            $html .= self::renderHierarchyTier('Master', self::renderMasterHierarchyNode($tree));
+            $html .= self::renderHierarchyTier(
+                'Master',
+                self::renderMasterHierarchyNode($tree),
+                tierFocusPath: $masterOnFocusPath,
+            );
 
             $masterAgents = $tree['master_direct_agents'] ?? [];
 
@@ -247,6 +617,7 @@ class CommercialHierarchyFlowchart
                     agents: $masterAgents,
                     alpineToggle: 'masterAgentsOpen',
                     branchKey: 'master-direct',
+                    isFocusPath: $masterAgentsOnFocusPath,
                 );
             }
         }
@@ -293,7 +664,10 @@ class CommercialHierarchyFlowchart
             $panelOriginLabel = $agencyCode.' · '.$agencyName;
         }
 
-        $html = '<div class="tdg-hierarchy-flowchart__general-stack" :class="{ \'is-active\': '.$openExpression.' }" data-general-branch="'.$branchKey.'">'
+        $isFocusPath = (bool) ($generalBranch['is_focus_path'] ?? false);
+        $stackFocusClass = $isFocusPath ? ' tdg-hierarchy-flowchart__general-stack--focus-path' : '';
+
+        $html = '<div class="tdg-hierarchy-flowchart__general-stack'.$stackFocusClass.'" :class="{ \'is-active\': '.$openExpression.' }" data-general-branch="'.$branchKey.'">'
             .'<div class="tdg-hierarchy-flowchart__branch">'
             .self::renderHierarchyFlowNode($agencyNode)
             .'</div>';
@@ -309,6 +683,7 @@ class CommercialHierarchyFlowchart
                 nested: true,
                 teleportTo: '#hierarchy-general-agents-dock',
                 panelSourceKey: $branchKey,
+                isFocusPath: $isFocusPath,
             );
         }
 
@@ -336,6 +711,7 @@ class CommercialHierarchyFlowchart
         array $agents,
         string $alpineToggle,
         string $branchKey,
+        bool $isFocusPath = false,
     ): string {
         return self::renderExpandableConnector(
             label: $label,
@@ -345,6 +721,7 @@ class CommercialHierarchyFlowchart
             panelContent: self::renderAgentTreeCollection($agents, $branchKey),
             tone: 'emerald',
             horizontalAgentsLayout: true,
+            isFocusPath: $isFocusPath,
         );
     }
 
@@ -359,8 +736,10 @@ class CommercialHierarchyFlowchart
         ?string $teleportTo = null,
         bool $horizontalAgentsLayout = false,
         ?string $panelSourceKey = null,
+        bool $isFocusPath = false,
     ): string {
         $nestedClass = $nested ? ' tdg-hierarchy-flowchart__expandable--nested' : '';
+        $focusPathClass = $isFocusPath ? ' tdg-hierarchy-flowchart__expandable--focus-path' : '';
         $teleportClass = match ($teleportTo) {
             '#hierarchy-general-agents-dock' => ' tdg-hierarchy-flowchart__expandable--general-agents',
             '#hierarchy-subagents-dock' => ' tdg-hierarchy-flowchart__expandable--subagents-panel',
@@ -377,7 +756,11 @@ class CommercialHierarchyFlowchart
             default => '',
         };
 
-        $triggerHtml = self::renderHierarchyFlowConnector()
+        if ($isFocusPath && $panelWrapperClass !== '') {
+            $panelWrapperClass .= ' tdg-hierarchy-flowchart__'.str_replace('tdg-hierarchy-flowchart__', '', $panelWrapperClass).'--focus-path';
+        }
+
+        $triggerHtml = self::renderHierarchyFlowConnector(onFocusPath: $isFocusPath)
             .'<button type="button" class="tdg-hierarchy-flowchart__expand-trigger'.$toneClass.'" @click="'.$toggleClick.'" :aria-expanded="'.$openExpression.'">'
             .'<span class="tdg-hierarchy-flowchart__expand-trigger-line" aria-hidden="true"></span>'
             .'<span class="tdg-hierarchy-flowchart__expand-trigger-dot" aria-hidden="true"></span>'
@@ -395,7 +778,7 @@ class CommercialHierarchyFlowchart
                 : '';
 
             $panelHtml = '<template x-teleport="'.$teleportTo.'">'
-                .'<div class="'.$panelWrapperClass.'"'.$sourceKeyAttr.' x-show="'.$openExpression.'" x-collapse>'
+                .'<div class="'.$panelWrapperClass.'"'.$sourceKeyAttr.' x-show="'.$openExpression.'" x-collapse'.self::hierarchySliderPanelRefreshInit().'>'
                 .'<div class="tdg-hierarchy-flowchart__branch-section tdg-hierarchy-flowchart__branch-section--horizontal">'
                 .'<span class="tdg-hierarchy-flowchart__branch-section-label">'.e($sectionLabel).'</span>'
                 .$panelContent
@@ -403,15 +786,15 @@ class CommercialHierarchyFlowchart
                 .'</div>'
                 .'</template>';
 
-            return '<div class="tdg-hierarchy-flowchart__expandable'.$nestedClass.$teleportClass.$horizontalLayoutClass.'" :class="{ \'is-open\': '.$openExpression.' }">'
+            return '<div class="tdg-hierarchy-flowchart__expandable'.$nestedClass.$teleportClass.$horizontalLayoutClass.$focusPathClass.'" :class="{ \'is-open\': '.$openExpression.' }">'
                 .$triggerHtml
                 .$panelHtml
                 .'</div>';
         }
 
-        return '<div class="tdg-hierarchy-flowchart__expandable'.$nestedClass.$teleportClass.$horizontalLayoutClass.'" :class="{ \'is-open\': '.$openExpression.' }">'
+        return '<div class="tdg-hierarchy-flowchart__expandable'.$nestedClass.$teleportClass.$horizontalLayoutClass.$focusPathClass.'" :class="{ \'is-open\': '.$openExpression.' }">'
             .$triggerHtml
-            .'<div class="tdg-hierarchy-flowchart__expand-panel" x-show="'.$openExpression.'" x-collapse>'
+            .'<div class="tdg-hierarchy-flowchart__expand-panel" x-show="'.$openExpression.'" x-collapse'.self::hierarchySliderPanelRefreshInit().'>'
             .'<div class="tdg-hierarchy-flowchart__branch-section'.$branchSectionClass.'">'
             .'<span class="tdg-hierarchy-flowchart__branch-section-label">'.e($sectionLabel).'</span>'
             .$panelContent
@@ -430,8 +813,10 @@ class CommercialHierarchyFlowchart
         $agentId = (string) ($agentNode['subtitle'] ?? md5((string) ($agentNode['name'] ?? '')));
         $toggleKey = self::alpineToggleKey('subagent-'.$parentKey.'-'.$agentId);
         $openExpression = "activeSubagentBranch === '{$toggleKey}'";
+        $isFocusPath = (bool) ($branch['is_focus_path'] ?? false);
+        $branchFocusClass = $isFocusPath ? ' tdg-hierarchy-flowchart__agent-branch--focus-path' : '';
 
-        $html = '<div class="tdg-hierarchy-flowchart__agent-branch" :class="{ \'is-active\': '.$openExpression.' }">'
+        $html = '<div class="tdg-hierarchy-flowchart__agent-branch'.$branchFocusClass.'" :class="{ \'is-active\': '.$openExpression.' }">'
             .self::renderHierarchyFlowNode($agentNode);
 
         if ($subagents !== []) {
@@ -450,6 +835,7 @@ class CommercialHierarchyFlowchart
                 nested: true,
                 teleportTo: '#hierarchy-subagents-dock',
                 panelSourceKey: $toggleKey,
+                isFocusPath: $isFocusPath && $subagents !== [],
             );
         }
 
@@ -480,6 +866,65 @@ class CommercialHierarchyFlowchart
         return 'k_'.substr(md5($seed), 0, 12);
     }
 
+    private static function hierarchySliderAlpineData(int $slideCount): string
+    {
+        return '{'
+            .'slideCount: '.$slideCount.', '
+            .'canScrollPrev: false, '
+            .'canScrollNext: false, '
+            .'counterLabel: \'1 / '.$slideCount.'\', '
+            .'initSlider(el) { '
+            .'if (! el) { return; } '
+            .'this.refreshSlider(el); '
+            .'if (this._sliderObserver) { this._sliderObserver.disconnect(); } '
+            .'this._sliderObserver = new ResizeObserver(() => this.refreshSlider(el)); '
+            .'this._sliderObserver.observe(el); '
+            .'}, '
+            .'getCurrentSlideIndex(el) { '
+            .'const slides = el.querySelectorAll(\'.tdg-hierarchy-slider__slide\'); '
+            .'if (! slides.length) { return 0; } '
+            .'let closest = 0; '
+            .'let minDistance = Number.POSITIVE_INFINITY; '
+            .'slides.forEach((slide, index) => { '
+            .'const distance = Math.abs(slide.offsetLeft - el.scrollLeft); '
+            .'if (distance < minDistance) { minDistance = distance; closest = index; } '
+            .'}); '
+            .'return closest; '
+            .'}, '
+            .'refreshSlider(el) { '
+            .'if (! el) { return; } '
+            .'const slides = el.querySelectorAll(\'.tdg-hierarchy-slider__slide\'); '
+            .'const total = slides.length || this.slideCount; '
+            .'const index = this.getCurrentSlideIndex(el); '
+            .'this.canScrollPrev = index > 0; '
+            .'this.canScrollNext = index < total - 1; '
+            .'this.counterLabel = (index + 1) + \' / \' + total; '
+            .'}, '
+            .'scrollToSlide(el, index) { '
+            .'const slides = el.querySelectorAll(\'.tdg-hierarchy-slider__slide\'); '
+            .'const slide = slides[index]; '
+            .'if (! slide || ! el) { return; } '
+            .'const max = Math.max(0, el.scrollWidth - el.clientWidth); '
+            .'const left = Math.min(max, Math.max(0, slide.offsetLeft)); '
+            .'el.scrollTo({ left, behavior: \'smooth\' }); '
+            .'window.setTimeout(() => this.refreshSlider(el), 360); '
+            .'}, '
+            .'scrollPrev(el) { '
+            .'if (! this.canScrollPrev || ! el) { return; } '
+            .'this.scrollToSlide(el, this.getCurrentSlideIndex(el) - 1); '
+            .'}, '
+            .'scrollNext(el) { '
+            .'if (! this.canScrollNext || ! el) { return; } '
+            .'this.scrollToSlide(el, this.getCurrentSlideIndex(el) + 1); '
+            .'} '
+            .'}';
+    }
+
+    private static function hierarchySliderPanelRefreshInit(): string
+    {
+        return ' x-init="$nextTick(() => { const refreshPanelSliders = () => { $el.querySelectorAll(\'[data-hierarchy-slider]\').forEach((slider) => { const viewport = slider.querySelector(\'.tdg-hierarchy-slider__viewport\'); const api = Alpine.$data(slider); if (api?.initSlider && viewport) { api.initSlider(viewport); } }); }; refreshPanelSliders(); window.setTimeout(refreshPanelSliders, 120); window.setTimeout(refreshPanelSliders, 360); })"';
+    }
+
     /**
      * @param  list<string>  $nodeHtmlBlocks
      */
@@ -498,23 +943,18 @@ class CommercialHierarchyFlowchart
         }
 
         $sliderId = 'hierarchy-slider-'.(++self::$sliderSequence).'-'.substr(md5($collectionKey), 0, 8);
-        $sliderAlpine = '{ canScrollPrev: false, canScrollNext: true, counterLabel: \'1 / '.$count.'\', '
-            .'updateScrollState(el) { if (! el) return; const max = el.scrollWidth - el.clientWidth; this.canScrollPrev = el.scrollLeft > 4; this.canScrollNext = el.scrollLeft < max - 4; '
-            .'const idx = Math.round(el.scrollLeft / Math.max(el.clientWidth * 0.82, 1)) + 1; this.counterLabel = idx + \' / '.$count.'\'; }, '
-            .'scrollPrev(el) { if (! el) return; el.scrollBy({ left: -(el.clientWidth * 0.82), behavior: \'smooth\' }); }, '
-            .'scrollNext(el) { if (! el) return; el.scrollBy({ left: el.clientWidth * 0.82, behavior: \'smooth\' }); } }';
 
-        $html = '<div class="tdg-hierarchy-slider" x-data="'.$sliderAlpine.'" x-init="updateScrollState($refs.viewport)" id="'.$sliderId.'">'
+        $html = '<div class="tdg-hierarchy-slider" data-hierarchy-slider x-data="'.self::hierarchySliderAlpineData($count).'" x-init="initSlider($refs.viewport)" id="'.$sliderId.'">'
             .'<div class="tdg-hierarchy-slider__controls">'
             .'<button type="button" class="tdg-hierarchy-slider__btn" @click="scrollPrev($refs.viewport)" :disabled="!canScrollPrev" aria-label="Anterior">'
             .self::hierarchyIconSvg('chevron-left')
             .'</button>'
-            .'<span class="tdg-hierarchy-slider__counter" x-text="counterLabel"></span>'
+            .'<span class="tdg-hierarchy-slider__counter" x-text="counterLabel" aria-live="polite"></span>'
             .'<button type="button" class="tdg-hierarchy-slider__btn" @click="scrollNext($refs.viewport)" :disabled="!canScrollNext" aria-label="Siguiente">'
             .self::hierarchyIconSvg('chevron-right')
             .'</button>'
             .'</div>'
-            .'<div class="tdg-hierarchy-slider__viewport" x-ref="viewport" @scroll="updateScrollState($refs.viewport)">'
+            .'<div class="tdg-hierarchy-slider__viewport" x-ref="viewport" @scroll="refreshSlider($refs.viewport)">'
             .'<div class="tdg-hierarchy-slider__track">';
 
         foreach ($nodeHtmlBlocks as $block) {
@@ -611,16 +1051,17 @@ class CommercialHierarchyFlowchart
         return $count;
     }
 
-    private static function renderHierarchyTier(string $label, string $content, ?string $tierKey = null): string
+    private static function renderHierarchyTier(string $label, string $content, ?string $tierKey = null, bool $tierFocusPath = false): string
     {
         $tierClass = $tierKey !== null
             ? ' tdg-hierarchy-flowchart__tier--'.$tierKey
             : '';
+        $tierFocusClass = $tierFocusPath ? ' tdg-hierarchy-flowchart__tier--focus-path' : '';
         $agentsDock = $tierKey === 'general'
             ? '<div class="tdg-hierarchy-flowchart__general-agents-dock" id="hierarchy-general-agents-dock"></div>'
             : '';
 
-        return '<div class="tdg-hierarchy-flowchart__tier'.$tierClass.'">'
+        return '<div class="tdg-hierarchy-flowchart__tier'.$tierClass.$tierFocusClass.'">'
             .'<div class="tdg-hierarchy-flowchart__tier-label">'
             .'<span class="tdg-hierarchy-flowchart__tier-label-text">'.e($label).'</span>'
             .'</div>'
@@ -628,11 +1069,12 @@ class CommercialHierarchyFlowchart
             .'</div>';
     }
 
-    private static function renderHierarchyFlowConnector(int $childCount = 1): string
+    private static function renderHierarchyFlowConnector(int $childCount = 1, bool $onFocusPath = false): string
     {
         $branchClass = $childCount > 1 ? ' tdg-hierarchy-flowchart__connector--branch' : '';
+        $focusPathClass = $onFocusPath ? ' tdg-hierarchy-flowchart__connector--focus-path' : '';
 
-        return '<div class="tdg-hierarchy-flowchart__connector'.$branchClass.'" aria-hidden="true">'
+        return '<div class="tdg-hierarchy-flowchart__connector'.$branchClass.$focusPathClass.'" aria-hidden="true">'
             .'<span class="tdg-hierarchy-flowchart__connector-line"></span>'
             .'<span class="tdg-hierarchy-flowchart__connector-dot"></span>'
             .'</div>';
@@ -769,8 +1211,16 @@ class CommercialHierarchyFlowchart
 
         $kindClass = $kind === 'agent' ? ' tdg-hierarchy-flowchart__node--person' : ' tdg-hierarchy-flowchart__node--agency';
         $isHighlighted = (bool) ($node['is_highlighted'] ?? false);
+        $isFocusPath = (bool) ($node['is_focus_path'] ?? false);
         $highlightClass = $isHighlighted ? ' tdg-hierarchy-flowchart__node--highlighted' : '';
+        $focusPathClass = $isFocusPath ? ' tdg-hierarchy-flowchart__node--focus-path' : '';
+        $highlightPersonClass = $isHighlighted && $kind === 'agent'
+            ? ' tdg-hierarchy-flowchart__node--highlighted-person'
+            : '';
         $statusBadge = self::renderStatusBadge((string) ($node['status'] ?? 'Sin estado'));
+        $highlightBadge = $isHighlighted && $kind === 'agent'
+            ? '<span class="tdg-hierarchy-flowchart__node-highlight-badge">Este agente</span>'
+            : '';
         $iconMarkup = $kind === 'agent'
             ? '<span class="tdg-hierarchy-flowchart__node-avatar">'.e(self::nodeInitials($name)).'</span>'
             : self::hierarchyNodeIconMarkup($title, $tone);
@@ -780,8 +1230,9 @@ class CommercialHierarchyFlowchart
             ? '<p class="tdg-hierarchy-flowchart__node-meta">'.e((string) $structure).'</p>'
             : '';
 
-        return '<article class="tdg-hierarchy-flowchart__node '.$tonePalette.$kindClass.$highlightClass.'">'
+        return '<article class="tdg-hierarchy-flowchart__node '.$tonePalette.$kindClass.$highlightClass.$focusPathClass.$highlightPersonClass.'">'
             .'<div class="tdg-hierarchy-flowchart__node-glow" aria-hidden="true"></div>'
+            .($isHighlighted ? '<div class="tdg-hierarchy-flowchart__node-highlight-ring" aria-hidden="true"></div>' : '')
             .'<header class="tdg-hierarchy-flowchart__node-header">'
             .'<div class="tdg-hierarchy-flowchart__node-icon">'.$iconMarkup.'</div>'
             .'<div class="tdg-hierarchy-flowchart__node-header-text">'
@@ -791,6 +1242,7 @@ class CommercialHierarchyFlowchart
             .$statusBadge
             .'</header>'
             .'<h4 class="tdg-hierarchy-flowchart__node-name">'.e($name).'</h4>'
+            .$highlightBadge
             .$structureMarkup
             .'</article>';
     }

@@ -280,7 +280,7 @@ class AgentInfolist
                             ->icon('heroicon-o-squares-2x2')
                             ->schema([
                                 Section::make('Jerarquía comercial')
-                                    ->description('Master → General → Agente → Subagente. Despliega equipos directos de master o desliza cuando hay más de cinco nodos.')
+                                    ->description('Master → General → Agente → Subagente. Despliega equipos de master, generales o subagentes en fila horizontal; desliza cuando hay más de cinco nodos.')
                                     ->icon('heroicon-o-squares-2x2')
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
