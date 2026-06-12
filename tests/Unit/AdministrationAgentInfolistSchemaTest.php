@@ -29,7 +29,14 @@ it('incluye diagrama de jerarquia comercial en administracion via infolist compa
         ->toContain("Tab::make('Jerarquía')")
         ->toContain('CommercialHierarchyFlowchart::renderForAgent');
 
-    expect($flowchartSource)->toContain('renderForAgent')->toContain('highlightAgentId')->toContain('tdg-hierarchy-flowchart-shell');
+    expect($flowchartSource)
+        ->toContain('renderForAgent')
+        ->toContain('highlightAgentId')
+        ->toContain('tdg-hierarchy-flowchart--agent-focus')
+        ->toContain('resolveInitialExpandState')
+        ->toContain('tdg-hierarchy-flowchart-shell')
+        ->toContain('hierarchy-subagents-dock')
+        ->toContain('activeSubagentBranch');
 });
 
 it('hereda estilos de tabs de telemedicina via infolist compartido de agentes', function (): void {

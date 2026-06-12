@@ -293,7 +293,7 @@ class AgencyInfolist
                             ->icon('heroicon-o-squares-2x2')
                             ->schema([
                                 Section::make('Jerarquía comercial')
-                                    ->description('Diagrama visual para validar si la agencia es general, master y su relación con TUDRENCASA.')
+                                    ->description('Master → General → Agente → Subagente. Despliega equipos de master, generales o subagentes en fila horizontal; desliza cuando hay más de cinco nodos.')
                                     ->icon('heroicon-o-squares-2x2')
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
