@@ -43,14 +43,15 @@ it('incluye una pestaña de jerarquía comercial con diagrama visual', function 
     expect($agentSource)
         ->toContain("Tab::make('Jerarquía')")
         ->toContain("Section::make('Jerarquía comercial')")
-        ->toContain('Diagrama visual para validar si la agencia es general, master y su relación con TUDRENCASA.')
+        ->toContain('Master → General → Agente → Subagente')
         ->toContain("TextEntry::make('hierarchy_diagram')")
         ->toContain('CommercialHierarchyFlowchart::renderForAgent');
 
     expect($flowchartSource)
         ->toContain('tdg-hierarchy-flowchart-shell')
         ->toContain('renderForAgent')
-        ->toContain('tdg-hierarchy-flowchart')
+        ->toContain('buildInteractiveHierarchyTree')
+        ->toContain('tdg-hierarchy-flowchart--interactive')
         ->toContain('highlightAgentId')
         ->not->toContain('renderStructureCardsByAgency');
 });
