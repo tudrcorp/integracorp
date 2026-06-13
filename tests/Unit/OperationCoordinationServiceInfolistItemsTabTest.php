@@ -44,7 +44,16 @@ it('aplica colores de estatus definidos para los ítems asociados', function ():
         ->toContain("'FINALIZADO' => 'border-emerald-500/40")
         ->toContain("'PENDIENTE' => 'border-rose-500/40")
         ->toContain("'EN GESTION' => 'border-orange-500/45")
+        ->toContain("'CANCELADO', 'CANCELADA', 'CADUCADA'")
         ->toContain('rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide');
+});
+
+it('refleja estatus efectivo de orden en ítems asociados del infolist', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php');
+
+    expect($contents)
+        ->toContain('CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem')
+        ->toContain('CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey');
 });
 
 it('muestra cobertura cubierto o no cubierto en los ítems asociados', function (): void {

@@ -10,6 +10,7 @@ use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
+use App\Support\Filament\Operations\SupplierIntegracorpManagementTab;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -61,7 +62,8 @@ class SupplierInfolist
             'EN GESTION', 'EN GESTIÓN' => 'primary',
             'FINALIZADO' => 'success',
             'PENDIENTE' => 'warning',
-            'CANCELADO' => 'gray',
+            'CANCELADA', 'CANCELADO' => 'danger',
+            'CADUCADA' => 'danger',
             default => 'gray',
         };
     }
@@ -640,6 +642,7 @@ class SupplierInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
+                        SupplierIntegracorpManagementTab::make(),
                         Tab::make('Bitácora')
                             ->icon('heroicon-o-clipboard-document-list')
                             ->schema([
@@ -675,7 +678,7 @@ class SupplierInfolist
                             ->icon('heroicon-o-clipboard-document-check')
                             ->schema([
                                 Section::make('Órdenes de servicio atendidas')
-                                    ->description('Solo órdenes en estatus FINALIZADO vinculadas a este proveedor en coordinación.')
+                                    ->description('Órdenes finalizadas, canceladas o caducadas vinculadas a este proveedor en coordinación.')
                                     ->icon(Heroicon::OutlinedClipboardDocumentCheck)
                                     ->extraAttributes([
                                         'class' => self::IOS_ORDERS_SECTION_CLASS,
@@ -687,8 +690,8 @@ class SupplierInfolist
                                             ])
                                             ->schema([
                                                 RepeatableEntry::make('finalizedOperationServiceOrders')
-                                                    ->label('Órdenes finalizadas')
-                                                    ->placeholder('Este proveedor no tiene órdenes de servicio finalizadas.')
+                                                    ->label('Órdenes cerradas')
+                                                    ->placeholder('Este proveedor no tiene órdenes de servicio finalizadas, canceladas o caducadas.')
                                                     ->extraAttributes([
                                                         'class' => self::IOS_ORDERS_TABLE_WRAP_CLASS,
                                                     ])

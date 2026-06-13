@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\TelemedicineDoctors\Schemas;
 
 use App\Http\Controllers\UtilsController;
+use App\Models\Supplier;
 use App\Models\TelemedicineDoctor;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -179,6 +180,21 @@ class TelemedicineDoctorForm
                                                         'unique' => 'El código MPPS ya existe.',
                                                         'regex' => 'Solo se permiten números (0-9).',
                                                     ]),
+                                                Select::make('supplier_id')
+                                                    ->label('Proveedor')
+                                                    ->relationship('supplier', 'name')
+                                                    ->default(fn (): ?int => Auth::user()?->supplier_id)
+                                                    ->disabled()
+                                                    ->dehydrated(true)
+                                                    ->required()
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->native(false)
+                                                    ->prefixIcon('heroicon-s-building-storefront')
+                                                    ->helperText('Proveedor vinculado al médico según su cuenta de acceso.')
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido.',
+                                                    ]),
                                                 Select::make('status')
                                                     ->label('Estado')
                                                     ->required()
@@ -189,17 +205,31 @@ class TelemedicineDoctorForm
                                                     ->default('ACTIVO')
                                                     ->native(false)
                                                     ->prefixIcon('heroicon-s-check-badge'),
-                                                Select::make('managed_by')
+                                                TextInput::make('managed_by')
                                                     ->label('Pertenece a')
                                                     ->required()
-                                                    ->options([
-                                                        'ATENMEDI' => 'ATENMEDI',
-                                                        'TDG' => 'TDG',
-                                                    ])
-                                                    ->default('TDG')
-                                                    ->native(false)
+                                                    ->maxLength(255)
+                                                    ->placeholder('Ej: ALIAS DEL PROVEEDOR')
                                                     ->prefixIcon('heroicon-s-building-office-2')
-                                                    ->helperText('Define a qué unidad pertenece el médico para segmentación operativa.'),
+                                                    ->helperText('Nombre o alias del proveedor (se guardará en mayúsculas).')
+                                                    ->default(function (): ?string {
+                                                        $supplierId = Auth::user()?->supplier_id;
+
+                                                        if ($supplierId === null) {
+                                                            return null;
+                                                        }
+
+                                                        $name = Supplier::query()->whereKey($supplierId)->value('name');
+
+                                                        return filled($name) ? mb_strtoupper((string) $name) : null;
+                                                    })
+                                                    ->live(onBlur: true)
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('managed_by', $state.toUpperCase());
+                                                    JS)
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido.',
+                                                    ]),
                                             ])
                                             ->columns(3),
                                     ])

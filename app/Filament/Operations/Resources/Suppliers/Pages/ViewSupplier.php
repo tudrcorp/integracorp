@@ -5,6 +5,8 @@ namespace App\Filament\Operations\Resources\Suppliers\Pages;
 use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Models\Supplier;
+use App\Support\Filament\Operations\OperationsSuperAdmin;
+use App\Support\Filament\Operations\SupplierIntegracorpManagement;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -26,6 +28,59 @@ class ViewSupplier extends ViewRecord
     protected static string $resource = SupplierResource::class;
 
     protected static ?string $title = 'Ficha Técnica del Proveedor';
+
+    public bool $gestionIntegracorp = false;
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        /** @var Supplier $supplier */
+        $supplier = $this->getRecord();
+        $this->gestionIntegracorp = (bool) $supplier->gestion_integracorp;
+    }
+
+    public function updatedGestionIntegracorp(bool $value): void
+    {
+        if (! OperationsSuperAdmin::check()) {
+            /** @var Supplier $supplier */
+            $supplier = $this->getRecord();
+            $this->gestionIntegracorp = (bool) $supplier->gestion_integracorp;
+
+            Notification::make()
+                ->title('Acción no permitida')
+                ->body('Solo un analista con rol SUPERADMIN puede modificar la gestión Integracorp del proveedor.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        /** @var Supplier $supplier */
+        $supplier = $this->getRecord();
+        $previous = (bool) $supplier->gestion_integracorp;
+        $supplier->gestion_integracorp = $value;
+        $supplier->save();
+
+        if (! $value) {
+            SupplierIntegracorpManagement::deactivateIntegracorpUsers($supplier);
+        }
+
+        SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_GESTION_INTEGRACORP_UPDATED', 'operations.suppliers.gestion-integracorp.update', [
+            'supplier_id' => $supplier->id,
+            'supplier_name' => $supplier->name,
+            'previous' => $previous,
+            'current' => $value,
+        ]);
+
+        Notification::make()
+            ->title($value ? 'Gestión Integracorp habilitada' : 'Gestión Integracorp deshabilitada')
+            ->body($value
+                ? 'El proveedor quedó habilitado para telemedicina, gestión de servicios médicos y órdenes de servicio.'
+                : 'El proveedor ya no tiene habilitada la gestión de procesos en Integracorp.')
+            ->success()
+            ->send();
+    }
 
     public function getFooter(): ?ViewContract
     {

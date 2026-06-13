@@ -6,11 +6,15 @@ use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
+use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Operations\CaseFollowUpChatManager;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -53,6 +57,8 @@ class TelemedicineCasesTable
                 if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
                     $query->where('managed_by', 'ATENMEDI');
                 }
+
+                OperationsSupplierScope::applyToQuery($query);
 
                 return $query;
             })
@@ -137,6 +143,37 @@ class TelemedicineCasesTable
             ->recordClasses(fn ($record): array => [TelemedicinePriorityFilamentBadge::recordRowClasses($record->priority?->name)])
             ->filters([
                 //
+            ])
+            ->recordActions([
+                Action::make('openCaseFollowUpChat')
+                    ->label('Chat')
+                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                    ->color('info')
+                    ->tooltip('Abrir chat de seguimiento para este caso')
+                    ->visible(fn (TelemedicineCase $record): bool => $record->status === CaseFollowUpChatManager::FOLLOW_UP_STATUS
+                        && CaseFollowUpChatManager::canAccessCase(Auth::user(), $record))
+                    ->action(function (TelemedicineCase $record, $livewire): void {
+                        $livewire->dispatch('operations-case-chat-open', caseId: $record->id);
+                    }),
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->label('Ver detalle')
+                        ->icon(Heroicon::OutlinedEye)
+                        ->color('primary'),
+                    Action::make('openCaseFollowUpChatFromMenu')
+                        ->label('Chat de seguimiento')
+                        ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                        ->color('info')
+                        ->visible(fn (TelemedicineCase $record): bool => $record->status === CaseFollowUpChatManager::FOLLOW_UP_STATUS
+                            && CaseFollowUpChatManager::canAccessCase(Auth::user(), $record))
+                        ->action(function (TelemedicineCase $record, $livewire): void {
+                            $livewire->dispatch('operations-case-chat-open', caseId: $record->id);
+                        }),
+                ])
+                    ->icon(Heroicon::OutlinedEllipsisHorizontalCircle)
+                    ->tooltip('Más acciones')
+                    ->button()
+                    ->label('Más'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -225,6 +262,7 @@ class TelemedicineCasesTable
                                         'created_by' => $userName,
                                         'updated_by' => $userName,
                                         'managed_by' => 'TDG',
+                                        'supplier_id' => $record->supplier_id,
                                     ]);
 
                                     TelemedicineCaseTdgReassignmentCoordination::seedAmdManagementItemFromCaseReassignment(

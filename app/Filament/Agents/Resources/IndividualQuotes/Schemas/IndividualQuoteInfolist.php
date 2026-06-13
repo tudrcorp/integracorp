@@ -32,11 +32,10 @@ class IndividualQuoteInfolist
                                     ->label('Código de agencia')
                                     ->badge()
                                     ->color('primary'),
-                                TextEntry::make('registrated_by')
+                                TextEntry::make('created_by')
                                     ->label('Registrado por:')
                                     ->badge()
-                                    ->color('primary')
-                                    ->default(fn(IndividualQuote $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
+                                    ->color('primary'),
                                 TextEntry::make('created_at')
                                     ->label('Fecha de solicitud')
                                     ->badge()
@@ -55,10 +54,6 @@ class IndividualQuoteInfolist
                                     ->label('Estatus')
                                     ->badge()
                                     ->color('success'),
-                                TextEntry::make('created_by')
-                                    ->label('Registrado por:')
-                                    ->badge()
-                                    ->color('primary'),
                             ])->columnSpanFull()->columns(5),
 
                     ])->columnSpanFull(),

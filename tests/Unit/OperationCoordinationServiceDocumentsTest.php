@@ -14,6 +14,15 @@ it('ViewOperationCoordinationService incluye acción de carga de documentos', fu
         ->toContain('document_types');
 });
 
+it('ViewOperationCoordinationService muestra contadores de estatus clínicos en el encabezado', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ViewOperationCoordinationService.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain('CoordinationServiceItemsManager::clinicalItemsWithEffectiveDisplayStatus')
+        ->toContain('CoordinationServiceItemsManager::renderClinicalItemsStatusCounterPills');
+});
+
 it('OperationCoordinationServiceInfolist muestra document_types desde la fila del repeatable', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php';
     $contents = file_get_contents($path);

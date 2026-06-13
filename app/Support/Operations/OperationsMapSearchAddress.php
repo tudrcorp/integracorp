@@ -7,6 +7,7 @@ namespace App\Support\Operations;
 use App\Models\Affiliate;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
+use App\Models\TelemedicinePatient;
 
 final class OperationsMapSearchAddress
 {
@@ -44,6 +45,23 @@ final class OperationsMapSearchAddress
         $street = filled($record->address) ? trim((string) $record->address) : null;
 
         return self::compose($street, null);
+    }
+
+    public static function forTelemedicinePatient(TelemedicinePatient $record): ?string
+    {
+        if ($record->exists) {
+            $record->loadMissing(['country', 'state', 'city']);
+        }
+
+        $street = filled($record->address) ? trim((string) $record->address) : null;
+        $location = self::locationLine(
+            $record->country?->name,
+            $record->state?->definition,
+            $record->city?->definition,
+            filled($record->region) ? (string) $record->region : null,
+        );
+
+        return self::compose($street, $location);
     }
 
     public static function forAffiliationCorporate(AffiliationCorporate $corporate): ?string

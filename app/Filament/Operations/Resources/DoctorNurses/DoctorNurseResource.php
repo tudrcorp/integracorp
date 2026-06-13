@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\DoctorNurses;
 
+use App\Filament\Operations\Resources\Concerns\ConfiguresOperationsSupplierGlobalSearch;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\CreateDoctorNurse;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\EditDoctorNurse;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\ListDoctorNurses;
@@ -18,11 +19,12 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class DoctorNurseResource extends Resource
 {
+    use ConfiguresOperationsSupplierGlobalSearch;
+
     protected static ?string $model = DoctorNurse::class;
 
     protected static ?string $navigationLabel = 'Proveedores Naturales';
@@ -41,58 +43,16 @@ class DoctorNurseResource extends Resource
 
     protected static ?int $globalSearchSort = 20;
 
-    /**
-     * @return array<int, string>
-     */
-    public static function getGloballySearchableAttributes(): array
+    protected static function operationsSupplierGlobalSearchKind(): string
     {
-        return [
-            'name',
-            'razon_social',
-            'rif',
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public static function getGlobalSearchResultDetails(Model $record): array
-    {
-        if (! $record instanceof DoctorNurse) {
-            return [];
-        }
-
-        $details = [
-            'RIF' => filled($record->rif) ? (string) $record->rif : '—',
-        ];
-
-        if (filled($record->razon_social)) {
-            $details['Razón social'] = (string) $record->razon_social;
-        }
-
-        if (filled($record->correo_principal)) {
-            $details['Correo'] = (string) $record->correo_principal;
-        }
-
-        if (filled($record->personal_phone) || filled($record->local_phone)) {
-            $details['Teléfono'] = (string) ($record->personal_phone ?: $record->local_phone);
-        }
-
-        if (filled($record->status_sistema)) {
-            $details['Estatus en sistema'] = (string) $record->status_sistema;
-        }
-
-        if (filled($record->status_convenio)) {
-            $details['Convenio'] = (string) $record->status_convenio;
-        }
-
-        return $details;
+        return 'natural';
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with(['supplierClasificacion', 'state', 'city']);
+        return static::operationsSupplierGlobalSearchBaseQuery(
+            parent::getGlobalSearchEloquentQuery(),
+        );
     }
 
     public static function form(Schema $schema): Schema

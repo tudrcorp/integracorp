@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\AnnualCollection;
+use App\Support\Concerns\ReportsScheduledExecution;
+use App\Support\ScheduledTaskRunReport;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,7 +16,7 @@ use Throwable;
 
 class UpdateAnnualCollectionRemainingDays implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, ReportsScheduledExecution, SerializesModels;
 
     /**
      * Create a new job instance.
@@ -29,13 +31,13 @@ class UpdateAnnualCollectionRemainingDays implements ShouldQueue
      */
     public function handle(): void
     {
-        $startedAt = microtime(true);
-        $today = Carbon::today();
-        $processed = 0;
-        $updated = 0;
-        $unchanged = 0;
+        $this->runWithScheduledReport('Cobranza anual — días restantes', function (): void {
+            $startedAt = microtime(true);
+            $today = Carbon::today();
+            $processed = 0;
+            $updated = 0;
+            $unchanged = 0;
 
-        try {
             AnnualCollection::query()
                 ->with(['sale:id,payment_frequency'])
                 ->select([
@@ -77,6 +79,11 @@ class UpdateAnnualCollectionRemainingDays implements ShouldQueue
 
             $elapsedMs = (int) ((microtime(true) - $startedAt) * 1000);
 
+            ScheduledTaskRunReport::addMetric('Registros procesados', $processed);
+            ScheduledTaskRunReport::addMetric('Registros actualizados', $updated);
+            ScheduledTaskRunReport::addMetric('Registros sin cambios', $unchanged);
+            ScheduledTaskRunReport::addMetric('Duración (ms)', $elapsedMs);
+
             Log::info('UpdateAnnualCollectionRemainingDays: EJECUCION OK', [
                 'execution_date' => $today->toDateString(),
                 'processed_records' => $processed,
@@ -84,17 +91,7 @@ class UpdateAnnualCollectionRemainingDays implements ShouldQueue
                 'unchanged_records' => $unchanged,
                 'elapsed_ms' => $elapsedMs,
             ]);
-        } catch (Throwable $exception) {
-            Log::error('UpdateAnnualCollectionRemainingDays: EJECUCION FALLIDA', [
-                'execution_date' => $today->toDateString(),
-                'cause' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-                'processed_before_failure' => $processed,
-            ]);
-
-            throw $exception;
-        }
+        });
     }
 
     private function calculateRemainingDays(AnnualCollection $record, Carbon $today): int

@@ -41,6 +41,12 @@ it('agrupa secciones alineadas al formulario y usa rejilla de cinco columnas', f
     expect($source)->toContain("Section::make('Información general de la agencia')");
     expect($source)->toContain("Section::make('Contacto alternativo')");
     expect($source)->toContain('Grid::make(5)');
+    expect($source)->toContain("Text::make('Dirección de la Agencia en Venezuela')");
+    expect($source)->toContain("Text::make('Dirección de la Agencia en Otros Paises')");
+    expect($source)->toContain('IOS_ADDRESS_VENEZUELA_CARD');
+    expect($source)->toContain('IOS_ADDRESS_INTERNATIONAL_CARD');
+    expect($source)->toContain("TextEntry::make('address_other_country')");
+    expect($source)->toContain('hasInternationalAddress');
 });
 
 it('incluye una pestaña de jerarquía para resolver general, master y TUDRENCASA', function (): void {
@@ -53,25 +59,55 @@ it('incluye una pestaña de jerarquía para resolver general, master y TUDRENCAS
         ->toContain("Tab::make('Jerarquía')")
         ->toContain("Section::make('Jerarquía comercial')")
         ->toContain("TextEntry::make('hierarchy_diagram')")
-        ->toContain('CommercialHierarchyFlowchart::renderForAgency');
+        ->toContain('CommercialHierarchyFlowchart::renderForAgency')
+        ->toContain('Master → General → Agente → Subagente');
 
     expect($flowchartSource)
         ->toContain('tdg-hierarchy-flowchart-shell')
-        ->toContain('buildHierarchyFlowContext')
-        ->toContain('renderHierarchyFlowchart')
-        ->toContain('hierarchyAgentNodePayload')
-        ->toContain('appendAgentRowLevel')
-        ->toContain('buildAgencyColumnGroupLevel')
-        ->toContain('agentsForAgencyCode')
-        ->toContain('tdg-hierarchy-flowchart')
-        ->toContain('Equipo comercial · Agencia master')
-        ->toContain('Nivel 1 · Agencia master')
+        ->toContain('buildInteractiveHierarchyTree')
+        ->toContain('renderInteractiveHierarchyTree')
+        ->toContain('buildAgentTreeForAgencyCode')
+        ->toContain('tdg-hierarchy-flowchart__general-stack')
+        ->toContain('expandable--general-agents')
+        ->toContain('hierarchy-general-agents-dock')
+        ->toContain('x-teleport')
+        ->toContain('renderExpandActiveIndicator')
+        ->toContain('expand-active-indicator')
+        ->toContain('is-active')
+        ->toContain('horizontalAgentsLayout')
+        ->toContain('expandable--horizontal-agents')
+        ->toContain('renderExpandableAgentBranch')
+        ->toContain('activeGeneralBranch')
+        ->toContain('toggleGeneralAgents')
+        ->toContain('toggleMasterAgents')
+        ->toContain('teleportTo')
+        ->toContain('hierarchy-subagents-dock')
+        ->toContain('expandable--subagents-panel')
+        ->toContain('activeSubagentBranch')
+        ->toContain('toggleSubagents')
+        ->toContain('resolveInitialExpandState')
+        ->toContain('tdg-hierarchy-slider')
+        ->toContain('hierarchySliderAlpineData')
+        ->toContain('initSlider')
+        ->toContain('scrollToSlide')
+        ->toContain('refreshSlider')
+        ->toContain('data-hierarchy-slider')
+        ->toContain('masterAgentsOpen')
         ->toContain('TUDRENCASA')
         ->toContain('structureSummaryForAgency')
+        ->toContain('renderMasterHierarchyNode')
+        ->toContain('buildMasterStructureCounts')
+        ->toContain('node-meta--structure-summary')
+        ->toContain('node-structure-summary')
+        ->toContain('hierarchyAgentNodePayload')
+        ->toContain('mb_strtoupper')
+        ->toContain('Agencia general')
+        ->toContain('Sub-Agente(s)')
         ->toContain('generalAgenciesUnderMasterCode')
         ->toContain('resolveAgentOwnerCodesForAgencyCode')
         ->toContain('applyAgentOwnerCodeScopeForAgency')
         ->toContain('resolveAgencyByOwnerCode')
+        ->toContain('legend-item--subagent')
         ->not->toContain('renderStructureCardsByAgency');
 });
 

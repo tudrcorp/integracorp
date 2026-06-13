@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Support;
 use App\Models\Affiliate;
 use App\Models\AffiliateCorporate;
 use App\Models\Supplier;
+use App\Models\TelemedicinePatient;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Filament\Actions\Action;
 use Filament\Support\Enums\Width;
@@ -77,6 +78,28 @@ final class OperationsLocationMapAction
                 subjectRoleLabel: 'afiliado',
                 mapAriaLabel: 'Mapa de ubicación del afiliado corporativo',
                 introText: 'Busque la dirección del afiliado (marcador rojo). Haga clic en un establecimiento cercano o elija un destino para ver la ruta y el tiempo de recorrido.',
+            ),
+        );
+    }
+
+    public static function forTelemedicinePatient(): Action
+    {
+        return self::make(
+            name: 'searchTelemedicinePatientLocationOnMap',
+            modalHeading: 'Ubicación del paciente',
+            modalDescription: 'Busque establecimientos cercanos o una dirección y guárdela en la ficha del paciente.',
+            contextResolver: fn (TelemedicinePatient $record): array => self::buildContext(
+                recordId: $record->getKey(),
+                recordLabel: (string) ($record->full_name ?? 'Paciente'),
+                initialAddress: OperationsMapSearchAddress::forTelemedicinePatient($record),
+                livewireApplyMethod: 'applyTelemedicinePatientLocationFromMaps',
+                addressInputLabel: 'Dirección del paciente',
+                saveButtonLabel: 'Guardar en paciente',
+                routeFromLabel: 'Recorrido desde el paciente',
+                useSubjectAddressButtonLabel: 'Usar dirección del paciente',
+                subjectRoleLabel: 'paciente',
+                mapAriaLabel: 'Mapa de ubicación del paciente',
+                introText: 'Busque la dirección del paciente (marcador rojo). Haga clic en un establecimiento cercano o elija un destino para ver la ruta y el tiempo de recorrido.',
             ),
         );
     }

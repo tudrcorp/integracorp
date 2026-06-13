@@ -45,10 +45,9 @@ it('expone prefijo de observacion usado en reasignacion', function (): void {
 });
 
 it('habilita gestion amd en tabla de coordinacion', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
-    $contents = file_get_contents($path);
+    $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
 
-    expect($contents)
+    expect($manager)
         ->toContain('manageServiceActionIsDisabled')
         ->toContain('TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem');
 });

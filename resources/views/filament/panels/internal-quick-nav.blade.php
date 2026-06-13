@@ -24,6 +24,26 @@
                     $z = $index + 1;
                     $isAccessible = ($item['accessible'] ?? true) === true;
                 @endphp
+                @if ($item['kind'] === 'operations-chat')
+                    <button
+                        type="button"
+                        class="fi-business-panel-stepper-segment fi-business-panel-stepper-segment--tone-{{ $tone }} fi-business-panel-stepper-segment--operations-chat"
+                        style="z-index: {{ $z }};"
+                        title="{{ __('Abrir chat de casos en seguimiento') }}"
+                        aria-label="{{ __('Abrir chat de casos en seguimiento') }}"
+                        x-data="{ chatUnread: 0 }"
+                        x-on:operations-case-chat-unread-updated.window="chatUnread = Number($event.detail?.totalUnread ?? 0)"
+                        x-bind:class="{ 'has-chat-unread': chatUnread > 0 }"
+                        x-on:click="Livewire.dispatch('operations-case-chat-open')"
+                    >
+                        <span
+                            class="fi-business-panel-stepper-chat-unread-badge"
+                            x-show="chatUnread > 0"
+                            x-cloak
+                            x-text="chatUnread > 9 ? '9+' : chatUnread"
+                            aria-hidden="true"
+                        ></span>
+                @else
                 <a
                     @if ($isAccessible)
                         href="{{ $item['url'] }}"
@@ -45,11 +65,14 @@
                         title="{{ $item['label'] }}"
                     @endif
                 >
+                @endif
                     <span class="fi-business-panel-stepper-badge" aria-hidden="true">
                         @if ($item['kind'] === 'ticket')
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-[0.9rem]">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
+                        @elseif ($item['kind'] === 'operations-chat')
+                            <x-filament::icon icon="heroicon-o-chat-bubble-bottom-center-text" class="size-[0.9rem]" />
                         @else
                             @switch($item['panel_id'])
                                 @case('business')
@@ -89,7 +112,11 @@
                         <span class="fi-business-panel-stepper-title">{{ $item['label'] }}</span>
                         <span class="fi-business-panel-stepper-sub">{{ $item['subtitle'] }}</span>
                     </span>
+                @if ($item['kind'] === 'operations-chat')
+                    </button>
+                @else
                 </a>
+                @endif
             @endforeach
         </div>
     </nav>

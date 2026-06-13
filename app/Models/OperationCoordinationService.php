@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OperationCoordinationService extends Model
 {
@@ -60,6 +61,7 @@ class OperationCoordinationService extends Model
         'created_by',
         'updated_by',
         'managed_by',
+        'supplier_id',
         'uploaded_documents',
     ];
 
@@ -83,6 +85,14 @@ class OperationCoordinationService extends Model
     public function telemedicineDoctor()
     {
         return $this->belongsTo(TelemedicineDoctor::class);
+    }
+
+    /**
+     * @return BelongsTo<Supplier, $this>
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function telemedicineConsultationPatient()

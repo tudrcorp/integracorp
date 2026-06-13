@@ -9,16 +9,8 @@ it('OperationCoordinationServicesTable define acción gestionar cotización con 
     expect($contents)
         ->toContain("Action::make('manage_service_quote')")
         ->toContain('Gestionar Cotización')
-        ->toContain('Repeater::make(\'quote_statuses\')')
-        ->toContain('renderOperationQuotePreview')
-        ->toContain('prefillServiceOrderFormFromQuote')
-        ->toContain('saveManageServiceQuotes')
-        ->toContain('resolveApprovedQuoteIdForOrderCreation')
-        ->toContain('createServiceOrderFromApprovedQuote')
-        ->toContain('resolveQuotePdfPathForOrder')
-        ->toContain('associated_quote_pdf_path')
-        ->toContain('OperationQuoteGenerator::STATUS_PENDING')
-        ->toContain('operation_service_order_id');
+        ->toContain('ManageCoordinationServiceQuotes::getUrl')
+        ->toContain('CoordinationServiceQuoteManager::coordinationQuotes');
 });
 
 it('OperationQuoteGenerator define estatus por defecto pendiente por aprobar', function (): void {

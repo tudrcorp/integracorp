@@ -50,6 +50,15 @@ class RenovationInfolist
                                                     ->badge()
                                                     ->color('success')
                                                     ->copyable(),
+                                                TextEntry::make('affiliation.full_name_ti')
+                                                    ->label('Titular')
+                                                    ->icon('heroicon-m-user')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('affiliation.nro_identificacion_ti')
+                                                    ->label('Cédula de identidad')
+                                                    ->icon('heroicon-m-identification')
+                                                    ->copyable()
+                                                    ->placeholder('—'),
                                                 TextEntry::make('status')
                                                     ->label('Estatus')
                                                     ->badge()
@@ -122,6 +131,14 @@ class RenovationInfolist
                                                     ->formatStateUsing(fn ($state, Renovation $record): string => $record->coverage_id
                                                         ? 'US$ '.number_format((float) ($state ?? 0), 2)
                                                         : 'Plan inicial sin cobertura'),
+                                                TextEntry::make('birth_date')
+                                                    ->label('Fecha de nacimiento (titular)')
+                                                    ->date('d/m/Y')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('age')
+                                                    ->label('Edad a renovación')
+                                                    ->suffix(' años')
+                                                    ->placeholder('—'),
                                                 TextEntry::make('ageRange.range')
                                                     ->label('Rango de edad titular')
                                                     ->placeholder('—'),
@@ -189,10 +206,18 @@ class RenovationInfolist
                                         Grid::make(4)
                                             ->extraAttributes(['class' => self::IOS_INNER_CLASS])
                                             ->schema([
+                                                TextEntry::make('affiliation.agency.name_corporative')
+                                                    ->label('Agencia')
+                                                    ->icon('heroicon-m-building-office-2')
+                                                    ->placeholder('—'),
                                                 TextEntry::make('code_agency')
                                                     ->label('Código agencia')
                                                     ->badge()
                                                     ->color('gray'),
+                                                TextEntry::make('affiliation.agent.name')
+                                                    ->label('Agente')
+                                                    ->icon('heroicon-m-academic-cap')
+                                                    ->placeholder('—'),
                                                 TextEntry::make('agent_id')
                                                     ->label('Código agente')
                                                     ->badge()

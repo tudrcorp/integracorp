@@ -5,6 +5,8 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\CreateOperationCoordinationService;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\EditOperationCoordinationService;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ListOperationCoordinationServices;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceQuotes;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ViewOperationCoordinationService;
 use App\Filament\Operations\Resources\OperationCoordinationServices\RelationManagers\TelemedicinePatientLabsRelationManager;
 use App\Filament\Operations\Resources\OperationCoordinationServices\RelationManagers\TelemedicinePatientMedicationsRelationManager;
@@ -76,6 +78,8 @@ class OperationCoordinationServiceResource extends Resource
             'index' => ListOperationCoordinationServices::route('/'),
             'create' => CreateOperationCoordinationService::route('/create'),
             'view' => ViewOperationCoordinationService::route('/{record}'),
+            'manage-quotes' => ManageCoordinationServiceQuotes::route('/{record}/manage-quotes'),
+            'manage-items' => ManageCoordinationServiceItems::route('/{record}/manage-items'),
             'edit' => EditOperationCoordinationService::route('/{record}/edit'),
         ];
     }

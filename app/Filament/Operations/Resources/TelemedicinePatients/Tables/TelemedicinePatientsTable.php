@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Tables;
 
+use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\AssignedCase;
 use App\Models\AnotherAddress;
@@ -11,6 +12,7 @@ use App\Models\State;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -30,6 +32,7 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
@@ -58,6 +61,7 @@ class TelemedicinePatientsTable
                     'country',
                     'city',
                     'state',
+                    'supplier',
                     'createdBy',
                 ]);
 
@@ -65,29 +69,76 @@ class TelemedicinePatientsTable
                     $query->where('managed_by', 'ATENMEDI');
                 }
 
+                OperationsSupplierScope::applyToQuery($query);
+
                 return $query;
             })
             ->columns([
-                TextColumn::make('managed_by')
-                    ->label('Gestionado por')
-                    ->icon('heroicon-o-user')
-                    ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
+                // TextColumn::make('managed_by')
+                //     ->label('Gestionado por')
+                //     ->icon('heroicon-o-user')
+                //     ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
+                //     ->badge()
+                //     ->color(fn (?string $state): string => match (mb_strtoupper((string) $state)) {
+                //         'ATENMEDI' => 'success',
+                //         'TDG' => 'info',
+                //         default => 'gray',
+                //     })
+                //     ->searchable()
+                //     ->weight('medium')
+                //     ->description(fn (TelemedicinePatient $record): string => $record->managed_by ?? ''),
+                TextColumn::make('supplier_id')
+                    ->label('Proveedor')
+                    ->icon('heroicon-o-building-storefront')
+                    ->iconColor('gray')
                     ->badge()
-                    ->color(fn (?string $state): string => match (mb_strtoupper((string) $state)) {
-                        'ATENMEDI' => 'success',
-                        'TDG' => 'info',
-                        default => 'gray',
+                    ->color(fn (mixed $state): string => filled($state) ? 'primary' : 'gray')
+                    ->formatStateUsing(fn (mixed $state): string => filled($state) ? '#'.(int) $state : 'Sin proveedor')
+                    ->description(fn (TelemedicinePatient $record): ?string => self::supplierSummaryDescription($record))
+                    ->tooltip(fn (TelemedicinePatient $record): ?string => filled($record->supplier_id)
+                        ? 'Abrir ficha del proveedor #'.$record->supplier_id
+                        : 'Paciente sin proveedor asignado')
+                    ->weight(FontWeight::SemiBold)
+                    ->sortable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $innerQuery) use ($search): void {
+                            $innerQuery
+                                ->where('supplier_id', 'like', "%{$search}%")
+                                ->orWhereHas(
+                                    'supplier',
+                                    fn (Builder $supplierQuery): Builder => $supplierQuery->where('name', 'like', "%{$search}%"),
+                                );
+                        });
                     })
-                    ->searchable()
-                    ->weight('medium')
-                    ->description(fn (TelemedicinePatient $record): string => $record->managed_by ?? ''),
+                    ->copyable(fn (mixed $state): bool => filled($state))
+                    ->copyableState(fn (mixed $state): ?string => filled($state) ? (string) (int) $state : null)
+                    ->copyMessage('ID de proveedor copiado')
+                    ->url(fn (TelemedicinePatient $record): ?string => filled($record->supplier_id)
+                        ? SupplierResource::getUrl('view', ['record' => $record->supplier_id])
+                        : null)
+                    ->openUrlInNewTab()
+                    ->extraCellAttributes([
+                        'class' => 'fi-telemedicine-patient-supplier-cell align-top',
+                    ])
+                    ->extraAttributes([
+                        'class' => 'fi-telemedicine-patient-supplier-link',
+                    ])
+                    ->toggleable()
+                    ->visible(fn (): bool => OperationsSupplierScope::currentSupplierId() === null),
                 TextColumn::make('full_name')
                     ->label('Paciente')
                     ->icon('heroicon-o-user')
+                    ->iconColor('gray')
                     ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
                     ->searchable()
-                    ->weight('medium')
-                    ->description(fn (TelemedicinePatient $record): string => $record->nro_identificacion ?? ''),
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn (TelemedicinePatient $record): ?string => self::patientIdentificationDescription($record))
+                    ->extraCellAttributes([
+                        'class' => 'fi-telemedicine-patient-name-cell align-top min-w-[12rem]',
+                    ])
+                    ->tooltip(fn (TelemedicinePatient $record): ?string => filled($record->full_name)
+                        ? $record->full_name.($record->nro_identificacion ? ' · '.$record->nro_identificacion : '')
+                        : null),
                 TextColumn::make('nro_identificacion')
                     ->label('Identificación')
                     ->searchable()
@@ -284,10 +335,16 @@ class TelemedicinePatientsTable
                                         ->label('Doctor')
                                         ->required()
                                         ->helperText('Entre paréntesis se muestra el grupo (managed_by) de cada médico.')
-                                        ->options(function (): array {
+                                        ->options(function (?TelemedicinePatient $record): array {
                                             $departments = Auth::user()?->departament ?? [];
 
                                             $doctorQuery = TelemedicineDoctor::query()->orderBy('full_name');
+                                            OperationsSupplierScope::applyToQuery($doctorQuery);
+
+                                            if (OperationsSupplierScope::currentSupplierId() === null && filled($record?->supplier_id)) {
+                                                $doctorQuery->where('supplier_id', $record->supplier_id);
+                                            }
+
                                             if (in_array('ATENMEDI', $departments, true)) {
                                                 $doctorQuery->where('managed_by', 'ATENMEDI');
                                             }
@@ -453,6 +510,7 @@ class TelemedicinePatientsTable
                         ])
                         ->action(function (TelemedicinePatient $record, array $data) {
                             try {
+                                $doctor = TelemedicineDoctor::query()->findOrFail($data['doctor_id']);
 
                                 SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNMENT_STARTED', 'operations.telemedicine-patients.assign-doctor', [
                                     'telemedicine_patient_id' => $record->id,
@@ -482,12 +540,12 @@ class TelemedicinePatientsTable
                                         'ambulanceParking' => $data['ambulanceParking'],
                                         'status' => 'ASIGNADO',
                                         'assigned_by' => Auth::user()->name,
-                                        'managed_by' => $record->managed_by,
+                                        'managed_by' => $doctor->managed_by,
+                                        'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
                                     ]);
 
                                     if ($case) {
 
-                                        $doctor = TelemedicineDoctor::find($data['doctor_id']);
                                         $name_patient = $case['patient_name'];
                                         $name = $doctor->full_name;
                                         $phone = $doctor->phone;
@@ -541,12 +599,12 @@ class TelemedicinePatientsTable
                                         'ambulanceParking' => $data['ambulanceParking'],
                                         'status' => 'ASIGNADO',
                                         'assigned_by' => Auth::user()->name,
-                                        'managed_by' => $record->managed_by,
+                                        'managed_by' => $doctor->managed_by,
+                                        'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
                                     ]);
 
                                     if ($case) {
 
-                                        $doctor = TelemedicineDoctor::find($data['doctor_id']);
                                         $name_patient = $case['patient_name'];
                                         $name = $doctor->full_name;
                                         $phone = $doctor->phone;
@@ -611,12 +669,12 @@ class TelemedicinePatientsTable
                                         'ambulanceParking' => $data['ambulanceParking'],
                                         'status' => 'ASIGNADO',
                                         'assigned_by' => Auth::user()->name,
-                                        'managed_by' => $record->managed_by,
+                                        'managed_by' => $doctor->managed_by,
+                                        'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
                                     ]);
 
                                     if ($case) {
 
-                                        $doctor = TelemedicineDoctor::find($data['doctor_id']);
                                         $name_patient = $case['patient_name'];
                                         $name = $doctor->full_name;
                                         $phone = $doctor->phone;
@@ -664,61 +722,48 @@ class TelemedicinePatientsTable
                             }
                         })
                         ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI' && ! in_array('ATENMEDI', Auth::user()->departament)),
-                    Action::make('assign_atenmedi')
-                        ->label('Asignar ATENMEDI')
-                        ->icon('heroicon-o-user')
-                        ->color('primary')
-                        ->requiresConfirmation()
-                        ->modalWidth(Width::ThreeExtraLarge)
-                        ->modalHeading('Asignación ATENMEDINA')
-                        ->modalDescription('¿Está seguro de asignar el paciente a ATENMEDI?.')
-                        ->modalIcon('heroicon-o-user')
-                        ->action(function (TelemedicinePatient $record) {
-                            try {
-                                $record->managed_by = 'ATENMEDI';
-                                $record->save();
+                    // Action::make('assign_atenmedi')
+                    //     ->label('Asignar ATENMEDI')
+                    //     ->icon('heroicon-o-user')
+                    //     ->color('primary')
+                    //     ->requiresConfirmation()
+                    //     ->modalWidth(Width::ThreeExtraLarge)
+                    //     ->modalHeading('Asignación ATENMEDINA')
+                    //     ->modalDescription('¿Está seguro de asignar el paciente a ATENMEDI?.')
+                    //     ->modalIcon('heroicon-o-user')
+                    //     ->action(function (TelemedicinePatient $record) {
+                    //         try {
+                    //             $record->managed_by = 'ATENMEDI';
+                    //             $record->save();
 
-                                SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_PATIENT_ASSIGNED_ATENMEDI', 'operations.telemedicine-patients.assign-atenmedi', [
-                                    'telemedicine_patient_id' => $record->id,
-                                    'patient_name' => $record->full_name,
-                                    'managed_by' => $record->managed_by,
-                                ]);
+                    //             SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_PATIENT_ASSIGNED_ATENMEDI', 'operations.telemedicine-patients.assign-atenmedi', [
+                    //                 'telemedicine_patient_id' => $record->id,
+                    //                 'patient_name' => $record->full_name,
+                    //                 'managed_by' => $record->managed_by,
+                    //             ]);
 
-                                Notification::make()
-                                    ->title('Paciente Asignado')
-                                    ->body('El paciente ha sido asignado a ATENMEDINA exitosamente.')
-                                    ->success()
-                                    ->send();
-                            } catch (\Throwable $exception) {
-                                SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_PATIENT_ASSIGN_ATENMEDI_FAILED', 'operations.telemedicine-patients.assign-atenmedi', [
-                                    'telemedicine_patient_id' => $record->id,
-                                    'patient_name' => $record->full_name,
-                                    'error' => $exception->getMessage(),
-                                ]);
+                    //             Notification::make()
+                    //                 ->title('Paciente Asignado')
+                    //                 ->body('El paciente ha sido asignado a ATENMEDINA exitosamente.')
+                    //                 ->success()
+                    //                 ->send();
+                    //         } catch (\Throwable $exception) {
+                    //             SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_PATIENT_ASSIGN_ATENMEDI_FAILED', 'operations.telemedicine-patients.assign-atenmedi', [
+                    //                 'telemedicine_patient_id' => $record->id,
+                    //                 'patient_name' => $record->full_name,
+                    //                 'error' => $exception->getMessage(),
+                    //             ]);
 
-                                Notification::make()
-                                    ->title('Asignación fallida')
-                                    ->body('No se pudo asignar el paciente a ATENMEDINA.')
-                                    ->danger()
-                                    ->send();
-                            }
-                        })
-                        ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI'),
+                    //             Notification::make()
+                    //                 ->title('Asignación fallida')
+                    //                 ->body('No se pudo asignar el paciente a ATENMEDINA.')
+                    //                 ->danger()
+                    //                 ->send();
+                    //         }
+                    //     })
+                    //     ->hidden(fn (TelemedicinePatient $record) => $record->managed_by == 'ATENMEDI'),
                 ]),
             ])
-            ->recordClasses(function (TelemedicinePatient $record): array {
-                return match (mb_strtoupper((string) $record->managed_by)) {
-                    'ATENMEDI' => [
-                        'bg-emerald-50/60 dark:bg-emerald-950/20',
-                        'ring-1 ring-emerald-100/70 dark:ring-emerald-900/40',
-                    ],
-                    'TDG' => [
-                        'bg-sky-50/60 dark:bg-sky-950/20',
-                        'ring-1 ring-sky-100/70 dark:ring-sky-900/40',
-                    ],
-                    default => [],
-                };
-            })
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
@@ -742,6 +787,37 @@ class TelemedicinePatientsTable
                 ]),
             ])
             ->striped();
+    }
+
+    private static function supplierSummaryDescription(TelemedicinePatient $record): ?string
+    {
+        $supplierName = trim((string) ($record->supplier?->name ?? ''));
+
+        if ($supplierName === '') {
+            return 'Sin proveedor vinculado';
+        }
+
+        $managedBy = trim((string) ($record->managed_by ?? ''));
+
+        if ($managedBy !== '') {
+            return $supplierName.' ('.mb_strtoupper($managedBy).')';
+        }
+
+        return $supplierName;
+    }
+
+    private static function patientIdentificationDescription(TelemedicinePatient $record): ?string
+    {
+        $parts = array_values(array_filter([
+            filled($record->nro_identificacion) ? 'C.I. '.$record->nro_identificacion : null,
+            filled($record->phone) ? $record->phone : null,
+        ]));
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return implode(' · ', $parts);
     }
 
     /**

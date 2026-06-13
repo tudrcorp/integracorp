@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\Suppliers\Pages;
 
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
+use App\Support\Filament\Operations\SupplierIntegracorpManagementForm;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -13,6 +14,15 @@ class CreateSupplier extends CreateRecord
     protected static string $resource = SupplierResource::class;
 
     protected static ?string $title = 'Formulario de Creación del Proveedores';
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        return SupplierIntegracorpManagementForm::stripUnauthorizedFormData($data);
+    }
 
     protected function getCreatedNotification(): ?Notification
     {

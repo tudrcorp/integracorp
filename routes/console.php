@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\AnulateAgentQuotes;
+use App\Jobs\ExpireOperationServiceOrders;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendNotificationBirthday;
@@ -46,3 +47,8 @@ Schedule::job(new UpdateAffiliateIlsRemainingDays, 'system')->dailyAt('6:00');
  * y envía correo a cotizaciones@tudrencasa.com con el número de cotizaciones anuladas.
  */
 Schedule::job(new AnulateAgentQuotes, 'system')->dailyAt('23:00');
+
+/**
+ * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
+ */
+Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('6:30');

@@ -9,7 +9,8 @@ it('restringe casos a managed_by ATENMEDI cuando el usuario pertenece a ATENMEDI
     expect($contents)
         ->toContain('modifyQueryUsing')
         ->toContain("in_array('ATENMEDI', Auth::user()?->departament ?? [], true)")
-        ->toContain("->where('managed_by', 'ATENMEDI')");
+        ->toContain("->where('managed_by', 'ATENMEDI')")
+        ->toContain('OperationsSupplierScope::applyToQuery($query)');
 });
 
 it('abre modal de paciente desde la columna número de caso', function (): void {

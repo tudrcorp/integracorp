@@ -33,3 +33,12 @@ it('asigna clases de fila para Estándar y sin prioridad', function (): void {
 it('asigna clases de fila para Critico en titulo', function (): void {
     expect(TelemedicinePriorityFilamentBadge::recordRowClasses('Critico'))->toContain('#e4003b');
 });
+
+it('el relation manager de casos del paciente usa TelemedicinePriorityFilamentBadge', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/RelationManagers/TelemedicineCasesRelationManager.php');
+
+    expect($contents)
+        ->toContain('TelemedicinePriorityFilamentBadge::color($state)')
+        ->toContain('TelemedicinePriorityFilamentBadge::icon($state)')
+        ->toContain('TelemedicinePriorityFilamentBadge::recordRowClasses($record->priority?->name)');
+});

@@ -60,14 +60,7 @@ final class HelpdeskTableConfigurator
             ->columns(self::columns($includeTeamColumns, $modalActionsClass))
             ->recordClasses(fn ($record): array => in_array($record->status, HelpdeskTaskStatusOptions::terminalStatuses(), true)
                 ? []
-                : [
-                    match ($record->priority) {
-                        'BAJA' => 'bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500',
-                        'MEDIA' => 'bg-amber-50 dark:bg-amber-950/30 border-l-4 border-amber-500',
-                        'ALTA' => 'bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500',
-                        default => 'border-l-4 border-gray-200 dark:border-gray-700',
-                    },
-                ])
+                : [self::recordPriorityRowClass($record->priority)])
             ->filters([])
             ->recordActions(self::recordActions(
                 $modalActionsClass,
@@ -141,6 +134,18 @@ final class HelpdeskTableConfigurator
         }
 
         return $definitions;
+    }
+
+    public static function recordPriorityRowClass(?string $priority): string
+    {
+        $readableText = ' text-gray-950 dark:text-gray-100';
+
+        return match ($priority) {
+            'BAJA' => 'fi-helpdesk-ta-priority--baja bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500'.$readableText,
+            'MEDIA' => 'fi-helpdesk-ta-priority--media bg-amber-50 dark:bg-amber-950/30 border-l-4 border-amber-500'.$readableText,
+            'ALTA' => 'fi-helpdesk-ta-priority--alta bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500'.$readableText,
+            default => 'fi-helpdesk-ta-priority--default border-l-4 border-gray-200 dark:border-gray-700',
+        };
     }
 
     public static function statusOrderByCaseSql(): string

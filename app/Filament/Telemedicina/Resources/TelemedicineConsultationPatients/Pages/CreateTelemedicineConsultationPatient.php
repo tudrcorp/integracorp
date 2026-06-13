@@ -31,6 +31,7 @@ use App\Models\TelemedicinePatientStudy;
 use App\Services\NotificationTelemedicinaService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
+use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -454,11 +455,17 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                             $medications->telemedicine_patient_id = $record['telemedicine_patient_id'];
                             $medications->telemedicine_case_id = $record['telemedicine_case_id'];
                             $medications->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                            $medications->medicine = $medicationsArr[$i]['medicines'] == null ? OperationInventory::where('id', $medicationsArr[$i]['operation_inventory_id'])->first()->name : $medicationsArr[$i]['medicines'];
+                            $inventoryId = filled($medicationsArr[$i]['operation_inventory_id'] ?? null)
+                                ? (int) $medicationsArr[$i]['operation_inventory_id']
+                                : null;
+                            $medications->medicine = $medicationsArr[$i]['medicines'] == null
+                                ? OperationInventory::where('id', $inventoryId)->first()->name
+                                : $medicationsArr[$i]['medicines'];
                             $medications->indications = $medicationsArr[$i]['indications'];
                             $medications->duration = $medicationsArr[$i]['duration'];
                             $medications->telemedicine_priority_id = $record['telemedicine_priority_id'];
-                            $medications->operation_inventory_id = $medicationsArr[$i]['operation_inventory_id'] ?? null;
+                            $medications->operation_inventory_id = $inventoryId;
+                            $medications->is_covered = TelemedicineMedicationCoverage::coverageForPersist($inventoryId);
                             $medications->assigned_by = Auth::user()->id;
                             $medications->save();
                         }
@@ -857,13 +864,19 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                      *
                      * * @version 1.0
                      */
+                    $serviceListDriftId = (int) (
+                        $record['telemedicine_service_list_drift_id']
+                        ?? $this->data['telemedicine_service_list_drift_id']
+                        ?? 0
+                    );
+
                     /** TRASLADO EN AMBULANCIA */
-                    if ($record['telemedicine_service_list_drift_id'] == 3) {
+                    if ($serviceListDriftId === 3) {
                         $registeredOperationCoordinationService = OperationCoordinationServiceController::createServiceTransportAmbulance($record, $doctor, $patient);
                     }
 
                     /** INGRESO A CLINICA */
-                    if ($record['telemedicine_service_list_drift_id'] == 8) {
+                    if ($serviceListDriftId === 8) {
                         $registeredOperationCoordinationService = OperationCoordinationServiceController::createServiceEnterClinic($record, $doctor, $patient);
                     }
 

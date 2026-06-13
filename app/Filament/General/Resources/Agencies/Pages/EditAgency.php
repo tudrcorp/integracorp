@@ -3,20 +3,17 @@
 namespace App\Filament\General\Resources\Agencies\Pages;
 
 use App\Filament\General\Resources\Agencies\AgencyResource;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
-use Filament\Resources\Pages\EditRecord;
-
 use App\Models\Agency;
-use Livewire\Component;
 use Filament\Actions\Action;
-use Filament\Support\Enums\Width;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class EditAgency extends EditRecord
 {
@@ -42,10 +39,10 @@ class EditAgency extends EditRecord
                                 ->label('Selecciona el tipo de Gráfico')
                                 ->helperText('Por default se muestran los gráficos tipo barras.')
                                 ->options([
-                                    'bar'   => 'Barras',
-                                    'line'  => 'Lineas',
+                                    'bar' => 'Barras',
+                                    'line' => 'Lineas',
                                 ])
-                                ->default(fn() => Agency::where('code', Auth::user()->code_agency)->first()->type_chart),
+                                ->default(fn () => Agency::where('code', Auth::user()->code_agency)->first()->type_chart),
 
                         ])->columns(1),
                 ])
@@ -79,7 +76,7 @@ class EditAgency extends EditRecord
                                 ->offIcon('heroicon-m-arrow-small-left')
                                 ->onColor('success')
                                 ->offColor('danger')
-                                ->default(fn() => Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu == true ? true : false),
+                                ->default(fn () => Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu == true ? true : false),
 
                         ])->columns(1),
                 ])
@@ -101,11 +98,6 @@ class EditAgency extends EditRecord
                 ->color('success')
                 ->url(route('filament.master.pages.dashboard')),
         ];
-    }
-
-    protected function getFormActions(): array
-    {
-        return [];
     }
 
     protected function getSavedNotification(): ?Notification

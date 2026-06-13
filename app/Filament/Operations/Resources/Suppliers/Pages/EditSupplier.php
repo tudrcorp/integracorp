@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\Suppliers\Pages;
 
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
+use App\Support\Filament\Operations\SupplierIntegracorpManagementForm;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -19,6 +20,7 @@ class EditSupplier extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $data = SupplierIntegracorpManagementForm::stripUnauthorizedFormData($data);
         $data['updated_by'] = Auth::user()->name;
         $this->auditChanges = $this->resolveChangedFields($data);
 

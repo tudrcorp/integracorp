@@ -12,9 +12,11 @@ it('asociar afiliado usa find y evita acceso a índice 0 cuando no hay filas', f
         ->and($contents)->toContain('Affiliate::query()')
         ->and($contents)->toContain("->with('affiliation')")
         ->and($contents)->toContain("->find(\$data['affiliate_id'] ?? null)")
-        ->and($contents)->toContain('if ($affiliate === null || $affiliate->affiliation === null)')
+        ->and($contents)->toContain('AssociateAffiliateWithTelemedicinePatientService::run')
+        ->and($contents)->toContain('if ($affiliate === null)')
         ->and($contents)->toContain('AffiliateCorporate::query()')
         ->and($contents)->toContain("->with('affiliationCorporate')")
         ->and($contents)->toContain("->find(\$data['affiliate_corporate_id'] ?? null)")
-        ->and($contents)->toContain('if ($member === null || $member->affiliationCorporate === null)');
+        ->and($contents)->toContain('AssociateAffiliateCorporateWithTelemedicinePatientService::run')
+        ->and($contents)->toContain('if ($member === null)');
 });

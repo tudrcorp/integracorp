@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TelemedicineCase extends Model
 {
@@ -28,6 +29,7 @@ class TelemedicineCase extends Model
         'ambulanceParking',
         'directionAmbulance',
         'managed_by',
+        'supplier_id',
         'doctor_id_first_accompaniment',
     ];
 
@@ -77,6 +79,17 @@ class TelemedicineCase extends Model
             ->orderByDesc('created_at');
     }
 
+    public function caseMessages()
+    {
+        return $this->hasMany(TelemedicineCaseMessage::class)
+            ->orderBy('created_at');
+    }
+
+    public function caseChatReads()
+    {
+        return $this->hasMany(TelemedicineCaseChatRead::class);
+    }
+
     public function telemedicineDocuments()
     {
         return $this->hasMany(TelemedicineDocument::class);
@@ -86,5 +99,13 @@ class TelemedicineCase extends Model
     public function operationInventoryMovements()
     {
         return $this->hasMany(OperationInventoryMovement::class);
+    }
+
+    /**
+     * @return BelongsTo<Supplier, $this>
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }

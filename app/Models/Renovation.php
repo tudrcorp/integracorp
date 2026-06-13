@@ -26,6 +26,8 @@ class Renovation extends Model
         'plan_id',
         'coverage_id',
         'age_range_id',
+        'birth_date',
+        'age',
         'fee',
         'subtotal_anual',
         'subtotal_quarterly',
@@ -42,6 +44,8 @@ class Renovation extends Model
     {
         return [
             'date_renewal' => 'date',
+            'birth_date' => 'date',
+            'age' => 'integer',
             'is_negotiation_candidate' => 'boolean',
             'fee' => 'decimal:2',
             'subtotal_anual' => 'decimal:2',

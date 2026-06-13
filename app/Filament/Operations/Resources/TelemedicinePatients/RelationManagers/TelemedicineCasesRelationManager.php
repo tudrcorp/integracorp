@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\TelemedicinePatients\RelationManager
 
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Models\TelemedicineCase;
+use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -23,6 +24,7 @@ class TelemedicineCasesRelationManager extends RelationManager
         return $table
             ->query(
                 TelemedicineCase::query()
+                    ->with(['priority', 'telemedicineDoctor', 'telemedicinePatient'])
                     ->where('telemedicine_patient_id', $this->getOwnerRecord()->getKey())
                     ->where('status', '=', 'ALTA MEDICA')
                     ->orderBy('created_at', 'desc')
@@ -76,24 +78,8 @@ class TelemedicineCasesRelationManager extends RelationManager
                 TextColumn::make('priority.name')
                     ->label('Prioridad')
                     ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'no-urgente',
-                            'ESTANDAR' => 'estandar',
-                            'URGENCIA' => 'urgencia',
-                            'EMERGENCIA' => 'emergencia',
-                            'CRITICO' => 'critico',
-                        };
-                    })
-                    ->icon(function (string $state): string {
-                        return match ($state) {
-                            'NO URGENTE' => 'healthicons-f-health',
-                            'ESTANDAR' => 'healthicons-f-health',
-                            'URGENCIA' => 'healthicons-f-health',
-                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
-                            'CRITICO' => 'heroicon-c-shield-exclamation',
-                        };
-                    })
+                    ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
+                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Fecha de Registro')
@@ -108,19 +94,7 @@ class TelemedicineCasesRelationManager extends RelationManager
                     ->description(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
             ])
-            ->recordClasses(function ($record): array {
-                $name = $record->priority?->name;
-                $classes = match ($name) {
-                    'No Urgente' => 'bg-[#005ca9]/10 dark:bg-[#005ca9]/20 border-l-4 border-[#005ca9]',
-                    'Estándar' => 'bg-[#02976d]/10 dark:bg-[#02976d]/20 border-l-4 border-[#02976d]',
-                    'Urgencia' => 'bg-[#eab527]/10 dark:bg-[#eab527]/20 border-l-4 border-[#eab527]',
-                    'Emergencia' => 'bg-[#f17f29]/10 dark:bg-[#f17f29]/20 border-l-4 border-[#f17f29]',
-                    'Critico' => 'bg-[#e4003b]/10 dark:bg-[#e4003b]/20 border-l-4 border-[#e4003b]',
-                    default => 'border-l-4 border-gray-200 dark:border-gray-700',
-                };
-
-                return [$classes];
-            })
+            ->recordClasses(fn ($record): array => [TelemedicinePriorityFilamentBadge::recordRowClasses($record->priority?->name)])
             ->recordActions([
                 Action::make('view_details')
                     ->icon('heroicon-s-eye')

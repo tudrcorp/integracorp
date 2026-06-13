@@ -6,15 +6,22 @@ namespace App\Filament\Shared\Renovations;
 
 use App\Http\Controllers\RenovationExportCsvController;
 use App\Models\Renovation;
+use App\Services\AcceptAffiliationRenovationsService;
+use App\Services\ManualRenovationAcceptanceOptions;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Filament\Renovations\AcceptRenovationActionForm;
+use App\Support\FilamentDateDisplay;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
@@ -24,11 +31,16 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Js;
 
 class RenovationsTable
 {
     private const COLUMN_GROUP_HEADER_CLASS = '[&_th]:bg-gradient-to-r [&_th]:from-slate-100/95 [&_th]:via-slate-50/90 [&_th]:to-transparent dark:[&_th]:from-white/[0.08] dark:[&_th]:via-white/[0.04] dark:[&_th]:to-transparent [&_th]:font-semibold [&_th]:text-slate-800 dark:[&_th]:text-slate-100 [&_th]:border-b [&_th]:border-slate-200/80 dark:[&_th]:border-white/10';
+
+    private const COLUMN_GROUP_BEFORE_CLASS = '[&_th]:bg-gradient-to-r [&_th]:from-slate-200/90 [&_th]:via-slate-100/95 [&_th]:to-slate-50/50 dark:[&_th]:from-slate-800/80 dark:[&_th]:via-slate-900/60 dark:[&_th]:to-transparent [&_th]:font-semibold [&_th]:text-slate-800 dark:[&_th]:text-slate-100 [&_th]:border-b [&_th]:border-slate-300/80 dark:[&_th]:border-white/10';
+
+    private const COLUMN_GROUP_AFTER_CLASS = '[&_th]:bg-gradient-to-r [&_th]:from-emerald-100/95 [&_th]:via-emerald-50/90 [&_th]:to-transparent dark:[&_th]:from-emerald-950/50 dark:[&_th]:via-emerald-900/30 dark:[&_th]:to-transparent [&_th]:font-semibold [&_th]:text-emerald-900 dark:[&_th]:text-emerald-100 [&_th]:border-b [&_th]:border-emerald-200/80 dark:[&_th]:border-emerald-800/40';
 
     /** @return array<string, Tab> */
     public static function getTabs(): array
@@ -63,9 +75,12 @@ class RenovationsTable
     ): Table {
         $table = $table
             ->heading('Renovaciones individuales')
-            ->description('Priorice filas en rojo (retraso) y ámbar (período de renovación o negociación). Use las pestañas y filtros para enfocar la gestión comercial.')
+            ->description('Compare el expediente vigente (columnas grises) con lo que quedará si acepta la renovación (columnas verdes). Priorice filas en rojo (retraso) y ámbar (período o negociación).')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'affiliation',
+                'affiliation.agency',
+                'affiliation.agent',
+                'affiliation.plan',
+                'affiliation.coverage',
                 'plan',
                 'previousPlan',
                 'coverage',
@@ -75,7 +90,7 @@ class RenovationsTable
             ->paginationPageOptions([10, 25, 50, 100])
             ->striped()
             ->deferFilters(false)
-            ->filtersFormColumns(2)
+            ->filtersFormColumns(1)
             ->recordTitleAttribute('code_affiliation')
             ->emptyStateHeading('Sin renovaciones registradas')
             ->emptyStateDescription('El proceso diario genera registros para afiliaciones ACTIVA con fecha de vigencia. Si acaba de ejecutarse, espere la próxima corrida o contacte a sistemas.')
@@ -107,6 +122,14 @@ class RenovationsTable
                             : null)
                         ->placeholder('—')
                         ->toggleable(),
+                    TextColumn::make('affiliation.nro_identificacion_ti')
+                        ->label('Cédula')
+                        ->icon(Heroicon::OutlinedIdentification)
+                        ->searchable()
+                        ->sortable()
+                        ->copyable()
+                        ->copyMessage('Cédula copiada')
+                        ->placeholder('—'),
                     TextColumn::make('remaining_days')
                         ->label('Días')
                         ->alignCenter()
@@ -137,14 +160,96 @@ class RenovationsTable
                         })
                         ->sortable(),
                     TextColumn::make('date_renewal')
-                        ->label('Vence')
+                        ->label('Vence renovación')
                         ->icon(Heroicon::OutlinedCalendarDays)
                         ->date('d/m/Y')
                         ->description(fn (Renovation $record): ?string => $record->date_renewal?->diffForHumans())
                         ->sortable(),
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
-                ColumnGroup::make('Plan y montos', [
+                ColumnGroup::make('Expediente vigente (antes)', [
+                    TextColumn::make('affiliation.effective_date')
+                        ->label('Vigencia desde')
+                        ->icon(Heroicon::OutlinedCalendar)
+                        ->state(fn (Renovation $record): string => FilamentDateDisplay::toDmy($record->affiliation?->effective_date) ?? '—')
+                        ->description('Expediente actual')
+                        ->placeholder('—'),
+                    TextColumn::make('affiliation.plan.description')
+                        ->label('Plan actual')
+                        ->icon(Heroicon::OutlinedDocumentText)
+                        ->badge()
+                        ->color(fn (Renovation $record): string => self::planBadgeColorForPlanId(
+                            (int) ($record->affiliation?->plan_id ?? 0),
+                        ))
+                        ->placeholder('—'),
+                    TextColumn::make('current_coverage_summary')
+                        ->label('Cobertura actual')
+                        ->icon(Heroicon::OutlinedShieldCheck)
+                        ->state(fn (Renovation $record): string => self::coverageLabel(
+                            $record->affiliation?->coverage_id,
+                            $record->affiliation?->coverage?->price,
+                        ))
+                        ->alignEnd(),
+                    TextColumn::make('affiliation.fee_anual')
+                        ->label('Anual vigente')
+                        ->icon(Heroicon::OutlinedBanknotes)
+                        ->money('USD')
+                        ->alignEnd()
+                        ->weight('medium')
+                        ->description(fn (Renovation $record): ?string => filled($record->affiliation?->total_amount)
+                            ? 'Pago: US$ '.number_format((float) $record->affiliation->total_amount, 2)
+                            : null),
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_BEFORE_CLASS]),
+                ColumnGroup::make('Si acepta renovación', [
+                    TextColumn::make('projected_effective_date')
+                        ->label('Nueva vigencia')
+                        ->icon(Heroicon::OutlinedCalendarDays)
+                        ->state(fn (Renovation $record): string => $record->date_renewal?->format('d/m/Y') ?? '—')
+                        ->description('Desde fecha de renovación')
+                        ->color('success'),
+                    TextColumn::make('plan.description')
+                        ->label('Plan proyectado')
+                        ->icon(Heroicon::OutlinedSparkles)
+                        ->badge()
+                        ->color(fn (Renovation $record): string => self::planBadgeColor($record))
+                        ->description(fn (Renovation $record): ?string => self::projectedPlanDescription($record))
+                        ->placeholder('—')
+                        ->sortable(query: fn ($query, string $direction) => $query->orderBy('plan_id', $direction)),
+                    TextColumn::make('coverage.price')
+                        ->label('Cobertura proyectada')
+                        ->icon(Heroicon::OutlinedShieldCheck)
+                        ->state(fn (Renovation $record): string => self::coverageLabel(
+                            $record->coverage_id,
+                            $record->coverage?->price,
+                        ))
+                        ->alignEnd(),
+                    TextColumn::make('subtotal_anual')
+                        ->label('Anual proyectado')
+                        ->icon(Heroicon::OutlinedBanknotes)
+                        ->money('USD')
+                        ->weight('bold')
+                        ->alignEnd()
+                        ->color(fn (Renovation $record): string => self::annualDeltaColor($record))
+                        ->description(fn (Renovation $record): string => 'Titular: US$ '.number_format((float) $record->fee, 2))
+                        ->sortable(),
+                    TextColumn::make('age')
+                        ->label('Edad a renovar')
+                        ->icon(Heroicon::OutlinedUserCircle)
+                        ->numeric()
+                        ->alignCenter()
+                        ->suffix(' años')
+                        ->description(fn (Renovation $record): ?string => $record->birth_date
+                            ? 'Nac. '.$record->birth_date->format('d/m/Y')
+                            : null)
+                        ->placeholder('—')
+                        ->sortable(),
+                    TextColumn::make('total_persons')
+                        ->label('Pers.')
+                        ->icon(Heroicon::OutlinedUsers)
+                        ->numeric()
+                        ->alignCenter()
+                        ->sortable(),
                     TextColumn::make('negotiation_flag')
                         ->label('Negociación')
                         ->alignCenter()
@@ -163,37 +268,17 @@ class RenovationsTable
                             ]
                             : [])
                         ->toggleable(),
-                    TextColumn::make('plan.description')
-                        ->label('Plan')
-                        ->icon(Heroicon::OutlinedSparkles)
+                ])
+                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_AFTER_CLASS]),
+                ColumnGroup::make('Variación', [
+                    TextColumn::make('renewal_delta_summary')
+                        ->label('Cambio')
+                        ->icon(Heroicon::OutlinedArrowsRightLeft)
+                        ->state(fn (Renovation $record): string => self::annualDeltaLabel($record))
+                        ->description(fn (Renovation $record): string => self::renewalChangeDescription($record))
                         ->badge()
-                        ->color(fn (Renovation $record): string => self::planBadgeColor($record))
-                        ->description(fn (Renovation $record): ?string => filled($record->previous_plan_id)
-                            ? 'Antes: '.($record->previousPlan?->description ?? 'Plan #'.$record->previous_plan_id)
-                            : null)
-                        ->placeholder('—')
-                        ->sortable(query: fn ($query, string $direction) => $query->orderBy('plan_id', $direction)),
-                    TextColumn::make('coverage.price')
-                        ->label('Cobertura')
-                        ->icon(Heroicon::OutlinedShieldCheck)
-                        ->formatStateUsing(fn ($state, Renovation $record): string => $record->coverage_id
-                            ? 'US$ '.number_format((float) ($state ?? 0), 2)
-                            : 'Inicial')
-                        ->alignEnd()
-                        ->toggleable(),
-                    TextColumn::make('subtotal_anual')
-                        ->label('Anual')
-                        ->icon(Heroicon::OutlinedBanknotes)
-                        ->money('USD')
-                        ->weight('medium')
-                        ->alignEnd()
-                        ->sortable(),
-                    TextColumn::make('total_persons')
-                        ->label('Pers.')
-                        ->icon(Heroicon::OutlinedUsers)
-                        ->numeric()
-                        ->alignCenter()
-                        ->sortable(),
+                        ->color(fn (Renovation $record): string => self::annualDeltaColor($record))
+                        ->alignCenter(),
                     TextColumn::make('payment_frequency')
                         ->label('Frecuencia')
                         ->badge()
@@ -202,19 +287,47 @@ class RenovationsTable
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
                 ColumnGroup::make('Estructura comercial', [
-                    TextColumn::make('code_agency')
+                    TextColumn::make('affiliation.agency.name_corporative')
                         ->label('Agencia')
                         ->icon(Heroicon::OutlinedBuildingOffice2)
+                        ->searchable()
+                        ->sortable()
+                        ->limit(32)
+                        ->description(fn (Renovation $record): ?string => filled($record->code_agency)
+                            ? (string) $record->code_agency
+                            : null)
+                        ->tooltip(fn (Renovation $record): ?string => filled($record->affiliation?->agency?->name_corporative)
+                            ? (string) $record->affiliation->agency->name_corporative
+                            : null)
+                        ->placeholder('—'),
+                    TextColumn::make('affiliation.agent.name')
+                        ->label('Agente')
+                        ->icon(Heroicon::OutlinedAcademicCap)
+                        ->searchable()
+                        ->sortable()
+                        ->limit(28)
+                        ->description(fn (Renovation $record): ?string => filled($record->agent_id)
+                            ? (string) $record->agent_id
+                            : null)
+                        ->tooltip(fn (Renovation $record): ?string => filled($record->affiliation?->agent?->name)
+                            ? (string) $record->affiliation->agent->name
+                            : null)
+                        ->placeholder('—'),
+                    TextColumn::make('code_agency')
+                        ->label('Cód. agencia')
+                        ->icon(Heroicon::OutlinedHashtag)
                         ->badge()
                         ->color('gray')
                         ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true)
                         ->placeholder('—'),
                     TextColumn::make('agent_id')
-                        ->label('Agente')
-                        ->icon(Heroicon::OutlinedAcademicCap)
+                        ->label('Cód. agente')
+                        ->icon(Heroicon::OutlinedHashtag)
                         ->badge()
                         ->color('azulOscuro')
                         ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true)
                         ->placeholder('—'),
                     TextColumn::make('owner_code')
                         ->label('Jerarquía')
@@ -258,10 +371,65 @@ class RenovationsTable
                     ->searchable()
                     ->preload()
                     ->native(false),
+                Filter::make('remaining_days_range')
+                    ->label('Días restantes')
+                    ->form([
+                        Select::make('preset')
+                            ->label('Rango rápido')
+                            ->options([
+                                'retraso' => 'Con retraso (menor a 0)',
+                                'hoy' => 'Vence hoy (0 días)',
+                                '1_7' => 'De 1 a 7 días',
+                                '8_30' => 'De 8 a 30 días',
+                                '31_60' => 'De 31 a 60 días',
+                                '61_90' => 'De 61 a 90 días',
+                                'mas_90' => 'Más de 90 días',
+                            ])
+                            ->placeholder('Personalizar con mínimo/máximo')
+                            ->native(false)
+                            ->live(),
+                        TextInput::make('min')
+                            ->label('Mínimo de días')
+                            ->numeric()
+                            ->integer()
+                            ->placeholder('Ej: -15')
+                            ->helperText('Valores negativos = días de retraso.')
+                            ->disabled(fn (callable $get): bool => filled($get('preset'))),
+                        TextInput::make('max')
+                            ->label('Máximo de días')
+                            ->numeric()
+                            ->integer()
+                            ->placeholder('Ej: 30')
+                            ->disabled(fn (callable $get): bool => filled($get('preset'))),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        [$min, $max] = self::resolveRemainingDaysRange($data);
+
+                        return $query
+                            ->when($min !== null, fn (Builder $q): Builder => $q->where('remaining_days', '>=', $min))
+                            ->when($max !== null, fn (Builder $q): Builder => $q->where('remaining_days', '<=', $max));
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        [$min, $max] = self::resolveRemainingDaysRange($data);
+
+                        if ($min === null && $max === null) {
+                            return null;
+                        }
+
+                        if ($min !== null && $max !== null) {
+                            return "Días restantes: {$min} a {$max}";
+                        }
+
+                        if ($min !== null) {
+                            return "Días restantes ≥ {$min}";
+                        }
+
+                        return "Días restantes ≤ {$max}";
+                    }),
                 Filter::make('urgencia')
                     ->label('Urgencia')
                     ->form([
-                        \Filament\Forms\Components\Select::make('nivel')
+                        Select::make('nivel')
                             ->label('Nivel')
                             ->options([
                                 'retraso' => 'Con retraso (días negativos)',
@@ -293,6 +461,7 @@ class RenovationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    self::acceptRenovationAction(),
                     ViewAction::make()
                         ->label('Ver renovación')
                         ->icon(Heroicon::OutlinedEye)
@@ -308,6 +477,11 @@ class RenovationsTable
                     ->icon(Heroicon::OutlinedEllipsisVertical)
                     ->color('gray')
                     ->button(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    self::acceptRenovationsBulkAction(),
+                ]),
             ]);
 
         if ($exportRouteName !== null) {
@@ -338,6 +512,127 @@ class RenovationsTable
         }
 
         return $table;
+    }
+
+    private static function acceptRenovationAction(): Action
+    {
+        return self::configureAcceptModal(
+            Action::make('acceptRenovation')
+                ->label('Aceptar renovación')
+                ->icon(Heroicon::OutlinedCheckCircle)
+                ->color('success')
+                ->modalHeading('Aceptar renovación')
+                ->modalDescription('Confirme la propuesta del sistema o ajuste manualmente las condiciones comerciales acordadas con el cliente.')
+                ->modalSubmitActionLabel('Confirmar aceptación')
+                ->visible(fn (Renovation $record): bool => $record->status === 'PERIODO DE RENOVACION')
+                ->fillForm(fn (Renovation $record): array => [
+                    'plan_id' => $record->plan_id,
+                    'age_range_id' => $record->age_range_id,
+                    'coverage_id' => $record->coverage_id,
+                    'payment_frequency' => $record->payment_frequency ?? 'ANUAL',
+                ])
+                ->form(fn (Renovation $record): array => AcceptRenovationActionForm::schema(collect([$record])))
+                ->action(function (Renovation $record, array $data): void {
+                    self::processAcceptRenovations(collect([$record]), $data);
+                }),
+        );
+    }
+
+    private static function acceptRenovationsBulkAction(): BulkAction
+    {
+        return self::configureAcceptModal(
+            BulkAction::make('acceptRenovations')
+                ->label('Aceptar renovaciones')
+                ->icon(Heroicon::OutlinedCheckCircle)
+                ->color('success')
+                ->modalHeading('Aceptar renovaciones seleccionadas')
+                ->modalDescription('Confirme la propuesta del sistema o ajuste manualmente plan, cobertura, rango de edad y frecuencia para las filas elegidas.')
+                ->modalSubmitActionLabel('Confirmar aceptación')
+                ->deselectRecordsAfterCompletion()
+                ->fillForm(function (Collection $records): array {
+                    /** @var Renovation|null $reference */
+                    $reference = $records->first();
+
+                    return [
+                        'plan_id' => $reference?->plan_id,
+                        'age_range_id' => $reference?->age_range_id,
+                        'coverage_id' => $reference?->coverage_id,
+                        'payment_frequency' => $reference?->payment_frequency ?? 'ANUAL',
+                    ];
+                })
+                ->form(fn (Collection $records): array => AcceptRenovationActionForm::schema($records))
+                ->action(function (Collection $records, array $data): void {
+                    self::processAcceptRenovations($records, $data);
+                }),
+        );
+    }
+
+    /**
+     * @template T of Action|BulkAction
+     *
+     * @param  T  $action
+     * @return T
+     */
+    private static function configureAcceptModal(Action|BulkAction $action): Action|BulkAction
+    {
+        return $action
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalIcon(Heroicon::OutlinedCheckCircle)
+            ->modalIconColor('success')
+            ->modalCancelActionLabel('Cancelar')
+            ->closeModalByClickingAway(false);
+    }
+
+    /**
+     * @param  Collection<int, Renovation>  $records
+     * @param  array<string, mixed>  $data
+     */
+    private static function processAcceptRenovations(Collection $records, array $data = []): void
+    {
+        $acceptedBy = Auth::user()?->name ?? 'SISTEMA';
+
+        try {
+            $manualOptions = ManualRenovationAcceptanceOptions::fromFormData($data);
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()
+                ->danger()
+                ->title('Configuración incompleta')
+                ->body($exception->getMessage())
+                ->send();
+
+            return;
+        }
+
+        $result = app(AcceptAffiliationRenovationsService::class)->accept($records, $acceptedBy, $manualOptions);
+
+        if ($result->accepted > 0) {
+            Notification::make()
+                ->success()
+                ->title($result->accepted === 1 ? 'Renovación aceptada' : 'Renovaciones aceptadas')
+                ->body("Se aplicaron {$result->accepted} renovación(es) al expediente, se registraron en el historial y se generaron las cobranzas POR PAGAR del nuevo período.")
+                ->send();
+        }
+
+        if ($result->skipped > 0) {
+            $detail = $result->messages !== []
+                ? implode("\n", array_slice($result->messages, 0, 5))
+                : 'Revise el estatus de las filas seleccionadas.';
+
+            Notification::make()
+                ->warning()
+                ->title('Algunas renovaciones no se procesaron')
+                ->body("Omitidas: {$result->skipped}. {$detail}")
+                ->persistent()
+                ->send();
+        }
+
+        if ($result->accepted === 0 && $result->skipped === 0) {
+            Notification::make()
+                ->info()
+                ->title('Sin cambios')
+                ->body('No se seleccionaron renovaciones para procesar.')
+                ->send();
+        }
     }
 
     private static function remainingDaysColor(Renovation $record): string
@@ -402,14 +697,125 @@ class RenovationsTable
         return "{$record->remaining_days} días restantes";
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{0: int|null, 1: int|null}
+     */
+    private static function resolveRemainingDaysRange(array $data): array
+    {
+        $preset = $data['preset'] ?? null;
+
+        if (filled($preset)) {
+            return match ($preset) {
+                'retraso' => [null, -1],
+                'hoy' => [0, 0],
+                '1_7' => [1, 7],
+                '8_30' => [8, 30],
+                '31_60' => [31, 60],
+                '61_90' => [61, 90],
+                'mas_90' => [91, null],
+                default => [null, null],
+            };
+        }
+
+        $min = filled($data['min'] ?? null) ? (int) $data['min'] : null;
+        $max = filled($data['max'] ?? null) ? (int) $data['max'] : null;
+
+        if ($min !== null && $max !== null && $min > $max) {
+            return [$max, $min];
+        }
+
+        return [$min, $max];
+    }
+
     private static function planBadgeColor(Renovation $record): string
     {
-        return match ((int) $record->plan_id) {
+        return self::planBadgeColorForPlanId((int) $record->plan_id);
+    }
+
+    private static function planBadgeColorForPlanId(int $planId): string
+    {
+        return match ($planId) {
             AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID => 'primary',
             AffiliationAffiliateFeeCalculator::SPECIAL_PLAN_ID => 'warning',
             AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID => 'gray',
             default => 'gray',
         };
+    }
+
+    private static function coverageLabel(?int $coverageId, mixed $price): string
+    {
+        if (! filled($coverageId)) {
+            return 'Inicial';
+        }
+
+        return 'US$ '.number_format((float) ($price ?? 0), 2);
+    }
+
+    private static function projectedPlanDescription(Renovation $record): ?string
+    {
+        if ($record->is_negotiation_candidate) {
+            return 'Cambio a Plan Especial';
+        }
+
+        if ((int) ($record->affiliation?->plan_id ?? 0) !== (int) $record->plan_id) {
+            return 'Antes: '.($record->affiliation?->plan?->description ?? '—');
+        }
+
+        return 'Mismo plan';
+    }
+
+    private static function annualDeltaLabel(Renovation $record): string
+    {
+        $current = (float) ($record->affiliation?->fee_anual ?? 0);
+        $projected = (float) $record->subtotal_anual;
+        $delta = round($projected - $current, 2);
+
+        if ($delta === 0.0) {
+            return 'Sin cambio';
+        }
+
+        $sign = $delta > 0 ? '+' : '';
+
+        return $sign.'US$ '.number_format(abs($delta), 2);
+    }
+
+    private static function annualDeltaColor(Renovation $record): string
+    {
+        $current = (float) ($record->affiliation?->fee_anual ?? 0);
+        $projected = (float) $record->subtotal_anual;
+        $delta = round($projected - $current, 2);
+
+        if ($delta === 0.0) {
+            return 'gray';
+        }
+
+        return $delta > 0 ? 'warning' : 'success';
+    }
+
+    private static function renewalChangeDescription(Renovation $record): string
+    {
+        $parts = [];
+
+        $currentPlan = (string) ($record->affiliation?->plan?->description ?? '—');
+        $projectedPlan = (string) ($record->plan?->description ?? '—');
+
+        if ($currentPlan !== $projectedPlan) {
+            $parts[] = "Plan: {$currentPlan} → {$projectedPlan}";
+        }
+
+        $currentVigencia = FilamentDateDisplay::toDmy($record->affiliation?->effective_date) ?? '—';
+        $newVigencia = $record->date_renewal?->format('d/m/Y') ?? '—';
+
+        if ($currentVigencia !== $newVigencia) {
+            $parts[] = "Vigencia: {$currentVigencia} → {$newVigencia}";
+        }
+
+        if ($parts === []) {
+            return 'Tarifas recalculadas; plan y vigencia iguales';
+        }
+
+        return implode(' · ', $parts);
     }
 
     /**

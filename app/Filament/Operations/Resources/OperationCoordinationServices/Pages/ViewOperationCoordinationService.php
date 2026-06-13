@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Models\OperationDocumentList;
+use App\Support\Operations\CoordinationServiceItemsManager;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -173,7 +174,20 @@ class ViewOperationCoordinationService extends ViewRecord
     {
         $operationCoordinationService = $this->getRecord();
         $status = (string) ($operationCoordinationService->status ?? '');
-        $badgeStyle = $this->badgeStyleForStatus($status);
+        $clinicalItems = CoordinationServiceItemsManager::clinicalItemsWithEffectiveDisplayStatus($operationCoordinationService);
+        $statusCountersHtml = CoordinationServiceItemsManager::renderClinicalItemsStatusCounterPills($clinicalItems);
+
+        if ($statusCountersHtml === '') {
+            $badgeStyle = $this->badgeStyleForStatus($status);
+            $statusCountersHtml = '<div style="display:flex;align-items:center;margin-top:2px;">'
+                .'<span style="background:linear-gradient(180deg,'.$badgeStyle['bg'].' 0%,'.$badgeStyle['bg'].' 100%);color:#ffffff;padding:8px 16px;border-radius:9999px;font-size:.8rem;font-weight:800;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;box-shadow:'.$badgeStyle['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.24);">'
+                .'<span style="font-size:10px;opacity:.95;">●</span> '.e($status)
+                .'</span>'
+                .'</div>';
+        } else {
+            $statusCountersHtml = '<div style="margin-top:2px;">'.$statusCountersHtml.'</div>';
+        }
+
         $referenceNumber = (string) ($operationCoordinationService->reference_number ?? '—');
         $patientId = (string) ($operationCoordinationService->ci_patient ?? '—');
         $patientName = (string) ($operationCoordinationService->patient ?? 'Paciente no definido');
@@ -197,12 +211,8 @@ class ViewOperationCoordinationService extends ViewRecord
                 'C.I. paciente: '.$patientId.
                 '</span>'.
                 '</div>'.
-                // Estatus
-                '<div style="display:flex;align-items:center;margin-top:2px;">'.
-                '<span style="background:linear-gradient(180deg,'.$badgeStyle['bg'].' 0%,'.$badgeStyle['bg'].' 100%);color:#ffffff;padding:8px 16px;border-radius:9999px;font-size:.8rem;font-weight:800;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;box-shadow:'.$badgeStyle['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.24);">'.
-                '<span style="font-size:10px;opacity:.95;">●</span> '.$status.
-                '</span>'.
-                '</div>'.
+                // Contadores de estatus clínicos
+                $statusCountersHtml.
                 '</div>'
         );
     }

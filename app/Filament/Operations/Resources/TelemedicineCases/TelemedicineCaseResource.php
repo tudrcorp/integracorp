@@ -60,6 +60,7 @@ class TelemedicineCaseResource extends Resource
                 'state',
                 'country',
                 'observations.createdBy:id,name,email',
+                'caseMessages.user:id,name,email',
             ]);
     }
 

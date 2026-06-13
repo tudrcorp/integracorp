@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderItem;
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
@@ -54,6 +55,8 @@ class OperationServiceOrderController extends Controller
                 $operationServiceOrder = OperationServiceOrder::create([
                     'operation_coordination_service_id' => $ownerRecord['id'],
                     'supplier_id' => $data['supplier_id'] ?? null,
+                    'telemedicine_supplier_id' => OperationsSupplierScope::resolveTelemedicineSupplierIdFromCoordination($ownerRecord),
+                    'managed_by' => OperationsSupplierScope::managedByFromCoordination($ownerRecord),
                     'doctor_nurse_id' => $data['doctor_nurse_id'] ?? null,
                     'supplier_external' => $data['supplier_external'] ?? null,
                     'operation_inventory_ubication_id' => $data['operation_inventory_ubication_id'] ?? null,
@@ -61,6 +64,7 @@ class OperationServiceOrderController extends Controller
                     'description' => $data['description'] ?? null,
                     'service_type' => $serviceType,
                     'status' => $data['status'] ?? 'EN GESTION',
+                    'approved_at' => now(),
                     'observations' => $data['observations'] ?? null,
                     'order_number' => $data['order_number'],
                     'total_items' => $totalItems,

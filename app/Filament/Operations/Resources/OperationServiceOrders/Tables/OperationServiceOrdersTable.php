@@ -8,6 +8,9 @@ use App\Models\OperationServiceOrderItem;
 use App\Models\OperationServiceOrderQuote;
 use App\Models\Supplier;
 use App\Services\OperationServiceOrderMedicationQuotePdfService;
+use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Operations\OperationServiceOrderCoordinationSync;
+use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -26,7 +29,9 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +46,71 @@ class OperationServiceOrdersTable
     private const IOS_SUCCESS_BTN = 'aviso-btn-ios-success shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     private const IOS_GRAY_BTN = 'ticket-btn-ios-gray shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private static function patientNameForOrder(OperationServiceOrder $record): string
+    {
+        $coordination = $record->operationCoordinationService;
+
+        if ($coordination === null) {
+            return '—';
+        }
+
+        if (filled($coordination->patient)) {
+            return (string) $coordination->patient;
+        }
+
+        if (filled($coordination->telemedicinePatient?->full_name)) {
+            return (string) $coordination->telemedicinePatient->full_name;
+        }
+
+        if (filled($coordination->telemedicineCase?->patient_name)) {
+            return (string) $coordination->telemedicineCase->patient_name;
+        }
+
+        return '—';
+    }
+
+    private static function supplierLabel(OperationServiceOrder $record): string
+    {
+        if (filled($record->supplier?->name)) {
+            return (string) $record->supplier->name;
+        }
+
+        if (filled($record->supplier_external)) {
+            return (string) $record->supplier_external;
+        }
+
+        if (filled($record->telemedicineSupplier?->name)) {
+            return (string) $record->telemedicineSupplier->name;
+        }
+
+        return '—';
+    }
+
+    private static function statusIcon(?string $status): string
+    {
+        return match (mb_strtoupper(trim((string) $status))) {
+            'EN GESTION', 'EN GESTIÓN' => 'heroicon-m-arrow-path',
+            'FINALIZADO' => 'heroicon-m-check-circle',
+            'CADUCADA' => 'heroicon-m-exclamation-triangle',
+            'PENDIENTE' => 'heroicon-m-clock',
+            'CANCELADO' => 'heroicon-m-x-circle',
+            default => 'heroicon-m-information-circle',
+        };
+    }
+
+    private static function serviceTypeIcon(?string $serviceType): string
+    {
+        $normalized = mb_strtoupper(trim((string) $serviceType));
+
+        return match (true) {
+            str_contains($normalized, 'MEDICAMENTO') => 'heroicon-m-beaker',
+            str_contains($normalized, 'LABORATORIO') => 'heroicon-m-clipboard-document-list',
+            str_contains($normalized, 'IMAGEN') => 'heroicon-m-photo',
+            str_contains($normalized, 'ESPECIAL') => 'heroicon-m-user-group',
+            default => 'heroicon-m-briefcase',
+        };
+    }
 
     /** Valor de referencia de la API BCV para el formulario (una petición por request). */
     private static function referenciaTasaBcvDesdeApi(): ?float
@@ -224,9 +294,30 @@ class OperationServiceOrdersTable
     {
         return $table
             ->heading('Órdenes de servicio')
-            ->description('Listado de órdenes generadas por coordinación; el color de cada fila indica la prioridad asignada. Flujo: primero «Datos de pago»; al guardarlos podrás usar «Cargar soportes».')
+            ->description('Órdenes generadas desde coordinación. Vigencia de 10 días desde la aprobación; vencidas pasan a CADUCADA. La franja lateral refleja la prioridad salvo en órdenes cerradas.')
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn ($query) => $query->with(['telemedicinePriority', 'supplier', 'approvedOperationQuote'])->withCount('operationServiceOrderQuotes'))
+            ->searchPlaceholder('Buscar por orden, paciente, caso, proveedor o descripción…')
+            ->persistSearchInSession()
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateHeading('Sin órdenes de servicio')
+            ->emptyStateDescription('Cuando se genere una orden desde coordinación aparecerá aquí. Use la búsqueda y los filtros para localizar registros.')
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                OperationServiceOrderValidity::expireEligibleOrders('system');
+
+                OperationsSupplierScope::applyServiceOrderListScope($query);
+
+                return $query
+                    ->with([
+                        'telemedicinePriority',
+                        'supplier',
+                        'telemedicineSupplier',
+                        'approvedOperationQuote',
+                        'operationCoordinationService.telemedicineCase',
+                        'operationCoordinationService.telemedicinePatient',
+                    ])
+                    ->withCount('operationServiceOrderQuotes');
+            })
             ->columns([
                 TextColumn::make('order_number')
                     ->label('Nº orden')
@@ -235,30 +326,36 @@ class OperationServiceOrdersTable
                     ->weight('semibold')
                     ->icon('heroicon-m-hashtag')
                     ->copyable()
-                    ->copyMessage('Número copiado'),
-                TextColumn::make('approvedOperationQuote.id')
-                    ->label('Código cotización')
+                    ->copyMessage('Número copiado')
+                    ->description(fn (OperationServiceOrder $record): string => self::patientNameForOrder($record))
+                    ->tooltip(fn (OperationServiceOrder $record): string => self::patientNameForOrder($record)),
+                TextColumn::make('operationCoordinationService.telemedicineCase.code')
+                    ->label('Nº caso')
                     ->badge()
-                    ->color('warning')
-                    ->formatStateUsing(
-                        fn (mixed $state): string => filled($state)
-                            ? 'COT-'.str_pad((string) ((int) $state), 6, '0', STR_PAD_LEFT)
-                            : '—'
-                    )
-                    ->tooltip('Se completa cuando la orden nace desde una cotización aprobada.')
-                    ->toggleable(),
+                    ->color('primary')
+                    ->icon('healthicons-f-health-literacy')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper((string) $state) : '—'),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
                     ->searchable()
                     ->sortable()
-                    ->color(fn (?string $state): string => match ($state) {
+                    ->icon(fn (?string $state): string => self::statusIcon($state))
+                    ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) $state))) {
                         'EN GESTION', 'EN GESTIÓN' => 'primary',
                         'FINALIZADO' => 'success',
+                        'CADUCADA' => 'danger',
                         'PENDIENTE' => 'warning',
+                        'CANCELADA' => 'danger',
                         'CANCELADO' => 'gray',
                         default => 'gray',
-                    }),
+                    })
+                    ->description(fn (OperationServiceOrder $record): ?string => OperationServiceOrderValidity::vigenciaLabel($record) !== '—'
+                        ? OperationServiceOrderValidity::vigenciaLabel($record)
+                        : null),
                 TextColumn::make('telemedicinePriority.name')
                     ->label('Prioridad')
                     ->badge()
@@ -272,22 +369,50 @@ class OperationServiceOrdersTable
                     ->sortable()
                     ->placeholder('—')
                     ->limit(28)
-                    ->tooltip(fn ($record) => $record->supplier?->name),
-                TextColumn::make('supplier_external')
-                    ->label('Proveedor No Convenido')
-                    ->searchable()
-                    ->placeholder('—'),
-                TextColumn::make('description')
-                    ->label('Descripción')
-                    ->searchable()
-                    ->limit(40)
-                    ->tooltip(fn ($record) => $record->description),
+                    ->formatStateUsing(fn (?string $state, OperationServiceOrder $record): string => self::supplierLabel($record))
+                    ->description(fn (OperationServiceOrder $record): ?string => filled($record->supplier?->name) && filled($record->supplier_external)
+                        ? 'No convenido: '.$record->supplier_external
+                        : null)
+                    ->tooltip(fn (OperationServiceOrder $record): string => self::supplierLabel($record)),
                 TextColumn::make('service_type')
                     ->label('Tipo de servicio')
                     ->badge()
                     ->color('gray')
+                    ->icon(fn (?string $state): string => self::serviceTypeIcon($state))
                     ->searchable()
                     ->toggleable(),
+                TextColumn::make('description')
+                    ->label('Descripción')
+                    ->searchable()
+                    ->wrap()
+                    ->lineClamp(2)
+                    ->placeholder('—')
+                    ->tooltip(fn (OperationServiceOrder $record): ?string => filled($record->description) ? (string) $record->description : null)
+                    ->toggleable(),
+                TextColumn::make('approvedOperationQuote.id')
+                    ->label('Código cotización')
+                    ->badge()
+                    ->color('warning')
+                    ->formatStateUsing(
+                        fn (mixed $state): string => filled($state)
+                            ? 'COT-'.str_pad((string) ((int) $state), 6, '0', STR_PAD_LEFT)
+                            : '—'
+                    )
+                    ->tooltip('Se completa cuando la orden nace desde una cotización aprobada.')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('managed_by')
+                    ->label('Gestionado por')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable()
+                    ->searchable()
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true))
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('supplier_external')
+                    ->label('Proveedor No Convenido')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('currency')
                     ->label('Moneda')
                     ->badge()
@@ -296,13 +421,14 @@ class OperationServiceOrdersTable
                 TextColumn::make('tasa_bcv')
                     ->label('Tasa BCV')
                     ->sortable()
-                    ->toggleable()
                     ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state): string => $state !== null && $state !== '' ? (string) $state : '—'),
                 TextColumn::make('total_amount_usd')
                     ->label('Total US$')
                     ->sortable()
                     ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state): string => $state !== null && $state !== ''
                         ? 'US$ '.number_format((float) $state, 2, ',', '.')
                         : '—'),
@@ -310,6 +436,7 @@ class OperationServiceOrdersTable
                     ->label('Total Bs.')
                     ->sortable()
                     ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state): string => $state !== null && $state !== ''
                         ? 'Bs. '.number_format((float) $state, 2, ',', '.')
                         : '—'),
@@ -318,7 +445,7 @@ class OperationServiceOrdersTable
                     ->badge()
                     ->color('gray')
                     ->searchable()
-                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn (?string $state): string => $state ? (self::paymentMethodOptions()[$state] ?? $state) : '—'),
                 TextColumn::make('status_payment')
                     ->label('Estado de pago')
@@ -329,35 +456,38 @@ class OperationServiceOrdersTable
                         default => 'gray',
                     })
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('service_order_pdf_path')
                     ->label('PDF orden')
                     ->badge()
                     ->color(fn (?string $state): string => filled($state) ? 'success' : 'gray')
                     ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Generado' : 'Pendiente')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('associated_quote_pdf_path')
                     ->label('PDF cotización')
                     ->badge()
                     ->color(fn (?string $state): string => filled($state) ? 'success' : 'gray')
                     ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Generado' : 'No aplica')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('operation_service_order_quotes_count')
                     ->label('Cotizaciones')
                     ->badge()
                     ->color('info')
+                    ->icon('heroicon-m-document-currency-dollar')
                     ->sortable()
+                    ->formatStateUsing(fn (int $state): string => $state === 1 ? '1 cotización' : $state.' cotizaciones')
                     ->toggleable(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_by')
                     ->label('Actualizado por')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Creado')
-                    ->description(fn ($record) => $record->created_at->diffForHumans())
+                    ->description(fn (OperationServiceOrder $record): string => $record->created_at->diffForHumans())
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->icon('heroicon-m-calendar-days'),
@@ -368,15 +498,31 @@ class OperationServiceOrdersTable
                     ->icon('heroicon-m-calendar-days')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->recordClasses(fn (OperationServiceOrder $record): array => [
-                TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name),
-            ])
+            ->recordClasses(fn (OperationServiceOrder $record): array => self::recordRowClasses($record))
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'PENDIENTE' => 'Pendiente',
+                        'EN GESTION' => 'En gestión',
+                        'FINALIZADO' => 'Finalizado',
+                        'CADUCADA' => 'Caducada',
+                        'CANCELADO' => 'Cancelado',
+                    ])
+                    ->multiple(),
+                SelectFilter::make('service_type')
+                    ->label('Tipo de servicio')
+                    ->options(fn (): array => OperationServiceOrder::query()
+                        ->whereNotNull('service_type')
+                        ->where('service_type', '!=', '')
+                        ->distinct()
+                        ->orderBy('service_type')
+                        ->pluck('service_type', 'service_type')
+                        ->all())
+                    ->searchable()
+                    ->multiple(),
             ])
             ->recordActions([
-                // ViewAction::make(),
-                // EditAction::make(),
                 ActionGroup::make([
                     Action::make('downloadServiceOrderPdf')
                         ->label('PDF orden')
@@ -735,7 +881,7 @@ class OperationServiceOrdersTable
                             if ($usd === null && $ves === null) {
                                 Notification::make()
                                     ->title('Montos requeridos')
-                                    ->body('Indica al menos el total en US$ o el total en bolívares.')
+                                    ->body('Indica al menos un monto en US$ o en bolívares.')
                                     ->warning()
                                     ->send();
 
@@ -795,15 +941,17 @@ class OperationServiceOrdersTable
                                     'required' => 'El campo es requerido',
                                 ]),
                         ])
-                        ->action(function ($record, array $data) {
+                        ->action(function (OperationServiceOrder $record, array $data): void {
                             $record->update([
                                 'files' => $data['files'],
                                 'updated_by' => Auth::user()->name,
-                                'status' => 'FINALIZADO',
                             ]);
+
+                            OperationServiceOrderCoordinationSync::finalizeOrder($record);
+
                             Notification::make()
                                 ->title('¡TAREA COMPLETADA!')
-                                ->body('Los soportes han sido cargados correctamente.')
+                                ->body('Los soportes se cargaron, la orden quedó finalizada y los ítems de la coordinación se actualizaron.')
                                 ->success()
                                 ->send();
                         })
@@ -838,6 +986,24 @@ class OperationServiceOrdersTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function recordRowClasses(OperationServiceOrder $record): array
+    {
+        $status = mb_strtoupper(trim((string) ($record->status ?? '')));
+
+        if ($status === OperationServiceOrderValidity::STATUS_EXPIRED) {
+            return ['border-l-4 border-red-500 bg-red-50/90 dark:border-red-500 dark:bg-red-950/40'];
+        }
+
+        if (in_array($status, ['FINALIZADO', 'CANCELADA', 'CANCELADO'], true)) {
+            return ['border-l-4 border-gray-400 bg-gray-100/90 dark:border-gray-500 dark:bg-gray-900/50'];
+        }
+
+        return [TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name)];
     }
 
     private static function renderMedicationQuotesPreview(OperationServiceOrder $record): HtmlString
