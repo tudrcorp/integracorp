@@ -8,6 +8,7 @@ use App\Models\Agency;
 use App\Support\CommercialStructure\AgencyHierarchyCommissionResolver;
 use App\Support\CommercialStructure\AgentHierarchyCommissionResolver;
 use App\Support\CommercialStructureBankingExportColumns;
+use App\Support\CsvExportStream;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -47,13 +48,11 @@ final class AdministrationAgencyReportsExportService
         $filename = self::buildFilename($report, 'csv');
 
         return response()->streamDownload(function () use ($report): void {
-            $handle = fopen('php://output', 'w');
+            $handle = CsvExportStream::openOutput();
 
             if ($handle === false) {
                 return;
             }
-
-            fwrite($handle, "\xEF\xBB\xBF");
 
             foreach (self::rowsForReport($report) as $row) {
                 fputcsv($handle, $row);

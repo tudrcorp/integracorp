@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\IndividualQuotes\Tables;
 
+use App\Http\Controllers\IndividualQuoteExportCsvController;
 use App\Http\Controllers\LogController;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use App\Models\Agency;
@@ -11,6 +12,7 @@ use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -578,6 +580,26 @@ class IndividualQuotesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una cotización')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = IndividualQuoteExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.individual-quotes.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ])

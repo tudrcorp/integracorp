@@ -2,52 +2,64 @@
 
 namespace App\Filament\General\Resources\Agents\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Agent;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Filament\Actions\BulkActionGroup;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Actions\DeleteBulkAction;
+use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Models\Agent;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
 
 class AgentsTable
 {
     public static function configure(Table $table): Table
     {
+        $generalAgencyCode = (string) (Auth::user()?->code_agency ?? '');
+
         return $table
-            ->query(Agent::query()->where('owner_code', Auth::user()->code_agency))
+            ->query(
+                $generalAgencyCode !== ''
+                    ? CommercialHierarchyFlowchart::agentsUnderGeneralAgencyQuery($generalAgencyCode)
+                    : Agent::query()->whereRaw('0 = 1'),
+            )
             ->defaultSort('id', 'desc')
-            ->description('Lista de Agentes registrados en el sistema.')
+            ->heading('AGENTES')
+            ->description('Estructura comercial: secuencia jerárquica Agente → Sub Agente bajo su agencia general.')
             ->columns([
-                TextColumn::make('id')
+                TextColumn::make('commercial_code_sequence')
                     ->label('Código')
-                    ->prefix('AGT-000')
-                    ->alignCenter()
+                    ->getStateUsing(fn (Agent $record): string => CommercialHierarchyFlowchart::commercialCodeSequenceForAgent(
+                        $record,
+                        CommercialHierarchyFlowchart::VIEWER_GENERAL,
+                    ))
                     ->badge()
-                    ->icon(function ($record) {
-                        if (Agent::where('id', $record->id)->where('agent_type_id', 3)->exists()) {
-                            return 'heroicon-m-users';
-                        }
-                        if (Agent::where('id', $record->id)->where('agent_type_id', 2)->exists()) {
-                            return 'heroicon-m-user';
-                        }
-                    })
-                    ->color('success')
-                    ->searchable(),
+                    ->icon(fn (Agent $record): string => (int) ($record->agent_type_id ?? 0) === 3
+                        ? 'heroicon-m-users'
+                        : 'heroicon-m-user')
+                    ->color('warning')
+                    ->wrap()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        $numericSearch = preg_replace('/\D/', '', $search) ?? '';
+
+                        return $query->when(
+                            $numericSearch !== '',
+                            fn (Builder $builder): Builder => $builder->where('id', 'like', "%{$numericSearch}%"),
+                        );
+                    }),
                 TextColumn::make('typeAgent.definition')
                     ->label('Tipo')
                     ->badge()
@@ -181,8 +193,6 @@ class AgentsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-
-
                 IconColumn::make('tdec')
                     ->label('TDEC')
                     ->boolean()
@@ -266,20 +276,20 @@ class AgentsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -310,8 +320,8 @@ class AgentsTable
 
                             LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
 
-                            //4. creamos el usuario en la tabla users (AGENTES ASOCIADOS A LA AGENCIA GENERAL)
-                            $user = new User();
+                            // 4. creamos el usuario en la tabla users (AGENTES ASOCIADOS A LA AGENCIA GENERAL)
+                            $user = new User;
                             $user->agent_id = $record->id;
                             $user->name = $record->name;
                             $user->email = $record->email;
@@ -319,11 +329,11 @@ class AgentsTable
                             $user->is_agent = true;
                             $user->code_agency = Auth::user()->code_agency;
                             $user->code_agent = $record->code_agent;
-                            $user->link_agent = env('APP_URL') . '/at/lk/' . Crypt::encryptString($record->code_agent);
+                            $user->link_agent = env('APP_URL').'/at/lk/'.Crypt::encryptString($record->code_agent);
                             $user->status = 'ACTIVO';
                             $user->save();
 
-                            //Envio de NOtificaciones por WHATSAAP
+                            // Envio de NOtificaciones por WHATSAAP
                             $phone = $record->phone;
 
                             $send = NotificationController::agent_activated($phone, $record->email, '12345678');
@@ -349,12 +359,12 @@ class AgentsTable
                         ->hidden(function (Agent $record) {
                             return $record->status == 'INACTIVO';
                         })
-                        ->action(fn(Agent $record) => $record->update(['status' => 'INACTIVO']))
+                        ->action(fn (Agent $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger'),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
+                    ->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

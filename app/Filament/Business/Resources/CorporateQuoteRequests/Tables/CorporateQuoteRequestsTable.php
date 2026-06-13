@@ -2,16 +2,15 @@
 
 namespace App\Filament\Business\Resources\CorporateQuoteRequests\Tables;
 
-
+use App\Http\Controllers\CorporateQuoteRequestExportCsvController;
 use App\Models\Agency;
 use App\Models\CorporateQuoteRequest;
-use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
@@ -19,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class CorporateQuoteRequestsTable
@@ -31,6 +31,7 @@ class CorporateQuoteRequestsTable
                 if (Auth::user()->is_accountManagers) {
                     return CorporateQuoteRequest::query()->where('ownerAccountManagers', Auth::user()->id);
                 }
+
                 return CorporateQuoteRequest::query();
             })
             ->defaultSort('id', 'desc')
@@ -44,7 +45,7 @@ class CorporateQuoteRequestsTable
                             ->with('typeAgency')
                             ->first();
 
-                        return isset($agency_type) ? $agency_type->typeAgency->definition . ' - ' : 'MASTER - ';
+                        return isset($agency_type) ? $agency_type->typeAgency->definition.' - ' : 'MASTER - ';
                     })
                     ->alignCenter()
                     ->badge()
@@ -55,7 +56,7 @@ class CorporateQuoteRequestsTable
                     ->label('Fecha de asignación')
                     ->placeholder('--/--/----')
                     ->mask('99/99/9999')
-                    ->hidden(fn() => ! Auth::user()->is_business_admin),
+                    ->hidden(fn () => ! Auth::user()->is_business_admin),
 
                 TextColumn::make('code')
                     ->label('Código')
@@ -66,14 +67,14 @@ class CorporateQuoteRequestsTable
                     ->label('Account Manager')
                     ->icon('heroicon-o-shield-check')
                     ->badge()
-                    ->default(fn($record): string => $record->accountManager ? $record->accountManager : '-----')
+                    ->default(fn ($record): string => $record->accountManager ? $record->accountManager : '-----')
                     ->color(function (string $state): string {
                         return match ($state) {
                             '-----' => 'info',
                             default => 'success',
                         };
                     })
-                    ->hidden(fn() => ! Auth::user()->is_business_admin),
+                    ->hidden(fn () => ! Auth::user()->is_business_admin),
                 TextColumn::make('agent_id')
                     ->label('Registrado por:')
                     ->prefix('AGT-000')
@@ -106,19 +107,19 @@ class CorporateQuoteRequestsTable
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'ACTIVA-PENDIENTE'  => 'warning',
-                            'PRE-APROBADA'  => 'warning',
-                            'PROCESADA'      => 'success',
-                            'APROBADA'      => 'success',
+                            'ACTIVA-PENDIENTE' => 'warning',
+                            'PRE-APROBADA' => 'warning',
+                            'PROCESADA' => 'success',
+                            'APROBADA' => 'success',
                             default => 'azul',
                         };
                     })
                     ->icon(function (mixed $state): ?string {
                         return match ($state) {
-                            'ACTIVA-PENDIENTE'  => 'heroicon-c-information-circle',
-                            'PRE-APROBADA'  => 'heroicon-c-information-circle',
-                            'APROBADA'      => 'heroicon-s-check-circle',
-                            'PROCESADA'      => 'heroicon-s-check-circle',
+                            'ACTIVA-PENDIENTE' => 'heroicon-c-information-circle',
+                            'PRE-APROBADA' => 'heroicon-c-information-circle',
+                            'APROBADA' => 'heroicon-s-check-circle',
+                            'PROCESADA' => 'heroicon-s-check-circle',
                         };
                     })
                     ->searchable(),
@@ -149,7 +150,7 @@ class CorporateQuoteRequestsTable
                             : 'danger'; // Rojo si no existe
                     })
                     ->url(function ($record) {
-                        return asset('storage/' . $record->document);
+                        return asset('storage/'.$record->document);
                     })
                     ->openUrlInNewTab()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -174,11 +175,31 @@ class CorporateQuoteRequestsTable
                             // Notification::success('Cotización aprobada con exito!')->send();
                             return redirect()->route('filament.admin.resources.corporate-quotes.create', ['corporate_quote_request_id' => $record->id]);
                         })
-                        ->hidden(fn(CorporateQuoteRequest $record): bool => $record->status == 'APROBADA'),
-                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+                        ->hidden(fn (CorporateQuoteRequest $record): bool => $record->status == 'APROBADA'),
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una solicitud')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = CorporateQuoteRequestExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.corporate-quote-requests.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ])

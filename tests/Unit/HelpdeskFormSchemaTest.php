@@ -28,6 +28,8 @@ it('en edición solo el creador es editable y el resto queda deshabilitado', fun
         ->toContain('persistTabInQueryString')
         ->toContain('Creador del ticket')
         ->toContain("TextInput::make('created_by')")
+        ->toContain("Select::make('status')")
+        ->toContain("->hiddenOn('create')")
         ->toContain('getQualifiedKeyName()');
 });
 

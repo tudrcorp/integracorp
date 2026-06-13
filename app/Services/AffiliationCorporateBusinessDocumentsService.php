@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Jobs\GenerateCorporateAffiliateTarjetasChunkJob;
+use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
+use App\Support\DomPdfBatchRenderOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Bus\Batch;
@@ -28,15 +30,23 @@ class AffiliationCorporateBusinessDocumentsService
      */
     public static function regenerateCertificateAndTarjetas(AffiliationCorporate $record, ?int $userId): array
     {
-        $record->loadMissing(['corporateAffiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
+        $record->loadMissing(['corporateAffiliates.plan', 'corporateAffiliates.coverage', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
 
+        self::purgeExistingGeneratedDocuments($record);
         self::ensureDirectories();
         self::generateCorporateCertificate($record);
 
         $affiliates = $record->corporateAffiliates;
+        $affiliateCount = $affiliates->count();
+        $memoryMb = min(1024, 384 + (48 * max(1, $affiliateCount + 1)));
+        ini_set('memory_limit', $memoryMb.'M');
+        set_time_limit(min(900, 120 + (45 * max(1, $affiliateCount + 1))));
 
-        if ($affiliates->count() <= 3) {
-            self::generateTarjetasChunk($record, self::toTarjetaPayloadChunk($record, $affiliates));
+        if ($affiliateCount <= 3) {
+            $tarjetaPayloads = self::normalizeTarjetaPayloads(
+                self::toTarjetaPayloadChunk($record, $affiliates),
+            );
+            self::generateTarjetasChunk($record, $tarjetaPayloads);
 
             return [
                 'queued' => false,
@@ -49,10 +59,14 @@ class AffiliationCorporateBusinessDocumentsService
         $jobs = [];
 
         foreach ($chunks as $chunk) {
-            $jobs[] = new GenerateCorporateAffiliateTarjetasChunkJob($record->code, $chunk);
+            $jobs[] = new GenerateCorporateAffiliateTarjetasChunkJob(
+                $record->code,
+                self::normalizeTarjetaPayloads($chunk),
+            );
         }
 
         $batch = Bus::batch($jobs)
+            ->onConnection('sync')
             ->name('corporate-documents-'.$record->code)
             ->then(function (Batch $batch) use ($record, $taskId): void {
                 if ($batch->cancelled()) {
@@ -215,6 +229,43 @@ class AffiliationCorporateBusinessDocumentsService
         return (int) ceil($remainingJobs / $jobsPerSecond);
     }
 
+    public static function resolveCertificateAbsolutePath(AffiliationCorporate $record): ?string
+    {
+        $path = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+
+        return is_file($path) ? $path : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function tarjetaCandidateFilenames(AffiliationCorporate $record): array
+    {
+        if (! $record->relationLoaded('corporateAffiliates')) {
+            $record->loadMissing('corporateAffiliates');
+        }
+
+        return $record->corporateAffiliates
+            ->map(fn ($affiliate): string => 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf')
+            ->values()
+            ->all();
+    }
+
+    public static function resolvePrimaryTarjetaAbsolutePath(AffiliationCorporate $record): ?string
+    {
+        $directory = public_path('storage/tarjeta-afiliacion/');
+
+        foreach (self::tarjetaCandidateFilenames($record) as $filename) {
+            $path = $directory.$filename;
+
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @return array<int, string>
      */
@@ -242,19 +293,19 @@ class AffiliationCorporateBusinessDocumentsService
         int $chunkSize = 0,
     ): array {
         $hasta = self::vigenciaHasta($record->effective_date);
-        $planDesc = (string) ($record->plan?->description ?? '');
-        $cobertura = (string) ($record->coverage?->price ?? '');
-        $frecuencia = (string) $record->payment_frequency;
         $desde = (string) ($record->effective_date ?? '');
 
-        $payload = $affiliates->map(function ($affiliate) use ($record, $planDesc, $cobertura, $frecuencia, $desde, $hasta): array {
+        $payload = $affiliates->map(function ($affiliate) use ($record, $desde, $hasta): array {
+            $planId = $affiliate->plan_id !== null ? (int) $affiliate->plan_id : null;
+
             return [
                 'name' => trim((string) $affiliate->first_name.' '.(string) $affiliate->last_name),
                 'ci' => (string) $affiliate->nro_identificacion,
                 'code' => (string) $record->code,
-                'plan' => $planDesc,
-                'frecuencia' => $frecuencia,
-                'cobertura' => $cobertura,
+                'plan_id' => $planId,
+                'plan' => self::affiliatePlanDescription($affiliate),
+                'frecuencia' => (string) ($affiliate->payment_frequency ?? $record->payment_frequency ?? ''),
+                'cobertura' => self::affiliateCoveragePrice($affiliate, $record),
                 'desde' => $desde,
                 'hasta' => $hasta,
                 'output_filename' => 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
@@ -271,11 +322,47 @@ class AffiliationCorporateBusinessDocumentsService
     /**
      * @param  array<int, array<string, mixed>>  $chunk
      */
+    /**
+     * @param  array<int, array<string, mixed>|array<int, array<string, mixed>>>  $chunkOrChunks
+     * @return array<int, array<string, mixed>>
+     */
+    public static function normalizeTarjetaPayloads(array $chunkOrChunks): array
+    {
+        if ($chunkOrChunks === []) {
+            return [];
+        }
+
+        $first = $chunkOrChunks[0] ?? null;
+
+        if (is_array($first) && array_key_exists('code', $first)) {
+            return $chunkOrChunks;
+        }
+
+        $normalized = [];
+
+        foreach ($chunkOrChunks as $nested) {
+            if (! is_array($nested)) {
+                continue;
+            }
+
+            foreach ($nested as $payload) {
+                if (is_array($payload) && array_key_exists('code', $payload)) {
+                    $normalized[] = $payload;
+                }
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>|array<int, array<string, mixed>>>  $chunk
+     */
     public static function generateTarjetasChunk(AffiliationCorporate $record, array $chunk): void
     {
         self::ensureDirectories();
 
-        foreach ($chunk as $data) {
+        foreach (self::normalizeTarjetaPayloads($chunk) as $data) {
             $ok = TarjetaAfiliacionController::generateTarjetaAfiliacion(
                 $data,
                 silent: true,
@@ -322,8 +409,14 @@ class AffiliationCorporateBusinessDocumentsService
             'documents.certificate',
             AffiliationController::dataForCertificatePdfView($pagador, $beneficios, $affiliates),
         );
+        DomPdfBatchRenderOptions::apply($pdf);
 
-        $pdf->save(public_path('storage/certificados-doc/CER-'.$record->code.'.pdf'));
+        $certificatePath = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+        $pdf->save($certificatePath);
+
+        if (! is_file($certificatePath)) {
+            throw new RuntimeException('No se pudo guardar el certificado corporativo en disco.');
+        }
     }
 
     private static function ensureDirectories(): void
@@ -359,6 +452,12 @@ class AffiliationCorporateBusinessDocumentsService
         foreach ($record->corporateAffiliates as $affiliate) {
             $fullName = trim((string) $affiliate->first_name.' '.(string) $affiliate->last_name);
             $filename = 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf';
+            $absolutePath = public_path('storage/tarjeta-afiliacion/'.$filename);
+
+            if (! is_file($absolutePath)) {
+                continue;
+            }
+
             $documents[] = [
                 'label' => 'Tarjeta — '.($fullName !== '' ? $fullName : 'Afiliado corporativo'),
                 'kind' => 'tarjeta',
@@ -367,7 +466,56 @@ class AffiliationCorporateBusinessDocumentsService
             ];
         }
 
+        $certificatePath = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+
+        if (! is_file($certificatePath)) {
+            return array_values(array_filter(
+                $documents,
+                fn (array $document): bool => ($document['kind'] ?? '') !== 'certificate',
+            ));
+        }
+
         return $documents;
+    }
+
+    private static function purgeExistingGeneratedDocuments(AffiliationCorporate $record): void
+    {
+        $certificatePath = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+
+        if (is_file($certificatePath)) {
+            unlink($certificatePath);
+        }
+
+        $tarjetaDirectory = public_path('storage/tarjeta-afiliacion/');
+        $pattern = $tarjetaDirectory.'TAR-'.$record->code.'*.pdf';
+
+        foreach (glob($pattern) ?: [] as $tarjetaPath) {
+            if (is_file($tarjetaPath)) {
+                unlink($tarjetaPath);
+            }
+        }
+    }
+
+    private static function affiliatePlanDescription(AffiliateCorporate $affiliate): string
+    {
+        if ($affiliate->relationLoaded('plan') && $affiliate->plan !== null) {
+            return (string) ($affiliate->plan->description ?? '');
+        }
+
+        return '';
+    }
+
+    private static function affiliateCoveragePrice(AffiliateCorporate $affiliate, AffiliationCorporate $record): string
+    {
+        if ($affiliate->relationLoaded('coverage') && $affiliate->coverage !== null) {
+            return (string) ($affiliate->coverage->price ?? '');
+        }
+
+        if ($record->relationLoaded('coverage') && $record->coverage !== null) {
+            return (string) ($record->coverage->price ?? '');
+        }
+
+        return '';
     }
 
     private static function vigenciaHasta(?string $effectiveDate): string

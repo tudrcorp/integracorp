@@ -20,17 +20,25 @@
     >
         <div class="flex items-center justify-end -space-x-2">
             @foreach ($avatars as $avatar)
-                @if ($avatar['avatar_url'] ?? null)
-                    <img
-                        src="{{ $avatar['avatar_url'] }}"
-                        alt="{{ $avatar['name'] ?? 'Colaborador' }}"
-                        class="tdg-calendar-avatar-stack__item size-6 rounded-full border-2 border-white object-cover dark:border-slate-900"
-                    >
-                @else
-                    <span class="tdg-calendar-avatar-stack__item inline-flex size-6 items-center justify-center rounded-full border-2 border-white bg-slate-200 text-[10px] font-semibold text-slate-700 dark:border-slate-900 dark:bg-slate-700 dark:text-slate-100">
-                        {{ $avatar['initials'] ?? 'NA' }}
-                    </span>
-                @endif
+                <div class="group/av relative inline-flex">
+                    @if ($avatar['avatar_url'] ?? null)
+                        <img
+                            src="{{ $avatar['avatar_url'] }}"
+                            alt="{{ $avatar['name'] ?? 'Colaborador' }}"
+                            class="tdg-calendar-avatar-stack__item size-6 rounded-full border-2 border-white object-cover dark:border-slate-900"
+                        >
+                    @else
+                        <span class="tdg-calendar-avatar-stack__item inline-flex size-6 items-center justify-center rounded-full border-2 border-white bg-slate-200 text-[10px] font-semibold text-slate-700 dark:border-slate-900 dark:bg-slate-700 dark:text-slate-100">
+                            {{ $avatar['initials'] ?? 'NA' }}
+                        </span>
+                    @endif
+
+                    @if (filled($avatar['name'] ?? null))
+                        <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/80 bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-800 shadow-lg group-hover/av:block dark:border-white/10 dark:bg-slate-900/95 dark:text-slate-100">
+                            {{ $avatar['name'] }}
+                        </div>
+                    @endif
+                </div>
             @endforeach
 
             @if ($overflowCount > 0)

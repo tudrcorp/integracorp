@@ -23,7 +23,7 @@
 
             <div class="mt-4 grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Espacios de la agenda TDG">
                 @foreach ([
-                'offices' => ['icon' => 'heroicon-o-building-office-2', 'title' => 'Oficinas', 'hint' => 'Central Lido y Farmadoc'],
+                'offices' => ['icon' => 'heroicon-o-building-office-2', 'title' => 'Oficinas', 'hint' => 'Centro Lido y Farmadoc'],
                 'guards' => ['icon' => 'heroicon-o-shield-check', 'title' => 'Guardias', 'hint' => '2.1, 2.2 diurnas y guardia nocturna'],
                 'departments' => ['icon' => 'heroicon-o-squares-2x2', 'title' => 'Departamentos', 'hint' => 'Colaboradores de sistemas por área'],
                 ] as $workspaceKey => $workspaceMeta)

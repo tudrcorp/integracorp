@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages;
 
+use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -23,6 +24,22 @@ class GeneradorQrPersonalizado extends Page
     protected static ?int $navigationSort = 99;
 
     protected string $view = 'filament.business.pages.generador-qr-personalizado';
+
+    /**
+     * @return array<int, string>
+     */
+    public function getIndividualQrPlanOptions(): array
+    {
+        return TarjetaAfiliacionQrPlanCatalog::individualSelectOptions();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getCorporateQrPlanOptions(): array
+    {
+        return TarjetaAfiliacionQrPlanCatalog::corporateSelectOptions();
+    }
 
     public static function shouldRegisterNavigation(): bool
     {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HelpDesk;
+use App\Support\CsvExportStream;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -42,7 +43,7 @@ class HelpdeskExportCsvController extends Controller
         $filename = 'tickets_helpdesk_'.now()->format('Y-m-d_His').'.csv';
 
         return new StreamedResponse(function () use ($ids, $headers): void {
-            $handle = fopen('php://output', 'w');
+            $handle = CsvExportStream::openOutput();
 
             if ($handle === false) {
                 return;

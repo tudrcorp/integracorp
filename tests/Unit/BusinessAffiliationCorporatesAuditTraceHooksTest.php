@@ -12,5 +12,9 @@ it('registra trazas de auditoria en acciones sensibles de afiliaciones corporati
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_CORPORATE_PAYMENT_UPLOAD_FAILED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_CORPORATE_OBSERVATION_ADDED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_CORPORATE_STATUS_UPDATED')
-        ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_CORPORATE_EXCLUDED');
+        ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_CORPORATE_EXCLUDED')
+        ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_CORPORATE_CERTIFICATE_DOWNLOADED')
+        ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_CORPORATE_CARD_DOWNLOADED')
+        ->and($contents)->toContain('AffiliationCorporateBusinessDocumentsService::resolveCertificateAbsolutePath')
+        ->and($contents)->toContain('AffiliationCorporateBusinessDocumentsService::resolvePrimaryTarjetaAbsolutePath');
 });

@@ -13,6 +13,13 @@ use App\Filament\Marketing\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart
 use App\Filament\Marketing\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as MarketingStatsOverviewHelpdesk;
 use App\Filament\Operations\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as OperationsHelpdeskStatusWeeklyChart;
 use App\Filament\Operations\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as OperationsStatsOverviewHelpdesk;
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\ColaboradorActivitiesSpeedometerWidget;
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\ColaboradoresHelpdeskTicketsChart;
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\IndicadoresDeDesempenoChartsTabsWidget;
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierAcceptanceLettersChart;
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierNewProviderCreationChart;
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierObservationsChart;
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierProviderSystemUpdateChart;
 use App\Models\ObservationCommercialStructure;
 use App\Observers\ObservationCommercialStructureObserver;
 use Filament\Support\Colors\Color;
@@ -50,6 +57,13 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.marketing.resources.helpdesks.widgets.stats-overview-helpdesk', MarketingStatsOverviewHelpdesk::class);
         Livewire::component('app.filament.operations.resources.helpdesks.widgets.helpdesk-status-weekly-chart', OperationsHelpdeskStatusWeeklyChart::class);
         Livewire::component('app.filament.operations.resources.helpdesks.widgets.stats-overview-helpdesk', OperationsStatsOverviewHelpdesk::class);
+        Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.colaborador-activities-speedometer-widget', ColaboradorActivitiesSpeedometerWidget::class);
+        Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.indicadores-de-desempeno-charts-tabs-widget', IndicadoresDeDesempenoChartsTabsWidget::class);
+        Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.colaboradores-helpdesk-tickets-chart', ColaboradoresHelpdeskTicketsChart::class);
+        Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-observations-chart', SupplierObservationsChart::class);
+        Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-provider-system-update-chart', SupplierProviderSystemUpdateChart::class);
+        Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-new-provider-creation-chart', SupplierNewProviderCreationChart::class);
+        Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-acceptance-letters-chart', SupplierAcceptanceLettersChart::class);
 
         FilamentTimezone::set('America/Caracas');
 

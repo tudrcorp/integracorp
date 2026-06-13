@@ -12,6 +12,14 @@ use Illuminate\Support\HtmlString;
 
 class CommercialHierarchyFlowchart
 {
+    public const VIEWER_FULL = 'full';
+
+    public const VIEWER_MASTER = 'master';
+
+    public const VIEWER_GENERAL = 'general';
+
+    public const VIEWER_AGENT = 'agent';
+
     private const AGENCY_TYPE_MASTER = 1;
 
     private const AGENCY_TYPE_GENERAL = 3;
@@ -23,17 +31,81 @@ class CommercialHierarchyFlowchart
         return self::renderDiagramShell($context['levels']);
     }
 
-    public static function renderForAgent(Agent $agent): HtmlString
+    public static function commercialCodeSequenceForAgent(Agent $agent, string $viewerContext = self::VIEWER_FULL): string
     {
-        $superiorAgent = null;
         $agentTypeId = (int) ($agent->agent_type_id ?? 0);
+        $segments = self::commercialAgencySegmentsForAgent($agent);
 
         if ($agentTypeId === 3 && filled($agent->owner_agent)) {
-            $superiorAgent = Agent::query()
-                ->select(['id', 'name', 'status', 'owner_code'])
-                ->find((int) $agent->owner_agent);
+            $segments[] = 'AGENTE · AGT-000'.(int) $agent->owner_agent;
+            $segments[] = 'SUB AGENTE · AGT-000'.(int) $agent->id;
+        } else {
+            $segments[] = 'AGENTE · AGT-000'.(int) $agent->id;
         }
 
+        $segments = self::filterCommercialCodeSegmentsForViewer($segments, $viewerContext);
+
+        return implode(' → ', $segments);
+    }
+
+    /**
+     * Agentes y subagentes bajo una agencia general (code_agency o owner_code legacy).
+     *
+     * @return Builder<Agent>
+     */
+    public static function agentsUnderGeneralAgencyQuery(string $generalAgencyCode): Builder
+    {
+        $normalizedCodes = self::resolveAgentOwnerCodesForAgencyCode($generalAgencyCode);
+
+        if ($normalizedCodes === []) {
+            return Agent::query()->whereRaw('0 = 1');
+        }
+
+        return Agent::query()->where(function (Builder $query) use ($normalizedCodes): void {
+            foreach ($normalizedCodes as $code) {
+                $normalizedCode = strtoupper(trim($code));
+
+                $query->orWhereRaw('UPPER(TRIM(code_agency)) = ?', [$normalizedCode]);
+                $query->orWhereRaw('UPPER(TRIM(owner_code)) = ?', [$normalizedCode]);
+            }
+
+            $query->orWhereIn('owner_agent', function (\Illuminate\Database\Query\Builder $subquery) use ($normalizedCodes): void {
+                $subquery->select('id')
+                    ->from('agents')
+                    ->where('agent_type_id', 2)
+                    ->where(function (\Illuminate\Database\Query\Builder $parentQuery) use ($normalizedCodes): void {
+                        foreach ($normalizedCodes as $code) {
+                            $normalizedCode = strtoupper(trim($code));
+
+                            $parentQuery->orWhereRaw('UPPER(TRIM(code_agency)) = ?', [$normalizedCode]);
+                            $parentQuery->orWhereRaw('UPPER(TRIM(owner_code)) = ?', [$normalizedCode]);
+                        }
+                    });
+            });
+        });
+    }
+
+    /**
+     * Subagentes bajo un agente responsable (owner_agent).
+     *
+     * @return Builder<Agent>
+     */
+    public static function agentsUnderAgentQuery(int|string|null $agentId): Builder
+    {
+        $normalizedAgentId = (int) $agentId;
+
+        if ($normalizedAgentId <= 0) {
+            return Agent::query()->whereRaw('0 = 1');
+        }
+
+        return Agent::query()
+            ->where('owner_agent', $normalizedAgentId)
+            ->where('agent_type_id', 3);
+    }
+
+    public static function renderForAgent(Agent $agent): HtmlString
+    {
+        $superiorAgent = self::resolveSuperiorAgentForHierarchy($agent);
         $agencyCode = trim((string) ($superiorAgent?->owner_code ?? $agent->owner_code ?? ''));
         $linkedAgency = $agencyCode !== '' ? self::resolveAgencyByOwnerCode($agencyCode) : null;
 
@@ -606,6 +678,107 @@ class CommercialHierarchyFlowchart
             'empty' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-8 opacity-40" aria-hidden="true"><path fill-rule="evenodd" d="M3 6a3 3 0 0 1 3-3h2.25a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Zm9.75 0a3 3 0 0 1 3-3H18a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3h-2.25a3 3 0 0 1-3-3V6ZM3 15.75a3 3 0 0 1 3-3h2.25a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-2.25Zm9.75 0a3 3 0 0 1 3-3H18a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3h-2.25a3 3 0 0 1-3-3v-2.25Z" clip-rule="evenodd"/></svg>',
             default => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5" aria-hidden="true"><path fill-rule="evenodd" d="M3 6a3 3 0 0 1 3-3h2.25a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Zm9.75 0a3 3 0 0 1 3-3H18a3 3 0 0 1 3 3v2.25a3 3 0 0 1-3 3h-2.25a3 3 0 0 1-3-3V6Z" clip-rule="evenodd"/></svg>',
         };
+    }
+
+    private static function resolveSuperiorAgentForHierarchy(Agent $agent): ?Agent
+    {
+        $agentTypeId = (int) ($agent->agent_type_id ?? 0);
+
+        if ($agentTypeId !== 3 || ! filled($agent->owner_agent)) {
+            return null;
+        }
+
+        return Agent::query()
+            ->select(['id', 'name', 'status', 'owner_code'])
+            ->find((int) $agent->owner_agent);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function commercialAgencySegmentsForAgent(Agent $agent): array
+    {
+        $codeAgency = trim((string) ($agent->code_agency ?? ''));
+
+        if ($codeAgency !== '') {
+            return self::commercialAgencySegments($codeAgency);
+        }
+
+        $superiorAgent = self::resolveSuperiorAgentForHierarchy($agent);
+        $agencyCode = trim((string) ($superiorAgent?->owner_code ?? $agent->owner_code ?? ''));
+
+        return self::commercialAgencySegments($agencyCode);
+    }
+
+    /**
+     * @param  list<string>  $segments
+     * @return list<string>
+     */
+    private static function filterCommercialCodeSegmentsForViewer(array $segments, string $viewerContext): array
+    {
+        if ($viewerContext === self::VIEWER_FULL) {
+            return $segments;
+        }
+
+        return array_values(array_filter(
+            $segments,
+            function (string $segment) use ($viewerContext): bool {
+                if ($viewerContext === self::VIEWER_MASTER && str_starts_with($segment, 'AGENCIA MASTER ·')) {
+                    return false;
+                }
+
+                if ($viewerContext === self::VIEWER_GENERAL && (
+                    str_starts_with($segment, 'AGENCIA MASTER ·')
+                    || str_starts_with($segment, 'AGENCIA GENERAL ·')
+                )) {
+                    return false;
+                }
+
+                if ($viewerContext === self::VIEWER_AGENT && ! str_starts_with($segment, 'SUB AGENTE ·')) {
+                    return false;
+                }
+
+                return true;
+            },
+        ));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function commercialAgencySegments(string $agencyCode): array
+    {
+        if ($agencyCode === '') {
+            return [];
+        }
+
+        $agency = self::resolveAgencyByOwnerCode($agencyCode);
+
+        if (! $agency instanceof Agency) {
+            return ['AGENCIA MASTER · '.$agencyCode];
+        }
+
+        $agencyTypeId = (int) ($agency->agency_type_id ?? 0);
+
+        if ($agencyTypeId === self::AGENCY_TYPE_GENERAL) {
+            $segments = [];
+            $masterCode = trim((string) ($agency->owner_code ?? ''));
+            $generalCode = trim((string) ($agency->code ?? ''));
+
+            if ($masterCode !== '') {
+                $segments[] = 'AGENCIA MASTER · '.$masterCode;
+            }
+
+            if ($generalCode !== '') {
+                $segments[] = 'AGENCIA GENERAL · '.$generalCode;
+            }
+
+            return $segments;
+        }
+
+        $masterCode = trim((string) ($agency->code ?? ''));
+
+        return $masterCode !== '' ? ['AGENCIA MASTER · '.$masterCode] : [];
     }
 
     private static function resolveAgencyByOwnerCode(string $agencyCode): ?Agency

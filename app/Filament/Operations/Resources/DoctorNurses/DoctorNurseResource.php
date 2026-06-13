@@ -33,7 +33,7 @@ class DoctorNurseResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 6;
 
     protected static ?string $recordTitleAttribute = 'name';
 

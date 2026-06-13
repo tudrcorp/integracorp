@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\DoctorNurses\Pages;
 
 use App\Filament\Operations\Resources\DoctorNurses\DoctorNurseResource;
 use App\Models\DoctorNurse;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -162,6 +163,14 @@ class ViewDoctorNurse extends ViewRecord
                 ])
                 ->action(function (array $data) use ($record): void {
                     $record->update(['carta_acceptance' => $data['carta_acceptance']]);
+
+                    SecurityAudit::log('AUDIT_OPERATIONS_DOCTOR_NURSE_DOCUMENT_UPLOADED', 'operations.doctor-nurses.carta-acceptance.upload', [
+                        'doctor_nurse_id' => $record->id,
+                        'doctor_nurse_name' => $record->name,
+                        'document_type' => 'CARTA_ACEPTACION',
+                        'path' => $record->carta_acceptance,
+                    ]);
+
                     Notification::make()->success()->title('Carta cargada')->send();
                 })
                 ->hidden(fn () => filled($record->carta_acceptance))
@@ -219,7 +228,21 @@ class ViewDoctorNurse extends ViewRecord
                         ])
                         ->action(function (array $data) use ($record): void {
                             $existing = is_array($record->documents) ? $record->documents : [];
-                            $record->update(['documents' => array_values(array_merge($existing, $data['new_documents']))]);
+                            $incoming = array_values(array_filter(
+                                $data['new_documents'] ?? [],
+                                fn (mixed $path): bool => is_string($path) && trim($path) !== '',
+                            ));
+                            $record->update(['documents' => array_values(array_merge($existing, $incoming))]);
+
+                            SecurityAudit::log('AUDIT_OPERATIONS_DOCTOR_NURSE_DOCUMENT_UPLOADED', 'operations.doctor-nurses.documents.upload', [
+                                'doctor_nurse_id' => $record->id,
+                                'doctor_nurse_name' => $record->name,
+                                'document_type' => 'AFILIACION',
+                                'uploaded_count' => count($incoming),
+                                'uploaded_paths' => $incoming,
+                                'total_documents' => count($record->documents ?? []),
+                            ]);
+
                             Notification::make()->success()->title('Documentos agregados')->send();
                             $this->replaceMountedAction('view_documents');
                         }),

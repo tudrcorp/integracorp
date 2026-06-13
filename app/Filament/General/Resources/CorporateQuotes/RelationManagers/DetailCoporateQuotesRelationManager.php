@@ -2,22 +2,17 @@
 
 namespace App\Filament\General\Resources\CorporateQuotes\RelationManagers;
 
-use App\Filament\General\Resources\CorporateQuotes\CorporateQuoteResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Table;
-
-use App\Models\Agent;
-use App\Models\Agency;
-use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
-use Illuminate\Support\Collection;
 use App\Models\AffiliationCorporate;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Agency;
+use App\Models\Agent;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class DetailCoporateQuotesRelationManager extends RelationManager
 {
@@ -52,28 +47,28 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                 TextColumn::make('subtotal_anual')
                     ->label('Total anual')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_biannual')
                     ->label('Total semestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_quarterly')
                     ->label('Total trimestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_monthly')
                     ->label('Total Mensual')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$')
-                    ->hidden(fn(): bool => Agency::where('code', Auth::user()->code_agency)->first()->activate_monthly_frequency == 0),
+                    ->hidden(fn (): bool => Agency::where('code', Auth::user()->code_agency)->first()->activate_monthly_frequency == 0),
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
@@ -87,7 +82,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                     })
                     ->sortable(),
             ])
-            //agrupar por planes y por coberturas
+            // agrupar por planes y por coberturas
             ->defaultGroup('ageRange.range')
             ->filters([
                 SelectFilter::make('plan_id')
@@ -116,7 +111,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
 
                                 // dd($records, $records->count(), $records->toArray(), $livewire->ownerRecord);
 
-                                //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+                                // Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
 
                                 session()->get('data_records', []);
 
@@ -129,7 +124,6 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                 /**
                                  * Actualizo el status a APROBADA
                                  */
-
                                 $livewire->ownerRecord->status = 'APROBADA';
                                 $livewire->ownerRecord->save();
 
@@ -146,7 +140,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                 dd($th);
                                 // $parte_entera = 0;
                             }
-                        })
+                        }),
                 ]),
             ]);
     }
@@ -159,8 +153,8 @@ class DetailCoporateQuotesRelationManager extends RelationManager
              * Logica para asignar el owner_code
              * ---------------------------------------------------------------------------------------------------------
              */
-            $owner      = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
-            $jerarquia  = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
+            $owner = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
+            $jerarquia = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
 
             /**
              * Cuando el agente pertenece a una AGENCIA GENERAL
@@ -204,7 +198,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                 $parte_entera = AffiliationCorporate::max('id');
             }
 
-            $code = 'TDEC-AFC-000' . $parte_entera + 1;
+            $code = 'TDEC-AFC-000'.$parte_entera + 1;
 
             return $code;
         } catch (\Throwable $th) {

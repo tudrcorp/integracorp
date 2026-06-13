@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\Shared\Renovations;
 
+use App\Http\Controllers\RenovationExportCsvController;
 use App\Models\Renovation;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
@@ -19,6 +23,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Js;
 
 class RenovationsTable
@@ -54,8 +59,9 @@ class RenovationsTable
         Table $table,
         string $renovationResourceClass,
         string $affiliationResourceClass,
+        ?string $exportRouteName = null,
     ): Table {
-        return $table
+        $table = $table
             ->heading('Renovaciones individuales')
             ->description('Priorice filas en rojo (retraso) y ámbar (período de renovación o negociación). Use las pestañas y filtros para enfocar la gestión comercial.')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
@@ -303,6 +309,35 @@ class RenovationsTable
                     ->color('gray')
                     ->button(),
             ]);
+
+        if ($exportRouteName !== null) {
+            $table = $table->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) use ($exportRouteName) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una renovación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = RenovationExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route($exportRouteName, ['token' => $token]);
+                        }),
+                ]),
+            ]);
+        }
+
+        return $table;
     }
 
     private static function remainingDaysColor(Renovation $record): string

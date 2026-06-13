@@ -24,6 +24,7 @@ class RenovationsTable
             $table,
             RenovationResource::class,
             AffiliationResource::class,
+            exportRouteName: 'business.renovations.export-csv',
         );
     }
 }
