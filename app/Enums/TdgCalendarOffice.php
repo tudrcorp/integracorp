@@ -7,15 +7,15 @@ namespace App\Enums;
 enum TdgCalendarOffice: string
 {
     case CentralLido = 'central_lido';
-    case FarmadocLasDelicias = 'farmadoc_las_delicias';
     case FarmadocSanBernardino = 'farmadoc_san_bernardino';
+    case FarmadocLasDelicias = 'farmadoc_las_delicias';
 
     public function label(): string
     {
         return match ($this) {
-            self::CentralLido => 'Central Lido',
-            self::FarmadocLasDelicias => 'Farmadoc (Las Delicias)',
+            self::CentralLido => 'Centro Lido',
             self::FarmadocSanBernardino => 'Farmadoc (San Bernardino)',
+            self::FarmadocLasDelicias => 'Farmadoc (Las Delicias)',
         };
     }
 

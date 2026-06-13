@@ -23,8 +23,10 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Enums/TdgCalendarOffice.php'))
         ->toContain("case CentralLido = 'central_lido'")
+        ->toContain('Centro Lido')
         ->toContain('Farmadoc (Las Delicias)')
-        ->toContain('Farmadoc (San Bernardino)');
+        ->toContain('Farmadoc (San Bernardino)')
+        ->toContain("case FarmadocSanBernardino = 'farmadoc_san_bernardino';\n    case FarmadocLasDelicias = 'farmadoc_las_delicias'");
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Enums/TdgCalendarGuardShift.php'))
         ->toContain('2.1 8AM-5PM PROVEEDORES - 24H@TUDRENCASA.COM')
@@ -129,7 +131,10 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('overflowCount')
         ->toContain('+{{ $overflowCount }}')
         ->toContain('tdg-calendar-avatar-stack__tooltip-list')
-        ->toContain('overflow-y-auto');
+        ->toContain('overflow-y-auto')
+        ->toContain('group/av')
+        ->toContain('group-hover/av:block')
+        ->toContain('$avatar[\'name\']');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-calendar-day-avatars.blade.php'))
         ->toContain('x-collaborator-avatar-stack')

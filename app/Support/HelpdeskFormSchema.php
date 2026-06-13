@@ -145,7 +145,7 @@ final class HelpdeskFormSchema
                 ->columnSpanFull(),
 
             Section::make('Clasificación')
-                ->description('Prioridad y estado inicial del ticket.')
+                ->description('Define la prioridad con la que se atenderá el caso.')
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->iconColor('warning')
                 ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
@@ -172,9 +172,10 @@ final class HelpdeskFormSchema
                                 ->required()
                                 ->native(false)
                                 ->options(HelpdeskTaskStatusOptions::all())
-                                ->default('PENDIENTE POR INICIAR')
+                                ->default(HelpdeskTaskStatusOptions::STATUS_PENDING)
                                 ->prefixIcon('heroicon-m-flag')
                                 ->helperText('Tras crear el ticket, el estado se actualiza desde la tabla o la vista del caso.')
+                                ->hiddenOn('create')
                                 ->disabledOn('edit'),
                         ]),
                 ])
@@ -224,7 +225,8 @@ final class HelpdeskFormSchema
                                 ->disabled()
                                 ->dehydrated()
                                 ->prefixIcon('heroicon-m-identification')
-                                ->helperText('Se registra automáticamente con su usuario de sesión.'),
+                                ->helperText('Se registra automáticamente con su usuario de sesión.')
+                                ->hiddenOn('create'),
                         ]),
                 ])
                 ->columnSpanFull(),

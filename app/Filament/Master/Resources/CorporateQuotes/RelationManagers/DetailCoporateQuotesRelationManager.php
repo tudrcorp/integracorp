@@ -2,21 +2,19 @@
 
 namespace App\Filament\Master\Resources\CorporateQuotes\RelationManagers;
 
-use App\Models\Agent;
-use App\Models\Agency;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
-use Filament\Actions\CreateAction;
-use Illuminate\Support\Collection;
 use App\Models\AffiliationCorporate;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Agency;
+use App\Models\Agent;
+use App\Support\Filament\CorporateQuotePlanAffiliatesDisplay;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Master\Resources\CorporateQuotes\CorporateQuoteResource;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class DetailCoporateQuotesRelationManager extends RelationManager
 {
@@ -27,12 +25,13 @@ class DetailCoporateQuotesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with(['plan', 'ageRange', 'coverage']))
             ->heading('TABLA DE SELECCIÓN MULTIPLE')
             ->description('En esta tabla se muestran los planes y coberturas cotizados. Para realizar una pre afiliación multiple debes seleccionar dos o mas planes y por cada plan debe seleccionar solo una cobertura, de lo contrario no se realizara la pre afiliación.')
             ->recordTitleAttribute('individual_quote_id')
             ->columns([
-                TextColumn::make('plan.description')
-                    ->label('Plan')
+                CorporateQuotePlanAffiliatesDisplay::planColumn()
                     ->sortable(),
                 TextColumn::make('ageRange.range')
                     ->label('Rango de Edad')
@@ -51,28 +50,28 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                 TextColumn::make('subtotal_anual')
                     ->label('Total anual')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_biannual')
                     ->label('Total semestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_quarterly')
                     ->label('Total trimestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_monthly')
                     ->label('Total Mensual')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$')
-                    ->hidden(fn(): bool => Agency::where('code', Auth::user()->code_agency)->first()->activate_monthly_frequency == 0),
+                    ->hidden(fn (): bool => Agency::where('code', Auth::user()->code_agency)->first()->activate_monthly_frequency == 0),
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
@@ -86,7 +85,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                     })
                     ->sortable(),
             ])
-            //agrupar por planes y por coberturas
+            // agrupar por planes y por coberturas
             ->defaultGroup('ageRange.range')
             ->filters([
                 SelectFilter::make('plan_id')
@@ -115,7 +114,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
 
                                 // dd($records, $records->count(), $records->toArray(), $livewire->ownerRecord);
 
-                                //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+                                // Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
 
                                 session()->get('data_records', []);
 
@@ -128,7 +127,6 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                 /**
                                  * Actualizo el status a APROBADA
                                  */
-
                                 $livewire->ownerRecord->status = 'APROBADA';
                                 $livewire->ownerRecord->save();
 
@@ -145,7 +143,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                                 dd($th);
                                 // $parte_entera = 0;
                             }
-                        })
+                        }),
                 ]),
             ]);
     }
@@ -158,8 +156,8 @@ class DetailCoporateQuotesRelationManager extends RelationManager
              * Logica para asignar el owner_code
              * ---------------------------------------------------------------------------------------------------------
              */
-            $owner      = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
-            $jerarquia  = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
+            $owner = Agent::select('owner_code', 'id')->where('id', Auth::user()->agent_id)->first()->owner_code;
+            $jerarquia = Agency::select('code', 'owner_code')->where('code', $owner)->first()->owner_code;
 
             /**
              * Cuando el agente pertenece a una AGENCIA GENERAL
@@ -203,7 +201,7 @@ class DetailCoporateQuotesRelationManager extends RelationManager
                 $parte_entera = AffiliationCorporate::max('id');
             }
 
-            $code = 'TDEC-AFC-000' . $parte_entera + 1;
+            $code = 'TDEC-AFC-000'.$parte_entera + 1;
 
             return $code;
         } catch (\Throwable $th) {

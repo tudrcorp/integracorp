@@ -14,16 +14,25 @@ it('registra el generador qr personalizado en el panel business dentro de config
     $viewContents = file_get_contents($viewPath);
 
     expect($pageContents)
-        ->toContain('namespace Tests\Unit;')
         ->toContain("protected static ?string \$navigationLabel = 'Generador QR personalizado';")
         ->toContain("protected static string|UnitEnum|null \$navigationGroup = 'CONFIGURACIÓN';")
         ->toContain("protected string \$view = 'filament.business.pages.generador-qr-personalizado';")
-        ->toContain('Heroicon::OutlinedQrCode');
+        ->toContain('Heroicon::OutlinedQrCode')
+        ->toContain('getIndividualQrPlanOptions')
+        ->toContain('getCorporateQrPlanOptions');
 
     expect($viewContents)
         ->toContain('qr-code-styling')
         ->toContain('id="qrPreview"')
         ->toContain('downloadPngBtn')
+        ->toContain('associationPlanIndividual')
+        ->toContain('associationPlanCorporate')
+        ->toContain('getIndividualQrPlanOptions()')
+        ->toContain('getCorporateQrPlanOptions()')
+        ->toContain("formData.append('plan_id', planId)")
+        ->toContain('downloadAndAssociateIndividualBtn')
+        ->toContain('downloadAndAssociateCorporateBtn')
+        ->toContain('affiliation-corporate-tarjeta-qr.associate-plan')
         ->toContain('livewire:navigated')
         ->toContain('bootQrGenerator');
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\AffiliationCorporateController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
+use App\Services\AffiliationCorporateBusinessDocumentsService;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -419,6 +420,100 @@ class AffiliationCorporatesTable
                         ->modalCancelActionLabel('Cerrar')
                         ->action(fn () => null)
                         ->hidden(fn () => ! in_array('SUPERADMIN', (array) (Auth::user()?->departament ?? []))),
+
+                    Action::make('download')
+                        ->label('Descargar Certificado')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('verde')
+                        ->requiresConfirmation()
+                        ->modalHeading('DESCARGAR CERTIFICADO')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará un archivo PDF al hacer clic en confirmar!.')
+                        ->action(function (AffiliationCorporate $record): mixed {
+                            try {
+                                $path = AffiliationCorporateBusinessDocumentsService::resolveCertificateAbsolutePath($record);
+
+                                if ($path === null) {
+                                    throw new \RuntimeException('No se encontró el certificado. Use «Regenerar Documentos» para generarlo nuevamente.');
+                                }
+
+                                Log::info('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Descarga de certificado iniciada.', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_CERTIFICATE_DOWNLOADED', 'business.affiliation-corporates.download-certificate', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+
+                                return response()->download($path);
+                            } catch (\Throwable $throwable) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_CERTIFICATE_DOWNLOAD_FAILED', 'business.affiliation-corporates.download-certificate', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'error' => $throwable->getMessage(),
+                                ]);
+                                Notification::make()
+                                    ->title('ERROR EN LA DESCARGA')
+                                    ->body($throwable->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+
+                            return null;
+                        }),
+
+                    Action::make('downloadTarjeta')
+                        ->label('Descargar Tarjeta')
+                        ->icon('heroicon-s-arrow-down-on-square-stack')
+                        ->color('verde')
+                        ->requiresConfirmation()
+                        ->modalHeading('DESCARGAR TARJETA DEL AFILIADO')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-s-arrow-down-on-square-stack')
+                        ->modalDescription('Descargará la tarjeta del primer afiliado corporativo disponible. Use «Regenerar Documentos» para actualizar todas las tarjetas.')
+                        ->action(function (AffiliationCorporate $record): mixed {
+                            try {
+                                $path = AffiliationCorporateBusinessDocumentsService::resolvePrimaryTarjetaAbsolutePath($record);
+
+                                if ($path === null) {
+                                    throw new \RuntimeException('No se encontró la tarjeta generada. Use «Regenerar Documentos» para crearla nuevamente.');
+                                }
+
+                                Log::info('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Descarga de tarjeta iniciada.', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_CARD_DOWNLOADED', 'business.affiliation-corporates.download-card', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'path' => $path,
+                                ]);
+
+                                return response()->download($path);
+                            } catch (\Throwable $throwable) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_CARD_DOWNLOAD_FAILED', 'business.affiliation-corporates.download-card', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'error' => $throwable->getMessage(),
+                                ]);
+                                Notification::make()
+                                    ->title('ERROR EN LA DESCARGA')
+                                    ->body($throwable->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+
+                            return null;
+                        }),
 
                     Action::make('upload')
                         ->label('Comprobante de Pago')

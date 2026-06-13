@@ -6,14 +6,13 @@ use App\Filament\Master\Resources\AffiliationCorporates\Pages\CreateAffiliationC
 use App\Filament\Master\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
 use App\Filament\Master\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
 use App\Filament\Master\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
+use App\Filament\Master\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
 use App\Filament\Master\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
 use App\Filament\Master\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
 use App\Filament\Master\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
 use App\Models\AffiliationCorporate;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -23,7 +22,7 @@ class AffiliationCorporateResource extends Resource
 
     protected static ?string $navigationLabel = 'Consultar Afiliación';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CORPORATIVAS';
+    protected static string|UnitEnum|null $navigationGroup = 'CORPORATIVAS';
 
     protected static ?int $navigationSort = 2;
 
@@ -45,7 +44,7 @@ class AffiliationCorporateResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            CorporateAffiliatesRelationManager::class,
         ];
     }
 

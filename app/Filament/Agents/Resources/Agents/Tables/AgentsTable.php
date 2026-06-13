@@ -2,6 +2,7 @@
 
 namespace App\Filament\Agents\Resources\Agents\Tables;
 
+use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
 use App\Models\Agent;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
@@ -15,17 +16,30 @@ class AgentsTable
 {
     public static function configure(Table $table): Table
     {
+        $agentId = Auth::user()?->agent_id;
+
         return $table
-            ->query(Agent::query()->where('owner_agent', Auth::user()->agent_id))
-            ->description('Esta sección contiene la información general de los subagentes ubicados en su estructura organizacional.')
+            ->query(CommercialHierarchyFlowchart::agentsUnderAgentQuery($agentId))
+            ->description('Subagentes registrados bajo su responsabilidad en la estructura comercial.')
             ->columns([
-                TextColumn::make('id')
-                    ->label('Código del agente')
-                    ->prefix('AGT-000')
-                    ->alignCenter()
+                TextColumn::make('commercial_code_sequence')
+                    ->label('Código')
+                    ->getStateUsing(fn (Agent $record): string => CommercialHierarchyFlowchart::commercialCodeSequenceForAgent(
+                        $record,
+                        CommercialHierarchyFlowchart::VIEWER_AGENT,
+                    ))
                     ->badge()
-                    ->color('azulOscuro')
-                    ->searchable(),
+                    ->icon('heroicon-m-users')
+                    ->color('warning')
+                    ->wrap()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        $numericSearch = preg_replace('/\D/', '', $search) ?? '';
+
+                        return $query->when(
+                            $numericSearch !== '',
+                            fn (Builder $builder): Builder => $builder->where('id', 'like', "%{$numericSearch}%"),
+                        );
+                    }),
                 TextColumn::make('typeAgent.definition')
                     ->label('Tipo de Agente')
                     ->searchable()

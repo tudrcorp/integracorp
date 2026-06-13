@@ -8,9 +8,9 @@ it('define dashboard de aliados corporativos con estructura de resource', functi
     $resourcePath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/CorporateAllies/CorporateAllyResource.php';
     $resourceContents = file_get_contents($resourcePath);
 
-    expect($resourceContents)->toContain('namespace Tests\Unit;')
+    expect($resourceContents)->toContain('namespace App\Filament\Operations\Resources\CorporateAllies;')
         ->toContain("protected static ?string \$navigationLabel = 'Aliados corporativos';")
-        ->toContain('protected static ?int $navigationSort = 3;')
+        ->toContain('protected static ?int $navigationSort = 5;')
         ->toContain('protected static string|UnitEnum|null $navigationGroup = null;')
         ->toContain('CorporateAlly::class')
         ->toContain("'index' => ListCorporateAllies::route('/')")
@@ -67,12 +67,12 @@ it('define dashboard de aliados corporativos con estructura de resource', functi
     $doctorNursePath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/DoctorNurses/DoctorNurseResource.php';
     $doctorNurseContents = file_get_contents($doctorNursePath);
 
-    expect($doctorNurseContents)->toContain('protected static ?int $navigationSort = 4;');
+    expect($doctorNurseContents)->toContain('protected static ?int $navigationSort = 6;');
 
     $supplierPath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Suppliers/SupplierResource.php';
     $supplierContents = file_get_contents($supplierPath);
 
-    expect($supplierContents)->toContain('protected static ?int $navigationSort = 5;');
+    expect($supplierContents)->toContain('protected static ?int $navigationSort = 7;');
 });
 
 it('modelo corporate ally define tabla y atributos fillable', function () {

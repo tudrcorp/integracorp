@@ -22,8 +22,8 @@ final class TdgCalendarOfficeCatalog
     {
         return [
             TdgCalendarOffice::CentralLido->value => self::entry(TdgCalendarOffice::CentralLido, 'LIDO', '#06b6d4', 'central-lido'),
-            TdgCalendarOffice::FarmadocLasDelicias->value => self::entry(TdgCalendarOffice::FarmadocLasDelicias, 'DEL', '#3b82f6', 'farmadoc-delicias'),
             TdgCalendarOffice::FarmadocSanBernardino->value => self::entry(TdgCalendarOffice::FarmadocSanBernardino, 'SBO', '#f97316', 'farmadoc-san-bernardino'),
+            TdgCalendarOffice::FarmadocLasDelicias->value => self::entry(TdgCalendarOffice::FarmadocLasDelicias, 'DEL', '#3b82f6', 'farmadoc-delicias'),
         ];
     }
 
