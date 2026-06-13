@@ -47,201 +47,218 @@ class PrepareAffiliationRenovations implements ShouldQueue
 
     public function handle(AffiliationAffiliateFeeCalculator $calculator): void
     {
-        $this->runWithScheduledReport('Renovaciones individuales', function () use ($calculator): void {
-            $today = ($this->runDate ?? Carbon::today())->copy()->startOfDay();
-            $processed = 0;
-            $upserted = 0;
-            $inRenewalPeriod = 0;
-            $affiliatesPriced = 0;
-            $skippedNoEffectiveDate = 0;
-            $missingCoverageWarnings = 0;
-            $missingFeeWarnings = 0;
+        $this->runWithScheduledReport(
+            'Renovaciones individuales',
+            function () use ($calculator): void {
+                $today = ($this->runDate ?? Carbon::today())->copy()->startOfDay();
+                $processed = 0;
+                $upserted = 0;
+                $inRenewalPeriod = 0;
+                $affiliatesPriced = 0;
+                $skippedNoEffectiveDate = 0;
+                $missingCoverageWarnings = 0;
+                $missingFeeWarnings = 0;
 
-            Affiliation::query()
-                ->where('status', self::AFFILIATION_STATUS_ACTIVE)
-                ->with(['affiliates' => fn ($query) => $query->whereIn('status', self::AFFILIATE_STATUSES_FOR_RENEWAL)])
-                ->chunkById(100, function ($affiliations) use ($calculator, $today, &$processed, &$upserted, &$inRenewalPeriod, &$affiliatesPriced, &$skippedNoEffectiveDate, &$missingCoverageWarnings, &$missingFeeWarnings): void {
-                    foreach ($affiliations as $affiliation) {
-                        $processed++;
+                ScheduledTaskRunReport::addExecutionDetail('Alcance', 'Afiliaciones individuales con status ACTIVA');
+                ScheduledTaskRunReport::addExecutionDetail('Período de renovación', '≤ '.self::RENEWAL_PERIOD_DAYS.' días antes del vencimiento');
+                ScheduledTaskRunReport::addExecutionDetail('Fecha de cálculo', $today->format('d/m/Y'));
+                ScheduledTaskRunReport::setFailureFootnote(
+                    'Las fallas de cobertura o tarifa corresponden a afiliaciones/afiliados en período de renovación con datos incompletos. No se duplican por canal.'
+                );
 
-                        if (blank($affiliation->effective_date)) {
-                            $skippedNoEffectiveDate++;
+                Affiliation::query()
+                    ->where('status', self::AFFILIATION_STATUS_ACTIVE)
+                    ->with(['affiliates' => fn ($query) => $query->whereIn('status', self::AFFILIATE_STATUSES_FOR_RENEWAL)])
+                    ->chunkById(100, function ($affiliations) use ($calculator, $today, &$processed, &$upserted, &$inRenewalPeriod, &$affiliatesPriced, &$skippedNoEffectiveDate, &$missingCoverageWarnings, &$missingFeeWarnings): void {
+                        foreach ($affiliations as $affiliation) {
+                            $processed++;
 
-                            continue;
-                        }
+                            if (blank($affiliation->effective_date)) {
+                                $skippedNoEffectiveDate++;
 
-                        $daysUntilRenewal = $calculator->daysUntilRenewal($affiliation->effective_date, $today);
+                                continue;
+                            }
 
-                        if ($daysUntilRenewal === null) {
-                            $skippedNoEffectiveDate++;
+                            $daysUntilRenewal = $calculator->daysUntilRenewal($affiliation->effective_date, $today);
 
-                            continue;
-                        }
+                            if ($daysUntilRenewal === null) {
+                                $skippedNoEffectiveDate++;
 
-                        $renewalDate = $calculator->renewalDateFromEffectiveDate($affiliation->effective_date);
+                                continue;
+                            }
 
-                        if ($renewalDate === null) {
-                            $skippedNoEffectiveDate++;
+                            $renewalDate = $calculator->renewalDateFromEffectiveDate($affiliation->effective_date);
 
-                            continue;
-                        }
+                            if ($renewalDate === null) {
+                                $skippedNoEffectiveDate++;
 
-                        $isInRenewalPeriod = $daysUntilRenewal <= self::RENEWAL_PERIOD_DAYS;
-                        $status = $isInRenewalPeriod
-                            ? self::STATUS_RENOVATION_PERIOD
-                            : self::STATUS_VIGENTE;
+                                continue;
+                            }
 
-                        if ($isInRenewalPeriod) {
-                            $inRenewalPeriod++;
-                        }
+                            $isInRenewalPeriod = $daysUntilRenewal <= self::RENEWAL_PERIOD_DAYS;
+                            $status = $isInRenewalPeriod
+                                ? self::STATUS_RENOVATION_PERIOD
+                                : self::STATUS_VIGENTE;
 
-                        $canRecalculateFees = $isInRenewalPeriod
-                            && ($calculator->isInitialPlanWithoutCoverage($affiliation) || filled($affiliation->coverage_id));
+                            if ($isInRenewalPeriod) {
+                                $inRenewalPeriod++;
+                            }
 
-                        if ($isInRenewalPeriod && ! $canRecalculateFees) {
-                            $missingCoverageWarnings++;
-                            ScheduledTaskRunReport::recordFailure('Sin cobertura en período de renovación');
-                            Log::warning('PrepareAffiliationRenovations: sin cobertura, solo persiste conteo de días en renovations', [
-                                'affiliation_id' => $affiliation->id,
-                                'code' => $affiliation->code,
-                            ]);
-                        }
+                            $canRecalculateFees = $isInRenewalPeriod
+                                && ($calculator->isInitialPlanWithoutCoverage($affiliation) || filled($affiliation->coverage_id));
 
-                        $planTransition = $calculator->evaluateIdealToSpecialPlanTransitionForRenewal(
-                            $affiliation,
-                            $affiliation->affiliates,
-                            $today,
-                        );
-                        $isNegotiationCandidate = $planTransition['requires_negotiation'];
-                        $negotiationNotes = $planTransition['message'];
-                        $previousPlanId = $isNegotiationCandidate ? (int) $affiliation->plan_id : null;
+                            if ($isInRenewalPeriod && ! $canRecalculateFees) {
+                                $missingCoverageWarnings++;
+                                ScheduledTaskRunReport::recordFailure('Sin cobertura en período de renovación');
+                                Log::warning('PrepareAffiliationRenovations: sin cobertura, solo persiste conteo de días en renovations', [
+                                    'affiliation_id' => $affiliation->id,
+                                    'code' => $affiliation->code,
+                                ]);
+                            }
 
-                        $renewalPlanId = $isNegotiationCandidate
-                            ? AffiliationAffiliateFeeCalculator::SPECIAL_PLAN_ID
-                            : (int) $affiliation->plan_id;
+                            $planTransition = $calculator->evaluateIdealToSpecialPlanTransitionForRenewal(
+                                $affiliation,
+                                $affiliation->affiliates,
+                                $today,
+                            );
+                            $isNegotiationCandidate = $planTransition['requires_negotiation'];
+                            $negotiationNotes = $planTransition['message'];
+                            $previousPlanId = $isNegotiationCandidate ? (int) $affiliation->plan_id : null;
 
-                        $affiliationForFees = $this->affiliationSnapshotForFeeCalculation($affiliation, $isNegotiationCandidate);
+                            $renewalPlanId = $isNegotiationCandidate
+                                ? AffiliationAffiliateFeeCalculator::SPECIAL_PLAN_ID
+                                : (int) $affiliation->plan_id;
 
-                        $subtotalAnual = 0.0;
-                        $titularAnnualFee = null;
-                        $titularAgeRangeId = null;
-                        $affiliateCount = 0;
-                        $titularAffiliate = $this->resolveTitularAffiliate($affiliation);
-                        $titularBirthDate = $titularAffiliate !== null
-                            ? $calculator->parseBirthDate($titularAffiliate->birth_date)?->toDateString()
-                            : null;
-                        $titularAge = $titularAffiliate !== null
-                            ? $calculator->resolveAffiliateAgeForRenewal($titularAffiliate, $today)
-                            : null;
+                            $affiliationForFees = $this->affiliationSnapshotForFeeCalculation($affiliation, $isNegotiationCandidate);
 
-                        foreach ($affiliation->affiliates as $affiliate) {
-                            if ($canRecalculateFees) {
-                                $amounts = $calculator->calculateAffiliateAmountsForRenewal(
-                                    $affiliationForFees,
-                                    $affiliate,
-                                    $today,
-                                );
+                            $subtotalAnual = 0.0;
+                            $titularAnnualFee = null;
+                            $titularAgeRangeId = null;
+                            $affiliateCount = 0;
+                            $titularAffiliate = $this->resolveTitularAffiliate($affiliation);
+                            $titularBirthDate = $titularAffiliate !== null
+                                ? $calculator->parseBirthDate($titularAffiliate->birth_date)?->toDateString()
+                                : null;
+                            $titularAge = $titularAffiliate !== null
+                                ? $calculator->resolveAffiliateAgeForRenewal($titularAffiliate, $today)
+                                : null;
 
-                                if ($amounts !== null) {
-                                    $affiliatesPriced++;
-                                    $subtotalAnual += $amounts['annual_fee'];
+                            foreach ($affiliation->affiliates as $affiliate) {
+                                if ($canRecalculateFees) {
+                                    $amounts = $calculator->calculateAffiliateAmountsForRenewal(
+                                        $affiliationForFees,
+                                        $affiliate,
+                                        $today,
+                                    );
+
+                                    if ($amounts !== null) {
+                                        $affiliatesPriced++;
+                                        $subtotalAnual += $amounts['annual_fee'];
+
+                                        if ($affiliate->relationship === 'TITULAR') {
+                                            $titularAnnualFee = $amounts['annual_fee'];
+                                            $titularAgeRangeId = $amounts['age_range_id'];
+                                            $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today);
+                                            $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
+                                                ?? $titularBirthDate;
+                                        }
+                                    } else {
+                                        $missingFeeWarnings++;
+                                        ScheduledTaskRunReport::recordFailure('Tarifa no encontrada para afiliado');
+                                        Log::warning('PrepareAffiliationRenovations: tarifa no encontrada para afiliado (solo renovations)', [
+                                            'affiliation_id' => $affiliation->id,
+                                            'affiliate_id' => $affiliate->id,
+                                            'age' => $calculator->resolveAffiliateAgeForRenewal($affiliate, $today),
+                                        ]);
+                                    }
+                                } else {
+                                    $subtotalAnual += (float) $affiliate->fee;
 
                                     if ($affiliate->relationship === 'TITULAR') {
-                                        $titularAnnualFee = $amounts['annual_fee'];
-                                        $titularAgeRangeId = $amounts['age_range_id'];
-                                        $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today);
+                                        $titularAnnualFee = (float) $affiliate->fee;
+                                        $titularAgeRangeId = $affiliate->age_range_id;
+                                        $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today) ?? $titularAge;
                                         $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
                                             ?? $titularBirthDate;
                                     }
-                                } else {
-                                    $missingFeeWarnings++;
-                                    ScheduledTaskRunReport::recordFailure('Tarifa no encontrada para afiliado');
-                                    Log::warning('PrepareAffiliationRenovations: tarifa no encontrada para afiliado (solo renovations)', [
-                                        'affiliation_id' => $affiliation->id,
-                                        'affiliate_id' => $affiliate->id,
-                                        'age' => $calculator->resolveAffiliateAgeForRenewal($affiliate, $today),
-                                    ]);
                                 }
-                            } else {
-                                $subtotalAnual += (float) $affiliate->fee;
 
-                                if ($affiliate->relationship === 'TITULAR') {
-                                    $titularAnnualFee = (float) $affiliate->fee;
-                                    $titularAgeRangeId = $affiliate->age_range_id;
-                                    $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today) ?? $titularAge;
-                                    $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
-                                        ?? $titularBirthDate;
-                                }
+                                $affiliateCount++;
                             }
 
-                            $affiliateCount++;
+                            if ($affiliateCount === 0) {
+                                $subtotalAnual = (float) ($affiliation->fee_anual ?? 0);
+                                $titularAnnualFee = $subtotalAnual;
+                            }
+
+                            $paymentFrequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
+
+                            Renovation::query()->updateOrCreate(
+                                [
+                                    'affiliation_id' => $affiliation->id,
+                                    'date_renewal' => $renewalDate->toDateString(),
+                                ],
+                                [
+                                    'remaining_days' => $daysUntilRenewal,
+                                    'status' => $status,
+                                    'updated_by' => self::SYSTEM_ACTOR,
+                                    'code_affiliation' => (string) $affiliation->code,
+                                    'agent_id' => (string) ($affiliation->agent_id ?? ''),
+                                    'code_agency' => (string) ($affiliation->code_agency ?? ''),
+                                    'owner_code' => $affiliation->owner_code,
+                                    'owner_agent' => $affiliation->owner_agent,
+                                    'plan_id' => $renewalPlanId,
+                                    'coverage_id' => $calculator->isInitialPlanWithoutCoverage($affiliation)
+                                        ? null
+                                        : $affiliation->coverage_id,
+                                    'is_negotiation_candidate' => $isNegotiationCandidate,
+                                    'negotiation_notes' => $negotiationNotes,
+                                    'previous_plan_id' => $previousPlanId,
+                                    'age_range_id' => (int) ($titularAgeRangeId ?? $affiliation->affiliates->first()?->age_range_id ?? 1),
+                                    'birth_date' => $titularBirthDate,
+                                    'age' => $titularAge,
+                                    'fee' => round($titularAnnualFee ?? $subtotalAnual, 2),
+                                    'subtotal_anual' => round($subtotalAnual, 2),
+                                    'subtotal_quarterly' => round($subtotalAnual / 4, 2),
+                                    'subtotal_biannual' => round($subtotalAnual / 2, 2),
+                                    'subtotal_monthly' => round($subtotalAnual / 12, 2),
+                                    'total_persons' => $affiliateCount,
+                                    'payment_frequency' => $paymentFrequency,
+                                    'created_by' => self::SYSTEM_ACTOR,
+                                ],
+                            );
+
+                            $upserted++;
                         }
+                    });
 
-                        if ($affiliateCount === 0) {
-                            $subtotalAnual = (float) ($affiliation->fee_anual ?? 0);
-                            $titularAnnualFee = $subtotalAnual;
-                        }
+                ScheduledTaskRunReport::addMetric('Afiliaciones procesadas', $processed);
+                ScheduledTaskRunReport::addMetric('Renovaciones upsert', $upserted);
+                ScheduledTaskRunReport::addMetric('En período de renovación', $inRenewalPeriod);
+                ScheduledTaskRunReport::addMetric('Afiliados tarificados', $affiliatesPriced);
+                ScheduledTaskRunReport::addMetric('Omitidas sin fecha efectiva', $skippedNoEffectiveDate);
+                ScheduledTaskRunReport::addMetric('Advertencias sin cobertura', $missingCoverageWarnings);
+                ScheduledTaskRunReport::addMetric('Advertencias tarifa no encontrada', $missingFeeWarnings);
 
-                        $paymentFrequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
-
-                        Renovation::query()->updateOrCreate(
-                            [
-                                'affiliation_id' => $affiliation->id,
-                                'date_renewal' => $renewalDate->toDateString(),
-                            ],
-                            [
-                                'remaining_days' => $daysUntilRenewal,
-                                'status' => $status,
-                                'updated_by' => self::SYSTEM_ACTOR,
-                                'code_affiliation' => (string) $affiliation->code,
-                                'agent_id' => (string) ($affiliation->agent_id ?? ''),
-                                'code_agency' => (string) ($affiliation->code_agency ?? ''),
-                                'owner_code' => $affiliation->owner_code,
-                                'owner_agent' => $affiliation->owner_agent,
-                                'plan_id' => $renewalPlanId,
-                                'coverage_id' => $calculator->isInitialPlanWithoutCoverage($affiliation)
-                                    ? null
-                                    : $affiliation->coverage_id,
-                                'is_negotiation_candidate' => $isNegotiationCandidate,
-                                'negotiation_notes' => $negotiationNotes,
-                                'previous_plan_id' => $previousPlanId,
-                                'age_range_id' => (int) ($titularAgeRangeId ?? $affiliation->affiliates->first()?->age_range_id ?? 1),
-                                'birth_date' => $titularBirthDate,
-                                'age' => $titularAge,
-                                'fee' => round($titularAnnualFee ?? $subtotalAnual, 2),
-                                'subtotal_anual' => round($subtotalAnual, 2),
-                                'subtotal_quarterly' => round($subtotalAnual / 4, 2),
-                                'subtotal_biannual' => round($subtotalAnual / 2, 2),
-                                'subtotal_monthly' => round($subtotalAnual / 12, 2),
-                                'total_persons' => $affiliateCount,
-                                'payment_frequency' => $paymentFrequency,
-                                'created_by' => self::SYSTEM_ACTOR,
-                            ],
-                        );
-
-                        $upserted++;
-                    }
-                });
-
-            ScheduledTaskRunReport::addMetric('Afiliaciones procesadas', $processed);
-            ScheduledTaskRunReport::addMetric('Renovaciones upsert', $upserted);
-            ScheduledTaskRunReport::addMetric('En período de renovación', $inRenewalPeriod);
-            ScheduledTaskRunReport::addMetric('Afiliados tarificados', $affiliatesPriced);
-            ScheduledTaskRunReport::addMetric('Omitidas sin fecha efectiva', $skippedNoEffectiveDate);
-            ScheduledTaskRunReport::addMetric('Advertencias sin cobertura', $missingCoverageWarnings);
-            ScheduledTaskRunReport::addMetric('Advertencias tarifa no encontrada', $missingFeeWarnings);
-
-            Log::info('PrepareAffiliationRenovations: ejecución completada', [
-                'processed' => $processed,
-                'upserted' => $upserted,
-                'in_renewal_period' => $inRenewalPeriod,
-                'affiliates_priced_in_snapshot' => $affiliatesPriced,
-                'skipped_no_effective_date' => $skippedNoEffectiveDate,
-                'missing_coverage_warnings' => $missingCoverageWarnings,
-                'missing_fee_warnings' => $missingFeeWarnings,
-                'run_date' => $today->toDateString(),
-            ]);
-        });
+                Log::info('PrepareAffiliationRenovations: ejecución completada', [
+                    'processed' => $processed,
+                    'upserted' => $upserted,
+                    'in_renewal_period' => $inRenewalPeriod,
+                    'affiliates_priced_in_snapshot' => $affiliatesPriced,
+                    'skipped_no_effective_date' => $skippedNoEffectiveDate,
+                    'missing_coverage_warnings' => $missingCoverageWarnings,
+                    'missing_fee_warnings' => $missingFeeWarnings,
+                    'run_date' => $today->toDateString(),
+                ]);
+            },
+            'Prepara o actualiza propuestas de renovación en la tabla renovations para afiliaciones activas, sin modificar el expediente vigente.',
+            [
+                '*Afiliaciones procesadas* = expedientes ACTIVA evaluados.',
+                '*Renovaciones upsert* = filas creadas o actualizadas en renovations.',
+                '*En período de renovación* = afiliaciones a ≤ '.self::RENEWAL_PERIOD_DAYS.' días del vencimiento.',
+                'Las advertencias de cobertura/tarifa no impiden guardar el conteo de días, pero requieren revisión manual.',
+            ],
+        );
     }
 
     private function resolveTitularAffiliate(Affiliation $affiliation): ?Affiliate

@@ -12,11 +12,19 @@ final class ScheduledTaskRunReport
 {
     public const SUMMARY_PHONE = '04127018390';
 
-    private const SUMMARY_IMAGE = 'images-whatsapp/integracorp.png';
+    private const SUMMARY_IMAGE = WhatsAppBrandImage::RELATIVE_PATH;
 
     private static bool $active = false;
 
     private static string $taskTitle = '';
+
+    private static ?string $taskDescription = null;
+
+    /** @var list<string> */
+    private static array $readingNotes = [];
+
+    /** @var array<string, int|float|string> */
+    private static array $executionDetails = [];
 
     /** @var array<string, int|float|string> */
     private static array $metrics = [];
@@ -28,19 +36,65 @@ final class ScheduledTaskRunReport
 
     private static ?string $criticalMessage = null;
 
-    public static function begin(string $taskTitle): void
-    {
+    private static ?string $failureFootnote = null;
+
+    /** @var array{relative_path: string, filename: string}|null */
+    private static ?array $documentAttachment = null;
+
+    /**
+     * @param  list<string>  $readingNotes
+     */
+    public static function begin(
+        string $taskTitle,
+        ?string $taskDescription = null,
+        array $readingNotes = [],
+    ): void {
         self::$active = true;
         self::$taskTitle = $taskTitle;
+        self::$taskDescription = $taskDescription;
+        self::$readingNotes = $readingNotes;
+        self::$executionDetails = [];
         self::$metrics = [];
         self::$failures = [];
         self::$criticalFailure = false;
         self::$criticalMessage = null;
+        self::$failureFootnote = null;
+        self::$documentAttachment = null;
     }
 
     public static function isActive(): bool
     {
         return self::$active;
+    }
+
+    public static function addExecutionDetail(string $label, int|float|string $value): void
+    {
+        if (! self::$active) {
+            return;
+        }
+
+        self::$executionDetails[$label] = $value;
+    }
+
+    public static function setFailureFootnote(string $footnote): void
+    {
+        if (! self::$active) {
+            return;
+        }
+
+        self::$failureFootnote = $footnote;
+    }
+
+    public static function setDocumentAttachment(string $publicRelativePath, string $filename): void
+    {
+        if (! self::$active) {
+            return;
+        }
+
+        self::$documentAttachment = [
+            'relative_path' => ltrim($publicRelativePath, '/'),
+            'filename' => $filename,
+        ];
     }
 
     public static function addMetric(string $label, int|float|string $value): void
@@ -92,13 +146,12 @@ final class ScheduledTaskRunReport
         self::$active = false;
 
         try {
-            NotificationController::notificationBirthday(
-                'Equipo Integracorp',
-                self::SUMMARY_PHONE,
-                self::buildSummaryMessage(),
-                self::SUMMARY_IMAGE,
-                'image',
-            );
+            $fullMessage = self::buildSummaryMessage();
+            $imageCaption = self::buildWhatsAppImageCaption();
+
+            foreach (ScheduledNotificationPhones::all() as $phone) {
+                self::notifySummaryToPhone($phone, $fullMessage, $imageCaption);
+            }
         } catch (Throwable $exception) {
             Log::error('ScheduledTaskRunReport: no se pudo enviar resumen por WhatsApp.', [
                 'task' => self::$taskTitle,
@@ -107,23 +160,70 @@ final class ScheduledTaskRunReport
         }
     }
 
+    private static function notifySummaryToPhone(string $phone, string $fullMessage, string $imageCaption): void
+    {
+        self::sendSummaryWithBrandImage($phone, $imageCaption);
+        NotificationController::sendWhatsAppChat($phone, 'Equipo Integracorp', $fullMessage);
+
+        if (self::$documentAttachment === null || self::$criticalFailure) {
+            return;
+        }
+
+        $documentSent = NotificationController::sendWhatsAppDocument(
+            $phone,
+            '📎 *Archivo adjunto:* '.self::$documentAttachment['filename'],
+            self::$documentAttachment['relative_path'],
+            self::$documentAttachment['filename'],
+        );
+
+        if ($documentSent) {
+            return;
+        }
+
+        Log::error('ScheduledTaskRunReport: no se pudo adjuntar el archivo por WhatsApp.', [
+            'task' => self::$taskTitle,
+            'file' => self::$documentAttachment['filename'],
+            'phone' => $phone,
+        ]);
+    }
+
+    private static function sendSummaryWithBrandImage(string $phone, string $message): void
+    {
+        NotificationController::notificationBirthday(
+            'Equipo Integracorp',
+            $phone,
+            $message,
+            self::SUMMARY_IMAGE,
+            'image',
+        );
+    }
+
     /**
      * @return array{
      *     taskTitle: string,
+     *     taskDescription: string|null,
+     *     readingNotes: list<string>,
+     *     executionDetails: array<string, int|float|string>,
      *     metrics: array<string, int|float|string>,
      *     failures: array<string, int>,
      *     criticalFailure: bool,
-     *     criticalMessage: string|null
+     *     criticalMessage: string|null,
+     *     failureFootnote: string|null
      * }
      */
     public static function snapshotForTesting(): array
     {
         return [
             'taskTitle' => self::$taskTitle,
+            'taskDescription' => self::$taskDescription,
+            'readingNotes' => self::$readingNotes,
+            'executionDetails' => self::$executionDetails,
             'metrics' => self::$metrics,
             'failures' => self::$failures,
             'criticalFailure' => self::$criticalFailure,
             'criticalMessage' => self::$criticalMessage,
+            'failureFootnote' => self::$failureFootnote,
+            'documentAttachment' => self::$documentAttachment,
         ];
     }
 
@@ -134,19 +234,19 @@ final class ScheduledTaskRunReport
 
     private static function buildSummaryMessage(): string
     {
-        $lines = [
-            '📋 *Resumen: '.self::$taskTitle.'*',
-            '📅 '.now()->timezone(config('app.timezone'))->format('d/m/Y H:i'),
-            '',
-        ];
+        $lines = RunReportMessageFormatter::titleLines('📋', 'Resumen: '.self::$taskTitle);
 
-        if (self::$criticalFailure) {
-            $lines[] = '⚠️ *La ejecución terminó con error crítico.*';
-            $lines[] = self::$criticalMessage ?? 'Error no especificado.';
-            $lines[] = '';
+        if (filled(self::$taskDescription)) {
+            $lines = array_merge($lines, RunReportMessageFormatter::bulletSection('Qué hace esta tarea', [
+                self::$taskDescription ?? '',
+            ]));
         }
 
-        $lines[] = '*Resultados*';
+        $lines = array_merge($lines, RunReportMessageFormatter::bulletSection('Cómo leer este reporte', self::$readingNotes));
+        $lines = array_merge($lines, RunReportMessageFormatter::criticalFailureLines(self::$criticalFailure, self::$criticalMessage));
+        $lines = array_merge($lines, RunReportMessageFormatter::configurationSection('Detalle de la ejecución', self::$executionDetails));
+
+        $lines[] = '📊 *Resultados*';
 
         if (self::$metrics === []) {
             $lines[] = '• Sin métricas registradas.';
@@ -158,7 +258,7 @@ final class ScheduledTaskRunReport
 
         $totalFailures = array_sum(self::$failures);
         $lines[] = '';
-        $lines[] = '❌ *Fallas:* '.$totalFailures;
+        $lines[] = '❌ Fallas registradas: '.$totalFailures;
 
         if ($totalFailures > 0) {
             foreach (self::$failures as $category => $count) {
@@ -168,6 +268,39 @@ final class ScheduledTaskRunReport
             $lines[] = '• Sin fallas registradas.';
         }
 
+        if (filled(self::$failureFootnote)) {
+            $lines[] = '';
+            $lines[] = '_'.self::$failureFootnote.'_';
+        }
+
         return implode("\n", $lines);
+    }
+
+    private static function buildWhatsAppImageCaption(): string
+    {
+        $lines = [
+            '📋 *Resumen: '.self::$taskTitle.'*',
+            RunReportMessageFormatter::executionTimestamp(),
+        ];
+
+        if (self::$criticalFailure) {
+            $lines[] = '⚠️ Error crítico en la ejecución.';
+        }
+
+        foreach (self::$metrics as $label => $value) {
+            $lines[] = '✅ '.$label.': '.$value;
+        }
+
+        $totalFailures = array_sum(self::$failures);
+        $lines[] = '❌ Fallas registradas: '.$totalFailures;
+
+        if (self::$documentAttachment !== null) {
+            $lines[] = '📎 Archivo: '.self::$documentAttachment['filename'];
+        }
+
+        $lines[] = '';
+        $lines[] = '_Detalle completo en el siguiente mensaje._';
+
+        return RunReportMessageFormatter::truncateForWhatsAppCaption(implode("\n", $lines));
     }
 }

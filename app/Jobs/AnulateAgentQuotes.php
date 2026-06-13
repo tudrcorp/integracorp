@@ -27,9 +27,18 @@ class AnulateAgentQuotes implements ShouldQueue
 
     public function handle(): void
     {
-        $this->runWithScheduledReport('Anulación de cotizaciones de agentes', function (): void {
-            $this->anulateAgentQuotes();
-        });
+        $this->runWithScheduledReport(
+            'Anulación de cotizaciones de agentes',
+            function (): void {
+                $this->anulateAgentQuotes();
+            },
+            'Anula cotizaciones individuales de agentes con más de 15 días sin aprobar ni ejecutar, elimina su PDF y notifica por email si hubo anulaciones.',
+            [
+                '*Cotizaciones anuladas* = registros que pasaron a status ANULADA.',
+                '*PDFs no eliminados* = archivos que no pudieron borrarse del storage.',
+                'Cada falla de PDF corresponde a una cotización concreta (1:1).',
+            ],
+        );
     }
 
     private function anulateAgentQuotes(): void
@@ -38,6 +47,9 @@ class AnulateAgentQuotes implements ShouldQueue
             ->whereNotIn('status', ['APROBADA', 'EJECUTADA'])
             ->where('created_at', '<=', now()->subDays(15))
             ->get();
+
+        ScheduledTaskRunReport::addExecutionDetail('Criterio', 'Status distinto de APROBADA/EJECUTADA y creadas hace > 15 días');
+        ScheduledTaskRunReport::addExecutionDetail('Candidatas encontradas', $quotes->count());
 
         $anulatedCount = 0;
         $pdfDeleteFailures = 0;
