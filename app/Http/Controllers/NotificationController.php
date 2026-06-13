@@ -11,6 +11,8 @@ use App\Mail\SendNotificationMailSingle;
 use App\Models\DataNotification;
 use App\Models\Guest;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\RunReportMessageFormatter;
+use App\Support\WhatsAppBrandImage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -2020,12 +2022,20 @@ class NotificationController extends Controller
 
             HTML;
 
+            $body = RunReportMessageFormatter::truncateForWhatsAppCaption($body);
+
+            if ($type === 'url') {
+                $type = 'image';
+                $file = WhatsAppBrandImage::RELATIVE_PATH;
+            }
+
             if ($type == 'image') {
                 Log::info('es imagen');
+                $imagePath = filled($file) ? $file : WhatsAppBrandImage::RELATIVE_PATH;
                 $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'image' => config('parameters.PUBLIC_URL').'/'.$file,
+                    'image' => config('parameters.PUBLIC_URL').'/'.$imagePath,
                     'caption' => $body,
                 ];
                 $curl = curl_init();
@@ -2438,35 +2448,114 @@ class NotificationController extends Controller
 
     public static function sendTelemedicineDocumentWhatsApp(string $phone, string $namePdf, string $caption, ?string $relativePath = null): bool
     {
-        try {
-            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
-            $relativePath = ltrim((string) ($relativePath ?? 'telemedicina-doc/'.$namePdf), '/');
-            $filePath = public_path('storage/'.$relativePath);
-            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.$relativePath;
+        $relativePath = ltrim((string) ($relativePath ?? 'telemedicina-doc/'.$namePdf), '/');
 
-            if ($cleanPhone === null) {
-                Log::warning('TELEMEDICINA: Teléfono inválido para envío de documento por WhatsApp.', [
-                    'phone' => $phone,
-                    'file' => $namePdf,
+        return self::sendWhatsAppDocument($phone, $caption, $relativePath, $namePdf);
+    }
+
+    public static function sendWhatsAppChat(string $phone, string $name, string $content): bool
+    {
+        try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone) ?? $phone;
+
+            $body = <<<HTML
+
+            Apreciado/a: *{$name}*
+
+            {$content}
+
+            HTML;
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'to' => $cleanPhone,
+                'body' => $body,
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 60,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error('WHATSAPP CHAT: Error de conexión cURL.', [
+                    'error' => $err,
+                    'to' => $cleanPhone,
                 ]);
 
                 return false;
             }
 
-            if (! file_exists($filePath)) {
-                Log::error('TELEMEDICINA: WhatsApp Doc Error: El archivo no existe en la ruta especificada.', [
-                    'path' => $filePath,
-                    'file' => $namePdf,
+            if (! self::whatsAppApiResponseSucceeded($response)) {
+                Log::warning('WHATSAPP CHAT: API respondió con error.', [
+                    'response' => $response,
                     'phone' => $cleanPhone,
                 ]);
 
                 return false;
             }
 
+            return true;
+        } catch (\Throwable $th) {
+            Log::error('WHATSAPP CHAT: Fallo crítico.', [
+                'message' => $th->getMessage(),
+                'phone' => $phone,
+            ]);
+
+            return false;
+        }
+    }
+
+    public static function sendWhatsAppDocument(string $phone, string $caption, string $relativePath, string $filename): bool
+    {
+        try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
+            $relativePath = ltrim($relativePath, '/');
+            $filePath = public_path('storage/'.$relativePath);
+            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.$relativePath;
+
+            if ($cleanPhone === null) {
+                Log::warning('WHATSAPP DOC: Teléfono inválido para envío de documento.', [
+                    'phone' => $phone,
+                    'file' => $filename,
+                ]);
+
+                return false;
+            }
+
+            if (! file_exists($filePath)) {
+                Log::error('WHATSAPP DOC: El archivo no existe en la ruta especificada.', [
+                    'path' => $filePath,
+                    'file' => $filename,
+                    'phone' => $cleanPhone,
+                ]);
+
+                return false;
+            }
+
+            $caption = RunReportMessageFormatter::truncateForWhatsAppCaption($caption);
+
             $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $cleanPhone,
-                'filename' => $namePdf,
+                'filename' => $filename,
                 'document' => $documentUrl,
                 'caption' => $caption,
             ];
@@ -2476,7 +2565,7 @@ class NotificationController extends Controller
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
+                CURLOPT_TIMEOUT => 120,
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_SSL_VERIFYPEER => 0,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
@@ -2494,10 +2583,10 @@ class NotificationController extends Controller
             curl_close($curl);
 
             if ($err) {
-                Log::error('TELEMEDICINA: Error de conexión cURL al enviar documento por WhatsApp', [
+                Log::error('WHATSAPP DOC: Error de conexión cURL al enviar documento', [
                     'error' => $err,
                     'to' => $cleanPhone,
-                    'file' => $namePdf,
+                    'file' => $filename,
                     'document_url' => $documentUrl,
                 ]);
 
@@ -2505,30 +2594,30 @@ class NotificationController extends Controller
             }
 
             if (! self::whatsAppApiResponseSucceeded($response)) {
-                Log::warning('TELEMEDICINA: WhatsApp API respondió con error al enviar documento', [
+                Log::warning('WHATSAPP DOC: API respondió con error al enviar documento', [
                     'http_code' => $httpCode,
                     'response' => $response,
                     'phone' => $cleanPhone,
-                    'file' => $namePdf,
+                    'file' => $filename,
                     'document_url' => $documentUrl,
                 ]);
 
                 return false;
             }
 
-            Log::info('TELEMEDICINA: Documento enviado por WhatsApp con éxito.', [
+            Log::info('WHATSAPP DOC: Documento enviado con éxito.', [
                 'phone' => $cleanPhone,
-                'doc' => $namePdf,
+                'doc' => $filename,
                 'document_url' => $documentUrl,
                 'api_response' => $response,
             ]);
 
             return true;
         } catch (\Throwable $th) {
-            Log::error('TELEMEDICINA: Fallo crítico al enviar documento por WhatsApp', [
+            Log::error('WHATSAPP DOC: Fallo crítico al enviar documento', [
                 'message' => $th->getMessage(),
                 'phone' => $phone,
-                'file' => $namePdf,
+                'file' => $filename,
             ]);
 
             return false;

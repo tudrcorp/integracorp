@@ -23,10 +23,20 @@ class ExpireOperationServiceOrders implements ShouldQueue
 
     public function handle(): void
     {
-        $this->runWithScheduledReport('Caducidad de órdenes de servicio', function (): void {
-            $expiredCount = OperationServiceOrderValidity::expireEligibleOrders('system');
+        $this->runWithScheduledReport(
+            'Caducidad de órdenes de servicio',
+            function (): void {
+                ScheduledTaskRunReport::addExecutionDetail('Acción', 'Marcar como caducadas las órdenes elegibles según reglas de vigencia');
 
-            ScheduledTaskRunReport::addMetric('Órdenes caducadas', $expiredCount);
-        });
+                $expiredCount = OperationServiceOrderValidity::expireEligibleOrders('system');
+
+                ScheduledTaskRunReport::addMetric('Órdenes caducadas', $expiredCount);
+            },
+            'Caduca automáticamente las órdenes de servicio de operaciones que cumplieron las condiciones de vencimiento.',
+            [
+                '*Órdenes caducadas* = registros actualizados a estado caducado en esta ejecución.',
+                'Si el valor es 0, no había órdenes pendientes de caducar hoy.',
+            ],
+        );
     }
 }

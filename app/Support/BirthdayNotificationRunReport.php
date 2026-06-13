@@ -14,7 +14,7 @@ final class BirthdayNotificationRunReport
 {
     public const SUMMARY_PHONE = '04127018390';
 
-    private const SUMMARY_IMAGE = 'images-whatsapp/integracorp.png';
+    private const SUMMARY_IMAGE = WhatsAppBrandImage::RELATIVE_PATH;
 
     private const CONTROL_PHONE = '04143027250';
 
@@ -39,12 +39,25 @@ final class BirthdayNotificationRunReport
         'proveedores' => 'Proveedores',
     ];
 
+    /** @var array<string, string> */
+    private const DATA_TYPE_LABELS = [
+        'agents' => 'Agentes',
+        'agencies' => 'Agencias',
+        'affiliates' => 'Afiliaciones individuales',
+        'affiliate_corporates' => 'Afiliaciones corporativas',
+        'rrhh_colaboradors' => 'Colaboradores',
+        'suppliers' => 'Proveedores',
+    ];
+
     private static bool $active = false;
 
     private static ?string $currentGroup = null;
 
-    /** @var array<string, array{whatsapp: int, email: int, failures: array<string, int>}> */
+    /** @var array<string, array{whatsapp: int, email: int, failures: array<string, int>, records_in_source: int, validation_passes: int, validations_total: int, channels_seen: array<string, bool>}> */
     private static array $stats = [];
+
+    /** @var list<array{title: string, data_type: string, group: string, channels: list<string>}> */
+    private static array $runConfiguration = [];
 
     private static bool $criticalFailure = false;
 
@@ -54,18 +67,38 @@ final class BirthdayNotificationRunReport
     {
         self::$active = true;
         self::$stats = [];
+        self::$runConfiguration = [];
 
         foreach (self::ALL_GROUPS as $group) {
-            self::$stats[$group] = [
-                'whatsapp' => 0,
-                'email' => 0,
-                'failures' => [],
-            ];
+            self::$stats[$group] = self::emptyGroupStats();
         }
 
         self::$currentGroup = null;
         self::$criticalFailure = false;
         self::$criticalMessage = null;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $notifications
+     */
+    public static function registerRunConfiguration(array $notifications): void
+    {
+        self::$runConfiguration = [];
+
+        foreach ($notifications as $notification) {
+            $dataType = (string) ($notification['data_type'] ?? '');
+            $channels = array_values(array_filter(
+                is_array($notification['channels'] ?? null) ? $notification['channels'] : [],
+                static fn (mixed $channel): bool => is_string($channel) && $channel !== '',
+            ));
+
+            self::$runConfiguration[] = [
+                'title' => (string) ($notification['title'] ?? 'Sin título'),
+                'data_type' => $dataType,
+                'group' => self::dataTypeToGroup($dataType),
+                'channels' => $channels,
+            ];
+        }
     }
 
     public static function setCurrentGroup(string $group): void
@@ -76,6 +109,24 @@ final class BirthdayNotificationRunReport
     public static function isActive(): bool
     {
         return self::$active;
+    }
+
+    public static function recordValidationBatch(string $group, int $recordCount, string $channel): void
+    {
+        if (! self::$active) {
+            return;
+        }
+
+        $group = self::normalizeGroup($group);
+        self::ensureGroup($group);
+
+        self::$stats[$group]['validation_passes']++;
+        self::$stats[$group]['validations_total'] += $recordCount;
+        self::$stats[$group]['records_in_source'] = max(
+            self::$stats[$group]['records_in_source'],
+            $recordCount,
+        );
+        self::$stats[$group]['channels_seen'][$channel] = true;
     }
 
     public static function queueWhatsApp(
@@ -126,7 +177,7 @@ final class BirthdayNotificationRunReport
                 $name,
                 $email,
                 null,
-                'Error al enviar email: ' . $exception->getMessage(),
+                'Error al enviar email: '.$exception->getMessage(),
                 $group,
             );
         }
@@ -163,13 +214,24 @@ final class BirthdayNotificationRunReport
         self::$active = false;
 
         try {
-            NotificationController::notificationBirthday(
-                'Equipo Integracorp',
-                self::SUMMARY_PHONE,
-                self::buildSummaryMessage(),
-                self::SUMMARY_IMAGE,
-                'image',
-            );
+            $fullMessage = self::buildSummaryMessage();
+            $imageCaption = self::buildWhatsAppImageCaption();
+
+            foreach (ScheduledNotificationPhones::all() as $phone) {
+                NotificationController::notificationBirthday(
+                    'Equipo Integracorp',
+                    $phone,
+                    $imageCaption,
+                    self::SUMMARY_IMAGE,
+                    'image',
+                );
+
+                NotificationController::sendWhatsAppChat(
+                    $phone,
+                    'Equipo Integracorp',
+                    $fullMessage,
+                );
+            }
         } catch (Throwable $exception) {
             Log::error('BirthdayNotificationRunReport: no se pudo enviar resumen por WhatsApp.', [
                 'message' => $exception->getMessage(),
@@ -178,11 +240,40 @@ final class BirthdayNotificationRunReport
     }
 
     /**
-     * @return array<string, array{whatsapp: int, email: int, failures: array<string, int>}>
+     * @return array<string, array{whatsapp: int, email: int, failures: array<string, int>, records_in_source: int, validation_passes: int, validations_total: int, channels_seen: array<string, bool>}>
      */
     public static function statsForTesting(): array
     {
         return self::$stats;
+    }
+
+    public static function summaryMessageForTesting(): string
+    {
+        return self::buildSummaryMessage();
+    }
+
+    /**
+     * @return list<array{title: string, data_type: string, group: string, channels: list<string>}>
+     */
+    public static function runConfigurationForTesting(): array
+    {
+        return self::$runConfiguration;
+    }
+
+    /**
+     * @return array{whatsapp: int, email: int, failures: array<string, int>, records_in_source: int, validation_passes: int, validations_total: int, channels_seen: array<string, bool>}
+     */
+    private static function emptyGroupStats(): array
+    {
+        return [
+            'whatsapp' => 0,
+            'email' => 0,
+            'failures' => [],
+            'records_in_source' => 0,
+            'validation_passes' => 0,
+            'validations_total' => 0,
+            'channels_seen' => [],
+        ];
     }
 
     private static function incrementSent(string $group, string $channel): void
@@ -197,11 +288,7 @@ final class BirthdayNotificationRunReport
         $group = self::normalizeGroup($group);
 
         if (! array_key_exists($group, self::$stats)) {
-            self::$stats[$group] = [
-                'whatsapp' => 0,
-                'email' => 0,
-                'failures' => [],
-            ];
+            self::$stats[$group] = self::emptyGroupStats();
         }
     }
 
@@ -210,6 +297,19 @@ final class BirthdayNotificationRunReport
         return match ($group) {
             'afiliaciones corporativas' => 'afiliaciones_corporativas',
             default => $group,
+        };
+    }
+
+    private static function dataTypeToGroup(string $dataType): string
+    {
+        return match ($dataType) {
+            'agents' => 'agentes',
+            'agencies' => 'agencias',
+            'affiliates' => 'afiliaciones',
+            'affiliate_corporates' => 'afiliaciones_corporativas',
+            'rrhh_colaboradors' => 'colaboradores',
+            'suppliers' => 'proveedores',
+            default => $dataType,
         };
     }
 
@@ -257,58 +357,170 @@ final class BirthdayNotificationRunReport
 
     private static function buildSummaryMessage(): string
     {
-        $lines = [
-            '📋 *Resumen de tarjetas de cumpleaños*',
-            '📅 ' . now()->timezone(config('app.timezone'))->format('d/m/Y H:i'),
-            '',
-        ];
+        $lines = RunReportMessageFormatter::titleLines('📋', 'Resumen de tarjetas de cumpleaños');
 
-        if (self::$criticalFailure) {
-            $lines[] = '⚠️ *La ejecución terminó con error crítico.*';
-            $lines[] = self::$criticalMessage ?? 'Error no especificado.';
-            $lines[] = '';
-        }
+        $lines = array_merge($lines, RunReportMessageFormatter::bulletSection('Qué hace esta tarea', [
+            'Envía tarjetas de cumpleaños por WhatsApp y/o email a agentes, agencias, afiliaciones, colaboradores y proveedores según las tarjetas aprobadas en el sistema.',
+        ]));
+
+        $lines = array_merge($lines, RunReportMessageFormatter::bulletSection('Cómo leer este reporte', [
+            'Se revisa *todo* el padrón de cada grupo, no solo quienes cumplen años hoy.',
+            'Por cada tarjeta *APROBADA* y cada canal activo (WhatsApp / Email) se valida *cada registro*.',
+            '*Fallas* = validaciones que no pasaron (fecha, email o teléfono). Un mismo registro puede sumar varias fallas si hay varios canales.',
+            '*Envíos* = solo registros que cumplen años *hoy* y pasaron todas las validaciones.',
+            'Fecha válida requerida: *dd/mm/aaaa* (ej. 27/04/1972). Otros formatos cuentan como inválidos.',
+        ]));
+
+        $lines = array_merge($lines, RunReportMessageFormatter::criticalFailureLines(self::$criticalFailure, self::$criticalMessage));
+
+        $lines = array_merge($lines, self::formatRunConfigurationSection());
+        $lines[] = '';
 
         $totalWhatsapp = 0;
         $totalEmail = 0;
         $totalFailures = 0;
+        $totalValidations = 0;
 
         foreach (self::ALL_GROUPS as $group) {
-            $data = self::$stats[$group] ?? [
-                'whatsapp' => 0,
-                'email' => 0,
-                'failures' => [],
-            ];
+            $data = self::$stats[$group] ?? self::emptyGroupStats();
             $label = self::GROUP_LABELS[$group] ?? mb_convert_case($group, MB_CASE_TITLE, 'UTF-8');
             $failures = array_sum($data['failures']);
             $totalWhatsapp += $data['whatsapp'];
             $totalEmail += $data['email'];
             $totalFailures += $failures;
+            $totalValidations += $data['validations_total'];
 
             $lines[] = "*{$label}*";
-            $lines[] = '✅ WhatsApp encolados: ' . $data['whatsapp'];
-            $lines[] = '✅ Email enviados: ' . $data['email'];
-            $lines[] = '❌ Fallas: ' . $failures;
-
-            if ($failures > 0) {
-                $lines[] = self::formatFailureBreakdown($data['failures']);
-            }
-
+            $lines = array_merge($lines, self::formatGroupMetrics($group, $data, $failures));
             $lines[] = '';
         }
 
-        $lines[] = '*Totales*';
-        $lines[] = 'WhatsApp encolados: ' . $totalWhatsapp;
-        $lines[] = 'Email enviados: ' . $totalEmail;
-        $lines[] = 'Fallas: ' . $totalFailures;
+        $lines[] = '*Totales generales*';
+        $lines[] = '📝 Validaciones realizadas: '.$totalValidations;
+        $lines[] = '✅ WhatsApp encolados: '.$totalWhatsapp;
+        $lines[] = '✅ Email enviados: '.$totalEmail;
+        $lines[] = '❌ Fallas registradas: '.$totalFailures;
+        $lines[] = '';
+        $lines[] = '_Las fallas totales no equivalen a personas distintas cuando un grupo se procesó por varios canales._';
 
         return implode("\n", $lines);
+    }
+
+    private static function buildWhatsAppImageCaption(): string
+    {
+        $totalWhatsapp = 0;
+        $totalEmail = 0;
+        $totalFailures = 0;
+        $totalValidations = 0;
+
+        foreach (self::ALL_GROUPS as $group) {
+            $data = self::$stats[$group] ?? self::emptyGroupStats();
+            $totalWhatsapp += $data['whatsapp'];
+            $totalEmail += $data['email'];
+            $totalFailures += array_sum($data['failures']);
+            $totalValidations += $data['validations_total'];
+        }
+
+        $lines = [
+            '📋 *Resumen de tarjetas de cumpleaños*',
+            RunReportMessageFormatter::executionTimestamp(),
+            '📝 Validaciones realizadas: '.$totalValidations,
+            '✅ WhatsApp encolados: '.$totalWhatsapp,
+            '✅ Email enviados: '.$totalEmail,
+            '❌ Fallas registradas: '.$totalFailures,
+            '',
+            '_Detalle completo en el siguiente mensaje._',
+        ];
+
+        if (self::$criticalFailure) {
+            array_splice($lines, 2, 0, ['⚠️ Error crítico en la ejecución.']);
+        }
+
+        return RunReportMessageFormatter::truncateForWhatsAppCaption(implode("\n", $lines));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function formatRunConfigurationSection(): array
+    {
+        if (self::$runConfiguration === []) {
+            return ['⚙️ *Configuración:* no había tarjetas aprobadas para procesar.'];
+        }
+
+        $lines = [
+            '⚙️ *Configuración de la ejecución*',
+            '• Tarjetas aprobadas procesadas: '.count(self::$runConfiguration),
+        ];
+
+        foreach (self::$runConfiguration as $config) {
+            $groupLabel = self::GROUP_LABELS[$config['group']] ?? self::DATA_TYPE_LABELS[$config['data_type']] ?? $config['data_type'];
+            $channelsLabel = $config['channels'] === [] ? 'sin canales' : implode(' + ', $config['channels']);
+            $lines[] = '  - '.$groupLabel.': "'.$config['title'].'" ('.$channelsLabel.')';
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @param  array{whatsapp: int, email: int, failures: array<string, int>, records_in_source: int, validation_passes: int, validations_total: int, channels_seen: array<string, bool>}  $data
+     * @return list<string>
+     */
+    private static function formatGroupMetrics(string $group, array $data, int $failures): array
+    {
+        if ($data['validation_passes'] === 0) {
+            return [
+                '⏭️ No procesado (sin tarjeta aprobada para este grupo).',
+                '✅ WhatsApp encolados: 0',
+                '✅ Email enviados: 0',
+                '❌ Fallas: 0',
+            ];
+        }
+
+        $passes = $data['validation_passes'];
+        $records = $data['records_in_source'];
+        $channelsSeen = array_keys(array_filter($data['channels_seen']));
+        $channelsLabel = $channelsSeen === [] ? 'ninguno' : implode(' + ', $channelsSeen);
+        $approvedCards = self::approvedCardsCountForGroup($group);
+
+        $lines = [
+            '📊 Registros en base de datos: '.$records,
+            '🔄 Pasadas de validación: '.$passes.' ('.$channelsLabel.' × '.max($approvedCards, 1).' tarjeta(s) aprobada(s))',
+            '📝 Validaciones realizadas: '.$data['validations_total'].' ('.$records.' registros × '.$passes.' pasadas)',
+            '✅ WhatsApp encolados: '.$data['whatsapp'],
+            '✅ Email enviados: '.$data['email'],
+            '❌ Fallas registradas: '.$failures,
+        ];
+
+        if ($failures > 0 && $passes > 1) {
+            $estimatedUnique = (int) ceil($failures / $passes);
+            $lines[] = '📌 Registros únicos estimados con falla: ~'.$estimatedUnique.' ('.$failures.' fallas ÷ '.$passes.' pasadas)';
+        }
+
+        if ($failures > 0) {
+            $lines[] = self::formatFailureBreakdown($data['failures'], $passes);
+        }
+
+        return $lines;
+    }
+
+    private static function approvedCardsCountForGroup(string $group): int
+    {
+        $count = 0;
+
+        foreach (self::$runConfiguration as $config) {
+            if ($config['group'] === $group) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     /**
      * @param  array<string, int>  $failures
      */
-    private static function formatFailureBreakdown(array $failures): string
+    private static function formatFailureBreakdown(array $failures, int $passes): string
     {
         $labels = [
             'email_nulo' => '• Email nulo o vacío',
@@ -324,8 +536,17 @@ final class BirthdayNotificationRunReport
         $parts = [];
 
         foreach ($labels as $key => $label) {
-            if (($failures[$key] ?? 0) > 0) {
-                $parts[] = $label . ': ' . $failures[$key];
+            $count = $failures[$key] ?? 0;
+
+            if ($count <= 0) {
+                continue;
+            }
+
+            if ($passes > 1) {
+                $estimatedUnique = (int) ceil($count / $passes);
+                $parts[] = $label.': '.$count.' (~'.$estimatedUnique.' registros únicos)';
+            } else {
+                $parts[] = $label.': '.$count;
             }
         }
 

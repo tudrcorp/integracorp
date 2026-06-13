@@ -355,6 +355,8 @@ class NotificationMasiveService
 
             $rowsNotifications = BirthdayNotification::where('status', 'APROBADA')->get()->toArray();
 
+            BirthdayNotificationRunReport::registerRunConfiguration($rowsNotifications);
+
             if (count($rowsNotifications) == 0) {
                 return;
             }
@@ -386,6 +388,8 @@ class NotificationMasiveService
                                 ->select('name', 'phone', 'birth_date')
                                 ->get()
                                 ->toArray();
+
+                            BirthdayNotificationRunReport::recordValidationBatch('agentes', count($data), 'whatsapp');
 
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
@@ -501,6 +505,8 @@ class NotificationMasiveService
                                 ->get()
                                 ->toArray();
 
+                            BirthdayNotificationRunReport::recordValidationBatch('agencias', count($data), 'whatsapp');
+
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 // Validamos si esta cumpliendo años
@@ -601,6 +607,8 @@ class NotificationMasiveService
                                 )
                                 ->get()
                                 ->toArray();
+
+                            BirthdayNotificationRunReport::recordValidationBatch('afiliaciones', count($data), 'whatsapp');
 
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
@@ -731,6 +739,8 @@ class NotificationMasiveService
                                 ->get()
                                 ->toArray();
 
+                            BirthdayNotificationRunReport::recordValidationBatch('afiliaciones_corporativas', count($data), 'whatsapp');
+
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 // Validamos si esta cumpliendo años
@@ -851,6 +861,8 @@ class NotificationMasiveService
                                 ->get()
                                 ->toArray();
 
+                            BirthdayNotificationRunReport::recordValidationBatch('colaboradores', count($data), 'whatsapp');
+
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 // Validamos si esta cumpliendo años
@@ -947,6 +959,8 @@ class NotificationMasiveService
                                 ->select('name', 'personal_phone', 'afiliacion_proveedor')
                                 ->get()
                                 ->toArray();
+
+                            BirthdayNotificationRunReport::recordValidationBatch('proveedores', count($data), 'whatsapp');
 
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
@@ -1057,6 +1071,8 @@ class NotificationMasiveService
                                 ->get()
                                 ->toArray();
 
+                            BirthdayNotificationRunReport::recordValidationBatch('agentes', count($data), 'email');
+
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 // Validamos si esta cumpliendo años
@@ -1151,6 +1167,8 @@ class NotificationMasiveService
                                 ->get()
                                 ->toArray();
 
+                            BirthdayNotificationRunReport::recordValidationBatch('agencias', count($data), 'email');
+
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 // Validamos si esta cumpliendo años
@@ -1243,6 +1261,8 @@ class NotificationMasiveService
                                 ->select('full_name', 'email', 'birth_date')
                                 ->get()
                                 ->toArray();
+
+                            BirthdayNotificationRunReport::recordValidationBatch('afiliaciones', count($data), 'email');
 
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
@@ -1339,6 +1359,8 @@ class NotificationMasiveService
                                 ->get()
                                 ->toArray();
 
+                            BirthdayNotificationRunReport::recordValidationBatch('afiliaciones_corporativas', count($data), 'email');
+
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
                                 // Validamos si esta cumpliendo años
@@ -1431,6 +1453,8 @@ class NotificationMasiveService
                                 ->select('fullName', 'emailCorporativo', 'fechaNacimiento')
                                 ->get()
                                 ->toArray();
+
+                            BirthdayNotificationRunReport::recordValidationBatch('colaboradores', count($data), 'email');
 
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {
@@ -1525,6 +1549,8 @@ class NotificationMasiveService
                                 ->select('name', 'correo_principal', 'afiliacion_proveedor')
                                 ->get()
                                 ->toArray();
+
+                            BirthdayNotificationRunReport::recordValidationBatch('proveedores', count($data), 'email');
 
                             // for para recorrer la data, tomar la fecha y enviar la notificacion
                             for ($k = 0; $k < count($data); $k++) {

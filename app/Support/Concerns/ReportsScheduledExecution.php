@@ -11,10 +11,15 @@ trait ReportsScheduledExecution
 {
     /**
      * @param  callable(): void  $callback
+     * @param  list<string>  $readingNotes
      */
-    protected function runWithScheduledReport(string $taskTitle, callable $callback): void
-    {
-        ScheduledTaskRunReport::begin($taskTitle);
+    protected function runWithScheduledReport(
+        string $taskTitle,
+        callable $callback,
+        ?string $taskDescription = null,
+        array $readingNotes = [],
+    ): void {
+        ScheduledTaskRunReport::begin($taskTitle, $taskDescription, $readingNotes);
 
         try {
             $callback();

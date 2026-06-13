@@ -1,7 +1,11 @@
 <?php
 
 use App\Jobs\AnulateAgentQuotes;
+use App\Jobs\BackupDatabase;
 use App\Jobs\ExpireOperationServiceOrders;
+use App\Jobs\ExportCorporateAffiliations;
+use App\Jobs\ExportIndividualAffiliations;
+use App\Jobs\ExportScheduledEntity;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendNotificationBirthday;
@@ -51,4 +55,22 @@ Schedule::job(new AnulateAgentQuotes, 'system')->dailyAt('23:00');
 /**
  * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
  */
-Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('6:30');
+Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
+
+/**
+ * Respaldo completo de la base de datos en .sql (estructura + datos).
+ * Envía resumen y archivo adjunto por WhatsApp al finalizar.
+ */
+Schedule::job(new BackupDatabase, 'system')->dailyAt('2:00');
+
+/**
+ * Exportaciones Excel diarias (cola system). Cada job se ejecuta cada 10 minutos desde las 6:00.
+ */
+Schedule::job(new ExportIndividualAffiliations, 'system')->dailyAt('6:00');
+Schedule::job(new ExportCorporateAffiliations, 'system')->dailyAt('6:10');
+Schedule::job(new ExportScheduledEntity('agents'), 'system')->dailyAt('6:20');
+Schedule::job(new ExportScheduledEntity('agencies'), 'system')->dailyAt('6:30');
+Schedule::job(new ExportScheduledEntity('natural_providers'), 'system')->dailyAt('6:40');
+Schedule::job(new ExportScheduledEntity('juridical_providers'), 'system')->dailyAt('6:50');
+Schedule::job(new ExportScheduledEntity('collaborators'), 'system')->dailyAt('7:00');
+Schedule::job(new ExportScheduledEntity('doctors'), 'system')->dailyAt('7:10');
