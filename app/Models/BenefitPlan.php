@@ -12,7 +12,6 @@ class BenefitPlan extends Pivot
         'plan_id',
         'benefit_id',
         'description',
-        'created_by',
     ];
 
     public static function booted(): void

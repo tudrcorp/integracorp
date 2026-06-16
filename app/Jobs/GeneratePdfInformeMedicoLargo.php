@@ -6,8 +6,7 @@ use App\Mail\SendMailPropuestaPlanInicial;
 use App\Models\OperationDocumentList;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\User;
-use App\Services\NotificationTelemedicinaService;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\Telemedicine\TelemedicineInformeLargoPdfGenerator;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
@@ -83,11 +82,7 @@ class GeneratePdfInformeMedicoLargo implements ShouldQueue
 
     private function generatePDF($data)
     {
-        ini_set('memory_limit', '2048M');
-
-        $pdf = Pdf::loadView('documents.informe-medico-largo', compact('data'));
-        $name_pdf = $data['ci_patient'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
-        $pdf->save(public_path('storage/telemedicina-doc/'.$name_pdf));
+        $name_pdf = TelemedicineInformeLargoPdfGenerator::generateAndSave($data, $this->type_document);
 
         $this->syncConsultationUploadedDocuments($data, $name_pdf);
 

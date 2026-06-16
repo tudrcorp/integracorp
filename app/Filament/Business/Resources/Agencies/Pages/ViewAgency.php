@@ -3,24 +3,31 @@
 namespace App\Filament\Business\Resources\Agencies\Pages;
 
 use App\Filament\Business\Resources\Agencies\AgencyResource;
+use App\Filament\Business\Resources\Agencies\Concerns\QueuesAgencyFichaPdfEmail;
+use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
+use App\Models\Agency;
+use App\Support\BusinessAgencyFichaPdfAccess;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
 
 class ViewAgency extends ViewRecord
 {
+    use QueuesAgencyFichaPdfEmail;
+
     protected static string $resource = AgencyResource::class;
 
-    /**
-     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
-     */
-    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const IOS_BUTTON_BASE = ' shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
-    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
 
-    private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
+
+    private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
 
     public function getTitle(): string|Htmlable
     {
@@ -68,21 +75,64 @@ class ViewAgency extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make()
-                ->label('Editar')
-                ->icon('heroicon-o-pencil')
-                ->color(self::PRIMARY_BUTTON_CLASS)
-                ->extraAttributes([
-                    'class' => self::TICKET_BUTTON_CLASS,
-                ]),
             Action::make('back')
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')
-                ->color('warning')
+                ->color('gray')
                 ->url(AgencyResource::getUrl())
                 ->extraAttributes([
-                    'class' => self::WARNING_BUTTON_CLASS,
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
                 ]),
+            EditAction::make()
+                ->label('Editar')
+                ->icon('heroicon-o-pencil')
+                ->color('primary')
+                ->extraAttributes([
+                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
+                ]),
+            Action::make('agencyFichaPreview')
+                ->label('Ficha PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
+                ->slideOver()
+                ->formWrapper(false)
+                ->modalWidth(Width::FiveExtraLarge)
+                ->extraModalWindowAttributes([
+                    'class' => 'fi-agency-command-center-window',
+                ])
+                ->modalHeading(fn (): string => 'Ficha de agencia · '.($this->getRecord()->name_corporative ?? ''))
+                ->modalDescription(fn (): string => 'Vista previa, descarga y envío por correo o WhatsApp.')
+                ->modalContent(fn (): \Illuminate\Contracts\View\View => $this->resolveAgencyFichaPanelView())
+                ->modalSubmitAction(false)
+                ->modalCancelAction(
+                    fn (Action $action): Action => $action
+                        ->label('Cerrar')
+                        ->extraAttributes([
+                            'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
+                        ]),
+                )
+                ->action(fn (): null => null)
+                ->visible(fn (): bool => BusinessAgencyFichaPdfAccess::userCanAccess($this->getRecord())),
         ];
+    }
+
+    private function resolveAgencyFichaPanelView(): \Illuminate\Contracts\View\View
+    {
+        /** @var Agency $agency */
+        $agency = $this->getRecord();
+        $agency->loadMissing(['typeAgency']);
+
+        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_FICHA_VIEWED', 'business.agencies.ficha-pdf.view-page', [
+            'agency_id' => $agency->getKey(),
+            'agency_name' => $agency->name_corporative,
+            'source' => 'view_agency_header',
+        ]);
+
+        return view('filament.business.agencies.agency-ficha-panel', [
+            'record' => $agency,
+        ]);
     }
 }

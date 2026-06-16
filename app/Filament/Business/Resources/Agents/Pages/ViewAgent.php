@@ -3,43 +3,76 @@
 namespace App\Filament\Business\Resources\Agents\Pages;
 
 use App\Filament\Business\Resources\Agents\AgentResource;
+use App\Filament\Business\Resources\Agents\Concerns\QueuesAgentFichaPdfEmail;
+use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
+use App\Models\Agent;
+use App\Support\BusinessAgentFichaPdfAccess;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
 
 class ViewAgent extends ViewRecord
 {
+    use QueuesAgentFichaPdfEmail;
+
     protected static string $resource = AgentResource::class;
 
-    /**
-     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
-     */
-    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const IOS_BUTTON_BASE = ' shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
-    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
 
-    private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
+
+    private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
 
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make()
-                ->label('Editar')
-                ->icon('heroicon-o-pencil')
-                ->color(self::PRIMARY_BUTTON_CLASS)
-                ->extraAttributes([
-                    'class' => self::TICKET_BUTTON_CLASS,
-                ]),
             Action::make('back')
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')
-                ->color('warning')
+                ->color('gray')
                 ->url(AgentResource::getUrl())
                 ->extraAttributes([
-                    'class' => self::WARNING_BUTTON_CLASS,
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
                 ]),
+            EditAction::make()
+                ->label('Editar')
+                ->icon('heroicon-o-pencil')
+                ->color('primary')
+                ->extraAttributes([
+                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
+                ]),
+            Action::make('agentFichaPreview')
+                ->label('Ficha PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
+                ->slideOver()
+                ->formWrapper(false)
+                ->modalWidth(Width::FiveExtraLarge)
+                ->extraModalWindowAttributes([
+                    'class' => 'fi-agency-command-center-window',
+                ])
+                ->modalHeading(fn (): string => 'Ficha de agente · '.($this->getRecord()->name ?? ''))
+                ->modalDescription(fn (): string => 'Vista previa, descarga y envío por correo o WhatsApp.')
+                ->modalContent(fn (): \Illuminate\Contracts\View\View => $this->resolveAgentFichaPanelView())
+                ->modalSubmitAction(false)
+                ->modalCancelAction(
+                    fn (Action $action): Action => $action
+                        ->label('Cerrar')
+                        ->extraAttributes([
+                            'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
+                        ]),
+                )
+                ->action(fn (): null => null)
+                ->visible(fn (): bool => BusinessAgentFichaPdfAccess::userCanAccess($this->getRecord())),
         ];
     }
 
@@ -84,5 +117,22 @@ class ViewAgent extends ViewRecord
             'INACTIVO' => ['bg' => '#dc2626', 'shadow' => '0 8px 20px rgba(220,38,38,.35)'],
             default => ['bg' => '#6b7280', 'shadow' => '0 8px 20px rgba(107,114,128,.35)'],
         };
+    }
+
+    private function resolveAgentFichaPanelView(): \Illuminate\Contracts\View\View
+    {
+        /** @var Agent $agent */
+        $agent = $this->getRecord();
+        $agent->loadMissing(['typeAgent']);
+
+        SecurityAudit::log('AUDIT_BUSINESS_AGENT_FICHA_VIEWED', 'business.agents.ficha-pdf.view-page', [
+            'agent_id' => $agent->getKey(),
+            'agent_name' => $agent->name,
+            'source' => 'view_agent_header',
+        ]);
+
+        return view('filament.business.agents.agent-ficha-panel', [
+            'record' => $agent,
+        ]);
     }
 }

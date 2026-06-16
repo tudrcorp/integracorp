@@ -9,6 +9,7 @@ use App\Http\Controllers\AffiliationController;
 use App\Mail\UploadPayment;
 use App\Models\Affiliation;
 use App\Models\User;
+use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
 use App\Support\BcvOfficialRate;
 use App\Support\SecurityAudit;
@@ -550,11 +551,11 @@ class AffiliationsTable
                                                 ])
                                                 ->live()
                                                 ->required()
-                                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                                ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
                                                     self::resetBcvRateManualState($set);
 
                                                     if (in_array($state, ['PAGO MOVIL VES', 'TRANSFERENCIA VES', 'MULTIPLE'], true)) {
-                                                        self::applyOfficialBcvRate($set);
+                                                        self::syncPaymentBcvRateFromTotal($get, $set, $get('total_amount'));
                                                     }
                                                 })
                                                 ->validationMessages([
@@ -733,16 +734,19 @@ class AffiliationsTable
                                                 TextInput::make('pay_amount_ves')
                                                     ->inputMode('numeric')
                                                     ->live(onBlur: true)
-                                                    ->label('Monto a pagar en VES')
-                                                    ->helperText('Ingrese el monto en bolívares pagado. La tasa BCV se obtiene de la API oficial.')
+                                                    ->label('Monto recibido en VES')
+                                                    ->helperText('Ingrese el monto en bolívares recibido. La tasa BCV se calcula automáticamente (VES ÷ total US$).')
                                                     ->prefix('VES')
                                                     ->numeric()
                                                     ->required(fn (Get $get): bool => in_array($get('payment_method'), ['PAGO MOVIL VES', 'TRANSFERENCIA VES'], true))
                                                     ->validationMessages([
                                                         'required' => 'Campo requerido',
                                                         'numeric' => 'El campo es numérico',
-                                                    ]),
-                                                self::bcvRateTextInput('Se usa para calcular el equivalente en bolívares del total en US$.'),
+                                                    ])
+                                                    ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                                        self::syncPaymentBcvRateFromVesAmount($get, $set, $state);
+                                                    }),
+                                                self::bcvRateTextInput(),
                                                 Select::make('bank_ves')
                                                     ->native(false)
                                                     ->label('Banco')
@@ -806,9 +810,12 @@ class AffiliationsTable
                                                             ->inputMode('numeric') // activa teclado numérico en móvil
                                                             ->live(onBlur: true)
                                                             ->label('Monto US$:')
-                                                            ->helperText('Punto(.) para separar decimales. Ingresa el monto en dólares(US$).')
+                                                            ->helperText('Punto(.) para separar decimales. Ingresa el monto en dólares(US$). La tasa BCV se recalcula con el monto en bolívares.')
                                                             ->prefix('US$')
-                                                            ->numeric(),
+                                                            ->numeric()
+                                                            ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                                                self::syncPaymentBcvRateFromUsdPart($get, $set, $state);
+                                                            }),
 
                                                         TextInput::make('name_ti_usd')
                                                             ->label('Nombre del Titular')
@@ -887,12 +894,15 @@ class AffiliationsTable
                                                             ->inputMode('numeric')
                                                             ->live(onBlur: true)
                                                             ->label('Monto VES:')
-                                                            ->helperText('Ingrese el monto en bolívares correspondiente al saldo en US$.')
+                                                            ->helperText('Ingrese el monto en bolívares del saldo restante. La tasa BCV se calcula automáticamente (VES ÷ saldo US$).')
                                                             ->prefix('VES')
                                                             ->numeric()
-                                                            ->required(fn (Get $get): bool => $get('payment_method') === 'MULTIPLE'),
+                                                            ->required(fn (Get $get): bool => $get('payment_method') === 'MULTIPLE')
+                                                            ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                                                self::syncPaymentBcvRateFromVesAmount($get, $set, $state);
+                                                            }),
 
-                                                        self::bcvRateTextInput('Se usa para calcular el equivalente en bolívares del total en US$.'),
+                                                        self::bcvRateTextInput(),
 
                                                         /**Banco VES */
                                                         Select::make('bank_ves')
@@ -1330,11 +1340,11 @@ class AffiliationsTable
                                                     ])
                                                     ->live()
                                                     ->required()
-                                                    ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                                    ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
                                                         self::resetBcvRateManualState($set);
 
                                                         if (in_array($state, ['PAGO MOVIL VES', 'TRANSFERENCIA VES', 'MULTIPLE'], true)) {
-                                                            self::applyOfficialBcvRate($set);
+                                                            self::syncPaymentBcvRateFromTotal($get, $set, $get('total_amount'));
                                                         }
                                                     })
                                                     ->validationMessages([
@@ -1513,16 +1523,19 @@ class AffiliationsTable
                                                     TextInput::make('pay_amount_ves')
                                                         ->inputMode('numeric')
                                                         ->live(onBlur: true)
-                                                        ->label('Monto a pagar en VES')
-                                                        ->helperText('Ingrese el monto en bolívares pagado. La tasa BCV se obtiene de la API oficial.')
+                                                        ->label('Monto recibido en VES')
+                                                        ->helperText('Ingrese el monto en bolívares recibido. La tasa BCV se calcula automáticamente (VES ÷ total US$).')
                                                         ->prefix('VES')
                                                         ->numeric()
                                                         ->required(fn (Get $get): bool => in_array($get('payment_method'), ['PAGO MOVIL VES', 'TRANSFERENCIA VES'], true))
                                                         ->validationMessages([
                                                             'required' => 'Campo requerido',
                                                             'numeric' => 'El campo es numérico',
-                                                        ]),
-                                                    self::bcvRateTextInput('Se usa para calcular el equivalente en bolívares del total en US$.'),
+                                                        ])
+                                                        ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                                            self::syncPaymentBcvRateFromVesAmount($get, $set, $state);
+                                                        }),
+                                                    self::bcvRateTextInput(),
                                                     Select::make('bank_ves')
                                                         ->native(false)
                                                         ->label('Banco')
@@ -1586,9 +1599,12 @@ class AffiliationsTable
                                                                 ->inputMode('numeric') // activa teclado numérico en móvil
                                                                 ->live(onBlur: true)
                                                                 ->label('Monto US$:')
-                                                                ->helperText('Punto(.) para separar decimales. Ingresa el monto en dólares(US$).')
+                                                                ->helperText('Punto(.) para separar decimales. Ingresa el monto en dólares(US$). La tasa BCV se recalcula con el monto en bolívares.')
                                                                 ->prefix('US$')
-                                                                ->numeric(),
+                                                                ->numeric()
+                                                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                                                    self::syncPaymentBcvRateFromUsdPart($get, $set, $state);
+                                                                }),
 
                                                             TextInput::make('name_ti_usd')
                                                                 ->label('Nombre del Titular')
@@ -1667,12 +1683,15 @@ class AffiliationsTable
                                                                 ->inputMode('numeric')
                                                                 ->live(onBlur: true)
                                                                 ->label('Monto VES:')
-                                                                ->helperText('Ingrese el monto en bolívares correspondiente al saldo en US$.')
+                                                                ->helperText('Ingrese el monto en bolívares del saldo restante. La tasa BCV se calcula automáticamente (VES ÷ saldo US$).')
                                                                 ->prefix('VES')
                                                                 ->numeric()
-                                                                ->required(fn (Get $get): bool => $get('payment_method') === 'MULTIPLE'),
+                                                                ->required(fn (Get $get): bool => $get('payment_method') === 'MULTIPLE')
+                                                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                                                    self::syncPaymentBcvRateFromVesAmount($get, $set, $state);
+                                                                }),
 
-                                                            self::bcvRateTextInput('Se usa para calcular el equivalente en bolívares del total en US$.'),
+                                                            self::bcvRateTextInput(),
 
                                                             /**Banco VES */
                                                             Select::make('bank_ves')
@@ -1831,28 +1850,97 @@ class AffiliationsTable
         self::syncPaymentBcvRateFromTotal($get, $set, $adjustedTotal);
     }
 
-    private static function syncPaymentBcvRateFromTotal(Get $get, Set $set, mixed $_totalAmount): void
+    private static function syncPaymentBcvRateFromTotal(Get $get, Set $set, mixed $totalAmount): void
     {
         if (! self::shouldAutoCalculateBcvRate($get)) {
             return;
         }
 
-        if (! in_array($get('payment_method'), ['PAGO MOVIL VES', 'TRANSFERENCIA VES', 'MULTIPLE'], true)) {
+        $paymentMethod = $get('payment_method');
+
+        if (in_array($paymentMethod, ['PAGO MOVIL VES', 'TRANSFERENCIA VES'], true)) {
+            self::applyCalculatedBcvRate(
+                $set,
+                AffiliationPaymentBcvRateCalculator::rateFromVesAndUsdTotal($get('pay_amount_ves'), $totalAmount),
+            );
+
             return;
         }
 
-        self::applyOfficialBcvRate($set);
+        if ($paymentMethod === 'MULTIPLE') {
+            self::syncMultiplePaymentBcvRate($get, $set, $totalAmount);
+        }
     }
 
-    private static function applyOfficialBcvRate(Set $set): void
+    private static function syncPaymentBcvRateFromVesAmount(Get $get, Set $set, mixed $vesAmount): void
     {
-        $rate = BcvOfficialRate::resolve();
+        if (! self::shouldAutoCalculateBcvRate($get)) {
+            return;
+        }
 
+        if (in_array($get('payment_method'), ['PAGO MOVIL VES', 'TRANSFERENCIA VES'], true)) {
+            self::applyCalculatedBcvRate(
+                $set,
+                AffiliationPaymentBcvRateCalculator::rateFromVesAndUsdTotal($vesAmount, $get('total_amount')),
+            );
+
+            return;
+        }
+
+        if ($get('payment_method') === 'MULTIPLE') {
+            self::syncMultiplePaymentBcvRate($get, $set, $get('total_amount'), $vesAmount);
+        }
+    }
+
+    private static function syncPaymentBcvRateFromUsdPart(Get $get, Set $set, mixed $usdPart): void
+    {
+        if (! self::shouldAutoCalculateBcvRate($get)) {
+            return;
+        }
+
+        if ($get('payment_method') !== 'MULTIPLE') {
+            return;
+        }
+
+        self::syncMultiplePaymentBcvRate($get, $set, $get('total_amount'), $get('pay_amount_ves'), $usdPart);
+    }
+
+    private static function syncMultiplePaymentBcvRate(
+        Get $get,
+        Set $set,
+        mixed $totalAmount,
+        mixed $vesAmount = null,
+        mixed $usdPart = null,
+    ): void {
+        $total = AffiliationPaymentBcvRateCalculator::positiveAmount($totalAmount ?? $get('total_amount'));
+        $usd = AffiliationPaymentBcvRateCalculator::nonNegativeFloat($usdPart ?? $get('pay_amount_usd'));
+
+        if ($total === null || $usd === null) {
+            return;
+        }
+
+        $remainingUsd = $total - $usd;
+
+        if ($remainingUsd <= 0) {
+            return;
+        }
+
+        self::applyCalculatedBcvRate(
+            $set,
+            AffiliationPaymentBcvRateCalculator::rateFromVesAndRemainingUsd(
+                $vesAmount ?? $get('pay_amount_ves'),
+                $remainingUsd,
+            ),
+        );
+    }
+
+    private static function applyCalculatedBcvRate(Set $set, ?string $rate): void
+    {
         if ($rate === null) {
             return;
         }
 
-        self::setCalculatedBcvRate($set, (string) $rate);
+        self::setCalculatedBcvRate($set, $rate);
     }
 
     /**
@@ -1869,19 +1957,20 @@ class AffiliationsTable
         ];
     }
 
-    private static function bcvRateTextInput(string $helperText): TextInput
+    private static function bcvRateTextInput(string $helperText = ''): TextInput
     {
+        $helper = 'Bs por US$: se calcula automáticamente al dividir el monto en bolívares entre el total en US$.';
+        if ($helperText !== '') {
+            $helper .= ' '.$helperText;
+        }
+
         return TextInput::make('tasa_bcv')
-            ->label('Tasa BCV')
-            ->helperText('Tasa oficial BCV desde API. '.$helperText.' Puede modificarla por negociación comercial.')
+            ->label('Tasa BCV (calculada)')
+            ->helperText($helper)
             ->prefix('VES')
             ->numeric()
-            ->default(fn (): ?float => BcvOfficialRate::resolve())
-            ->live(onBlur: true)
-            ->dehydrated()
-            ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
-                self::syncBcvRateManualFlag($get, $set, $state);
-            });
+            ->disabled()
+            ->dehydrated();
     }
 
     private static function setCalculatedBcvRate(Set $set, ?string $rate): void

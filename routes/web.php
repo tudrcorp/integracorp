@@ -12,6 +12,8 @@ use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAgencyFichaPdfController;
 use App\Http\Controllers\BusinessAgentFichaPdfController;
 use App\Http\Controllers\BusinessAppointmentsController;
+use App\Http\Controllers\BusinessPlanGeneratorPdfController;
+use App\Http\Controllers\BusinessTravelAgencyFichaPdfController;
 use App\Http\Controllers\DoctorNurseFichaPdfController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\HelpdeskAttachmentDownloadController;
@@ -253,6 +255,22 @@ Route::get('business/agencies/{agency}/ficha-pdf/preview', [BusinessAgencyFichaP
 Route::get('business/agencies/{agency}/ficha-pdf/download', [BusinessAgencyFichaPdfController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('business.agencies.ficha-pdf.download');
+
+Route::get('business/travel-agencies/{travelAgency}/ficha-pdf/preview', [BusinessTravelAgencyFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.travel-agencies.ficha-pdf.preview');
+
+Route::get('business/travel-agencies/{travelAgency}/ficha-pdf/download', [BusinessTravelAgencyFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.travel-agencies.ficha-pdf.download');
+
+Route::get('business/plan-generators/{planGenerator}/pdf/preview', [BusinessPlanGeneratorPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.plan-generators.pdf.preview');
+
+Route::get('business/plan-generators/{planGenerator}/pdf/download', [BusinessPlanGeneratorPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.plan-generators.pdf.download');
 
 Route::get('administration/affiliation-corporates/{affiliationCorporate}/ficha/preview', [AffiliationCorporateFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])

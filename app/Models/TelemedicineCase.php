@@ -48,6 +48,12 @@ class TelemedicineCase extends Model
         return $this->hasMany(TelemedicineConsultationPatient::class);
     }
 
+    public function amdInforms()
+    {
+        return $this->hasMany(TelemedicineAmdInform::class, 'telemedicine_case_id')
+            ->orderByDesc('created_at');
+    }
+
     public function country()
     {
         return $this->belongsTo(Country::class, 'patient_country_id');

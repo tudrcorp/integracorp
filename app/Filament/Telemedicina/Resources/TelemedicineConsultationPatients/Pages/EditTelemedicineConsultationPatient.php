@@ -2,6 +2,7 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages;
 
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasInformAmdModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 use App\Jobs\GeneratePdfEspecialista;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Auth;
 
 class EditTelemedicineConsultationPatient extends EditRecord
 {
+    use HasInformAmdModal;
     use HasMedicamentosStepInfoModal;
 
     protected static string $resource = TelemedicineConsultationPatientResource::class;

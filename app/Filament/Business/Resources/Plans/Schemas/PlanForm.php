@@ -6,6 +6,7 @@ use App\Models\AgeRange;
 use App\Models\Benefit;
 use App\Models\Coverage;
 use App\Models\Limit;
+use App\Support\Plans\PlanCodeGenerator;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
@@ -110,13 +111,23 @@ class PlanForm
                     ->schema([
                         Grid::make(2)
                             ->schema([
+                                TextInput::make('code')
+                                    ->label('Código del plan')
+                                    ->prefixIcon('heroicon-m-clipboard-document-check')
+                                    ->default(fn (): string => PlanCodeGenerator::next())
+                                    ->required()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->maxLength(255)
+                                    ->columnSpan(1),
+
                                 TextInput::make('description')
                                     ->label('Nombre del Plan')
                                     ->placeholder('Ej: Plan Platinum Global')
                                     ->required()
                                     ->columnSpan(1),
 
-                                Select::make('category')
+                                Select::make('type')
                                     ->label('Categoría del Plan')
                                     ->options([
                                         'BASICO' => 'BASICO',
