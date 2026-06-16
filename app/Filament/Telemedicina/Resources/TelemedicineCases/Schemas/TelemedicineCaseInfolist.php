@@ -6,6 +6,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas;
 
 use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
+use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -267,6 +268,30 @@ class TelemedicineCaseInfolist
                                                     ViewFactory::make(
                                                         'filament.operations.telemedicine-cases.case-documents-hub',
                                                         TelemedicineCaseDocumentsCatalog::hubViewContext($record),
+                                                    )->render()
+                                                );
+                                            }),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Bitácoras AMD')
+                            ->icon(Heroicon::OutlinedDocumentText)
+                            ->schema([
+                                Section::make('Bitácoras AMD')
+                                    ->description('Historial de informes AMD registrados en la consulta, con datos clínicos y documento asociado.')
+                                    ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        TextEntry::make('amd_bitacora_hub')
+                                            ->hiddenLabel()
+                                            ->html()
+                                            ->state(function (TelemedicineCase $record): HtmlString {
+                                                return new HtmlString(
+                                                    ViewFactory::make(
+                                                        'filament.telemedicina.cases.amd-bitacora',
+                                                        TelemedicineAmdBitacoraCatalog::viewContext($record),
                                                     )->render()
                                                 );
                                             }),

@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Agencies\Pages;
 
 use App\Filament\Business\Resources\Agencies\AgencyResource;
+use App\Filament\Business\Resources\Agencies\Concerns\QueuesAgencyFichaPdfEmail;
 use App\Filament\Business\Resources\Agencies\Widgets\AgencyGeoChart;
 use App\Filament\Business\Resources\Agencies\Widgets\AgentActiveForEstructureChart;
 use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion;
@@ -11,10 +12,8 @@ use App\Filament\Business\Resources\Agencies\Widgets\StatsOverviewAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalEstructureAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalSaleForEstructureChart;
 use App\Http\Controllers\NotificationController;
-use App\Jobs\SendBusinessAgencyFichaPdfMailJob;
 use App\Models\Agency;
 use App\Models\AgencyNoteBlog;
-use App\Support\BusinessAgencyFichaPdfAccess;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -34,6 +33,7 @@ use Illuminate\Support\Str;
 class ListAgencies extends ListRecords
 {
     use ExposesTableToWidgets;
+    use QueuesAgencyFichaPdfEmail;
 
     protected static string $resource = AgencyResource::class;
 
@@ -154,7 +154,6 @@ class ListAgencies extends ListRecords
                             }
                         }
 
-                        
                         $baseUrl = rtrim((string) config('parameters.INTEGRACORP_URL'), '/');
                         $link = blank($agencyCode)
                             ? $baseUrl.'/agency/c'
@@ -352,61 +351,5 @@ class ListAgencies extends ListRecords
                 ->danger()
                 ->send();
         }
-    }
-
-    public function queueAgencyFichaPdfEmail(int $agencyId, string $email): void
-    {
-        $email = trim($email);
-        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Notification::make()
-                ->title('Correo inválido')
-                ->body('Indique una dirección de correo válida.')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        $agency = Agency::query()->find($agencyId);
-        if ($agency === null) {
-            Notification::make()
-                ->title('Agencia no encontrada')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        if (! BusinessAgencyFichaPdfAccess::userCanAccess($agency)) {
-            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_FICHA_ACCESS_DENIED', 'business.agencies.ficha-pdf.email.livewire', [
-                'agency_id' => $agencyId,
-                'reason' => 'forbidden',
-            ]);
-            Notification::make()
-                ->title('Sin permiso')
-                ->body('No puede enviar la ficha de esta agencia.')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        SendBusinessAgencyFichaPdfMailJob::dispatch(
-            (int) $agency->getKey(),
-            $email,
-            (int) Auth::id(),
-        );
-
-        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_FICHA_EMAIL_QUEUED', 'business.agencies.ficha-pdf.email.livewire', [
-            'agency_id' => $agency->getKey(),
-            'agency_name' => $agency->name_corporative,
-            'recipient_email' => $email,
-        ]);
-
-        Notification::make()
-            ->title('Correo encolado')
-            ->body('El envío con el PDF adjunto se procesará en segundo plano.')
-            ->success()
-            ->send();
     }
 }

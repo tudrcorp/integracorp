@@ -10,6 +10,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
@@ -241,6 +242,8 @@ class TravelAgenciesTable
                     ->placeholder('Todos'),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->icon(Heroicon::OutlinedEye),
                 EditAction::make()
                     ->icon(Heroicon::OutlinedPencilSquare),
             ])

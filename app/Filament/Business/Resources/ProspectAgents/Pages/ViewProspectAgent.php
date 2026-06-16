@@ -12,7 +12,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Fieldset;
@@ -21,6 +20,14 @@ use Filament\Schemas\Components\Grid;
 class ViewProspectAgent extends ViewRecord
 {
     protected static string $resource = ProspectAgentResource::class;
+
+    private const IOS_BUTTON_BASE = ' shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
+
+    private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
+
+    private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
 
     /**
      * Sobrescribimos los Relation Managers para esta página específica.
@@ -39,53 +46,68 @@ class ViewProspectAgent extends ViewRecord
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
-                ->url(ProspectAgentResource::getUrl()),
+                ->url(ProspectAgentResource::getUrl())
+                ->extraAttributes([
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
+                ]),
             EditAction::make()
                 ->label('Editar')
                 ->icon('heroicon-o-pencil')
-                ->color('primary'),
+                ->color('primary')
+                ->extraAttributes([
+                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
+                ]),
             Action::make('notes')
                 ->label('Agregar Notas/Observaciones')
                 ->icon('heroicon-o-document-text')
                 ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
                 ->modal()
                 ->modalHeading('Agregar Notas/Observaciones')
                 ->modalSubmitActionLabel('Guardar')
                 ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ]))
+                ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
+                ]))
                 ->form([
                     Fieldset::make('Formulario de Notas')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Select::make('prospect_agent_id')
-                                ->label('Selecciona el Prospecto')
-                                ->preload()
-                                ->searchable()
-                                ->options(ProspectAgent::all()->pluck('name', 'id'))
-                                ->default($this->record->id)
-                                ->disabled()
+                        ->schema([
+                            Grid::make(2)->schema([
+                                Select::make('prospect_agent_id')
+                                    ->label('Selecciona el Prospecto')
+                                    ->preload()
+                                    ->searchable()
+                                    ->options(ProspectAgent::all()->pluck('name', 'id'))
+                                    ->default($this->record->id)
+                                    ->disabled()
+                                    ->required(),
+                                Select::make('prospect_agent_task_id')
+                                    ->label('Tarea')
+                                    ->options(ProspectAgentTask::all()->where('status', 'PENDIENTE')->where('prospect_agent_id', $this->record->id)->pluck('id', 'id'))
+                                    ->preload()
+                                    ->searchable()
+                                    ->required(),
+                            ])->columnSpanFull(),
+                            Textarea::make('observations')
+                                ->label('Notas')
+                                ->autosize()
                                 ->required(),
-                            Select::make('prospect_agent_task_id')
-                                ->label('Tarea')
-                                ->options(ProspectAgentTask::all()->where('status', 'PENDIENTE')->where('prospect_agent_id', $this->record->id)->pluck('id', 'id'))
-                                ->preload()
-                                ->searchable()
-                                ->required(),
-                        ])->columnSpanFull(),
-                        Textarea::make('observations')
-                            ->label('Notas')
-                            ->autosize()
-                            ->required(),
-                    ])->columns(1),
+                        ])->columns(1),
                 ])
                 ->action(function ($data, $record) {
 
                     try {
 
                         ProspectAgentObservation::create([
-                            'prospect_agent_id'         => $record->id,
-                            'observation'               => $data['observations'],
-                            'created_by'                => auth()->user()->name,
-                            'prospect_agent_task_id'    => $data['prospect_agent_task_id'],
+                            'prospect_agent_id' => $record->id,
+                            'observation' => $data['observations'],
+                            'created_by' => auth()->user()->name,
+                            'prospect_agent_task_id' => $data['prospect_agent_task_id'],
                         ]);
 
                         Notification::make()
@@ -93,7 +115,7 @@ class ViewProspectAgent extends ViewRecord
                             ->success()
                             ->send();
 
-                        $this->redirectMethod($record->id);    
+                        $this->redirectMethod($record->id);
 
                     } catch (\Exception $e) {
                         dd($e);
@@ -108,10 +130,19 @@ class ViewProspectAgent extends ViewRecord
                 ->label('Nueva Tarea')
                 ->icon('heroicon-o-puzzle-piece')
                 ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
                 ->modal()
                 ->modalHeading('Formulario de Asigancion de Tarea')
                 ->modalSubmitActionLabel('Guardar')
                 ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ]))
+                ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
+                ]))
                 ->form([
                     Fieldset::make('Formulario de Notas')
                         ->schema([
@@ -146,8 +177,8 @@ class ViewProspectAgent extends ViewRecord
                         ProspectAgentTask::create([
                             'prospect_agent_id' => $record->id,
                             'rrhh_colaborador_id' => $data['rrhh_colaborador_id'],
-                            'task'              => $data['task'],
-                            'created_by'        => $data['created_by'],
+                            'task' => $data['task'],
+                            'created_by' => $data['created_by'],
                         ]);
 
                         Notification::make()
@@ -177,7 +208,7 @@ class ViewProspectAgent extends ViewRecord
         $this->redirect(ProspectAgentResource::getUrl('view', ['record' => $recordId]));
     }
 
-    public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         $prospectAgent = $this->getRecord();
 
@@ -185,35 +216,35 @@ class ViewProspectAgent extends ViewRecord
         $fullName = $prospectAgent->name ?? 'Sin Nombre';
 
         return new \Illuminate\Support\HtmlString(
-            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">' .
+            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">'.
                 // Título Principal Resaltado
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">' .
-                'Informacion Principal'. 
-                '</span>' .
+                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
+                'Informacion Principal'.
+                '</span>'.
 
                 // Subtítulo (Nombre del Paciente)
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">' .
-                'Prospecto: ' . $fullName .
-                '</span>' .
+                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
+                'Prospecto: '.$fullName.
+                '</span>'.
 
                 // Estatus Estilo Badge iOS Resaltado
-                '<div style="display: flex; align-items: center; margin-top: 8px;">' .
-                '<span style="' .
-                'background-color: #28cd41; ' . // Verde iOS vibrante
-                'color: #ffffff; ' .
-                'padding: 6px 16px; ' .
-                'border-radius: 50px; ' .
-                'font-size: 0.8rem; ' .
-                'font-weight: 700; ' .
-                'display: inline-flex; ' .
-                'align-items: center; ' .
-                'gap: 6px; ' .
-                'box-shadow: 0 4px 12px rgba(40, 205, 65, 0.35); ' .
-                'border: 1px solid rgba(255, 255, 255, 0.2);' .
-                '">' .
-                '<span style="font-size: 10px;">●</span>' . $prospectAgent->status .
-                '</span>' .
-                '</div>' .
+                '<div style="display: flex; align-items: center; margin-top: 8px;">'.
+                '<span style="'.
+                'background-color: #28cd41; '. // Verde iOS vibrante
+                'color: #ffffff; '.
+                'padding: 6px 16px; '.
+                'border-radius: 50px; '.
+                'font-size: 0.8rem; '.
+                'font-weight: 700; '.
+                'display: inline-flex; '.
+                'align-items: center; '.
+                'gap: 6px; '.
+                'box-shadow: 0 4px 12px rgba(40, 205, 65, 0.35); '.
+                'border: 1px solid rgba(255, 255, 255, 0.2);'.
+                '">'.
+                '<span style="font-size: 10px;">●</span>'.$prospectAgent->status.
+                '</span>'.
+                '</div>'.
                 '</div>'
         );
     }

@@ -11,6 +11,7 @@ use App\Models\TelemedicineListStudy;
 use App\Models\TelemedicinePriority;
 use App\Models\TelemedicineServiceList;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
@@ -27,6 +28,7 @@ use Filament\Schemas\Components\Icon;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
@@ -42,6 +44,13 @@ use Livewire\Component;
 class TelemedicineConsultationPatientForm
 {
     private const WIZARD_IOS_CLASS = 'fi-telemedicine-consultation-wizard';
+
+    private static function informAmdTrigger(): View
+    {
+        return View::make('filament.telemedicina.consultations.inform-amd-trigger')
+            ->columnSpanFull()
+            ->visible(fn (Get $get): bool => (int) $get('telemedicine_service_list_id') === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID);
+    }
 
     public static function configure(Schema $schema): Schema
     {
@@ -421,6 +430,7 @@ class TelemedicineConsultationPatientForm
                                                             2 => 'Indicación de Laboratorios o Estudios de Imagenología',
                                                             3 => 'Consulta con Especialista',
                                                         ]),
+                                                    self::informAmdTrigger(),
                                                 ])->columnSpanFull()->columns(4),
 
                                         ])->columnSpanFull()->columns(2),
@@ -613,6 +623,7 @@ class TelemedicineConsultationPatientForm
                                             2 => 'Indicacion de Laboratorios o Estudios de Imagenologia',
                                             3 => 'Consulta con Especialista',
                                         ]),
+                                    self::informAmdTrigger(),
                                 ])->columnSpanFull()->columns(3),
 
                             Fieldset::make('Observaciones')

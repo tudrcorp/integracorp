@@ -11,8 +11,10 @@ it('infolist del caso de telemedicina usa pestañas para paciente y caso', funct
         ->toContain('Paciente en el caso')
         ->toContain('Caso de telemedicina')
         ->toContain("Tab::make('Expediente documental')")
-        ->toContain("Tab::make('Bitácora')")
-        ->toContain("Tab::make('Bitácora de mensajería')")
+        ->toContain("Tab::make('Bitácoras AMD')")
+        ->toContain('TelemedicineAmdBitacoraCatalog::viewContext')
+        ->toContain("Tab::make('Bitácora Observaciones')")
+        ->toContain("Tab::make('Bitácora Mensajería Interna')")
         ->toContain("RepeatableEntry::make('observations')")
         ->toContain('Bitácora de observaciones')
         ->toContain('Bitácora de mensajería');

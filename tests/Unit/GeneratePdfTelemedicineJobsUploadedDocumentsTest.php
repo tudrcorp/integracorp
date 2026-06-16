@@ -55,9 +55,6 @@ it('GeneratePdfInformeMedicoLargo guarda metadata en uploaded_documents con tipo
     $contents = file_get_contents($path);
 
     expect($contents)
-        ->toContain('syncConsultationUploadedDocuments')
-        ->toContain('$defaultDocumentTypeId = 9;')
-        ->toContain("'INFORME MEDICO CONSULTA INICIAL (LARGO)'")
-        ->toContain("'document_type_ids' => [\$defaultDocumentTypeId]")
-        ->toContain("'uploaded_documents' => array_values(array_merge(\$existingDocuments, [\$newDocument]))");
+        ->toContain('TelemedicineInformeLargoPdfGenerator::generateAndSave')
+        ->toContain('syncConsultationUploadedDocuments');
 });

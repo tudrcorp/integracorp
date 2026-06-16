@@ -69,4 +69,47 @@ class AgentFichaPdfService
 
         return 'ficha-agente-'.$safe.'.pdf';
     }
+
+    public static function codeLabel(Agent $agent): string
+    {
+        $code = (string) ($agent->code_agent ?? 'AGT-000'.$agent->getKey());
+        $def = $agent->relationLoaded('typeAgent') ? $agent->typeAgent?->definition : null;
+
+        return filled($def) ? $def.' — '.$code : $code;
+    }
+
+    public static function whatsappStorageRelativePath(Agent $agent): string
+    {
+        return 'business-fichas/agents/'.self::filename($agent);
+    }
+
+    public static function persistForWhatsApp(Agent $agent): string
+    {
+        $relativePath = self::whatsappStorageRelativePath($agent);
+        $absolutePath = public_path('storage/'.$relativePath);
+        $directory = dirname($absolutePath);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        file_put_contents($absolutePath, self::outputBinary($agent));
+
+        return $relativePath;
+    }
+
+    public static function whatsappCaption(Agent $agent): string
+    {
+        $codeLabel = self::codeLabel($agent);
+        $displayName = (string) ($agent->name ?? 'Agente');
+
+        return <<<TEXT
+        📎 *Ficha de agente*
+
+        Agente: *{$displayName}*
+        Código: *{$codeLabel}*
+
+        Documento generado por Integracorp · Tu Dr en Casa.
+        TEXT;
+    }
 }
