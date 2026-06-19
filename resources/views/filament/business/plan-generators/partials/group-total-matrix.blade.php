@@ -26,17 +26,13 @@
             </p>
         @else
             <table class="pg-matrix-table min-w-full border-collapse text-xs leading-snug text-slate-800 dark:text-slate-100">
-                <colgroup>
-                    <col class="pg-col-lead">
-                    @foreach ($columns as $column)
-                        <col class="pg-col-plan">
-                    @endforeach
-                </colgroup>
+                @include('filament.business.plan-generators.partials.matrix-column-colgroup', ['columns' => $columns, 'type' => 'group-total'])
                 <thead>
                     <tr class="bg-[#1d4ed8] text-white">
-                        <th class="border border-[#1e40af] px-3 py-2.5 text-left font-bold uppercase tracking-wide">
+                        <th class="border border-[#1e40af] px-2 py-2.5 text-left font-bold uppercase tracking-wide">
                             Total Grupal
                         </th>
+                        <th class="border border-[#1e40af] px-2 py-2.5" aria-hidden="true">&nbsp;</th>
                         @foreach ($columns as $column)
                             <th class="border border-[#1e40af] px-2 py-2.5 text-center font-bold uppercase">
                                 {{ $column['header_label'] ?? '—' }}
@@ -47,9 +43,10 @@
                 <tbody>
                     @foreach ($rows as $row)
                         <tr class="{{ $loop->even ? 'bg-white dark:bg-slate-900/40' : 'bg-slate-50/80 dark:bg-white/[0.03]' }}">
-                            <td class="border border-slate-200 px-3 py-2.5 align-top font-medium dark:border-white/10">
+                            <td class="border border-slate-200 px-2 py-2.5 align-top font-medium dark:border-white/10">
                                 {{ $row['label'] }}
                             </td>
+                            <td class="border border-slate-200 px-2 py-2.5 dark:border-white/10" aria-hidden="true">&nbsp;</td>
                             @foreach ($columns as $column)
                                 @php
                                     $columnKey = (string) ($column['column_key'] ?? '');

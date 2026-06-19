@@ -28,7 +28,7 @@
             @include('filament.business.plan-generators.partials.matrix-column-colgroup', ['columns' => $columns, 'type' => 'benefits'])
             <thead>
                 <tr class="bg-[#1d4ed8] text-white">
-                    <th class="border border-[#1e40af] px-3 py-2.5 text-left font-bold uppercase tracking-wide">
+                    <th colspan="2" class="border border-[#1e40af] px-3 py-2.5 text-left font-bold uppercase tracking-wide">
                         Beneficios del Plan
                     </th>
                     @include('filament.business.plan-generators.partials.matrix-plan-column-headers', ['columns' => $columns, 'type' => 'benefits'])
@@ -38,7 +38,7 @@
             <tbody>
                 @forelse ($rows as $rowKey => $row)
                     <tr wire:key="pg-benefit-row-{{ $rowKey }}" class="{{ $loop->even ? 'bg-white dark:bg-slate-900/40' : 'bg-slate-50/80 dark:bg-white/[0.03]' }}">
-                        <td class="border border-slate-200 px-2 py-2 align-top dark:border-white/10">
+                        <td colspan="2" class="border border-slate-200 px-2 py-2 align-top dark:border-white/10">
                             <div class="flex gap-2">
                                 <span class="mt-2 shrink-0 font-semibold text-slate-500">{{ $loop->iteration }}.</span>
                                 <input
@@ -80,7 +80,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td class="border border-slate-200 px-4 py-6 text-center text-slate-500 dark:border-white/10 dark:text-slate-400" colspan="{{ max(1, $columnCount) + 2 }}">
+                        <td class="border border-slate-200 px-4 py-6 text-center text-slate-500 dark:border-white/10 dark:text-slate-400" colspan="{{ max(1, $columnCount) + 3 }}">
                             Sin beneficios. Use «Agregar beneficio».
                         </td>
                     </tr>

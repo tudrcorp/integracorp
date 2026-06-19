@@ -6,11 +6,16 @@
     /** @var \Illuminate\Support\Carbon $generatedAt */
     use App\Support\PlanGenerators\PlanGeneratorPreviewBuilder;
     use App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator;
+    use App\Support\PlanGenerators\PlanGeneratorMatrixColumnLayout;
+    use App\Support\PlanGenerators\PlanGeneratorBrandColor;
     use App\Services\PlanGeneratorPdfService;
 
-    $brandBlue = '#1d4ed8';
+    $brandColor = PlanGeneratorBrandColor::resolve($planGenerator->brand_color ?? null);
     $columnCount = count($columns);
-    $planColPercent = $columnCount > 0 ? 68 / $columnCount : 68;
+    $leadWidthMm = PlanGeneratorMatrixColumnLayout::leadWidthMm();
+    $rateAgeWidthMm = PlanGeneratorMatrixColumnLayout::rateAgeWidthMm();
+    $ratePopWidthMm = PlanGeneratorMatrixColumnLayout::ratePopWidthMm();
+    $planWidthMm = PlanGeneratorMatrixColumnLayout::planColumnWidthMm(max(1, $columnCount));
     $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows);
     $groupRows = [
         ['key' => PlanGeneratorGroupTotalCalculator::ROW_ANNUAL, 'label' => 'Tarifa anual', 'bold' => true],
@@ -36,14 +41,8 @@
     </table>
 </div>
 
-<div class="meta">
-    <span>Estatus: <strong>{{ $planGenerator->status ?? '—' }}</strong></span>
-    @if (filled($planGenerator->created_by))
-        <span>Creado por: <strong>{{ $planGenerator->created_by }}</strong></span>
-    @endif
-</div>
-
 <p class="proposal-title">Propuesta Comercial</p>
+<div class="proposal-block">
 <table class="proposal-table">
     <tr>
         <td class="proposal-label">Nro. Control:</td>
@@ -66,30 +65,31 @@
         <td><span class="proposal-value">{{ $planGenerator->population_summary ?? '—' }}</span></td>
     </tr>
 </table>
+</div>
 
 @if ($columnCount === 0)
     <p>Sin columnas configuradas para este plan.</p>
 @else
+    <div class="matrix-section">
     <p class="section-title">Matriz de beneficios y coberturas</p>
     <table class="matrix-table">
-        <colgroup>
-            <col class="pg-col-lead">
-            @foreach ($columns as $column)
-                <col class="pg-col-plan">
-            @endforeach
-        </colgroup>
+        @include('filament.business.plan-generators.partials.matrix-column-colgroup', [
+            'columns' => $columns,
+            'type' => 'benefits',
+            'usePdfWidths' => true,
+        ])
         <thead>
             <tr>
-                <th class="benefit-col">Beneficios del Plan</th>
+                <th colspan="2" class="benefit-col" style="width: {{ $leadWidthMm }}mm;">Beneficios del Plan</th>
                 @foreach ($columns as $column)
-                    <th>{{ $column['header_label'] ?? '—' }}</th>
+                    <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
             </tr>
         </thead>
         <tbody>
             @forelse ($rows as $row)
                 <tr>
-                    <td class="benefit-col">{{ $row['benefit_label'] ?? '—' }}</td>
+                    <td colspan="2" class="benefit-col">{{ $row['benefit_label'] ?? '—' }}</td>
                     @foreach ($columns as $column)
                         @php
                             $columnKey = (string) ($column['column_key'] ?? '');
@@ -114,29 +114,29 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ $columnCount + 1 }}" style="text-align: center; color: #6b7280;">
+                    <td colspan="{{ $columnCount + 2 }}" style="text-align: center; color: #6b7280;">
                         Sin beneficios registrados.
                     </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
+    </div>
 
+    <div class="matrix-section">
     <p class="section-title">Tarifa individual anual</p>
     <table class="matrix-table">
-        <colgroup>
-            <col class="pg-col-rate-age">
-            <col class="pg-col-rate-pop">
-            @foreach ($columns as $column)
-                <col class="pg-col-plan">
-            @endforeach
-        </colgroup>
+        @include('filament.business.plan-generators.partials.matrix-column-colgroup', [
+            'columns' => $columns,
+            'type' => 'rates',
+            'usePdfWidths' => true,
+        ])
         <thead>
             <tr>
-                <th style="text-align: left;">Tarifa individual Anual</th>
-                <th>Población</th>
+                <th style="width: {{ $rateAgeWidthMm }}mm; text-align: left;">Tarifa individual Anual</th>
+                <th style="width: {{ $ratePopWidthMm }}mm;">Población</th>
                 @foreach ($columns as $column)
-                    <th>{{ $column['header_label'] ?? '—' }}</th>
+                    <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
             </tr>
         </thead>
@@ -169,20 +169,22 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 
+    <div class="matrix-section">
     <p class="section-title">Total grupal</p>
     <table class="matrix-table">
-        <colgroup>
-            <col class="pg-col-lead">
-            @foreach ($columns as $column)
-                <col class="pg-col-plan">
-            @endforeach
-        </colgroup>
+        @include('filament.business.plan-generators.partials.matrix-column-colgroup', [
+            'columns' => $columns,
+            'type' => 'group-total',
+            'usePdfWidths' => true,
+        ])
         <thead>
             <tr>
-                <th style="text-align: left;">Total Grupal</th>
+                <th style="width: {{ $rateAgeWidthMm }}mm; text-align: left;">Total Grupal</th>
+                <th style="width: {{ $ratePopWidthMm }}mm;">&nbsp;</th>
                 @foreach ($columns as $column)
-                    <th>{{ $column['header_label'] ?? '—' }}</th>
+                    <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
             </tr>
         </thead>
@@ -190,6 +192,7 @@
             @foreach ($groupRows as $groupRow)
                 <tr>
                     <td style="text-align: left;">{{ $groupRow['label'] }}</td>
+                    <td>&nbsp;</td>
                     @foreach ($columns as $column)
                         @php
                             $columnKey = (string) ($column['column_key'] ?? '');
@@ -204,6 +207,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 @endif
 
 <div class="footer">
