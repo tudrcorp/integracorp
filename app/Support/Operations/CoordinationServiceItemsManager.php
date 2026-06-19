@@ -1670,6 +1670,8 @@ final class CoordinationServiceItemsManager
             'quote_pdf_path' => OperationQuoteGeneratorPdfService::store($quote, $record, $bcvRate),
         ]);
 
+        AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
+
         $record->neto = $subtotal;
         $record->porcen_tdec = $porcentaje;
         $record->quote_price = $total;

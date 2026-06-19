@@ -7,6 +7,8 @@ namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\AgeRange;
+use App\Models\BusinessLine;
+use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
@@ -38,6 +40,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -277,11 +280,17 @@ class AffiliatesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('full_name')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with(['plan', 'ageRange', 'coverage'])
+                ->with([
+                    'plan',
+                    'ageRange',
+                    'coverage',
+                    'businessLine:id,definition',
+                    'businessUnit:id,definition',
+                ])
                 ->orderByRaw("CASE WHEN relationship = 'TITULAR' THEN 0 ELSE 1 END")
                 ->orderBy('full_name'))
             ->heading('Carga familiar')
-            ->description('Familiares vinculados a esta afiliación. Use búsqueda, filtros y columnas para ajustar la vista.')
+            ->description('Familiares vinculados a esta afiliación. La unidad y línea en verde coinciden con la afiliación; en ámbar están pendientes de sincronizar.')
             ->emptyStateHeading('Sin familiares registrados')
             ->emptyStateDescription('Agregue un familiar con el botón superior o complete la pre-afiliación.')
             ->emptyStateIcon(Heroicon::UserGroup)
@@ -347,6 +356,54 @@ class AffiliatesRelationManager extends RelationManager
                     ->tooltip(fn (Affiliate $record): ?string => strlen((string) ($record->plan?->description ?? '')) > 24
                         ? $record->plan?->description
                         : null),
+                TextColumn::make('business_unit_id')
+                    ->label('Unidad de negocio')
+                    ->icon(Heroicon::BuildingOffice2)
+                    ->formatStateUsing(fn (Affiliate $record): string => filled($record->businessUnit?->definition)
+                        ? (string) $record->businessUnit->definition
+                        : '—')
+                    ->description(fn (Affiliate $record): ?string => filled($record->business_unit_id)
+                        ? 'ID: '.$record->business_unit_id
+                        : 'Sin asignar')
+                    ->badge()
+                    ->color(fn (Affiliate $record): string => $this->businessContextBadgeColor(
+                        $record->business_unit_id,
+                        $this->getOwnerRecord()->business_unit_id,
+                    ))
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
+                    })
+                    ->sortable(),
+                TextColumn::make('business_line_id')
+                    ->label('Línea de servicio')
+                    ->icon(Heroicon::QueueList)
+                    ->formatStateUsing(fn (Affiliate $record): string => filled($record->businessLine?->definition)
+                        ? (string) $record->businessLine->definition
+                        : '—')
+                    ->description(fn (Affiliate $record): ?string => filled($record->business_line_id)
+                        ? 'ID: '.$record->business_line_id
+                        : 'Sin asignar')
+                    ->badge()
+                    ->color(fn (Affiliate $record): string => $this->businessContextBadgeColor(
+                        $record->business_line_id,
+                        $this->getOwnerRecord()->business_line_id,
+                    ))
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"));
+                    })
+                    ->sortable(),
+                IconColumn::make('sync_status')
+                    ->label('Sync')
+                    ->alignment(Alignment::Center)
+                    ->getStateUsing(fn (Affiliate $record): bool => $this->affiliateBusinessContextIsSynced($record))
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-exclamation-triangle')
+                    ->trueColor('success')
+                    ->falseColor('warning')
+                    ->tooltip(fn (Affiliate $record): string => $this->affiliateBusinessContextIsSynced($record)
+                        ? 'Unidad y línea coinciden con la afiliación'
+                        : 'Pendiente de sincronizar con la afiliación'),
                 TextColumn::make('fee')
                     ->label('Tarifa anual')
                     ->icon(Heroicon::CurrencyDollar)
@@ -461,6 +518,59 @@ class AffiliatesRelationManager extends RelationManager
                         'OTRO' => 'Otro',
                     ])
                     ->native(false),
+                SelectFilter::make('business_unit_id')
+                    ->label('Unidad de negocio')
+                    ->options(fn (): array => BusinessUnit::query()->orderBy('definition')->pluck('definition', 'id')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('business_line_id')
+                    ->label('Línea de servicio')
+                    ->options(fn (): array => BusinessLine::query()->orderBy('definition')->pluck('definition', 'id')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                Filter::make('business_context_sync')
+                    ->label('Sincronización')
+                    ->form([
+                        Select::make('value')
+                            ->label('Estado')
+                            ->options([
+                                'synced' => 'Sincronizado con afiliación',
+                                'pending' => 'Pendiente de sincronizar',
+                            ])
+                            ->native(false),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (blank($value)) {
+                            return $query;
+                        }
+
+                        $owner = $this->getOwnerRecord();
+
+                        return match ($value) {
+                            'synced' => $query
+                                ->where('business_unit_id', $owner->business_unit_id)
+                                ->where('business_line_id', $owner->business_line_id),
+                            'pending' => $query->where(function (Builder $pendingQuery) use ($owner): void {
+                                $pendingQuery
+                                    ->whereNull('business_unit_id')
+                                    ->orWhereNull('business_line_id')
+                                    ->orWhere('business_unit_id', '!=', $owner->business_unit_id)
+                                    ->orWhere('business_line_id', '!=', $owner->business_line_id);
+                            }),
+                            default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        return match ($data['value'] ?? null) {
+                            'synced' => ['synced' => 'Sincronizado con afiliación'],
+                            'pending' => ['pending' => 'Pendiente de sincronizar'],
+                            default => [],
+                        };
+                    }),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -721,5 +831,36 @@ class AffiliatesRelationManager extends RelationManager
     {
         app(AffiliationAffiliateFeeCalculator::class)
             ->recalculateAffiliationTotalsFromAffiliates($owner);
+    }
+
+    private function affiliateBusinessContextIsSynced(Affiliate $record): bool
+    {
+        $owner = $this->getOwnerRecord()->fresh();
+
+        if ($owner === null) {
+            return false;
+        }
+
+        if (blank($owner->business_unit_id) || blank($owner->business_line_id)) {
+            return blank($record->business_unit_id) && blank($record->business_line_id);
+        }
+
+        return (int) $record->business_unit_id === (int) $owner->business_unit_id
+            && (int) $record->business_line_id === (int) $owner->business_line_id;
+    }
+
+    private function businessContextBadgeColor(mixed $affiliateValue, mixed $ownerValue): string
+    {
+        $owner = $this->getOwnerRecord()->fresh();
+
+        if (blank($affiliateValue)) {
+            return 'gray';
+        }
+
+        if ($owner === null || blank($ownerValue)) {
+            return 'info';
+        }
+
+        return (int) $affiliateValue === (int) $ownerValue ? 'success' : 'warning';
     }
 }

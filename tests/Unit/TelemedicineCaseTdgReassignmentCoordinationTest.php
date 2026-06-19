@@ -14,6 +14,28 @@ it('detecta coordinacion por reasignacion atenmedi a tdg', function (): void {
     expect(TelemedicineCaseTdgReassignmentCoordination::isReassignmentCoordination($record))->toBeTrue();
 });
 
+it('extrae el motivo de reasignacion desde las observaciones de coordinacion', function (): void {
+    $observations = 'Observación previa del servicio.'
+        ."\n\n"
+        .TelemedicineCaseTdgReassignmentCoordination::OBSERVATION_PREFIX
+        ."\n"
+        .'Motivo: Coordinación con TDG por complejidad del caso.';
+
+    expect(TelemedicineCaseTdgReassignmentCoordination::reassignmentReasonFromObservations($observations))
+        ->toBe('Coordinación con TDG por complejidad del caso.');
+});
+
+it('extrae el ultimo motivo cuando hay varias reasignaciones en observaciones', function (): void {
+    $observations = TelemedicineCaseTdgReassignmentCoordination::OBSERVATION_PREFIX."\n".'Motivo: primer motivo.'
+        ."\n\n"
+        .TelemedicineCaseTdgReassignmentCoordination::OBSERVATION_PREFIX
+        ."\n"
+        .'Motivo: motivo más reciente.';
+
+    expect(TelemedicineCaseTdgReassignmentCoordination::reassignmentReasonFromObservations($observations))
+        ->toBe('motivo más reciente.');
+});
+
 it('detecta amd en consulta por servicio principal o derivado', function (): void {
     $amdMain = new TelemedicineConsultationPatient([
         'telemedicine_service_list_id' => TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID,

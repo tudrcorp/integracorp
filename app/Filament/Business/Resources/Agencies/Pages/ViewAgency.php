@@ -7,12 +7,17 @@ use App\Filament\Business\Resources\Agencies\Concerns\QueuesAgencyFichaPdfEmail;
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Models\Agency;
 use App\Support\BusinessAgencyFichaPdfAccess;
+use App\Support\Filament\FilamentIosButton;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
 class ViewAgency extends ViewRecord
@@ -116,7 +121,218 @@ class ViewAgency extends ViewRecord
                 )
                 ->action(fn (): null => null)
                 ->visible(fn (): bool => BusinessAgencyFichaPdfAccess::userCanAccess($this->getRecord())),
+            Action::make('addObservation')
+                ->label('Agregar observación')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('info')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                ])
+                ->modalHeading('Registrar observación')
+                ->modalDescription('La observación quedará asociada a esta agencia y al analista que la registra.')
+                ->modalSubmitActionLabel('Guardar')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(
+                    fn (Action $action) => $action
+                        ->color('info')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action) => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                        ])
+                )
+                ->form([
+                    Textarea::make('observation')
+                        ->label('Texto de la observación')
+                        ->placeholder('Escriba la nota o seguimiento administrativo…')
+                        ->required()
+                        ->minLength(2)
+                        ->maxLength(5000)
+                        ->rows(5),
+                ])
+                ->action(function (array $data): void {
+                    $this->record->observationCommercialStructures()->create([
+                        'observation' => $data['observation'],
+                        'created_by' => Auth::user()?->name ?? 'Analista',
+                        'date' => now()->format('d/m/Y H:i'),
+                    ]);
+
+                    $this->record->unsetRelation('observationCommercialStructures');
+                    $this->record->load('observationCommercialStructures');
+
+                    Notification::make()
+                        ->success()
+                        ->title('Observación guardada')
+                        ->send();
+                }),
+            Action::make('audit')
+                ->label('Auditoría')
+                ->icon('heroicon-o-shield-check')
+                ->color('warning')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                ])
+                ->visible(fn (): bool => $this->pendingAuditItems() !== [])
+                ->modalHeading('Auditoría de la agencia de corretaje')
+                ->modalDescription('Seleccione uno o varios puntos auditados. Se registrará una observación automática en la bitácora a nombre de INTEGRACORP-AUDITORIA y los puntos auditados se retirarán de la lista.')
+                ->modalSubmitActionLabel('Registrar auditoría')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(
+                    fn (Action $action) => $action
+                        ->color('warning')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action) => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                        ])
+                )
+                ->form([
+                    CheckboxList::make('items')
+                        ->label('Puntos a auditar')
+                        ->options(fn (): array => $this->pendingAuditItemOptions())
+                        ->descriptions(fn (): array => $this->pendingAuditItemDescriptions())
+                        ->required()
+                        ->bulkToggleable()
+                        ->columns(1),
+                ])
+                ->action(function (array $data): void {
+                    $this->registerAudit($data['items'] ?? []);
+                }),
         ];
+    }
+
+    /**
+     * Catálogo de puntos auditables: clave => [label, detail].
+     *
+     * @return array<string, array{label: string, detail: string}>
+     */
+    public static function auditItemsCatalog(): array
+    {
+        return [
+            'main_info' => [
+                'label' => 'Información principal de la Agencia',
+                'detail' => 'Información principal de la agencia (razón social, dirección local o extranjera, correo electrónico válido, cédula de identidad o RIF válido, porcentaje de comisiones correctos e información bancaria).',
+            ],
+            'hierarchy' => [
+                'label' => 'Jerarquía Correcta',
+                'detail' => 'Jerarquía correcta de la estructura comercial.',
+            ],
+            'commissions' => [
+                'label' => 'Comisiones Correctas y Actualizadas',
+                'detail' => 'Comisiones correctas y actualizadas.',
+            ],
+            'bank_national' => [
+                'label' => 'Información Bancaria Nacional',
+                'detail' => 'Información bancaria nacional.',
+            ],
+            'bank_foreign' => [
+                'label' => 'Información Bancaria Extranjera',
+                'detail' => 'Información bancaria extranjera.',
+            ],
+            'documents' => [
+                'label' => 'Documentos de la Agencia',
+                'detail' => 'Documentos de la agencia.',
+            ],
+        ];
+    }
+
+    /**
+     * Claves ya auditadas para esta agencia.
+     *
+     * @return array<int, string>
+     */
+    private function auditedItemKeys(): array
+    {
+        return array_values(array_filter(
+            (array) ($this->record->audit_items ?? []),
+            fn (mixed $key): bool => is_string($key) && array_key_exists($key, self::auditItemsCatalog()),
+        ));
+    }
+
+    /**
+     * Ítems del catálogo que aún no han sido auditados.
+     *
+     * @return array<string, array{label: string, detail: string}>
+     */
+    private function pendingAuditItems(): array
+    {
+        return array_diff_key(self::auditItemsCatalog(), array_flip($this->auditedItemKeys()));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function pendingAuditItemOptions(): array
+    {
+        return array_map(fn (array $item): string => $item['label'], $this->pendingAuditItems());
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function pendingAuditItemDescriptions(): array
+    {
+        return array_map(fn (array $item): string => $item['detail'], $this->pendingAuditItems());
+    }
+
+    /**
+     * @param  array<int, string>  $selectedKeys
+     */
+    private function registerAudit(array $selectedKeys): void
+    {
+        $catalog = self::auditItemsCatalog();
+
+        $validKeys = array_values(array_filter(
+            $selectedKeys,
+            fn (mixed $key): bool => is_string($key) && array_key_exists($key, $catalog) && ! in_array($key, $this->auditedItemKeys(), true),
+        ));
+
+        if ($validKeys === []) {
+            return;
+        }
+
+        $analyst = Auth::user()?->name ?? 'Analista';
+        $auditedAt = now()->format('d/m/Y H:i');
+
+        $lines = array_map(
+            fn (string $key): string => '• '.$catalog[$key]['detail'],
+            $validKeys,
+        );
+
+        $description = 'Auditoría registrada por el analista '.$analyst.' el '.$auditedAt.'.'.PHP_EOL
+            .'Puntos auditados:'.PHP_EOL
+            .implode(PHP_EOL, $lines);
+
+        $this->record->observationCommercialStructures()->create([
+            'observation' => $description,
+            'created_by' => 'INTEGRACORP-AUDITORIA',
+            'date' => $auditedAt,
+        ]);
+
+        $this->record->audit_items = array_values(array_unique([
+            ...$this->auditedItemKeys(),
+            ...$validKeys,
+        ]));
+        $this->record->save();
+
+        $this->record->unsetRelation('observationCommercialStructures');
+        $this->record->load('observationCommercialStructures');
+
+        Notification::make()
+            ->success()
+            ->title('Auditoría registrada')
+            ->body('Se registró la observación de auditoría en la bitácora con los puntos seleccionados.')
+            ->send();
     }
 
     private function resolveAgencyFichaPanelView(): \Illuminate\Contracts\View\View

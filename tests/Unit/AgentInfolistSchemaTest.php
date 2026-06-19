@@ -19,6 +19,30 @@ it('delega al infolist compartido de agentes en business', function (): void {
     expect($source)->toContain('SharedAgentInfolist::configure($schema)');
 });
 
+it('incluye un tab de documentos con definición y miniatura del documento del agente', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain("Tab::make('Documentos')")
+        ->toContain("RepeatableEntry::make('documents')")
+        ->toContain("TextEntry::make('title')")
+        ->toContain("ImageEntry::make('document')")
+        ->toContain('self::documentIsImage($record->document)')
+        ->toContain('AgentDocument $record');
+});
+
+it('usa el tab Bitácora de Observaciones ordenado por fecha descendente', function (): void {
+    $infolist = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php');
+    $model = file_get_contents(dirname(__DIR__, 2).'/app/Models/Agent.php');
+
+    expect($infolist)
+        ->toContain("Tab::make('Bitácora de Observaciones')")
+        ->toContain("Section::make('Bitácora de Observaciones')");
+
+    expect($model)->toContain("->orderByDesc('created_at')");
+});
+
 it('expone la relación observationCommercialStructures en el infolist', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
     $source = file_get_contents($path);

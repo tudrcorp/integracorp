@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
+use App\Support\Filament\Operations\OperationsSupplierScope;
+use Illuminate\Support\Facades\Auth;
+
+uses(Tests\TestCase::class);
+
 it('expone el supplier_id del usuario autenticado', function (): void {
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/Operations/OperationsSupplierScope.php'))
         ->toContain('function currentSupplierId()')
@@ -59,4 +65,37 @@ it('persiste supplier_id en casos e historias clínicas', function (): void {
     expect(file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_06_03_005032_add_supplier_id_to_telemedicine_cases_and_history_patients_tables.php'))
         ->toContain('telemedicine_cases')
         ->toContain('telemedicine_history_patients');
+});
+
+it('identifica analistas TDG sin supplier_id ni departamento PROVEEDOR AMD', function (): void {
+    Auth::setUser(new User([
+        'supplier_id' => null,
+        'departament' => ['OPERACIONES', 'TELEMEDICINA'],
+    ]));
+
+    expect(OperationsSupplierScope::authenticatedUserIsTdgAnalyst())->toBeTrue();
+
+    Auth::setUser(new User([
+        'supplier_id' => 12,
+        'departament' => ['OPERACIONES', 'PROVEEDOR AMD'],
+    ]));
+
+    expect(OperationsSupplierScope::authenticatedUserIsTdgAnalyst())->toBeFalse();
+
+    Auth::setUser(new User([
+        'supplier_id' => null,
+        'departament' => ['OPERACIONES', 'PROVEEDOR AMD'],
+    ]));
+
+    expect(OperationsSupplierScope::authenticatedUserIsTdgAnalyst())->toBeFalse();
+});
+
+it('oculta columnas de afiliacion a usuarios que no son analistas TDG', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php';
+
+    expect(file_get_contents($path))
+        ->toContain("TextColumn::make('businessUnit.definition')")
+        ->toContain("TextColumn::make('businessLine.definition')")
+        ->toContain("TextColumn::make('type_affiliation')")
+        ->toContain('OperationsSupplierScope::authenticatedUserIsTdgAnalyst()');
 });

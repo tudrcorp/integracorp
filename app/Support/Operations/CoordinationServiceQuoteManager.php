@@ -486,6 +486,8 @@ final class CoordinationServiceQuoteManager
             'quote_pdf_path' => OperationQuoteGeneratorPdfService::store($quote->fresh(), $record, $bcvRate),
         ]);
 
+        AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
+
         $record->neto = $subtotal;
         $record->porcen_tdec = $porcentaje;
         $record->quote_price = $total;
@@ -905,6 +907,7 @@ final class CoordinationServiceQuoteManager
                         $quote->operation_service_order_id = $orderId;
                         $quote->updated_by = Auth::user()?->name;
                         $quote->save();
+                        AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
                         $ordersCreated++;
                         $createdOrderId = $orderId;
                     }
@@ -1055,6 +1058,9 @@ final class CoordinationServiceQuoteManager
             $record->service_order_number = $payload['order_number'];
             $record->updated_by = Auth::user()?->name;
             $record->save();
+
+            AccountsReceivableManager::syncFromServiceOrder($order);
+            AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
 
             return (int) $order->id;
         }

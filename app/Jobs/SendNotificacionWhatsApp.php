@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Support\SecurityAudit;
+use App\Support\WhatsAppBrandImage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -41,6 +42,7 @@ class SendNotificacionWhatsApp implements ShouldQueue
         public string $phone,
         public mixed $document = null,
         public array $auditContext = [],
+        public ?string $imageUrl = null,
     ) {}
 
     /**
@@ -56,7 +58,7 @@ class SendNotificacionWhatsApp implements ShouldQueue
         try {
             $params = [
                 'token' => config('parameters.TOKEN'),
-                'image' => config('parameters.PUBLIC_URL').'/images-whatsapp/integracorp.png',
+                'image' => $this->imageUrl ?? WhatsAppBrandImage::publicUrl(),
                 'to' => $this->phone,
                 'caption' => $this->body,
             ];

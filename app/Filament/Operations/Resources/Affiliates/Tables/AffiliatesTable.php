@@ -27,6 +27,10 @@ class AffiliatesTable
             ->heading('Afiliados individuales')
             ->description('Orden por fecha de registro (más recientes primero). La celda del nombre resalta en verde cuando el estado es ACTIVO y el alta es hoy.')
             ->striped()
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'affiliation.businessLine:id,definition',
+                'affiliation.businessUnit:id,definition',
+            ]))
             ->emptyStateHeading('Sin afiliados')
             ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros.')
             ->columns([
@@ -167,6 +171,34 @@ class AffiliatesTable
                     ->sortable()
                     ->wrap()
                     ->placeholder('—'),
+                TextColumn::make('affiliation.business_line_id')
+                    ->label('Línea de servicio')
+                    ->formatStateUsing(fn ($record): string => filled($record->affiliation?->businessLine?->definition)
+                        ? (string) $record->affiliation->businessLine->definition
+                        : '—')
+                    ->description(fn ($record): ?string => filled($record->affiliation?->business_line_id)
+                        ? 'ID: '.$record->affiliation->business_line_id
+                        : null)
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('—')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('affiliation.businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"));
+                    }),
+                TextColumn::make('affiliation.business_unit_id')
+                    ->label('Unidad de negocio')
+                    ->formatStateUsing(fn ($record): string => filled($record->affiliation?->businessUnit?->definition)
+                        ? (string) $record->affiliation->businessUnit->definition
+                        : '—')
+                    ->description(fn ($record): ?string => filled($record->affiliation?->business_unit_id)
+                        ? 'ID: '.$record->affiliation->business_unit_id
+                        : null)
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('—')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('affiliation.businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
+                    }),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->money('USD')

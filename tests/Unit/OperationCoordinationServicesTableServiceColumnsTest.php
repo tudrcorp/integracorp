@@ -30,6 +30,29 @@ it('OperationCoordinationServicesTable define la acción modal de doctor TDG par
         ->and($contents)->toContain('FilamentIosButton::extraClassForFilamentColor');
 });
 
+it('OperationCoordinationServicesTable define la acción modal de reasignación de gestión a TDG en la columna managed_by', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Action::make('reassignCoordinationManagedByToTdg')")
+        ->and($contents)->toContain("->modalHeading('Reasignar gestión del servicio a TDG')")
+        ->and($contents)->toContain('Heroicon::OutlinedArrowsRightLeft')
+        ->and($contents)->toContain("->modalSubmitActionLabel('Sí, reasignar a TDG')")
+        ->and($contents)->toContain("Textarea::make('reassignment_observation')")
+        ->and($contents)->toContain('TelemedicineCaseTdgReassignmentCoordination::OBSERVATION_PREFIX')
+        ->and($contents)->toContain('ObservationCase::query()->create')
+        ->and($contents)->toContain('coordinationIsManagedByTdg')
+        ->and($contents)->toContain("TextColumn::make('managed_by')")
+        ->and($contents)->toContain('->action($reassignManagedByToTdgAction)')
+        ->and($contents)->toContain('Clic para reasignar la gestión del servicio a TDG')
+        ->and($contents)->toContain('managedByReassignmentDescription')
+        ->and($contents)->toContain('Motivo de Reasignación:')
+        ->and($contents)->toContain('reassignmentReasonFromObservations')
+        ->and($contents)->toContain('OperationServiceOrder::query()')
+        ->and($contents)->toContain("->where('operation_coordination_service_id', \$record->id)");
+});
+
 it('OperationCoordinationServicesTable define acción de documentos de ingreso y egreso a clínica', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
     $contents = file_get_contents($path);
@@ -307,4 +330,18 @@ it('OperationCoordinationServicesTable muestra código de caso TM con badge y en
         ->toContain('TelemedicineCaseResource::getUrl')
         ->toContain('healthicons-f-health-literacy')
         ->toContain("'telemedicineCase'");
+});
+
+it('OperationCoordinationServicesTable muestra linea y unidad de negocio del paciente', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("TextColumn::make('patient_business_line')")
+        ->toContain("TextColumn::make('patient_business_unit')")
+        ->toContain('patientBusinessLineLabel')
+        ->toContain('patientBusinessUnitLabel')
+        ->toContain('telemedicinePatient.businessLine')
+        ->toContain('telemedicinePatient.businessUnit')
+        ->not->toContain("TextColumn::make('businessLine.definition')");
 });
