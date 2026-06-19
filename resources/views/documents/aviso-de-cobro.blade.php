@@ -284,7 +284,8 @@
                     <tr>
                         <td class="desc-col">
                             <p class="plan-line">
-                                {{ $data['plan'] }}@if ($data['coverage'] != null), COBERTURA: {{ round($data['coverage']) }}US$@endif<br>
+                                {{ $data['plan'] }}@if ($data['coverage'] != null), COBERTURA: US${{ round($data['coverage']) }}@endif<br>
+
                                 @if ($data['plan'] == 'PLAN ESPECIAL')
                                     ASISTENCIA MEDICA POR PATOLOGIAS LISTADAS<br>
                                 @endif
@@ -299,10 +300,12 @@
                                 TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN: {{ (int) ($data['affiliates_count'] ?? 0) }}
                             </p>
                         </td>
-                        <td class="amount-col">{{ number_format($data['total_amount'], 2) }}US$</td>
+                        <td class="amount-col">US${{ number_format($data['total_amount'], 2) }}</td>
+
                     </tr>
                     <tr class="total-row">
-                        <td colspan="2">Monto Total: {{ number_format($data['total_amount'], 2) }}US$</td>
+                        <td colspan="2">Monto Total: US${{ number_format($data['total_amount'], 2) }}</td>
+
                     </tr>
                 </tbody>
             </table>

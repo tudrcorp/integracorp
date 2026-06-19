@@ -309,13 +309,14 @@
                         <tr>
                             <td class="desc-col">
                                 <p class="plan-line">
-                                    {{ $plan }}, COBERTURA: {{ round($coverage) }}US$<br>
+                                    {{ $plan }}, COBERTURA: US${{ round($coverage) }}<br>
                                     RANGO DE EDAD: {{ $age_range }} años<br>
                                     FRECUENCIA DE PAGO: {{ $data['plan'][$i]['payment_frequency'] }}<br>
                                     COBERTURA GEOGRAFICA – LOCAL VENEZUELA
                                 </p>
                             </td>
-                            <td class="amount-col">{{ number_format($total_amount, 2) }}US$</td>
+                            <td class="amount-col">US${{ number_format($total_amount, 2) }}</td>
+
                         </tr>
                     @endfor
                     <tr class="affiliates-row">
@@ -324,7 +325,8 @@
                         </td>
                     </tr>
                     <tr class="total-row">
-                        <td colspan="2">Monto Total: {{ number_format($data['total_amount'], 2) }}US$</td>
+                        <td colspan="2">Monto Total: US${{ number_format($data['total_amount'], 2) }}</td>
+
                     </tr>
                 </tbody>
             </table>
