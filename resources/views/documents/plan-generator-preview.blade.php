@@ -6,9 +6,13 @@
     /** @var list<array{page_number: int, is_plan_page: bool, image_data_uri: string}> $quotationPages */
     /** @var \Illuminate\Support\Carbon $generatedAt */
 
-    $brandBlue = '#1d4ed8';
+    /** @var \Illuminate\Support\Carbon $generatedAt */
+    /** @var string $brandColor */
+    /** @var string $brandColorBorder */
+
+    $brandColor = $brandColor ?? '#1d4ed8';
+    $brandColorBorder = $brandColorBorder ?? '#1e40af';
     $columnCount = count($columns);
-    $planColPercent = $columnCount > 0 ? 68 / $columnCount : 68;
     $useQuotationBody = (bool) ($useQuotationBody ?? false);
     $quotationPageTotal = count($quotationPages);
 @endphp
@@ -63,18 +67,34 @@
         }
 
         .pdf-plan-margin-cell .proposal-table {
-            margin-bottom: 4px;
+            margin-bottom: 12px;
+        }
+
+        .pdf-plan-margin-cell .proposal-block {
+            margin-bottom: 12px;
         }
 
         .pdf-plan-margin-cell .section-title {
-            margin: 4px 0 2px 0;
+            margin: 12px 0 4px 0;
             font-size: 7pt;
+        }
+
+        .pdf-plan-margin-cell .matrix-table {
+            margin-bottom: 12px;
         }
 
         .pdf-plan-margin-cell .matrix-table th,
         .pdf-plan-margin-cell .matrix-table td {
             font-size: 6.5pt;
             padding: 2px 2px;
+        }
+
+        .pdf-plan-margin-cell .matrix-section {
+            padding-bottom: 2px;
+        }
+
+        .pdf-plan-margin-cell .matrix-section + .matrix-section {
+            padding-top: 0;
         }
 
         .pdf-plan-margin-cell .footer {
@@ -99,7 +119,7 @@
         }
 
         .header {
-            border-bottom: 2px solid {{ $brandBlue }};
+            border-bottom: 2px solid {{ $brandColor }};
             padding-bottom: 6px;
             margin-bottom: 8px;
         }
@@ -120,7 +140,7 @@
         .title h1 {
             margin: 0;
             font-size: 11pt;
-            color: {{ $brandBlue }};
+            color: {{ $brandColor }};
         }
 
         .title p {
@@ -129,24 +149,11 @@
             color: #6b7280;
         }
 
-        .meta {
-            margin-bottom: 6px;
-        }
-
-        .meta span {
-            display: inline-block;
-            margin-right: 12px;
-            font-size: 7pt;
-        }
-
-        .meta strong {
-            color: #111827;
-        }
-
         .matrix-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin-bottom: 12px;
         }
 
         .matrix-table th,
@@ -159,7 +166,7 @@
         }
 
         .matrix-table thead th {
-            background: {{ $brandBlue }};
+            background: {{ $brandColor }};
             color: #fff;
             font-weight: bold;
             text-align: center;
@@ -168,22 +175,6 @@
 
         .matrix-table tbody tr:nth-child(even) {
             background: #f8fafc;
-        }
-
-        .pg-col-lead {
-            width: 32%;
-        }
-
-        .pg-col-rate-age {
-            width: 22%;
-        }
-
-        .pg-col-rate-pop {
-            width: 10%;
-        }
-
-        .pg-col-plan {
-            width: {{ $planColPercent }}%;
         }
 
         .benefit-col {
@@ -207,11 +198,15 @@
         }
 
         .section-title {
-            margin: 6px 0 3px 0;
+            margin: 12px 0 4px 0;
             font-size: 7.5pt;
             font-weight: bold;
-            color: {{ $brandBlue }};
+            color: {{ $brandColor }};
             text-transform: uppercase;
+        }
+
+        .matrix-section + .matrix-section .section-title {
+            margin-top: 14px;
         }
 
         .rate-value {
@@ -227,27 +222,34 @@
             font-size: 9pt;
             font-weight: bold;
             font-style: italic;
-            color: {{ $brandBlue }};
+            color: {{ $brandColor }};
+            text-align: left;
+        }
+
+        .proposal-block {
+            text-align: left;
+            margin-bottom: 14px;
         }
 
         .proposal-table {
-            width: 100%;
+            width: auto;
             border-collapse: collapse;
-            margin-bottom: 8px;
+            margin-bottom: 0;
         }
 
         .proposal-table td {
-            padding: 2px 6px;
+            padding: 3px 8px 3px 0;
             font-size: 7pt;
             vertical-align: middle;
         }
 
         .proposal-label {
-            width: 28%;
-            text-align: right;
+            width: auto;
+            text-align: left;
             color: #374151;
             font-weight: 600;
             white-space: nowrap;
+            padding-right: 10px;
         }
 
         .proposal-value {

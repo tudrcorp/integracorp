@@ -25,7 +25,7 @@ class BusinessPlanGeneratorPdfController extends Controller
             abort(403);
         }
 
-        $pdf = PlanGeneratorPdfService::make($planGenerator);
+        $binary = PlanGeneratorPdfService::outputBinaryCached($planGenerator);
         $filename = PlanGeneratorPdfService::filename($planGenerator);
 
         SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_PDF_VIEWED', 'business.plan-generators.pdf.preview', [
@@ -34,7 +34,7 @@ class BusinessPlanGeneratorPdfController extends Controller
             'filename' => $filename,
         ]);
 
-        return $pdf->stream($filename);
+        return self::pdfResponse($binary, $filename, inline: true, planGenerator: $planGenerator);
     }
 
     public function download(PlanGenerator $planGenerator): Response
@@ -50,7 +50,7 @@ class BusinessPlanGeneratorPdfController extends Controller
             abort(403);
         }
 
-        $pdf = PlanGeneratorPdfService::make($planGenerator);
+        $binary = PlanGeneratorPdfService::outputBinaryCached($planGenerator);
         $filename = PlanGeneratorPdfService::filename($planGenerator);
 
         SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_PDF_DOWNLOADED', 'business.plan-generators.pdf.download', [
@@ -59,7 +59,23 @@ class BusinessPlanGeneratorPdfController extends Controller
             'filename' => $filename,
         ]);
 
-        return $pdf->download($filename);
+        return self::pdfResponse($binary, $filename, inline: false, planGenerator: $planGenerator);
+    }
+
+    private static function pdfResponse(
+        string $binary,
+        string $filename,
+        bool $inline,
+        PlanGenerator $planGenerator,
+    ): Response {
+        $disposition = ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"';
+        $cacheSeconds = max(60, (int) config('plan-generator.pdf_cache_ttl_seconds', 900));
+
+        return response($binary, 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', $disposition)
+            ->header('Cache-Control', 'private, max-age='.$cacheSeconds.', stale-while-revalidate=60')
+            ->header('ETag', '"'.PlanGeneratorPdfService::pdfCacheVersion($planGenerator).'"');
     }
 
     private static function prepareLongRunningPdfResponse(): void
@@ -67,7 +83,12 @@ class BusinessPlanGeneratorPdfController extends Controller
         @set_time_limit(300);
         @ini_set('max_execution_time', '300');
 
-        $limit = config('supplier-report.pdf_memory_limit');
+        $limit = config('plan-generator.pdf_memory_limit');
+
+        if (! is_string($limit) || $limit === '' || $limit === '0') {
+            $limit = config('supplier-report.pdf_memory_limit');
+        }
+
         if (is_string($limit) && $limit !== '' && $limit !== '0') {
             @ini_set('memory_limit', $limit);
         }

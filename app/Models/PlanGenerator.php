@@ -16,6 +16,7 @@ class PlanGenerator extends Model
         'issued_at',
         'agent_name',
         'population_summary',
+        'brand_color',
         'quotation_page_count',
         'plan_page_number',
         'status',

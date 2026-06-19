@@ -41,6 +41,8 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
         ->toContain('issued_at')
         ->toContain('agent_name')
         ->toContain('population_summary')
+        ->toContain('ColorPicker::make(\'brand_color\')')
+        ->toContain('PlanGeneratorBrandColor::DEFAULT')
         ->toContain('Hidden::make(\'rows\')')
         ->toContain('Hidden::make(\'rate_rows\')')
         ->toContain('normalizeColumns');
@@ -87,10 +89,16 @@ it('infolist y vista muestran matrices alineadas del plan generado', function ()
         ->toContain('control_number')
         ->toContain('population_summary');
 
+    expect($infolist)
+        ->toContain('brand_color')
+        ->toContain('Color de la cotización PDF');
+
     expect($preview)
         ->toContain('Beneficios del Plan')
         ->toContain('Tarifa individual Anual')
-        ->toContain('pg-col-plan');
+        ->toContain('colspan="2"')
+        ->toContain('matrix-column-colgroup')
+        ->toContain('matrix-alignment-styles');
 
     expect($viewPage)
         ->toContain('planPdfPreview')
@@ -105,10 +113,15 @@ it('infolist y vista muestran matrices alineadas del plan generado', function ()
         ->toContain('pdf-image-frame')
         ->toContain('A4 portrait')
         ->toContain('pdf-plan-margin-cell')
-        ->toContain('padding: 20mm')
+        ->toContain('$brandColor')
+        ->toContain('brandColorBorder')
         ->toContain('plan-generator-plan-body');
 
-    expect($pdfBody)->toContain('pg-col-plan')
+    expect($pdfBody)->toContain('matrix-column-colgroup')
+        ->toContain('usePdfWidths')
+        ->toContain('colspan="2"')
+        ->toContain('proposal-block')
+        ->toContain('PlanGeneratorBrandColor::resolve')
         ->toContain('Propuesta Comercial')
         ->toContain('Nro. Control:')
         ->toContain('Datos del cliente:')
@@ -168,6 +181,7 @@ it('preview builder formatea montos y rutas pdf del plan generado', function ():
 
     expect($controller)
         ->toContain('PlanGeneratorPdfAccess')
+        ->toContain('outputBinaryCached')
         ->toContain('preview')
         ->toContain('download');
 });
@@ -216,6 +230,25 @@ it('validador de poblacion exige que el total coincida con la suma por rango eta
         ]))->toContain('debe ser igual a la suma');
 });
 
+it('layout de columnas alinea bloque de planes entre matrices', function (): void {
+    $layout = App\Support\PlanGenerators\PlanGeneratorMatrixColumnLayout::class;
+
+    expect($layout::LEAD_PERCENT + $layout::PLAN_BLOCK_PERCENT)->toEqual(100.0)
+        ->and($layout::RATE_AGE_PERCENT + $layout::RATE_POP_PERCENT)->toEqual($layout::LEAD_PERCENT)
+        ->and($layout::planColumnPercent(3))->toEqual($layout::PLAN_BLOCK_PERCENT / 3)
+        ->and($layout::planColumnWidthMm(3))->toBe('38.53')
+        ->and($layout::leadWidthMm())->toBe('54.40')
+        ->and($layout::rateAgeWidthMm())->toBe('37.40')
+        ->and($layout::ratePopWidthMm())->toBe('17.00');
+
+    $colgroup = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/partials/matrix-column-colgroup.blade.php');
+    expect($colgroup)
+        ->toContain('PlanGeneratorMatrixColumnLayout')
+        ->toContain('usePdfWidths')
+        ->toContain('pg-col-rate-age')
+        ->toContain('pg-col-plan');
+});
+
 it('total grupal calcula anual semestral y trimestral por columna', function (): void {
     $columns = [
         ['column_key' => 'col-a', 'header_label' => 'Especial US$ 5K'],
@@ -251,6 +284,7 @@ it('total grupal calcula anual semestral y trimestral por columna', function ():
     $partial = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/partials/group-total-matrix.blade.php');
     expect($partial)
         ->toContain('Total Grupal')
+        ->toContain('aria-hidden="true"')
         ->toContain('Tarifa anual')
         ->toContain('Tarifa Semestral')
         ->toContain('Tarifa Trimestral');

@@ -1,26 +1,16 @@
 @php
     /** @var array<int, array<string, mixed>> $columns */
     use App\Support\PlanGenerators\PlanGeneratorPreviewBuilder;
+    use App\Support\PlanGenerators\PlanGeneratorMatrixColumnLayout;
 
     $columns = (array) ($columns ?? []);
     $rows = (array) ($rows ?? []);
     $rateRows = (array) ($rateRows ?? []);
     $columnCount = count($columns);
-    $planColPercent = $columnCount > 0 ? 68 / $columnCount : 68;
 @endphp
 
 <div class="pg-stacked-matrices space-y-4">
-    <style>
-        .pg-stacked-matrices .pg-matrix-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-        .pg-stacked-matrices .pg-col-lead { width: 32%; }
-        .pg-stacked-matrices .pg-col-rate-age { width: 22%; }
-        .pg-stacked-matrices .pg-col-rate-pop { width: 10%; }
-        .pg-stacked-matrices .pg-col-plan { width: {{ $planColPercent }}%; }
-    </style>
+    @include('filament.business.plan-generators.partials.matrix-alignment-styles', ['columns' => $columns])
 
     <div>
         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -33,15 +23,10 @@
                 </p>
             @else
                 <table class="pg-matrix-table min-w-full border-collapse text-xs leading-snug text-slate-800 dark:text-slate-100">
-                    <colgroup>
-                        <col class="pg-col-lead">
-                        @foreach ($columns as $column)
-                            <col class="pg-col-plan">
-                        @endforeach
-                    </colgroup>
+                    @include('filament.business.plan-generators.partials.matrix-column-colgroup', ['columns' => $columns, 'type' => 'benefits'])
                     <thead>
                         <tr class="bg-[#1d4ed8] text-white">
-                            <th class="border border-[#1e40af] px-3 py-2.5 text-left font-bold uppercase tracking-wide">
+                            <th colspan="2" class="border border-[#1e40af] px-2 py-2.5 text-left font-bold uppercase tracking-wide">
                                 Beneficios del Plan
                             </th>
                             @foreach ($columns as $column)
@@ -54,7 +39,7 @@
                     <tbody>
                         @forelse ($rows as $row)
                             <tr class="{{ $loop->even ? 'bg-white dark:bg-slate-900/40' : 'bg-slate-50/80 dark:bg-white/[0.03]' }}">
-                                <td class="border border-slate-200 px-3 py-2.5 align-top dark:border-white/10">
+                                <td colspan="2" class="border border-slate-200 px-2 py-2.5 align-top dark:border-white/10">
                                     <span class="font-semibold text-slate-500">{{ $loop->iteration }}.</span>
                                     <span class="ml-1">{{ $row['benefit_label'] ?? '—' }}</span>
                                 </td>
@@ -78,7 +63,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="border border-slate-200 px-4 py-6 text-center text-slate-500 dark:border-white/10 dark:text-slate-400" colspan="{{ max(1, $columnCount) + 1 }}">
+                                <td class="border border-slate-200 px-4 py-6 text-center text-slate-500 dark:border-white/10 dark:text-slate-400" colspan="{{ max(1, $columnCount) + 2 }}">
                                     Sin beneficios registrados.
                                 </td>
                             </tr>
@@ -100,19 +85,13 @@
                 </p>
             @else
                 <table class="pg-matrix-table min-w-full border-collapse text-xs leading-snug text-slate-800 dark:text-slate-100">
-                    <colgroup>
-                        <col class="pg-col-rate-age">
-                        <col class="pg-col-rate-pop">
-                        @foreach ($columns as $column)
-                            <col class="pg-col-plan">
-                        @endforeach
-                    </colgroup>
+                    @include('filament.business.plan-generators.partials.matrix-column-colgroup', ['columns' => $columns, 'type' => 'rates'])
                     <thead>
                         <tr class="bg-[#1d4ed8] text-white">
-                            <th class="border border-[#1e40af] px-3 py-2.5 text-left font-bold uppercase tracking-wide">
+                            <th class="border border-[#1e40af] px-2 py-2.5 text-left font-bold uppercase tracking-wide">
                                 Tarifa individual Anual
                             </th>
-                            <th class="border border-[#1e40af] px-3 py-2.5 text-center font-bold uppercase">
+                            <th class="border border-[#1e40af] px-2 py-2.5 text-center font-bold uppercase">
                                 Población
                             </th>
                             @foreach ($columns as $column)
@@ -125,10 +104,10 @@
                     <tbody>
                         @forelse ($rateRows as $rateRow)
                             <tr class="{{ $loop->even ? 'bg-white dark:bg-slate-900/40' : 'bg-slate-50/80 dark:bg-white/[0.03]' }}">
-                                <td class="border border-slate-200 px-3 py-2.5 align-top dark:border-white/10">
+                                <td class="border border-slate-200 px-2 py-2.5 align-top dark:border-white/10">
                                     {{ $rateRow['age_range_label'] ?? '—' }}
                                 </td>
-                                <td class="border border-slate-200 px-3 py-2.5 text-center align-top dark:border-white/10">
+                                <td class="border border-slate-200 px-2 py-2.5 text-center align-top dark:border-white/10">
                                     {{ filled($rateRow['population'] ?? null) ? number_format((int) $rateRow['population']) : '—' }}
                                 </td>
                                 @foreach ($columns as $column)

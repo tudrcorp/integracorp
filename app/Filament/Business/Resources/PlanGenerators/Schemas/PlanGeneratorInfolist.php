@@ -124,6 +124,12 @@ class PlanGeneratorInfolist
                                                             ->color('info')
                                                             ->placeholder('—')
                                                             ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                        TextEntry::make('brand_color')
+                                                            ->label('Color de la cotización PDF')
+                                                            ->icon(Heroicon::OutlinedSwatch)
+                                                            ->formatStateUsing(fn (?string $state): string => strtoupper((string) ($state ?? '#1d4ed8')))
+                                                            ->badge()
+                                                            ->color('gray'),
                                                     ]),
                                             ]),
                                     ]),

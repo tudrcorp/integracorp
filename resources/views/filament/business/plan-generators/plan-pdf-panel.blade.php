@@ -3,8 +3,8 @@
     use App\Services\PlanGeneratorPdfService;
 
     $codeLabel = PlanGeneratorPdfService::codeLabel($record);
-    $previewUrl = route('business.plan-generators.pdf.preview', $record);
-    $downloadUrl = route('business.plan-generators.pdf.download', $record);
+    $previewUrl = route('business.plan-generators.pdf.preview', $record).'?v='.PlanGeneratorPdfService::pdfCacheVersion($record);
+    $downloadUrl = route('business.plan-generators.pdf.download', $record).'?v='.PlanGeneratorPdfService::pdfCacheVersion($record);
 @endphp
 
 <section
@@ -55,6 +55,7 @@
         </div>
         <iframe
             title="Vista previa plan generado"
+            loading="lazy"
             src="{{ $previewUrl }}"
             class="relative z-0 h-[min(70vh,520px)] w-full min-h-[320px] border-0"
             @load="pdfPreviewLoaded = true"></iframe>

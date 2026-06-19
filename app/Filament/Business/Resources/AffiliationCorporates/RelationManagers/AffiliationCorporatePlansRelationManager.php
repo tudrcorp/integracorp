@@ -17,7 +17,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -371,7 +370,7 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                     ->icon(Heroicon::ArrowPath)
                     ->color('success')
                     ->modalHeading('Asociar afiliados al plan')
-                    ->modalDescription('Seleccione exactamente una fila de plan en la tabla. Plan, cobertura y tarifa son los de esa fila (solo lectura). Puede elegir afiliados manualmente o asignar en masa a quienes calzan con el rango de edad de esa fila. Los subtotales estiman según la cantidad de afiliados y la frecuencia de pago.')
+                    ->modalDescription('Seleccione exactamente una fila de plan en la tabla. Plan, cobertura y tarifa son los de esa fila (solo lectura). Elija los afiliados cuya edad calza con el rango de esa fila. Los subtotales estiman según la cantidad seleccionada y la frecuencia de pago.')
                     ->modalIcon(Heroicon::ArrowPath)
                     ->modalIconColor('success')
                     ->modalWidth(Width::SevenExtraLarge)
@@ -408,58 +407,33 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
 
                         return [
                             'associate_plan_row_id' => $row->getKey(),
-                            'assignment_mode' => 'manual',
                         ];
                     })
                     ->schema([
                         Section::make('Afiliados de la corporación')
-                            ->description('En modo manual, solo se asocian los marcados y todos deben tener edad dentro del rango de la fila. En modo masivo por edad, el sistema asigna el plan solo a quienes calzan con ese rango (con edad registrada).')
+                            ->description('Solo se listan afiliados cuya edad está dentro del rango de edad de la fila de plan seleccionada. Marque los que desea asociar a este plan.')
                             ->icon(Heroicon::UserGroup)
                             ->schema([
-                                Radio::make('assignment_mode')
-                                    ->label('Forma de asignación')
-                                    ->options([
-                                        'manual' => 'Elegir afiliados en la lista',
-                                        'auto_by_age' => 'Masivo: todos los que calzan con el rango de edad de esta fila',
-                                    ])
-                                    ->default('manual')
-                                    ->live()
-                                    ->required()
-                                    ->columnSpanFull(),
-                                Placeholder::make('auto_by_age_summary')
-                                    ->label('Resumen asignación masiva')
-                                    ->visible(fn (Get $get): bool => ($get('assignment_mode') ?? 'manual') === 'auto_by_age')
-                                    ->content(function (Get $get): string {
-                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
-                                        if ($row === null) {
-                                            return 'Marque una sola fila de plan en la tabla.';
-                                        }
-
-                                        $rangeLabel = $row->ageRange !== null && $row->ageRange->range !== ''
-                                            ? $row->ageRange->range.' años'
-                                            : 'el rango configurado en esta fila';
-
-                                        $count = count(AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
-                                            $this->getOwnerRecord(),
-                                            $row,
-                                        ));
-
-                                        if ($count === 0) {
-                                            return 'Ningún afiliado tiene edad registrada dentro de '.$rangeLabel.'. Revise edades en el padrón o elija modo manual.';
-                                        }
-
-                                        return sprintf(
-                                            'Al confirmar se asignará este plan y tarifa a %d afiliado(s) cuya edad está dentro de %s. Quienes estén fuera del rango o sin edad no se modifican.',
-                                            $count,
-                                            $rangeLabel
-                                        );
-                                    })
-                                    ->columnSpanFull(),
                                 CheckboxList::make('affiliate_ids')
                                     ->label('')
-                                    ->options(function (): array {
+                                    ->options(function (Get $get): array {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+                                        if ($row === null) {
+                                            return [];
+                                        }
+
+                                        $eligibleIds = AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
+                                            $this->getOwnerRecord(),
+                                            $row,
+                                        );
+
+                                        if ($eligibleIds === []) {
+                                            return [];
+                                        }
+
                                         return AffiliateCorporate::query()
                                             ->where('affiliation_corporate_id', $this->getOwnerRecord()->id)
+                                            ->whereIn('id', $eligibleIds)
                                             ->orderBy('first_name')
                                             ->orderBy('last_name')
                                             ->get()
@@ -477,8 +451,7 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                                     ->gridDirection('row')
                                     ->bulkToggleable()
                                     ->searchable()
-                                    ->required(fn (Get $get): bool => ($get('assignment_mode') ?? 'manual') === 'manual')
-                                    ->visible(fn (Get $get): bool => ($get('assignment_mode') ?? 'manual') === 'manual')
+                                    ->required()
                                     ->live(onBlur: false)
                                     ->columnSpanFull(),
                                 Placeholder::make('payment_frequency_hint')
@@ -536,20 +509,10 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                                         $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
                                         $fee = (float) ($row?->fee ?? 0);
 
-                                        $mode = $get('assignment_mode') ?? 'manual';
-                                        if ($mode === 'auto_by_age' && $row !== null) {
-                                            $n = count(AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
-                                                $this->getOwnerRecord(),
-                                                $row,
-                                            ));
-                                        } else {
-                                            $ids = $get('affiliate_ids');
-                                            $n = is_array($ids) ? count($ids) : 0;
-                                        }
+                                        $ids = $get('affiliate_ids');
+                                        $n = is_array($ids) ? count($ids) : 0;
                                         if ($n === 0 || $fee <= 0) {
-                                            return $mode === 'auto_by_age'
-                                                ? 'No hay afiliados elegibles por edad para estimar totales, o la tarifa no está definida.'
-                                                : 'Seleccione afiliados para ver totales anuales estimados.';
+                                            return 'Seleccione afiliados para ver totales anuales estimados.';
                                         }
                                         $annual = $fee * $n;
                                         $owner = $this->getOwnerRecord();
@@ -619,26 +582,9 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                             return;
                         }
 
-                        $mode = $data['assignment_mode'] ?? 'manual';
-                        if ($mode === 'auto_by_age') {
-                            $affiliateIds = AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
-                                $this->getOwnerRecord(),
-                                $planRow,
-                            );
-                            if ($affiliateIds === []) {
-                                Notification::make()
-                                    ->title('Sin afiliados elegibles')
-                                    ->body('No hay afiliados con edad registrada dentro del rango de edad de esta fila de plan. Revise el padrón o use el modo manual.')
-                                    ->warning()
-                                    ->send();
-
-                                return;
-                            }
-                        } else {
-                            $affiliateIds = $data['affiliate_ids'] ?? [];
-                            if (! is_array($affiliateIds)) {
-                                $affiliateIds = [];
-                            }
+                        $affiliateIds = $data['affiliate_ids'] ?? [];
+                        if (! is_array($affiliateIds)) {
+                            $affiliateIds = [];
                         }
 
                         try {

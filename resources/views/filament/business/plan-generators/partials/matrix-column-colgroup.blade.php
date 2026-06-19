@@ -1,16 +1,38 @@
 @php
     /** @var array<int, array<string, mixed>> $columns */
+    use App\Support\PlanGenerators\PlanGeneratorMatrixColumnLayout;
+
     $columns = (array) ($columns ?? []);
-    $type = (string) ($type ?? 'benefits');
+    $type = (string) ($type ?? 'rates');
+    $usePdfWidths = (bool) ($usePdfWidths ?? false);
+    $columnCount = PlanGeneratorMatrixColumnLayout::planColumnCount($columns);
+    $planWidthMm = PlanGeneratorMatrixColumnLayout::planColumnWidthMm($columnCount);
 @endphp
 <colgroup>
-    @if ($type === 'benefits')
-        <col class="pg-col-lead">
-    @else
-        <col class="pg-col-rate-age">
-        <col class="pg-col-rate-pop">
-    @endif
+    <col
+        @if ($usePdfWidths)
+            style="width: {{ PlanGeneratorMatrixColumnLayout::rateAgeWidthMm() }}mm"
+        @else
+            class="pg-col-rate-age"
+        @endif
+    >
+    <col
+        @if ($usePdfWidths)
+            style="width: {{ PlanGeneratorMatrixColumnLayout::ratePopWidthMm() }}mm"
+        @else
+            class="pg-col-rate-pop"
+        @endif
+    >
     @foreach ($columns as $column)
-        <col class="pg-col-plan" wire:key="pg-plan-col-{{ $type }}-{{ $column['column_key'] ?? $loop->index }}">
+        <col
+            @if ($usePdfWidths)
+                style="width: {{ $planWidthMm }}mm"
+            @else
+                class="pg-col-plan"
+            @endif
+            @if (! $usePdfWidths)
+                wire:key="pg-plan-col-{{ $type }}-{{ $column['column_key'] ?? $loop->index }}"
+            @endif
+        >
     @endforeach
 </colgroup>

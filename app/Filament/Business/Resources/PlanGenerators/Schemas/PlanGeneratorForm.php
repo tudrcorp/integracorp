@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 
+use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
 use App\Support\PlanGenerators\PlanGeneratorQuotationValidator;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -145,6 +147,13 @@ class PlanGeneratorForm
                                                                     $fail($message);
                                                                 }
                                                             })
+                                                            ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                        ColorPicker::make('brand_color')
+                                                            ->label('Color de la cotización PDF')
+                                                            ->helperText('Se aplica a encabezados, títulos y acentos del documento generado.')
+                                                            ->hex()
+                                                            ->default(PlanGeneratorBrandColor::DEFAULT)
+                                                            ->required()
                                                             ->columnSpan(['default' => 1, 'lg' => 2]),
                                                     ]),
                                             ]),
