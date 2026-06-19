@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Shared\CommercialStructure;
 
 use App\Models\Agency;
+use App\Models\AgencyDocument;
 use App\Models\Country;
 use App\Models\ObservationCommercialStructure;
 use App\Support\CountrySelectOptions;
 use App\Support\Filament\CommercialStructure\AgencyAddressClipboardFormat;
 use App\Support\FilamentDateDisplay;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -527,10 +529,80 @@ class AgencyInfolist
                                     ->columnSpanFull(),
                             ]),
 
-                        Tab::make('Bitácora')
+                        Tab::make('Documentos')
+                            ->icon('heroicon-o-document-text')
+                            ->schema([
+                                Section::make('Documentos de la agencia')
+                                    ->description('Documentos cargados por la agencia con su definición y vista previa.')
+                                    ->icon('heroicon-o-document-text')
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Grid::make(1)
+                                                    ->extraAttributes([
+                                                        'class' => self::IOS_INSET_GROUP_CLASS,
+                                                    ])
+                                                    ->schema([
+                                                        Text::make('Expediente documental')
+                                                            ->icon('heroicon-m-folder-open')
+                                                            ->weight('semibold'),
+                                                        RepeatableEntry::make('documents')
+                                                            ->hiddenLabel()
+                                                            ->placeholder('No hay documentos cargados por la agencia.')
+                                                            ->table([
+                                                                TableColumn::make('Definición')->width('45%'),
+                                                                TableColumn::make('Vista previa')->width('25%'),
+                                                                TableColumn::make('Archivo')->width('30%'),
+                                                            ])
+                                                            ->schema([
+                                                                TextEntry::make('title')
+                                                                    ->icon('heroicon-m-document-text')
+                                                                    ->weight('semibold')
+                                                                    ->placeholder('—'),
+                                                                ImageEntry::make('document')
+                                                                    ->hiddenLabel()
+                                                                    ->disk('public')
+                                                                    ->visibility('public')
+                                                                    ->imageHeight(56)
+                                                                    ->extraImgAttributes([
+                                                                        'class' => 'rounded-lg border border-slate-200/80 shadow-sm object-cover bg-white',
+                                                                        'loading' => 'lazy',
+                                                                    ])
+                                                                    ->url(fn (AgencyDocument $record): ?string => filled($record->document)
+                                                                        ? asset('storage/'.$record->document)
+                                                                        : null)
+                                                                    ->openUrlInNewTab()
+                                                                    ->visible(fn (AgencyDocument $record): bool => self::documentIsImage($record->document))
+                                                                    ->placeholder('—'),
+                                                                TextEntry::make('document')
+                                                                    ->icon('heroicon-m-paper-clip')
+                                                                    ->color('primary')
+                                                                    ->formatStateUsing(fn (mixed $state): ?string => self::formatStoredFileName($state))
+                                                                    ->url(fn (AgencyDocument $record): ?string => filled($record->document)
+                                                                        ? asset('storage/'.$record->document)
+                                                                        : null)
+                                                                    ->openUrlInNewTab()
+                                                                    ->placeholder('Sin archivo'),
+                                                            ])
+                                                            ->columnSpanFull(),
+                                                    ])
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+
+                        Tab::make('Bitácora de Observaciones')
                             ->icon('heroicon-o-clipboard-document-list')
                             ->schema([
-                                Section::make('Bitácora')
+                                Section::make('Bitácora de Observaciones')
                                     ->description('Notas del analista sobre reuniones y contactos con la agencia.')
                                     ->icon('heroicon-o-clipboard-document-list')
                                     ->extraAttributes([
@@ -649,6 +721,26 @@ class AgencyInfolist
         }
 
         return $summary;
+    }
+
+    private static function documentIsImage(mixed $path): bool
+    {
+        if (blank($path)) {
+            return false;
+        }
+
+        $extension = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif'], true);
+    }
+
+    private static function formatStoredFileName(mixed $state): ?string
+    {
+        if (blank($state)) {
+            return null;
+        }
+
+        return basename((string) $state);
     }
 
     private static function formatObservationRegisteredAt(mixed $record): string

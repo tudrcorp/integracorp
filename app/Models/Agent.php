@@ -101,7 +101,18 @@ class Agent extends Model
         'city_other_country',
         'postal_code_other_country',
         'address_other_country',
+        'audit_items',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'audit_items' => 'array',
+        ];
+    }
 
     /**
      * Get the user associated with the Agency
@@ -211,8 +222,8 @@ class Agent extends Model
         return $this->belongsTo(AccountManager::class, 'ownerAccountManagers', 'user_id');
     }
 
-    public function observationCommercialStructures()
+    public function observationCommercialStructures(): HasMany
     {
-        return $this->hasMany(ObservationCommercialStructure::class);
+        return $this->hasMany(ObservationCommercialStructure::class)->orderByDesc('created_at');
     }
 }

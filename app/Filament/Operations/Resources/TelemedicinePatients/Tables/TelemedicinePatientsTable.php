@@ -169,7 +169,7 @@ class TelemedicinePatientsTable
                     ]))
                     ->searchable()
                     ->toggleable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()),
                 TextColumn::make('businessLine.definition')
                     ->label('Línea de servicio')
                     ->badge()
@@ -178,7 +178,7 @@ class TelemedicinePatientsTable
                     ]))
                     ->searchable()
                     ->toggleable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()),
                 TextColumn::make('type_affiliation')
                     ->label('Tipo de afiliación')
                     ->badge()
@@ -190,7 +190,7 @@ class TelemedicinePatientsTable
                     })
                     ->searchable()
                     ->toggleable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()),
                 TextColumn::make('name_corporate')
                     ->label('Corporativo')
                     ->limit(24)

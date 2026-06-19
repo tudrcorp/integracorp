@@ -15,5 +15,12 @@ it('estructura el formulario de afiliados corporativos en secciones sin eliminar
         ->toContain("TextInput::make('first_name')")
         ->toContain("TextInput::make('last_name')")
         ->toContain("TextInput::make('position_company')")
-        ->toContain("->label('Cargo en la empresa')");
+        ->toContain("->label('Cargo en la empresa')")
+        ->toContain("TextColumn::make('business_unit_id')")
+        ->toContain("TextColumn::make('business_line_id')")
+        ->toContain("IconColumn::make('sync_status')")
+        ->toContain('businessLine:id,definition')
+        ->toContain('businessUnit:id,definition')
+        ->toContain('affiliateBusinessContextIsSynced')
+        ->toContain('emptyStateHeading');
 });

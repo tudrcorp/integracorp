@@ -25,6 +25,35 @@ final class TelemedicineCaseTdgReassignmentCoordination
         return str_starts_with(trim((string) $record->observations), self::OBSERVATION_PREFIX);
     }
 
+    public static function reassignmentReasonFromObservations(?string $observations): ?string
+    {
+        $observations = trim((string) $observations);
+
+        if ($observations === '') {
+            return null;
+        }
+
+        $blocks = preg_split('/\n\n+/', $observations) ?: [];
+
+        for ($index = count($blocks) - 1; $index >= 0; $index--) {
+            $block = trim((string) $blocks[$index]);
+
+            if (! str_starts_with($block, self::OBSERVATION_PREFIX)) {
+                continue;
+            }
+
+            if (preg_match('/Motivo:\s*(.+)/s', $block, $matches) !== 1) {
+                return null;
+            }
+
+            $reason = trim((string) ($matches[1] ?? ''));
+
+            return filled($reason) ? $reason : null;
+        }
+
+        return null;
+    }
+
     public static function consultationInvolvesAmd(?TelemedicineConsultationPatient $consultation): bool
     {
         if ($consultation === null) {

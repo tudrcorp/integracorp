@@ -10,6 +10,14 @@ it('mejora UX de tabla de familiares afiliados en business', function (): void {
         ->toContain('emptyStateHeading')
         ->toContain('->striped()')
         ->toContain('SelectFilter::make')
+        ->toContain("TextColumn::make('business_unit_id')")
+        ->toContain("TextColumn::make('business_line_id')")
+        ->toContain('businessLine:id,definition')
+        ->toContain('businessUnit:id,definition')
+        ->toContain('affiliateBusinessContextIsSynced')
+        ->toContain("IconColumn::make('sync_status')")
+        ->toContain('->trueIcon(')
+        ->toContain('->falseIcon(')
         ->not->toContain('TextInputColumn::make')
         ->toContain('AffiliationAffiliateFeeCalculator');
 });

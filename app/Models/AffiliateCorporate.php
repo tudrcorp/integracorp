@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AffiliateCorporate extends Model
 {
@@ -34,12 +35,15 @@ class AffiliateCorporate extends Model
         'status',
         'created_by',
 
-        //...Informacion ILS
+        // ...Informacion ILS
         'vaucherIls',
         'dateInit',
         'dateEnd',
         'numberDays',
         'document_ils',
+        'document',
+        'business_unit_id',
+        'business_line_id',
     ];
 
     public function affiliationCorporate()
@@ -57,4 +61,13 @@ class AffiliateCorporate extends Model
         return $this->belongsTo(Coverage::class);
     }
 
+    public function businessUnit(): BelongsTo
+    {
+        return $this->belongsTo(BusinessUnit::class);
+    }
+
+    public function businessLine(): BelongsTo
+    {
+        return $this->belongsTo(BusinessLine::class);
+    }
 }

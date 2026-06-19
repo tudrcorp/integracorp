@@ -86,6 +86,7 @@ class Affiliation extends Model
         'code_individual_quote',
         'total_amount',
         'observations',
+        'audit_items',
         'feedback',
         'feedback_dos',
 
@@ -121,6 +122,7 @@ class Affiliation extends Model
     protected $casts = [
         'upload_documents' => 'array',
         'service_providers' => 'array',
+        'audit_items' => 'array',
     ];
 
     public function city()
@@ -211,6 +213,14 @@ class Affiliation extends Model
     public function affiliationDocuments(): HasMany
     {
         return $this->hasMany(AffiliationDocument::class);
+    }
+
+    /**
+     * @return HasMany<\App\Models\AffiliationObservation, $this>
+     */
+    public function affiliationObservations(): HasMany
+    {
+        return $this->hasMany(AffiliationObservation::class)->orderByDesc('created_at');
     }
 
     public function sendTarjetaAfiliacion($details)

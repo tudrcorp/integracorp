@@ -2,41 +2,37 @@
 
 namespace App\Filament\General\Resources\Affiliations\Schemas;
 
-use App\Models\City;
-use App\Models\Agent;
-use App\Models\State;
+use App\Http\Controllers\UtilsController;
+use App\Models\Affiliation;
 use App\Models\Agency;
-use App\Models\Region;
+use App\Models\City;
 use App\Models\Country;
 use App\Models\Coverage;
-use App\Models\Affiliation;
-use Filament\Schemas\Schema;
-use App\Models\IndividualQuote;
-use Illuminate\Support\HtmlString;
-use Filament\Forms\Components\Radio;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
 use App\Models\DetailIndividualQuote;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
+use App\Models\IndividualQuote;
+use App\Models\Region;
+use App\Models\State;
 use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
-use Filament\Schemas\Components\Wizard;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use App\Http\Controllers\UtilsController;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 
 class AffiliationForm
 {
@@ -61,7 +57,8 @@ class AffiliationForm
                                         } else {
                                             $parte_entera = Affiliation::max('id');
                                         }
-                                        return 'TDEC-IND-000' . $parte_entera + 1;
+
+                                        return 'TDEC-IND-000'.$parte_entera + 1;
                                     })
                                     ->required(),
                             ])->columns(3),
@@ -78,6 +75,7 @@ class AffiliationForm
                                         if (isset($id)) {
                                             return $id;
                                         }
+
                                         return null;
                                     })
                                     ->searchable()
@@ -88,7 +86,7 @@ class AffiliationForm
                                     })
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ]),
 
                                 Select::make('plan_id')
@@ -97,6 +95,7 @@ class AffiliationForm
                                         if (isset($plan_id)) {
                                             return $plan_id;
                                         }
+
                                         return null;
                                     })
                                     ->label('Plan')
@@ -106,6 +105,7 @@ class AffiliationForm
                                         if (isset($plan_id) && $plan_id != null) {
                                             return true;
                                         }
+
                                         return false;
                                     })
                                     ->dehydrated()
@@ -125,7 +125,7 @@ class AffiliationForm
                                     })
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ]),
                                 Select::make('coverage_id')
                                     ->helperText('Punto(.) para separar miles.')
@@ -145,35 +145,36 @@ class AffiliationForm
                                     })
                                     ->relationship(
                                         name: 'coverage',
-                                        modifyQueryUsing: fn(Builder $query, Get $get) => $query->where('plan_id', $get('plan_id'))->orderBy('price', 'asc'),
+                                        modifyQueryUsing: fn (Builder $query, Get $get) => $query->where('plan_id', $get('plan_id'))->orderBy('price', 'asc'),
                                     )
-                                    ->getOptionLabelFromRecordUsing(fn(Coverage $record) => number_format($record->price, 0, '', '.'))
+                                    ->getOptionLabelFromRecordUsing(fn (Coverage $record) => number_format($record->price, 0, '', '.'))
                                     ->searchable()
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
-                                    ->hidden(fn(Get $get) => $get('plan_id') == 1 || $get('plan_id') == null)
+                                    ->hidden(fn (Get $get) => $get('plan_id') == 1 || $get('plan_id') == null)
                                     ->preload(),
                                 Select::make('payment_frequency')
                                     ->label('Frecuencia de pago')
                                     ->live()
                                     ->options(function (Get $get) {
                                         $simpleArray = [
-                                            'ANUAL'      => 'ANUAL',
-                                            'SEMESTRAL'  => 'SEMESTRAL',
+                                            'ANUAL' => 'ANUAL',
+                                            'SEMESTRAL' => 'SEMESTRAL',
                                             'TRIMESTRAL' => 'TRIMESTRAL',
                                         ];
                                         $simpleArrayMonth = [
-                                            'ANUAL'      => 'ANUAL',
-                                            'SEMESTRAL'  => 'SEMESTRAL',
+                                            'ANUAL' => 'ANUAL',
+                                            'SEMESTRAL' => 'SEMESTRAL',
                                             'TRIMESTRAL' => 'TRIMESTRAL',
-                                            'MENSUAL'    => 'MENSUAL',
+                                            'MENSUAL' => 'MENSUAL',
                                         ];
                                         if (Agency::where('code', Auth::user()->code_agency)->first()->activate_monthly_frequency == 1) {
                                             return $simpleArrayMonth;
                                         }
+
                                         return $simpleArray;
                                     })
                                     ->searchable()
@@ -181,12 +182,12 @@ class AffiliationForm
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->preload()
                                     ->afterStateUpdated(function ($state, $set, Get $get) {
                                         if ($get('payment_frequency') == 'ANUAL') {
-                                            //busco el valor de la cotizacion de acuerdo al plan y a la covertura
+                                            // busco el valor de la cotizacion de acuerdo al plan y a la covertura
                                             $data_quote = DetailIndividualQuote::select('individual_quote_id', 'plan_id', 'coverage_id', 'subtotal_anual')
                                                 ->where('individual_quote_id', $get('individual_quote_id'))
                                                 ->where('plan_id', $get('plan_id'))
@@ -266,6 +267,7 @@ class AffiliationForm
                                  */
                                 Hidden::make('ownerAccountManagers')->default(function () {
                                     $agency = Auth::user()->code_agency;
+
                                     return Agency::where('code', $agency)->first()->ownerAccountManagers;
                                 }),
                                 Hidden::make('status')->default('PRE-APROBADA'),
@@ -274,8 +276,7 @@ class AffiliationForm
                                 Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
                                 /**-------------------------------------------------------------------------------------------------------------------------------------------- */
 
-
-                    ])
+                            ]),
                         ]),
                     Step::make('Titular')
                         ->description('Información del titular')
@@ -302,11 +303,11 @@ class AffiliationForm
                                     )
                                     ->mask('999999999')
                                     ->rules([
-                                        'regex:/^[0-9]+$/' // Acepta de 1 a 6 dígitos
+                                        'regex:/^[0-9]+$/', // Acepta de 1 a 6 dígitos
                                     ])
                                     ->validationMessages([
-                                        'numeric'   => 'El campo es numérico',
-                                        'unique'    => 'La cedula del titular ya se encuentra registrada'
+                                        'numeric' => 'El campo es numérico',
+                                        'unique' => 'La cedula del titular ya se encuentra registrada',
                                     ])
                                     ->required(),
 
@@ -321,7 +322,7 @@ class AffiliationForm
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->preload(),
 
@@ -332,7 +333,7 @@ class AffiliationForm
                                     ->format('d-m-Y')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ]),
                                 TextInput::make('email_ti')
                                     ->label('Email')
@@ -345,9 +346,9 @@ class AffiliationForm
                                         column: 'email_ti',
                                     )
                                     ->validationMessages([
-                                        'unique'    => 'El Correo electrónico ya se encuentra registrado.',
-                                        'required'  => 'Campo requerido',
-                                        'email'     => 'El campo es un email',
+                                        'unique' => 'El Correo electrónico ya se encuentra registrado.',
+                                        'required' => 'Campo requerido',
+                                        'email' => 'El campo es un email',
                                     ])
                                     ->maxLength(255),
                                 TextInput::make('adress_ti')
@@ -359,12 +360,12 @@ class AffiliationForm
                                     ->prefixIcon('heroicon-s-identification')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->maxLength(255),
                                 Select::make('country_code_ti')
                                     ->label('Código de país')
-                                    ->options(fn() => UtilsController::getCountries())
+                                    ->options(fn () => UtilsController::getCountries())
                                     ->hiddenOn('edit')
                                     ->default('+58')
                                     ->live(onBlur: true),
@@ -374,14 +375,14 @@ class AffiliationForm
                                     ->label('Número de teléfono')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                         $countryCode = $get('country_code_ti');
                                         if ($countryCode) {
                                             $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                            $set('phone_ti', $countryCode . $cleanNumber);
+                                            $set('phone_ti', $countryCode.$cleanNumber);
                                         }
                                     }),
                                 Select::make('country_id_ti')
@@ -392,7 +393,7 @@ class AffiliationForm
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->default(189)
                                     ->preload(),
@@ -411,7 +412,7 @@ class AffiliationForm
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->preload(),
                                 TextInput::make('region_ti')
@@ -429,10 +430,14 @@ class AffiliationForm
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Requerido',
+                                        'required' => 'Campo Requerido',
                                     ])
                                     ->preload(),
                                 FileUpload::make('document')
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Campo Requerido',
+                                    ])
                                     ->label('Documento del titular')
                                     ->uploadingMessage('Cargando documento...'),
 
@@ -444,12 +449,12 @@ class AffiliationForm
                                             ->live()
                                             ->boolean()
                                             ->inline()
-                                            ->inlineLabel(false)
+                                            ->inlineLabel(false),
                                     ])->columnSpanFull()->hiddenOn('edit'),
-                            ])
+                            ]),
                         ]),
                     Step::make('Afiliados')
-                        ->hidden(fn(Get $get) => !$get('feedback'))
+                        ->hidden(fn (Get $get) => ! $get('feedback'))
                         ->description('Data de afiliados')
                         ->schema([
                             Repeater::make('affiliates')
@@ -466,7 +471,7 @@ class AffiliationForm
                                                         })
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Campo Requerido',
+                                                            'required' => 'Campo Requerido',
                                                         ])
                                                         ->live(onBlur: true)
                                                         ->maxLength(255),
@@ -480,12 +485,12 @@ class AffiliationForm
                                                         )
                                                         ->mask('999999999')
                                                         ->rules([
-                                                            'regex:/^[0-9]+$/' // Acepta de 1 a 6 dígitos
+                                                            'regex:/^[0-9]+$/', // Acepta de 1 a 6 dígitos
                                                         ])
                                                         ->required()
                                                         ->validationMessages([
-                                                            'numeric'   => 'El campo es numerico',
-                                                            'required'  => 'Campo Requerido',
+                                                            'numeric' => 'El campo es numerico',
+                                                            'required' => 'Campo Requerido',
                                                         ]),
                                                     Select::make('sex')
                                                         ->label('Sexo')
@@ -495,7 +500,7 @@ class AffiliationForm
                                                         ])
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Campo Requerido',
+                                                            'required' => 'Campo Requerido',
                                                         ]),
                                                     DatePicker::make('birth_date')
                                                         ->label('Fecha de Nacimiento')
@@ -503,22 +508,22 @@ class AffiliationForm
                                                         ->format('d-m-Y')
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Campo Requerido',
+                                                            'required' => 'Campo Requerido',
                                                         ]),
                                                     Select::make('relationship')
                                                         ->label('Parentesco')
                                                         ->options([
-                                                            'AMIGO'     => 'AMIGO',
-                                                            'MADRE'     => 'MADRE',
-                                                            'PADRE'     => 'PADRE',
-                                                            'CONYUGE'   => 'CONYUGE',
-                                                            'HIJO'      => 'HIJO',
-                                                            'HIJA'      => 'HIJA',
-                                                            'OTRO'      => 'OTRO',
+                                                            'AMIGO' => 'AMIGO',
+                                                            'MADRE' => 'MADRE',
+                                                            'PADRE' => 'PADRE',
+                                                            'CONYUGE' => 'CONYUGE',
+                                                            'HIJO' => 'HIJO',
+                                                            'HIJA' => 'HIJA',
+                                                            'OTRO' => 'OTRO',
                                                         ])
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Campo Requerido',
+                                                            'required' => 'Campo Requerido',
                                                         ]),
                                                 ])->columnSpanFull(1)->columns(5),
                                             Fieldset::make('Documento de identidad')
@@ -528,21 +533,21 @@ class AffiliationForm
                                                         ->uploadingMessage('Cargando documento...')
                                                         ->required()
                                                         ->validationMessages([
-                                                            'required'  => 'Campo Requerido',
-                                                        ])
+                                                            'required' => 'Campo Requerido',
+                                                        ]),
 
                                                 ])->columnSpanFull(1),
                                         ])->columnSpanFull()->columns(2),
                                 ])
                                 ->columnSpanFull()
                                 ->defaultItems(function (Get $get, Set $set) {
-                                    //Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
+                                    // Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
                                     return session()->get('persons') - 1;
                                 })
-                                ->addActionLabel('Agregar afiliado')
+                                ->addActionLabel('Agregar afiliado'),
                         ]),
                     Step::make('Declaración de Condiciones Médicas')
-                        ->hidden(fn(Get $get) => $get('plan_id') != 3)
+                        ->hidden(fn (Get $get) => $get('plan_id') != 3)
                         ->description('Data de afiliados')
                         ->schema([
                             Fieldset::make('Cuestionario de salud')
@@ -630,7 +635,7 @@ class AffiliationForm
                                     Textarea::make('observations_cuestions')
                                         ->label('Observaciones adicionales')
                                         ->helperText('En caso de haber respondido afirmativamente alguna de las preguntas de la DECLARACIÓN CONDICIONES MÉDICAS, indique la pregunta que
-                                                            corresponda, especifique la persona solicitante e indique detalles como: Diagnistico/Enfermedad, Fecha y Condicion actual.')
+                                                            corresponda, especifique la persona solicitante e indique detalles como: Diagnistico/Enfermedad, Fecha y Condicion actual.'),
                                 ])->columnSpanFull()->columns(1),
                         ])->columnSpanFull(),
                     Step::make('Información Adicional')
@@ -644,7 +649,7 @@ class AffiliationForm
                                         ->live()
                                         ->boolean()
                                         ->inline()
-                                        ->inlineLabel(false)
+                                        ->inlineLabel(false),
                                 ])->hiddenOn('edit'),
                             Fieldset::make('Datos principales del pagador')
                                 ->schema([
@@ -670,15 +675,15 @@ class AffiliationForm
                                         )
                                         ->mask('999999999')
                                         ->rules([
-                                            'regex:/^[0-9]+$/' // Acepta de 1 a 6 dígitos
+                                            'regex:/^[0-9]+$/', // Acepta de 1 a 6 dígitos
                                         ])
                                         ->validationMessages([
-                                            'numeric'   => 'El campo es numerico',
+                                            'numeric' => 'El campo es numerico',
                                         ])
                                         ->required(),
                                     Select::make('country_code_payer')
                                         ->label('Código de país')
-                                        ->options(fn() => UtilsController::getCountries())
+                                        ->options(fn () => UtilsController::getCountries())
                                         ->hiddenOn('edit')
                                         ->default('+58')
                                         ->live(onBlur: true),
@@ -688,14 +693,14 @@ class AffiliationForm
                                         ->label('Número de teléfono')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                             $countryCode = $get('country_code_payer');
                                             if ($countryCode) {
                                                 $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                $set('phone_payer', $countryCode . $cleanNumber);
+                                                $set('phone_payer', $countryCode.$cleanNumber);
                                             }
                                         }),
                                     TextInput::make('email_payer')
@@ -709,22 +714,22 @@ class AffiliationForm
                                             column: 'email_payer',
                                         )
                                         ->validationMessages([
-                                            'unique'    => 'El Correo electrónico ya se encuentra registrado.',
-                                            'required'  => 'Campo requerido',
-                                            'email'     => 'El campo es un email',
+                                            'unique' => 'El Correo electrónico ya se encuentra registrado.',
+                                            'required' => 'Campo requerido',
+                                            'email' => 'El campo es un email',
                                         ])
                                         ->maxLength(255),
                                     Select::make('relationship_payer')
                                         ->label('Parentesco')
                                         ->options([
-                                            'AMIGO'     => 'AMIGO',
-                                            'MADRE'     => 'MADRE',
-                                            'PADRE'     => 'PADRE',
-                                            'CONYUGE'   => 'CONYUGE',
-                                            'HIJO'      => 'HIJO',
-                                            'HIJA'      => 'HIJA',
+                                            'AMIGO' => 'AMIGO',
+                                            'MADRE' => 'MADRE',
+                                            'PADRE' => 'PADRE',
+                                            'CONYUGE' => 'CONYUGE',
+                                            'HIJO' => 'HIJO',
+                                            'HIJA' => 'HIJA',
                                         ]),
-                                ])->columns(3)->hidden(fn(Get $get) => $get('feedback_dos')),
+                                ])->columns(3)->hidden(fn (Get $get) => $get('feedback_dos')),
                         ]),
                     Step::make('Acuerdo y condiciones')
                         ->description('Leer y aceptar las condiciones')
@@ -750,10 +755,10 @@ class AffiliationForm
                                         ->label('ACEPTO')
                                         ->required(),
                                 ])
-                                ->hiddenOn('edit')
+                                ->hiddenOn('edit'),
                         ]),
                 ])
-                ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -773,7 +778,7 @@ class AffiliationForm
                         </span>
                     </x-filament::button>
                 BLADE)))
-                ->columnSpanFull(),
+                    ->columnSpanFull(),
 
             ]);
     }

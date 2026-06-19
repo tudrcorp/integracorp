@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers;
 
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
+use App\Models\BusinessLine;
+use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\FilamentDateDisplay;
 use BackedEnum;
@@ -32,12 +36,16 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\FontFamily;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -269,120 +277,209 @@ class CorporateAffiliatesRelationManager extends RelationManager
     {
         return $table
             ->heading('Afiliados corporativos')
-            ->description('Empleados o familiares vinculados a esta afiliación. Use la búsqueda y el gestor de columnas para ajustar la vista.')
+            ->description('Empleados o familiares vinculados a esta afiliación. La unidad y línea en verde coinciden con la afiliación; en ámbar están pendientes de sincronizar.')
             ->recordTitleAttribute('first_name')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with([
+                    'plan',
+                    'coverage',
+                    'businessLine:id,definition',
+                    'businessUnit:id,definition',
+                ])
+                ->orderBy('last_name')
+                ->orderBy('first_name'))
+            ->emptyStateHeading('Sin afiliados corporativos')
+            ->emptyStateDescription('Agregue un afiliado con el botón superior o importe la población desde la cotización.')
+            ->emptyStateIcon(Heroicon::UserGroup)
+            ->striped()
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50])
             ->columns([
+                TextColumn::make('status')
+                    ->label('Estatus')
+                    ->icon(Heroicon::Signal)
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'PRE-AFILIADO' => 'info',
+                        'ACTIVO' => 'success',
+                        'EXCLUIDO', 'INACTIVO' => 'danger',
+                        default => 'gray',
+                    })
+                    ->sortable(),
+                TextColumn::make('first_name')
+                    ->label('Nombre')
+                    ->icon(Heroicon::User)
+                    ->weight(FontWeight::SemiBold)
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->extraCellAttributes(['class' => 'min-w-32']),
+                TextColumn::make('last_name')
+                    ->label('Apellido')
+                    ->searchable()
+                    ->sortable()
+                    ->wrap(),
+                TextColumn::make('nro_identificacion')
+                    ->label('C.I.')
+                    ->icon(Heroicon::Identification)
+                    ->fontFamily(FontFamily::Mono)
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('C.I. copiada'),
+                TextColumn::make('age')
+                    ->label('Edad')
+                    ->alignCenter()
+                    ->sortable(),
+                TextColumn::make('sex')
+                    ->label('Sexo')
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable(),
                 TextColumn::make('plan.description')
                     ->label('Plan')
                     ->weight(FontWeight::SemiBold)
                     ->icon(Heroicon::ClipboardDocumentList)
                     ->badge()
                     ->color('success')
-                    ->searchable(),
+                    ->searchable()
+                    ->limit(24)
+                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) ($record->plan?->description ?? '')) > 24
+                        ? $record->plan?->description
+                        : null),
+                TextColumn::make('business_unit_id')
+                    ->label('Unidad de negocio')
+                    ->icon(Heroicon::BuildingOffice2)
+                    ->formatStateUsing(fn (AffiliateCorporate $record): string => filled($record->businessUnit?->definition)
+                        ? (string) $record->businessUnit->definition
+                        : '—')
+                    ->description(fn (AffiliateCorporate $record): ?string => filled($record->business_unit_id)
+                        ? 'ID: '.$record->business_unit_id
+                        : 'Sin asignar')
+                    ->badge()
+                    ->color(fn (AffiliateCorporate $record): string => $this->businessContextBadgeColor(
+                        $record->business_unit_id,
+                        $this->getOwnerRecord()->business_unit_id,
+                    ))
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
+                    })
+                    ->sortable(),
+                TextColumn::make('business_line_id')
+                    ->label('Línea de servicio')
+                    ->icon(Heroicon::QueueList)
+                    ->formatStateUsing(fn (AffiliateCorporate $record): string => filled($record->businessLine?->definition)
+                        ? (string) $record->businessLine->definition
+                        : '—')
+                    ->description(fn (AffiliateCorporate $record): ?string => filled($record->business_line_id)
+                        ? 'ID: '.$record->business_line_id
+                        : 'Sin asignar')
+                    ->badge()
+                    ->color(fn (AffiliateCorporate $record): string => $this->businessContextBadgeColor(
+                        $record->business_line_id,
+                        $this->getOwnerRecord()->business_line_id,
+                    ))
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"));
+                    })
+                    ->sortable(),
+                IconColumn::make('sync_status')
+                    ->label('Sync')
+                    ->alignment(Alignment::Center)
+                    ->getStateUsing(fn (AffiliateCorporate $record): bool => $this->affiliateBusinessContextIsSynced($record))
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-exclamation-triangle')
+                    ->trueColor('success')
+                    ->falseColor('warning')
+                    ->tooltip(fn (AffiliateCorporate $record): string => $this->affiliateBusinessContextIsSynced($record)
+                        ? 'Unidad y línea coinciden con la afiliación'
+                        : 'Pendiente de sincronizar con la afiliación'),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->numeric(decimalPlaces: 2)
                     ->suffix(' US$')
-                    ->icon(Heroicon::Banknotes),
+                    ->icon(Heroicon::Banknotes)
+                    ->toggleable(),
                 TextColumn::make('fee')
                     ->label('Tarifa anual')
                     ->numeric(decimalPlaces: 2)
                     ->suffix(' US$')
-                    ->icon(Heroicon::CurrencyDollar),
-                TextColumn::make('first_name')
-                    ->label('Nombre')
-                    ->searchable()
-                    ->weight(FontWeight::Medium),
-                TextColumn::make('last_name')
-                    ->label('Apellido')
-                    ->searchable(),
+                    ->icon(Heroicon::CurrencyDollar)
+                    ->sortable(),
                 TextColumn::make('birth_date')
-                    ->label('Fecha de nacimiento')
+                    ->label('Nacimiento')
+                    ->icon(Heroicon::CalendarDays)
                     ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
-                    ->searchable(),
-                TextColumn::make('nro_identificacion')
-                    ->label('C.I.')
-                    ->copyable()
-                    ->copyMessage('Copiado'),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email')
                     ->label('Correo')
                     ->icon(Heroicon::Envelope)
                     ->copyable()
                     ->limit(28)
-                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) $record->email) > 28 ? $record->email : null),
-                TextColumn::make('age')
-                    ->label('Edad')
-                    ->searchable()
-                    ->alignCenter(),
-                TextColumn::make('sex')
-                    ->label('Sexo')
-                    ->badge()
-                    ->color('gray'),
+                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) ($record->email ?? '')) > 28 ? $record->email : null)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('phone')
                     ->label('Teléfono')
                     ->icon(Heroicon::Phone)
-                    ->copyable(),
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('condition_medical')
                     ->label('Condición médica')
                     ->wrap()
                     ->limit(40)
-                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) ($record->condition_medical ?? '')) > 40 ? $record->condition_medical : null),
+                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) ($record->condition_medical ?? '')) > 40 ? $record->condition_medical : null)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('initial_date')
                     ->label('Ingreso empresa')
-                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state)),
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('position_company')
-                    ->label('Cargo'),
+                    ->label('Cargo')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('address')
                     ->label('Dirección')
+                    ->icon(Heroicon::MapPin)
                     ->wrap()
-                    ->limit(36)
-                    ->tooltip(fn (AffiliateCorporate $record): ?string => strlen((string) ($record->address ?? '')) > 36 ? $record->address : null),
+                    ->lineClamp(2)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('full_name_emergency')
                     ->label('Emergencia (nombre)')
-                    ->wrap(),
+                    ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('phone_emergency')
                     ->label('Emergencia (tel.)')
-                    ->copyable(),
-                TextColumn::make('status')
-                    ->label('Estatus')
-                    ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'PRE-AFILIADO' => 'info',
-                            'ACTIVO' => 'success',
-                            'EXCLUIDO' => 'danger',
-                            'INACTIVO' => 'danger',
-                            default => 'gray',
-                        };
-                    }),
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('vaucherIls')
                     ->label('Voucher ILS')
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(fn ($record) => $record->vaucherIls == null ? '—' : $record->vaucherIls),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('dateInit')
-                    ->label('Inicio ILS')
+                    ->label('ILS desde')
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(fn ($record) => $record->dateInit == null ? '—' : $record->dateInit),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('dateEnd')
-                    ->label('Fin ILS')
+                    ->label('ILS hasta')
+                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(fn ($record) => $record->DateEnd == null ? '—' : $record->DateEnd),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('numberDays')
-                    ->label('Días cobertura')
+                    ->label('Días ILS')
                     ->suffix(' días')
                     ->badge()
                     ->color('warning')
-                    ->searchable()
-                    ->default(fn ($record) => $record->numberDays == null ? '0' : (string) abs((int) $record->numberDays)),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('document_ils')
                     ->alignment(Alignment::Center)
-                    ->label('Comprobante')
+                    ->label('Doc. ILS')
                     ->icon(fn (AffiliateCorporate $record): string => $record->document_ils != null
                         ? 'heroicon-o-check-circle'
                         : 'heroicon-o-x-circle')
@@ -392,11 +489,73 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->url(fn (AffiliateCorporate $record): ?string => $record->document_ils
                         ? asset('storage/'.$record->document_ils)
                         : null)
-                    ->openUrlInNewTab(),
-
+                    ->openUrlInNewTab()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultPaginationPageOption(25)
-            ->paginationPageOptions([10, 25, 50])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options([
+                        'PRE-AFILIADO' => 'Pre-afiliado',
+                        'ACTIVO' => 'Activo',
+                        'INACTIVO' => 'Inactivo',
+                        'EXCLUIDO' => 'Excluido',
+                    ])
+                    ->native(false),
+                SelectFilter::make('business_unit_id')
+                    ->label('Unidad de negocio')
+                    ->options(fn (): array => BusinessUnit::query()->orderBy('definition')->pluck('definition', 'id')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('business_line_id')
+                    ->label('Línea de servicio')
+                    ->options(fn (): array => BusinessLine::query()->orderBy('definition')->pluck('definition', 'id')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                Filter::make('business_context_sync')
+                    ->label('Sincronización')
+                    ->form([
+                        Select::make('value')
+                            ->label('Estado')
+                            ->options([
+                                'synced' => 'Sincronizado con afiliación',
+                                'pending' => 'Pendiente de sincronizar',
+                            ])
+                            ->native(false),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (blank($value)) {
+                            return $query;
+                        }
+
+                        $owner = $this->getOwnerRecord()->fresh();
+
+                        return match ($value) {
+                            'synced' => $query
+                                ->where('business_unit_id', $owner?->business_unit_id)
+                                ->where('business_line_id', $owner?->business_line_id),
+                            'pending' => $query->where(function (Builder $pendingQuery) use ($owner): void {
+                                $pendingQuery
+                                    ->whereNull('business_unit_id')
+                                    ->orWhereNull('business_line_id')
+                                    ->orWhere('business_unit_id', '!=', $owner?->business_unit_id)
+                                    ->orWhere('business_line_id', '!=', $owner?->business_line_id);
+                            }),
+                            default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        return match ($data['value'] ?? null) {
+                            'synced' => ['synced' => 'Sincronizado con afiliación'],
+                            'pending' => ['pending' => 'Pendiente de sincronizar'],
+                            default => [],
+                        };
+                    }),
+            ])
             ->headerActions([
                 CreateAction::make()
                     ->label('Crear afiliado')
@@ -739,7 +898,37 @@ class CorporateAffiliatesRelationManager extends RelationManager
 
                 ]),
             ])
-            ->striped()
             ->poll('5s');
+    }
+
+    private function affiliateBusinessContextIsSynced(AffiliateCorporate $record): bool
+    {
+        $owner = $this->getOwnerRecord()->fresh();
+
+        if ($owner === null) {
+            return false;
+        }
+
+        if (blank($owner->business_unit_id) || blank($owner->business_line_id)) {
+            return blank($record->business_unit_id) && blank($record->business_line_id);
+        }
+
+        return (int) $record->business_unit_id === (int) $owner->business_unit_id
+            && (int) $record->business_line_id === (int) $owner->business_line_id;
+    }
+
+    private function businessContextBadgeColor(mixed $affiliateValue, mixed $ownerValue): string
+    {
+        $owner = $this->getOwnerRecord()->fresh();
+
+        if (blank($affiliateValue)) {
+            return 'gray';
+        }
+
+        if ($owner === null || blank($ownerValue)) {
+            return 'info';
+        }
+
+        return (int) $affiliateValue === (int) $ownerValue ? 'success' : 'warning';
     }
 }

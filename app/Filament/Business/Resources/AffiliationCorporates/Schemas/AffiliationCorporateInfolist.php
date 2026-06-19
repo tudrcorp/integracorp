@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\AffiliationCorporates\Schemas;
 
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
+use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Models\AffiliationCorporateDocument;
+use App\Models\AffiliationCorporateObservation;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -52,6 +55,19 @@ class AffiliationCorporateInfolist
         };
     }
 
+    private static function affiliateBusinessContextColor(mixed $affiliateValue, mixed $ownerValue): string
+    {
+        if (blank($affiliateValue)) {
+            return 'gray';
+        }
+
+        if (blank($ownerValue)) {
+            return 'info';
+        }
+
+        return (int) $affiliateValue === (int) $ownerValue ? 'success' : 'warning';
+    }
+
     /**
      * Fechas en BD a veces están como texto `d/m/Y`; el cast datetime de Eloquent falla al hidratar.
      */
@@ -85,6 +101,17 @@ class AffiliationCorporateInfolist
         }
 
         return basename((string) $state);
+    }
+
+    private static function documentIsImage(mixed $path): bool
+    {
+        if (blank($path)) {
+            return false;
+        }
+
+        $extension = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif'], true);
     }
 
     private static function formatFileSize(?int $size): string
@@ -275,6 +302,48 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
+                        Tab::make('Documento del contratante')
+                            ->icon(Heroicon::OutlinedDocumentArrowDown)
+                            ->schema([
+                                Section::make('Documento del contratante')
+                                    ->description('Documento cargado para el contratante de la afiliación corporativa.')
+                                    ->icon(Heroicon::OutlinedDocumentArrowDown)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                ImageEntry::make('document')
+                                                    ->hiddenLabel()
+                                                    ->disk('public')
+                                                    ->visibility('public')
+                                                    ->imageHeight(260)
+                                                    ->extraImgAttributes([
+                                                        'class' => 'rounded-2xl border border-slate-200/80 shadow-md object-contain bg-white',
+                                                        'loading' => 'lazy',
+                                                    ])
+                                                    ->visible(fn (AffiliationCorporate $record): bool => self::documentIsImage($record->document))
+                                                    ->columnSpanFull(),
+                                                TextEntry::make('document')
+                                                    ->label('Documento del contratante')
+                                                    ->icon(Heroicon::OutlinedDocumentArrowDown)
+                                                    ->color('primary')
+                                                    ->weight('medium')
+                                                    ->formatStateUsing(fn (mixed $state): ?string => self::formatStoredFileName($state))
+                                                    ->url(fn (AffiliationCorporate $record): ?string => filled($record->document)
+                                                        ? asset('storage/'.$record->document)
+                                                        : null)
+                                                    ->openUrlInNewTab()
+                                                    ->placeholder('No hay documento cargado para el contratante.')
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
                         Tab::make('Contacto')
                             ->icon(Heroicon::OutlinedUserCircle)
                             ->schema([
@@ -382,7 +451,7 @@ class AffiliationCorporateInfolist
                             ->icon(Heroicon::OutlinedUsers)
                             ->schema([
                                 Section::make('Afiliados asociados')
-                                    ->description(fn (AffiliationCorporate $record): string => 'Resumen principal de afiliados vinculados. Total: '.(int) ($record->corporateAffiliates?->count() ?? 0))
+                                    ->description('Resumen principal de afiliados vinculados. La unidad y línea en verde coinciden con la afiliación; en ámbar están pendientes de sincronizar.')
                                     ->icon(Heroicon::OutlinedUsers)
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
@@ -400,9 +469,13 @@ class AffiliationCorporateInfolist
                                                         TableColumn::make('Nombre'),
                                                         TableColumn::make('Identificación'),
                                                         TableColumn::make('Cargo'),
+                                                        TableColumn::make('Unidad de negocio'),
+                                                        TableColumn::make('Línea de servicio'),
                                                         TableColumn::make('Teléfono'),
                                                         TableColumn::make('Correo'),
                                                         TableColumn::make('Estatus'),
+                                                        TableColumn::make('Documento'),
+                                                        TableColumn::make('Documento ILS'),
                                                     ])
                                                     ->schema([
                                                         TextEntry::make('first_name')
@@ -419,6 +492,26 @@ class AffiliationCorporateInfolist
                                                             ->badge()
                                                             ->color('gray')
                                                             ->placeholder('—'),
+                                                        TextEntry::make('businessUnit.definition')
+                                                            ->label('Unidad de negocio')
+                                                            ->icon(Heroicon::OutlinedBuildingOffice2)
+                                                            ->badge()
+                                                            ->weight('semibold')
+                                                            ->color(fn (?string $state, AffiliateCorporate $record, ViewRecord $livewire): string => self::affiliateBusinessContextColor(
+                                                                $record->business_unit_id,
+                                                                $livewire->getRecord()->business_unit_id,
+                                                            ))
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('businessLine.definition')
+                                                            ->label('Línea de servicio')
+                                                            ->icon(Heroicon::OutlinedQueueList)
+                                                            ->badge()
+                                                            ->weight('semibold')
+                                                            ->color(fn (?string $state, AffiliateCorporate $record, ViewRecord $livewire): string => self::affiliateBusinessContextColor(
+                                                                $record->business_line_id,
+                                                                $livewire->getRecord()->business_line_id,
+                                                            ))
+                                                            ->placeholder('—'),
                                                         TextEntry::make('phone')
                                                             ->label('Teléfono')
                                                             ->icon(Heroicon::OutlinedPhone)
@@ -434,6 +527,36 @@ class AffiliationCorporateInfolist
                                                             ->label('Estatus')
                                                             ->badge()
                                                             ->color(fn (?string $state): string => self::affiliateStatusColor($state))
+                                                            ->placeholder('—'),
+                                                        ImageEntry::make('document')
+                                                            ->label('Documento')
+                                                            ->disk('public')
+                                                            ->visibility('public')
+                                                            ->imageHeight(56)
+                                                            ->extraImgAttributes([
+                                                                'class' => 'rounded-lg border border-slate-200/80 shadow-sm object-cover bg-white',
+                                                                'loading' => 'lazy',
+                                                            ])
+                                                            ->url(fn (AffiliateCorporate $record): ?string => filled($record->document)
+                                                                ? asset('storage/'.$record->document)
+                                                                : null)
+                                                            ->openUrlInNewTab()
+                                                            ->visible(fn (AffiliateCorporate $record): bool => self::documentIsImage($record->document))
+                                                            ->placeholder('—'),
+                                                        ImageEntry::make('document_ils')
+                                                            ->label('Documento ILS')
+                                                            ->disk('public')
+                                                            ->visibility('public')
+                                                            ->imageHeight(56)
+                                                            ->extraImgAttributes([
+                                                                'class' => 'rounded-lg border border-slate-200/80 shadow-sm object-cover bg-white',
+                                                                'loading' => 'lazy',
+                                                            ])
+                                                            ->url(fn (AffiliateCorporate $record): ?string => filled($record->document_ils)
+                                                                ? asset('storage/'.$record->document_ils)
+                                                                : null)
+                                                            ->openUrlInNewTab()
+                                                            ->visible(fn (AffiliateCorporate $record): bool => self::documentIsImage($record->document_ils))
                                                             ->placeholder('—'),
                                                     ])
                                                     ->columnSpanFull(),
@@ -608,29 +731,6 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Observaciones')
-                            ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
-                            ->schema([
-                                Section::make('Observaciones')
-                                    ->description('Notas internas o comentarios sobre el trámite.')
-                                    ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
-                                    ])
-                                    ->schema([
-                                        Grid::make(1)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
-                                                TextEntry::make('observations')
-                                                    ->label('Observaciones')
-                                                    ->placeholder('—')
-                                                    ->columnSpanFull(),
-                                            ]),
-                                    ])
-                                    ->columnSpanFull(),
-                            ]),
                         Tab::make('Expediente digital')
                             ->icon(Heroicon::OutlinedFolderOpen)
                             ->schema([
@@ -749,6 +849,54 @@ class AffiliationCorporateInfolist
                                                                             ->send();
                                                                     }),
                                                             ]),
+                                                    ])
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make('Observaciones')
+                            ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                            ->schema([
+                                Section::make('Observaciones')
+                                    ->description(fn (AffiliationCorporate $record): string => 'Bitácora de notas registradas por los analistas. Total: '.(int) ($record->affiliationCorporateObservations?->count() ?? 0).'. Use «Agregar observación» en la cabecera para añadir una nueva.')
+                                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                RepeatableEntry::make('affiliationCorporateObservations')
+                                                    ->label('')
+                                                    ->placeholder('No hay observaciones registradas para esta afiliación corporativa.')
+                                                    ->table([
+                                                        TableColumn::make('Fecha')->width('20%'),
+                                                        TableColumn::make('Observación')->width('55%'),
+                                                        TableColumn::make('Registrado por')->width('25%'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('created_at')
+                                                            ->label('Fecha')
+                                                            ->icon(Heroicon::OutlinedCalendarDays)
+                                                            ->dateTime('d/m/Y H:i')
+                                                            ->helperText(fn (AffiliationCorporateObservation $record): ?string => $record->created_at?->diffForHumans())
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('description')
+                                                            ->label('Observación')
+                                                            ->icon(Heroicon::OutlinedChatBubbleLeftEllipsis)
+                                                            ->wrap()
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('created_by')
+                                                            ->label('Registrado por')
+                                                            ->icon(Heroicon::OutlinedUser)
+                                                            ->weight('medium')
+                                                            ->getStateUsing(fn (AffiliationCorporateObservation $record): string => $record->createdBy?->name ?? (string) ($record->created_by ?? '—'))
+                                                            ->helperText(fn (AffiliationCorporateObservation $record): ?string => $record->createdBy?->email)
+                                                            ->placeholder('—'),
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),

@@ -26,6 +26,30 @@ it('expone la relación observationCommercialStructures en el infolist', functio
     expect($source)->toContain("RepeatableEntry::make('observationCommercialStructures')");
 });
 
+it('incluye un tab de documentos con definición y miniatura del documento de la agencia', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgencyInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain("Tab::make('Documentos')")
+        ->toContain("RepeatableEntry::make('documents')")
+        ->toContain("TextEntry::make('title')")
+        ->toContain("ImageEntry::make('document')")
+        ->toContain('self::documentIsImage($record->document)')
+        ->toContain('AgencyDocument $record');
+});
+
+it('usa el tab Bitácora de Observaciones ordenado por fecha descendente', function (): void {
+    $infolist = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgencyInfolist.php');
+    $model = file_get_contents(dirname(__DIR__, 2).'/app/Models/Agency.php');
+
+    expect($infolist)
+        ->toContain("Tab::make('Bitácora de Observaciones')")
+        ->toContain("Section::make('Bitácora de Observaciones')");
+
+    expect($model)->toContain("->orderByDesc('created_at')");
+});
+
 it('formatea fechas legadas d/m/Y con FilamentDateDisplay en lugar de TextEntry::date', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgencyInfolist.php';
     $source = file_get_contents($path);

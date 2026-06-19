@@ -2,18 +2,16 @@
 
 namespace App\Models;
 
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Model;
-use Filament\Notifications\Notification;
 use App\Jobs\SendEmailPropuestaEconomica;
 use App\Jobs\SendEmailPropuestaEconomicaMultiple;
-use App\Jobs\SendEmailPropuestaEconomicaPlanIdeal;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Jobs\SendEmailPropuestaEconomicaPlanEspecial;
+use App\Jobs\SendEmailPropuestaEconomicaPlanIdeal;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class IndividualQuote extends Model
 {
@@ -35,7 +33,7 @@ class IndividualQuote extends Model
         'owner_code',
         'owner_agent',
         'plan',
-        'ownerAccountManagers'
+        'ownerAccountManagers',
 
     ];
 
@@ -59,6 +57,11 @@ class IndividualQuote extends Model
         return $this->belongsTo(Agent::class);
     }
 
+    public function agency(): BelongsTo
+    {
+        return $this->belongsTo(Agency::class, 'code_agency', 'code');
+    }
+
     /**
      * Get all of the comments for the IndividualQuote
      *
@@ -71,8 +74,6 @@ class IndividualQuote extends Model
 
     /**
      * Get all of the comments for the IndividualQuote
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function detailsQuote(): HasMany
     {
@@ -81,8 +82,6 @@ class IndividualQuote extends Model
 
     /**
      * Get all of the comments for the IndividualQuote
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function statusLogs(): HasMany
     {
@@ -91,8 +90,6 @@ class IndividualQuote extends Model
 
     /**
      * The servicios that belong to the User
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
     public function benefit_individual_quotes(): BelongsToMany
     {
@@ -104,12 +101,12 @@ class IndividualQuote extends Model
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de los correos de propuesta economica
-     * 
-     * @return void
+     *
      * @author TuDrEnCasa
-     * 
-     * @param array $details
-     * -----------------------------------------------------------------
+     *
+     * @param  array  $details
+     *                          -----------------------------------------------------------------
+     * @return void
      */
     public function sendPropuestaEconomicaPlanInicial($details)
     {
@@ -166,14 +163,14 @@ class IndividualQuote extends Model
             }
 
             SendEmailPropuestaEconomicaMultiple::dispatch($collect_final, $details_generals, Auth::id());
-            //code...
+            // code...
         } catch (\Throwable $th) {
             dd($th);
         }
     }
-    /*------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------- */
 
-    //hasMany 
+    // hasMany
     public function bitacoras()
     {
         return $this->hasMany(Bitacora::class);

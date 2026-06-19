@@ -43,3 +43,41 @@ it('incluye el tab de planes asociados con detalle', function (): void {
         ->toContain("TextEntry::make('ageRange.range')")
         ->toContain("TextEntry::make('subtotal_monthly')");
 });
+
+it('incluye un tab con el documento del contratante', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateInfolist.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Tab::make('Documento del contratante')")
+        ->toContain("ImageEntry::make('document')")
+        ->toContain('->imageHeight(260)')
+        ->toContain('documentIsImage');
+});
+
+it('muestra unidad y linea de negocio en afiliados asociados del infolist corporativo', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateInfolist.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("TextEntry::make('businessUnit.definition')")
+        ->toContain("TextEntry::make('businessLine.definition')")
+        ->toContain("TableColumn::make('Unidad de negocio')")
+        ->toContain("TableColumn::make('Línea de servicio')")
+        ->toContain('affiliateBusinessContextColor')
+        ->toContain('AffiliateCorporate $record')
+        ->toContain('ViewRecord $livewire')
+        ->toContain("->weight('semibold')");
+});
+
+it('muestra las miniaturas de documento y documento ILS en afiliados corporativos', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateInfolist.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("TableColumn::make('Documento')")
+        ->toContain("TableColumn::make('Documento ILS')")
+        ->toContain("ImageEntry::make('document')")
+        ->toContain("ImageEntry::make('document_ils')")
+        ->toContain('->imageHeight(56)');
+});
