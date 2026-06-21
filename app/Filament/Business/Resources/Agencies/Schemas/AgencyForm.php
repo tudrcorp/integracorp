@@ -93,7 +93,7 @@ class AgencyForm
                                     ->icon('heroicon-o-squares-2x2')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
+                                        Grid::make(['default' => 1, 'lg' => 4])
                                             ->extraAttributes([
                                                 'class' => self::INNER_CARD,
                                             ])
@@ -114,10 +114,10 @@ class AgencyForm
                                                     ->options(fn (): array => AgencyType::query()->orderBy('definition')->pluck('definition', 'id')->all())
                                                     ->searchable()
                                                     ->live()
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->preload(),
                                                 Select::make('select_owner_code')
                                                     ->label('Jerarquía')
@@ -147,13 +147,12 @@ class AgencyForm
                                                     })
                                                     ->searchable()
                                                     ->live()
-                                                    ->preload()
-                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                    ->preload(),
                                                 Select::make('ownerAccountManagers')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->hidden(fn (): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true))
                                                     ->label('Account manager')
                                                     ->options(fn (): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
@@ -178,133 +177,35 @@ class AgencyForm
                                             ->schema([
                                                 TextInput::make('name_corporative')
                                                     ->label('Razón social')
-                                                    ->required()
+                                                    // ->required()
                                                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                                                         $set('name', strtoupper((string) $state));
                                                     })
                                                     ->live(onBlur: true)
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->maxLength(255),
                                                 TextInput::make('rif')
                                                     ->label('RIF')
                                                     ->prefix('J-')
-                                                    ->numeric()
-                                                    ->required()
-                                                    ->unique(
-                                                        table: Agency::class,
-                                                        column: 'rif'
-                                                    )
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                        'numeric' => 'El campo es numerico',
-                                                        'unique' => 'El rif ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
-                                                    ]),
-                                                TextInput::make('email')
-                                                    ->hiddenOn('edit')
-                                                    ->label('Correo electrónico')
-                                                    ->email()
-                                                    ->required()
-                                                    ->live(debounce: 700)
-                                                    ->afterStateUpdated(function (?string $state, ?Agency $record): void {
-                                                        if (! is_string($state) || blank($state)) {
-                                                            return;
-                                                        }
-
-                                                        if (self::hasDuplicatedEmail($state, $record?->id)) {
-                                                            Notification::make()
-                                                                ->title('Correo electrónico duplicado')
-                                                                ->body('El email ya existe en agencias, agentes, agencias de viaje, agentes de viaje o usuarios.')
-                                                                ->danger()
-                                                                ->send();
-                                                        }
-                                                    })
-                                                    ->rule(function (?Agency $record): Closure {
-                                                        return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
-                                                            if (! is_string($value) || blank($value)) {
-                                                                return;
-                                                            }
-
-                                                            if (self::hasDuplicatedEmail($value, $record?->id)) {
-                                                                $fail('El email ya se encuentra registrado en agencias, agentes, agencias de viaje, agentes de viaje o usuarios. Por favor intente con otro.');
-                                                            }
-                                                        };
-                                                    })
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                        'email' => 'El campo es un email',
-                                                    ])
-                                                    ->maxLength(255),
-
-                                                TextInput::make('name_representative')
-                                                    ->label('Nombre del representante')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ])
-                                                    ->maxLength(255)
-                                                    ->afterStateUpdatedJs(<<<'JS'
-                                                        $set('name_representative', $state.toUpperCase());
-                                                    JS),
-                                                TextInput::make('ci_responsable')
-                                                    ->label('Cédula del representante')
-                                                    ->prefix('V-')
-                                                    ->numeric()
-                                                    ->required()
-                                                    ->unique(
-                                                        ignoreRecord: true,
-                                                        table: 'agencies',
-                                                        column: 'ci_responsable',
-                                                    )
-                                                    ->validationMessages([
-                                                        'unique' => 'La cedula del responsable ya se encuentra registrado.',
-                                                        'required' => 'Campo requerido',
-                                                        'numeric' => 'El campo es numerico',
-                                                    ]),
-                                                DatePicker::make('brithday_date')
-                                                    ->label('Fecha de nacimiento del representante')
-                                                    ->format('d/m/Y')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ]),
-                                                DatePicker::make('anniversary_date')
-                                                    ->label('Fecha de aniversario de la agencia')
-                                                    ->format('d/m/Y')
-                                                    ->default(now()),
-                                                TextInput::make('address')
-                                                    ->label('Dirección')
-                                                    ->required()
-                                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
-                                                        $set('address', strtoupper((string) $state));
-                                                    })
-                                                    ->live(onBlur: true)
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ])
-                                                    ->maxLength(255)
-                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
-                                            ]),
-                                    ])
-                                    ->collapsible(),
-
-                                Section::make('Ubicación y contacto principal')
-                                    ->description('Teléfono, país, estado, ciudad y redes.')
-                                    ->icon('heroicon-o-map-pin')
-                                    ->extraAttributes(['class' => self::SECTION_CARD])
-                                    ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
-                                            ->extraAttributes([
-                                                'class' => self::INNER_CARD,
-                                            ])
-                                            ->schema([
-                                                Select::make('country_code')
+                                                    ->numeric(),
+                                                    // ->required()
+                                                    // ->unique(
+                                                    //     table: Agency::class,
+                                                    //     column: 'rif'
+                                                    // )
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    //     'numeric' => 'El campo es numerico',
+                                                    //     'unique' => 'El rif ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
+                                                    // ]),
+                                                    Select::make('country_code')
                                                     ->label('Código de país')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->options([
                                                         '+1' => '🇺🇸 +1 (Estados Unidos)',
                                                         '+44' => '🇬🇧 +44 (Reino Unido)',
@@ -386,10 +287,10 @@ class AgencyForm
                                                 TextInput::make('phone')
                                                     ->tel()
                                                     ->label('Número de teléfono')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo Requerido',
+                                                    // ])
                                                     ->live(onBlur: true)
                                                     ->afterStateUpdated(function ($state, callable $set, Get $get): void {
                                                         $countryCode = $get('country_code');
@@ -398,7 +299,92 @@ class AgencyForm
                                                             $set('phone', $countryCode.$cleanNumber);
                                                         }
                                                     }),
+                                                TextInput::make('email')
+                                                    ->hiddenOn('edit')
+                                                    ->label('Correo electrónico')
+                                                    ->email()
+                                                    // ->required()
+                                                    ->live(debounce: 700)
+                                                    ->afterStateUpdated(function (?string $state, ?Agency $record): void {
+                                                        if (! is_string($state) || blank($state)) {
+                                                            return;
+                                                        }
 
+                                                        if (self::hasDuplicatedEmail($state, $record?->id)) {
+                                                            Notification::make()
+                                                                ->title('Correo electrónico duplicado')
+                                                                ->body('El email ya existe en agencias, agentes, agencias de viaje, agentes de viaje o usuarios.')
+                                                                ->danger()
+                                                                ->send();
+                                                        }
+                                                    })
+                                                    ->rule(function (?Agency $record): Closure {
+                                                        return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                            if (! is_string($value) || blank($value)) {
+                                                                return;
+                                                            }
+
+                                                            if (self::hasDuplicatedEmail($value, $record?->id)) {
+                                                                $fail('El email ya se encuentra registrado en agencias, agentes, agencias de viaje, agentes de viaje o usuarios. Por favor intente con otro.');
+                                                            }
+                                                        };
+                                                    })
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    //     'email' => 'El campo es un email',
+                                                    // ])
+                                                    ->maxLength(255),
+
+                                                TextInput::make('name_representative')
+                                                    ->label('Nombre del representante')
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo Requerido',
+                                                    // ])
+                                                    ->maxLength(255)
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('name_representative', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('ci_responsable')
+                                                    ->label('Cédula del representante')
+                                                    ->prefix('V-')
+                                                    ->numeric(),
+                                                    // ->required()
+                                                    // ->unique(
+                                                    //     ignoreRecord: true,
+                                                    //     table: 'agencies',
+                                                    //     column: 'ci_responsable',
+                                                    // )
+                                                    // ->validationMessages([
+                                                    //     'unique' => 'La cedula del responsable ya se encuentra registrado.',
+                                                    //     'required' => 'Campo requerido',
+                                                    //     'numeric' => 'El campo es numerico',
+                                                    // ]),
+                                                DatePicker::make('brithday_date')
+                                                    ->label('Fecha de nacimiento del representante')
+                                                    ->format('d/m/Y'),
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo Requerido',
+                                                    // ]),
+                                                DatePicker::make('anniversary_date')
+                                                    ->label('Fecha de aniversario de la agencia')
+                                                    ->format('d/m/Y')
+                                                    ->default(now()),
+                                            ]),
+                                    ])
+                                    ->collapsible(),
+
+                                Section::make('Ubicación y contacto principal')
+                                    ->description('Teléfono, país, estado, ciudad y redes.')
+                                    ->icon('heroicon-o-map-pin')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
+                                            ->schema([
                                                 Fieldset::make('Dirección de la Agencia en Venezuela')
                                                     ->schema([
 
@@ -895,19 +881,19 @@ class AgencyForm
                                                     ->onColor('success'),
                                                 TextInput::make('commission_tdec')
                                                     ->label('Comisión TDEC US$')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->numeric(),
                                                 TextInput::make('commission_tdec_renewal')
                                                     ->label('Comisión renovación TDEC US$')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->numeric(),
