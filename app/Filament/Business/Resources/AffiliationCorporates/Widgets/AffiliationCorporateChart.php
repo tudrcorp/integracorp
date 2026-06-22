@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
 use App\Models\AffiliationCorporate;
@@ -45,7 +47,7 @@ class AffiliationCorporateChart extends ChartWidget
 
             Notification::make()
                 ->title("Detalle de Afiliados: {$payload['mes']} {$year}")
-                ->body("Mostrando el desglose diario de personas afiliadas.")
+                ->body('Mostrando el desglose diario de personas afiliadas.')
                 ->info()
                 ->send();
         } else {
@@ -79,8 +81,13 @@ class AffiliationCorporateChart extends ChartWidget
                 ->perDay()
                 ->count();
 
-            $labels = $data->map(fn(TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
-            $datasetLabel = 'Afiliados en ' . Carbon::create($year, $this->selectedMonth)->translatedMonth . " ({$year})";
+            $labels = $data->map(fn (TrendValue $value) => Carbon::parse($value->date)->format('d'))->toArray();
+            $monthLabel = ucfirst(
+                Carbon::create($year, $this->selectedMonth)
+                    ->locale(app()->getLocale())
+                    ->translatedFormat('F')
+            );
+            $datasetLabel = "Afiliados en {$monthLabel} ({$year})";
         } else {
             $startOfYear = Carbon::create($year)->startOfYear();
             $endOfYear = Carbon::create($year)->endOfYear();
@@ -105,7 +112,7 @@ class AffiliationCorporateChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => $datasetLabel,
-                    'data' => $data->map(fn(TrendValue $value) => (int) $value->aggregate)->toArray(),
+                    'data' => $data->map(fn (TrendValue $value) => (int) $value->aggregate)->toArray(),
                     'backgroundColor' => $backgroundColors,
                     'borderRadius' => 4,
                     'barPercentage' => 0.7,
