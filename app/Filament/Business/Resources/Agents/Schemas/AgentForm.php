@@ -202,34 +202,34 @@ class AgentForm
                                                     ->prefix('J-')
                                                     ->nullable()
                                                     ->numeric(),
-                                                    // ->requiredWithout('ci')
-                                                    // ->rule(function (?Agent $record): Closure {
-                                                    //     return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
-                                                    //         if (! is_string($value) && ! is_int($value)) {
-                                                    //             return;
-                                                    //         }
+                                                // ->requiredWithout('ci')
+                                                // ->rule(function (?Agent $record): Closure {
+                                                //     return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                //         if (! is_string($value) && ! is_int($value)) {
+                                                //             return;
+                                                //         }
 
-                                                    //         $normalizedRif = trim((string) $value);
+                                                //         $normalizedRif = trim((string) $value);
 
-                                                    //         if ($normalizedRif === '') {
-                                                    //             return;
-                                                    //         }
+                                                //         if ($normalizedRif === '') {
+                                                //             return;
+                                                //         }
 
-                                                    //         $agentQuery = Agent::query()->where('rif', $normalizedRif);
+                                                //         $agentQuery = Agent::query()->where('rif', $normalizedRif);
 
-                                                    //         if ($record !== null) {
-                                                    //             $agentQuery->whereKeyNot($record->id);
-                                                    //         }
+                                                //         if ($record !== null) {
+                                                //             $agentQuery->whereKeyNot($record->id);
+                                                //         }
 
-                                                    //         if ($agentQuery->exists() || Agency::query()->where('rif', $normalizedRif)->exists()) {
-                                                    //             $fail('El RIF ya se encuentra registrado en la tabla de agentes o agencias. Por favor intente con otro.');
-                                                    //         }
-                                                    //     };
-                                                    // })
-                                                    // ->validationMessages([
-                                                    //     'numeric' => 'El campo es numérico',
-                                                    //     'required_without' => 'Debe registrar RIF o cédula de identidad para continuar.',
-                                                    // ]),
+                                                //         if ($agentQuery->exists() || Agency::query()->where('rif', $normalizedRif)->exists()) {
+                                                //             $fail('El RIF ya se encuentra registrado en la tabla de agentes o agencias. Por favor intente con otro.');
+                                                //         }
+                                                //     };
+                                                // })
+                                                // ->validationMessages([
+                                                //     'numeric' => 'El campo es numérico',
+                                                //     'required_without' => 'Debe registrar RIF o cédula de identidad para continuar.',
+                                                // ]),
                                                 TextInput::make('ci')
                                                     ->label('Cédula de identidad')
                                                     ->prefix('V/E/C')
@@ -241,26 +241,25 @@ class AgentForm
                                                     //     column: 'ci',
                                                     // )
                                                     ->numeric(),
-                                                    // ->validationMessages([
-                                                    //     'required_without' => 'Debe registrar cédula de identidad o RIF para continuar.',
-                                                    //     'numeric' => 'El campo es numérico',
-                                                    //     'unique' => 'La cédula de identidad ya existe en la tabla de agentes. Por favor intente con otra',
-                                                    // ]),
+                                                // ->validationMessages([
+                                                //     'required_without' => 'Debe registrar cédula de identidad o RIF para continuar.',
+                                                //     'numeric' => 'El campo es numérico',
+                                                //     'unique' => 'La cédula de identidad ya existe en la tabla de agentes. Por favor intente con otra',
+                                                // ]),
                                                 Select::make('sex')
                                                     ->label('Sexo')
                                                     ->live()
-                                                    // ->required()
-                                                    // ->options([
-                                                    //     'MASCULINO' => 'MASCULINO',
-                                                    //     'FEMENINO' => 'FEMENINO',
-                                                    // ])
+                                                    ->options([
+                                                        'MASCULINO' => 'MASCULINO',
+                                                        'FEMENINO' => 'FEMENINO',
+                                                    ])
                                                     ->searchable()
                                                     ->validationMessages([
                                                         'required' => 'Campo requerido',
                                                     ])
                                                     ->preload(),
-                                                    Select::make('country_code')
-                                                    // ->required()
+                                                Select::make('country_code')
+                                                // ->required()
                                                     ->label('Código de país')
                                                     ->options([
                                                         '+1' => '🇺🇸 +1 (Estados Unidos)',
@@ -339,9 +338,9 @@ class AgentForm
                                                     ->searchable()
                                                     ->default('+58')
                                                     ->live(onBlur: true)
-                                                    // ->validationMessages([
-                                                    //     'required' => 'Campo requerido',
-                                                    // ])
+                                                // ->validationMessages([
+                                                //     'required' => 'Campo requerido',
+                                                // ])
                                                     ->hiddenOn('edit'),
                                                 TextInput::make('phone')
                                                     ->tel()
@@ -362,9 +361,9 @@ class AgentForm
                                                     ->label('Fecha de nacimiento')
                                                     // ->required()
                                                     ->displayFormat('d/m/Y'),
-                                                    // ->validationMessages([
-                                                    //     'required' => 'Campo requerido',
-                                                    // ]),
+                                                // ->validationMessages([
+                                                //     'required' => 'Campo requerido',
+                                                // ]),
                                                 DatePicker::make('company_init_date')
                                                     ->label('Fecha de ingreso')
                                                     ->displayFormat('d/m/Y')
@@ -389,7 +388,7 @@ class AgentForm
                                                     ])
                                                     ->maxLength(255)
                                                     ->hiddenOn('edit'),
-                                                
+
                                             ]),
                                     ])
                                     ->collapsible(),
@@ -404,7 +403,7 @@ class AgentForm
                                                 'class' => self::INNER_CARD,
                                             ])
                                             ->schema([
-                            
+
                                                 Fieldset::make('Dirección en Venezuela')
                                                     ->schema([
 
@@ -778,34 +777,34 @@ class AgentForm
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->numeric(),
-                                                    // ->validationMessages([
-                                                    //     'numeric' => 'Campo tipo numérico.',
-                                                    // ]),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                                 TextInput::make('commission_tdec_renewal')
                                                     ->label('Comisión renovación TDEC US$')
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->required()
                                                     ->numeric(),
-                                                    // ->validationMessages([
-                                                    //     'numeric' => 'Campo tipo numérico.',
-                                                    // ]),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                                 TextInput::make('commission_tdev')
                                                     ->label('Comisión TDEV US$')
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->numeric(),
-                                                    // ->validationMessages([
-                                                    //     'numeric' => 'Campo tipo numérico.',
-                                                    // ]),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                                 TextInput::make('commission_tdev_renewal')
                                                     ->label('Comisión renovación TDEV US$')
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->numeric(),
-                                                    // ->validationMessages([
-                                                    //     'numeric' => 'Campo tipo numérico.',
-                                                    // ]),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                             ]),
                                     ])
                                     ->collapsible(),
