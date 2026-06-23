@@ -64,9 +64,76 @@ class AffiliationBusinessDocumentsService
      *
      * @return array{documents: array<int, array{label: string, kind: string, filename: string, preview_url: string}>}
      */
+    public static function resolveCertificateAbsolutePath(Affiliation $record): ?string
+    {
+        $path = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+
+        return is_file($path) ? $path : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function titularTarjetaCandidateFilenames(Affiliation $record): array
+    {
+        $record->loadMissing('affiliates');
+
+        $candidates = [];
+
+        if (self::shouldGenerateLegacyTitularTarjeta($record)) {
+            $candidates[] = 'TAR-'.$record->code.'.pdf';
+        } else {
+            $titularCi = trim((string) $record->nro_identificacion_ti);
+            $titularAffiliate = $record->affiliates->first(
+                fn (Affiliate $affiliate): bool => strcasecmp(
+                    trim((string) $affiliate->nro_identificacion),
+                    $titularCi
+                ) === 0
+            );
+            $affiliate = $titularAffiliate ?? $record->affiliates->first();
+
+            if ($affiliate !== null) {
+                $candidates[] = 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf';
+            }
+        }
+
+        $legacyFilename = 'TAR-'.$record->code.'.pdf';
+        if (! in_array($legacyFilename, $candidates, true)) {
+            $candidates[] = $legacyFilename;
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function titularTarjetaCandidateAbsolutePaths(Affiliation $record): array
+    {
+        $directory = public_path('storage/tarjeta-afiliacion/');
+
+        return array_map(
+            fn (string $filename): string => $directory.$filename,
+            self::titularTarjetaCandidateFilenames($record),
+        );
+    }
+
+    public static function resolveTitularTarjetaAbsolutePath(Affiliation $record): ?string
+    {
+        foreach (self::titularTarjetaCandidateAbsolutePaths($record) as $path) {
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
     public static function regenerateCertificateAndTarjetas(Affiliation $record, ?int $userId, bool $notifyCertificate = false): array
     {
         $record->loadMissing(['affiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
+
+        self::purgeExistingGeneratedDocuments($record);
 
         $affiliateCount = $record->affiliates->count();
         $legacyTarjetaCount = self::shouldGenerateLegacyTitularTarjeta($record) ? 1 : 0;
@@ -185,6 +252,24 @@ class AffiliationBusinessDocumentsService
         }
 
         return ['documents' => $documents];
+    }
+
+    private static function purgeExistingGeneratedDocuments(Affiliation $record): void
+    {
+        $certificatePath = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+
+        if (is_file($certificatePath)) {
+            unlink($certificatePath);
+        }
+
+        $tarjetaDirectory = public_path('storage/tarjeta-afiliacion/');
+        $pattern = $tarjetaDirectory.'TAR-'.$record->code.'*.pdf';
+
+        foreach (glob($pattern) ?: [] as $tarjetaPath) {
+            if (is_file($tarjetaPath)) {
+                unlink($tarjetaPath);
+            }
+        }
     }
 
     private static function vigenciaHasta(?string $effectiveDate): string

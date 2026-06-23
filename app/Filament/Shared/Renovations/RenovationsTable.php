@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Shared\Renovations;
 
+use App\Http\Controllers\RenovationExportCsvController;
 use App\Models\Renovation;
 use App\Services\AcceptAffiliationRenovationsService;
 use App\Services\ManualRenovationAcceptanceOptions;
@@ -70,8 +71,9 @@ class RenovationsTable
         Table $table,
         string $renovationResourceClass,
         string $affiliationResourceClass,
+        ?string $exportRouteName = null,
     ): Table {
-        return $table
+        $table = $table
             ->heading('Renovaciones individuales')
             ->description('Compare el expediente vigente (columnas grises) con lo que quedará si acepta la renovación (columnas verdes). Priorice filas en rojo (retraso) y ámbar (período o negociación).')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
@@ -427,7 +429,7 @@ class RenovationsTable
                 Filter::make('urgencia')
                     ->label('Urgencia')
                     ->form([
-                        \Filament\Forms\Components\Select::make('nivel')
+                        Select::make('nivel')
                             ->label('Nivel')
                             ->options([
                                 'retraso' => 'Con retraso (días negativos)',
@@ -481,6 +483,35 @@ class RenovationsTable
                     self::acceptRenovationsBulkAction(),
                 ]),
             ]);
+
+        if ($exportRouteName !== null) {
+            $table = $table->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) use ($exportRouteName) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una renovación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = RenovationExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route($exportRouteName, ['token' => $token]);
+                        }),
+                ]),
+            ]);
+        }
+
+        return $table;
     }
 
     private static function acceptRenovationAction(): Action

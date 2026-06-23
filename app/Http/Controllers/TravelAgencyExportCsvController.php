@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TravelAgency;
+use App\Support\CsvExportStream;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -56,7 +57,7 @@ class TravelAgencyExportCsvController extends Controller
         $filename = 'agencias_de_viaje_'.now()->format('Y-m-d_His').'.csv';
 
         return new StreamedResponse(function () use ($ids, $headers): void {
-            $handle = fopen('php://output', 'w');
+            $handle = CsvExportStream::openOutput();
 
             if ($handle === false) {
                 return;

@@ -2,28 +2,28 @@
 
 namespace App\Filament\Master\Resources\Agents\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Agent;
-use App\Models\Agency;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Filament\Actions\BulkActionGroup;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Actions\DeleteBulkAction;
+use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Models\Agency;
+use App\Models\Agent;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
 
 class AgentsTable
 {
@@ -39,28 +39,34 @@ class AgentsTable
             $agency_list[$i] = $array_agency[$i]['code'];
         }
         array_push($agency_list, Auth::user()->code_agency);
-        
+
         return $table
             ->query(Agent::query()->whereIn('owner_code', $agency_list))
             ->defaultSort('id', 'desc')
             ->heading('AGENTES')
-            ->description('Lista de Agentes registrados en el sistema.')
+            ->description('Estructura comercial: secuencia jerárquica Agencia Master → Agencia General → Agente → Sub Agente.')
             ->columns([
 
-                TextColumn::make('id')
+                TextColumn::make('commercial_code_sequence')
                     ->label('Código')
-                    ->prefix('AGT-000')
-                    ->suffix(function (Agent $record) {
-                        $agency_type = Agency::where('code', $record->owner_code)->with('typeAgency')->first()->typeAgency->definition;
-                        if ($agency_type == 'GENERAL') {
-                            return ' -> GENERAL-' . $record->owner_code;
-                        }
-                        return;
-                    })
+                    ->getStateUsing(fn (Agent $record): string => CommercialHierarchyFlowchart::commercialCodeSequenceForAgent(
+                        $record,
+                        CommercialHierarchyFlowchart::VIEWER_MASTER,
+                    ))
                     ->badge()
-                    ->icon('heroicon-s-identification')
+                    ->icon(fn (Agent $record): string => (int) ($record->agent_type_id ?? 0) === 3
+                        ? 'heroicon-m-users'
+                        : 'heroicon-m-user')
                     ->color('warning')
-                    ->searchable(),
+                    ->wrap()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        $numericSearch = preg_replace('/\D/', '', $search) ?? '';
+
+                        return $query->when(
+                            $numericSearch !== '',
+                            fn (Builder $builder): Builder => $builder->where('id', 'like', "%{$numericSearch}%"),
+                        );
+                    }),
                 TextColumn::make('typeAgent.definition')
                     ->label('Tipo')
                     ->badge()
@@ -198,8 +204,6 @@ class AgentsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-
-
                 IconColumn::make('tdec')
                     ->label('TDEC')
                     ->boolean()
@@ -278,124 +282,124 @@ class AgentsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
                     }),
             ])
             ->filtersTriggerAction(
-                fn(Action $action) => $action
+                fn (Action $action) => $action
                     ->button()
                     ->label('Filtros'),
             )
             ->recordActions([
-            ActionGroup::make([
-                EditAction::make()
-                    ->color('warning'),
-                Action::make('Activate')
-                    ->hidden(function (Agent $record) {
-                        return $record->status == 'ACTIVO';
-                    })
-                    ->action(function (Agent $record) {
+                ActionGroup::make([
+                    EditAction::make()
+                        ->color('warning'),
+                    Action::make('Activate')
+                        ->hidden(function (Agent $record) {
+                            return $record->status == 'ACTIVO';
+                        })
+                        ->action(function (Agent $record) {
 
-                        try {
+                            try {
 
-                            if ($record->status == 'ACTIVO') {
+                                if ($record->status == 'ACTIVO') {
+                                    Notification::make()
+                                        ->title('AGENTE YA ACTIVADO')
+                                        ->body('El agente ya se encuentra activo.')
+                                        ->color('danger')
+                                        ->icon('heroicon-o-x-circle')
+                                        ->iconColor('danger')
+                                        ->send();
+
+                                    return true;
+                                }
+
+                                $record->status = 'ACTIVO';
+                                $record->save();
+
+                                LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
+
+                                // 4. creamos el usuario en la tabla users (AGENTES ASOCIADOS A LA AGENCIA GENERAL)
+                                $user = new User;
+                                $user->agent_id = $record->id;
+                                $user->name = $record->name;
+                                $user->email = $record->email;
+                                $user->password = Hash::make('12345678');
+                                $user->is_agent = true;
+                                $user->code_agency = Auth::user()->code_agency;
+                                $user->code_agent = 'AGT-000'.$record->id;
+                                $user->link_agent = env('APP_URL').'/at/lk/'.Crypt::encryptString($record->code_agent);
+                                $user->status = 'ACTIVO';
+                                $user->save();
+
+                                /**
+                                 * Notificacion por correo electronico
+                                 * CARTA DE BIENVENIDA
+                                 *
+                                 * @param  Agent  $record
+                                 */
+                                $record->sendCartaBienvenida($record->id, $record->name, $record->email);
+
+                                $phone = $record->phone;
+                                $email = $record->email;
+                                // $nofitication = NotificationController::agent_activated($phone, $email);
+
+                                // if ($nofitication['success'] == true) {
+                                //     Notification::make()
+                                //         ->title('AGENTE ACTIVADO')
+                                //         ->body('Notificacion de activacion enviada con exito.')
+                                //         ->icon('heroicon-s-check-circle')
+                                //         ->iconColor('success')
+                                //         ->color('success')
+                                //         ->send();
+                                // } else {
+                                //     Notification::make()
+                                //         ->title('AGENTE ACTIVADO')
+                                //         ->body('La notificacion de activacion no pudo ser enviada.')
+                                //         ->icon('heroicon-s-x-circle')
+                                //         ->iconColor('warning')
+                                //         ->color('warning')
+                                //         ->send();
+                                // }
+                            } catch (\Throwable $th) {
                                 Notification::make()
-                                    ->title('AGENTE YA ACTIVADO')
-                                    ->body('El agente ya se encuentra activo.')
-                                    ->color('danger')
-                                    ->icon('heroicon-o-x-circle')
-                                    ->iconColor('danger')
+                                    ->title('EXCEPCION')
+                                    ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('error')
+                                    ->color('error')
                                     ->send();
-
-                                return true;
                             }
-
-                            $record->status = 'ACTIVO';
-                            $record->save();
-
-                            LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
-
-                            //4. creamos el usuario en la tabla users (AGENTES ASOCIADOS A LA AGENCIA GENERAL)
-                            $user = new User();
-                            $user->agent_id = $record->id;
-                            $user->name = $record->name;
-                            $user->email = $record->email;
-                            $user->password = Hash::make('12345678');
-                            $user->is_agent = true;
-                            $user->code_agency = Auth::user()->code_agency;
-                            $user->code_agent = 'AGT-000' . $record->id;
-                            $user->link_agent = env('APP_URL') . '/at/lk/' . Crypt::encryptString($record->code_agent);
-                            $user->status = 'ACTIVO';
-                            $user->save();
-
-                            /**
-                             * Notificacion por correo electronico
-                             * CARTA DE BIENVENIDA
-                             * @param Agent $record
-                             */
-                            $record->sendCartaBienvenida($record->id, $record->name, $record->email);
-
-
-                            $phone = $record->phone;
-                            $email = $record->email;
-                            // $nofitication = NotificationController::agent_activated($phone, $email);
-
-                            // if ($nofitication['success'] == true) {
-                            //     Notification::make()
-                            //         ->title('AGENTE ACTIVADO')
-                            //         ->body('Notificacion de activacion enviada con exito.')
-                            //         ->icon('heroicon-s-check-circle')
-                            //         ->iconColor('success')
-                            //         ->color('success')
-                            //         ->send();
-                            // } else {
-                            //     Notification::make()
-                            //         ->title('AGENTE ACTIVADO')
-                            //         ->body('La notificacion de activacion no pudo ser enviada.')
-                            //         ->icon('heroicon-s-x-circle')
-                            //         ->iconColor('warning')
-                            //         ->color('warning')
-                            //         ->send();
-                            // }
-                        } catch (\Throwable $th) {
-                            Notification::make()
-                                ->title('EXCEPCION')
-                                ->body('Falla al realizar la activacion. Por favor comuniquese con el administrador.')
-                                ->icon('heroicon-s-x-circle')
-                                ->iconColor('error')
-                                ->color('error')
-                                ->send();
-                        }
-                    })
-                    ->icon('heroicon-s-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation(),
-                Action::make('Inactivate')
-                    ->hidden(function (Agent $record) {
-                        return $record->status == 'INACTIVO';
-                    })
-                    ->action(fn(Agent $record) => $record->update(['status' => 'INACTIVO']))
-                    ->icon('heroicon-s-x-circle')
-                    ->color('danger'),
-            ])
-                ->icon('heroicon-c-ellipsis-vertical')
-                ->color('azulOscuro')
+                        })
+                        ->icon('heroicon-s-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation(),
+                    Action::make('Inactivate')
+                        ->hidden(function (Agent $record) {
+                            return $record->status == 'INACTIVO';
+                        })
+                        ->action(fn (Agent $record) => $record->update(['status' => 'INACTIVO']))
+                        ->icon('heroicon-s-x-circle')
+                        ->color('danger'),
+                ])
+                    ->icon('heroicon-c-ellipsis-vertical')
+                    ->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

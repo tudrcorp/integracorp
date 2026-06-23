@@ -548,16 +548,29 @@
                     </div>
                     <button id="downloadSvgBtn" class="btn-alt" type="button">Descargar SVG</button>
                     <div class="field" style="margin-top: 12px;">
-                        <label for="associationPlan">Asociar QR a tarjeta del afiliado</label>
-                        <select id="associationPlan">
+                        <label for="associationPlanIndividual">Asociar QR a tarjeta — afiliados individuales</label>
+                        <select id="associationPlanIndividual">
                             <option value="">Seleccione un plan</option>
-                            <option value="INICIAL">Plan Inicial</option>
-                            <option value="IDEAL">Plan Ideal</option>
-                            <option value="ESPECIAL">Plan Especial</option>
+                            @foreach ($this->getIndividualQrPlanOptions() as $planId => $planLabel)
+                                <option value="{{ $planId }}">{{ $planLabel }}</option>
+                            @endforeach
                         </select>
                     </div>
-                    <button id="downloadAndAssociateBtn" class="btn-download" type="button">
-                        Aplicar QR a la tarjeta
+                    <button id="downloadAndAssociateIndividualBtn" class="btn-download" type="button">
+                        Aplicar QR a tarjetas individuales
+                    </button>
+
+                    <div class="field" style="margin-top: 16px;">
+                        <label for="associationPlanCorporate">Asociar QR a tarjeta — afiliados corporativos</label>
+                        <select id="associationPlanCorporate">
+                            <option value="">Seleccione un plan</option>
+                            @foreach ($this->getCorporateQrPlanOptions() as $planId => $planLabel)
+                                <option value="{{ $planId }}">{{ $planLabel }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button id="downloadAndAssociateCorporateBtn" class="btn-download" type="button">
+                        Aplicar QR a tarjetas corporativas
                     </button>
 
                     <p class="badge">
@@ -606,12 +619,15 @@
                     qrPreview: document.getElementById('qrPreview'),
                     downloadPngBtn: document.getElementById('downloadPngBtn'),
                     downloadSvgBtn: document.getElementById('downloadSvgBtn'),
-                    associationPlan: document.getElementById('associationPlan'),
-                    downloadAndAssociateBtn: document.getElementById('downloadAndAssociateBtn'),
+                    associationPlanIndividual: document.getElementById('associationPlanIndividual'),
+                    associationPlanCorporate: document.getElementById('associationPlanCorporate'),
+                    downloadAndAssociateIndividualBtn: document.getElementById('downloadAndAssociateIndividualBtn'),
+                    downloadAndAssociateCorporateBtn: document.getElementById('downloadAndAssociateCorporateBtn'),
                 };
 
                 let logoDataUrl = null;
-                const associateRoute = @js(route('business.affiliation-tarjeta-qr.associate-plan'));
+                const associateIndividualRoute = @js(route('business.affiliation-tarjeta-qr.associate-plan'));
+                const associateCorporateRoute = @js(route('business.affiliation-corporate-tarjeta-qr.associate-plan'));
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || @js(csrf_token());
 
                 function buildPayload() {
@@ -768,10 +784,10 @@
                     URL.revokeObjectURL(url);
                 }
 
-                async function associatePlanQr(plan, pngBlob) {
+                async function associatePlanQr(planId, pngBlob, associateRoute) {
                     const formData = new FormData();
-                    formData.append('plan', plan);
-                    formData.append('qr_image', pngBlob, 'qr-plan-' + plan.toLowerCase() + '.png');
+                    formData.append('plan_id', planId);
+                    formData.append('qr_image', pngBlob, 'qr-plan-' + planId + '.png');
 
                     const response = await fetch(associateRoute, {
                         method: 'POST',
@@ -809,21 +825,42 @@
                         console.error(error);
                     }
                 });
-                elements.downloadAndAssociateBtn.addEventListener('click', async () => {
+                elements.downloadAndAssociateIndividualBtn.addEventListener('click', async () => {
                     try {
                         const pngBlob = await buildQrBlob('png');
-                        const selectedPlan = elements.associationPlan.value.trim();
-                        if (selectedPlan === '') {
+                        const selectedPlanId = elements.associationPlanIndividual.value.trim();
+                        if (selectedPlanId === '') {
                             // eslint-disable-next-line no-alert
-                            alert('Selecciona un plan para asociar el QR.');
+                            alert('Selecciona un plan para asociar el QR a afiliados individuales.');
                             return;
                         }
-                        await associatePlanQr(selectedPlan, pngBlob);
+                        const selectedLabel = elements.associationPlanIndividual.options[elements.associationPlanIndividual.selectedIndex]?.text || selectedPlanId;
+                        await associatePlanQr(selectedPlanId, pngBlob, associateIndividualRoute);
                         // eslint-disable-next-line no-alert
-                        alert('Listo: el QR fue asociado correctamente al plan ' + selectedPlan + '.');
+                        alert('Listo: el QR fue asociado correctamente al plan ' + selectedLabel + ' para afiliados individuales.');
                     } catch (error) {
                         // eslint-disable-next-line no-alert
-                        alert('No se pudo completar la asociacion del QR. Intenta nuevamente.');
+                        alert('No se pudo completar la asociacion del QR para afiliados individuales. Intenta nuevamente.');
+                        console.error(error);
+                    }
+                });
+
+                elements.downloadAndAssociateCorporateBtn.addEventListener('click', async () => {
+                    try {
+                        const pngBlob = await buildQrBlob('png');
+                        const selectedPlanId = elements.associationPlanCorporate.value.trim();
+                        if (selectedPlanId === '') {
+                            // eslint-disable-next-line no-alert
+                            alert('Selecciona un plan para asociar el QR a afiliados corporativos.');
+                            return;
+                        }
+                        const selectedLabel = elements.associationPlanCorporate.options[elements.associationPlanCorporate.selectedIndex]?.text || selectedPlanId;
+                        await associatePlanQr(selectedPlanId, pngBlob, associateCorporateRoute);
+                        // eslint-disable-next-line no-alert
+                        alert('Listo: el QR fue asociado correctamente al plan ' + selectedLabel + ' para afiliados corporativos.');
+                    } catch (error) {
+                        // eslint-disable-next-line no-alert
+                        alert('No se pudo completar la asociacion del QR para afiliados corporativos. Intenta nuevamente.');
                         console.error(error);
                     }
                 });

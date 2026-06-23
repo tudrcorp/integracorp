@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\AffiliationCorporates\Pages\ViewAffiliationC
 use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
 use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
 use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\PaidMembershipCorporatesRelationManager;
+use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\StatusLogCorporateAffiliationsRelationManager;
 use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
 use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
 use App\Filament\Business\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
@@ -74,6 +75,7 @@ class AffiliationCorporateResource extends Resource
             AffiliationCorporatePlansRelationManager::class,
             CorporateAffiliatesRelationManager::class,
             PaidMembershipCorporatesRelationManager::class,
+            StatusLogCorporateAffiliationsRelationManager::class,
         ];
     }
 

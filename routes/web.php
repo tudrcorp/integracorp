@@ -160,6 +160,26 @@ Route::get('business/export-travel-agencies-csv', App\Http\Controllers\TravelAge
     ->middleware(['web', 'auth'])
     ->name('business.travel-agencies.export-csv');
 
+Route::get('business/export-corporate-quote-requests-csv', App\Http\Controllers\CorporateQuoteRequestExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.corporate-quote-requests.export-csv');
+
+Route::get('business/export-cities-csv', App\Http\Controllers\CityExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.cities.export-csv');
+
+Route::get('business/export-corporate-quotes-csv', App\Http\Controllers\CorporateQuoteExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.corporate-quotes.export-csv');
+
+Route::get('business/export-individual-quotes-csv', App\Http\Controllers\IndividualQuoteExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.individual-quotes.export-csv');
+
+Route::get('business/export-renovations-csv', App\Http\Controllers\RenovationExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.renovations.export-csv');
+
 Route::get('business/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.helpdesks.export-csv');
@@ -171,6 +191,10 @@ Route::get('administration/export-helpdesks-csv', App\Http\Controllers\HelpdeskE
 Route::get('operations/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('operations.helpdesks.export-csv');
+
+Route::get('operations/export-indicadores-de-desempeno-csv', App\Http\Controllers\IndicadoresDeDesempenoExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.indicadores-de-desempeno.export-csv');
 
 Route::get('marketing/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
@@ -378,6 +402,13 @@ Route::post('business/affiliations/tarjeta-qr/associate-plan', [
 ])
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-tarjeta-qr.associate-plan');
+
+Route::post('business/affiliation-corporates/tarjeta-qr/associate-plan', [
+    TarjetaAfiliacionController::class,
+    'associateCorporatePlanQr',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-tarjeta-qr.associate-plan');
 
 Route::post('business/affiliation-corporates/documents/regenerate-async/{affiliationCorporate}', [
     AffiliationCorporateBusinessDocumentsController::class,

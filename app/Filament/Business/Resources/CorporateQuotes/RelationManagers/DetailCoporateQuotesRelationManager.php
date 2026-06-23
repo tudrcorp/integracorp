@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CorporateQuotes\RelationManagers;
 
+use App\Support\Filament\CorporateQuotePlanAffiliatesDisplay;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Notifications\Notification;
@@ -41,10 +42,8 @@ class DetailCoporateQuotesRelationManager extends RelationManager
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
             ->columns([
-                TextColumn::make('plan.description')
-                    ->label('Plan')
+                CorporateQuotePlanAffiliatesDisplay::planColumn()
                     ->badge()
-                    ->color('primary')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('ageRange.range')
