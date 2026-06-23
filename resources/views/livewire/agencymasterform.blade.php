@@ -10,6 +10,7 @@ use Livewire\Attributes\Validate;
 use Illuminate\Validation\Rules\In;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
 use App\Http\Controllers\AgencyController;
 use App\Http\Controllers\NotificationController;
@@ -69,17 +70,25 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
                  * Generamos el código de la agencia
                  * ---------------------------------------------------
                  */
-                $code = AgencyController::generate_code_agency();
+                $create_agency = DB::transaction(function () {
+                    $identity = AgencyController::reserveNextAgencyIdentity();
 
+                    $create_agency = new Agency();
+                    $create_agency->id               = $identity['id'];
+                    $create_agency->owner_code       = AgencyController::resolveOwnerCodeForAgency(
+                        3,
+                        $identity['code'],
+                        $this->owner_code,
+                    );
+                    $create_agency->code             = $identity['code'];
+                    $create_agency->agency_type_id   = '3';
+                    $create_agency->name_corporative = $this->name;
+                    $create_agency->email            = $this->email;
+                    $create_agency->phone            = $this->phoneForStorage();
+                    $create_agency->save();
 
-                $create_agency = new Agency();
-                $create_agency->owner_code       = $this->owner_code;
-                $create_agency->code             = $code;
-                $create_agency->agency_type_id   = '3';
-                $create_agency->name_corporative = $this->name;
-                $create_agency->email            = $this->email;
-                $create_agency->phone            = $this->phoneForStorage();
-                $create_agency->save();
+                    return $create_agency;
+                });
 
                 /**
                  * Creamos el registro en la tabla de usuarios

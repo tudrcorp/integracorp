@@ -109,7 +109,7 @@ it('OperationCoordinationServicesTable enlaza a la página de gestión de ítems
         ->toContain('disableOptionWhen')
         ->toContain('manageServiceItemOptions')
         ->toContain('isManagementItemKeySelectable')
-        ->toContain('CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys');
+        ->toContain('CoordinationServiceItemsManager::shouldShowManageQuoteStep');
 });
 
 it('isManagementItemSelectable bloquea items en gestion o finalizados', function (): void {
@@ -344,4 +344,30 @@ it('OperationCoordinationServicesTable muestra linea y unidad de negocio del pac
         ->toContain('telemedicinePatient.businessLine')
         ->toContain('telemedicinePatient.businessUnit')
         ->not->toContain("TextColumn::make('businessLine.definition')");
+});
+
+it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coordinación sea gestionada por TDG', function (): void {
+    $noTdg = new \App\Models\OperationCoordinationService(['managed_by' => 'ATENMEDI']);
+    $tdg = new \App\Models\OperationCoordinationService(['managed_by' => 'TDG']);
+
+    expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true))->toBeFalse()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', true))->toBeFalse()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Medicamento', true))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue();
+});
+
+it('permite gestionar a TDG los items no cubiertos y los cubiertos de otras categorías sin reasignación', function (): void {
+    $noTdg = new \App\Models\OperationCoordinationService(['managed_by' => 'ATENMEDI']);
+
+    expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', false))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', null))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Estudio', true))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Especialista', true))->toBeTrue();
+});
+
+it('CoordinationServiceItemsManager aplica la regla TDG al construir items de medicamentos y laboratorios', function (): void {
+    $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
+
+    expect(substr_count($manager, "coveredItemIsManageableByTdg(\$record, 'Medicamento', \$coverage)"))->toBe(1)
+        ->and(substr_count($manager, "coveredItemIsManageableByTdg(\$record, 'Laboratorio', \$coverage)"))->toBe(1);
 });

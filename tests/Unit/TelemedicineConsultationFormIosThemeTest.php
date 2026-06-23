@@ -25,6 +25,37 @@ it('el formulario de consulta no oculta la asignación de servicio ni la priorid
         ->and($form)->not->toContain("hiddenOn('edit')");
 });
 
+it('el formulario de consulta agrega el select "Pertenece a?" con opciones fijas y el proveedor del doctor', function (): void {
+    $root = dirname(__DIR__, 2);
+    $form = file_get_contents(
+        $root.'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php'
+    );
+
+    expect($form)
+        ->toContain("Select::make('belongs_to')")
+        ->toContain("->label('Pertenece a?')")
+        ->toContain("'Diagnomovil' => 'Diagnomovil'")
+        ->toContain("'Centro Diagnostico 3 de Febrero' => 'Centro Diagnostico 3 de Febrero'")
+        ->toContain('->options($belongsToOptions)')
+        ->toContain('TelemedicineDoctor::with(\'supplier\')')
+        ->toContain('?->supplier?->name');
+});
+
+it('el modelo y la migración soportan la columna belongs_to en consultas de telemedicina', function (): void {
+    $root = dirname(__DIR__, 2);
+
+    expect(file_get_contents($root.'/app/Models/TelemedicineConsultationPatient.php'))
+        ->toContain("'belongs_to'");
+
+    $migration = file_get_contents(
+        $root.'/database/migrations/2026_06_22_105241_add_belongs_to_to_telemedicine_consultation_patients_table.php'
+    );
+
+    expect($migration)
+        ->toContain("Schema::hasColumn('telemedicine_consultation_patients', 'belongs_to')")
+        ->toContain("\$table->string('belongs_to')->nullable()");
+});
+
 it('el widget CaseStats usa contenedor iOS y el theme define sus tarjetas', function (): void {
     $root = dirname(__DIR__, 2);
     $theme = file_get_contents($root.'/resources/css/filament/admin/theme.css');

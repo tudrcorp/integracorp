@@ -12,11 +12,13 @@
             error: null,
             emailMessage: null,
             documents: [],
+            activeDocumentIndex: 0,
             optionalEmail: '',
             regenerateUrl: config.regenerateUrl,
             sendEmailUrl: config.sendEmailUrl,
             statusUrlTemplate: config.statusUrlTemplate || null,
             statusPollTimer: null,
+            pollIntervalMs: 3000,
             csrf() {
                 return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
             },
@@ -25,6 +27,39 @@
                     clearTimeout(this.statusPollTimer);
                     this.statusPollTimer = null;
                 }
+            },
+            hydrateDocuments(items) {
+                this.documents = (items || []).map((d) => {
+                    const raw = d.preview_url || '';
+                    const base = raw.split('#')[0];
+                    return {
+                        ...d,
+                        previewUrl: base ? `${base}#toolbar=1` : '',
+                    };
+                });
+                this.activeDocumentIndex = this.documents.length > 0 ? 0 : -1;
+            },
+            activeDocument() {
+                if (this.documents.length === 0) {
+                    return null;
+                }
+
+                if (this.activeDocumentIndex < 0 || this.activeDocumentIndex >= this.documents.length) {
+                    return this.documents[0];
+                }
+
+                return this.documents[this.activeDocumentIndex];
+            },
+            setActiveDocument(index) {
+                if (typeof index !== 'number') {
+                    return;
+                }
+
+                if (index < 0 || index >= this.documents.length) {
+                    return;
+                }
+
+                this.activeDocumentIndex = index;
             },
             formatEta(seconds) {
                 if (seconds === null || seconds === undefined) {
@@ -74,14 +109,7 @@
                         this.processedJobs = data.processed_jobs ?? this.processedJobs;
                         this.totalJobs = data.total_jobs ?? this.totalJobs;
                         this.etaSeconds = 0;
-                        this.documents = (data.documents || []).map((d) => {
-                            const raw = d.preview_url || '';
-                            const base = raw.split('#')[0];
-                            return {
-                                ...d,
-                                previewUrl: base ? `${base}#toolbar=1` : '',
-                            };
-                        });
+                        this.hydrateDocuments(data.documents || []);
                         this.regenerated = true;
                         this.loadingMessage = null;
                         this.stopPolling();
@@ -97,7 +125,7 @@
                     this.processedJobs = typeof data.processed_jobs === 'number' ? data.processed_jobs : this.processedJobs;
                     this.totalJobs = typeof data.total_jobs === 'number' ? data.total_jobs : this.totalJobs;
                     this.etaSeconds = data.eta_seconds ?? this.etaSeconds;
-                    this.statusPollTimer = setTimeout(pollOnce, 1500);
+                    this.statusPollTimer = setTimeout(pollOnce, this.pollIntervalMs);
                 };
 
                 await pollOnce();
@@ -112,6 +140,7 @@
                 this.processedJobs = null;
                 this.totalJobs = null;
                 this.etaSeconds = null;
+                this.activeDocumentIndex = 0;
                 this.stopPolling();
                 try {
                     const res = await fetch(this.regenerateUrl, {
@@ -134,14 +163,7 @@
                         return;
                     }
 
-                    this.documents = (data.documents || []).map((d) => {
-                        const raw = d.preview_url || '';
-                        const base = raw.split('#')[0];
-                        return {
-                            ...d,
-                            previewUrl: base ? `${base}#toolbar=1` : '',
-                        };
-                    });
+                    this.hydrateDocuments(data.documents || []);
                     this.regenerated = true;
                 } catch (e) {
                     this.error = e.message || 'Error al generar.';

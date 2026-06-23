@@ -49,4 +49,25 @@ return [
         'default_lng' => (float) env('GOOGLE_MAPS_DEFAULT_LNG', -66.9036),
     ],
 
+    'chat_agent_registration' => [
+        'portal_login_url' => env('CHAT_AGENT_PORTAL_URL', 'https://integracorp.tudrgroup.com/agents/login'),
+        'business_whatsapp_phone' => env('CHAT_BUSINESS_WHATSAPP_PHONE', '584127018390'),
+        'default_owner_code' => env('CHAT_AGENT_DEFAULT_OWNER_CODE', 'TDG-100'),
+    ],
+
+    'chat_agency_master_registration' => [
+        'portal_login_url' => env('CHAT_AGENCY_MASTER_PORTAL_URL', env('APP_URL', 'https://integracorp.test').'/master/login'),
+    ],
+
+    'chat_agency_general_registration' => [
+        'portal_login_url' => env('CHAT_AGENCY_GENERAL_PORTAL_URL', env('APP_URL', 'https://integracorp.test').'/general/login'),
+    ],
+
+    'chat_individual_quote' => [
+        'default_owner_code' => env('CHAT_INDIVIDUAL_QUOTE_DEFAULT_OWNER_CODE', 'TDG-100'),
+        'created_by_label' => env('CHAT_INDIVIDUAL_QUOTE_CREATED_BY', 'CHAT PUBLICO'),
+        'placeholder_email' => env('CHAT_INDIVIDUAL_QUOTE_PLACEHOLDER_EMAIL', 'cotizacion-chat@integracorp.local'),
+        'placeholder_phone' => env('CHAT_INDIVIDUAL_QUOTE_PLACEHOLDER_PHONE', '00000000000'),
+    ],
+
 ];

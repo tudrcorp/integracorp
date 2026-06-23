@@ -2479,6 +2479,7 @@ class NotificationController extends Controller
 
             $response = curl_exec($curl);
             $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
             curl_close($curl);
 
@@ -2492,6 +2493,15 @@ class NotificationController extends Controller
             }
 
             if (! self::whatsAppApiResponseSucceeded($response)) {
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('WHATSAPP CHAT: Mensaje enviado con éxito (HTTP 2xx).', [
+                        'phone' => $cleanPhone,
+                        'api_response' => $response,
+                    ]);
+
+                    return true;
+                }
+
                 Log::warning('WHATSAPP CHAT: API respondió con error.', [
                     'response' => $response,
                     'phone' => $cleanPhone,
@@ -2532,6 +2542,17 @@ class NotificationController extends Controller
                 Log::error('WHATSAPP DOC: El archivo no existe en la ruta especificada.', [
                     'path' => $filePath,
                     'file' => $filename,
+                    'phone' => $cleanPhone,
+                ]);
+
+                return false;
+            }
+
+            if (filesize($filePath) < 100) {
+                Log::error('WHATSAPP DOC: El archivo PDF está vacío o corrupto.', [
+                    'path' => $filePath,
+                    'file' => $filename,
+                    'size' => filesize($filePath),
                     'phone' => $cleanPhone,
                 ]);
 
@@ -2582,6 +2603,17 @@ class NotificationController extends Controller
             }
 
             if (! self::whatsAppApiResponseSucceeded($response)) {
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('WHATSAPP DOC: Documento enviado con éxito (HTTP 2xx).', [
+                        'phone' => $cleanPhone,
+                        'doc' => $filename,
+                        'document_url' => $documentUrl,
+                        'api_response' => $response,
+                    ]);
+
+                    return true;
+                }
+
                 Log::warning('WHATSAPP DOC: API respondió con error al enviar documento', [
                     'http_code' => $httpCode,
                     'response' => $response,
@@ -2783,13 +2815,13 @@ class NotificationController extends Controller
         return self::sendQuotePdfToAnalyst($phone, $code, $agent, 'Cotización Corporativa');
     }
 
-    private static function sendWhatsAppBrandImageCaption(string $phone, string $caption): bool
+    public static function sendIntegracorpBrandWhatsAppCaption(string $phone, string $caption): bool
     {
         try {
             $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
 
             if ($cleanPhone === null || $cleanPhone === '') {
-                Log::warning('COTIZACION-INDIVIDUAL: teléfono inválido para WhatsApp.', [
+                Log::warning('WHATSAPP BRAND: teléfono inválido para mensaje con imagen Integracorp.', [
                     'raw_phone' => $phone,
                 ]);
 
@@ -2829,7 +2861,7 @@ class NotificationController extends Controller
             curl_close($curl);
 
             if ($err) {
-                Log::error('COTIZACION-INDIVIDUAL: error de conexión cURL en WhatsApp.', [
+                Log::error('WHATSAPP BRAND: error de conexión cURL.', [
                     'error' => $err,
                     'phone' => $cleanPhone,
                 ]);
@@ -2838,7 +2870,17 @@ class NotificationController extends Controller
             }
 
             if (! self::whatsAppApiResponseSucceeded($response)) {
-                Log::warning('COTIZACION-INDIVIDUAL: API WhatsApp respondió con error.', [
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('WHATSAPP BRAND: mensaje enviado con éxito (HTTP 2xx).', [
+                        'phone' => $cleanPhone,
+                        'image' => WhatsAppBrandImage::publicUrl(),
+                        'api_response' => $response,
+                    ]);
+
+                    return true;
+                }
+
+                Log::warning('WHATSAPP BRAND: API respondió con error.', [
                     'http_code' => $httpCode,
                     'response' => $response,
                     'phone' => $cleanPhone,
@@ -2847,20 +2889,25 @@ class NotificationController extends Controller
                 return false;
             }
 
-            Log::info('COTIZACION-INDIVIDUAL: notificación WhatsApp enviada.', [
+            Log::info('WHATSAPP BRAND: mensaje con imagen Integracorp enviado.', [
                 'phone' => $cleanPhone,
                 'image' => WhatsAppBrandImage::publicUrl(),
             ]);
 
             return true;
         } catch (\Throwable $th) {
-            Log::error('COTIZACION-INDIVIDUAL: fallo al enviar imagen WhatsApp.', [
+            Log::error('WHATSAPP BRAND: fallo al enviar mensaje con imagen Integracorp.', [
                 'message' => $th->getMessage(),
                 'phone' => $phone,
             ]);
 
             return false;
         }
+    }
+
+    private static function sendWhatsAppBrandImageCaption(string $phone, string $caption): bool
+    {
+        return self::sendIntegracorpBrandWhatsAppCaption($phone, $caption);
     }
 
     private static function whatsAppApiResponseSucceeded(mixed $response): bool

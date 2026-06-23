@@ -41,4 +41,14 @@ describe('AffiliationCorporateBusinessDocumentsService', function () {
             ->and($chunks[2])->toHaveCount(2)
             ->and($chunks[0][0]['output_filename'])->toBe('TAR-CORP-001-1.pdf');
     });
+
+    it('recomienda tamano de lote dinamico para alto volumen', function (int $affiliatesCount, int $expectedChunkSize): void {
+        expect(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize($affiliatesCount))
+            ->toBe($expectedChunkSize);
+    })->with([
+        'lote pequeno' => [12, 5],
+        'lote medio' => [60, 10],
+        'lote grande' => [180, 20],
+        'lote masivo' => [320, 30],
+    ]);
 });

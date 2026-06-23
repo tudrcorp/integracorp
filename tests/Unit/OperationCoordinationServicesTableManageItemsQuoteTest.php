@@ -8,7 +8,7 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
     expect($form)
         ->toContain("Step::make('Cotización')")
         ->toContain('Obligatoria para ítems no cubiertos')
-        ->toContain('nonCoveredSelectedManagementItemKeys')
+        ->toContain('shouldShowManageQuoteStep')
         ->toContain('manage_service_non_covered_items_notice')
         ->toContain('manage_quote_line_items')
         ->toContain('unit_price_usd')

@@ -15,10 +15,10 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     use HandlesInternationalPhone;
 
     public string $owner_code;
-    
+
     #[Validate('required', message: 'Campo requerido')]
     public string $name;
-    
+
     public string $type_doc;
 
     #[Validate('required', message: 'Debes ingresar un correo electrónico!')]
@@ -30,7 +30,7 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     #[Validate('min:8', message: 'La contraseña debe tener al menos 8 caracteres!')]
     #[Validate('confirmed', message: 'Las contraseñas no coinciden, por favor verifica y intenta nuevamente!')]
     public string $password;
-    
+
     public string $password_confirmation;
 
     public function mount($code = null)
@@ -39,66 +39,49 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
         $this->owner_code = $code_decrypted;
     }
 
-    /**
-     * Handle an incoming registration request.
-     */
     public function register(): void
     {
+        $validated = $this->validate(array_merge([
+            'name' => 'required',
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
+            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+        ], $this->internationalPhoneValidationRules()));
 
-            $validated = $this->validate(array_merge([
-                'name' => 'required',
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
-                'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-            ], $this->internationalPhoneValidationRules()));
+        $validated['password'] = Hash::make($validated['password']);
 
-            $validated['password'] = Hash::make($validated['password']);
+        $create_agent = new Agent();
+        $create_agent->owner_code = $this->owner_code;
+        $create_agent->agent_type_id = 2;
+        $create_agent->name = $this->name;
+        $create_agent->email = $this->email;
+        $create_agent->phone = $this->phoneForStorage();
+        $create_agent->status = 'ACTIVO';
+        $create_agent->save();
 
-            /**
-             * Creamos el agente
-             * y cargamos la informacion previa en la tabla de agent
-             */
-            $create_agent = new Agent();
-            $create_agent->owner_code       = $this->owner_code;
-            $create_agent->agent_type_id    = 2;
-            $create_agent->name             = $this->name;
-            $create_agent->email            = $this->email;
-            $create_agent->phone            = $this->phoneForStorage();
-            $create_agent->status           = 'ACTIVO';
-            $create_agent->save();
+        $create_user = new User();
+        $create_user->code_agent = 'AGT-000'.$create_agent->id;
+        $create_user->agent_id = $create_agent->id;
+        $create_user->code_agency = $create_agent->owner_code;
+        $create_user->is_agent = true;
+        $create_user->name = strtoupper($this->name);
+        $create_user->email = $this->email;
+        $create_user->password = $validated['password'];
+        $create_user->link_agent = config('app.url').'/agent/c/'.Crypt::encryptString($create_agent->id);
+        $create_user->status = 'ACTIVO';
+        $create_user->save();
 
-            /**
-             * Creamos el registro en la tabla de usuarios
-             */
-            $create_user = new User();
-            $create_user->code_agent        = 'AGT-000' . $create_agent->id;
-            $create_user->agent_id          = $create_agent->id;
-            $create_user->code_agency       = $create_agent->owner_code;
-            $create_user->is_agent          = true;
-            $create_user->name              = strtoupper($this->name);
-            $create_user->email             = $this->email;
-            $create_user->password          = $validated['password'];
-            $create_user->link_agent        = env('APP_URL') . '/agent/c/' . Crypt::encryptString($create_agent->id);
-            $create_user->status            = 'ACTIVO';
-            $create_user->save();
+        $create_agent->sendCartaBienvenida($create_agent->id, $create_agent->name, $create_agent->email, $this->password);
 
-        /**
-         * Notificacion por correo electronico
-         * CARTA DE BIENVENIDA
-         * @param Agent $record
-         */
-            $create_agent->sendCartaBienvenida($create_agent->id, $create_agent->name, $create_agent->email, $this->password);
+        Notification::make()
+            ->title('AGENTE REGISTRADO')
+            ->body('BIENVENIDO A INTEGRACORP! Registro exitoso!.')
+            ->icon('heroicon-m-user-plus')
+            ->iconColor('success')
+            ->success()
+            ->seconds(5)
+            ->send();
 
-            Notification::make()
-                ->title('AGENTE REGISTRADO')
-                ->body('BIENVENIDO A INTEGRACORP! Registro exitoso!.')
-                ->icon('heroicon-m-user-plus')
-                ->iconColor('success')
-                ->success()
-                ->seconds(5)
-                ->send();
-
-            $this->redirect(route('filament.agents.auth.login'));
-        
+        $this->redirect(route('filament.agents.auth.login'));
     }
 }; ?>
 
@@ -106,26 +89,21 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
     <x-auth-header :title="__('Registro de Agentes')" :description="__('Todos los campos son requeridos')" />
 
-    <!-- Session Status -->
     <x-auth-session-status class="text-center" :status="session('status')" />
 
     <form wire:submit="register" class="flex flex-col gap-6">
-        <!-- Name -->
         <flux:input input icon="user" wire:model="name" :label="__('Nombre y Apellido')" type="text" autofocus
             autocomplete="fill_name" placeholder="Nombre Apellido"
             oninput="this.value = this.value.replace(/[^a-zA-Z\sáéíóúÁÉÍÓÚÑñ]/g, '')" />
 
-        <!-- Email Address -->
         <flux:input input icon="at-symbol" wire:model="email" :label="__('Correo Electrónico')" type="email"
             autocomplete="email" placeholder="email@example.com" />
 
         @include('components.auth-phone-field')
 
-        <!-- Password -->
         <flux:input input icon="key" wire:model="password" :label="__('Contraseña')" type="password"
             autocomplete="new-password" :placeholder="__('Contraseña')" viewable />
 
-        <!-- Confirm Password -->
         <flux:input input icon="key" wire:model="password_confirmation" :label="__('Confirmar Contraseña')"
             type="password" autocomplete="new-password" :placeholder="__('Confirmar Contraseña')" viewable />
 
@@ -135,9 +113,4 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
             </flux:button>
         </div>
     </form>
-
-    <!-- <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
-        {{ __('Ya tienes una cuenta registrada en INTEGRACORP?') }}
-        <flux:link :href="route('filament.agents.auth.login')" wire:navigate>{{ __('Log in') }}</flux:link>
-    </div> -->
 </div>

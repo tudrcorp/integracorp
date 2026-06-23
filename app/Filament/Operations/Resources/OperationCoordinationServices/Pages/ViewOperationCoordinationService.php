@@ -41,6 +41,7 @@ class ViewOperationCoordinationService extends ViewRecord
                 ->icon('heroicon-o-paper-clip')
                 ->color('warning')
                 ->button()
+                ->visible(fn (): bool => $this->coordinationIsEnGestion())
                 ->extraAttributes([
                     'x-on:click.stop' => '',
                     'class' => self::INFO_BUTTON_CLASS,
@@ -168,6 +169,11 @@ class ViewOperationCoordinationService extends ViewRecord
                 ])
                 ->url(OperationCoordinationServiceResource::getUrl()),
         ];
+    }
+
+    private function coordinationIsEnGestion(): bool
+    {
+        return mb_strtoupper(trim((string) $this->getRecord()->status)) === 'EN GESTION';
     }
 
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
