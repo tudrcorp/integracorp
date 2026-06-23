@@ -6,6 +6,7 @@ namespace App\Support\Operations;
 
 use App\Models\DoctorNurse;
 use App\Models\Supplier;
+use Closure;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
@@ -29,7 +30,7 @@ final class OperationServiceOrderProviderFormFields
      *
      * @return array<int, mixed>
      */
-    public static function selectionComponents(): array
+    public static function selectionComponents(?Closure $toggleAfterStateUpdated = null): array
     {
         return [
             Placeholder::make('provider_selection_hint')
@@ -89,15 +90,15 @@ final class OperationServiceOrderProviderFormFields
                 ])
                 ->columnSpanFull(),
 
-            OperationServiceOrderUnregisteredProviderFormFields::registerToggle(),
+            OperationServiceOrderUnregisteredProviderFormFields::registerToggle($toggleAfterStateUpdated),
         ];
     }
 
     /**
      * @return array<int, mixed>
      */
-    public static function components(): array
+    public static function components(?Closure $toggleAfterStateUpdated = null): array
     {
-        return self::selectionComponents();
+        return self::selectionComponents($toggleAfterStateUpdated);
     }
 }

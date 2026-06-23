@@ -25,6 +25,7 @@ use App\Http\Controllers\Operations\OperationCoordinationClinicDocumentDownloadC
 use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\OperationServiceOrderPdfController;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\PublicChatController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
 use App\Http\Controllers\TarjetaAfiliacionController;
@@ -459,6 +460,7 @@ Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}/{type?}', 'agencyformcreate')->name('volt.agency.create');
 Volt::route('/m/o/c/{code?}', 'agencymasterform')->name('master.organization.create');
 Volt::route('/d/c', 'doctorFormCreate')->name('volt.doctor.create');
+Volt::route('/chat/publico', 'volt.public.ai_chat')->name('volt.public.ai_chat');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
@@ -1765,6 +1767,27 @@ Route::prefix('api')->name('api.')->group(function () {
      */
     Route::post('/info/store', [BusinessAppointmentsController::class, 'store'])
         ->name('info.store');
+
+    Route::post('/public-chat/session', [PublicChatController::class, 'session'])
+        ->name('public-chat.session');
+
+    Route::post('/public-chat/message', [PublicChatController::class, 'message'])
+        ->name('public-chat.message');
+
+    Route::get('/public-chat/history', [PublicChatController::class, 'history'])
+        ->name('public-chat.history');
+
+    Route::post('/internal/chat/agent-registration', [\App\Http\Controllers\Internal\ChatAgentRegistrationController::class, 'store'])
+        ->name('internal.chat.agent-registration');
+
+    Route::post('/internal/chat/agency-master-registration', [\App\Http\Controllers\Internal\ChatAgencyMasterRegistrationController::class, 'store'])
+        ->name('internal.chat.agency-master-registration');
+
+    Route::post('/internal/chat/agency-general-registration', [\App\Http\Controllers\Internal\ChatAgencyGeneralRegistrationController::class, 'store'])
+        ->name('internal.chat.agency-general-registration');
+
+    Route::post('/internal/chat/individual-quote', [\App\Http\Controllers\Internal\ChatIndividualQuoteController::class, 'store'])
+        ->name('internal.chat.individual-quote');
 });
 
 /**

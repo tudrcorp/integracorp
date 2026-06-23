@@ -15,6 +15,7 @@ class TelemedicineConsultationPatient extends Model
         'telemedicine_doctor_id',
         'telemedicine_service_list_id',
         'telemedicine_priority_id',
+        'belongs_to',
         'code_reference',
         'full_name',
         'nro_identificacion',

@@ -39,6 +39,9 @@
                 <a href="{{ route('volt.agent.create') }}" class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] bg-[#0064a1] border-[#19140035] hover:bg-[#529471] border text-white dark:border-[#3E3E3A] dark:hover:border-[#62605b] rounded-xl text-sm leading-normal">
                     REGISTRAR AGENTE
                 </a>
+                <a href="{{ route('volt.public.ai_chat') }}" class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] bg-[#093A67] border-[#19140035] hover:bg-[#1D5F94] border text-white dark:border-[#3E3E3A] dark:hover:border-[#62605b] rounded-xl text-sm leading-normal">
+                    CHAT IA
+                </a>
             </nav>
         </div>
     </div>

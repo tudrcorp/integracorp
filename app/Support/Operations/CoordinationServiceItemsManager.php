@@ -75,6 +75,32 @@ final class CoordinationServiceItemsManager
         return ! in_array(mb_strtoupper(trim($status)), ['EN GESTION', 'FINALIZADO'], true);
     }
 
+    public static function coordinationIsManagedByTdg(OperationCoordinationService $record): bool
+    {
+        return mb_strtoupper(trim((string) $record->managed_by)) === 'TDG';
+    }
+
+    /**
+     * Los medicamentos y laboratorios cubiertos son responsabilidad del proveedor.
+     * El equipo TDG puede verlos, pero solo gestionarlos cuando el analista del
+     * proveedor reasigna el servicio a TDG (managed_by = 'TDG').
+     */
+    public static function coveredItemIsManageableByTdg(
+        OperationCoordinationService $record,
+        string $category,
+        ?bool $coverage
+    ): bool {
+        if ($coverage !== true) {
+            return true;
+        }
+
+        if (! in_array($category, ['Medicamento', 'Laboratorio'], true)) {
+            return true;
+        }
+
+        return self::coordinationIsManagedByTdg($record);
+    }
+
     public static function hasManageServiceItems(OperationCoordinationService $record): bool
     {
         return self::associatedServiceItemsForManagement($record)->isNotEmpty();
@@ -115,7 +141,7 @@ final class CoordinationServiceItemsManager
             ->orderBy('id')
             ->with('operationInventory:id,is_covered')
             ->get(['id', 'medicine', 'indications', 'status', 'is_covered', 'operation_inventory_id'])
-            ->each(function (TelemedicinePatientMedications $item) use ($items): void {
+            ->each(function (TelemedicinePatientMedications $item) use ($items, $record): void {
                 $coverage = self::coverageValue('MEDICAMENTOS', $item);
                 $items->push([
                     'key' => 'medication:'.$item->id,
@@ -125,14 +151,15 @@ final class CoordinationServiceItemsManager
                     'coverage' => $coverage,
                     'coverage_label' => self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
-                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? '')),
+                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
+                        && self::coveredItemIsManageableByTdg($record, 'Medicamento', $coverage),
                 ]);
             });
 
         $record->telemedicinePatientLabs()
             ->orderBy('id')
             ->get(['id', 'laboratory', 'type', 'status'])
-            ->each(function (TelemedicinePatientLab $item) use ($items): void {
+            ->each(function (TelemedicinePatientLab $item) use ($items, $record): void {
                 $coverage = self::coverageValue('LABORATORIOS', $item);
                 $items->push([
                     'key' => 'lab:'.$item->id,
@@ -142,7 +169,8 @@ final class CoordinationServiceItemsManager
                     'coverage' => $coverage,
                     'coverage_label' => self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
-                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? '')),
+                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
+                        && self::coveredItemIsManageableByTdg($record, 'Laboratorio', $coverage),
                 ]);
             });
 
@@ -388,7 +416,8 @@ final class CoordinationServiceItemsManager
         $expected = self::buildManageQuoteLineItemsDefault(
             $record,
             $get('managed_service_item_keys'),
-            $existing
+            $existing,
+            (bool) $get('register_unregistered_provider')
         );
 
         if ($expected === []) {
@@ -441,6 +470,30 @@ final class CoordinationServiceItemsManager
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    public static function sumItemsUnitPriceUsd(array $items): ?float
+    {
+        $sum = 0.0;
+        $hasPrice = false;
+
+        foreach ($items as $item) {
+            $unitUsd = OperationCoordinationServicesTable::decimalOrNull(
+                is_array($item) ? ($item['unit_price_usd'] ?? null) : null
+            );
+
+            if ($unitUsd === null) {
+                continue;
+            }
+
+            $hasPrice = true;
+            $sum += $unitUsd;
+        }
+
+        return $hasPrice ? round($sum, 2) : null;
+    }
+
+    /**
      * @param  array<int, string>  $selectedKeys
      * @param  array<int, array<string, mixed>>  $existingLineItems
      * @return array<int, array<string, mixed>>
@@ -448,15 +501,16 @@ final class CoordinationServiceItemsManager
     public static function buildManageQuoteLineItemsDefault(
         OperationCoordinationService $record,
         mixed $selectedKeys,
-        array $existingLineItems = []
+        array $existingLineItems = [],
+        bool $registerUnregisteredProvider = false
     ): array {
-        $nonCoveredKeys = self::nonCoveredSelectedManagementItemKeys($record, $selectedKeys);
+        $quoteKeys = self::quoteSelectedManagementItemKeys($record, $selectedKeys, $registerUnregisteredProvider);
         $existingByKey = collect($existingLineItems)
             ->filter(fn (mixed $row): bool => is_array($row) && filled($row['key'] ?? null))
             ->keyBy(fn (array $row): string => (string) $row['key']);
 
         return self::associatedServiceItemsForManagement($record)
-            ->filter(fn (array $item): bool => in_array($item['key'], $nonCoveredKeys, true))
+            ->filter(fn (array $item): bool => in_array($item['key'], $quoteKeys, true))
             ->map(function (array $item) use ($existingByKey): array {
                 $existing = $existingByKey->get($item['key']);
                 $unitUsd = OperationCoordinationServicesTable::decimalOrNull($existing['unit_price_usd'] ?? null);
@@ -1049,7 +1103,7 @@ final class CoordinationServiceItemsManager
                     .'onclick="event.stopPropagation();">'
                     .e($orderNumber)
                     .'</a>';
-            } elseif ($item['coverage'] === false) {
+            } else {
                 $quoteLink = $quoteLinks[(string) ($item['key'] ?? '')] ?? null;
                 $quoteNumber = is_array($quoteLink) ? trim((string) ($quoteLink['quote_number'] ?? '')) : '';
 
@@ -1073,7 +1127,7 @@ final class CoordinationServiceItemsManager
             $tooltip = $label.' · '.$item['coverage_label'].' · '.$displayStatus;
             if ($orderNumber !== '') {
                 $tooltip .= ' · '.$orderNumber;
-            } elseif ($item['coverage'] === false) {
+            } else {
                 $quoteLink = $quoteLinks[(string) ($item['key'] ?? '')] ?? null;
                 $quoteNumber = is_array($quoteLink) ? trim((string) ($quoteLink['quote_number'] ?? '')) : '';
                 if ($quoteNumber !== '') {
@@ -1231,6 +1285,30 @@ final class CoordinationServiceItemsManager
     }
 
     /**
+     * Claves que deben cotizarse: siempre las no cubiertas y, cuando el analista
+     * tramita con un proveedor no convenido, también las cubiertas (para generar
+     * la cotización y su cuenta por pagar con un proveedor fuera de convenio).
+     *
+     * @return array<int, string>
+     */
+    public static function quoteSelectedManagementItemKeys(
+        OperationCoordinationService $record,
+        mixed $selectedKeys,
+        bool $registerUnregisteredProvider = false
+    ): array {
+        $keys = self::nonCoveredSelectedManagementItemKeys($record, $selectedKeys);
+
+        if ($registerUnregisteredProvider) {
+            $keys = array_values(array_unique(array_merge(
+                $keys,
+                self::coveredSelectedManagementItemKeys($record, $selectedKeys)
+            )));
+        }
+
+        return $keys;
+    }
+
+    /**
      * @param  array<int, string>  $keys
      */
     public static function resolveServiceOrderTypeFromManagementKeys(array $keys): ?string
@@ -1312,6 +1390,64 @@ final class CoordinationServiceItemsManager
         return self::resolveServiceOrderTypeFromManagementKeys($coveredKeys) !== null;
     }
 
+    /**
+     * Claves que se cotizan en el paso de Cotización del asistente (no cubiertas
+     * siempre y cubiertas cuando se tramita con un proveedor no convenido).
+     *
+     * @return array<int, string>
+     */
+    /**
+     * Los ítems cubiertos solo se cotizan (cotización -> aprobación -> orden + cuenta por pagar)
+     * cuando el proveedor no convenido es jurídico, ya que la cotización solo referencia un
+     * proveedor jurídico (supplier_id). Para proveedor natural se mantiene la orden directa.
+     */
+    public static function coveredQuotedViaUnregisteredProvider(Get $get): bool
+    {
+        return (bool) $get('register_unregistered_provider')
+            && mb_strtolower(trim((string) $get('unregistered_provider_type'))) === 'juridico';
+    }
+
+    public static function manageQuoteStepItemKeys(OperationCoordinationService $record, Get $get): array
+    {
+        return self::quoteSelectedManagementItemKeys(
+            $record,
+            $get('managed_service_item_keys'),
+            self::coveredQuotedViaUnregisteredProvider($get)
+        );
+    }
+
+    public static function rebuildManageQuoteLineItems(OperationCoordinationService $record, Get $get, Set $set): void
+    {
+        $set('manage_quote_line_items', self::buildManageQuoteLineItemsDefault(
+            $record,
+            $get('managed_service_item_keys'),
+            (array) ($get('manage_quote_line_items') ?? []),
+            self::coveredQuotedViaUnregisteredProvider($get)
+        ));
+
+        self::syncManageQuoteAggregates($get, $set);
+    }
+
+    public static function shouldShowManageQuoteStep(OperationCoordinationService $record, Get $get): bool
+    {
+        return self::manageQuoteStepItemKeys($record, $get) !== [];
+    }
+
+    public static function manageQuoteStepResolvedType(OperationCoordinationService $record, Get $get): ?string
+    {
+        return self::resolveServiceOrderTypeFromManagementKeys(self::manageQuoteStepItemKeys($record, $get));
+    }
+
+    public static function shouldShowManageQuoteSupplierSelect(OperationCoordinationService $record, Get $get): bool
+    {
+        return self::nonCoveredSelectedManagementItemKeys($record, $get('managed_service_item_keys')) !== [];
+    }
+
+    public static function manageServiceQuoteItemsTable(OperationCoordinationService $record, Get $get): HtmlString
+    {
+        return self::manageServiceSelectedItemsTable($record, self::manageQuoteStepItemKeys($record, $get));
+    }
+
     public static function save(OperationCoordinationService $record, array $data): bool
     {
         $selectedKeys = array_values(array_filter(
@@ -1333,8 +1469,12 @@ final class CoordinationServiceItemsManager
         $nonCoveredKeys = self::nonCoveredSelectedManagementItemKeys($record, $selectedKeys);
         $serviceOrderType = self::resolveServiceOrderTypeFromManagementKeys($coveredKeys);
         $quoteType = self::resolveServiceOrderTypeFromManagementKeys($nonCoveredKeys);
+        $registerUnregistered = (bool) ($data['register_unregistered_provider'] ?? false);
+        $coveredQuoteViaUnregistered = $registerUnregistered
+            && mb_strtolower(trim((string) ($data['unregistered_provider_type'] ?? ''))) === 'juridico';
         $shouldCreateServiceOrder = $coveredKeys !== [] && $serviceOrderType !== null;
         $shouldCreateQuote = $nonCoveredKeys !== [] && $quoteType !== null;
+        $shouldCreateCoveredQuote = $coveredQuoteViaUnregistered && $coveredKeys !== [] && $serviceOrderType !== null;
 
         if ($coveredKeys !== [] && $serviceOrderType === null) {
             Notification::make()
@@ -1388,6 +1528,54 @@ final class CoordinationServiceItemsManager
             $bcvRate = OperationCoordinationServicesTable::decimalOrNull($data['manage_quote_bcv_rate'] ?? null);
 
             if ($bcvRate === null || $bcvRate <= 0) {
+                Notification::make()
+                    ->title('Cotización')
+                    ->body('No fue posible obtener una tasa BCV válida. Intente nuevamente.')
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+        }
+
+        $coveredQuoteItemsPayload = [];
+
+        if ($shouldCreateCoveredQuote) {
+            $providerError = OperationServiceOrderProviderSelection::validationMessage($data);
+
+            if ($providerError !== null) {
+                Notification::make()
+                    ->title('Proveedor no convenido')
+                    ->body($providerError)
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+
+            $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
+
+            if ($lineItems === []) {
+                $lineItems = self::buildManageQuoteLineItemsDefault($record, $selectedKeys, [], true);
+                $data['manage_quote_line_items'] = $lineItems;
+            }
+
+            $coveredQuoteItemsPayload = self::buildManageQuoteItemsPayload($record, $coveredKeys, $lineItems);
+            $coveredCostoUsd = self::sumItemsUnitPriceUsd($coveredQuoteItemsPayload);
+
+            if ($coveredCostoUsd === null || $coveredCostoUsd <= 0) {
+                Notification::make()
+                    ->title('Cotización')
+                    ->body('Indique el precio unitario en dólares (mayor a cero) para cada ítem cubierto que se tramita con el proveedor no convenido.')
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+
+            $coveredBcvRate = OperationCoordinationServicesTable::decimalOrNull($data['manage_quote_bcv_rate'] ?? null);
+
+            if ($coveredBcvRate === null || $coveredBcvRate <= 0) {
                 Notification::make()
                     ->title('Cotización')
                     ->body('No fue posible obtener una tasa BCV válida. Intente nuevamente.')
@@ -1476,7 +1664,23 @@ final class CoordinationServiceItemsManager
             ? 'Se gestionó 1 ítem y la coordinación pasó a EN GESTION.'
             : 'Se gestionaron '.$managedCount.' ítems y la coordinación pasó a EN GESTION.';
 
-        if ($shouldCreateServiceOrder) {
+        $resolvedSupplierId = null;
+        $resolvedSupplierAddress = null;
+
+        if ($registerUnregistered && ($shouldCreateServiceOrder || $shouldCreateCoveredQuote)) {
+            $resolved = OperationServiceOrderProviderSelection::resolveProviders($data);
+            $data['doctor_nurse_id'] = $resolved['doctor_nurse_id'];
+            $data['supplier_id'] = $resolved['supplier_id'];
+            $data['supplier_external'] = $resolved['supplier_external'];
+            $data['register_unregistered_provider'] = false;
+
+            $resolvedSupplierId = $resolved['supplier_id'];
+            $resolvedSupplierAddress = filled($data['unregistered_ubicacion_principal'] ?? null)
+                ? trim((string) $data['unregistered_ubicacion_principal'])
+                : ($resolvedSupplierId !== null ? self::resolveManageQuoteSupplierAddress($resolvedSupplierId) : null);
+        }
+
+        if ($shouldCreateServiceOrder && ! $shouldCreateCoveredQuote) {
             $orderCreated = self::createServiceOrderFromManageModal($record, $data, $coveredKeys, $serviceOrderType);
 
             if ($orderCreated) {
@@ -1486,6 +1690,30 @@ final class CoordinationServiceItemsManager
 
         if ($shouldCreateQuote) {
             $body .= ' Se registró la cotización para los ítems no cubiertos seleccionados.';
+        }
+
+        if ($shouldCreateCoveredQuote && $coveredQuoteItemsPayload !== []) {
+            try {
+                self::persistManageQuote(
+                    $record,
+                    $data,
+                    $serviceOrderType,
+                    $coveredQuoteItemsPayload,
+                    $resolvedSupplierId,
+                    $resolvedSupplierAddress,
+                    true
+                );
+
+                $body .= ' Se generó la cotización del proveedor no convenido para los ítems cubiertos; al aprobarla se creará la orden de servicio y la cuenta por pagar.';
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                Notification::make()
+                    ->title('Cotización')
+                    ->body('No fue posible generar la cotización para el proveedor no convenido. Verifique los datos e intente nuevamente.')
+                    ->warning()
+                    ->send();
+            }
         }
 
         Notification::make()
@@ -1625,10 +1853,13 @@ final class CoordinationServiceItemsManager
         OperationCoordinationService $record,
         array $data,
         string $quoteType,
-        array $items
+        array $items,
+        ?int $supplierIdOverride = null,
+        ?string $supplierAddressOverride = null,
+        bool $useSupplierOverride = false
     ): void {
-        $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
-        $costoUsd = self::manageQuoteSubtotalFromLineItems($lineItems)
+        $costoUsd = self::sumItemsUnitPriceUsd($items)
+            ?? self::manageQuoteSubtotalFromLineItems((array) ($data['manage_quote_line_items'] ?? []))
             ?? OperationCoordinationServicesTable::decimalOrNull($data['manage_quote_costo_dolares'] ?? null);
         $bcvRate = OperationCoordinationServicesTable::decimalOrNull($data['manage_quote_bcv_rate'] ?? null);
 
@@ -1640,10 +1871,18 @@ final class CoordinationServiceItemsManager
         $subtotal = self::manageQuoteSubtotal($costoUsd) ?? 0.0;
         $total = self::manageQuoteTotal($subtotal, $porcentaje) ?? 0.0;
         $costoBs = round($total * $bcvRate, 2);
-        $supplierId = (int) ($data['manage_quote_supplier_id'] ?? 0);
-        $supplierAddress = filled($data['manage_quote_supplier_address'] ?? null)
-            ? (string) $data['manage_quote_supplier_address']
-            : self::resolveManageQuoteSupplierAddress($supplierId);
+
+        if ($useSupplierOverride) {
+            $supplierId = ($supplierIdOverride !== null && $supplierIdOverride > 0) ? $supplierIdOverride : 0;
+            $supplierAddress = filled($supplierAddressOverride)
+                ? (string) $supplierAddressOverride
+                : ($supplierId > 0 ? self::resolveManageQuoteSupplierAddress($supplierId) : null);
+        } else {
+            $supplierId = (int) ($data['manage_quote_supplier_id'] ?? 0);
+            $supplierAddress = filled($data['manage_quote_supplier_address'] ?? null)
+                ? (string) $data['manage_quote_supplier_address']
+                : self::resolveManageQuoteSupplierAddress($supplierId);
+        }
 
         $quote = OperationQuoteGenerator::query()->create([
             'telemedicine_patient_id' => $record->telemedicine_patient_id,
