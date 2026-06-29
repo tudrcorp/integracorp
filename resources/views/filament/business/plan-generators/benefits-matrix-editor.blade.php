@@ -89,10 +89,11 @@
                                 <button
                                     type="button"
                                     wire:click="removeMatrixRow('{{ $rowKey }}')"
-                                    class="rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                                    class="inline-flex items-center justify-center rounded-lg p-1.5 text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
                                     title="Eliminar beneficio"
+                                    aria-label="Eliminar beneficio"
                                 >
-                                    Eliminar
+                                    <x-filament::icon icon="heroicon-m-trash" class="size-4" />
                                 </button>
                             </td>
                         </tr>

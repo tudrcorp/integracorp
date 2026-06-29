@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\Agencies\Tables;
 
 use App\Filament\Administration\Resources\Agencies\AgencyResource;
-use App\Filament\Exports\AgencyExporter;
+use App\Http\Controllers\AgencyExportCsvController;
 use App\Http\Controllers\LogController;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -27,6 +27,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class AgenciesTable
@@ -344,12 +345,27 @@ class AgenciesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ExportBulkAction::make()
-                        ->exporter(AgencyExporter::class)
+                    BulkAction::make('exportCsvController')
                         ->label('Exportar XLS')
+                        ->icon('heroicon-o-arrow-down-tray')
                         ->color('warning')
-                        ->deselectRecordsAfterCompletion(),
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una agencia')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = AgencyExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('administration.agencies.export-csv', ['token' => $token]);
+                        }),
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

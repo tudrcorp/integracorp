@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\Agents\Tables;
 
 use App\Filament\Administration\Resources\Agents\AgentResource;
-use App\Filament\Exports\AgentExporter;
+use App\Http\Controllers\AgentExportCsvController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
@@ -19,7 +19,6 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -370,23 +369,38 @@ class AgentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    BulkAction::make('format_phone')
-                        ->label('Formatear teléfonos')
-                        ->icon(Heroicon::OutlinedPhone)
-                        ->action(function (Collection $records): void {
-                            foreach ($records as $record) {
-                                $record->phone = UtilsController::normalizeVenezuelanPhone($record->phone);
-                                $record->save();
-                            }
-                        })
-                        ->requiresConfirmation()
-                        ->color('azulOscuro'),
-                    DeleteBulkAction::make(),
-                    ExportBulkAction::make()
-                        ->exporter(AgentExporter::class)
+                    // BulkAction::make('format_phone')
+                    //     ->label('Formatear teléfonos')
+                    //     ->icon(Heroicon::OutlinedPhone)
+                    //     ->action(function (Collection $records): void {
+                    //         foreach ($records as $record) {
+                    //             $record->phone = UtilsController::normalizeVenezuelanPhone($record->phone);
+                    //             $record->save();
+                    //         }
+                    //     })
+                    //     ->requiresConfirmation()
+                    //     ->color('azulOscuro'),
+                    BulkAction::make('exportCsvController')
                         ->label('Exportar XLS')
+                        ->icon('heroicon-o-arrow-down-tray')
                         ->color('warning')
-                        ->deselectRecordsAfterCompletion(),
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un agente')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = AgentExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('administration.agents.export-csv', ['token' => $token]);
+                        }),
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Telemedicina\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
+use App\Filament\Telemedicina\Widgets\WelcomeDoctorWidget;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
@@ -16,7 +17,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
-use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -60,7 +60,7 @@ class TelemedicinaPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Telemedicina/Widgets'), for: 'App\Filament\Telemedicina\Widgets')
             ->widgets([
-                AccountWidget::class,
+                WelcomeDoctorWidget::class,
                 // FilamentInfoWidget::class,
             ])
             ->middleware([

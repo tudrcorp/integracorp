@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Pages\Concerns;
 
+use App\Models\Benefit;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 trait InteractsWithPlanGeneratorMatrix
@@ -19,6 +22,44 @@ trait InteractsWithPlanGeneratorMatrix
             'benefit_label' => '',
             'cells' => PlanGeneratorMatrixState::emptyCellsForColumns($columns),
         ];
+    }
+
+    public function createPlanGeneratorBenefit(string $rowKey, ?string $description): void
+    {
+        $description = strtoupper(trim((string) $description));
+
+        if ($description === '') {
+            return;
+        }
+
+        if (! array_key_exists($rowKey, (array) ($this->data['rows'] ?? []))) {
+            return;
+        }
+
+        $alreadyUsed = collect($this->data['rows'] ?? [])
+            ->reject(fn (mixed $row, string $key): bool => $key === $rowKey)
+            ->contains(fn (mixed $row): bool => strtoupper(trim((string) ($row['benefit_label'] ?? ''))) === $description);
+
+        if ($alreadyUsed) {
+            Notification::make()
+                ->title('Beneficio duplicado')
+                ->body('Ese beneficio ya está asignado a otra fila del plan.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $benefit = Benefit::query()->firstOrCreate(
+            ['description' => $description],
+            [
+                'code' => 'TDEC-BN-'.str_pad((string) ((Benefit::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
+                'status' => 'ACTIVO',
+                'created_by' => Auth::user()?->name,
+            ],
+        );
+
+        $this->data['rows'][$rowKey]['benefit_label'] = (string) $benefit->description;
     }
 
     public function removeMatrixRow(string $rowKey): void

@@ -1524,6 +1524,11 @@
     color: #fff !important;
     transition: transform 0.15s ease, box-shadow 0.2s ease !important;
   }
+  .aviso-btn-ios-primary .fi-btn-icon,
+  .aviso-btn-ios-primary svg {
+    color: #fff !important;
+    stroke: currentColor !important;
+  }
   .aviso-btn-ios-primary:hover {
     background: linear-gradient(180deg, #4aa3e0 0%, #3a96d4 100%) !important;
     box-shadow:
@@ -1551,6 +1556,14 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.14),
       inset 0 -2px 5px rgba(0, 0, 0, 0.25) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+  }
+  .dark .aviso-btn-ios-primary .fi-btn-icon,
+  .dark .aviso-btn-ios-primary svg,
+  .dark .aviso-btn-ios-primary:hover .fi-btn-icon,
+  .dark .aviso-btn-ios-primary:hover svg {
+    color: #fff !important;
+    stroke: currentColor !important;
   }
   .dark .aviso-btn-ios-primary:hover {
     background: linear-gradient(180deg, #2d89ca 0%, #2372a8 100%) !important;
@@ -5836,6 +5849,7 @@
 
   .fi-coordination-clinical-items-compact {
     @apply w-full py-1;
+    max-width: 30rem;
   }
 
   .fi-coordination-clinical-items-compact__header {
@@ -5847,7 +5861,7 @@
   }
 
   .fi-coordination-clinical-item {
-    @apply flex w-full min-w-0 max-w-full flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-200/90 bg-white px-2 py-1.5 transition-colors dark:border-white/10 dark:bg-white/[0.03];
+    @apply flex w-full min-w-0 max-w-full flex-wrap items-start justify-between gap-x-2 gap-y-1 rounded-md border border-gray-200/90 bg-white px-2 py-1.5 transition-colors dark:border-white/10 dark:bg-white/[0.03];
   }
 
   .fi-coordination-clinical-item:hover {
@@ -5871,7 +5885,7 @@
   }
 
   .fi-coordination-clinical-item__lead {
-    @apply flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden;
+    @apply flex min-w-0 flex-1 items-start gap-x-2;
   }
 
   .fi-coordination-clinical-item__category {
@@ -5883,11 +5897,11 @@
   }
 
   .fi-coordination-clinical-item__label {
-    @apply min-w-0 flex-1 truncate text-[13px] font-medium leading-none text-gray-900 dark:text-gray-100;
+    @apply min-w-0 flex-1 whitespace-normal break-words text-[13px] font-medium leading-snug text-gray-900 dark:text-gray-100;
   }
 
   .fi-coordination-clinical-item__trail {
-    @apply inline-flex shrink-0 items-center gap-1.5;
+    @apply ml-auto inline-flex shrink-0 flex-wrap items-center justify-end gap-1.5;
   }
 
   .fi-coordination-clinical-item__meta {

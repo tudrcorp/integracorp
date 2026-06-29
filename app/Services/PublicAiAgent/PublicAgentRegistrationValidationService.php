@@ -24,14 +24,34 @@ class PublicAgentRegistrationValidationService
 
         $classification = (string) ($payload['classification'] ?? '');
         if (! in_array($classification, ['agent', 'subagent'], true)) {
-            $errors[] = 'Indica el tipo de perfil con 1 (Agente) o 2 (Subagente) en el cuarto dato de tu línea.';
+            $errors[] = 'Indica el tipo de perfil con 1 (Agente) o 2 (Subagente) en el quinto dato de tu línea.';
+        }
+
+        $birthDateRaw = trim((string) ($payload['birth_date'] ?? $payload['birth_date_input'] ?? ''));
+        if ($birthDateRaw === '') {
+            $errors[] = 'Falta la fecha de nacimiento. Escríbela como tercer dato en formato dd/mm/yyyy (ejemplo: 05/01/1984).';
+        } elseif (app(IntentSlotFiller::class)->parseBirthDate($birthDateRaw) === null) {
+            $errors[] = 'La fecha de nacimiento no es válida. Usa el formato dd/mm/yyyy (ejemplo: 05/01/1984).';
+        }
+
+        $identityRaw = trim((string) ($payload['identity_document'] ?? ''));
+        if ($identityRaw === '') {
+            $errors[] = 'Falta el número de cédula o RIF. Escríbelo como segundo dato con prefijo v-, e- o j- (ejemplo: v-16007868).';
+        } else {
+            $parsedIdentity = ChatAgentIdentityDocument::parse($identityRaw);
+
+            if ($parsedIdentity === null) {
+                $errors[] = 'El documento debe iniciar con v-, e- o j- seguido del número. Ejemplo: v-16007868, e-12321345, j-23456789.';
+            } elseif (ChatAgentIdentityDocument::existsInAgents($parsedIdentity)) {
+                $errors[] = 'Este número de cédula o RIF ya está registrado en el sistema. Verifica el dato o contacta a un asesor.';
+            }
         }
 
         $agencyTerm = trim((string) ($payload['agency_name'] ?? ''));
         $agencies = [];
 
         if ($agencyTerm === '') {
-            $errors[] = 'Falta la razón social de la agencia. Si es TDG, escribe TDG como último dato.';
+            $errors[] = 'Falta la razón social de la agencia. Si perteneces a TuDrGroup, escribe TDG como último dato.';
         } else {
             $agencies = $this->findAgenciesByTerm($agencyTerm);
         }
@@ -57,7 +77,7 @@ class PublicAgentRegistrationValidationService
 
         $taxId = trim((string) ($payload['tax_id'] ?? ''));
         if ($taxId === '' || mb_strlen($taxId) < 6) {
-            $errors[] = 'Falta el RIF o número de cédula del representante. Escríbelo como segundo dato en tu línea.';
+            $errors[] = 'Falta el RIF o número de cédula del representante. Escríbelo como segundo dato con prefijo j-, v- o e- (ejemplo: j-123456789, v-12345678 o e-12345654).';
         }
 
         return [
@@ -90,8 +110,8 @@ class PublicAgentRegistrationValidationService
 
         $taxId = trim((string) ($payload['tax_id'] ?? ''));
         if ($taxId === '' || mb_strlen($taxId) < 6) {
-            $errors[] = 'Falta el RIF o número de cédula del representante. Escríbelo como tercer dato en tu línea.';
-        } elseif ($this->taxIdExistsInAgencies($taxId)) {
+            $errors[] = 'Falta el RIF o número de cédula del representante. Escríbelo como tercer dato con prefijo j-, v- o e- (ejemplo: j-123456789, v-12345678 o e-12345654).';
+        } elseif (ChatAgencyRepresentativeDocument::existsByRawInput($taxId)) {
             $errors[] = 'Este RIF o cédula ya está registrado en el sistema. Verifica el dato o contacta a un asesor.';
         }
 
@@ -147,6 +167,39 @@ class PublicAgentRegistrationValidationService
         $normalized = mb_strtolower(trim($term));
 
         return in_array($normalized, ['tdg', 'tdg-100', 'tdg100'], true);
+    }
+
+    public function isExactTdgAgencyTerm(string $term): bool
+    {
+        return mb_strtolower(trim($term)) === 'tdg';
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function applyTdgAgency(array $payload): array
+    {
+        $payload['agency_name'] = 'TDG';
+        $payload['selected_agency_label'] = 'TuDrGroup — TDG-100';
+        $payload['owner_code'] = 'TDG-100';
+        $payload['belongs_to_tudrgroup_structure'] = true;
+        $payload['initial_observ'] = 'Agencia: TuDrGroup — TDG-100';
+        unset($payload['selected_agency_id']);
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function belongsToTudrgroupStructure(array $payload): bool
+    {
+        if (($payload['belongs_to_tudrgroup_structure'] ?? false) === true) {
+            return true;
+        }
+
+        return $this->isExactTdgAgencyTerm((string) ($payload['agency_name'] ?? ''));
     }
 
     /**
@@ -489,7 +542,7 @@ class PublicAgentRegistrationValidationService
         }
 
         $lines[] = '';
-        $lines[] = 'Corrige el dato indicado y envíalo solo (correo, teléfono, tipo 1/2, nombre o agencia), o la línea completa con comas si prefieres.';
+        $lines[] = 'Corrige el dato indicado y envíalo solo (cédula/RIF, correo, teléfono, tipo 1/2, nombre o agencia), o la línea completa con comas si prefieres.';
 
         return implode("\n", $lines);
     }

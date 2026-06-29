@@ -181,6 +181,13 @@ class AgentOrchestrator
     ): ?array {
         $intentPayload = is_array($metadata['intent_payload'] ?? null) ? $metadata['intent_payload'] : [];
 
+        if ($this->stateMachine->isOurPlansAction($action)) {
+            $ourPlansResult = $this->handleOurPlansActionWorkflow($session, $intent, $message, $metadata);
+            if ($ourPlansResult !== null) {
+                return $ourPlansResult;
+            }
+        }
+
         if ($metadata['awaiting_another_action_offer'] ?? false) {
             return $this->handleAnotherActionOfferConfirmation($session, $intent, $message, $metadata);
         }
@@ -440,6 +447,8 @@ class AgentOrchestrator
         ) {
             $arguments = [
                 'name' => (string) ($intentPayload['name'] ?? ''),
+                'identity_document' => (string) ($intentPayload['identity_document'] ?? ''),
+                'birth_date' => (string) ($intentPayload['birth_date'] ?? ''),
                 'email' => (string) ($intentPayload['email'] ?? ''),
                 'phone' => (string) ($intentPayload['phone_1'] ?? ''),
                 'owner_code' => $this->chatAgentRegistrationService->resolveOwnerCode($intentPayload),
@@ -602,7 +611,7 @@ class AgentOrchestrator
 
     private function genericGuidedReply(): string
     {
-        return 'Selecciona una opción para comenzar: cotización individual, cotización corporativa, registro agencia master, registro agencia general, registro agente o registro subagente.';
+        return 'Selecciona una opción para comenzar: nuestros planes, registro agencia master, registro agencia general, registro agente o registro subagente.';
     }
 
     private function shouldEscalateToHuman(string $message): bool
@@ -819,6 +828,21 @@ class AgentOrchestrator
             && $this->registrationValidationService->isTdgMasterTerm((string) ($intentPayload['master_agency_name'] ?? ''))
         ) {
             $intentPayload = $this->registrationValidationService->applyTdgMasterAgency($intentPayload);
+            $metadata['intent_payload'] = $intentPayload;
+            $metadata['awaiting_agency_selection'] = false;
+            $metadata['awaiting_agency_retry'] = false;
+            $metadata['awaiting_registration_correction'] = false;
+            $metadata['agency_candidates'] = null;
+            $session->metadata = $metadata;
+
+            return null;
+        }
+
+        if (
+            $this->stateMachine->isAgentOrSubagentRegistrationAction($action)
+            && $this->registrationValidationService->isExactTdgAgencyTerm((string) ($intentPayload['agency_name'] ?? ''))
+        ) {
+            $intentPayload = $this->registrationValidationService->applyTdgAgency($intentPayload);
             $metadata['intent_payload'] = $intentPayload;
             $metadata['awaiting_agency_selection'] = false;
             $metadata['awaiting_agency_retry'] = false;
@@ -1724,6 +1748,88 @@ class AgentOrchestrator
             'quote_contact' => [],
             'awaiting_quote_contact_field' => null,
             'awaiting_quote_confirmation' => false,
+            'nuestros_planes_overview_shown' => false,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array{
+     *   reply: string,
+     *   intent: string|null,
+     *   state: string,
+     *   handoff_requested: bool,
+     *   tool_runs: array<int, array<string, mixed>>
+     * }|null
+     */
+    private function handleOurPlansActionWorkflow(
+        ChatSession $session,
+        string $intent,
+        string $message,
+        array $metadata,
+    ): ?array {
+        $overviewShown = (bool) ($metadata['nuestros_planes_overview_shown'] ?? false);
+        $planId = $this->intentSlotFiller->parsePlanBenefitsRequest($message);
+
+        if ($planId !== null && $overviewShown) {
+            $assistantReply = $this->publicPlanBenefitsService->buildBenefitsMessage($planId)
+                ."\n\n"
+                .$this->intentSlotFiller->ourPlansFollowUpHint()
+                ."\n\n"
+                .$this->intentSlotFiller->chatAgentAnotherActionOfferMessage();
+
+            return $this->finalizeOurPlansWorkflowReply($session, $intent, $metadata, $assistantReply);
+        }
+
+        if (! $overviewShown || $this->intentSlotFiller->isDefaultActionSelectionMessage($message)) {
+            $assistantReply = $this->intentSlotFiller->ourPlansWelcomeMessage(
+                $this->publicPlanCatalogService->buildOurPlansOverviewMessage($this->publicPlanBenefitsService),
+            );
+
+            $metadata['nuestros_planes_overview_shown'] = true;
+            $metadata['conversation_completed'] = true;
+            $metadata['awaiting_another_action_offer'] = true;
+
+            return $this->finalizeOurPlansWorkflowReply($session, $intent, $metadata, $assistantReply);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array{
+     *   reply: string,
+     *   intent: string|null,
+     *   state: string,
+     *   handoff_requested: bool,
+     *   tool_runs: array<int, array<string, mixed>>
+     * }
+     */
+    private function finalizeOurPlansWorkflowReply(
+        ChatSession $session,
+        string $intent,
+        array $metadata,
+        string $assistantReply,
+    ): array {
+        $this->storeMessage($session, [
+            'role' => 'assistant',
+            'content' => $assistantReply,
+            'metadata' => ['intent' => $intent, 'our_plans_flow' => true],
+        ]);
+
+        $session->metadata = $metadata;
+        $session->context_summary = $this->summarizeLatestConversation($session);
+        $session->current_state = AgentConversationStateMachine::STATE_CONFIRMACION;
+        $session->last_message_at = now();
+        $session->save();
+
+        return [
+            'reply' => $assistantReply,
+            'intent' => $session->detected_intent,
+            'state' => (string) $session->current_state,
+            'handoff_requested' => (bool) $session->handoff_requested,
+            'tool_runs' => [],
         ];
     }
 

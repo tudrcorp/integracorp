@@ -11,6 +11,7 @@ class AffiliateCorporate extends Model
 
     protected $fillable = [
         'affiliation_corporate_id',
+        'affiliation_type',
         'first_name',
         'last_name',
         'nro_identificacion',

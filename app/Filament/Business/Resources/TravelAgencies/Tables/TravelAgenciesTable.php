@@ -142,6 +142,14 @@ class TravelAgenciesTable
                     ->searchable()
                     ->sortable()
                     ->placeholder('—'),
+                TextColumn::make('travel_agents_count')
+                    ->label('Agentes')
+                    ->icon(Heroicon::OutlinedUserGroup)
+                    ->counts('travelAgents')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn (?int $state): string => ($state ?? 0) > 0 ? 'info' : 'gray')
+                    ->sortable(),
                 TextColumn::make('comision')
                     ->label('Comisión')
                     ->numeric(decimalPlaces: 2)

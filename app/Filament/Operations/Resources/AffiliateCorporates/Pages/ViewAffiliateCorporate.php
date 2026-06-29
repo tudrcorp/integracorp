@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\AffiliateCorporates\Pages;
 
 use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
+use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\AffiliateCorporate;
 use App\Services\AssociateAffiliateCorporateWithTelemedicinePatientService;
 use Filament\Actions\Action;
@@ -110,6 +111,8 @@ class ViewAffiliateCorporate extends ViewRecord
                         )
                         ->success()
                         ->send();
+
+                    $this->redirect(TelemedicinePatientResource::getUrl('view', ['record' => $result['patient']]));
                 })
                 ->hidden(fn (): bool => in_array('ATENMEDI', Auth::user()?->departament ?? [], true)),
             Action::make('back')

@@ -369,21 +369,7 @@ TEXT,
 
     private function applyTaxIdToAgency(Agency $agency, string $taxId): void
     {
-        $normalized = mb_strtoupper(trim($taxId));
-
-        if ($normalized === '') {
-            return;
-        }
-
-        if (preg_match('/^[JVEGPRC]\-?\d/u', $normalized) === 1) {
-            $agency->rif = $normalized;
-
-            return;
-        }
-
-        if (Schema::hasColumn('agencies', 'ci_responsable')) {
-            $agency->ci_responsable = preg_replace('/\D+/', '', $normalized) ?? $normalized;
-        }
+        ChatAgencyRepresentativeDocument::applyRawInputToAgency($agency, $taxId);
     }
 
     /**

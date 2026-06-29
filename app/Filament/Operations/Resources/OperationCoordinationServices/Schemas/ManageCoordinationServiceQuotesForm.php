@@ -9,6 +9,7 @@ use App\Models\OperationInventoryUbication;
 use App\Models\OperationQuoteGenerator;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceQuoteManager;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -129,6 +130,10 @@ final class ManageCoordinationServiceQuotesForm
                                     $state
                                 );
 
+                                if ($state !== OperationQuoteGenerator::STATUS_APPROVED) {
+                                    $set('is_cash', false);
+                                }
+
                                 if ($state === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
                                     return;
                                 }
@@ -143,6 +148,17 @@ final class ManageCoordinationServiceQuotesForm
                                     $quoteId
                                 );
                             }),
+                        Checkbox::make('is_cash')
+                            ->label('Pago de contado')
+                            ->helperText('Debe cancelarse de inmediato. Se notificará a administración por correo y WhatsApp al guardar.')
+                            ->default(false)
+                            ->dehydrated()
+                            ->visible(fn (Get $get, ManageCoordinationServiceQuotes $livewire): bool => (string) $get('status') === OperationQuoteGenerator::STATUS_APPROVED
+                                && CoordinationServiceQuoteManager::shouldShowQuoteInManagementRepeater(
+                                    $get,
+                                    $livewire->data['selected_pending_quote_ids'] ?? []
+                                ))
+                            ->disabled(fn (Get $get): bool => (bool) $get('has_service_order') || (bool) $get('status_locked')),
                     ])
                     ->columnSpanFull(),
                 Section::make('Orden de servicio')

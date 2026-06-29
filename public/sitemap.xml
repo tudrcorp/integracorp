@@ -7,7 +7,7 @@
     <!-- Página principal -->
     <url>
         <loc>https://integracorp.tudrgroup.com</loc>
-        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <lastmod>2026-06-23</lastmod>
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
     </url>
@@ -15,7 +15,7 @@
     <!-- Panel Admin -->
     <url>
         <loc>https://integracorp.tudrgroup.com/admin</loc>
-        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <lastmod>2026-06-23</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
     </url>
@@ -23,37 +23,45 @@
     <!-- Secciones del menú -->
     <url>
         <loc>https://integracorp.tudrgroup.com/master</loc>
-        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <lastmod>2026-06-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
 
     <url>
         <loc>https://integracorp.tudrgroup.com/general</loc>
-        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <lastmod>2026-06-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
 
     <url>
         <loc>https://integracorp.tudrgroup.com/agente</loc>
-        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <lastmod>2026-06-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
 
     <url>
         <loc>https://integracorp.tudrgroup.com/marketing</loc>
-        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <lastmod>2026-06-23</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.6</priority>
     </url>
 
     <url>
         <loc>https://integracorp.tudrgroup.com/telemedicina</loc>
-        <lastmod>{{ now()->format('Y-m-d') }}</lastmod>
+        <lastmod>2026-06-23</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
+    </url>
+
+    <!-- GUIA-CHAT: asistente público para agentes y agencias -->
+    <url>
+        <loc>https://integracorp.tudrgroup.com/chat/publico</loc>
+        <lastmod>2026-06-23</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
     </url>
 
 </urlset>

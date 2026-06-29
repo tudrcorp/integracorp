@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\WhiteCompanies\Tables;
 
 use App\Models\Country;
 use App\Models\WhiteCompany;
+use App\Support\SecurityAudit;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -14,6 +15,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class WhiteCompaniesTable
 {
@@ -143,14 +145,40 @@ class WhiteCompaniesTable
             ->recordActions([
                 EditAction::make()
                     ->label('Editar')
-                    ->icon(Heroicon::OutlinedPencilSquare),
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->after(function (WhiteCompany $record): void {
+                        self::audit('AUDIT_BUSINESS_WHITE_COMPANY_UPDATED', 'business.white-companies.edit', [
+                            'white_company_id' => $record->id,
+                            'name' => $record->name,
+                            'rif' => $record->rif,
+                            'email' => $record->email,
+                        ]);
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->label('Eliminar seleccionadas'),
+                        ->label('Eliminar seleccionadas')
+                        ->before(function (Collection $records): void {
+                            self::audit('AUDIT_BUSINESS_WHITE_COMPANIES_BULK_DELETED', 'business.white-companies.bulk-delete', [
+                                'record_ids' => $records->pluck('id')->values()->all(),
+                                'total' => $records->count(),
+                            ]);
+                        }),
                 ]),
             ])
             ->striped();
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private static function audit(string $event, string $route, array $context = []): void
+    {
+        SecurityAudit::log($event, $route, [
+            'panel' => 'business',
+            'module' => 'white_companies',
+            ...$context,
+        ]);
     }
 }

@@ -11,7 +11,8 @@ it('ViewOperationCoordinationService incluye acción de carga de documentos', fu
         ->toContain('operation-coordination-services/')
         ->toContain("'uploaded_documents'")
         ->toContain('document_type_ids')
-        ->toContain('document_types');
+        ->toContain('service_item_keys')
+        ->toContain('CoordinationServiceCoveredItemsFinalizer::buildUploadedDocumentsFromForm');
 });
 
 it('ViewOperationCoordinationService solo muestra la carga de documentos cuando el servicio está EN GESTION', function (): void {
@@ -71,7 +72,13 @@ it('OperationCoordinationServiceInfolist muestra document_types desde la fila de
     expect($contents)
         ->toContain("Tab::make('Documentos')")
         ->toContain("RepeatableEntry::make('uploaded_documents')")
+        ->toContain('CoordinationServiceDocumentsAggregator::forCoordination')
         ->toContain("TextEntry::make('document_types')")
+        ->toContain("TextEntry::make('services')")
+        ->toContain("TextEntry::make('source')")
+        ->toContain("TableColumn::make('Servicio')")
+        ->toContain("TableColumn::make('Origen')")
+        ->toContain('Sin servicio asociado')
         ->toContain('->badge()')
         ->toContain('Sin tipo asociado')
         ->toContain("TextEntry::make('document_name')")

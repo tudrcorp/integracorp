@@ -110,6 +110,7 @@ class IntentSlotFiller
             AgentConversationStateMachine::ACTION_REGISTER_SUBAGENT => '¡Te damos la Bienvenida al registro interactivo de tu Agente o SubAgente! 👋',
             AgentConversationStateMachine::ACTION_QUOTE_INDIVIDUAL => '¡Te damos la Bienvenida a la cotización interactiva de tu Plan Individual! 👋',
             AgentConversationStateMachine::ACTION_QUOTE_CORPORATE => '¡Te damos la Bienvenida a la cotización interactiva de tu Plan Corporativo! 👋',
+            AgentConversationStateMachine::ACTION_NUESTROS_PLANES => '¡Te damos la Bienvenida a **Nuestros Planes**! 👋',
             default => '¡Te damos la Bienvenida a Tu Dr. Group! 👋',
         };
     }
@@ -129,13 +130,15 @@ Para completar tu preinscripción en el sistema INTEGRACORP 🤝 por favor sigue
 Ingresa tu información en una sola línea, separando cada dato con una coma (,):
 
 1) Nombre y apellido
-2) Número de teléfono
-3) Correo electrónico
-4) Tipo: escribe 1 si eres Agente, o 2 si eres Subagente
-5) Razón social de la agencia (si es TDG, escribe TDG)
+2) Nro. cédula de identidad o RIF (ejemplo: v-16007868, e-12321345, j-23456789)
+3) Fecha de nacimiento en formato dd/mm/yyyy (ejemplo: 05/01/1984)
+4) Número de teléfono
+5) Correo electrónico
+6) Tipo: escribe 1 si eres Agente, o 2 si eres Subagente
+7) Razón social de la agencia (si perteneces a TuDrGroup, escribe TDG)
 
 Ejemplo:
-María Pérez, 04141234567, maria@correo.com, 1, TDG
+María Pérez, v-16007868, 05/01/1984, 04141234567, maria@correo.com, 1, TDG
 TEXT;
     }
 
@@ -149,12 +152,12 @@ Para completar tu registro como Agencia Master en INTEGRACORP 🤝 por favor sig
 Ingresa tu información en una sola línea, separando cada dato con una coma (,):
 
 1) Razón social de la agencia master
-2) RIF o número de cédula del representante
+2) RIF o número de cédula del representante (ejemplo: j-123456789, v-12345678 o e-12345654)
 3) Número de teléfono
 4) Correo electrónico
 
 Ejemplo:
-Agencia Master Ejemplo, J123456789, 04141234567, maria@correo.com
+Agencia Master Ejemplo, j-123456789, 04141234567, maria@correo.com
 TEXT;
     }
 
@@ -169,12 +172,12 @@ Ingresa tu información en una sola línea, separando cada dato con una coma (,)
 
 1) Razón social de la agencia general
 2) Razón social de la agencia master (si no pertenece a ninguna, escribe TDG)
-3) RIF o número de cédula del representante
+3) RIF o número de cédula del representante (ejemplo: j-123456789, v-12345678 o e-12345654)
 4) Número de teléfono
 5) Correo electrónico
 
 Ejemplo:
-Mi Agencia General, Agencia Master Ejemplo, J123456789, 04141234567, maria@correo.com
+Mi Agencia General, Agencia Master Ejemplo, v-12345678, 04141234567, maria@correo.com
 TEXT;
     }
 
@@ -195,24 +198,39 @@ TEXT;
             $agency = preg_replace('/^Agencia:\s*/u', '', (string) $payload['initial_observ']) ?? '';
         }
 
+        $tudrgroupNote = '';
+        if (app(PublicAgentRegistrationValidationService::class)->belongsToTudrgroupStructure($payload)) {
+            $agency = 'TuDrGroup — TDG-100';
+            $tudrgroupNote = <<<'TEXT'
+
+
+Importante: pertenecerás a la estructura comercial de TuDrGroup.
+TEXT;
+        }
+
         return sprintf(
             <<<'TEXT'
 Perfecto, revisa que tus datos sean correctos antes de completar tu registro:
 
 • Nombre y apellido: %s
+• Cédula o RIF: %s
+• Fecha de nacimiento: %s
 • Teléfono: %s
 • Correo electrónico: %s
 • Tipo de perfil: %s
-• Razón social de la agencia: %s
+• Razón social de la agencia: %s%s
 
 Si todo está correcto, responde si.
-Si necesitas corregir un dato, envía solo el valor correcto (correo, teléfono, tipo 1/2 o agencia) sin repetir toda la línea.
+Si necesitas corregir un dato, envía solo el valor correcto (cédula/RIF, fecha de nacimiento, correo, teléfono, tipo 1/2 o agencia) sin repetir toda la línea.
 TEXT,
             (string) ($payload['name'] ?? 'N/D'),
+            (string) ($payload['identity_document_display'] ?? $payload['identity_document'] ?? 'N/D'),
+            (string) ($payload['birth_date_display'] ?? $payload['birth_date'] ?? 'N/D'),
             (string) ($payload['phone_1'] ?? 'N/D'),
             (string) ($payload['email'] ?? 'N/D'),
             $profileLabel,
             $agency !== '' ? $agency : 'N/D',
+            $tudrgroupNote,
         );
     }
 
@@ -234,7 +252,7 @@ Si todo está correcto, responde si.
 Si necesitas corregir un dato, envía solo el valor correcto (razón social, RIF/cédula, teléfono o correo) sin repetir toda la línea.
 TEXT,
             (string) ($payload['agency_corporate_name'] ?? 'N/D'),
-            (string) ($payload['tax_id'] ?? 'N/D'),
+            (string) ($payload['tax_id_display'] ?? $payload['tax_id'] ?? 'N/D'),
             (string) ($payload['phone_1'] ?? 'N/D'),
             (string) ($payload['email'] ?? 'N/D'),
         );
@@ -262,7 +280,7 @@ Si necesitas corregir un dato, envía solo el valor correcto (razón social, age
 TEXT,
             (string) ($payload['agency_corporate_name'] ?? 'N/D'),
             $masterAgency,
-            (string) ($payload['tax_id'] ?? 'N/D'),
+            (string) ($payload['tax_id_display'] ?? $payload['tax_id'] ?? 'N/D'),
             (string) ($payload['phone_1'] ?? 'N/D'),
             (string) ($payload['email'] ?? 'N/D'),
         );
@@ -276,7 +294,7 @@ TEXT,
     {
         $required = match ($intent) {
             AgentConversationStateMachine::INTENT_PREREGISTRO => match (true) {
-                $this->isSimplifiedAgentRegistrationAction($action) => ['name', 'email', 'phone_1', 'agency_name'],
+                $this->isSimplifiedAgentRegistrationAction($action) => ['name', 'identity_document', 'birth_date', 'email', 'phone_1', 'agency_name'],
                 $this->isSimplifiedAgencyMasterRegistrationAction($action) => ['agency_corporate_name', 'tax_id', 'phone_1', 'email'],
                 $this->isSimplifiedAgencyGeneralRegistrationAction($action) => ['agency_corporate_name', 'master_agency_name', 'tax_id', 'phone_1', 'email'],
                 default => ['name', 'email', 'phone_1', 'country_id', 'state_id', 'city_id', 'type'],
@@ -394,11 +412,13 @@ TEXT,
         return match ($intent) {
             AgentConversationStateMachine::INTENT_PREREGISTRO => match ($field) {
                 'name' => '¿Cuál es tu nombre y apellido?',
+                'identity_document' => 'Indica tu número de cédula o RIF con prefijo (ejemplo: v-16007868, e-12321345, j-23456789).',
+                'birth_date' => 'Indica tu fecha de nacimiento en formato dd/mm/yyyy (ejemplo: 05/01/1984).',
                 'email' => '¿Cuál es tu correo electrónico?',
                 'phone_1' => '¿Cuál es tu teléfono principal (solo números)?',
-                'agency_name' => 'Indícame la razón social de la agencia. Si es TDG, escribe TDG.',
+                'agency_name' => 'Indícame la razón social de la agencia. Si perteneces a TuDrGroup, escribe TDG.',
                 'agency_corporate_name' => 'Indícame la razón social de la agencia.',
-                'tax_id' => 'Indícame el RIF o número de cédula del representante.',
+                'tax_id' => 'Indícame el RIF o número de cédula del representante (ejemplo: j-123456789, v-12345678 o e-12345654).',
                 'master_agency_name' => 'Indícame el nombre de la agencia master. Si no pertenece a ninguna, escribe TDG.',
                 'country_id' => 'Indícame tu país (ejemplo: Venezuela).',
                 'state_id' => '¿En qué estado te encuentras?',
@@ -526,25 +546,28 @@ TEXT,
             explode(',', $message),
         );
 
-        if (count($parts) >= 5) {
+        if (count($parts) >= 7) {
             $merged['name'] = $parts[0];
-            $phoneDigits = preg_replace('/\D+/', '', $parts[1]) ?? '';
+            $merged = $this->applyIdentityDocumentToPayload($merged, $parts[1]);
+            $merged = $this->applyBirthDateToPayload($merged, $parts[2]);
+
+            $phoneDigits = preg_replace('/\D+/', '', $parts[3]) ?? '';
             if ($phoneDigits !== '') {
                 $merged['phone_1'] = $phoneDigits;
             }
 
-            if (preg_match('/([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/i', $parts[2], $emailMatch) === 1) {
+            if (preg_match('/([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/i', $parts[4], $emailMatch) === 1) {
                 $merged['email'] = mb_strtolower($emailMatch[1]);
             }
 
-            $roleIndicator = preg_replace('/\D+/', '', $parts[3]) ?? '';
+            $roleIndicator = preg_replace('/\D+/', '', $parts[5]) ?? '';
             if ($roleIndicator === '1') {
                 $merged['classification'] = 'agent';
             } elseif ($roleIndicator === '2') {
                 $merged['classification'] = 'subagent';
             }
 
-            $agencyName = trim($parts[4]);
+            $agencyName = trim($parts[6]);
             if ($agencyName !== '') {
                 $merged = $this->applyAgencySearchTerm($merged, $agencyName);
             }
@@ -580,7 +603,7 @@ TEXT,
 
             $taxId = trim($parts[1]);
             if ($taxId !== '') {
-                $merged['tax_id'] = mb_strtoupper($taxId);
+                $merged = $this->applyTaxIdToPayload($merged, $taxId);
             }
 
             $phoneDigits = preg_replace('/\D+/', '', $parts[2]) ?? '';
@@ -630,7 +653,7 @@ TEXT,
 
             $taxId = trim($parts[2]);
             if ($taxId !== '') {
-                $merged['tax_id'] = mb_strtoupper($taxId);
+                $merged = $this->applyTaxIdToPayload($merged, $taxId);
             }
 
             $phoneDigits = preg_replace('/\D+/', '', $parts[3]) ?? '';
@@ -698,9 +721,7 @@ TEXT,
         }
 
         if ($this->isStandaloneTaxIdMessage($trimmed)) {
-            $payload['tax_id'] = mb_strtoupper($trimmed);
-
-            return $payload;
+            return $this->applyTaxIdToPayload($payload, $trimmed);
         }
 
         if (trim((string) ($payload['agency_corporate_name'] ?? '')) === '' && $this->isCorporateNameCandidate($trimmed)) {
@@ -723,6 +744,10 @@ TEXT,
         }
 
         if (preg_match('/^[JVEGPRC]\-?\d{5,12}$/iu', $trimmed) === 1) {
+            return true;
+        }
+
+        if (ChatAgencyRepresentativeDocument::parse($trimmed) !== null) {
             return true;
         }
 
@@ -760,7 +785,7 @@ TEXT,
             }
 
             if ($this->isStandaloneTaxIdMessage($part)) {
-                $payload['tax_id'] = mb_strtoupper($part);
+                $payload = $this->applyTaxIdToPayload($payload, $part);
 
                 continue;
             }
@@ -807,7 +832,7 @@ TEXT,
             }
 
             if ($this->isStandaloneTaxIdMessage($part)) {
-                $payload['tax_id'] = mb_strtoupper($part);
+                $payload = $this->applyTaxIdToPayload($payload, $part);
 
                 continue;
             }
@@ -886,9 +911,7 @@ TEXT,
         }
 
         if ($this->isStandaloneTaxIdMessage($trimmed)) {
-            $payload['tax_id'] = mb_strtoupper($trimmed);
-
-            return $payload;
+            return $this->applyTaxIdToPayload($payload, $trimmed);
         }
 
         if ($this->isMasterAgencyCorrectionMessage($payload, $trimmed)) {
@@ -1007,6 +1030,8 @@ TEXT,
     public function hasPartialSimplifiedAgentRegistrationData(array $payload): bool
     {
         return trim((string) ($payload['name'] ?? '')) !== ''
+            || trim((string) ($payload['identity_document'] ?? '')) !== ''
+            || trim((string) ($payload['birth_date'] ?? '')) !== ''
             || trim((string) ($payload['email'] ?? '')) !== ''
             || trim((string) ($payload['phone_1'] ?? '')) !== ''
             || trim((string) ($payload['classification'] ?? '')) !== ''
@@ -1027,6 +1052,14 @@ TEXT,
 
         if ($trimmed === '' || $this->isDefaultActionSelectionMessage($trimmed)) {
             return $payload;
+        }
+
+        if ($this->isStandaloneIdentityDocumentMessage($trimmed)) {
+            return $this->applyIdentityDocumentToPayload($payload, $trimmed);
+        }
+
+        if ($this->isStandaloneBirthDateMessage($trimmed)) {
+            return $this->applyBirthDateToPayload($payload, $trimmed);
         }
 
         if ($this->isStandaloneEmailMessage($trimmed)) {
@@ -1056,6 +1089,122 @@ TEXT,
         }
 
         return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function applyTaxIdToPayload(array $payload, string $raw): array
+    {
+        $parsed = ChatAgencyRepresentativeDocument::parse($raw);
+
+        if ($parsed === null) {
+            $payload['tax_id'] = trim($raw);
+
+            return $payload;
+        }
+
+        $payload['tax_id'] = $parsed['display'];
+        $payload['tax_id_display'] = $parsed['display'];
+
+        if ($parsed['kind'] === ChatAgentIdentityDocument::KIND_RIF) {
+            $payload['rif'] = $parsed['number'];
+            unset($payload['ci_responsable']);
+        } else {
+            $payload['ci_responsable'] = $parsed['number'];
+            unset($payload['rif']);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function applyIdentityDocumentToPayload(array $payload, string $raw): array
+    {
+        $parsed = ChatAgentIdentityDocument::parse($raw);
+
+        if ($parsed === null) {
+            $payload['identity_document'] = trim($raw);
+
+            return $payload;
+        }
+
+        $payload['identity_document'] = $parsed['display'];
+        $payload['identity_document_display'] = $parsed['display'];
+
+        if ($parsed['kind'] === ChatAgentIdentityDocument::KIND_RIF) {
+            $payload['rif'] = $parsed['number'];
+            unset($payload['ci']);
+        } else {
+            $payload['ci'] = $parsed['number'];
+            unset($payload['rif']);
+        }
+
+        return $payload;
+    }
+
+    private function isStandaloneIdentityDocumentMessage(string $message): bool
+    {
+        return ChatAgentIdentityDocument::parse($message) !== null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function applyBirthDateToPayload(array $payload, string $raw): array
+    {
+        $parsed = $this->parseBirthDate($raw);
+
+        if ($parsed === null) {
+            $payload['birth_date_input'] = trim($raw);
+
+            return $payload;
+        }
+
+        $payload['birth_date'] = $parsed['storage'];
+        $payload['birth_date_display'] = $parsed['display'];
+        unset($payload['birth_date_input']);
+
+        return $payload;
+    }
+
+    /**
+     * @return array{storage: string, display: string}|null
+     */
+    public function parseBirthDate(string $raw): ?array
+    {
+        $trimmed = trim($raw);
+
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $trimmed, $match) !== 1) {
+            return null;
+        }
+
+        $day = (int) $match[1];
+        $month = (int) $match[2];
+        $year = (int) $match[3];
+
+        if (! checkdate($month, $day, $year)) {
+            return null;
+        }
+
+        if ($year < 1900 || $year > (int) date('Y')) {
+            return null;
+        }
+
+        return [
+            'storage' => sprintf('%04d-%02d-%02d', $year, $month, $day),
+            'display' => sprintf('%02d/%02d/%04d', $day, $month, $year),
+        ];
+    }
+
+    private function isStandaloneBirthDateMessage(string $message): bool
+    {
+        return $this->parseBirthDate($message) !== null;
     }
 
     private function isStandaloneEmailMessage(string $message): bool
@@ -1111,6 +1260,10 @@ TEXT,
         }
 
         if ($this->isStandaloneClassificationMessage($message) || $this->isStandalonePhoneMessage($message)) {
+            return false;
+        }
+
+        if ($this->isStandaloneIdentityDocumentMessage($message)) {
             return false;
         }
 
@@ -1449,7 +1602,7 @@ TEXT,
     public function chatAgentAnotherActionOfferMessage(): string
     {
         return <<<'TEXT'
-¿Deseas realizar alguna otra acción de la lista? Puedes registrar agencia, agente o subagente.
+¿Deseas realizar alguna otra acción de la lista? Puedes consultar nuestros planes, registrar agencia, agente o subagente.
 Responde si para elegir otra acción, o no para finalizar.
 TEXT;
     }
@@ -1532,9 +1685,9 @@ TEXT;
 
 Soy tu GUÍA-CHAT de Integracorp. Estoy para acompañarte paso a paso con lo que necesites gestionar hoy, de forma sencilla y sin complicaciones.
 
-En el campo de mensaje, junto al botón «¿Qué quieres hacer?», encontrarás una lista con las acciones disponibles: registrar una agencia, un agente y más. Elige la que necesites y yo te iré guiando en cada paso del camino.
+En el campo de mensaje, junto al botón **Quiero!**, encontrarás una lista con las acciones disponibles: conocer **Nuestros Planes**, registrar una agencia, un agente y más. Si estás desde un dispositivo móvil, pulsa **?** para seleccionar una acción. Elige la que necesites y yo te iré guiando en cada paso del camino.
 
-Si en algún momento no entiendes una instrucción o prefieres hablar con una persona, escribe la palabra ayuda y te indico cómo contactar a nuestros Asesores Comerciales por WhatsApp.
+Si en algún momento no entiendes una instrucción o prefieres hablar con una persona, escribe la palabra **ayuda** y te indico cómo contactar a nuestros Asesores Comerciales por WhatsApp.
 
 Cuando estés listo, selecciona una acción y comenzamos.
 TEXT;
@@ -1550,7 +1703,7 @@ Si necesitas una mano extra o prefieres hablar con alguien de nuestro equipo, pu
 
 %s
 
-Cuando quieras retomar el proceso aquí en el chat, elige una acción en «¿Qué quieres hacer?» y seguimos juntos.
+Cuando quieras retomar el proceso aquí en el chat, elige una acción en **Quiero!** y seguimos juntos. Si estás desde un dispositivo móvil, pulsa **?** para seleccionar otra acción.
 TEXT,
             $this->commercialAdvisorsContactBlock($whatsappUrl, $whatsappLabel),
         );
@@ -1745,6 +1898,30 @@ TEXT;
         return $this->registrationWelcomeHeadline(AgentConversationStateMachine::ACTION_QUOTE_INDIVIDUAL)
             ."\n\n"
             .$catalogSummary;
+    }
+
+    public function ourPlansWelcomeMessage(string $plansOverview): string
+    {
+        return $this->registrationWelcomeHeadline(AgentConversationStateMachine::ACTION_NUESTROS_PLANES)
+            ."\n\n"
+            .<<<'TEXT'
+Estos son los planes de salud **Tu Doctor en Casa**. Cada sección incluye rango de edad, coberturas y beneficios para que compares con claridad.
+TEXT
+            ."\n\n"
+            .$plansOverview
+            ."\n\n"
+            .$this->ourPlansFollowUpHint()
+            ."\n\n"
+            .$this->chatAgentAnotherActionOfferMessage();
+    }
+
+    public function ourPlansFollowUpHint(): string
+    {
+        return <<<'TEXT'
+¿Necesitas más detalle?
+• Escribe «1 beneficios», «2 beneficios» o «3 beneficios» para ampliar un plan.
+• Escribe **ayuda** para hablar con un Asesor Comercial por WhatsApp.
+TEXT;
     }
 
     public function individualQuoteModeChoiceReprompt(): string

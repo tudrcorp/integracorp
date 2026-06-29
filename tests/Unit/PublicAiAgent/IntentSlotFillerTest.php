@@ -76,11 +76,15 @@ it('parsea registro de agente con formato separado por comas', function (): void
     $payload = $slotFiller->mergePayloadFromMessage(
         AgentConversationStateMachine::INTENT_PREREGISTRO,
         [],
-        'María Pérez, 04141234567, maria@correo.com, 1, TDG',
+        'María Pérez, v-16007868, 05/01/1984, 04141234567, maria@correo.com, 1, TDG',
         AgentConversationStateMachine::ACTION_REGISTER_AGENT,
     );
 
     expect($payload['name'])->toBe('María Pérez')
+        ->and($payload['identity_document'])->toBe('V-16007868')
+        ->and($payload['ci'])->toBe('16007868')
+        ->and($payload['birth_date'])->toBe('1984-01-05')
+        ->and($payload['birth_date_display'])->toBe('05/01/1984')
         ->and($payload['phone_1'])->toBe('04141234567')
         ->and($payload['email'])->toBe('maria@correo.com')
         ->and($payload['classification'])->toBe('agent')
@@ -88,6 +92,49 @@ it('parsea registro de agente con formato separado por comas', function (): void
         ->and($payload['country_id'])->toBe(1)
         ->and($payload['state_id'])->toBe(10)
         ->and($payload['city_id'])->toBe(100);
+});
+
+it('actualiza solo la fecha de nacimiento cuando el usuario envia dd/mm/yyyy', function (): void {
+    $slotFiller = new IntentSlotFiller;
+
+    $existingPayload = [
+        'name' => 'María Pérez',
+        'identity_document' => 'V-16007868',
+        'phone_1' => '04141234567',
+        'email' => 'maria@correo.com',
+        'classification' => 'agent',
+        'agency_name' => 'TDG',
+    ];
+
+    $payload = $slotFiller->mergePayloadFromMessage(
+        AgentConversationStateMachine::INTENT_PREREGISTRO,
+        $existingPayload,
+        '05/01/1984',
+        AgentConversationStateMachine::ACTION_REGISTER_AGENT,
+    );
+
+    expect($payload['birth_date'])->toBe('1984-01-05')
+        ->and($payload['birth_date_display'])->toBe('05/01/1984')
+        ->and($payload['name'])->toBe('María Pérez')
+        ->and($payload['email'])->toBe('maria@correo.com');
+});
+
+it('reporta la fecha de nacimiento como campo faltante en registro de agente', function (): void {
+    $slotFiller = new IntentSlotFiller;
+
+    $missing = $slotFiller->missingRequiredFields(
+        AgentConversationStateMachine::INTENT_PREREGISTRO,
+        [
+            'name' => 'María Pérez',
+            'identity_document' => 'V-16007868',
+            'email' => 'maria@correo.com',
+            'phone_1' => '04141234567',
+            'agency_name' => 'TDG',
+        ],
+        AgentConversationStateMachine::ACTION_REGISTER_AGENT,
+    );
+
+    expect($missing)->toBe(['birth_date']);
 });
 
 it('actualiza la agencia cuando el usuario envia solo un nuevo termino de busqueda', function (): void {
@@ -200,6 +247,22 @@ it('actualiza solo el tipo de perfil cuando el usuario envia 1 o 2', function ()
     );
 
     expect($payload['classification'])->toBe('subagent');
+});
+
+it('muestra nota de TuDrGroup en resumen cuando la agencia es TDG', function (): void {
+    $slotFiller = new IntentSlotFiller;
+
+    $summary = $slotFiller->agentSubagentValidationSummary([
+        'name' => 'María Pérez',
+        'identity_document_display' => 'V-16007868',
+        'phone_1' => '04141234567',
+        'email' => 'maria@correo.com',
+        'classification' => 'agent',
+        'agency_name' => 'TDG',
+    ]);
+
+    expect($summary)->toContain('TuDrGroup — TDG-100')
+        ->and($summary)->toContain('estructura comercial de TuDrGroup');
 });
 
 it('parsea registro de agencia master con tres campos detectando email y rif', function (): void {

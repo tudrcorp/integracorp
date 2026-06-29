@@ -22,6 +22,7 @@ class OperationQuoteGenerator extends Model
         'operation_coordination_service_id',
         'operation_service_order_id',
         'type_service',
+        'is_cash',
         'supplier_id',
         'supplier_address',
         'observations',
@@ -39,6 +40,7 @@ class OperationQuoteGenerator extends Model
 
     protected $casts = [
         'items' => 'array',
+        'is_cash' => 'boolean',
     ];
 
     public function telemedicinePatient()

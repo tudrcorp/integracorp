@@ -104,3 +104,22 @@ it('detecta coincidencia exacta de agencia para autoseleccion', function (): voi
         ->and($service->isExactAgencyMatch('tdg001', $agency))->toBeTrue()
         ->and($service->isExactAgencyMatch('TDG', $agency))->toBeFalse();
 });
+
+it('resuelve TDG exacto como TuDrGroup con codigo TDG-100 para agentes', function (): void {
+    $service = new PublicAgentRegistrationValidationService;
+
+    expect($service->isExactTdgAgencyTerm('TDG'))->toBeTrue()
+        ->and($service->isExactTdgAgencyTerm('tdg'))->toBeTrue()
+        ->and($service->isExactTdgAgencyTerm('TDG-100'))->toBeFalse()
+        ->and($service->isExactTdgAgencyTerm('TDG Principal'))->toBeFalse();
+
+    $payload = $service->applyTdgAgency([
+        'agency_name' => 'tdg',
+        'name' => 'María Pérez',
+    ]);
+
+    expect($payload['owner_code'])->toBe('TDG-100')
+        ->and($payload['selected_agency_label'])->toBe('TuDrGroup — TDG-100')
+        ->and($payload['belongs_to_tudrgroup_structure'])->toBeTrue()
+        ->and($service->belongsToTudrgroupStructure($payload))->toBeTrue();
+});

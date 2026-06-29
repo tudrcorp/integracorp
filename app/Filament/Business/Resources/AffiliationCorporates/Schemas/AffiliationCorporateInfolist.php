@@ -173,6 +173,12 @@ class AffiliationCorporateInfolist
                                                             ->badge()
                                                             ->color('success')
                                                             ->formatStateUsing(fn (?string $state): string => filled($state) ? '# '.$state : '—'),
+                                                        TextEntry::make('affiliation_type')
+                                                            ->label('Tipo de afiliación')
+                                                            ->icon(Heroicon::OutlinedStar)
+                                                            ->badge()
+                                                            ->color(fn (?string $state): string => $state === 'VIP' ? 'warning' : 'gray')
+                                                            ->placeholder('—'),
                                                         TextEntry::make('email')
                                                             ->label('Correo corporativo')
                                                             ->icon(Heroicon::OutlinedEnvelope)

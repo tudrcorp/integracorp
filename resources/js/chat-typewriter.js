@@ -6,6 +6,10 @@ function registerChatTypewriter() {
         finished: false,
         isTyping: false,
 
+        get displayedPlain() {
+            return this.displayed.replace(/\*\*/g, '');
+        },
+
         init() {
             const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
 

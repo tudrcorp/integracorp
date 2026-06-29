@@ -25,6 +25,7 @@ it('registra agente y usuario y encola carta de bienvenida', function (): void {
 
     $result = $service->register([
         'name' => 'Agente Chat Test',
+        'identity_document' => 'v-'.random_int(10000000, 99999999),
         'email' => $email,
         'phone' => '04127018390',
         'owner_code' => 'TDG-101',
@@ -78,6 +79,7 @@ it('rechaza correo duplicado con respuesta legible', function (): void {
     $service = new ChatAgentRegistrationService;
     $result = $service->register([
         'name' => 'Agente Duplicado',
+        'identity_document' => 'v-'.random_int(10000000, 99999999),
         'email' => $email,
         'phone' => '04141234567',
         'owner_code' => 'TDG-101',

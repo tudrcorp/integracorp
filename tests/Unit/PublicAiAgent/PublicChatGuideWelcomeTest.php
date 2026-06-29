@@ -11,8 +11,12 @@ it('presenta mensaje de bienvenida de guia chat de forma humanizada', function (
 
     expect($slotFiller->publicChatGuideWelcomeMessage())
         ->toContain('GUÍA-CHAT')
-        ->toContain('¿Qué quieres hacer?')
-        ->toContain('ayuda')
+        ->toContain('Quiero!')
+        ->toContain('**ayuda**')
+        ->toContain('dispositivo móvil')
+        ->toContain('**?**')
+        ->toContain('**Nuestros Planes**')
+        ->not->toContain('¿Qué quieres hacer?')
         ->toContain('Asesores Comerciales')
         ->toContain('acompañarte paso a paso');
 });
@@ -38,5 +42,8 @@ it('muestra contacto de asesores comerciales al pedir ayuda', function (): void 
         ->toContain('Asesores Comerciales')
         ->toContain('[+58 412 701 8390](https://wa.me/584127018390)')
         ->toContain('0412 701 8390')
-        ->toContain('¿Qué quieres hacer?');
+        ->toContain('**Quiero!**')
+        ->toContain('dispositivo móvil')
+        ->toContain('**?**')
+        ->not->toContain('¿Qué quieres hacer?');
 });

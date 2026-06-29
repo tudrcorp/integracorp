@@ -36,6 +36,59 @@ class TravelAgencyForm
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
+    public static function travelAgentsRepeater(bool $useRelationship = true): Repeater
+    {
+        $repeater = Repeater::make('travelAgents')
+            ->label('Tabla dinamica de Agentes')
+            ->table([
+                TableColumn::make('Nombre y Apellido'),
+                TableColumn::make('Cargo'),
+                TableColumn::make('Correo Electrónico'),
+                TableColumn::make('Teléfono'),
+                TableColumn::make('Fecha de Nacimiento'),
+            ])
+            ->schema([
+                TextInput::make('name')
+                    ->afterStateUpdatedJs(<<<'JS'
+                        $set('name', $state.toUpperCase());
+                    JS),
+                TextInput::make('cargo')
+                    ->afterStateUpdatedJs(<<<'JS'
+                        $set('cargo', $state.toUpperCase());
+                    JS),
+                TextInput::make('email')
+                    ->afterStateUpdatedJs(<<<'JS'
+                        $set('email', $state.toUpperCase());
+                    JS),
+                TextInput::make('phone')
+                    ->afterStateUpdatedJs(<<<'JS'
+                        $set('phone', $state.toUpperCase());
+                    JS),
+                DatePicker::make('fechaNacimiento')
+                    ->label('Fecha de Nacimiento')
+                    ->rules(['required', 'date'])
+                    ->validationMessages([
+                        'required' => 'El campo es obligatorio.',
+                        'date' => 'El campo debe ser una fecha.',
+                    ]),
+                Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('edit'),
+                Hidden::make('updated_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('create'),
+            ])
+            ->addActionLabel('Añadir Contacto')
+            ->columnSpanFull()
+            ->reorderable();
+
+        if ($useRelationship) {
+            $repeater->relationship();
+        } else {
+            $repeater
+                ->defaultItems(1)
+                ->minItems(1);
+        }
+
+        return $repeater;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -159,11 +212,6 @@ class TravelAgencyForm
 
                                                         return [];
                                                     })
-                                                    ->afterStateUpdated(function (Set $set, $state) {
-                                                        $region_id = State::where('id', $state)->value('region_id');
-                                                        $region = Region::where('id', $region_id)->value('definition');
-                                                        $set('region', $region);
-                                                    })
                                                     ->live()
                                                     ->searchable()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa')
@@ -258,46 +306,7 @@ class TravelAgencyForm
                                                 'class' => self::IOS_INNER_CLASS,
                                             ])
                                             ->schema([
-                                                Repeater::make('travelAgents')
-                                                    ->label('Tabla dinamica de Agentes')
-                                                    ->relationship()
-                                                    ->table([
-                                                        TableColumn::make('Nombre y Apellido'),
-                                                        TableColumn::make('Cargo'),
-                                                        TableColumn::make('Correo Electrónico'),
-                                                        TableColumn::make('Teléfono'),
-                                                        TableColumn::make('Fecha de Nacimiento'),
-                                                    ])
-                                                    ->schema([
-                                                        TextInput::make('name')
-                                                            ->afterStateUpdatedJs(<<<'JS'
-                                                                $set('name', $state.toUpperCase());
-                                                            JS),
-                                                        TextInput::make('cargo')
-                                                            ->afterStateUpdatedJs(<<<'JS'
-                                                                $set('cargo', $state.toUpperCase());
-                                                            JS),
-                                                        TextInput::make('email')
-                                                            ->afterStateUpdatedJs(<<<'JS'
-                                                                $set('email', $state.toUpperCase());
-                                                            JS),
-                                                        TextInput::make('phone')
-                                                            ->afterStateUpdatedJs(<<<'JS'
-                                                                $set('phone', $state.toUpperCase());
-                                                            JS),
-                                                        DatePicker::make('fechaNacimiento')
-                                                            ->label('Fecha de Nacimiento')
-                                                            ->rules(['required', 'date'])
-                                                            ->validationMessages([
-                                                                'required' => 'El campo es obligatorio.',
-                                                                'date' => 'El campo debe ser una fecha.',
-                                                            ]),
-                                                        Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('edit'),
-                                                        Hidden::make('updated_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('create'),
-                                                    ])
-                                                    ->addActionLabel('Añadir Contacto')
-                                                    ->columnSpanFull()
-                                                    ->reorderable(),
+                                                self::travelAgentsRepeater(),
                                             ]),
                                     ]),
                             ]),

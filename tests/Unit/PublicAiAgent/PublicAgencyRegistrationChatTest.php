@@ -64,6 +64,7 @@ it('muestra bienvenida simplificada para agencia master y general', function ():
         ->toContain('registro interactivo de tu Agencia Master')
         ->toContain('Agencia Master')
         ->toContain('RIF o número de cédula')
+        ->toContain('j-123456789')
         ->and($slotFiller->agencyGeneralWelcomeMessage(
             $slotFiller->registrationWelcomeHeadline(AgentConversationStateMachine::ACTION_REGISTER_AGENCY_GENERAL),
         ))
@@ -71,6 +72,7 @@ it('muestra bienvenida simplificada para agencia master y general', function ():
         ->toContain('Agencia General')
         ->toContain('Razón social de la agencia master')
         ->toContain('RIF o número de cédula')
+        ->toContain('v-12345678')
         ->toContain('escribe TDG');
 });
 
@@ -222,7 +224,8 @@ it('completa registro real de agencia general con TDG e informa envio por whatsa
     $orchestrator = app(AgentOrchestrator::class);
     $session = ChatSession::startPublic('127.0.0.1', 'Pest');
     $email = 'general-chat-'.uniqid().'@test.invalid';
-    $taxId = 'J'.random_int(100000000, 999999999);
+    $taxNumber = (string) random_int(100000000, 999999999);
+    $taxId = 'j-'.$taxNumber;
 
     $orchestrator->processUserMessage(
         $session,
@@ -238,7 +241,7 @@ it('completa registro real de agencia general con TDG e informa envio por whatsa
 
     expect($summary['reply'])->toContain('Agencia General')
         ->and($summary['reply'])->toContain('Agencia master: TDG')
-        ->and($summary['reply'])->toContain($taxId);
+        ->and($summary['reply'])->toContain('J-'.$taxNumber);
 
     $registered = $orchestrator->processUserMessage(
         $session,
@@ -259,6 +262,7 @@ it('completa registro real de agencia general con TDG e informa envio por whatsa
         ->and($user)->not->toBeNull()
         ->and((int) $agency->agency_type_id)->toBe(3)
         ->and($agency->owner_code)->toBe('TDG-100')
+        ->and($agency->rif)->toBe($taxNumber)
         ->and((bool) $user->is_agency)->toBeTrue()
         ->and($user->agency_type)->toBe('GENERAL');
 
@@ -299,7 +303,7 @@ it('completa registro real de agencia master e informa envio por whatsapp y corr
 
     expect($summary['reply'])->toContain('Agencia Master')
         ->toContain('Razón social: Agencia Master Chat Test')
-        ->toContain('J123456789');
+        ->toContain('J-123456789');
 
     $registered = $orchestrator->processUserMessage(
         $session,
@@ -321,6 +325,7 @@ it('completa registro real de agencia master e informa envio por whatsapp y corr
         ->and($user)->not->toBeNull()
         ->and((int) $agency->agency_type_id)->toBe(1)
         ->and($agency->owner_code)->toBe($agency->code)
+        ->and($agency->rif)->toBe('123456789')
         ->and((bool) $user->is_agency)->toBeTrue()
         ->and($user->agency_type)->toBe('MASTER');
 

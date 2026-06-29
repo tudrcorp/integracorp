@@ -188,6 +188,14 @@ Route::get('administration/export-helpdesks-csv', App\Http\Controllers\HelpdeskE
     ->middleware(['web', 'auth'])
     ->name('administration.helpdesks.export-csv');
 
+Route::get('administration/export-agencies-csv', App\Http\Controllers\AgencyExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.agencies.export-csv');
+
+Route::get('administration/export-agents-csv', App\Http\Controllers\AgentExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.agents.export-csv');
+
 Route::get('operations/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('operations.helpdesks.export-csv');
@@ -460,7 +468,12 @@ Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}/{type?}', 'agencyformcreate')->name('volt.agency.create');
 Volt::route('/m/o/c/{code?}', 'agencymasterform')->name('master.organization.create');
 Volt::route('/d/c', 'doctorFormCreate')->name('volt.doctor.create');
+
+// Chat público guiado (UI): página Volt/Livewire en /chat/publico.
+// La interfaz usa AgentOrchestrator directamente; no consume la API HTTP /api/public-chat/*.
 Volt::route('/chat/publico', 'volt.public.ai_chat')->name('volt.public.ai_chat');
+
+Route::redirect('/guia-chat', '/chat/publico', 301)->name('guia-chat');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
@@ -1768,24 +1781,67 @@ Route::prefix('api')->name('api.')->group(function () {
     Route::post('/info/store', [BusinessAppointmentsController::class, 'store'])
         ->name('info.store');
 
+    /*
+    |--------------------------------------------------------------------------
+    | API — Chat público guiado (guía-chat)
+    |--------------------------------------------------------------------------
+    |
+    | Endpoints JSON para integrar el agente conversacional desde clientes
+    | externos (app móvil, widget, etc.). La página /chat/publico usa Livewire
+    | y no depende de estas rutas; comparten la misma lógica vía AgentOrchestrator.
+    |
+    */
+
+    // POST /api/public-chat/session
+    // Inicia una sesión nueva de chat público. No requiere body.
+    // Respuesta: session_token, state, intent, handoff_requested.
     Route::post('/public-chat/session', [PublicChatController::class, 'session'])
         ->name('public-chat.session');
 
+    // POST /api/public-chat/message
+    // Envía un mensaje del usuario y obtiene la respuesta del agente.
+    // Body: message (requerido), session_token (opcional), action_key (opcional, ej. registro_agente).
+    // Respuesta: reply, state, intent, handoff_requested, tool_runs, external_redirect_url.
     Route::post('/public-chat/message', [PublicChatController::class, 'message'])
         ->name('public-chat.message');
 
+    // GET /api/public-chat/history?session_token=...
+    // Devuelve el historial de mensajes y el estado actual de una sesión existente.
+    // Query: session_token (requerido).
     Route::get('/public-chat/history', [PublicChatController::class, 'history'])
         ->name('public-chat.history');
 
+    /*
+    |--------------------------------------------------------------------------
+    | API — Acciones internas del chat (persistencia)
+    |--------------------------------------------------------------------------
+    |
+    | Invocadas por el orquestador del agente al completar un flujo guiado.
+    | Validan el payload con Form Request y delegan en los servicios de registro.
+    |
+    */
+
+    // POST /api/internal/chat/agent-registration
+    // Registra un agente o subagente capturado en el flujo del chat guiado.
+    // Body validado por RegisterChatAgentRequest (datos personales, contacto, owner_code, etc.).
     Route::post('/internal/chat/agent-registration', [\App\Http\Controllers\Internal\ChatAgentRegistrationController::class, 'store'])
         ->name('internal.chat.agent-registration');
 
+    // POST /api/internal/chat/agency-master-registration
+    // Registra una agencia master desde el flujo del chat guiado.
+    // Body validado por RegisterChatAgencyMasterRequest.
     Route::post('/internal/chat/agency-master-registration', [\App\Http\Controllers\Internal\ChatAgencyMasterRegistrationController::class, 'store'])
         ->name('internal.chat.agency-master-registration');
 
+    // POST /api/internal/chat/agency-general-registration
+    // Registra una agencia general desde el flujo del chat guiado.
+    // Body validado por RegisterChatAgencyGeneralRequest.
     Route::post('/internal/chat/agency-general-registration', [\App\Http\Controllers\Internal\ChatAgencyGeneralRegistrationController::class, 'store'])
         ->name('internal.chat.agency-general-registration');
 
+    // POST /api/internal/chat/individual-quote
+    // Crea una cotización de plan individual recopilada en el chat guiado.
+    // Body validado por RegisterChatIndividualQuoteRequest.
     Route::post('/internal/chat/individual-quote', [\App\Http\Controllers\Internal\ChatIndividualQuoteController::class, 'store'])
         ->name('internal.chat.individual-quote');
 });

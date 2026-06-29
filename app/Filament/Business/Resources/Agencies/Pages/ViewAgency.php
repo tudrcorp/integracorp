@@ -12,6 +12,7 @@ use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -33,6 +34,20 @@ class ViewAgency extends ViewRecord
     private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
 
     private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
+
+    /**
+     * Tipos de archivo aceptados para la carga de documentos de la agencia.
+     *
+     * @var array<int, string>
+     */
+    private const AGENCY_DOCUMENT_MIME_TYPES = [
+        'image/jpeg',
+        'image/png',
+        'application/pdf',
+        'text/plain',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ];
 
     public function getTitle(): string|Htmlable
     {
@@ -208,7 +223,126 @@ class ViewAgency extends ViewRecord
                 ->action(function (array $data): void {
                     $this->registerAudit($data['items'] ?? []);
                 }),
+            Action::make('uploadDocuments')
+                ->label('Cargar documentos')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
+                ->modalHeading('Cargar documentos de la agencia')
+                ->modalDescription('Adjunte el Documento de Identidad, el W8/W9 y los Documentos Varios que necesite. Tamaño máximo 2MB por archivo. Formatos: jpg, jpeg, png, pdf, txt, xls, xlsx.')
+                ->modalSubmitActionLabel('Guardar')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(
+                    fn (Action $action) => $action
+                        ->color('success')
+                        ->extraAttributes([
+                            'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action) => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                        ])
+                )
+                ->form([
+                    FileUpload::make('file_ci_rif')
+                        ->label('Documento de Identidad')
+                        ->uploadingMessage('Cargando documento...')
+                        ->directory('agencias/documentos')
+                        ->acceptedFileTypes(self::AGENCY_DOCUMENT_MIME_TYPES)
+                        ->maxSize(2048),
+                    FileUpload::make('file_w8_w9')
+                        ->label('W8/W9')
+                        ->uploadingMessage('Cargando documento...')
+                        ->directory('agencias/documentos')
+                        ->acceptedFileTypes(self::AGENCY_DOCUMENT_MIME_TYPES)
+                        ->maxSize(2048),
+                    FileUpload::make('documentos_varios')
+                        ->label('Documentos Varios')
+                        ->helperText('Puede adjuntar varios archivos a la vez.')
+                        ->multiple()
+                        ->reorderable()
+                        ->appendFiles()
+                        ->uploadingMessage('Cargando documentos...')
+                        ->directory('agencias/documentos')
+                        ->acceptedFileTypes(self::AGENCY_DOCUMENT_MIME_TYPES)
+                        ->maxSize(2048),
+                ])
+                ->action(function (array $data): void {
+                    $this->storeAgencyDocuments($data);
+                }),
         ];
+    }
+
+    /**
+     * Crea los registros de documentos asociados a la agencia a partir del formulario.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function storeAgencyDocuments(array $data): void
+    {
+        $titlesByField = [
+            'file_ci_rif' => 'DOCUMENTO DE IDENTIDAD CI/RIF',
+            'file_w8_w9' => 'W8/W9',
+            'documentos_varios' => 'DOCUMENTOS VARIOS',
+        ];
+
+        $created = 0;
+        $uploadedTitles = [];
+
+        foreach ($titlesByField as $field => $title) {
+            $value = $data[$field] ?? null;
+
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+
+            foreach ((array) $value as $path) {
+                if (! is_string($path) || $path === '') {
+                    continue;
+                }
+
+                $this->record->documents()->create([
+                    'title' => $title,
+                    'document' => $path,
+                    'image' => 'folder2.png',
+                ]);
+
+                $created++;
+                $uploadedTitles[] = $title;
+            }
+        }
+
+        if ($created === 0) {
+            Notification::make()
+                ->warning()
+                ->title('No se cargaron documentos')
+                ->body('Adjunte al menos un archivo antes de guardar.')
+                ->send();
+
+            return;
+        }
+
+        $this->record->unsetRelation('documents');
+        $this->record->load('documents');
+
+        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_DOCUMENTS_UPLOADED', 'business.agencies.documents.upload', [
+            'agency_id' => $this->record->getKey(),
+            'agency_name' => $this->record->name_corporative,
+            'documents_count' => $created,
+            'document_titles' => array_values(array_unique($uploadedTitles)),
+            'source' => 'view_agency_header',
+        ]);
+
+        Notification::make()
+            ->success()
+            ->title('Documentos cargados')
+            ->body($created.' documento(s) asociados a la agencia.')
+            ->send();
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 
+use App\Models\Benefit;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
@@ -373,6 +374,15 @@ class PlanGeneratorForm
                                                         'columns' => PlanGeneratorMatrixState::normalizeColumns((array) ($get('columns') ?? [])),
                                                         'rows' => (array) ($get('rows') ?? []),
                                                         'rateRows' => (array) ($get('rate_rows') ?? []),
+                                                        'benefitOptions' => Benefit::query()
+                                                            ->whereNotNull('description')
+                                                            ->where('description', '!=', '')
+                                                            ->orderBy('description')
+                                                            ->pluck('description')
+                                                            ->map(fn (string $description): string => (string) $description)
+                                                            ->unique()
+                                                            ->values()
+                                                            ->all(),
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),

@@ -157,6 +157,32 @@ it('OperationCoordinationServicesTable muestra ítems clínicos en la vista prin
         ->toContain('max-width: 30rem');
 });
 
+it('la columna de items clínicos acota su ancho sin recortar el contenido', function (): void {
+    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    $compactStart = strpos($theme, '.fi-coordination-clinical-items-compact {');
+    $compactBlock = substr($theme, $compactStart, 160);
+
+    expect($compactBlock)
+        ->toContain('max-width: 30rem;')
+        ->not->toContain('overflow: hidden;');
+
+    $itemStart = strpos($theme, '.fi-coordination-clinical-item {');
+    $itemBlock = substr($theme, $itemStart, 320);
+
+    expect($itemBlock)
+        ->toContain('flex-wrap')
+        ->not->toContain('flex-nowrap');
+
+    $labelStart = strpos($theme, '.fi-coordination-clinical-item__label {');
+    $labelBlock = substr($theme, $labelStart, 220);
+
+    expect($labelBlock)
+        ->toContain('whitespace-normal')
+        ->toContain('break-words')
+        ->not->toContain('truncate');
+});
+
 it('clinicalItemPendingManageLinkHtml enlaza a gestionar servicio solo en items pendientes', function (): void {
     $item = ['selectable' => true];
 
@@ -318,7 +344,32 @@ it('OperationCoordinationServicesTable permite agrupar por código del caso', fu
         ->toContain('->orderQueryUsing(')
         ->toContain("'telemedicineCase', 'created_at'")
         ->toContain("'desc'")
+        ->toContain("->defaultGroup('telemedicineCase.code')")
         ->toContain('->collapsedGroupsByDefault()');
+});
+
+it('OperationCoordinationServicesTable oculta coordinaciones sin ítems por gestionar y conserva las que tienen ítems abiertos', function (): void {
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php');
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php');
+
+    expect($table)
+        ->toContain('public static function applyHideFullyFinalizedScope(Builder $query): Builder')
+        ->toContain("\$openStatuses = ['PENDIENTE', 'EN GESTION'];")
+        ->toContain("->whereDoesntHave('telemedicinePatientMedications')")
+        ->toContain("->whereDoesntHave('telemedicinePatientLabs')")
+        ->toContain("->whereDoesntHave('telemedicinePatientStudies')")
+        ->toContain("->whereDoesntHave('telemedicinePatientSpecialties')")
+        ->toContain("->orWhereHas('telemedicinePatientMedications'")
+        ->toContain("->orWhereHas('telemedicinePatientLabs'")
+        ->toContain("->orWhereHas('telemedicinePatientStudies'")
+        ->toContain("->orWhereHas('telemedicinePatientSpecialties'")
+        ->toContain("whereRaw('UPPER(TRIM(status)) IN (?, ?)', \$openStatuses)");
+
+    expect($page)
+        ->toContain('use App\\Filament\\Operations\\Resources\\OperationCoordinationServices\\Tables\\OperationCoordinationServicesTable;')
+        ->toContain("'todas' => Tab::make('Todas')")
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)')
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(OperationsSupplierScope::coordinationServiceQuery())->count()');
 });
 
 it('OperationCoordinationServicesTable muestra código de caso TM con badge y enlace a vista', function (): void {

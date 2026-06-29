@@ -53,8 +53,8 @@ it('renderiza la vista pública del chat IA', function (): void {
         ->assertSee('GU')
         ->assertSee('IA')
         ->assertSee('-CHAT')
-        ->assertSee('Estoy aquí para guiarte en lo que necesites.')
-        ->assertSee('¿Qué quieres hacer?')
+        ->assertSee('Quiero!')
+        ->assertSee('Nuestros Planes')
         ->assertDontSee('Cotización plan individual')
         ->assertSee('Registro de Agente')
         ->assertSee('Pregunta lo que necesites...')
@@ -111,6 +111,17 @@ it('reinicia el chat y limpia el historial visible', function (): void {
         ->assertSet('selectedAction', '')
         ->assertSet('conversationState', 'saludo')
         ->assertSet('handoffRequested', false);
+});
+
+it('resalta terminos destacados en mensajes del chat publico', function (): void {
+    Volt::test('volt.public.ai_chat')
+        ->tap(function ($component): void {
+            $formatted = $component->instance()->formatChatMessage('Escribe **ayuda** o pulsa **Quiero!** para continuar.');
+
+            expect($formatted)
+                ->toContain('<span class="font-semibold text-[1.1em] leading-snug text-emerald-200">ayuda</span>')
+                ->toContain('<span class="font-semibold text-[1.1em] leading-snug text-emerald-200">Quiero!</span>');
+        });
 });
 
 it('convierte enlaces markdown de whatsapp en links clicables', function (): void {
