@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.interactive')] class extends Component {
+new #[Layout('components.layouts.guia-chat')] class extends Component {
     public string $sessionToken = '';
 
     public string $draft = '';
@@ -32,6 +32,11 @@ new #[Layout('components.layouts.interactive')] class extends Component {
 
     /** @var array<string, array{label: string, description: string, short: string}> */
     public array $actionOptions = [
+        'nuestros_planes' => [
+            'label' => 'Nuestros Planes',
+            'short' => 'Planes',
+            'description' => 'Rangos de edad, coberturas y beneficios.',
+        ],
         // Acciones de cotización deshabilitadas temporalmente (reactivar cuando se requiera).
         // 'cotizacion_individual' => [
         //     'label' => 'Cotización plan individual',
@@ -127,12 +132,6 @@ new #[Layout('components.layouts.interactive')] class extends Component {
         $this->detectedIntent = null;
         $this->handoffRequested = false;
         $this->selectedAction = '';
-
-        Flux::toast(
-            heading: 'Chat reiniciado',
-            text: 'Puedes comenzar una nueva conversación.',
-            variant: 'success',
-        );
     }
 
     private function hydrateFromSession(ChatSession $session): void
@@ -306,7 +305,33 @@ new #[Layout('components.layouts.interactive')] class extends Component {
                 continue;
             }
 
-            $escaped = e($chunk);
+            $html .= $this->formatChatTextChunk($chunk);
+        }
+
+        return $html;
+    }
+
+    private function formatChatTextChunk(string $chunk): string
+    {
+        $segments = preg_split('/(\*\*.+?\*\*)/u', $chunk, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+
+        if ($segments === false) {
+            $segments = [$chunk];
+        }
+
+        $html = '';
+
+        foreach ($segments as $segment) {
+            if (preg_match('/^\*\*(.+)\*\*$/us', $segment, $match) === 1) {
+                $html .= sprintf(
+                    '<span class="font-semibold text-[1.1em] leading-snug text-emerald-200">%s</span>',
+                    e($match[1]),
+                );
+
+                continue;
+            }
+
+            $escaped = e($segment);
             $html .= preg_replace(
                 '/(https?:\/\/[^\s<]+)/i',
                 '<a href="$1" target="_blank" rel="noopener noreferrer" class="underline text-emerald-200 hover:text-white break-all">$1</a>',
@@ -362,21 +387,23 @@ new #[Layout('components.layouts.interactive')] class extends Component {
         x-on:chat-open-external.window="if ($event.detail?.url) { window.open($event.detail.url, '_blank', 'noopener,noreferrer'); }"
     >
         {{-- Header --}}
-        <header class="shrink-0 pt-4 pb-3 text-center sm:pt-6 sm:pb-4">
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/25 bg-white shadow-lg sm:h-20 sm:w-20">
-                <img
-                    src="{{ asset('images/chat/assistant-avatar.png') }}"
-                    alt="Integracorp"
-                    class="h-full w-full object-cover"
-                />
+        <header class="relative shrink-0 px-1 pt-3 pb-2.5 text-center sm:px-0 sm:pt-5 sm:pb-3.5 md:pt-6 md:pb-4">
+            <div class="pointer-events-none absolute inset-x-0 top-0 flex justify-center pt-1 sm:pt-2" aria-hidden="true">
+                <div class="h-20 w-20 rounded-full bg-cyan-400/10 blur-2xl sm:h-24 sm:w-24 md:h-28 md:w-28"></div>
             </div>
-            <h1 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                ¡Hola! Soy tu
-                <span class="inline-flex items-baseline whitespace-nowrap">
-                    GU<span class="bg-gradient-to-r from-emerald-300 via-cyan-200 to-teal-300 bg-clip-text font-extrabold text-transparent drop-shadow-sm">IA</span>-CHAT
-                </span>
-            </h1>
-            <p class="mt-2 text-sm text-white/75 sm:text-base">Estoy aquí para guiarte en lo que necesites.</p>
+
+            <div class="relative mx-auto flex max-w-md flex-col items-center md:max-w-lg">
+                <h1 class="max-w-[16rem] text-balance sm:max-w-none">
+                    <span class="block text-base font-medium tracking-tight text-white/90 sm:text-lg md:text-xl">
+                        ¡Hola! Soy tu
+                    </span>
+                    <span class="mt-0.5 block text-2xl font-bold leading-none tracking-tight text-white sm:mt-1 sm:text-3xl md:text-4xl">
+                        GU<span class="bg-gradient-to-r from-emerald-300 via-cyan-300 to-teal-200 bg-clip-text font-extrabold text-transparent drop-shadow-[0_0_16px_rgba(45,212,191,0.3)]">IA</span>-CHAT
+                    </span>
+                </h1>
+
+                <div class="mt-3 h-px w-12 bg-gradient-to-r from-transparent via-white/25 to-transparent sm:mt-3.5 md:mt-4 md:w-20" aria-hidden="true"></div>
+            </div>
         </header>
 
         {{-- Zona de chat (solo esta área hace scroll) --}}
@@ -386,7 +413,7 @@ new #[Layout('components.layouts.interactive')] class extends Component {
             x-init="$el.scrollTop = $el.scrollHeight"
             x-on:chat-scroll-bottom.window="$el.scrollTop = $el.scrollHeight"
         >
-            <div class="space-y-4 py-1 sm:py-2">
+            <div class="space-y-4 pt-4 pb-1 sm:pt-5 sm:pb-2 md:pt-6">
                 @if (count($chatFeed) === 0 && ! $isThinking)
                     <div wire:key="guide-welcome" class="flex items-start gap-2.5 justify-start">
                         <img
@@ -400,7 +427,7 @@ new #[Layout('components.layouts.interactive')] class extends Component {
                             x-data="chatTypewriter(@js($this->guideWelcomeMessage()), @js($this->formatChatMessage($this->guideWelcomeMessage())))"
                         >
                             <span x-show="!finished">
-                                <span x-text="displayed"></span>
+                                <span x-text="displayedPlain"></span>
                                 <span
                                     x-show="isTyping"
                                     class="inline-block h-[1em] w-[2px] translate-y-[1px] animate-pulse rounded-sm bg-white/80 align-middle ml-0.5"
@@ -433,7 +460,7 @@ new #[Layout('components.layouts.interactive')] class extends Component {
                                         x-data="chatTypewriter(@js($chatMessage['content']), @js($this->formatChatMessage($chatMessage['content'])))"
                                     >
                                         <span x-show="!finished">
-                                            <span x-text="displayed"></span>
+                                            <span x-text="displayedPlain"></span>
                                             <span
                                                 x-show="isTyping"
                                                 class="inline-block h-[1em] w-[2px] translate-y-[1px] animate-pulse rounded-sm bg-white/80 align-middle ml-0.5"
@@ -474,8 +501,8 @@ new #[Layout('components.layouts.interactive')] class extends Component {
         {{-- Input fijo al pie del layout (sin overlap) --}}
         <div class="shrink-0 space-y-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {{-- Barra de escritura horizontal (diseño tipo chat IA) --}}
-        <form wire:submit="sendMessage" class="flex w-full items-end gap-2 overflow-visible sm:gap-3">
-            <div class="flex min-w-0 flex-1 items-end gap-1 overflow-visible rounded-3xl border border-white/20 bg-black/30 py-1.5 pl-1.5 pr-2 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:gap-2 sm:pl-2 sm:pr-3 sm:py-2">
+        <form wire:submit="sendMessage" class="flex w-full items-center gap-2 overflow-visible sm:gap-3">
+            <div class="flex min-w-0 flex-1 items-center gap-1 overflow-visible rounded-3xl border border-white/20 bg-black/30 py-1.5 pl-1.5 pr-2 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:gap-2 sm:pl-2 sm:pr-3 sm:py-2">
                 {{-- Reiniciar chat --}}
                 <button
                     type="button"
@@ -487,8 +514,8 @@ new #[Layout('components.layouts.interactive')] class extends Component {
                     aria-label="Reiniciar chat"
                     title="Reiniciar chat"
                 >
-                    <svg wire:loading.remove wire:target="restartChat" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                    <svg wire:loading.remove wire:target="restartChat" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12 22.5 9m-3 3-3-3M4.5 12c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12 1.5 15m3-3 3 3" />
                     </svg>
                     <svg wire:loading wire:target="restartChat" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -504,14 +531,15 @@ new #[Layout('components.layouts.interactive')] class extends Component {
                     @disabled($handoffRequested)
                     x-data="{
                         resize() {
+                            const minHeight = window.matchMedia('(min-width: 640px)').matches ? 26 : 32;
                             this.$el.style.height = 'auto';
-                            this.$el.style.height = `${Math.min(this.$el.scrollHeight, 128)}px`;
+                            this.$el.style.height = `${Math.max(minHeight, Math.min(this.$el.scrollHeight, 128))}px`;
                         },
                     }"
                     x-init="resize(); $watch('$wire.draft', () => $nextTick(() => resize()))"
                     x-on:input="resize()"
                     x-on:keydown.enter.prevent="if (! $event.shiftKey) { $el.form.requestSubmit() }"
-                    class="min-h-[1.5rem] max-h-32 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1 text-sm leading-relaxed text-white placeholder:text-white/45 outline-none focus:ring-0 disabled:opacity-50 sm:min-h-[1.625rem] sm:text-base"
+                    class="block min-h-8 max-h-32 min-w-0 flex-1 appearance-none resize-none overflow-y-auto border-0 bg-transparent px-0 py-0 text-sm leading-8 text-white placeholder:text-white/45 outline-none focus:ring-0 disabled:opacity-50 sm:min-h-[1.625rem] sm:leading-7 sm:text-base"
                 ></textarea>
 
                 {{-- Selector de acción (custom glass dropdown) --}}
@@ -585,11 +613,11 @@ new #[Layout('components.layouts.interactive')] class extends Component {
                         aria-haspopup="listbox"
                         x-bind:aria-expanded="open"
                     >
-                        <span class="truncate">
+                        <span class="truncate text-[13px] font-semibold sm:text-[15px]">
                             @if ($selectedAction !== '' && isset($actionOptions[$selectedAction]))
                                 {{ $actionOptions[$selectedAction]['short'] }}
                             @else
-                                ¿Qué quieres hacer?
+                                Quiero!
                             @endif
                         </span>
                         <svg
@@ -616,7 +644,7 @@ new #[Layout('components.layouts.interactive')] class extends Component {
                         aria-label="¿Qué quieres hacer?"
                         title="¿Qué quieres hacer?"
                     >
-                        <span class="text-[15px] font-semibold leading-none tracking-tight">?</span>
+                        <span class="text-[17px] font-semibold leading-none tracking-tight">?</span>
                     </button>
 
                     <template x-teleport="body">

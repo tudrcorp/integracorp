@@ -19,7 +19,9 @@ use App\Models\Region;
 use App\Models\ServiceProvider;
 use App\Models\State;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
+use App\Support\AffiliationAffiliateTypeSynchronizer;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -168,6 +170,108 @@ class AffiliationForm
                                             ->live(),
                                         Hidden::make('created_by')->default(Auth::user()->name),
                                         Hidden::make('status')->default('PRE-APROBADA'),
+                                    ])->columnSpanFull()->columns(3),
+
+                                Fieldset::make('Tipo de Afiliación')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Select::make('affiliation_type')
+                                            ->label('Tipo de Afiliación')
+                                            ->options([
+                                                'ESTANDARD' => 'ESTANDARD',
+                                                'VIP' => 'VIP',
+                                            ])
+                                            ->default('ESTANDARD')
+                                            ->required()
+                                            ->live()
+                                            ->validationMessages([
+                                                'required' => 'Campo Requerido',
+                                            ])
+                                            ->prefixIcon('heroicon-m-star')
+                                            ->searchable()
+                                            ->preload(),
+                                        Actions::make([
+                                            Action::make('syncAffiliateAffiliationType')
+                                                ->label('Sincronizar con afiliados')
+                                                ->icon('heroicon-o-arrow-path')
+                                                ->color('info')
+                                                ->extraAttributes([
+                                                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                                                ])
+                                                ->requiresConfirmation()
+                                                ->modalHeading('Sincronizar tipo de afiliación')
+                                                ->modalDescription('Se actualizará el tipo de afiliación en todos los afiliados vinculados a esta afiliación, usando el valor seleccionado arriba.')
+                                                ->modalSubmitActionLabel('Sincronizar')
+                                                ->modalSubmitAction(
+                                                    fn (Action $action) => $action
+                                                        ->color('info')
+                                                        ->extraAttributes([
+                                                            'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                                                        ])
+                                                )
+                                                ->modalCancelAction(
+                                                    fn (Action $action) => $action
+                                                        ->color('gray')
+                                                        ->extraAttributes([
+                                                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                                                        ])
+                                                )
+                                                ->visible(fn (string $operation): bool => $operation === 'edit')
+                                                ->action(function (Get $get, Component $livewire): void {
+                                                    if (! method_exists($livewire, 'getRecord')) {
+                                                        return;
+                                                    }
+
+                                                    $affiliation = $livewire->getRecord();
+
+                                                    if (! $affiliation instanceof Affiliation) {
+                                                        return;
+                                                    }
+
+                                                    try {
+                                                        $updatedCount = app(AffiliationAffiliateTypeSynchronizer::class)->sync(
+                                                            $affiliation,
+                                                            $get('affiliation_type'),
+                                                        );
+                                                    } catch (\InvalidArgumentException $exception) {
+                                                        SecurityAudit::log('AUDIT_BUSINESS_AFFILIATION_TYPE_SYNC_FAILED', 'business.affiliations.sync-affiliation-type', [
+                                                            'panel' => 'business',
+                                                            'module' => 'affiliations',
+                                                            'affiliation_id' => $affiliation->id,
+                                                            'affiliation_code' => $affiliation->code,
+                                                            'affiliation_type' => $get('affiliation_type'),
+                                                            'error' => $exception->getMessage(),
+                                                        ]);
+
+                                                        Notification::make()
+                                                            ->danger()
+                                                            ->title('No se pudo sincronizar')
+                                                            ->body($exception->getMessage())
+                                                            ->send();
+
+                                                        return;
+                                                    }
+
+                                                    SecurityAudit::log('AUDIT_BUSINESS_AFFILIATION_TYPE_SYNCED', 'business.affiliations.sync-affiliation-type', [
+                                                        'panel' => 'business',
+                                                        'module' => 'affiliations',
+                                                        'affiliation_id' => $affiliation->id,
+                                                        'affiliation_code' => $affiliation->code,
+                                                        'affiliation_type' => $get('affiliation_type'),
+                                                        'updated_count' => $updatedCount,
+                                                    ]);
+
+                                                    Notification::make()
+                                                        ->success()
+                                                        ->title('Afiliados sincronizados')
+                                                        ->body($updatedCount === 0
+                                                            ? 'No hay afiliados vinculados a esta afiliación.'
+                                                            : "Se actualizaron {$updatedCount} afiliado(s) con el tipo de afiliación seleccionado.")
+                                                        ->send();
+                                                }),
+                                        ])
+                                            ->alignment(Alignment::Start)
+                                            ->columnSpanFull(),
                                     ])->columnSpanFull()->columns(3),
 
                                 Fieldset::make('Asociar Agencia y/o Agente')

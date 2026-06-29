@@ -1453,6 +1453,7 @@ class OperationCoordinationServicesTable
                         );
                     }),
             ])
+            ->defaultGroup('telemedicineCase.code')
             ->collapsedGroupsByDefault()
             ->modifyUngroupedRecordActionsUsing(function (Action $action): void {
                 if ($action->getName() === 'selectTdgDoctorForAmbulanceFollowUp') {
@@ -1983,5 +1984,40 @@ class OperationCoordinationServicesTable
         }
 
         return [TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name)];
+    }
+
+    /**
+     * Mantiene visibles únicamente las coordinaciones con trabajo pendiente: se
+     * conservan las que aún no tienen ítems o las que tienen al menos un ítem
+     * PENDIENTE o EN GESTION, y se ocultan aquellas cuyos ítems están todos
+     * cerrados (finalizados/cancelados/caducados), para que el usuario se centre
+     * en lo que debe gestionar y finalizar.
+     */
+    public static function applyHideFullyFinalizedScope(Builder $query): Builder
+    {
+        $openStatuses = ['PENDIENTE', 'EN GESTION'];
+
+        return $query->where(function (Builder $outer) use ($openStatuses): void {
+            $outer
+                ->where(function (Builder $withoutItems): void {
+                    $withoutItems
+                        ->whereDoesntHave('telemedicinePatientMedications')
+                        ->whereDoesntHave('telemedicinePatientLabs')
+                        ->whereDoesntHave('telemedicinePatientStudies')
+                        ->whereDoesntHave('telemedicinePatientSpecialties');
+                })
+                ->orWhereHas('telemedicinePatientMedications', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+                ->orWhereHas('telemedicinePatientLabs', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+                ->orWhereHas('telemedicinePatientStudies', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+                ->orWhereHas('telemedicinePatientSpecialties', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses));
+        });
+    }
+
+    /**
+     * @param  list<string>  $openStatuses
+     */
+    private static function whereItemStatusIsOpen(Builder $query, array $openStatuses): Builder
+    {
+        return $query->whereRaw('UPPER(TRIM(status)) IN (?, ?)', $openStatuses);
     }
 }

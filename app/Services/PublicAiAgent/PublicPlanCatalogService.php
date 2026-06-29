@@ -187,4 +187,206 @@ class PublicPlanCatalogService
 
         return 'Coberturas del plan seleccionado:'."\n\n".$lines->implode("\n");
     }
+
+    public function buildOurPlansOverviewMessage(PublicPlanBenefitsService $benefitsService, ?array $plans = null): string
+    {
+        $plans ??= $this->getPlanCatalog();
+
+        if ($plans === []) {
+            $plans = $this->fallbackPlanCatalog();
+        }
+
+        $quickLines = collect($plans)->map(function (array $plan) use ($benefitsService): string {
+            $planId = (int) ($plan['plan_id'] ?? 0);
+            $title = $benefitsService->planTitles()[$planId] ?? ('Plan '.$planId);
+            $ageSummary = $this->summarizeAgeRangesForPlan($plan, $planId);
+            $coverageSummary = $this->summarizeCoveragesForPlan($plan, $planId);
+
+            return sprintf(
+                '• %d · %s — %s — %s',
+                $planId,
+                $title,
+                $ageSummary,
+                $coverageSummary,
+            );
+        });
+
+        $detailSections = collect($plans)->map(function (array $plan) use ($benefitsService): string {
+            return $this->buildPlanDetailSection($plan, $benefitsService);
+        });
+
+        return "VISTA RÁPIDA\n"
+            .$quickLines->implode("\n")
+            ."\n\n"
+            .$detailSections->implode("\n\n");
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fallbackPlanCatalog(): array
+    {
+        return [
+            [
+                'plan_id' => 1,
+                'description' => 'Plan Inicial',
+                'coverages' => [],
+                'age_ranges' => [],
+            ],
+            [
+                'plan_id' => 2,
+                'description' => 'Plan Ideal',
+                'coverages' => [
+                    ['coverage_id' => 2, 'price' => 1000.0],
+                    ['coverage_id' => 6, 'price' => 10000.0],
+                ],
+                'age_ranges' => [],
+            ],
+            [
+                'plan_id' => 3,
+                'description' => 'Plan Especial',
+                'coverages' => [
+                    ['coverage_id' => 10, 'price' => 50000.0],
+                ],
+                'age_ranges' => [],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function buildPlanDetailSection(array $plan, PublicPlanBenefitsService $benefitsService): string
+    {
+        $planId = (int) ($plan['plan_id'] ?? 0);
+        $title = mb_strtoupper($benefitsService->planTitles()[$planId] ?? ('Plan '.$planId));
+
+        $ageLines = $this->formatAgeRangesForPlan($plan, $planId);
+        $coverageLines = $this->formatCoveragesForPlan($plan, $planId);
+        $benefitLines = collect($benefitsService->benefitBulletLines($planId))
+            ->map(fn (string $line): string => '• '.$line)
+            ->implode("\n");
+
+        return implode("\n", [
+            '━━━━━━━━━━━━━━━━━━━━',
+            sprintf('PLAN %d — %s', $planId, $title),
+            '━━━━━━━━━━━━━━━━━━━━',
+            '',
+            'Rango de edad',
+            $ageLines,
+            '',
+            'Coberturas disponibles',
+            $coverageLines,
+            '',
+            'Beneficios — '.$benefitsService->benefitCategoryTitle($planId),
+            $benefitLines,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function summarizeAgeRangesForPlan(array $plan, int $planId): string
+    {
+        $ageRanges = is_array($plan['age_ranges'] ?? null) ? $plan['age_ranges'] : [];
+
+        if ($ageRanges === []) {
+            return 'Edades: '.$this->defaultAgeRangeDescription($planId);
+        }
+
+        $firstRange = trim((string) ($ageRanges[0]['range'] ?? ''));
+
+        if ($firstRange !== '') {
+            return 'Edades: '.$firstRange.' años';
+        }
+
+        return 'Edades: '.$this->defaultAgeRangeDescription($planId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function summarizeCoveragesForPlan(array $plan, int $planId): string
+    {
+        $coverages = is_array($plan['coverages'] ?? null) ? $plan['coverages'] : [];
+
+        if ($coverages === []) {
+            return $planId === 1
+                ? 'Asistencia en sitio'
+                : 'Coberturas: consultar con un asesor';
+        }
+
+        return 'Coberturas: '.$this->formatCoverageListForChat($coverages);
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function formatAgeRangesForPlan(array $plan, int $planId): string
+    {
+        $ageRanges = is_array($plan['age_ranges'] ?? null) ? $plan['age_ranges'] : [];
+
+        if ($ageRanges === []) {
+            return '• '.$this->defaultAgeRangeDescription($planId);
+        }
+
+        $lines = collect($ageRanges)
+            ->map(function (array $ageRange): ?string {
+                $range = trim((string) ($ageRange['range'] ?? ''));
+
+                if ($range !== '') {
+                    return '• '.$range.' años';
+                }
+
+                $ageInit = $ageRange['age_init'] ?? null;
+                $ageEnd = $ageRange['age_end'] ?? null;
+
+                if ($ageInit !== null && $ageEnd !== null) {
+                    return '• '.$ageInit.' a '.$ageEnd.' años';
+                }
+
+                if ($ageInit !== null) {
+                    return '• Desde '.$ageInit.' años';
+                }
+
+                return null;
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($lines->isEmpty()) {
+            return '• '.$this->defaultAgeRangeDescription($planId);
+        }
+
+        return $lines->implode("\n");
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function formatCoveragesForPlan(array $plan, int $planId): string
+    {
+        $coverages = is_array($plan['coverages'] ?? null) ? $plan['coverages'] : [];
+
+        if ($coverages === []) {
+            return $planId === 1
+                ? '• Asistencia médica en sitio (sin monto de cobertura monetaria asociado)'
+                : '• Consultar montos disponibles con un asesor comercial';
+        }
+
+        return collect($coverages)
+            ->map(fn (array $coverage): string => '• '.$this->formatCoverageAmountForChat((float) ($coverage['price'] ?? 0)))
+            ->unique()
+            ->implode("\n");
+    }
+
+    private function defaultAgeRangeDescription(int $planId): string
+    {
+        return match ($planId) {
+            1 => '0 a +99 años (ilimitado)',
+            2, 3 => '0 a 85 años',
+            default => 'Consultar con un asesor',
+        };
+    }
 }

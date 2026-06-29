@@ -176,7 +176,7 @@ it('muestra bienvenida al seleccionar registro de agente o subagente', function 
 
     expect($result['intent'])->toBe(AgentConversationStateMachine::INTENT_PREREGISTRO)
         ->and($result['reply'])->toContain('¡Te damos la Bienvenida al registro interactivo de tu Agente o SubAgente!')
-        ->and($result['reply'])->toContain('María Pérez, 04141234567, maria@correo.com, 1, TDG');
+        ->and($result['reply'])->toContain('María Pérez, v-16007868, 05/01/1984, 04141234567, maria@correo.com, 1, TDG');
 });
 
 it('muestra resumen de validacion legible tras enviar datos de agente', function (): void {
@@ -231,7 +231,7 @@ it('muestra resumen de validacion legible tras enviar datos de agente', function
 
     $validation = $orchestrator->processUserMessage(
         $session,
-        'María Pérez, 04141234567, maria-chat-single@correo.com, 1, Agencia Chat Single 99003',
+        'María Pérez, v-16007868, 05/01/1984, 04141234567, maria-chat-single@correo.com, 1, Agencia Chat Single 99003',
         AgentConversationStateMachine::ACTION_REGISTER_AGENT,
     );
 
@@ -239,11 +239,60 @@ it('muestra resumen de validacion legible tras enviar datos de agente', function
 
     expect($validation['reply'])->toContain('revisa que tus datos sean correctos')
         ->and($validation['reply'])->toContain('Nombre y apellido: María Pérez')
+        ->and($validation['reply'])->toContain('Cédula o RIF: V-16007868')
+        ->and($validation['reply'])->toContain('Fecha de nacimiento: 05/01/1984')
         ->and($validation['reply'])->toContain('Teléfono: 04141234567')
         ->and($validation['reply'])->toContain('Correo electrónico: maria-chat-single@correo.com')
         ->and($validation['reply'])->toContain('Tipo de perfil: Agente (1)')
         ->and($validation['reply'])->toContain('Agencia Chat Single 99003')
         ->and($validation['reply'])->toContain('responde si');
+});
+
+it('asigna TuDrGroup TDG-100 cuando el agente escribe TDG exacto', function (): void {
+    Schema::dropIfExists('cities');
+    Schema::dropIfExists('states');
+    Schema::dropIfExists('countries');
+
+    Schema::create('countries', function (Blueprint $table): void {
+        $table->id();
+        $table->string('name');
+    });
+    Schema::create('states', function (Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('country_id');
+        $table->string('definition');
+    });
+    Schema::create('cities', function (Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('country_id');
+        $table->unsignedBigInteger('state_id');
+        $table->string('definition');
+    });
+
+    DB::table('countries')->insert(['id' => 1, 'name' => 'Venezuela']);
+    DB::table('states')->insert(['id' => 10, 'country_id' => 1, 'definition' => 'Miranda']);
+    DB::table('cities')->insert(['id' => 100, 'country_id' => 1, 'state_id' => 10, 'definition' => 'Caracas']);
+
+    $orchestrator = makeAgentOrchestrator();
+    $session = ChatSession::startPublic('127.0.0.1', 'Pest');
+    $email = 'agente-tdg-'.uniqid().'@test.invalid';
+
+    $orchestrator->processUserMessage(
+        $session,
+        'Seleccioné: Registro de Agente',
+        AgentConversationStateMachine::ACTION_REGISTER_AGENT,
+    );
+
+    $validation = $orchestrator->processUserMessage(
+        $session,
+        "María Pérez, v-16007868, 05/01/1984, 04141234567, {$email}, 1, TDG",
+        AgentConversationStateMachine::ACTION_REGISTER_AGENT,
+    );
+
+    expect($validation['reply'])->toContain('revisa que tus datos sean correctos')
+        ->and($validation['reply'])->toContain('TuDrGroup — TDG-100')
+        ->and($validation['reply'])->toContain('estructura comercial de TuDrGroup')
+        ->not->toContain('Indica el número de tu agencia');
 });
 
 it('pide seleccionar agencia cuando hay varias coincidencias y luego confirma', function (): void {
@@ -302,7 +351,7 @@ it('pide seleccionar agencia cuando hay varias coincidencias y luego confirma', 
 
     $selection = $orchestrator->processUserMessage(
         $session,
-        'María Pérez, 04141234567, maria-chat@correo.com, 1, Agencia Chat Multi',
+        'María Pérez, v-16007868, 05/01/1984, 04141234567, maria-chat@correo.com, 1, Agencia Chat Multi',
         AgentConversationStateMachine::ACTION_REGISTER_AGENT,
     );
 
@@ -352,7 +401,7 @@ it('muestra sugerencias de agencia cuando el usuario escribe coincidencia parcia
 
     $selection = $orchestrator->processUserMessage(
         $session,
-        'María Pérez, 04141234567, maria-abp-chat@correo.com, 1, ABp',
+        'María Pérez, v-16007868, 05/01/1984, 04141234567, maria-abp-chat@correo.com, 1, ABp',
         AgentConversationStateMachine::ACTION_REGISTER_AGENT,
     );
 
@@ -390,7 +439,7 @@ it('permite corregir la agencia enviando solo el nuevo termino tras no encontrar
 
     $notFound = $orchestrator->processUserMessage(
         $session,
-        'María Pérez, 04141234567, maria-vg-retry@correo.com, 1, vg',
+        'María Pérez, v-16007868, 05/01/1984, 04141234567, maria-vg-retry@correo.com, 1, vg',
         AgentConversationStateMachine::ACTION_REGISTER_AGENT,
     );
 
@@ -450,7 +499,7 @@ it('permite corregir solo el correo tras error de duplicado', function (): void 
 
     $duplicateError = $orchestrator->processUserMessage(
         $session,
-        'María Pérez, 04141234567, '.$duplicateEmail.', 1, TDG-99015',
+        'María Pérez, v-16007868, 05/01/1984, 04141234567, '.$duplicateEmail.', 1, TDG-99015',
         AgentConversationStateMachine::ACTION_REGISTER_AGENT,
     );
 

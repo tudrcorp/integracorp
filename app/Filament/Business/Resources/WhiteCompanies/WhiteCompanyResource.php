@@ -2,19 +2,18 @@
 
 namespace App\Filament\Business\Resources\WhiteCompanies;
 
-use UnitEnum;
-use BackedEnum;
-use Filament\Tables\Table;
-use App\Models\WhiteCompany;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Business\Resources\WhiteCompanies\Pages\EditWhiteCompany;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\CreateWhiteCompany;
+use App\Filament\Business\Resources\WhiteCompanies\Pages\EditWhiteCompany;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\ListWhiteCompanies;
 use App\Filament\Business\Resources\WhiteCompanies\Schemas\WhiteCompanyForm;
 use App\Filament\Business\Resources\WhiteCompanies\Tables\WhiteCompaniesTable;
+use App\Models\WhiteCompany;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class WhiteCompanyResource extends Resource
 {
@@ -24,7 +23,7 @@ class WhiteCompanyResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-library';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
+    protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
     protected static ?int $navigationSort = 5;
 
@@ -54,12 +53,12 @@ class WhiteCompanyResource extends Resource
         ];
     }
 
-    public static function shouldRegisterNavigation(): bool
-    {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
-    }
+    // public static function shouldRegisterNavigation(): bool
+    // {
+    //     //Solo el Administrador General del Modulo de Business puede acceder a este recurso
+    //     if (in_array('SUPERADMIN', auth()->user()->departament)) {
+    //         return true;
+    //     }
+    //     return false;
+    // }
 }

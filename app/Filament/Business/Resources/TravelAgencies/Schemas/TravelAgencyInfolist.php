@@ -94,7 +94,7 @@ class TravelAgencyInfolist
                                                             ->placeholder('—'),
                                                         TextEntry::make('aniversary')
                                                             ->label('Fecha aniversario')
-                                                            ->date('d/m/Y')
+                                                            ->formatStateUsing(fn (mixed $state): ?string => self::formatLegacyDate($state))
                                                             ->placeholder('—'),
                                                         TextEntry::make('representante')
                                                             ->label('Representante')
@@ -104,7 +104,7 @@ class TravelAgencyInfolist
                                                             ->placeholder('—'),
                                                         TextEntry::make('FechaNacimientoRepresentante')
                                                             ->label('Fecha nacimiento representante')
-                                                            ->date('d/m/Y')
+                                                            ->formatStateUsing(fn (mixed $state): ?string => self::formatLegacyDate($state))
                                                             ->placeholder('—'),
                                                         TextEntry::make('phone')
                                                             ->label('Teléfono')
@@ -147,7 +147,7 @@ class TravelAgencyInfolist
                                                             ->placeholder('—'),
                                                         TextEntry::make('fechaIngreso')
                                                             ->label('Fecha de ingreso')
-                                                            ->date('d/m/Y')
+                                                            ->formatStateUsing(fn (mixed $state): ?string => self::formatLegacyDate($state))
                                                             ->placeholder('—'),
                                                     ]),
                                             ]),
@@ -184,13 +184,17 @@ class TravelAgencyInfolist
                                                             ->placeholder('—'),
                                                         TextEntry::make('fechaNacimientoSecundario')
                                                             ->label('Fecha de nacimiento')
-                                                            ->date('d/m/Y')
+                                                            ->formatStateUsing(fn (mixed $state): ?string => self::formatLegacyDate($state))
                                                             ->placeholder('—'),
                                                     ]),
                                             ]),
                                     ]),
-                                Section::make('Agentes')
-                                    ->description('Agentes asociados a la agencia de viajes.')
+                            ]),
+                        Tab::make('Agentes')
+                            ->icon(Heroicon::OutlinedUserGroup)
+                            ->schema([
+                                Section::make('Agentes asociados')
+                                    ->description('Listado de agentes vinculados a la agencia de viajes.')
                                     ->icon(Heroicon::OutlinedUserGroup)
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
@@ -222,7 +226,7 @@ class TravelAgencyInfolist
                                                             ->copyable()
                                                             ->placeholder('—'),
                                                         TextEntry::make('fechaNacimiento')
-                                                            ->date('d/m/Y')
+                                                            ->formatStateUsing(fn (mixed $state): ?string => self::formatLegacyDate($state))
                                                             ->placeholder('—'),
                                                     ])
                                                     ->columnSpanFull(),
@@ -491,5 +495,37 @@ class TravelAgencyInfolist
             'PENDIENTE', 'POR REVISAR', 'EN REVISIÓN', 'EN REVISION' => 'warning',
             default => 'gray',
         };
+    }
+
+    /**
+     * Algunas fechas se guardan como texto `d/m/Y`; `Carbon::parse()` falla con ese formato.
+     */
+    private static function formatLegacyDate(mixed $state): ?string
+    {
+        if (blank($state)) {
+            return null;
+        }
+
+        if ($state instanceof \Carbon\CarbonInterface) {
+            return $state->format('d/m/Y');
+        }
+
+        $value = trim((string) $state);
+
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $value)) {
+            return $value;
+        }
+
+        try {
+            return \Carbon\Carbon::createFromFormat('d/m/Y', $value)->format('d/m/Y');
+        } catch (\Throwable) {
+            // Continúa con el intento genérico abajo.
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('d/m/Y');
+        } catch (\Throwable) {
+            return $value;
+        }
     }
 }

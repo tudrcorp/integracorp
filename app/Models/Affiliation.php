@@ -23,6 +23,7 @@ class Affiliation extends Model
         'owner_code',
         'owner_agent',
         'plan_id',
+        'affiliation_type',
 
         /** Datos del pagador */
         'full_name_payer',

@@ -123,7 +123,18 @@ class AccountsPayablesTable
                     ->placeholder('—')
                     ->badge()
                     ->color(fn (OperationQuoteGenerator $record): string => AccountsPayablePresenter::orderSupplierLabel($record) !== null ? 'success' : 'gray'),
+                TextColumn::make('is_cash')
+                    ->label('Condición de pago')
+                    ->state(fn (OperationQuoteGenerator $record): string => $record->is_cash ? 'CONTADO' : 'Crédito')
+                    ->description(fn (OperationQuoteGenerator $record): ?string => $record->is_cash ? 'Cancelar de inmediato' : null)
+                    ->badge()
+                    ->icon(fn (OperationQuoteGenerator $record): ?string => $record->is_cash ? 'heroicon-m-exclamation-triangle' : null)
+                    ->color(fn (OperationQuoteGenerator $record): string => $record->is_cash ? 'danger' : 'gray')
+                    ->weight(FontWeight::Bold),
             ])
+            ->recordClasses(fn (OperationQuoteGenerator $record): array => $record->is_cash
+                ? ['border-l-4 border-amber-500 bg-amber-50/90 dark:border-amber-500 dark:bg-amber-950/40']
+                : [])
             ->filters([
                 //
             ])

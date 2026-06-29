@@ -52,6 +52,7 @@ it('infolist agencia de viajes usa pestañas con estilos del sistema', function 
         ->toContain("Tab::make('Marca')")
         ->toContain("Tab::make('Información general')")
         ->toContain("Tab::make('Contactos')")
+        ->toContain("Tab::make('Agentes')")
         ->toContain("Tab::make('Jerarquía')")
         ->toContain("Tab::make('Bancos nacionales')")
         ->toContain("Tab::make('Bancos extranjeros')")
@@ -100,4 +101,13 @@ it('panel de ficha de agencia de viajes expone correo y whatsapp', function (): 
         ->toContain('Enviar por correo')
         ->toContain('Enviar por WhatsApp')
         ->toContain('Enviar WhatsApp');
+});
+
+it('pagina editar agencia de viajes incluye accion ver con boton iOS primary', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/TravelAgencies/Pages/EditTravelAgency.php');
+
+    expect($source)
+        ->toContain('ViewAction::make()')
+        ->toContain('Heroicon::OutlinedEye')
+        ->toContain('IOS_PRIMARY_BUTTON_CLASS');
 });

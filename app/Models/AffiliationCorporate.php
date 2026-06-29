@@ -18,6 +18,7 @@ class AffiliationCorporate extends Model
         'owner_code',
 
         'name_corporate',
+        'affiliation_type',
         'rif',
         'address',
         'city_id',

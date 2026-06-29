@@ -58,6 +58,31 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
     expect($trait)->toContain('matrixFormStateForPersistence');
 });
 
+it('editor de beneficios usa select con catalogo, evita duplicados y permite crear', function (): void {
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Schemas/PlanGeneratorForm.php');
+    $stacked = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/stacked-matrices-editor.blade.php');
+    $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/Concerns/InteractsWithPlanGeneratorMatrix.php');
+
+    expect($form)
+        ->toContain('use App\Models\Benefit;')
+        ->toContain('\'benefitOptions\'')
+        ->toContain('->pluck(\'description\')');
+
+    expect($stacked)
+        ->toContain('<select')
+        ->toContain('data.rows.{{ $rowKey }}.benefit_label')
+        ->toContain('Seleccione un beneficio')
+        ->toContain('benefitsUsedByOtherRows')
+        ->toContain('createPlanGeneratorBenefit')
+        ->toContain('Nuevo beneficio')
+        ->not->toContain('Definición del beneficio');
+
+    expect($trait)
+        ->toContain('public function createPlanGeneratorBenefit(')
+        ->toContain('Benefit::query()->firstOrCreate(')
+        ->toContain('Beneficio duplicado');
+});
+
 it('estado de matriz inicializa celdas por columna', function (): void {
     $rows = App\Support\PlanGenerators\PlanGeneratorMatrixState::ensureRowsHaveCells([
         'row-1' => ['benefit_label' => 'Test'],

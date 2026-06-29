@@ -1,17 +1,18 @@
 <?php
 
-use App\Models\User;
-use App\Models\Agent;
-use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
-use Illuminate\Validation\Rules;
-use Livewire\Attributes\Validate;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Notifications\Notification;
 use App\Livewire\Concerns\HandlesInternationalPhone;
+use App\Models\Agent;
+use App\Models\User;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Validate;
+use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.auth.split')] class extends Component {
+new #[Layout('components.layouts.auth.split')] class extends Component
+{
     use HandlesInternationalPhone;
 
     public string $owner_code;
@@ -21,9 +22,16 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
 
     public string $type_doc;
 
+    #[Validate('required', message: 'Debes ingresar tu documento de identidad!')]
+    public string $ci;
+
+    #[Validate('required', message: 'Debes ingresar tu fecha de nacimiento!')]
+    #[Validate('date', message: 'La fecha de nacimiento no es válida!')]
+    public string $birth_date;
+
     #[Validate('required', message: 'Debes ingresar un correo electrónico!')]
     #[Validate('email', message: 'El correo ingresado no es valido!')]
-    #[Validate('unique:' . User::class, message: 'El correo ingresado ya se encuentra registrado!')]
+    #[Validate('unique:'.User::class, message: 'El correo ingresado ya se encuentra registrado!')]
     public string $email;
 
     #[Validate('required', message: 'Campo requerido!')]
@@ -43,22 +51,26 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
     {
         $validated = $this->validate(array_merge([
             'name' => 'required',
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
+            'ci' => ['required', 'string', 'max:255'],
+            'birth_date' => ['required', 'date'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
         ], $this->internationalPhoneValidationRules()));
 
         $validated['password'] = Hash::make($validated['password']);
 
-        $create_agent = new Agent();
+        $create_agent = new Agent;
         $create_agent->owner_code = $this->owner_code;
         $create_agent->agent_type_id = 2;
         $create_agent->name = $this->name;
+        $create_agent->ci = $this->ci;
+        $create_agent->birth_date = $this->birth_date;
         $create_agent->email = $this->email;
         $create_agent->phone = $this->phoneForStorage();
         $create_agent->status = 'ACTIVO';
         $create_agent->save();
 
-        $create_user = new User();
+        $create_user = new User;
         $create_user->code_agent = 'AGT-000'.$create_agent->id;
         $create_user->agent_id = $create_agent->id;
         $create_user->code_agency = $create_agent->owner_code;
@@ -95,6 +107,12 @@ new #[Layout('components.layouts.auth.split')] class extends Component {
         <flux:input input icon="user" wire:model="name" :label="__('Nombre y Apellido')" type="text" autofocus
             autocomplete="fill_name" placeholder="Nombre Apellido"
             oninput="this.value = this.value.replace(/[^a-zA-Z\sáéíóúÁÉÍÓÚÑñ]/g, '')" />
+
+        <flux:input input icon="identification" wire:model="ci" :label="__('Documento de Identidad')" type="text"
+            autocomplete="off" placeholder="Documento de Identidad" required />
+
+        <flux:input input icon="cake" wire:model="birth_date" :label="__('Fecha de Nacimiento')" type="date"
+            autocomplete="off" required />
 
         <flux:input input icon="at-symbol" wire:model="email" :label="__('Correo Electrónico')" type="email"
             autocomplete="email" placeholder="email@example.com" />

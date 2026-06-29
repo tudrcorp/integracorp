@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 
 use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\AssignDoctorAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -39,6 +40,10 @@ class ViewTelemedicinePatient extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            AssignDoctorAction::make()
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_CLASS,
+                ]),
             EditAction::make()
                 ->label('Editar Paciente')
                 ->icon('heroicon-o-pencil')

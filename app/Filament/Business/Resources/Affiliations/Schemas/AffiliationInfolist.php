@@ -164,6 +164,12 @@ class AffiliationInfolist
                                                             ->icon(Heroicon::OutlinedSignal)
                                                             ->badge()
                                                             ->color(fn (?string $state): string => self::statusColor($state)),
+                                                        TextEntry::make('affiliation_type')
+                                                            ->label('Tipo de afiliación')
+                                                            ->icon(Heroicon::OutlinedStar)
+                                                            ->badge()
+                                                            ->color(fn (?string $state): string => $state === 'VIP' ? 'warning' : 'gray')
+                                                            ->placeholder('—'),
                                                         TextEntry::make('activation_date')
                                                             ->label('Fecha de activación')
                                                             ->icon(Heroicon::OutlinedInformationCircle)

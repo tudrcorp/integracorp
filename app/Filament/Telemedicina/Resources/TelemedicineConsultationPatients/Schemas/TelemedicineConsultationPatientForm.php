@@ -5,7 +5,6 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\S
 use App\Models\NoPathologicalHistory;
 use App\Models\OperationInventory;
 use App\Models\TelemedicineConsultationPatient;
-use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicineListLaboratory;
 use App\Models\TelemedicineListSpecialist;
 use App\Models\TelemedicineListStudy;
@@ -73,23 +72,6 @@ class TelemedicineConsultationPatientForm
         $countCase = filled($caseId)
             ? TelemedicineConsultationPatient::where('telemedicine_case_id', $caseId)->count()
             : 0;
-
-        // Opciones para "Pertenece a?": opciones fijas + proveedor asociado al doctor del caso.
-        // ------------------------------------------------
-        $belongsToOptions = [
-            'Diagnomovil' => 'Diagnomovil',
-            'Centro Diagnostico 3 de Febrero' => 'Centro Diagnostico 3 de Febrero',
-        ];
-
-        if (filled($case?->telemedicine_doctor_id)) {
-            $doctorSupplierName = TelemedicineDoctor::with('supplier')
-                ->find($case->telemedicine_doctor_id)?->supplier?->name;
-
-            if (filled($doctorSupplierName)) {
-                $belongsToOptions[$doctorSupplierName] = $doctorSupplierName;
-            }
-        }
-        // ------------------------------------------------
 
         return $schema
             ->components([
@@ -195,11 +177,6 @@ class TelemedicineConsultationPatientForm
                                         ->label('Prioridad de servicio')
                                         ->live()
                                         ->options(TelemedicinePriority::all()->pluck('name', 'id'))
-                                        ->searchable()
-                                        ->required(),
-                                    Select::make('belongs_to')
-                                        ->label('Pertenece a?')
-                                        ->options($belongsToOptions)
                                         ->searchable()
                                         ->required(),
                                 ])

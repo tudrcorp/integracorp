@@ -25,20 +25,31 @@ it('el formulario de consulta no oculta la asignación de servicio ni la priorid
         ->and($form)->not->toContain("hiddenOn('edit')");
 });
 
-it('el formulario de consulta agrega el select "Pertenece a?" con opciones fijas y el proveedor del doctor', function (): void {
+it('el formulario de consulta ya no incluye el select "Pertenece a?"', function (): void {
     $root = dirname(__DIR__, 2);
     $form = file_get_contents(
         $root.'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php'
     );
 
     expect($form)
+        ->not->toContain("Select::make('belongs_to')")
+        ->not->toContain("->label('Pertenece a?')");
+});
+
+it('la acción de asignar doctor agrega el select "Pertenece a?" visible solo para analistas TDG', function (): void {
+    $root = dirname(__DIR__, 2);
+    $action = file_get_contents(
+        $root.'/app/Filament/Operations/Resources/TelemedicinePatients/Actions/AssignDoctorAction.php'
+    );
+
+    expect($action)
         ->toContain("Select::make('belongs_to')")
         ->toContain("->label('Pertenece a?')")
         ->toContain("'Diagnomovil' => 'Diagnomovil'")
         ->toContain("'Centro Diagnostico 3 de Febrero' => 'Centro Diagnostico 3 de Febrero'")
-        ->toContain('->options($belongsToOptions)')
         ->toContain('TelemedicineDoctor::with(\'supplier\')')
-        ->toContain('?->supplier?->name');
+        ->toContain('?->supplier?->name')
+        ->toContain('OperationsSupplierScope::authenticatedUserIsTdgAnalyst()');
 });
 
 it('el modelo y la migración soportan la columna belongs_to en consultas de telemedicina', function (): void {
@@ -84,6 +95,8 @@ it('las acciones del header de crear consulta usan clases iOS alineadas al color
     $root = dirname(__DIR__, 2);
     $theme = file_get_contents($root.'/resources/css/filament/admin/theme.css');
     expect($theme)->toContain('.aviso-btn-ios-primary')
+        ->and($theme)->toContain('.aviso-btn-ios-primary .fi-btn-icon')
+        ->and($theme)->toContain('.dark .aviso-btn-ios-primary .fi-btn-icon')
         ->and($theme)->toContain('.aviso-btn-ios-warning')
         ->and($theme)->toContain('.ticket-btn-ios-gray');
 

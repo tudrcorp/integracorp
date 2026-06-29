@@ -24,6 +24,7 @@ class TelemedicineCase extends Model
         'patient_city_id',
         'assigned_by',
         'status',
+        'belongs_to',
         'reason',
         'code',
         'ambulanceParking',

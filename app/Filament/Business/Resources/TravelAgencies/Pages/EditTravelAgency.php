@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\TravelAgencies\Pages;
 
 use App\Filament\Business\Resources\TravelAgencies\TravelAgencyResource;
-use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 
 class EditTravelAgency extends EditRecord
@@ -37,20 +36,10 @@ class EditTravelAgency extends EditRecord
         return [
             ViewAction::make()
                 ->label('Ver')
-                ->icon('heroicon-o-eye')
+                ->icon(Heroicon::OutlinedEye)
                 ->extraAttributes([
                     'class' => self::IOS_PRIMARY_BUTTON_CLASS,
                 ]),
-            DeleteAction::make()
-                ->extraAttributes([
-                    'class' => self::IOS_DANGER_BUTTON_CLASS,
-                ])
-                ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_DANGER_BUTTON_CLASS,
-                ]))
-                ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_GRAY_BUTTON_CLASS,
-                ])),
         ];
     }
 }

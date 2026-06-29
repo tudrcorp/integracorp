@@ -60,6 +60,16 @@ class ChatAgentRegistrationService
                 $agent->email = (string) $validated['email'];
                 $agent->phone = $phone;
                 $agent->status = 'ACTIVO';
+
+                $identity = ChatAgentIdentityDocument::parse((string) ($validated['identity_document'] ?? ''));
+                if ($identity !== null) {
+                    ChatAgentIdentityDocument::applyToAgent($agent, $identity);
+                }
+
+                if (filled($validated['birth_date'] ?? null)) {
+                    $agent->birth_date = (string) $validated['birth_date'];
+                }
+
                 $agent->save();
 
                 $user = new User;
@@ -117,6 +127,12 @@ class ChatAgentRegistrationService
      */
     public function resolveOwnerCode(array $payload): string
     {
+        $explicitOwnerCode = trim((string) ($payload['owner_code'] ?? ''));
+
+        if ($explicitOwnerCode !== '') {
+            return $explicitOwnerCode;
+        }
+
         $agencyId = (int) ($payload['selected_agency_id'] ?? 0);
 
         if ($agencyId > 0 && Schema::hasTable('agencies')) {
@@ -427,8 +443,12 @@ TEXT,
      */
     private function validatePayload(array $payload): array
     {
+        $payload['birth_date'] = $this->normalizeBirthDate($payload['birth_date'] ?? null);
+
         $rules = [
             'name' => ['required', 'string', 'max:255'],
+            'identity_document' => ['required', 'string', 'max:20'],
+            'birth_date' => ['nullable', 'date_format:Y-m-d'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'phone' => ['required', 'string', 'regex:/^[0-9]+$/'],
             'owner_code' => ['required', 'string', 'max:100'],
@@ -443,7 +463,68 @@ TEXT,
             $rules['email'][] = Rule::unique('agents', 'email');
         }
 
-        return Validator::make($payload, $rules)->validate();
+        $validator = Validator::make($payload, $rules, [
+            'name.required' => 'El nombre y apellido es obligatorio.',
+            'identity_document.required' => 'El número de cédula o RIF es obligatorio.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.unique' => 'Este correo electrónico ya está registrado en el sistema.',
+            'phone.required' => 'El teléfono es obligatorio.',
+            'phone.regex' => 'El teléfono solo debe contener números.',
+            'owner_code.required' => 'No se pudo determinar la agencia asociada al registro.',
+            'birth_date.date_format' => 'La fecha de nacimiento debe tener el formato dd/mm/yyyy (ejemplo: 05/01/1984).',
+        ]);
+
+        $validator->after(function ($validator) use ($payload): void {
+            $identityRaw = trim((string) ($payload['identity_document'] ?? ''));
+            $parsedIdentity = ChatAgentIdentityDocument::parse($identityRaw);
+
+            if ($parsedIdentity === null) {
+                $validator->errors()->add(
+                    'identity_document',
+                    'El documento debe iniciar con v-, e- o j- seguido del número. Ejemplo: v-16007868.',
+                );
+
+                return;
+            }
+
+            if (ChatAgentIdentityDocument::existsInAgents($parsedIdentity)) {
+                $validator->errors()->add(
+                    'identity_document',
+                    'Este número de cédula o RIF ya está registrado en el sistema.',
+                );
+            }
+        });
+
+        return $validator->validate();
+    }
+
+    private function normalizeBirthDate(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $trimmed) === 1) {
+            return $trimmed;
+        }
+
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $trimmed, $match) === 1) {
+            $day = (int) $match[1];
+            $month = (int) $match[2];
+            $year = (int) $match[3];
+
+            if (checkdate($month, $day, $year)) {
+                return sprintf('%04d-%02d-%02d', $year, $month, $day);
+            }
+        }
+
+        return $trimmed;
     }
 
     private function normalizePhoneForStorage(string $phoneDigits): string

@@ -26,4 +26,9 @@ class CreateTelemedicinePatient extends CreateRecord
 
         return $data;
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return TelemedicinePatientResource::getUrl('view', ['record' => $this->getRecord()]);
+    }
 }

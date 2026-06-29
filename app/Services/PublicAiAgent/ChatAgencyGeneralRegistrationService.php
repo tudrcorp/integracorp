@@ -367,21 +367,7 @@ TEXT,
 
     private function applyTaxIdToAgency(Agency $agency, string $taxId): void
     {
-        $normalized = mb_strtoupper(trim($taxId));
-
-        if ($normalized === '') {
-            return;
-        }
-
-        if (preg_match('/^[JVEGPRC]\-?\d/u', $normalized) === 1) {
-            $agency->rif = $normalized;
-
-            return;
-        }
-
-        if (Schema::hasColumn('agencies', 'ci_responsable')) {
-            $agency->ci_responsable = preg_replace('/\D+/', '', $normalized) ?? $normalized;
-        }
+        ChatAgencyRepresentativeDocument::applyRawInputToAgency($agency, $taxId);
     }
 
     /**
@@ -435,38 +421,7 @@ TEXT,
 
     public function taxIdExistsInAgencies(string $taxId): bool
     {
-        if (! Schema::hasTable('agencies')) {
-            return false;
-        }
-
-        $normalized = mb_strtoupper(trim($taxId));
-
-        if ($normalized === '') {
-            return false;
-        }
-
-        if (preg_match('/^[JVEGPRC]\-?\d/u', $normalized) === 1 && Schema::hasColumn('agencies', 'rif')) {
-            $compact = str_replace('-', '', $normalized);
-
-            return Agency::query()
-                ->where(function ($query) use ($normalized, $compact): void {
-                    $query->whereRaw('UPPER(TRIM(rif)) = ?', [$normalized])
-                        ->orWhereRaw('UPPER(REPLACE(rif, "-", "")) = ?', [$compact]);
-                })
-                ->exists();
-        }
-
-        if (! Schema::hasColumn('agencies', 'ci_responsable')) {
-            return false;
-        }
-
-        $digits = preg_replace('/\D+/', '', $normalized) ?? '';
-
-        if ($digits === '') {
-            return false;
-        }
-
-        return Agency::query()->where('ci_responsable', $digits)->exists();
+        return ChatAgencyRepresentativeDocument::existsByRawInput($taxId);
     }
 
     private function normalizePhoneForStorage(string $phoneDigits): string

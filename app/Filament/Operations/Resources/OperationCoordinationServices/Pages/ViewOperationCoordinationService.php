@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Models\OperationDocumentList;
+use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -57,6 +58,13 @@ class ViewOperationCoordinationService extends ViewRecord
                         ->reorderable()
                         ->minItems(1)
                         ->schema([
+                            Select::make('service_item_keys')
+                                ->label('Servicio(s) asociado(s)')
+                                ->helperText('Opcional: indique a qué servicio de la coordinación pertenece este documento.')
+                                ->options(fn (): array => CoordinationServiceItemsManager::manageServiceItemOptions($this->getRecord()))
+                                ->searchable()
+                                ->preload()
+                                ->multiple(),
                             Select::make('document_type_ids')
                                 ->label('Tipo(s) de documento')
                                 ->helperText('Seleccione uno o varios tipos según la información contenida en el archivo.')
@@ -80,58 +88,11 @@ class ViewOperationCoordinationService extends ViewRecord
                 ])
                 ->action(function (array $data): void {
                     $record = $this->getRecord();
-                    /** @var array<int, string> $documentTypeNames */
-                    $documentTypeNames = OperationDocumentList::query()
-                        ->pluck('name', 'id')
-                        ->mapWithKeys(static fn (mixed $name, mixed $id): array => [(int) $id => (string) $name])
-                        ->all();
 
-                    $newDocuments = collect($data['documents'] ?? [])
-                        ->map(function (mixed $item) use ($documentTypeNames): ?array {
-                            if (! is_array($item)) {
-                                return null;
-                            }
-
-                            $documentFile = trim((string) ($item['document_file'] ?? ''));
-
-                            if ($documentFile === '') {
-                                return null;
-                            }
-
-                            $documentName = trim((string) pathinfo($documentFile, PATHINFO_FILENAME));
-
-                            if ($documentName === '') {
-                                $documentName = basename($documentFile);
-                            }
-
-                            $rawTypeIds = $item['document_type_ids'] ?? [];
-
-                            $typeIds = collect(is_array($rawTypeIds) ? $rawTypeIds : [])
-                                ->map(static fn (mixed $value, mixed $key): int => is_numeric($value)
-                                    ? (int) $value
-                                    : (is_numeric($key) ? (int) $key : 0))
-                                ->filter(static fn (int $id): bool => $id > 0)
-                                ->unique()
-                                ->values()
-                                ->all();
-
-                            $typeNames = collect($typeIds)
-                                ->map(static fn (int $id): string => $documentTypeNames[$id] ?? '')
-                                ->filter(static fn (string $value): bool => $value !== '')
-                                ->values()
-                                ->all();
-
-                            return [
-                                'document_name' => $documentName,
-                                'file_path' => $documentFile,
-                                'document_type_ids' => $typeIds,
-                                'document_types' => $typeNames,
-                                'uploaded_at' => now()->toDateTimeString(),
-                            ];
-                        })
-                        ->filter()
-                        ->values()
-                        ->all();
+                    $newDocuments = CoordinationServiceCoveredItemsFinalizer::buildUploadedDocumentsFromForm(
+                        $data,
+                        CoordinationServiceItemsManager::manageServiceItemOptions($record),
+                    );
 
                     if ($newDocuments === []) {
                         Notification::make()

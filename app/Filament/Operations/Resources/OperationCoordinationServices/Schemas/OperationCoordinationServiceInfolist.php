@@ -7,6 +7,8 @@ use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
+use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
+use App\Support\Operations\CoordinationServiceDocumentsAggregator;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Actions\Action;
@@ -182,6 +184,10 @@ class OperationCoordinationServiceInfolist
                                     ->icon(Heroicon::ClipboardDocumentList)
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->visible(fn (OperationCoordinationService $record): bool => self::hasAnyAssociatedItems($record))
+                                    ->headerActions([
+                                        CoordinationServiceCoveredItemsFinalizer::makePlaceCoveredItemsInManagementAction(),
+                                        CoordinationServiceCoveredItemsFinalizer::makeUploadAndFinalizeAction(),
+                                    ])
                                     ->schema([
                                         Fieldset::make('Medicamentos')
                                             ->visible(fn (OperationCoordinationService $record): bool => self::hasMedications($record))
@@ -362,10 +368,13 @@ class OperationCoordinationServiceInfolist
                                     ->schema([
                                         RepeatableEntry::make('uploaded_documents')
                                             ->label('Listado de documentos')
+                                            ->state(fn (OperationCoordinationService $record): array => CoordinationServiceDocumentsAggregator::forCoordination($record))
                                             ->placeholder('Aún no hay documentos cargados en esta coordinación.')
                                             ->table([
-                                                TableColumn::make('Documento')->width('30%'),
-                                                TableColumn::make('Tipo(s)')->width('28%'),
+                                                TableColumn::make('Documento')->width('24%'),
+                                                TableColumn::make('Servicio')->width('24%'),
+                                                TableColumn::make('Origen')->width('14%'),
+                                                TableColumn::make('Tipo(s)')->width('18%'),
                                                 TableColumn::make('Fecha')->width('12%'),
                                             ])
                                             ->schema([
@@ -382,6 +391,19 @@ class OperationCoordinationServiceInfolist
                                                     ->prefixActions([
                                                         fn (TextEntry $component): array => self::uploadedDocumentDownloadPrefixActions($component),
                                                     ])
+                                                    ->placeholder('—'),
+                                                TextEntry::make('services')
+                                                    ->label('Servicio')
+                                                    ->badge()
+                                                    ->color('info')
+                                                    ->formatStateUsing(fn (mixed $state): ?string => filled($state)
+                                                        ? trim((string) $state)
+                                                        : null)
+                                                    ->placeholder('Sin servicio asociado'),
+                                                TextEntry::make('source')
+                                                    ->label('Origen')
+                                                    ->badge()
+                                                    ->color('gray')
                                                     ->placeholder('—'),
                                                 TextEntry::make('document_types')
                                                     ->label('Tipo(s)')

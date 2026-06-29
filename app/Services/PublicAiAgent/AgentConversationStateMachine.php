@@ -24,6 +24,10 @@ class AgentConversationStateMachine
 
     public const INTENT_COTIZACION = 'cotizacion_planes_salud';
 
+    public const INTENT_CONSULTA_PLANES = 'consulta_planes_salud';
+
+    public const ACTION_NUESTROS_PLANES = 'nuestros_planes';
+
     public const ACTION_QUOTE_INDIVIDUAL = 'cotizacion_individual';
 
     public const ACTION_QUOTE_CORPORATE = 'cotizacion_corporativa';
@@ -81,6 +85,7 @@ class AgentConversationStateMachine
     public function intentFromAction(?string $action): ?string
     {
         return match ($action) {
+            self::ACTION_NUESTROS_PLANES => self::INTENT_CONSULTA_PLANES,
             self::ACTION_QUOTE_INDIVIDUAL, self::ACTION_QUOTE_CORPORATE => self::INTENT_COTIZACION,
             self::ACTION_REGISTER_AGENCY_MASTER,
             self::ACTION_REGISTER_AGENCY_GENERAL,
@@ -96,6 +101,7 @@ class AgentConversationStateMachine
     public function actionKeys(): array
     {
         return [
+            self::ACTION_NUESTROS_PLANES,
             self::ACTION_QUOTE_INDIVIDUAL,
             self::ACTION_QUOTE_CORPORATE,
             self::ACTION_REGISTER_AGENCY_MASTER,
@@ -123,6 +129,11 @@ class AgentConversationStateMachine
     public function isIndividualQuoteAction(?string $action): bool
     {
         return $action === self::ACTION_QUOTE_INDIVIDUAL;
+    }
+
+    public function isOurPlansAction(?string $action): bool
+    {
+        return $action === self::ACTION_NUESTROS_PLANES;
     }
 
     public function isSimplifiedAgencyMasterRegistrationAction(?string $action): bool
@@ -204,6 +215,7 @@ class AgentConversationStateMachine
                 'plan_id',
                 'members',
             ],
+            self::INTENT_CONSULTA_PLANES => [],
             default => [],
         };
     }
