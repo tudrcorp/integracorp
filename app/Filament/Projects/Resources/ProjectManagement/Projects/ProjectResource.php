@@ -26,6 +26,8 @@ class ProjectResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTION DE PROYECTOS';
 
+    protected static ?int $navigationSort = 1;
+
     public static function form(Schema $schema): Schema
     {
         return ProjectForm::configure($schema);
