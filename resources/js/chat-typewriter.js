@@ -26,8 +26,8 @@ function registerChatTypewriter() {
             this.isTyping = true;
 
             const text = this.fullText;
-            const lengthScale = text.length > 600 ? 0.62 : text.length > 350 ? 0.78 : text.length > 180 ? 0.9 : 1;
-            const speedFactor = 0.72;
+            const lengthScale = text.length > 600 ? 0.58 : text.length > 350 ? 0.72 : text.length > 180 ? 0.85 : 1;
+            const speedFactor = 0.52;
 
             for (let index = 0; index < text.length; index++) {
                 const character = text[index];
@@ -51,30 +51,30 @@ function registerChatTypewriter() {
             const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min + 1));
 
             if (character === '\n') {
-                return randomBetween(80, 140);
+                return randomBetween(55, 95);
             }
 
             if (/[.!?¿¡]/.test(character)) {
-                return randomBetween(220, 360);
+                return randomBetween(150, 240);
             }
 
             if (/[,;:]/.test(character)) {
-                return randomBetween(60, 100);
+                return randomBetween(45, 75);
             }
 
             if (character === ' ') {
-                return randomBetween(18, 36);
+                return randomBetween(12, 26);
             }
 
             if (character === '-' || character === '/') {
-                return randomBetween(28, 48);
+                return randomBetween(20, 36);
             }
 
             if (/[0-9]/.test(character) && /[0-9]/.test(nextCharacter)) {
-                return randomBetween(14, 28);
+                return randomBetween(10, 22);
             }
 
-            return randomBetween(12, 30);
+            return randomBetween(8, 22);
         },
 
         sleep(milliseconds) {

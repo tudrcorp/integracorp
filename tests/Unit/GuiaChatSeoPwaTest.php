@@ -32,7 +32,8 @@ it('el json ld del head escapa la directiva blade context', function (): void {
 
 it('existe manifest pwa y service worker de guia-chat', function (): void {
     $manifest = file_get_contents(guiaChatBasePath('public/pwa/guia-chat.webmanifest'));
-    $sw = file_get_contents(guiaChatBasePath('public/sw-guia-chat.js'));
+    $sw = file_get_contents(guiaChatBasePath('public/chat/publico/sw.js'));
+    $install = file_get_contents(guiaChatBasePath('resources/views/pwa/install-guia-chat.blade.php'));
 
     expect($manifest)
         ->toContain('"short_name": "GUIA-CHAT"')
@@ -44,9 +45,16 @@ it('existe manifest pwa y service worker de guia-chat', function (): void {
         ->and($sw)->toContain("request.mode === 'navigate'")
         ->and($sw)->not->toContain('(cached) => cached || fetch(event.request)');
 
+    expect($install)
+        ->toContain("register('/chat/publico/sw.js")
+        ->toContain("scope: '/chat/publico/'")
+        ->toContain('installPlatform === \'ios\'')
+        ->toContain('Agregar a pantalla de inicio');
+
     expect(file_exists(guiaChatBasePath('public/pwa/guia-chat/icon-192.png')))->toBeTrue()
         ->and(file_exists(guiaChatBasePath('public/pwa/guia-chat/icon-512.png')))->toBeTrue()
-        ->and(file_exists(guiaChatBasePath('public/pwa/guia-chat/apple-touch-icon.png')))->toBeTrue();
+        ->and(file_exists(guiaChatBasePath('public/pwa/guia-chat/apple-touch-icon.png')))->toBeTrue()
+        ->and(file_exists(guiaChatBasePath('public/chat/publico/sw.js')))->toBeTrue();
 });
 
 it('sitemap incluye la url del chat publico', function (): void {

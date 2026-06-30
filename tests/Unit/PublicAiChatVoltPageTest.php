@@ -48,6 +48,43 @@ beforeEach(function (): void {
     });
 });
 
+it('ubica el boton enviar dentro de la barra en mobile', function (): void {
+    $volt = file_get_contents(base_path('resources/views/livewire/volt/public/ai_chat.blade.php'));
+
+    expect($volt)
+        ->toContain('Enviar (dentro de la barra en mobile para alinear márgenes)')
+        ->toContain('class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white shadow-lg backdrop-blur-md transition hover:bg-black/50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex sm:h-11 sm:w-11"');
+});
+
+it('oculta los menus del composer al enfocar el textarea y los restaura al enviar', function (): void {
+    $volt = file_get_contents(base_path('resources/views/livewire/volt/public/ai_chat.blade.php'));
+    $actionMenu = file_get_contents(base_path('resources/views/pwa/guia-chat-action-menu.blade.php'));
+    $serviceMenu = file_get_contents(base_path('resources/views/pwa/guia-chat-service-menu.blade.php'));
+
+    expect($volt)
+        ->toContain('hasDraftText: false')
+        ->toContain('composerMenusVisible()')
+        ->toContain('syncComposerChrome()')
+        ->toContain('x-on:focus="draftFocused = true; syncComposerChrome(); $dispatch(\'chat-composer-focus\')"')
+        ->toContain('x-show="composerMenusVisible()"')
+        ->toContain('releaseComposerChrome')
+        ->toContain('chat-composer-release');
+
+    expect($actionMenu)
+        ->not->toContain('ring-1 ring-emerald-400/50')
+        ->not->toContain('border border-white/30')
+        ->toContain('x-on:chat-composer-focus.window="closeMenu()"')
+        ->and($serviceMenu)->toContain('x-on:chat-composer-focus.window="closeMenu()"');
+});
+
+it('oculta el avatar del asistente en mobile', function (): void {
+    $volt = file_get_contents(base_path('resources/views/livewire/volt/public/ai_chat.blade.php'));
+
+    expect($volt)
+        ->toContain('assistant-avatar.png')
+        ->toContain('hidden h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block');
+});
+
 it('renderiza la vista pública del chat IA', function (): void {
     Volt::test('volt.public.ai_chat')
         ->assertSee('GU')
