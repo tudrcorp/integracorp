@@ -71,7 +71,23 @@
 @fluxAppearance
 
 <style>
-    [x-cloak] {
+    html.guia-chat-app {
+        height: 100%;
+        height: 100dvh;
+        height: -webkit-fill-available;
+        background-color: #0b1f4a;
+        overscroll-behavior: none;
+    }
+
+    html.guia-chat-app body {
+        min-height: 100%;
+        min-height: 100dvh;
+        min-height: -webkit-fill-available;
+        margin: 0;
+        overscroll-behavior: none;
+    }
+
+  [x-cloak] {
         display: none !important;
     }
 

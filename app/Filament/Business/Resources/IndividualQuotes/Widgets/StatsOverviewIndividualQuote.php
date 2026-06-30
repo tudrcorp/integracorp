@@ -29,6 +29,8 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
 
     protected ?string $description = 'Distribución de cotizaciones según el tipo de suscripción. Filtra por año y mes (o todo el año).';
 
+    protected int|string|array $columnSpan = 'full';
+
     public function mount(): void
     {
         if ($this->statsFilters === []) {

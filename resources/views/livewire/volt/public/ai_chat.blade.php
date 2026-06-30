@@ -677,19 +677,19 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
 
 <div
     id="guia-chat-root"
-    class="relative flex h-dvh w-full flex-col overflow-hidden"
+    class="guia-chat-shell fixed inset-0 z-0 flex w-full flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
     x-on:chat-send-finished.window="guiaChatUiStore().endSend()"
     x-on:guia-chat-reply-visible.window="guiaChatUiStore().clearAwaitingReply()"
 >
     {{-- Fondo gradiente tipo IA --}}
-    <div class="pointer-events-none fixed inset-0 bg-gradient-to-br from-[#0b1f4a] via-[#0d4f6e] to-[#14b8a6]"></div>
-    <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.25),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.2),transparent_40%)]"></div>
+    <div class="guia-chat-bg pointer-events-none fixed inset-0 bg-gradient-to-br from-[#0b1f4a] via-[#0d4f6e] to-[#14b8a6]"></div>
+    <div class="guia-chat-bg pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.25),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.2),transparent_40%)]"></div>
 
-    <div class="relative mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden px-4 sm:px-6"
+    <div class="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden px-4 sm:px-6"
         x-on:chat-open-external.window="if ($event.detail?.url) { window.open($event.detail.url, '_blank', 'noopener,noreferrer'); }"
     >
         {{-- Header --}}
-        <header class="relative shrink-0 px-1 pt-3 pb-2.5 text-center sm:px-0 sm:pt-5 sm:pb-3.5 md:pt-6 md:pb-4">
+        <header class="relative shrink-0 px-1 pt-2 pb-2 text-center sm:px-0 sm:pt-4 sm:pb-3 md:pt-5 md:pb-4">
             <div class="pointer-events-none absolute inset-x-0 top-0 flex justify-center pt-1 sm:pt-2" aria-hidden="true">
                 <div class="h-20 w-20 rounded-full bg-cyan-400/10 blur-2xl sm:h-24 sm:w-24 md:h-28 md:w-28"></div>
             </div>
@@ -715,7 +715,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
             x-init="$el.scrollTop = $el.scrollHeight"
             x-on:chat-scroll-bottom.window="$el.scrollTop = $el.scrollHeight"
         >
-            <div class="space-y-4 pt-4 pb-1 sm:pt-5 sm:pb-2 md:pt-6">
+            <div class="space-y-4 pt-3 pb-6 sm:pt-4 sm:pb-8 md:pt-5">
                 @if (count($chatFeed) === 0)
                     <div
                         wire:key="guide-welcome"
@@ -812,7 +812,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         </div>
 
         {{-- Input fijo al pie del layout (sin overlap) --}}
-        <div class="shrink-0 space-y-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div class="shrink-0 space-y-2.5 pt-2 pb-3">
         {{-- Barra de escritura horizontal (diseño tipo chat IA) --}}
         <form
             class="flex w-full items-center sm:gap-3"

@@ -15,11 +15,15 @@ it('el chat publico usa layout con seo y pwa de guia-chat', function (): void {
     expect($volt)->toContain("Layout('components.layouts.guia-chat')")
         ->and($layout)->toContain("@include('partials.guia-chat-head')")
         ->and($layout)->toContain('install-guia-chat')
+        ->and($layout)->toContain('guia-chat-app')
         ->and($head)->toContain('<title>GUIA-CHAT | Integracorp')
         ->and($head)->toContain('meta name="robots" content="index, follow"')
         ->and($head)->toContain('link rel="canonical"')
         ->and($head)->toContain('guia-chat.webmanifest')
-        ->and($head)->toContain('WebApplication');
+        ->and($head)->toContain('WebApplication')
+        ->and($head)->toContain('-webkit-fill-available')
+        ->and($volt)->toContain('guia-chat-shell')
+        ->and($volt)->toContain('env(safe-area-inset-bottom');
 });
 
 it('el json ld del head escapa la directiva blade context', function (): void {

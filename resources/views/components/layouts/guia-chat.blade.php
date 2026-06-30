@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es" class="dark h-dvh overflow-hidden">
+<html lang="es" class="dark guia-chat-app overflow-hidden">
 <head>
     @include('partials.guia-chat-head')
 </head>
-<body class="h-dvh overflow-hidden bg-gradient-to-br from-[#0b1f4a] via-[#0d4f6e] to-[#14b8a6]">
+<body class="guia-chat-app overflow-hidden bg-[#0b1f4a]">
 
     {{ $slot }}
 
