@@ -5,13 +5,13 @@ namespace App\Filament\Business\Resources\IndividualQuotes\Widgets;
 use App\Filament\Business\Resources\IndividualQuotes\Widgets\Concerns\InteractsWithIndividualQuotesRankingTable;
 use App\Models\Agent;
 use App\Support\Filament\IndividualQuotesRankingTableUi;
+use App\Support\IndividualQuotes\IndividualQuotesRankingQuery;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Reactive;
+use Livewire\Attributes\On;
 
 class IndividualQuotesByAgentTable extends TableWidget
 {
@@ -23,10 +23,8 @@ class IndividualQuotesByAgentTable extends TableWidget
 
     protected int|string|array $columnSpan = 1;
 
-    #[Reactive]
     public ?string $filteredAgencyCode = null;
 
-    #[Reactive]
     public ?string $filteredAgencyName = null;
 
     protected function rankingTableVariant(): string
@@ -34,9 +32,22 @@ class IndividualQuotesByAgentTable extends TableWidget
         return 'agent';
     }
 
-    public function updatedFilteredAgencyCode(): void
+    #[On('individual-quotes-agency-selected')]
+    public function filterAgentsByAgency(string $agencyCode, string $agencyName): void
     {
+        $this->filteredAgencyCode = $agencyCode;
+        $this->filteredAgencyName = $agencyName;
         $this->resetPage();
+        $this->flushCachedTableRecords();
+    }
+
+    #[On('individual-quotes-agency-filter-cleared')]
+    public function clearAgencyFilter(): void
+    {
+        $this->filteredAgencyCode = null;
+        $this->filteredAgencyName = null;
+        $this->resetPage();
+        $this->flushCachedTableRecords();
     }
 
     public function table(Table $table): Table
@@ -69,7 +80,11 @@ class IndividualQuotesByAgentTable extends TableWidget
                     ->label('Ver todos los agentes')
                     ->icon(Heroicon::XMark)
                     ->color('gray')
-                    ->action(fn (): mixed => $this->dispatch('individual-quotes-agency-filter-cleared')),
+                    ->action(function (): void {
+                        $this->clearAgencyFilter();
+                        $this->dispatch('individual-quotes-agency-filter-cleared')
+                            ->to(IndividualQuotesByAgencyTable::class);
+                    }),
             ]);
         }
 
@@ -78,30 +93,6 @@ class IndividualQuotesByAgentTable extends TableWidget
 
     protected function agentQuotesQuery(): Builder
     {
-        return Agent::query()
-            ->select([
-                'agents.id',
-                'agents.name',
-                'agents.code_agent',
-                'agents.owner_code',
-                'agents.agent_type_id',
-                DB::raw('COUNT(individual_quotes.id) as total_quotes'),
-            ])
-            ->join('individual_quotes', 'individual_quotes.agent_id', '=', 'agents.id')
-            ->whereNotNull('individual_quotes.agent_id')
-            ->where('individual_quotes.agent_id', '!=', '')
-            ->when(
-                filled($this->filteredAgencyCode),
-                fn (Builder $query): Builder => $query->where('individual_quotes.owner_code', $this->filteredAgencyCode),
-            )
-            ->with('typeAgent')
-            ->groupBy(
-                'agents.id',
-                'agents.name',
-                'agents.code_agent',
-                'agents.owner_code',
-                'agents.agent_type_id',
-            )
-            ->having('total_quotes', '>', 0);
+        return IndividualQuotesRankingQuery::agents($this->filteredAgencyCode)->with('typeAgent');
     }
 }
