@@ -35,10 +35,8 @@ it('define el widget de cotizaciones por agencia con columnas requeridas', funct
         ->toContain('IndividualQuotesRankingTableUi::apply')
         ->toContain("variant: 'agency'")
         ->toContain("nameAttribute: 'name_corporative'")
-        ->toContain("->whereNull('individual_quotes.agent_id')")
-        ->toContain("->orWhere('individual_quotes.agent_id', '')")
-        ->toContain('->groupBy(')
-        ->toContain("'agencies.name_corporative'");
+        ->toContain('IndividualQuotesRankingQuery::agencies')
+        ->toContain('once(fn');
 });
 
 it('define el widget de cotizaciones por agente con columnas requeridas', function (): void {
@@ -52,10 +50,8 @@ it('define el widget de cotizaciones por agente con columnas requeridas', functi
         ->toContain('IndividualQuotesRankingTableUi::apply')
         ->toContain("variant: 'agent'")
         ->toContain("nameAttribute: 'name'")
-        ->toContain("->whereNotNull('individual_quotes.agent_id')")
-        ->toContain("->where('individual_quotes.agent_id', '!=', '')")
-        ->toContain('->groupBy(')
-        ->toContain("'agents.name'");
+        ->toContain('IndividualQuotesRankingQuery::agents')
+        ->toContain('flushCachedTableRecords');
 });
 
 it('coloca las tablas lado a lado en la misma fila', function (): void {
@@ -106,27 +102,49 @@ it('aplica UI iOS compacta con ranking y sin barra de progreso', function (): vo
         ->toBe('individual-quotes-ranking-table-ios individual-quotes-ranking-table-ios--agency');
 });
 
-it('filtra agentes al seleccionar una agencia desde la tabla izquierda', function (): void {
+it('filtra agentes al seleccionar una agencia sin pasar por la página padre', function (): void {
     $listPage = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/IndividualQuotes/Pages/ListIndividualQuotes.php');
     $agencyWidget = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/IndividualQuotes/Widgets/IndividualQuotesByAgencyTable.php');
     $agentWidget = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/IndividualQuotes/Widgets/IndividualQuotesByAgentTable.php');
+    $query = file_get_contents(dirname(__DIR__, 2).'/app/Support/IndividualQuotes/IndividualQuotesRankingQuery.php');
 
-    expect($listPage)->toContain('selectAgencyForAgentFilter')
-        ->toContain('clearAgencyAgentFilter')
-        ->toContain('filteredAgencyCode')
-        ->toContain('selectedAgencyId')
-        ->toContain('#[On(\'individual-quotes-agency-selected\')]');
+    expect($listPage)->not->toContain('selectAgencyForAgentFilter')
+        ->not->toContain('filteredAgencyCode')
+        ->not->toContain('getWidgetData');
 
     expect($agencyWidget)->toContain('selectAgencyByKey')
-        ->toContain('individual-quotes-agency-selected')
-        ->toContain('agencyCode: $agency->code')
+        ->toContain('->to(IndividualQuotesByAgentTable::class)')
+        ->toContain('getTableRecord($recordKey)')
         ->toContain("->recordAction('selectAgencyByKey')")
-        ->toContain('#[Reactive]')
+        ->not->toContain('#[Reactive]')
         ->not->toContain('recordActions');
 
-    expect($agentWidget)->toContain('#[Reactive]')
-        ->toContain('public ?string $filteredAgencyCode')
-        ->toContain("->where('individual_quotes.owner_code', \$this->filteredAgencyCode)")
+    expect($agentWidget)->toContain('filterAgentsByAgency')
+        ->toContain('#[On(\'individual-quotes-agency-selected\')]')
+        ->toContain('IndividualQuotesRankingQuery::agents')
+        ->toContain('flushCachedTableRecords')
         ->toContain('Ver todos los agentes')
-        ->not->toContain('#[On(\'individual-quotes-agency-selected\')]');
+        ->not->toContain('#[Reactive]');
+
+    expect($query)->toContain('joinSub')
+        ->toContain("->where('owner_code', \$agencyCode)");
+});
+
+it('define índices para acelerar el filtrado por agencia en producción', function (): void {
+    $migration = file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_06_30_013921_add_individual_quotes_ranking_indexes_to_individual_quotes_table.php');
+
+    expect($migration)->toContain('individual_quotes_owner_code_index')
+        ->toContain('individual_quotes_owner_code_agent_id_index')
+        ->toContain('individual_quotes_code_agency_index');
+});
+
+it('construye queries de ranking optimizadas con subconsultas', function (): void {
+    $queryClass = file_get_contents(dirname(__DIR__, 2).'/app/Support/IndividualQuotes/IndividualQuotesRankingQuery.php');
+
+    expect($queryClass)->toContain('joinSub')
+        ->toContain('public static function agencies')
+        ->toContain('public static function agents')
+        ->toContain("->where('owner_code', \$agencyCode)")
+        ->toContain('groupBy(\'code_agency\')')
+        ->toContain('groupBy(\'agent_id\')');
 });
