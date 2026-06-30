@@ -173,7 +173,7 @@ final class ServiceMenuOption
                 self::SERVICE_SUGGESTION => 'Escribe tu sugerencia aquí...',
                 self::GUIA_CHAT_BUG => 'Describe la falla del GUIA-CHAT...',
                 self::INTEGRACORP_BUG => 'Describe la falla del sistema INTEGRACORP...',
-                default => 'Pregunta lo que necesites...',
+                default => '¿Qué necesitas?...',
             },
         };
     }

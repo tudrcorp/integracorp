@@ -60,29 +60,72 @@ it('oculta los menus del composer al enfocar el textarea y los restaura al envia
     $volt = file_get_contents(base_path('resources/views/livewire/volt/public/ai_chat.blade.php'));
     $actionMenu = file_get_contents(base_path('resources/views/pwa/guia-chat-action-menu.blade.php'));
     $serviceMenu = file_get_contents(base_path('resources/views/pwa/guia-chat-service-menu.blade.php'));
+    $guiaChatUi = file_get_contents(base_path('resources/js/guia-chat-ui.js'));
+    $typewriter = file_get_contents(base_path('resources/js/chat-typewriter.js'));
 
     expect($volt)
         ->toContain('hasDraftText: false')
         ->toContain('composerMenusVisible()')
         ->toContain('syncComposerChrome()')
+        ->toContain('submitDraft()')
+        ->toContain('guiaChatActionLabels')
+        ->toContain('guiaChatBeginAction')
+        ->toContain('guiaChatSelectAction')
+        ->toContain('guiaChatSelectServiceOption')
+        ->toContain('guiaChatCall')
+        ->toContain('$wire.selectAction(actionKey)')
+        ->toContain('@script')
+        ->toContain('id="guia-chat-root"')
+        ->toContain('chat-send-finished')
+        ->toContain('$store.guiaChatUi.optimisticUserMessage')
+        ->toContain('isTypingVisible()')
+        ->toContain('awaitingReply')
+        ->toContain('guia-chat-reply-visible')
+        ->toContain('guia-chat-typing-indicator')
         ->toContain('x-on:focus="draftFocused = true; syncComposerChrome(); $dispatch(\'chat-composer-focus\')"')
         ->toContain('x-show="composerMenusVisible()"')
         ->toContain('releaseComposerChrome')
-        ->toContain('chat-composer-release');
+        ->toContain('chat-composer-release')
+        ->and($volt)->toContain("chatTypewriter(@js(\$chatMessage['content']), @js(\$this->formatChatMessage(\$chatMessage['content'])), 'reply')");
+
+    expect($guiaChatUi)
+        ->toContain("Alpine.store('guiaChatUi'")
+        ->toContain('beginSend(message = null)')
+        ->toContain('endSend()');
+
+    expect($typewriter)
+        ->toContain("mode = 'welcome'")
+        ->toContain("mode === 'reply'")
+        ->toContain('REPLY_PREPARE_DELAY_MS')
+        ->toContain('prepareAndReply()')
+        ->toContain('preparing: mode === \'reply\'');
 
     expect($actionMenu)
         ->not->toContain('ring-1 ring-emerald-400/50')
         ->not->toContain('border border-white/30')
         ->toContain('x-on:chat-composer-focus.window="closeMenu()"')
         ->and($serviceMenu)->toContain('x-on:chat-composer-focus.window="closeMenu()"');
+
+    $actionPanel = file_get_contents(base_path('resources/views/pwa/partials/guia-chat-action-menu-panel.blade.php'));
+
+    expect($actionPanel)
+        ->toContain('guiaChatSelectAction')
+        ->not->toContain('wire:click="selectAction');
+
+    $serviceMenu = file_get_contents(base_path('resources/views/pwa/guia-chat-service-menu.blade.php'));
+
+    expect($serviceMenu)->toContain('guiaChatSelectServiceOption');
 });
 
 it('oculta el avatar del asistente en mobile', function (): void {
     $volt = file_get_contents(base_path('resources/views/livewire/volt/public/ai_chat.blade.php'));
+    $head = file_get_contents(base_path('resources/views/partials/guia-chat-head.blade.php'));
 
     expect($volt)
         ->toContain('assistant-avatar.png')
-        ->toContain('hidden h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block');
+        ->toContain('hidden h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block')
+        ->and($volt)->toContain('guia-chat-composer-input')
+        ->and($head)->toContain('.guia-chat-composer-input::-webkit-scrollbar');
 });
 
 it('renderiza la vista pública del chat IA', function (): void {
@@ -94,7 +137,7 @@ it('renderiza la vista pública del chat IA', function (): void {
         ->assertSee('Nuestros Planes')
         ->assertDontSee('Cotización plan individual')
         ->assertSee('Registro de Agente')
-        ->assertSee('Pregunta lo que necesites...')
+        ->assertSee('¿Qué necesitas?...')
         ->assertSeeHtml('textarea');
 });
 

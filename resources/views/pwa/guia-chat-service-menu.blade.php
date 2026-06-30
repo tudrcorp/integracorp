@@ -80,7 +80,7 @@
             }
 
             this.closeMenu();
-            $wire.selectServiceMenuOption(key);
+            guiaChatSelectServiceOption(key);
         },
     }"
     x-on:click.window="closeIfOutside($event)"

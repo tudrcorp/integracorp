@@ -81,3 +81,12 @@ it('htaccess envia chat publico a laravel aunque exista el directorio del servic
         ->and(is_dir(guiaChatBasePath('public/chat/publico')))->toBeTrue()
         ->and(file_exists(guiaChatBasePath('public/chat/publico/sw.js')))->toBeTrue();
 });
+
+it('incluye indicador de escribiendo con animacion en el head del chat', function (): void {
+    $head = file_get_contents(guiaChatBasePath('resources/views/partials/guia-chat-head.blade.php'));
+    $typing = file_get_contents(guiaChatBasePath('resources/views/pwa/partials/guia-chat-typing-indicator.blade.php'));
+
+    expect($head)->toContain('guia-chat-typing-dot')
+        ->and($typing)->toContain('Escribiendo')
+        ->and($typing)->toContain('isTypingVisible()');
+});
