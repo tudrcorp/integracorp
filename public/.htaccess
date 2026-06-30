@@ -18,6 +18,9 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
+    # GUIA-CHAT: /chat/publico es ruta Laravel; el directorio físico (sw.js) no debe bloquear la UI
+    RewriteRule ^chat/publico/?$ index.php [L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
