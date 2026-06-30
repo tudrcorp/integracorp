@@ -72,3 +72,12 @@ it('ruta guia-chat redirige al chat publico', function (): void {
         ->toContain("Route::redirect('/guia-chat', '/chat/publico', 301)")
         ->toContain("->name('guia-chat')");
 });
+
+it('htaccess envia chat publico a laravel aunque exista el directorio del service worker', function (): void {
+    $htaccess = file_get_contents(guiaChatBasePath('public/.htaccess'));
+
+    expect($htaccess)
+        ->toContain('RewriteRule ^chat/publico/?$ index.php [L]')
+        ->and(is_dir(guiaChatBasePath('public/chat/publico')))->toBeTrue()
+        ->and(file_exists(guiaChatBasePath('public/chat/publico/sw.js')))->toBeTrue();
+});
