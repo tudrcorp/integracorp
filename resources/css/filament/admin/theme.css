@@ -3447,6 +3447,294 @@
     @apply rounded-2xl bg-zinc-200/80 text-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-300;
   }
 
+  /* IndividualQuotes ranking tables — liquid glass + lista iOS (compacto) */
+  .fi-iq-ranking-table-widget {
+    @apply overflow-visible rounded-xl border border-black/[0.06] bg-white/92 shadow-[0_2px_20px_-10px_rgba(0,0,0,0.12)] dark:border-white/[0.08] dark:bg-zinc-900/92 dark:shadow-[0_2px_24px_-10px_rgba(0,0,0,0.45)];
+  }
+
+  .fi-iq-ranking-table-widget--agency {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 72%, transparent),
+      0 4px 28px color-mix(in oklch, #0ea5e9 14%, transparent),
+      0 8px 32px -10px color-mix(in oklch, black 12%, transparent);
+  }
+
+  .fi-iq-ranking-table-widget--agent {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 72%, transparent),
+      0 4px 28px color-mix(in oklch, #2563eb 14%, transparent),
+      0 8px 32px -10px color-mix(in oklch, black 12%, transparent);
+  }
+
+  .individual-quotes-ranking-table-ios.fi-ta {
+    overflow: visible;
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply text-[0.8125rem] leading-tight tracking-[-0.01em];
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-ctn,
+  .individual-quotes-ranking-table-ios .fi-ta-main {
+    @apply gap-0 overflow-visible;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-header-ctn {
+    @apply px-2.5 pt-2 pb-1 sm:px-3;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-header {
+    @apply flex-col items-stretch gap-0 border-0 bg-transparent p-0 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-header-heading {
+    @apply text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-header-description {
+    @apply hidden;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-header-toolbar {
+    @apply border-0 bg-transparent p-0 shadow-none;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-search-field {
+    @apply w-full max-w-[11rem];
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-search-field .fi-input-wrp {
+    @apply rounded-xl border border-zinc-200/90 bg-white/70 shadow-none ring-0 dark:border-zinc-700/80 dark:bg-zinc-950/35 dark:ring-0;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-search-field input {
+    @apply py-1 text-xs;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-content-ctn {
+    @apply mx-2 mb-2 overflow-hidden rounded-xl border border-black/[0.06] bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-white/[0.06] dark:bg-zinc-950/35 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:mx-2.5 sm:mb-2.5;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-content-ctn {
+    @apply border-sky-200/40 dark:border-sky-500/20;
+  }
+
+  .individual-quotes-ranking-table-ios--agent .fi-ta-content-ctn {
+    @apply border-blue-200/40 dark:border-blue-500/20;
+  }
+
+  .individual-quotes-ranking-table-ios table.fi-ta-table {
+    @apply w-full;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-table thead tr {
+    @apply border-b border-black/[0.06] bg-zinc-50/95 dark:border-white/[0.06] dark:bg-zinc-900/85;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-header-cell {
+    @apply px-2 py-1.5 text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-zinc-500 dark:text-zinc-400;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-cell {
+    @apply px-2 py-1 align-middle;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-cell,
+  .individual-quotes-ranking-table-ios--agent .fi-ta-cell {
+    @apply py-0.5;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-row,
+  .individual-quotes-ranking-table-ios .fi-ta-record {
+    @apply border-b border-black/[0.04] transition-[background-color,box-shadow,opacity,filter] duration-200 ease-out dark:border-white/[0.05];
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-row:last-child,
+  .individual-quotes-ranking-table-ios .fi-ta-record:last-child {
+    @apply border-b-0;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-row:hover,
+  .individual-quotes-ranking-table-ios .fi-ta-row:focus-within,
+  .individual-quotes-ranking-table-ios .fi-ta-record:hover,
+  .individual-quotes-ranking-table-ios .fi-ta-record:focus-within {
+    @apply bg-zinc-500/[0.04] dark:bg-white/[0.03];
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row:hover,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row:focus-within,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record:hover,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record:focus-within {
+    @apply bg-sky-500/[0.07] dark:bg-sky-400/[0.09];
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.fi-clickable .fi-ta-col[type="button"],
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.fi-clickable button.fi-ta-col {
+    @apply cursor-pointer;
+  }
+
+  .individual-quotes-ranking-table-ios--agent .fi-ta-row:hover,
+  .individual-quotes-ranking-table-ios--agent .fi-ta-row:focus-within,
+  .individual-quotes-ranking-table-ios--agent .fi-ta-record:hover,
+  .individual-quotes-ranking-table-ios--agent .fi-ta-record:focus-within {
+    @apply bg-blue-500/[0.07] dark:bg-blue-400/[0.09];
+  }
+
+  .individual-quotes-ranking-table-ios .fi-badge,
+  .individual-quotes-ranking-table-ios .iq-ranking-type-badge .fi-badge {
+    @apply rounded-full border-0 px-2 py-px text-[0.6875rem] font-medium leading-tight shadow-none ring-1 ring-inset ring-black/[0.06] dark:ring-white/[0.1];
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-rank-badge.fi-badge {
+    @apply min-w-[1.375rem] justify-center px-1.5 py-px text-[0.6875rem] font-bold tabular-nums ring-0;
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-rank-badge--gold.fi-badge {
+    background: linear-gradient(145deg, #ffd60a 0%, #ff9f0a 100%) !important;
+    color: #3b2f00 !important;
+    box-shadow: 0 2px 10px rgba(255, 159, 10, 0.35);
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-rank-badge--silver.fi-badge {
+    background: linear-gradient(145deg, #f2f2f7 0%, #c7c7cc 100%) !important;
+    color: #3a3a3c !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-rank-badge--bronze.fi-badge {
+    background: linear-gradient(145deg, #ffd8bf 0%, #cd7f32 100%) !important;
+    color: #4a2c0f !important;
+    box-shadow: 0 2px 8px rgba(205, 127, 50, 0.28);
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-rank-badge--default.fi-badge {
+    @apply bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300;
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-name-cell .fi-ta-text-item-label {
+    @apply text-[0.8125rem] font-semibold leading-tight tracking-tight;
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-name-cell .fi-ta-text {
+    @apply gap-1 leading-none;
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-inline-code {
+    @apply font-mono text-[0.625rem] font-normal uppercase tracking-[0.06em] text-zinc-500 dark:text-zinc-400;
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-name-cell .fi-ta-icon {
+    @apply size-4;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record-content {
+    @apply w-full cursor-pointer text-left transition-opacity duration-150 hover:opacity-90 active:opacity-80;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected .fi-ta-record-content {
+    @apply opacity-100;
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-name-cell--selectable .fi-ta-text-item-label {
+    @apply text-sky-700 dark:text-sky-300;
+  }
+
+  /* Selección de agencia — resalta la fila activa y atenúa el resto */
+  .individual-quotes-ranking-table-ios--agency tbody:has(.iq-ranking-row--selected) .fi-ta-row:not(.iq-ranking-row--selected),
+  .individual-quotes-ranking-table-ios--agency tbody:has(.iq-ranking-row--selected) .fi-ta-record:not(.iq-ranking-row--selected) {
+    @apply opacity-[0.52] saturate-[0.82];
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.iq-ranking-row--selected,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, #0ea5e9 26%, transparent) 0%,
+      color-mix(in oklch, #0ea5e9 10%, transparent) 55%,
+      transparent 100%
+    ) !important;
+    box-shadow:
+      inset 3px 0 0 #0ea5e9,
+      inset 0 0 0 1px color-mix(in oklch, #0ea5e9 22%, transparent),
+      0 4px 18px -6px color-mix(in oklch, #0ea5e9 42%, transparent);
+    @apply opacity-100 saturate-100;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.iq-ranking-row--selected:hover,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected:hover {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, #0ea5e9 32%, transparent) 0%,
+      color-mix(in oklch, #0ea5e9 12%, transparent) 55%,
+      transparent 100%
+    ) !important;
+    box-shadow:
+      inset 3px 0 0 #0284c7,
+      inset 0 0 0 1px color-mix(in oklch, #0ea5e9 30%, transparent),
+      0 6px 22px -6px color-mix(in oklch, #0ea5e9 48%, transparent);
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.iq-ranking-row--selected .iq-ranking-name-cell .fi-ta-text-item-label,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected .iq-ranking-name-cell .fi-ta-text-item-label {
+    @apply font-bold text-sky-900 dark:text-sky-100;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.iq-ranking-row--selected .iq-ranking-name-cell .fi-ta-icon,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected .iq-ranking-name-cell .fi-ta-icon {
+    @apply text-sky-600 dark:text-sky-400;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.iq-ranking-row--selected .iq-ranking-total-cell,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected .iq-ranking-total-cell {
+    @apply text-sky-700 dark:text-sky-300;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.iq-ranking-row--selected .iq-ranking-rank-badge.fi-badge,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected .iq-ranking-rank-badge.fi-badge {
+    box-shadow:
+      0 0 0 2px color-mix(in oklch, #0ea5e9 35%, transparent),
+      0 2px 10px color-mix(in oklch, #0ea5e9 40%, transparent);
+  }
+
+  .individual-quotes-ranking-table-ios .iq-ranking-total-cell {
+    @apply tabular-nums text-[0.8125rem] font-bold;
+  }
+
+  .individual-quotes-ranking-table-ios nav.fi-pagination {
+    @apply border-t border-black/[0.06] px-2.5 py-1.5 dark:border-white/[0.06] sm:px-3;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-empty-state {
+    @apply mx-2 mb-3 rounded-xl border border-dashed border-zinc-300/90 bg-zinc-50/60 py-8 dark:border-zinc-600/55 dark:bg-zinc-900/35 sm:mx-2.5;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-empty-state-heading {
+    @apply text-base font-semibold tracking-tight text-zinc-800 dark:text-zinc-100;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-empty-state-description {
+    @apply mt-1 max-w-sm text-[0.8125rem] leading-relaxed text-zinc-500 dark:text-zinc-400;
+  }
+
+  .individual-quotes-ranking-table-ios .fi-ta-empty-state-icon-bg {
+    @apply rounded-2xl bg-zinc-200/80 text-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-300;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-empty-state-icon-bg {
+    @apply bg-sky-100/90 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300;
+  }
+
+  .individual-quotes-ranking-table-ios--agent .fi-ta-empty-state-icon-bg {
+    @apply bg-blue-100/90 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300;
+  }
+
   /* CaseStats — liquid glass 100% (blur + saturate + capas de tinte por métrica) */
   .fi-telemedicine-case-stats-ios {
     font-family:

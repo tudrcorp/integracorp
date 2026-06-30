@@ -530,6 +530,104 @@ class NotificationController extends Controller
     }
 
     /**
+     * Notificación del enlace público de GUIA-CHAT.
+     * Canal: WhatsApp
+     */
+    public static function send_guia_chat_link_wp(string $link, string $phone): bool
+    {
+        try {
+            $toPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone)
+                ?? preg_replace('/\D+/', '', $phone);
+
+            if ($toPhone === null || $toPhone === '') {
+                Log::warning('NEGOCIOS-AGENTE: teléfono inválido para WhatsApp (GUIA-CHAT)', [
+                    'raw_phone' => $phone,
+                ]);
+
+                return false;
+            }
+
+            $body = <<<TEXT
+            ¡Hola! 👋
+
+            ✨ *GUIA-CHAT* — tu asistente virtual de Integracorp ✨
+
+            Te compartimos el enlace para acceder al chat guiado, donde podrás registrar agentes, agencias y recibir ayuda paso a paso:
+
+            👉 {$link}
+
+            Ábrelo desde tu móvil y sigue las indicaciones en pantalla.
+
+            Equipo Integracorp-TDC
+            📱 WhatsApp: (+58) 424 227 1498
+            ✉️ Email: comercial@tudrencasa.com
+
+            ¡Estamos para ayudarte! 🚀
+            TEXT;
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'image' => config('parameters.PUBLIC_URL').'/images-whatsapp/integracorp.png',
+                'to' => $toPhone,
+                'caption' => $body,
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error('NEGOCIOS-AGENTE: Error de conexión cURL en WhatsApp API (GUIA-CHAT)', [
+                    'error' => $err,
+                    'phone' => $toPhone,
+                ]);
+
+                return false;
+            }
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return true;
+            }
+
+            Log::warning('NEGOCIOS-AGENTE: WhatsApp API (GUIA-CHAT) respondió con error', [
+                'status_code' => $httpCode,
+                'response' => $response,
+                'phone' => $toPhone,
+            ]);
+
+            return false;
+        } catch (\Throwable $th) {
+            Log::critical('NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_guia_chat_link_wp', [
+                'message' => $th->getMessage(),
+                'file' => $th->getFile(),
+                'line' => $th->getLine(),
+                'trace' => $th->getTraceAsString(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Notificacion de link de registro de agente
      * Canal: Email
      *
