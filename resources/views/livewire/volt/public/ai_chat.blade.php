@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
+use App\Services\PublicAiAgent\AgentConversationStateMachine;
 use App\Services\PublicAiAgent\AgentOrchestrator;
 use App\Services\PublicAiAgent\ChatAgentRegistrationService;
 use App\Services\PublicAiAgent\IntentSlotFiller;
+use App\Support\GuiaChat\ActionMenuOption;
+use App\Support\GuiaChat\GuiaChatFeedbackRecorder;
+use App\Support\GuiaChat\IntegracorpLoginPanels;
+use App\Support\GuiaChat\ServiceMenuOption;
 use Flux\Flux;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -29,6 +34,14 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
     public bool $isThinking = false;
 
     public string $selectedAction = '';
+
+    public ?string $serviceFeedbackMode = null;
+
+    public ?string $serviceFeedbackStep = null;
+
+    public string $serviceFeedbackReporterFirstName = '';
+
+    public string $serviceFeedbackReporterLastName = '';
 
     /** @var array<string, array{label: string, description: string, short: string}> */
     public array $actionOptions = [
@@ -132,6 +145,10 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         $this->detectedIntent = null;
         $this->handoffRequested = false;
         $this->selectedAction = '';
+        $this->serviceFeedbackMode = null;
+        $this->serviceFeedbackStep = null;
+        $this->serviceFeedbackReporterFirstName = '';
+        $this->serviceFeedbackReporterLastName = '';
     }
 
     private function hydrateFromSession(ChatSession $session): void
@@ -144,6 +161,21 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         $metadata = is_array($session->metadata) ? $session->metadata : [];
         $selectedAction = (string) ($metadata['selected_action'] ?? '');
         $this->selectedAction = isset($this->actionOptions[$selectedAction]) ? $selectedAction : '';
+        $feedbackMode = (string) ($metadata['service_feedback_mode'] ?? '');
+        $this->serviceFeedbackMode = in_array($feedbackMode, [
+            ServiceMenuOption::SERVICE_SUGGESTION,
+            ServiceMenuOption::GUIA_CHAT_BUG,
+            ServiceMenuOption::INTEGRACORP_BUG,
+        ], true) ? $feedbackMode : null;
+        $feedbackStep = (string) ($metadata['service_feedback_step'] ?? '');
+        if (in_array($feedbackStep, ['reporter_first_name', 'reporter_last_name'], true)) {
+            $feedbackStep = ServiceMenuOption::FEEDBACK_STEP_REPORTER_NAME;
+        }
+        $this->serviceFeedbackStep = $this->serviceFeedbackMode !== null
+            ? ($feedbackStep !== '' ? $feedbackStep : ServiceMenuOption::initialFeedbackStep($this->serviceFeedbackMode))
+            : null;
+        $this->serviceFeedbackReporterFirstName = (string) ($metadata['service_feedback_reporter_first_name'] ?? '');
+        $this->serviceFeedbackReporterLastName = (string) ($metadata['service_feedback_reporter_last_name'] ?? '');
 
         $this->chatFeed = $session->messages()
             ->whereIn('role', ['user', 'assistant'])
@@ -173,6 +205,229 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         $this->sendMessage();
     }
 
+    /**
+     * @return list<array{key: string, label: string, description: string, short: string, accent: string, icon: string}>
+     */
+    public function actionMenuOptions(): array
+    {
+        return ActionMenuOption::enrich($this->actionOptions);
+    }
+
+    /**
+     * @return list<array{key: string, action: string, label: string, description: string, accent: string, icon: string, highlight_brand?: bool}>
+     */
+    public function serviceMenuOptions(): array
+    {
+        return ServiceMenuOption::catalog();
+    }
+
+    /**
+     * @return list<array{label: string, route: string, accent: string, icon: string, url: string}>
+     */
+    public function integracorpLoginPanels(): array
+    {
+        return IntegracorpLoginPanels::forMenu();
+    }
+
+    public function selectServiceMenuOption(string $optionKey): void
+    {
+        $option = ServiceMenuOption::find($optionKey);
+
+        if ($option === null || $this->handoffRequested || $this->isThinking) {
+            return;
+        }
+
+        match ($option['action']) {
+            ServiceMenuOption::BUSINESS_ADVISOR => $this->requestBusinessAdvisor(),
+            ServiceMenuOption::SERVICE_SUGGESTION => $this->beginServiceFeedback(ServiceMenuOption::SERVICE_SUGGESTION),
+            ServiceMenuOption::GUIA_CHAT_BUG => $this->beginServiceFeedback(ServiceMenuOption::GUIA_CHAT_BUG),
+            ServiceMenuOption::INTEGRACORP_BUG => $this->beginServiceFeedback(ServiceMenuOption::INTEGRACORP_BUG),
+            default => null,
+        };
+    }
+
+    public function serviceMenuDraftPlaceholder(): string
+    {
+        return ServiceMenuOption::draftPlaceholder($this->serviceFeedbackMode, $this->serviceFeedbackStep);
+    }
+
+    private function persistServiceFeedbackState(?ChatSession $session): void
+    {
+        if ($session === null) {
+            return;
+        }
+
+        $metadata = is_array($session->metadata) ? $session->metadata : [];
+
+        if ($this->serviceFeedbackMode === null) {
+            unset(
+                $metadata['service_feedback_mode'],
+                $metadata['service_feedback_step'],
+                $metadata['service_feedback_reporter_first_name'],
+                $metadata['service_feedback_reporter_last_name'],
+            );
+        } else {
+            $metadata['service_feedback_mode'] = $this->serviceFeedbackMode;
+            $metadata['service_feedback_step'] = $this->serviceFeedbackStep;
+            $metadata['service_feedback_reporter_first_name'] = $this->serviceFeedbackReporterFirstName;
+            $metadata['service_feedback_reporter_last_name'] = $this->serviceFeedbackReporterLastName;
+        }
+
+        $session->metadata = $metadata;
+        $session->save();
+    }
+
+    private function requestBusinessAdvisor(): void
+    {
+        $registrationService = app(ChatAgentRegistrationService::class);
+
+        $session = ChatSession::query()
+            ->where('public_token', $this->sessionToken)
+            ->first();
+
+        if ($session !== null) {
+            $session->handoff_requested = true;
+            $session->handoff_reason = 'Solicitud desde menú: Asesor de Negocios.';
+            $session->status = 'handoff';
+            $session->current_state = AgentConversationStateMachine::STATE_HANDOFF_HUMANO;
+            $session->save();
+        }
+
+        $this->handoffRequested = true;
+        $this->conversationState = AgentConversationStateMachine::STATE_HANDOFF_HUMANO;
+
+        $this->pushAssistantReply(
+            app(IntentSlotFiller::class)->publicChatHelpMessage(
+                $registrationService->whatsappBusinessUrl(),
+                $registrationService->whatsappBusinessDisplayLabel(),
+            ),
+        );
+    }
+
+    private function beginServiceFeedback(string $mode): void
+    {
+        $this->serviceFeedbackMode = $mode;
+        $this->serviceFeedbackStep = ServiceMenuOption::initialFeedbackStep($mode);
+        $this->serviceFeedbackReporterFirstName = '';
+        $this->serviceFeedbackReporterLastName = '';
+
+        $session = ChatSession::query()
+            ->where('public_token', $this->sessionToken)
+            ->first();
+
+        $this->persistServiceFeedbackState($session);
+
+        $this->pushAssistantReply(ServiceMenuOption::feedbackPrompt($mode, (string) $this->serviceFeedbackStep));
+        $this->dispatch('chat-focus-draft');
+    }
+
+    private function handleServiceFeedbackInput(string $message): void
+    {
+        $mode = $this->serviceFeedbackMode;
+        $step = $this->serviceFeedbackStep;
+
+        if ($mode === null || $step === null) {
+            return;
+        }
+
+        $this->chatFeed[] = [
+            'id' => 'user-'.uniqid(),
+            'role' => 'user',
+            'content' => $message,
+        ];
+        $this->draft = '';
+        $this->dispatch('chat-scroll-bottom');
+
+        if ($step === ServiceMenuOption::FEEDBACK_STEP_REPORTER_NAME) {
+            $parsed = ServiceMenuOption::parseReporterFullName($message);
+
+            if ($parsed['last_name'] === '') {
+                $this->pushAssistantReply(ServiceMenuOption::reporterNameReprompt());
+                $this->dispatch('chat-focus-draft');
+
+                return;
+            }
+
+            $this->serviceFeedbackReporterFirstName = $parsed['first_name'];
+            $this->serviceFeedbackReporterLastName = $parsed['last_name'];
+            $this->serviceFeedbackStep = ServiceMenuOption::FEEDBACK_STEP_MESSAGE;
+
+            $session = ChatSession::query()->where('public_token', $this->sessionToken)->first();
+            $this->persistServiceFeedbackState($session);
+            $this->pushAssistantReply(ServiceMenuOption::feedbackPrompt($mode, ServiceMenuOption::FEEDBACK_STEP_MESSAGE));
+            $this->dispatch('chat-focus-draft');
+
+            return;
+        }
+
+        $this->submitServiceFeedback($message);
+    }
+
+    private function submitServiceFeedback(string $message): void
+    {
+        $mode = $this->serviceFeedbackMode;
+
+        if ($mode === null) {
+            return;
+        }
+
+        $session = ChatSession::query()
+            ->where('public_token', $this->sessionToken)
+            ->first();
+
+        if ($session !== null) {
+            app(GuiaChatFeedbackRecorder::class)->record(
+                type: $mode,
+                message: $message,
+                session: $session,
+                reporterFirstName: $this->serviceFeedbackReporterFirstName,
+                reporterLastName: $this->serviceFeedbackReporterLastName,
+                ipAddress: request()->ip(),
+                userAgent: request()->userAgent(),
+            );
+
+            $metadata = is_array($session->metadata) ? $session->metadata : [];
+            unset(
+                $metadata['service_feedback_mode'],
+                $metadata['service_feedback_step'],
+                $metadata['service_feedback_reporter_first_name'],
+                $metadata['service_feedback_reporter_last_name'],
+            );
+            $metadata['service_feedback'] ??= [];
+            $metadata['service_feedback'][] = [
+                'type' => $mode,
+                'message' => $message,
+                'reporter_first_name' => $this->serviceFeedbackReporterFirstName,
+                'reporter_last_name' => $this->serviceFeedbackReporterLastName,
+                'submitted_at' => now()->toIso8601String(),
+            ];
+            $session->metadata = $metadata;
+            $session->save();
+
+            $session->messages()->create([
+                'role' => 'user',
+                'content' => $message,
+                'metadata' => [
+                    'service_feedback_type' => $mode,
+                    'reporter_first_name' => $this->serviceFeedbackReporterFirstName,
+                    'reporter_last_name' => $this->serviceFeedbackReporterLastName,
+                ],
+            ]);
+        }
+
+        $this->serviceFeedbackMode = null;
+        $this->serviceFeedbackStep = null;
+        $this->serviceFeedbackReporterFirstName = '';
+        $this->serviceFeedbackReporterLastName = '';
+        $this->pushAssistantReply(ServiceMenuOption::feedbackAcknowledgement($mode));
+        $this->releaseComposerChrome();
+    }
+
+    private function releaseComposerChrome(): void
+    {
+        $this->dispatch('chat-composer-release');
+    }
+
     public function sendMessage(): void
     {
         try {
@@ -189,6 +444,28 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
 
         $message = trim((string) ($validated['draft'] ?? ''));
 
+        if ($this->serviceFeedbackMode !== null) {
+            if ($message === '') {
+                Flux::toast(
+                    heading: 'Escribe tu mensaje',
+                    text: 'Completa la información solicitada antes de enviar.',
+                    variant: 'warning',
+                );
+
+                return;
+            }
+
+            $this->isThinking = true;
+            $this->handleServiceFeedbackInput($message);
+            $this->isThinking = false;
+
+            if ($this->serviceFeedbackMode === null) {
+                $this->releaseComposerChrome();
+            }
+
+            return;
+        }
+
         if ($message !== '' && app(IntentSlotFiller::class)->isHelpRequest($message)) {
             $this->chatFeed[] = [
                 'id' => 'user-'.uniqid(),
@@ -197,6 +474,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
             ];
             $this->draft = '';
             $this->pushAssistantReply($this->guideHelpMessage());
+            $this->releaseComposerChrome();
 
             return;
         }
@@ -277,6 +555,8 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         if (isset($result['external_redirect_url']) && is_string($result['external_redirect_url']) && $result['external_redirect_url'] !== '') {
             $this->dispatch('chat-open-external', url: $result['external_redirect_url']);
         }
+
+        $this->releaseComposerChrome();
     }
 
     public function formatChatMessage(string $content): string
@@ -419,11 +699,11 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                         <img
                             src="{{ asset('images/chat/assistant-avatar.png') }}"
                             alt="GUÍA-CHAT Integracorp"
-                            class="h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:h-10 sm:w-10"
+                            class="hidden h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block sm:h-10 sm:w-10"
                         />
                         <p
                             wire:ignore
-                            class="max-w-[85%] pt-1 text-sm leading-relaxed whitespace-pre-line text-white/95 sm:max-w-[88%] sm:text-base"
+                            class="max-w-full pt-1 text-sm leading-relaxed whitespace-pre-line text-white/95 sm:max-w-[88%] sm:text-base"
                             x-data="chatTypewriter(@js($this->guideWelcomeMessage()), @js($this->formatChatMessage($this->guideWelcomeMessage())))"
                         >
                             <span x-show="!finished">
@@ -451,12 +731,12 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                                 <img
                                     src="{{ asset('images/chat/assistant-avatar.png') }}"
                                     alt="Asistente Integracorp"
-                                    class="h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:h-10 sm:w-10"
+                                    class="hidden h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block sm:h-10 sm:w-10"
                                 />
                                 @if (($chatMessage['animate'] ?? false) === true)
                                     <p
                                         wire:ignore
-                                        class="max-w-[85%] pt-1 text-sm leading-relaxed whitespace-pre-line text-white/95 sm:max-w-[88%] sm:text-base"
+                                        class="max-w-full pt-1 text-sm leading-relaxed whitespace-pre-line text-white/95 sm:max-w-[88%] sm:text-base"
                                         x-data="chatTypewriter(@js($chatMessage['content']), @js($this->formatChatMessage($chatMessage['content'])))"
                                     >
                                         <span x-show="!finished">
@@ -470,7 +750,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                                         <span hidden :hidden="!finished" x-html="formattedHtml"></span>
                                     </p>
                                 @else
-                                    <p class="max-w-[85%] pt-1 text-sm leading-relaxed whitespace-pre-line text-white/95 sm:max-w-[88%] sm:text-base">
+                                    <p class="max-w-full pt-1 text-sm leading-relaxed whitespace-pre-line text-white/95 sm:max-w-[88%] sm:text-base">
                                         {!! $this->formatChatMessage($chatMessage['content']) !!}
                                     </p>
                                 @endif
@@ -485,7 +765,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                                 <img
                                     src="{{ asset('images/chat/assistant-avatar.png') }}"
                                     alt="Asistente Integracorp"
-                                    class="relative h-9 w-9 rounded-full border border-white/25 bg-white object-cover shadow-md sm:h-10 sm:w-10"
+                                    class="relative hidden h-9 w-9 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block sm:h-10 sm:w-10"
                                 />
                             </div>
                             <div class="flex items-center gap-1.5 px-1 pt-3" aria-label="El asistente está escribiendo">
@@ -501,8 +781,35 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         {{-- Input fijo al pie del layout (sin overlap) --}}
         <div class="shrink-0 space-y-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {{-- Barra de escritura horizontal (diseño tipo chat IA) --}}
-        <form wire:submit="sendMessage" class="flex w-full items-center gap-2 overflow-visible sm:gap-3">
-            <div class="flex min-w-0 flex-1 items-center gap-1 overflow-visible rounded-3xl border border-white/20 bg-black/30 py-1.5 pl-1.5 pr-2 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:gap-2 sm:pl-2 sm:pr-3 sm:py-2">
+        <form
+            wire:submit="sendMessage"
+            class="flex w-full items-center sm:gap-3"
+            x-data="{
+                draftFocused: false,
+                hasDraftText: false,
+                syncComposerChrome() {
+                    const value = String(this.$refs.draftInput?.value ?? '').trim();
+                    this.hasDraftText = value !== '';
+                },
+                composerMenusVisible() {
+                    return ! this.draftFocused || ! this.hasDraftText;
+                },
+                resizeDraft() {
+                    const input = this.$refs.draftInput;
+                    if (! input) {
+                        return;
+                    }
+
+                    const minHeight = window.matchMedia('(min-width: 640px)').matches ? 26 : 32;
+                    input.style.height = 'auto';
+                    input.style.height = `${Math.max(minHeight, Math.min(input.scrollHeight, 128))}px`;
+                },
+            }"
+            x-on:submit="draftFocused = false; hasDraftText = false"
+            x-on:chat-composer-release.window="draftFocused = false; hasDraftText = false"
+            x-on:chat-focus-draft.window="draftFocused = true; $nextTick(() => { $refs.draftInput?.focus(); syncComposerChrome(); })"
+        >
+            <div class="flex min-w-0 flex-1 items-center gap-1 overflow-visible rounded-3xl border border-white/20 bg-black/30 px-1.5 py-1.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:gap-2 sm:pl-2 sm:pr-3 sm:py-2">
                 {{-- Reiniciar chat --}}
                 <button
                     type="button"
@@ -527,196 +834,57 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                 <textarea
                     wire:model="draft"
                     rows="1"
-                    placeholder="Pregunta lo que necesites..."
+                    placeholder="{{ $this->serviceMenuDraftPlaceholder() }}"
                     @disabled($handoffRequested)
-                    x-data="{
-                        resize() {
-                            const minHeight = window.matchMedia('(min-width: 640px)').matches ? 26 : 32;
-                            this.$el.style.height = 'auto';
-                            this.$el.style.height = `${Math.max(minHeight, Math.min(this.$el.scrollHeight, 128))}px`;
-                        },
-                    }"
-                    x-init="resize(); $watch('$wire.draft', () => $nextTick(() => resize()))"
-                    x-on:input="resize()"
+                    x-ref="draftInput"
+                    x-init="resizeDraft(); $watch('$wire.draft', () => $nextTick(() => { resizeDraft(); syncComposerChrome(); }))"
+                    x-on:input="resizeDraft(); syncComposerChrome()"
+                    x-on:focus="draftFocused = true; syncComposerChrome(); $dispatch('chat-composer-focus')"
                     x-on:keydown.enter.prevent="if (! $event.shiftKey) { $el.form.requestSubmit() }"
                     class="block min-h-8 max-h-32 min-w-0 flex-1 appearance-none resize-none overflow-y-auto border-0 bg-transparent px-0 py-0 text-sm leading-8 text-white placeholder:text-white/45 outline-none focus:ring-0 disabled:opacity-50 sm:min-h-[1.625rem] sm:leading-7 sm:text-base"
                 ></textarea>
 
-                {{-- Selector de acción (custom glass dropdown) --}}
                 <div
-                    x-data="{
-                        open: false,
-                        menuStyle: '',
-                        closeIfOutside(event) {
-                            if (! this.open) {
-                                return;
-                            }
-
-                            const target = event.target;
-                            if (
-                                this.$refs.triggerDesktop?.contains(target)
-                                || this.$refs.triggerMobile?.contains(target)
-                                || this.$refs.menu?.contains(target)
-                            ) {
-                                return;
-                            }
-
-                            this.open = false;
-                        },
-                        updateMenuPosition() {
-                            const isDesktop = window.matchMedia('(min-width: 640px)').matches;
-                            const trigger = isDesktop ? this.$refs.triggerDesktop : this.$refs.triggerMobile;
-
-                            if (! trigger) {
-                                return;
-                            }
-
-                            const rect = trigger.getBoundingClientRect();
-                            const menuWidth = Math.min(288, window.innerWidth - 32);
-                            const left = Math.min(
-                                Math.max(16, rect.right - menuWidth),
-                                window.innerWidth - menuWidth - 16
-                            );
-                            const spaceAbove = rect.top - 16;
-                            const spaceBelow = window.innerHeight - rect.bottom - 16;
-                            const openUp = spaceBelow < 320 && spaceAbove > spaceBelow;
-
-                            if (openUp) {
-                                this.menuStyle = `position: fixed; left: ${left}px; bottom: ${window.innerHeight - rect.top + 8}px; width: ${menuWidth}px; z-index: 200;`;
-                            } else {
-                                this.menuStyle = `position: fixed; left: ${left}px; top: ${rect.bottom + 8}px; width: ${menuWidth}px; z-index: 200;`;
-                            }
-                        },
-                        toggle() {
-                            if (! this.open) {
-                                this.updateMenuPosition();
-                            }
-
-                            this.open = ! this.open;
-                        },
-                    }"
-                    x-on:click.window="closeIfOutside($event)"
-                    x-on:keydown.escape.window="open = false"
-                    x-on:resize.window="if (open) updateMenuPosition()"
-                    x-on:scroll.window="if (open) updateMenuPosition()"
-                    x-on:chat-open-action-menu.window="open = true; $nextTick(() => updateMenuPosition())"
-                    class="relative shrink-0 overflow-visible"
+                    x-show="composerMenusVisible()"
+                    x-transition:enter="transition ease-out duration-150"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-100"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="flex shrink-0 items-center gap-1 overflow-visible"
                 >
-                    <button
-                        type="button"
-                        x-ref="triggerDesktop"
-                        x-on:click="toggle()"
-                        @disabled($handoffRequested)
-                        class="{{ $selectedAction !== ''
-                            ? 'hidden max-w-[10rem] items-center gap-1.5 rounded-full border border-white/35 bg-white/20 py-1.5 pl-3 pr-2.5 text-xs font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] backdrop-blur-lg transition hover:bg-white/25 sm:inline-flex sm:max-w-[11rem] sm:py-2 sm:pl-3.5 sm:pr-3 sm:text-sm'
-                            : 'hidden max-w-[10rem] items-center gap-1.5 rounded-full border border-white/30 bg-white/15 py-1.5 pl-3 pr-2.5 text-xs font-medium text-white/85 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)] backdrop-blur-lg transition hover:border-white/40 hover:bg-white/20 sm:inline-flex sm:max-w-[11rem] sm:py-2 sm:pl-3.5 sm:pr-3 sm:text-sm' }} disabled:opacity-50"
-                        aria-haspopup="listbox"
-                        x-bind:aria-expanded="open"
-                    >
-                        <span class="truncate text-[13px] font-semibold sm:text-[15px]">
-                            @if ($selectedAction !== '' && isset($actionOptions[$selectedAction]))
-                                {{ $actionOptions[$selectedAction]['short'] }}
-                            @else
-                                Quiero!
-                            @endif
-                        </span>
-                        <svg
-                            class="h-3.5 w-3.5 shrink-0 text-white/70 transition-transform duration-200 sm:h-4 sm:w-4"
-                            x-bind:class="open ? 'rotate-180' : ''"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
-                        </svg>
-                    </button>
+                    {{-- Selector de acción «Quiero!» --}}
+                    @include('pwa.guia-chat-action-menu')
 
-                    {{-- Móvil: acciones desde icono ? --}}
-                    <button
-                        type="button"
-                        x-ref="triggerMobile"
-                        x-on:click="toggle()"
-                        @disabled($handoffRequested)
-                        class="{{ $selectedAction !== ''
-                            ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white ring-1 ring-emerald-400/50 transition hover:bg-white/10 sm:hidden disabled:opacity-50'
-                            : 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white sm:hidden disabled:opacity-50' }}"
-                        aria-haspopup="listbox"
-                        x-bind:aria-expanded="open"
-                        aria-label="¿Qué quieres hacer?"
-                        title="¿Qué quieres hacer?"
-                    >
-                        <span class="text-[17px] font-semibold leading-none tracking-tight">?</span>
-                    </button>
-
-                    <template x-teleport="body">
-                        <div
-                            x-ref="menu"
-                            x-show="open"
-                            x-bind:style="menuStyle"
-                            x-transition:enter="transition ease-out duration-150"
-                            x-transition:enter-start="opacity-0 translate-y-1 scale-95"
-                            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                            x-transition:leave="transition ease-in duration-100"
-                            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                            x-transition:leave-end="opacity-0 translate-y-1 scale-95"
-                            x-cloak
-                            class="overflow-hidden rounded-2xl border border-white/25 bg-black/55 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
-                            role="listbox"
-                        >
-                            <div class="border-b border-white/10 px-3.5 py-2.5">
-                                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/50">Acciones</p>
-                                <p class="text-xs text-white/70">¿Qué quieres hacer?</p>
-                            </div>
-
-                            <ul class="max-h-[min(16rem,calc(100dvh-8rem))] overflow-y-auto py-1.5">
-                                @foreach ($actionOptions as $actionKey => $action)
-                                    <li wire:key="action-{{ $actionKey }}">
-                                        <button
-                                            type="button"
-                                            wire:click="selectAction(@js($actionKey))"
-                                            x-on:click="open = false"
-                                            class="{{ $selectedAction === $actionKey
-                                                ? 'flex w-full items-start gap-3 px-3.5 py-2.5 text-left transition bg-emerald-500/20 hover:bg-emerald-500/25'
-                                                : 'flex w-full items-start gap-3 px-3.5 py-2.5 text-left transition hover:bg-white/10' }}"
-                                            role="option"
-                                            aria-selected="{{ $selectedAction === $actionKey ? 'true' : 'false' }}"
-                                        >
-                                            <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border {{ $selectedAction === $actionKey ? 'border-emerald-400 bg-emerald-400 text-emerald-950' : 'border-white/35 bg-white/5' }}">
-                                                @if ($selectedAction === $actionKey)
-                                                    <svg class="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.36 7.36a1 1 0 01-1.415 0L3.296 9.44a1 1 0 111.414-1.415l3.926 3.926 6.653-6.66a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                                    </svg>
-                                                @endif
-                                            </span>
-                                            <span class="min-w-0">
-                                                <span class="block text-sm font-medium text-white">{{ $action['label'] }}</span>
-                                                <span class="block text-xs text-white/55">{{ $action['description'] }}</span>
-                                            </span>
-                                        </button>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </template>
+                    @include('pwa.guia-chat-service-menu')
                 </div>
 
-                {{-- Micrófono (solo escritorio) --}}
+                {{-- Enviar (dentro de la barra en mobile para alinear márgenes) --}}
                 <button
-                    type="button"
-                    class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white sm:flex"
-                    aria-label="Entrada por voz"
+                    type="submit"
+                    @disabled($isThinking || $handoffRequested || ($selectedAction === '' && $serviceFeedbackMode === null))
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white shadow-md backdrop-blur-md transition hover:bg-black/50 disabled:cursor-not-allowed disabled:opacity-40 sm:hidden"
+                    aria-label="Enviar"
                 >
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18v3"/>
-                    </svg>
+                    @if ($isThinking)
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                    @else
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6 6 6"/>
+                        </svg>
+                    @endif
                 </button>
             </div>
 
-            {{-- Enviar (fuera de la barra) --}}
+            {{-- Enviar (fuera de la barra en tablet/desktop) --}}
             <button
                 type="submit"
-                @disabled($isThinking || $handoffRequested || $selectedAction === '')
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white shadow-lg backdrop-blur-md transition hover:bg-black/50 disabled:cursor-not-allowed disabled:opacity-40 sm:h-11 sm:w-11"
+                @disabled($isThinking || $handoffRequested || ($selectedAction === '' && $serviceFeedbackMode === null))
+                class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white shadow-lg backdrop-blur-md transition hover:bg-black/50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex sm:h-11 sm:w-11"
                 aria-label="Enviar"
             >
                 @if ($isThinking)
