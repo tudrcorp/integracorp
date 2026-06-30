@@ -69,3 +69,60 @@
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .guia-chat-composer-input {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        box-shadow: none;
+    }
+
+    .guia-chat-composer-input::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+
+    .guia-chat-composer-input:focus,
+    .guia-chat-composer-input:focus-visible {
+        outline: none;
+        box-shadow: none;
+    }
+
+    .guia-chat-typing-dot {
+        display: block;
+        height: 0.4rem;
+        width: 0.4rem;
+        border-radius: 9999px;
+        background-color: rgb(255 255 255 / 0.92);
+        animation: guia-chat-typing-dot 1.2s ease-in-out infinite;
+    }
+
+    .guia-chat-typing-dot:nth-child(2) {
+        animation-delay: 0.15s;
+        background-color: rgb(255 255 255 / 0.72);
+    }
+
+    .guia-chat-typing-dot:nth-child(3) {
+        animation-delay: 0.3s;
+        background-color: rgb(255 255 255 / 0.52);
+    }
+
+    @keyframes guia-chat-typing-dot {
+        0%,
+        60%,
+        100% {
+            transform: translateY(0);
+            opacity: 0.35;
+        }
+
+        30% {
+            transform: translateY(-4px);
+            opacity: 1;
+        }
+    }
+</style>

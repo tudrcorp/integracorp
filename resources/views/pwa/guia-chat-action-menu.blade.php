@@ -75,10 +75,6 @@
 
             this.openMenu(trigger);
         },
-        selectAction(key) {
-            this.closeMenu();
-            $wire.selectAction(key);
-        },
     }"
     x-on:click.window="closeIfOutside($event)"
     x-on:keydown.escape.window="closeMenu()"

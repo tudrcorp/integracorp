@@ -193,10 +193,14 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
     public function selectAction(string $actionKey): void
     {
         if (! isset($this->actionOptions[$actionKey])) {
+            $this->dispatch('chat-send-finished');
+
             return;
         }
 
-        if ($this->handoffRequested || $this->isThinking) {
+        if ($this->handoffRequested) {
+            $this->dispatch('chat-send-finished');
+
             return;
         }
 
@@ -231,19 +235,23 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
 
     public function selectServiceMenuOption(string $optionKey): void
     {
-        $option = ServiceMenuOption::find($optionKey);
+        try {
+            $option = ServiceMenuOption::find($optionKey);
 
-        if ($option === null || $this->handoffRequested || $this->isThinking) {
-            return;
+            if ($option === null || $this->handoffRequested) {
+                return;
+            }
+
+            match ($option['action']) {
+                ServiceMenuOption::BUSINESS_ADVISOR => $this->requestBusinessAdvisor(),
+                ServiceMenuOption::SERVICE_SUGGESTION => $this->beginServiceFeedback(ServiceMenuOption::SERVICE_SUGGESTION),
+                ServiceMenuOption::GUIA_CHAT_BUG => $this->beginServiceFeedback(ServiceMenuOption::GUIA_CHAT_BUG),
+                ServiceMenuOption::INTEGRACORP_BUG => $this->beginServiceFeedback(ServiceMenuOption::INTEGRACORP_BUG),
+                default => null,
+            };
+        } finally {
+            $this->dispatch('chat-send-finished');
         }
-
-        match ($option['action']) {
-            ServiceMenuOption::BUSINESS_ADVISOR => $this->requestBusinessAdvisor(),
-            ServiceMenuOption::SERVICE_SUGGESTION => $this->beginServiceFeedback(ServiceMenuOption::SERVICE_SUGGESTION),
-            ServiceMenuOption::GUIA_CHAT_BUG => $this->beginServiceFeedback(ServiceMenuOption::GUIA_CHAT_BUG),
-            ServiceMenuOption::INTEGRACORP_BUG => $this->beginServiceFeedback(ServiceMenuOption::INTEGRACORP_BUG),
-            default => null,
-        };
     }
 
     public function serviceMenuDraftPlaceholder(): string
@@ -429,6 +437,15 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
     }
 
     public function sendMessage(): void
+    {
+        try {
+            $this->processSendMessage();
+        } finally {
+            $this->dispatch('chat-send-finished');
+        }
+    }
+
+    private function processSendMessage(): void
     {
         try {
             $validated = $this->validate([
@@ -658,7 +675,12 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
     }
 }; ?>
 
-<div class="relative flex h-dvh w-full flex-col overflow-hidden">
+<div
+    id="guia-chat-root"
+    class="relative flex h-dvh w-full flex-col overflow-hidden"
+    x-on:chat-send-finished.window="guiaChatUiStore().endSend()"
+    x-on:guia-chat-reply-visible.window="guiaChatUiStore().clearAwaitingReply()"
+>
     {{-- Fondo gradiente tipo IA --}}
     <div class="pointer-events-none fixed inset-0 bg-gradient-to-br from-[#0b1f4a] via-[#0d4f6e] to-[#14b8a6]"></div>
     <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.25),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.2),transparent_40%)]"></div>
@@ -694,8 +716,13 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
             x-on:chat-scroll-bottom.window="$el.scrollTop = $el.scrollHeight"
         >
             <div class="space-y-4 pt-4 pb-1 sm:pt-5 sm:pb-2 md:pt-6">
-                @if (count($chatFeed) === 0 && ! $isThinking)
-                    <div wire:key="guide-welcome" class="flex items-start gap-2.5 justify-start">
+                @if (count($chatFeed) === 0)
+                    <div
+                        wire:key="guide-welcome"
+                        x-show="! $store.guiaChatUi.optimisticThinking"
+                        x-cloak
+                        class="flex items-start gap-2.5 justify-start"
+                    >
                         <img
                             src="{{ asset('images/chat/assistant-avatar.png') }}"
                             alt="GUÍA-CHAT Integracorp"
@@ -727,7 +754,19 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                                 </div>
                             </div>
                         @else
-                            <div wire:key="msg-{{ $chatMessage['id'] ?? $index }}" class="flex items-start gap-2.5 justify-start">
+                            <div
+                                wire:key="msg-{{ $chatMessage['id'] ?? $index }}"
+                                @if (($chatMessage['animate'] ?? false) === true)
+                                    wire:ignore
+                                    x-data="chatTypewriter(@js($chatMessage['content']), @js($this->formatChatMessage($chatMessage['content'])), 'reply')"
+                                    x-show="! preparing"
+                                    x-cloak
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                @endif
+                                class="flex items-start gap-2.5 justify-start"
+                            >
                                 <img
                                     src="{{ asset('images/chat/assistant-avatar.png') }}"
                                     alt="Asistente Integracorp"
@@ -735,9 +774,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                                 />
                                 @if (($chatMessage['animate'] ?? false) === true)
                                     <p
-                                        wire:ignore
                                         class="max-w-full pt-1 text-sm leading-relaxed whitespace-pre-line text-white/95 sm:max-w-[88%] sm:text-base"
-                                        x-data="chatTypewriter(@js($chatMessage['content']), @js($this->formatChatMessage($chatMessage['content'])))"
                                     >
                                         <span x-show="!finished">
                                             <span x-text="displayedPlain"></span>
@@ -758,23 +795,19 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                         @endif
                     @endforeach
 
-                    @if ($isThinking)
-                        <div class="flex items-start gap-2.5 justify-start" wire:key="assistant-typing">
-                            <div class="relative shrink-0">
-                                <span class="absolute inset-0 animate-ping rounded-full bg-emerald-400/25"></span>
-                                <img
-                                    src="{{ asset('images/chat/assistant-avatar.png') }}"
-                                    alt="Asistente Integracorp"
-                                    class="relative hidden h-9 w-9 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block sm:h-10 sm:w-10"
-                                />
-                            </div>
-                            <div class="flex items-center gap-1.5 px-1 pt-3" aria-label="El asistente está escribiendo">
-                                <span class="h-2 w-2 rounded-full bg-white/90 animate-[chat-typing_1.2s_ease-in-out_infinite]"></span>
-                                <span class="h-2 w-2 rounded-full bg-white/70 animate-[chat-typing_1.2s_ease-in-out_0.15s_infinite]"></span>
-                                <span class="h-2 w-2 rounded-full bg-white/50 animate-[chat-typing_1.2s_ease-in-out_0.3s_infinite]"></span>
-                            </div>
+                    <div
+                        x-show="$store.guiaChatUi.optimisticUserMessage"
+                        x-cloak
+                        wire:ignore
+                        class="flex justify-end"
+                    >
+                        <div class="max-w-[88%] rounded-2xl rounded-br-md border border-white/20 bg-white/20 px-4 py-3 text-sm text-white backdrop-blur-md">
+                            <span x-text="$store.guiaChatUi.optimisticUserMessage"></span>
                         </div>
-                    @endif
+                    </div>
+
+                    @include('pwa.partials.guia-chat-typing-indicator')
+
             </div>
         </div>
 
@@ -782,7 +815,6 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         <div class="shrink-0 space-y-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {{-- Barra de escritura horizontal (diseño tipo chat IA) --}}
         <form
-            wire:submit="sendMessage"
             class="flex w-full items-center sm:gap-3"
             x-data="{
                 draftFocused: false,
@@ -801,11 +833,60 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                     }
 
                     const minHeight = window.matchMedia('(min-width: 640px)').matches ? 26 : 32;
+                    const maxHeight = 128;
+
                     input.style.height = 'auto';
-                    input.style.height = `${Math.max(minHeight, Math.min(input.scrollHeight, 128))}px`;
+                    const nextHeight = Math.max(minHeight, Math.min(input.scrollHeight, maxHeight));
+                    input.style.height = `${nextHeight}px`;
+                    input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
+                },
+                resolveOptimisticPreview(message) {
+                    const trimmed = String(message ?? '').trim();
+                    const selectedAction = String(this.$wire.selectedAction ?? '').trim();
+                    const serviceFeedback = this.$wire.serviceFeedbackMode;
+
+                    if (trimmed !== '') {
+                        return { shouldOptimistic: true, preview: trimmed };
+                    }
+
+                    if (selectedAction !== '') {
+                        const label = window.guiaChatActionLabels?.[selectedAction] ?? selectedAction;
+
+                        return { shouldOptimistic: true, preview: `Seleccioné: ${label}` };
+                    }
+
+                    if (serviceFeedback) {
+                        return { shouldOptimistic: false, preview: null };
+                    }
+
+                    return { shouldOptimistic: false, preview: null };
+                },
+                async submitDraft() {
+                    const message = String(this.$refs.draftInput?.value ?? '').trim();
+                    const { shouldOptimistic, preview } = this.resolveOptimisticPreview(message);
+                    const store = guiaChatUiStore();
+
+                    if (shouldOptimistic) {
+                        store.beginSend(preview);
+                        this.draftFocused = false;
+                        this.hasDraftText = false;
+                    }
+
+                    await this.$wire.set('draft', message);
+
+                    if (shouldOptimistic) {
+                        this.$refs.draftInput.value = '';
+                        this.resizeDraft();
+                    }
+
+                    try {
+                        await window.guiaChatCall('sendMessage');
+                    } catch (error) {
+                        guiaChatUiStore().endSend();
+                    }
                 },
             }"
-            x-on:submit="draftFocused = false; hasDraftText = false"
+            x-on:submit.prevent="submitDraft()"
             x-on:chat-composer-release.window="draftFocused = false; hasDraftText = false"
             x-on:chat-focus-draft.window="draftFocused = true; $nextTick(() => { $refs.draftInput?.focus(); syncComposerChrome(); })"
         >
@@ -816,7 +897,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                     wire:click="restartChat"
                     wire:loading.attr="disabled"
                     wire:target="restartChat"
-                    @disabled($isThinking)
+                    x-bind:disabled="$store.guiaChatUi.isSending"
                     class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/15 hover:text-white disabled:opacity-40"
                     aria-label="Reiniciar chat"
                     title="Reiniciar chat"
@@ -840,12 +921,13 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                     x-init="resizeDraft(); $watch('$wire.draft', () => $nextTick(() => { resizeDraft(); syncComposerChrome(); }))"
                     x-on:input="resizeDraft(); syncComposerChrome()"
                     x-on:focus="draftFocused = true; syncComposerChrome(); $dispatch('chat-composer-focus')"
-                    x-on:keydown.enter.prevent="if (! $event.shiftKey) { $el.form.requestSubmit() }"
-                    class="block min-h-8 max-h-32 min-w-0 flex-1 appearance-none resize-none overflow-y-auto border-0 bg-transparent px-0 py-0 text-sm leading-8 text-white placeholder:text-white/45 outline-none focus:ring-0 disabled:opacity-50 sm:min-h-[1.625rem] sm:leading-7 sm:text-base"
+                    x-on:keydown.enter.prevent="if (! $event.shiftKey) { submitDraft() }"
+                    class="guia-chat-composer-input block min-h-8 max-h-32 min-w-0 flex-1 appearance-none resize-none overflow-hidden bg-transparent px-0 py-0 text-sm leading-8 text-white shadow-none placeholder:text-white/45 outline-none ring-0 focus:ring-0 focus-visible:ring-0 disabled:opacity-50 sm:min-h-[1.625rem] sm:leading-7 sm:text-base"
                 ></textarea>
 
                 <div
                     x-show="composerMenusVisible()"
+                    x-cloak
                     x-transition:enter="transition ease-out duration-150"
                     x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100"
@@ -863,40 +945,34 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
                 {{-- Enviar (dentro de la barra en mobile para alinear márgenes) --}}
                 <button
                     type="submit"
-                    @disabled($isThinking || $handoffRequested || ($selectedAction === '' && $serviceFeedbackMode === null))
+                    x-bind:disabled="$store.guiaChatUi.isSending || @js($handoffRequested) || ($wire.selectedAction === '' && $wire.serviceFeedbackMode === null)"
                     class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white shadow-md backdrop-blur-md transition hover:bg-black/50 disabled:cursor-not-allowed disabled:opacity-40 sm:hidden"
                     aria-label="Enviar"
                 >
-                    @if ($isThinking)
-                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                    @else
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6 6 6"/>
-                        </svg>
-                    @endif
+                    <svg x-show="! $store.guiaChatUi.isSending" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6 6 6"/>
+                    </svg>
+                    <svg x-show="$store.guiaChatUi.isSending" x-cloak class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
                 </button>
             </div>
 
             {{-- Enviar (fuera de la barra en tablet/desktop) --}}
             <button
                 type="submit"
-                @disabled($isThinking || $handoffRequested || ($selectedAction === '' && $serviceFeedbackMode === null))
+                x-bind:disabled="$store.guiaChatUi.isSending || @js($handoffRequested) || ($wire.selectedAction === '' && $wire.serviceFeedbackMode === null)"
                 class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white shadow-lg backdrop-blur-md transition hover:bg-black/50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex sm:h-11 sm:w-11"
                 aria-label="Enviar"
             >
-                @if ($isThinking)
-                    <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                @else
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6 6 6"/>
-                    </svg>
-                @endif
+                <svg x-show="! $store.guiaChatUi.isSending" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6 6 6"/>
+                </svg>
+                <svg x-show="$store.guiaChatUi.isSending" x-cloak class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
             </button>
         </form>
 
@@ -912,3 +988,96 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         </div>
     </div>
 </div>
+
+@script
+<script>
+    window.guiaChatActionLabels = @json(collect($actionOptions)->mapWithKeys(fn (array $option, string $key): array => [$key => $option['label']]));
+
+    window.guiaChatUiStore = function () {
+        if (! window.Alpine) {
+            return {
+                beginSend() {},
+                beginAwaitingReply() {},
+                endSend() {},
+                clearAwaitingReply() {},
+                isTypingVisible() {
+                    return false;
+                },
+                isSending: false,
+                optimisticThinking: false,
+                awaitingReply: false,
+                optimisticUserMessage: null,
+            };
+        }
+
+        if (! window.Alpine.store('guiaChatUi')) {
+            window.Alpine.store('guiaChatUi', {
+                optimisticUserMessage: null,
+                optimisticThinking: false,
+                awaitingReply: false,
+                isSending: false,
+                isTypingVisible() {
+                    return this.optimisticThinking || this.awaitingReply;
+                },
+                beginAwaitingReply() {
+                    this.awaitingReply = true;
+                    this.isSending = true;
+                    window.clearTimeout(this._safetyTimer);
+                    this._safetyTimer = window.setTimeout(() => this.clearAwaitingReply(), 120000);
+                    window.dispatchEvent(new CustomEvent('chat-scroll-bottom'));
+                },
+                beginSend(message = null) {
+                    this.optimisticUserMessage = message;
+                    this.optimisticThinking = true;
+                    this.awaitingReply = true;
+                    this.isSending = true;
+                    window.clearTimeout(this._safetyTimer);
+                    this._safetyTimer = window.setTimeout(() => {
+                        this.endSend();
+                        this.clearAwaitingReply();
+                    }, 120000);
+                    window.dispatchEvent(new CustomEvent('chat-scroll-bottom'));
+                },
+                endSend() {
+                    window.clearTimeout(this._safetyTimer);
+                    this.optimisticUserMessage = null;
+                    this.optimisticThinking = false;
+                    this.isSending = false;
+                },
+                clearAwaitingReply() {
+                    window.clearTimeout(this._safetyTimer);
+                    this.awaitingReply = false;
+                },
+            });
+        }
+
+        return window.Alpine.store('guiaChatUi');
+    };
+
+    document.addEventListener('alpine:init', () => {
+        window.guiaChatUiStore();
+    });
+
+    window.guiaChatBeginAction = function (label) {
+        window.guiaChatUiStore().beginSend(`Seleccioné: ${label}`);
+    };
+
+    window.guiaChatSelectAction = function (actionKey, label) {
+        window.guiaChatBeginAction(label);
+
+        return $wire.selectAction(actionKey);
+    };
+
+    window.guiaChatSelectServiceOption = function (optionKey) {
+        if (optionKey !== 'integracorp_login') {
+            window.guiaChatUiStore().beginAwaitingReply();
+        }
+
+        return $wire.selectServiceMenuOption(optionKey);
+    };
+
+    window.guiaChatCall = function (method, ...params) {
+        return $wire.call(method, ...params);
+    };
+</script>
+@endscript

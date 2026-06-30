@@ -30,7 +30,7 @@
                 <li wire:key="action-menu-{{ $panelIdPrefix }}-{{ $action['key'] }}">
                     <button
                         type="button"
-                        x-on:click="selectAction(@js($action['key']))"
+                        x-on:click="closeMenu(); guiaChatSelectAction(@js($action['key']), @js($action['label']))"
                         class="{{ $selectedAction === $action['key']
                             ? 'group flex w-full items-start gap-3 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-3 text-left transition hover:border-emerald-400/55 hover:bg-emerald-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/50 sm:px-3.5 sm:py-3.5'
                             : 'group flex w-full items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 sm:px-3.5 sm:py-3.5' }}"
