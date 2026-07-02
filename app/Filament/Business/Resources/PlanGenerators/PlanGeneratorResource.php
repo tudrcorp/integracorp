@@ -19,8 +19,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class PlanGeneratorResource extends Resource
@@ -74,47 +72,5 @@ class PlanGeneratorResource extends Resource
             'edit' => EditPlanGenerator::route('/{record}/edit'),
             'register-company' => RegisterCompany::route('/{record}/register-company'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return self::userCanAccessPlanGenerators();
-    }
-
-    public static function canAccess(): bool
-    {
-        return self::userCanAccessPlanGenerators();
-    }
-
-    public static function canViewAny(): bool
-    {
-        return self::userCanAccessPlanGenerators();
-    }
-
-    public static function canCreate(): bool
-    {
-        return self::userCanAccessPlanGenerators();
-    }
-
-    public static function canView(Model $record): bool
-    {
-        return self::userCanAccessPlanGenerators();
-    }
-
-    public static function canEdit(Model $record): bool
-    {
-        return self::userCanAccessPlanGenerators();
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        return self::userCanAccessPlanGenerators();
-    }
-
-    private static function userCanAccessPlanGenerators(): bool
-    {
-        $departments = (array) (Auth::user()?->departament ?? []);
-
-        return in_array('SUPERADMIN', $departments, true);
     }
 }
