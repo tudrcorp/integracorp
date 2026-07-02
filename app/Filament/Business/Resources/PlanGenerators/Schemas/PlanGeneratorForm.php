@@ -76,10 +76,11 @@ class PlanGeneratorForm
                                                         Select::make('status')
                                                             ->label('Estatus')
                                                             ->options([
+                                                                'PRE-APROBADO' => 'PRE-APROBADO',
                                                                 'ACTIVO' => 'ACTIVO',
                                                                 'INACTIVO' => 'INACTIVO',
                                                             ])
-                                                            ->default('ACTIVO')
+                                                            ->default('PRE-APROBADO')
                                                             ->required()
                                                             ->native(false),
                                                     ]),

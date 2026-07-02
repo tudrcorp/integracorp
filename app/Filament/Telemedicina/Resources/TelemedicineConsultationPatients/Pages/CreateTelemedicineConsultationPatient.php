@@ -371,12 +371,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $case = session()->get('case');
-
-        if ($case instanceof TelemedicineCase) {
-            $data['belongs_to'] = $case->belongs_to;
-        }
-
         if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {
             session()->put('feedbackOne', $data['feedbackOne']);
             $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $data['telemedicine_case_id'])->latest()->first();

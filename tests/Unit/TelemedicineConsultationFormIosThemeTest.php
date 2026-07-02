@@ -52,19 +52,20 @@ it('la acción de asignar doctor agrega el select "Pertenece a?" visible solo pa
         ->toContain('OperationsSupplierScope::authenticatedUserIsTdgAnalyst()');
 });
 
-it('el modelo y la migración soportan la columna belongs_to en consultas de telemedicina', function (): void {
+it('el modelo de consulta no persiste belongs_to; el dato vive en el caso de telemedicina', function (): void {
     $root = dirname(__DIR__, 2);
 
     expect(file_get_contents($root.'/app/Models/TelemedicineConsultationPatient.php'))
+        ->not->toContain("'belongs_to'");
+
+    expect(file_get_contents($root.'/app/Models/TelemedicineCase.php'))
         ->toContain("'belongs_to'");
 
-    $migration = file_get_contents(
-        $root.'/database/migrations/2026_06_22_105241_add_belongs_to_to_telemedicine_consultation_patients_table.php'
+    $createPage = file_get_contents(
+        $root.'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php'
     );
 
-    expect($migration)
-        ->toContain("Schema::hasColumn('telemedicine_consultation_patients', 'belongs_to')")
-        ->toContain("\$table->string('belongs_to')->nullable()");
+    expect($createPage)->not->toContain("['belongs_to']");
 });
 
 it('el widget CaseStats usa contenedor iOS y el theme define sus tarjetas', function (): void {

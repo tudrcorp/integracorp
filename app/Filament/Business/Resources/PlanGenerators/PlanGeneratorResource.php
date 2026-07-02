@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\PlanGenerators;
 use App\Filament\Business\Resources\PlanGenerators\Pages\CreatePlanGenerator;
 use App\Filament\Business\Resources\PlanGenerators\Pages\EditPlanGenerator;
 use App\Filament\Business\Resources\PlanGenerators\Pages\ListPlanGenerators;
+use App\Filament\Business\Resources\PlanGenerators\Pages\RegisterCompany;
 use App\Filament\Business\Resources\PlanGenerators\Pages\ViewPlanGenerator;
 use App\Filament\Business\Resources\PlanGenerators\Schemas\PlanGeneratorForm;
 use App\Filament\Business\Resources\PlanGenerators\Schemas\PlanGeneratorInfolist;
@@ -71,6 +72,7 @@ class PlanGeneratorResource extends Resource
             'create' => CreatePlanGenerator::route('/create'),
             'view' => ViewPlanGenerator::route('/{record}'),
             'edit' => EditPlanGenerator::route('/{record}/edit'),
+            'register-company' => RegisterCompany::route('/{record}/register-company'),
         ];
     }
 

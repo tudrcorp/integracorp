@@ -55,6 +55,7 @@
                         if ($currentBenefitLabel !== '' && ! $availableBenefits->contains($currentBenefitLabel)) {
                             $availableBenefits = $availableBenefits->push($currentBenefitLabel)->values();
                         }
+                        $benefitSelectKey = 'pg-benefit-select-'.$rowKey.'-'.md5($availableBenefits->implode('||'));
                     @endphp
                     <tr wire:key="pg-benefit-row-{{ $rowKey }}" class="{{ $loop->even ? 'bg-white dark:bg-slate-900/40' : 'bg-slate-50/80 dark:bg-white/[0.03]' }}">
                         <td colspan="2" class="border border-slate-200 px-2 py-2 align-middle dark:border-white/10">
@@ -63,6 +64,7 @@
                                 <div class="w-full space-y-1.5">
                                     <div x-show="! creatingBenefit" class="flex items-center gap-1.5">
                                         <select
+                                            wire:key="{{ $benefitSelectKey }}"
                                             wire:model.live="data.rows.{{ $rowKey }}.benefit_label"
                                             class="block w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-white/15 dark:bg-slate-900 dark:text-white"
                                         >

@@ -7,7 +7,6 @@ namespace App\Filament\Business\Resources\TravelAgencies\Schemas;
 use App\Http\Controllers\UtilsController;
 use App\Models\City;
 use App\Models\Country;
-use App\Models\Region;
 use App\Models\State;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -65,12 +64,7 @@ class TravelAgencyForm
                         $set('phone', $state.toUpperCase());
                     JS),
                 DatePicker::make('fechaNacimiento')
-                    ->label('Fecha de Nacimiento')
-                    ->rules(['required', 'date'])
-                    ->validationMessages([
-                        'required' => 'El campo es obligatorio.',
-                        'date' => 'El campo debe ser una fecha.',
-                    ]),
+                    ->label('Fecha de Nacimiento'),
                 Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('edit'),
                 Hidden::make('updated_by')->default(fn (): string => Auth::user()?->name ?? '')->hiddenOn('create'),
             ])
@@ -140,13 +134,11 @@ class TravelAgencyForm
                                             ->schema([
                                                 TextInput::make('name')
                                                     ->label('Nombre de la Agencia')
-                                                    ->required()
                                                     ->maxLength(255),
                                                 TextInput::make('numberIdentification')
                                                     ->prefix('J/V/E-')
                                                     ->label('Numero de identificacion')
-                                                    ->numeric()
-                                                    ->required(),
+                                                    ->numeric(),
                                                 DatePicker::make('aniversary')
                                                     ->label('Fecha Aniversario de la Agencia')
                                                     ->format('d/m/Y'),
@@ -162,7 +154,6 @@ class TravelAgencyForm
                                                     ->options(UtilsController::getCountries())
                                                     ->searchable()
                                                     ->default('+58')
-                                                    ->required()
                                                     ->live(onBlur: true)
                                                     ->validationMessages([
                                                         'required' => 'Campo Requerido',
@@ -172,7 +163,6 @@ class TravelAgencyForm
                                                     ->prefixIcon('heroicon-s-phone')
                                                     ->tel()
                                                     ->label('Número de teléfono')
-                                                    ->required()
                                                     ->validationMessages([
                                                         'required' => 'Campo Requerido',
                                                     ])
@@ -198,10 +188,6 @@ class TravelAgencyForm
                                                     ->options(Country::all()->pluck('name', 'id'))
                                                     ->searchable()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ])
                                                     ->preload(),
                                                 Select::make('state_id')
                                                     ->label('Estado')
@@ -230,9 +216,6 @@ class TravelAgencyForm
                                                     })
                                                     ->searchable()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa')
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido',
-                                                    ])
                                                     ->preload(),
                                                 TextInput::make('address')
                                                     ->label('Direccion'),

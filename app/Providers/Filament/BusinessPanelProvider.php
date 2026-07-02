@@ -74,6 +74,7 @@ class BusinessPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Business/Resources'), for: 'App\Filament\Business\Resources')
+            ->discoverClusters(in: app_path('Filament/Business/Clusters'), for: 'App\Filament\Business\Clusters')
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\Filament\Business\Pages')
             ->pages([
                 Dashboard::class,

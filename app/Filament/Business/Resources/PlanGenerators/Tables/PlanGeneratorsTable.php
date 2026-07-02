@@ -22,7 +22,8 @@ class PlanGeneratorsTable
     private static function statusColor(?string $state): string
     {
         return match (strtoupper((string) $state)) {
-            'ACTIVO', 'ACTIVA' => 'success',
+            'ACTIVO', 'ACTIVA', 'APROBADA', 'APROBADO' => 'success',
+            'PRE-APROBADO' => 'warning',
             'INACTIVO', 'INACTIVA' => 'gray',
             default => 'gray',
         };
@@ -140,6 +141,8 @@ class PlanGeneratorsTable
                 SelectFilter::make('status')
                     ->label('Estatus')
                     ->options([
+                        'PRE-APROBADO' => 'PRE-APROBADO',
+                        'APROBADA' => 'APROBADA',
                         'ACTIVO' => 'ACTIVO',
                         'INACTIVO' => 'INACTIVO',
                     ])
