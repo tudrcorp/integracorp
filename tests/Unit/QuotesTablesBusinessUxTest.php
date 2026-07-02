@@ -18,6 +18,9 @@ it('incluye mejoras de UX en las tablas de cotizaciones del panel business', fun
         ->toContain('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_FORWARD_SENT')
         ->toContain('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_PDF_DOWNLOADED')
         ->toContain('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_STATUS_UPDATED')
+        ->toContain("Action::make('preview')")
+        ->toContain("->label('Vista Previa')")
+        ->toContain('IndividualQuotePdf::previewUrl')
         ->not->toContain('dd($th)');
 
     expect($corporate)->not->toBeFalse()

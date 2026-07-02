@@ -36,7 +36,7 @@ it('define el widget de cotizaciones por agencia con columnas requeridas', funct
         ->toContain("variant: 'agency'")
         ->toContain("nameAttribute: 'name_corporative'")
         ->toContain('IndividualQuotesRankingQuery::agencies')
-        ->toContain('once(fn');
+        ->toContain('fn (): Builder => IndividualQuotesRankingQuery::agencies');
 });
 
 it('define el widget de cotizaciones por agente con columnas requeridas', function (): void {
@@ -51,7 +51,8 @@ it('define el widget de cotizaciones por agente con columnas requeridas', functi
         ->toContain("variant: 'agent'")
         ->toContain("nameAttribute: 'name'")
         ->toContain('IndividualQuotesRankingQuery::agents')
-        ->toContain('flushCachedTableRecords');
+        ->toContain('flushCachedTableRecords')
+        ->toContain('fn (): Builder => $this->agentQuotesQuery()');
 });
 
 it('coloca las tablas lado a lado en la misma fila', function (): void {
@@ -93,10 +94,16 @@ it('aplica UI iOS compacta con ranking y sin barra de progreso', function (): vo
         ->toContain('.fi-ta-row.iq-ranking-row--selected')
         ->toContain('tbody:has(.iq-ranking-row--selected)')
         ->toContain('.individual-quotes-ranking-table-ios--agent .fi-ta-cell')
+        ->toContain('.iq-ranking-filter-overlay')
+        ->toContain('.iq-ranking-filter-btn')
+        ->toContain('.iq-ranking-quotes-btn')
         ->not->toContain('.iq-ranking-total-bar__fill--agency');
 
     expect($widgetView)->toContain('$widgetClass')
-        ->toContain('getRankingTableVariant');
+        ->toContain('getRankingTableVariant')
+        ->toContain('iq-ranking-filter-overlay')
+        ->toContain('individual-quotes-agent-filter-start')
+        ->toContain('Preparando filtrado');
 
     expect(IndividualQuotesRankingTableUi::tableClass('agency'))
         ->toBe('individual-quotes-ranking-table-ios individual-quotes-ranking-table-ios--agency');
@@ -112,22 +119,70 @@ it('filtra agentes al seleccionar una agencia sin pasar por la página padre', f
         ->not->toContain('filteredAgencyCode')
         ->not->toContain('getWidgetData');
 
-    expect($agencyWidget)->toContain('selectAgencyByKey')
+    expect($agencyWidget)->toContain('selectAgency')
         ->toContain('->to(IndividualQuotesByAgentTable::class)')
-        ->toContain('getTableRecord($recordKey)')
-        ->toContain("->recordAction('selectAgencyByKey')")
-        ->not->toContain('#[Reactive]')
-        ->not->toContain('recordActions');
+        ->toContain('individual-quotes-agent-filter-start')
+        ->toContain('getTableRecordKey($record) === (string) $key')
+        ->toContain("Action::make('filterAgents')")
+        ->toContain("->label('Filtrar')")
+        ->toContain('->recordActions([')
+        ->not->toContain('selectAgencyByKey')
+        ->not->toContain('#[Reactive]');
 
     expect($agentWidget)->toContain('filterAgentsByAgency')
+        ->toContain('viewAgentQuotes')
+        ->toContain("Action::make('viewQuotes')")
+        ->toContain("->label('Ver cotizaciones')")
+        ->toContain('->to(ListIndividualQuotes::class)')
+        ->toContain('individual-quotes-filter-by-agent')
+        ->toContain('getTableRecordKey($record) === (string) $key')
         ->toContain('#[On(\'individual-quotes-agency-selected\')]')
         ->toContain('IndividualQuotesRankingQuery::agents')
         ->toContain('flushCachedTableRecords')
+        ->toContain('individual-quotes-agent-filter-end')
+        ->toContain('fn (): Builder => $this->agentQuotesQuery()')
         ->toContain('Ver todos los agentes')
         ->not->toContain('#[Reactive]');
 
     expect($query)->toContain('joinSub')
         ->toContain("->where('owner_code', \$agencyCode)");
+
+    $quotesTable = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/IndividualQuotes/Tables/IndividualQuotesTable.php');
+
+    expect($listPage)->toContain('filterQuotesByAgent')
+        ->toContain('#[On(\'individual-quotes-filter-by-agent\')]')
+        ->toContain('individual-quotes-main-table')
+        ->toContain('scrollIntoView');
+
+    expect($quotesTable)->toContain("SelectFilter::make('agent_id')")
+        ->toContain("'id' => 'individual-quotes-main-table'");
+});
+
+it('no confunde el id de agencia con el indice de fila del paginador', function (): void {
+    $makeRecord = fn (int $id, string $name): object => new class($id, $name)
+    {
+        public function __construct(private int $id, public string $name) {}
+
+        public function getKey(): int
+        {
+            return $this->id;
+        }
+    };
+
+    $hinestroza = $makeRecord(4, 'HINESTROZA CONSULTORES');
+    $antonio = $makeRecord(99, 'ANTONIO LUIS PLASENCIA');
+
+    $pageRecords = collect([
+        $makeRecord(1, 'LEADER'),
+        $hinestroza,
+        $makeRecord(7, 'OTASA'),
+        $makeRecord(8, 'NF'),
+        $antonio,
+    ]);
+
+    expect($pageRecords->get('4'))->toBe($antonio)
+        ->and($pageRecords->first(fn (object $record): bool => (string) $record->getKey() === '4'))
+        ->toBe($hinestroza);
 });
 
 it('define índices para acelerar el filtrado por agencia en producción', function (): void {
