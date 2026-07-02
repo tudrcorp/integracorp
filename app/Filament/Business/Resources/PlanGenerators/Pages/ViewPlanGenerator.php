@@ -7,7 +7,6 @@ namespace App\Filament\Business\Resources\PlanGenerators\Pages;
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
 use App\Models\PlanGenerator;
-use App\Support\PlanGeneratorPdfAccess;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -86,8 +85,7 @@ class ViewPlanGenerator extends ViewRecord
                             'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
                         ]),
                 )
-                ->action(fn (): null => null)
-                ->visible(fn (): bool => PlanGeneratorPdfAccess::userCanAccess()),
+                ->action(fn (): null => null),
         ];
     }
 

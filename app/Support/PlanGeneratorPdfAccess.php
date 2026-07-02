@@ -10,8 +10,6 @@ final class PlanGeneratorPdfAccess
 {
     public static function userCanAccess(): bool
     {
-        $departments = (array) (Auth::user()?->departament ?? []);
-
-        return in_array('SUPERADMIN', $departments, true);
+        return Auth::check();
     }
 }

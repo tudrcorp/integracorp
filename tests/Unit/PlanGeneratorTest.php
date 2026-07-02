@@ -2,15 +2,20 @@
 
 declare(strict_types=1);
 
-it('recurso generador de planes expone menu y restriccion superadmin', function (): void {
+it('recurso generador de planes expone menu accesible para usuarios autenticados', function (): void {
     $resource = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/PlanGeneratorResource.php');
     $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Tables/PlanGeneratorsTable.php');
+    $pdfAccess = file_get_contents(dirname(__DIR__, 2).'/app/Support/PlanGeneratorPdfAccess.php');
 
     expect($resource)
         ->toContain('Generador de Planes')
         ->toContain('$navigationGroup = null')
         ->toContain('$navigationSort = 4')
-        ->toContain('SUPERADMIN');
+        ->not->toContain('userCanAccessPlanGenerators')
+        ->not->toContain('SUPERADMIN');
+
+    expect($pdfAccess)
+        ->toContain('Auth::check()');
 
     expect($table)
         ->toContain('Generador de planes')
