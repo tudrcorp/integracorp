@@ -3,6 +3,7 @@
 namespace App\Support\Filament;
 
 use App\Models\Agent;
+use Closure;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
@@ -20,7 +21,7 @@ class IndividualQuotesRankingTableUi
     public static function apply(
         Table $table,
         string $variant,
-        Builder $query,
+        Builder|Closure $query,
         string $modelClass,
         string $nameAttribute,
         string $nameLabel,
@@ -34,6 +35,13 @@ class IndividualQuotesRankingTableUi
 
         $nameColumn = self::nameColumn($modelClass, $nameAttribute, $nameLabel, $variant);
 
+        $columns = [
+            self::rankColumn(),
+            $nameColumn,
+            self::typeColumn($typeRelation, $variant),
+            self::totalColumn($variant),
+        ];
+
         $table = $table
             ->heading($heading ?? self::heading($variant))
             ->defaultSort('total_quotes', 'desc')
@@ -42,17 +50,12 @@ class IndividualQuotesRankingTableUi
             ->emptyStateHeading($emptyHeading)
             ->emptyStateDescription($emptyDescription)
             ->emptyStateIcon(self::emptyStateIcon($variant))
-            ->query(fn (): Builder => $query)
+            ->query($query instanceof Closure ? $query : fn (): Builder => $query)
             ->extraAttributes([
                 'class' => $tableClass,
                 'data-iq-ranking-variant' => $variant,
             ])
-            ->columns([
-                self::rankColumn(),
-                $nameColumn,
-                self::typeColumn($typeRelation, $variant),
-                self::totalColumn($variant),
-            ])
+            ->columns($columns)
             ->paginated([8, 16, 25, 50])
             ->defaultPaginationPageOption(8)
             ->extremePaginationLinks();

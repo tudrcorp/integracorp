@@ -8,6 +8,7 @@ use App\Jobs\ResendEmailPropuestaEconomica;
 use App\Models\Agency;
 use App\Models\Bitacora;
 use App\Models\IndividualQuote;
+use App\Support\IndividualQuotes\IndividualQuotePdf;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -32,9 +33,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 
 class IndividualQuotesTable
 {
@@ -60,6 +63,9 @@ class IndividualQuotesTable
             ->emptyStateHeading('Sin cotizaciones individuales')
             ->emptyStateDescription('Las cotizaciones creadas por agencias o agentes aparecerán aquí. Cree una nueva desde el botón correspondiente del recurso.')
             ->emptyStateIcon(Heroicon::OutlinedDocumentText)
+            ->extraAttributes([
+                'id' => 'individual-quotes-main-table',
+            ])
             ->columns([
                 TextColumn::make('code_agency')
                     ->label('Agencia')
@@ -179,6 +185,13 @@ class IndividualQuotesTable
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('agent_id')
+                    ->label('Agente')
+                    ->relationship('agent', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->indicator('Agente'),
                 Filter::make('created_at')
                     ->label('Fecha de cotización')
                     ->form([
@@ -240,6 +253,30 @@ class IndividualQuotesTable
                     ->label('Ver'),
                 EditAction::make()
                     ->label('Editar'),
+                Action::make('preview')
+                    ->label('Vista Previa')
+                    ->icon(Heroicon::OutlinedDocumentMagnifyingGlass)
+                    ->color('info')
+                    ->modalHeading(fn (IndividualQuote $record): string => 'Vista previa · '.$record->code)
+                    ->modalDescription('Visualice el PDF de la cotización individual antes de descargarlo o reenviarlo.')
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalIcon(Heroicon::OutlinedEye)
+                    ->modalIconColor('info')
+                    ->modalContent(function (IndividualQuote $record): ViewContract {
+                        return View::make('filament.business.individual-quotes.pdf-preview', [
+                            'pdfPreviewUrl' => IndividualQuotePdf::previewUrl($record),
+                            'pdfDownloadUrl' => IndividualQuotePdf::downloadUrl($record),
+                            'documentLabel' => 'Cotización individual',
+                            'documentTitle' => $record->code.' · '.($record->full_name ?? 'Sin titular'),
+                        ]);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->disabled(fn (IndividualQuote $record): bool => ! IndividualQuotePdf::exists($record))
+                    ->tooltip(fn (IndividualQuote $record): ?string => IndividualQuotePdf::exists($record)
+                        ? 'Abrir vista previa del PDF de la cotización'
+                        : 'El PDF de esta cotización aún no está disponible')
+                    ->action(fn (): null => null),
                 ActionGroup::make([
 
                     /**FORWARD */

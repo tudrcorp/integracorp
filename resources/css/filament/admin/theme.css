@@ -3635,16 +3635,84 @@
     @apply size-4;
   }
 
+  .iq-ranking-table-shell--agent {
+    @apply relative;
+  }
+
+  .iq-ranking-filter-overlay {
+    @apply pointer-events-none absolute inset-0 z-20 hidden items-center justify-center rounded-xl bg-blue-500/[0.04] backdrop-blur-[2px] dark:bg-blue-950/20;
+  }
+
+  .iq-ranking-filter-overlay--visible,
+  .iq-ranking-filter-overlay[x-show] {
+    @apply flex;
+  }
+
+  .iq-ranking-filter-overlay__panel {
+    @apply flex flex-col items-center gap-2 rounded-2xl border border-blue-200/60 bg-white/90 px-5 py-4 shadow-lg backdrop-blur-md dark:border-blue-500/30 dark:bg-zinc-900/90;
+  }
+
+  .iq-ranking-filter-overlay__spinner {
+    @apply size-7 text-blue-600 dark:text-blue-400;
+  }
+
+  .iq-ranking-filter-overlay__label {
+    @apply text-xs font-semibold tracking-tight text-blue-800 dark:text-blue-200;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .iq-ranking-filter-btn {
+    @apply shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tracking-tight shadow-none ring-1 ring-inset ring-sky-200/80 transition-[background-color,box-shadow,transform] duration-150 active:scale-95 dark:ring-sky-500/30;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-row.iq-ranking-row--selected .iq-ranking-filter-btn,
+  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected .iq-ranking-filter-btn {
+    @apply bg-sky-500/15 ring-sky-500/40;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .fi-ta-actions {
+    @apply shrink-0 px-1;
+  }
+
+  .individual-quotes-ranking-table-ios--agent .iq-ranking-quotes-btn {
+    @apply shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tracking-tight shadow-none ring-1 ring-inset ring-blue-200/80 transition-[background-color,box-shadow,transform] duration-150 active:scale-95 dark:ring-blue-500/30;
+  }
+
+  .individual-quotes-ranking-table-ios--agent .fi-ta-row.iq-ranking-row--selected .iq-ranking-quotes-btn,
+  .individual-quotes-ranking-table-ios--agent .fi-ta-record.iq-ranking-row--selected .iq-ranking-quotes-btn {
+    @apply bg-blue-500/15 ring-blue-500/40;
+  }
+
+  .individual-quotes-ranking-table-ios--agent .fi-ta-actions {
+    @apply shrink-0 px-1;
+  }
+
+  .individual-quotes-ranking-table-ios--agent tbody:has(.iq-ranking-row--selected) .fi-ta-row:not(.iq-ranking-row--selected),
+  .individual-quotes-ranking-table-ios--agent tbody:has(.iq-ranking-row--selected) .fi-ta-record:not(.iq-ranking-row--selected) {
+    @apply opacity-[0.52] saturate-[0.82];
+  }
+
+  .individual-quotes-ranking-table-ios--agent .fi-ta-row.iq-ranking-row--selected,
+  .individual-quotes-ranking-table-ios--agent .fi-ta-record.iq-ranking-row--selected {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, #2563eb 26%, transparent) 0%,
+      color-mix(in oklch, #2563eb 10%, transparent) 55%,
+      transparent 100%
+    ) !important;
+    box-shadow:
+      inset 3px 0 0 #2563eb,
+      inset 0 0 0 1px color-mix(in oklch, #2563eb 22%, transparent),
+      0 4px 18px -6px color-mix(in oklch, #2563eb 42%, transparent);
+    @apply opacity-100 saturate-100;
+  }
+
+  .individual-quotes-ranking-table-ios--agent .fi-ta-row.iq-ranking-row--selected .iq-ranking-name-cell .fi-ta-text-item-label,
+  .individual-quotes-ranking-table-ios--agent .fi-ta-record.iq-ranking-row--selected .iq-ranking-name-cell .fi-ta-text-item-label {
+    @apply font-bold text-blue-900 dark:text-blue-100;
+  }
+
   .individual-quotes-ranking-table-ios--agency .fi-ta-record-content {
-    @apply w-full cursor-pointer text-left transition-opacity duration-150 hover:opacity-90 active:opacity-80;
-  }
-
-  .individual-quotes-ranking-table-ios--agency .fi-ta-record.iq-ranking-row--selected .fi-ta-record-content {
-    @apply opacity-100;
-  }
-
-  .individual-quotes-ranking-table-ios .iq-ranking-name-cell--selectable .fi-ta-text-item-label {
-    @apply text-sky-700 dark:text-sky-300;
+    @apply w-full text-left;
   }
 
   /* Selección de agencia — resalta la fila activa y atenúa el resto */
