@@ -91,31 +91,44 @@ it('expone solo agencia master, agencia general y agente en login integracorp', 
         ->and($labels)->not->toContain('ADMIN');
 });
 
-it('cambia el placeholder del textarea segun el paso del feedback', function (): void {
-    Volt::test('volt.public.ai_chat')
-        ->call('selectServiceMenuOption', ServiceMenuOption::GUIA_CHAT_BUG)
-        ->assertSee('Escribe tu nombre y apellido...')
-        ->set('draft', 'Ana López')
-        ->call('sendMessage')
-        ->assertSee('Describe la falla del GUIA-CHAT...');
+it('usa placeholder minimo en el textarea en todos los flujos', function (): void {
+    $volt = file_get_contents(base_path('resources/views/livewire/volt/public/ai_chat.blade.php'));
+
+    expect(ServiceMenuOption::draftPlaceholder(null))->toBe('...')
+        ->and(ServiceMenuOption::draftPlaceholder(ServiceMenuOption::SERVICE_SUGGESTION))->toBe('...')
+        ->and(ServiceMenuOption::draftPlaceholder(ServiceMenuOption::GUIA_CHAT_BUG, ServiceMenuOption::FEEDBACK_STEP_MESSAGE))->toBe('...')
+        ->and(ServiceMenuOption::draftPlaceholder(ServiceMenuOption::INTEGRACORP_BUG, ServiceMenuOption::FEEDBACK_STEP_REPORTER_NAME))->toBe('...')
+        ->and($volt)->toContain('serviceMenuDraftPlaceholder()')
+        ->and($volt)->not->toContain('¿Qué necesitas?...')
+        ->and($volt)->not->toContain('Escribe tu sugerencia aquí...');
 });
 
 it('el menu quiero usa la misma ui optimizada que el menu de servicio', function (): void {
     $actionMenu = file_get_contents(base_path('resources/views/pwa/guia-chat-action-menu.blade.php'));
     $actionPanel = file_get_contents(base_path('resources/views/pwa/partials/guia-chat-action-menu-panel.blade.php'));
+    $serviceMenu = file_get_contents(base_path('resources/views/pwa/guia-chat-service-menu.blade.php'));
+    $head = file_get_contents(base_path('resources/views/partials/guia-chat-head.blade.php'));
+    $guiaChatUi = file_get_contents(base_path('resources/js/guia-chat-ui.js'));
 
     expect($actionMenu)
         ->toContain('rounded-t-[1.35rem]')
         ->toContain('bg-[#071a3d]/95')
         ->toContain('backdrop-blur-2xl')
+        ->toContain('data-guia-chat-overlay')
+        ->toContain('guia-chat-menu-sheet')
         ->toContain('guia-chat-action-menu-panel');
 
     expect($actionPanel)
         ->toContain('tracking-[0.14em] text-cyan-300/75')
         ->toContain('rounded-2xl border border-white/10')
-        ->toContain('h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br');
+        ->toContain('h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br')
+        ->toContain('guia-chat-menu-option')
+        ->toContain('overflow-x-hidden');
 
-    Volt::test('volt.public.ai_chat')
-        ->assertSee('¿Qué quieres hacer?')
-        ->assertSee('Elige una opción para comenzar el chat guiado');
+    expect($serviceMenu)
+        ->toContain('data-guia-chat-overlay')
+        ->toContain('guia-chat-menu-sheet');
+
+    expect($head)->toContain('.guia-chat-menu-sheet');
+    expect($guiaChatUi)->toContain('data-guia-chat-overlay');
 });

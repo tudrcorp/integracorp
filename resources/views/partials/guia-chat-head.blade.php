@@ -75,6 +75,9 @@
         height: 100%;
         height: 100dvh;
         height: -webkit-fill-available;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
         background-color: #0b1f4a;
         overscroll-behavior: none;
     }
@@ -83,8 +86,52 @@
         min-height: 100%;
         min-height: 100dvh;
         min-height: -webkit-fill-available;
+        width: 100%;
+        max-width: 100%;
         margin: 0;
+        overflow-x: hidden;
         overscroll-behavior: none;
+    }
+
+    .guia-chat-shell {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .guia-chat-shell .guia-chat-bg {
+        position: absolute;
+        inset: 0;
+    }
+
+    [data-guia-chat-overlay] {
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .guia-chat-menu-sheet {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .guia-chat-menu-panel {
+        box-sizing: border-box;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .guia-chat-menu-option {
+        box-sizing: border-box;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    html.guia-chat-app.guia-chat-keyboard-open,
+    html.guia-chat-app.guia-chat-keyboard-open body {
+        overflow: hidden;
+        max-width: 100%;
     }
 
   [x-cloak] {

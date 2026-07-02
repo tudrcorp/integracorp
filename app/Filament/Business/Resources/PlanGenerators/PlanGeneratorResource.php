@@ -35,9 +35,9 @@ class PlanGeneratorResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTableCells;
 
-    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = null;
 
-    protected static ?int $navigationSort = 14;
+    protected static ?int $navigationSort = 4;
 
     public static function form(Schema $schema): Schema
     {

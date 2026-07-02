@@ -8,7 +8,8 @@ it('recurso generador de planes expone menu y restriccion superadmin', function 
 
     expect($resource)
         ->toContain('Generador de Planes')
-        ->toContain('CONFIGURACIÓN')
+        ->toContain('$navigationGroup = null')
+        ->toContain('$navigationSort = 4')
         ->toContain('SUPERADMIN');
 
     expect($table)

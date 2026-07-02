@@ -103,7 +103,12 @@ it('oculta los menus del composer al enfocar el textarea y los restaura al envia
     expect($actionMenu)
         ->not->toContain('ring-1 ring-emerald-400/50')
         ->not->toContain('border border-white/30')
+        ->toContain('data-guia-chat-overlay')
+        ->toContain('guia-chat-menu-sheet')
+        ->toContain('guia-chat-menu-opened')
         ->toContain('x-on:chat-composer-focus.window="closeMenu()"')
+        ->and($serviceMenu)->toContain('data-guia-chat-overlay')
+        ->and($serviceMenu)->toContain('guia-chat-menu-sheet')
         ->and($serviceMenu)->toContain('x-on:chat-composer-focus.window="closeMenu()"');
 
     $actionPanel = file_get_contents(base_path('resources/views/pwa/partials/guia-chat-action-menu-panel.blade.php'));
@@ -120,12 +125,21 @@ it('oculta los menus del composer al enfocar el textarea y los restaura al envia
 it('oculta el avatar del asistente en mobile', function (): void {
     $volt = file_get_contents(base_path('resources/views/livewire/volt/public/ai_chat.blade.php'));
     $head = file_get_contents(base_path('resources/views/partials/guia-chat-head.blade.php'));
+    $guiaChatUi = file_get_contents(base_path('resources/js/guia-chat-ui.js'));
 
     expect($volt)
         ->toContain('assistant-avatar.png')
         ->toContain('hidden h-9 w-9 shrink-0 rounded-full border border-white/25 bg-white object-cover shadow-md sm:block')
         ->and($volt)->toContain('guia-chat-composer-input')
-        ->and($head)->toContain('.guia-chat-composer-input::-webkit-scrollbar');
+        ->and($volt)->toContain('overflow-x-hidden')
+        ->and($volt)->toContain('guia-chat-bg pointer-events-none absolute inset-0')
+        ->and($head)->toContain('.guia-chat-composer-input::-webkit-scrollbar')
+        ->and($head)->toContain('overflow-x: hidden')
+        ->and($head)->toContain('guia-chat-keyboard-open')
+        ->and($head)->toContain('guia-chat-menu-sheet')
+        ->and($guiaChatUi)->toContain('setupGuiaChatMobileViewportLock')
+        ->and($guiaChatUi)->toContain('visualViewport')
+        ->and($guiaChatUi)->toContain('data-guia-chat-overlay');
 });
 
 it('renderiza la vista pública del chat IA', function (): void {
@@ -137,7 +151,7 @@ it('renderiza la vista pública del chat IA', function (): void {
         ->assertSee('Nuestros Planes')
         ->assertDontSee('Cotización plan individual')
         ->assertSee('Registro de Agente')
-        ->assertSee('¿Qué necesitas?...')
+        ->assertSeeHtml('placeholder="..."')
         ->assertSeeHtml('textarea');
 });
 
