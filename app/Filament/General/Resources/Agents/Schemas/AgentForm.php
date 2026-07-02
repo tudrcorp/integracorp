@@ -295,8 +295,6 @@ class AgentForm
                                                     })
                                                     ->options(Country::all()->pluck('name', 'id'))
                                                     ->searchable()
-                                                    ->disabled()
-                                                    ->default(189)
                                                     // Venezuela
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 Select::make('state_id')
