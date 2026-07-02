@@ -15,7 +15,178 @@ it('recurso generador de planes expone menu y restriccion superadmin', function 
         ->toContain('Generador de planes')
         ->toContain('ColumnGroup::make')
         ->toContain('control_number')
-        ->toContain('SelectFilter::make(\'status\')');
+        ->toContain('SelectFilter::make(\'status\')')
+        ->toContain('PRE-APROBADO');
+});
+
+it('estatus del plan usa PRE-APROBADO como valor por defecto', function (): void {
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Schemas/PlanGeneratorForm.php');
+    $migration = file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_06_30_113602_change_plan_generators_status_default_to_pre_aprobado.php');
+
+    expect($form)
+        ->toContain('Select::make(\'status\')')
+        ->toContain('->default(\'PRE-APROBADO\')')
+        ->toContain('\'PRE-APROBADO\' => \'PRE-APROBADO\'');
+
+    expect($migration)
+        ->toContain('->default(\'PRE-APROBADO\')->change()');
+});
+
+it('aprobar cotizacion cambia estatus a APROBADA y redirige al registro de empresa', function (): void {
+    $view = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/ViewPlanGenerator.php');
+    $resource = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/PlanGeneratorResource.php');
+
+    expect($view)
+        ->toContain('Action::make(\'approveQuote\')')
+        ->toContain('Aprobar cotización')
+        ->toContain('->requiresConfirmation()')
+        ->toContain('public function approveQuote(): void')
+        ->toContain('\'status\' => \'APROBADA\'')
+        ->toContain('PlanGeneratorResource::getUrl(\'register-company\'')
+        ->toContain('=== \'PRE-APROBADO\'');
+
+    expect($resource)
+        ->toContain('RegisterCompany')
+        ->toContain('\'register-company\' => RegisterCompany::route(\'/{record}/register-company\')');
+});
+
+it('vista de registro de empresa expone formulario con campos requeridos', function (): void {
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/RegisterCompany.php');
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Schemas/RegisterCompanyForm.php');
+    $migration = file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_06_30_115743_create_companies_table.php');
+
+    expect($page)
+        ->toContain('Registro de Empresa')
+        ->toContain('public function save(): void')
+        ->toContain('Company::create(')
+        ->toContain('/{record}/register-company');
+
+    expect($form)
+        ->toContain('Nombre / Razón Social')
+        ->toContain('TextInput::make(\'rif\')')
+        ->toContain('TextInput::make(\'email\')')
+        ->toContain('TextInput::make(\'phone\')')
+        ->toContain('Textarea::make(\'address\')');
+
+    expect($migration)
+        ->toContain('Schema::create(\'companies\'')
+        ->toContain('plan_generator_id')
+        ->toContain('$table->string(\'rif\')');
+
+    expect(App\Models\Company::class)->toBeString();
+
+    $company = new App\Models\Company;
+    expect($company->getFillable())->toContain('name')
+        ->toContain('rif')
+        ->toContain('email')
+        ->toContain('phone')
+        ->toContain('address')
+        ->toContain('plan_generator_id');
+});
+
+it('repeater de responsables expone los campos requeridos', function (): void {
+    $repeater = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/Schemas/CompanyResponsibleRepeater.php');
+    $registerForm = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Schemas/RegisterCompanyForm.php');
+
+    expect($repeater)
+        ->toContain('Nombre y Apellido')
+        ->toContain('Cédula de Identidad')
+        ->toContain('TextInput::make(\'company\')')
+        ->toContain('TextInput::make(\'phone\')')
+        ->toContain('Select::make(\'state_id\')')
+        ->toContain('Select::make(\'zone_id\')')
+        ->toContain('TextInput::make(\'email\')')
+        ->toContain('Nro. de Días Contratados')
+        ->toContain('->columns([\'default\' => 1, \'sm\' => 2, \'xl\' => 4])')
+        ->toContain('CompanyResponsibleDays::validationMessage');
+
+    expect($registerForm)
+        ->toContain('Tab::make(\'Empresa\')')
+        ->toContain('Tab::make(\'Responsables\')')
+        ->toContain('CompanyResponsibleRepeater::make(\'responsibles\'');
+
+    $responsible = new App\Models\CompanyResponsible;
+    expect($responsible->getFillable())
+        ->toContain('full_name')
+        ->toContain('identity_card')
+        ->toContain('company')
+        ->toContain('phone')
+        ->toContain('email')
+        ->toContain('state_id')
+        ->toContain('zone_id')
+        ->toContain('contracted_days');
+});
+
+it('valida que la suma de dias contratados no exceda la poblacion del plan', function (): void {
+    $validator = App\Support\Companies\CompanyResponsibleDays::class;
+
+    $responsibles = [
+        ['full_name' => 'Ana', 'contracted_days' => 40],
+        ['full_name' => 'Luis', 'contracted_days' => 70],
+    ];
+
+    expect($validator::sumContractedDays($responsibles))->toBe(110)
+        ->and($validator::validationMessage($responsibles, 101))->toContain('no puede exceder')
+        ->and($validator::validationMessage($responsibles, 110))->toBeNull()
+        ->and($validator::validationMessage($responsibles, 200))->toBeNull()
+        ->and($validator::validationMessage($responsibles, null))->toBeNull()
+        ->and($validator::helperText($responsibles, 200))->toContain('Disponibles: 90');
+});
+
+it('recurso de nuevos negocios se publica en el grupo AFILIACIONES', function (): void {
+    $resource = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/CompanyResource.php');
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/Tables/CompaniesTable.php');
+    $listPage = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/Pages/ListCompanies.php');
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/Schemas/CompanyForm.php');
+
+    expect($resource)
+        ->toContain('NuevosNegociosCluster::class')
+        ->toContain('Empresas')
+        ->toContain('App\Models\Company')
+        ->toContain('CompanyInfolist')
+        ->toContain('ViewCompany')
+        ->toContain('withSum(\'responsibles\', \'contracted_days\')');
+
+    expect($listPage)
+        ->toContain("protected static ?string \$title = 'Empresas'")
+        ->toContain('getSubheading')
+        ->toContain('overviewStats')
+        ->toContain('Generador de planes')
+        ->toContain('Ver asociados');
+
+    expect($table)
+        ->toContain('ColumnGroup::make')
+        ->toContain('population_total')
+        ->toContain('population_utilization')
+        ->toContain('responsibles_sum_contracted_days')
+        ->toContain('planGenerator.control_number')
+        ->toContain('responsibles_count')
+        ->toContain('planGenerator.name')
+        ->toContain('emptyStateHeading')
+        ->toContain('TernaryFilter::make(\'has_plan\')')
+        ->toContain('ViewAction::make()');
+
+    $infolist = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/Schemas/CompanyInfolist.php');
+    $viewPage = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/Pages/ViewCompany.php');
+
+    expect($infolist)
+        ->toContain('Tabs::make(\'companyInfolistTabs\')')
+        ->toContain('Tab::make(\'Empresa\')')
+        ->toContain('Tab::make(\'Cotización\')')
+        ->toContain('Tab::make(\'Responsables\')')
+        ->toContain('responsibles-associates-panel')
+        ->toContain('Responsables y asociados')
+        ->toContain('population_total')
+        ->toContain('population_utilization');
+
+    expect($viewPage)
+        ->toContain('ViewRecord')
+        ->toContain('EditAction::make()');
+
+    expect($form)
+        ->toContain('Tab::make(\'Responsables\')')
+        ->toContain('CompanyResponsibleRepeater::make(\'responsibles\'')
+        ->toContain('->relationship()');
 });
 
 it('formulario generador incluye matrices alineadas con columnas compartidas', function (): void {
@@ -75,6 +246,8 @@ it('editor de beneficios usa select con catalogo, evita duplicados y permite cre
         ->toContain('benefitsUsedByOtherRows')
         ->toContain('createPlanGeneratorBenefit')
         ->toContain('Nuevo beneficio')
+        ->toContain('$benefitSelectKey')
+        ->toContain('wire:key="{{ $benefitSelectKey }}"')
         ->not->toContain('Definición del beneficio');
 
     expect($trait)

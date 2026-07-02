@@ -119,6 +119,9 @@ Route::get('/plk/c/{id}', function ($id) {
     ]);
 })->name('corporate-pre-affiliation.create');
 
+Route::get('/nb/{token}', App\Livewire\CompanyAssociateRegistration::class)
+    ->name('company-associates.register');
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
@@ -151,6 +154,30 @@ Route::get('operations/doctor-nurses/{doctorNurse}/carta-acceptance/preview', [D
 Route::get('operations/doctor-nurses/{doctorNurse}/carta-acceptance/download', [DoctorNurseDocumentAuditController::class, 'downloadCartaAcceptance'])
     ->middleware(['web', 'auth'])
     ->name('operations.doctor-nurses.carta-acceptance.download');
+
+Route::get('business/companies/{path?}', function (?string $path = null) {
+    $target = '/business/nuevos-negocios/companies';
+
+    if (filled($path)) {
+        $target .= '/'.$path;
+    }
+
+    $query = request()->getQueryString();
+
+    return redirect($query ? "{$target}?{$query}" : $target, 301);
+})->where('path', '.*');
+
+Route::get('business/company-associates/{path?}', function (?string $path = null) {
+    $target = '/business/nuevos-negocios/company-associates';
+
+    if (filled($path)) {
+        $target .= '/'.$path;
+    }
+
+    $query = request()->getQueryString();
+
+    return redirect($query ? "{$target}?{$query}" : $target, 301);
+})->where('path', '.*');
 
 Route::get('business/export-prospect-agents-csv', App\Http\Controllers\ProspectAgentExportCsvController::class)
     ->middleware(['web', 'auth'])

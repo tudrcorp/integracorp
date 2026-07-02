@@ -11,6 +11,7 @@ use App\Support\PlanGeneratorPdfAccess;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
@@ -31,6 +32,21 @@ class ViewPlanGenerator extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('approveQuote')
+                ->label('Aprobar cotización')
+                ->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
+                ->requiresConfirmation()
+                ->modalHeading('Aprobar cotización')
+                ->modalDescription('Se marcará la cotización como APROBADA y continuarás con el registro de la empresa.')
+                ->modalSubmitActionLabel('Aprobar y continuar')
+                ->action(function (): void {
+                    $this->approveQuote();
+                })
+                ->visible(fn (): bool => strtoupper((string) ($this->getRecord()->status ?? '')) === 'PRE-APROBADO'),
             Action::make('back')
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')
@@ -75,6 +91,27 @@ class ViewPlanGenerator extends ViewRecord
         ];
     }
 
+    public function approveQuote(): void
+    {
+        /** @var PlanGenerator $plan */
+        $plan = $this->getRecord();
+
+        $plan->update(['status' => 'APROBADA']);
+
+        SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_APPROVED', 'business.plan-generators.approve-quote', [
+            'plan_generator_id' => $plan->getKey(),
+            'plan_name' => $plan->name,
+        ]);
+
+        Notification::make()
+            ->title('Cotización aprobada')
+            ->body('Continúa con el registro de la empresa.')
+            ->success()
+            ->send();
+
+        $this->redirect(PlanGeneratorResource::getUrl('register-company', ['record' => $plan->getKey()]));
+    }
+
     public function getTitle(): string|Htmlable
     {
         $plan = $this->getRecord();
@@ -103,6 +140,8 @@ class ViewPlanGenerator extends ViewRecord
     {
         return match ($status) {
             'ACTIVO', 'ACTIVA' => ['bg' => '#16a34a', 'shadow' => '0 8px 20px rgba(22,163,74,.35)'],
+            'APROBADA', 'APROBADO' => ['bg' => '#16a34a', 'shadow' => '0 8px 20px rgba(22,163,74,.35)'],
+            'PRE-APROBADO' => ['bg' => '#d97706', 'shadow' => '0 8px 20px rgba(217,119,6,.35)'],
             'INACTIVO', 'INACTIVA' => ['bg' => '#6b7280', 'shadow' => '0 8px 20px rgba(107,114,128,.35)'],
             default => ['bg' => '#6b7280', 'shadow' => '0 8px 20px rgba(107,114,128,.35)'],
         };

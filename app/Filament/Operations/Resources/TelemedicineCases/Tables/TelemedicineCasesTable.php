@@ -86,7 +86,9 @@ class TelemedicineCasesTable
                     ]),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
-                    ->description(fn ($record): string => 'Asignado a Dr(a):'.$record->telemedicineDoctor->full_name)
+                    ->description(fn ($record): string => filled($record->telemedicineDoctor?->full_name)
+                        ? 'Asignado a Dr(a):'.$record->telemedicineDoctor->full_name
+                        : 'Sin médico asignado')
                     ->sortable(),
                 TextColumn::make('patient_age')
                     ->label('Edad')
@@ -106,26 +108,31 @@ class TelemedicineCasesTable
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
-                    ->color(function (string $state): string {
+                    ->color(function (?string $state): string {
                         return match ($state) {
                             'ASIGNADO' => 'primary',
                             'EN SEGUIMIENTO' => 'warning',
                             'ALTA MEDICA' => 'success',
+                            'TPA/RETAIL' => 'info',
+                            default => 'gray',
                         };
                     })
-                    ->icon(function (string $state): string {
+                    ->icon(function (?string $state): string {
                         return match ($state) {
                             'ASIGNADO' => 'healthicons-f-i-note-action',
                             'EN SEGUIMIENTO' => 'healthicons-f-i-note-action',
                             'ALTA MEDICA' => 'healthicons-f-i-documents-accepted',
+                            'TPA/RETAIL' => 'heroicon-s-clipboard-document-check',
+                            default => 'healthicons-f-i-note-action',
                         };
                     })
                     ->searchable(),
                 TextColumn::make('priority.name')
                     ->label('Prioridad')
                     ->badge()
-                    ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
-                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
+                    ->placeholder('—')
+                    ->color(fn (?string $state): string => TelemedicinePriorityFilamentBadge::color((string) $state))
+                    ->icon(fn (?string $state): string => TelemedicinePriorityFilamentBadge::icon((string) $state))
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->label('Fecha de Registro')
