@@ -682,8 +682,8 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
     x-on:guia-chat-reply-visible.window="guiaChatUiStore().clearAwaitingReply()"
 >
     {{-- Fondo gradiente tipo IA --}}
-    <div class="guia-chat-bg pointer-events-none fixed inset-0 bg-gradient-to-br from-[#0b1f4a] via-[#0d4f6e] to-[#14b8a6]"></div>
-    <div class="guia-chat-bg pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.25),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.2),transparent_40%)]"></div>
+    <div class="guia-chat-bg pointer-events-none absolute inset-0 bg-gradient-to-br from-[#0b1f4a] via-[#0d4f6e] to-[#14b8a6]"></div>
+    <div class="guia-chat-bg pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.25),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.2),transparent_40%)]"></div>
 
     <div class="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden px-4 sm:px-6"
         x-on:chat-open-external.window="if ($event.detail?.url) { window.open($event.detail.url, '_blank', 'noopener,noreferrer'); }"
@@ -710,12 +710,12 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
 
         {{-- Zona de chat (solo esta área hace scroll) --}}
         <div
-            class="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
             x-data
             x-init="$el.scrollTop = $el.scrollHeight"
             x-on:chat-scroll-bottom.window="$el.scrollTop = $el.scrollHeight"
         >
-            <div class="space-y-4 pt-3 pb-6 sm:pt-4 sm:pb-8 md:pt-5">
+            <div class="space-y-4 pt-3 pb-6 sm:pt-4 sm:pb-8 md:pt-5 max-w-full overflow-x-hidden">
                 @if (count($chatFeed) === 0)
                     <div
                         wire:key="guide-welcome"
@@ -815,7 +815,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
         <div class="shrink-0 space-y-2.5 pt-2 pb-3">
         {{-- Barra de escritura horizontal (diseño tipo chat IA) --}}
         <form
-            class="flex w-full items-center sm:gap-3"
+            class="flex w-full max-w-full min-w-0 items-center sm:gap-3"
             x-data="{
                 draftFocused: false,
                 hasDraftText: false,
@@ -890,7 +890,7 @@ new #[Layout('components.layouts.guia-chat')] class extends Component {
             x-on:chat-composer-release.window="draftFocused = false; hasDraftText = false"
             x-on:chat-focus-draft.window="draftFocused = true; $nextTick(() => { $refs.draftInput?.focus(); syncComposerChrome(); })"
         >
-            <div class="flex min-w-0 flex-1 items-center gap-1 overflow-visible rounded-3xl border border-white/20 bg-black/30 px-1.5 py-1.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:gap-2 sm:pl-2 sm:pr-3 sm:py-2">
+            <div class="flex min-w-0 flex-1 items-center gap-1 overflow-hidden rounded-3xl border border-white/20 bg-black/30 px-1.5 py-1.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:gap-2 sm:pl-2 sm:pr-3 sm:py-2">
                 {{-- Reiniciar chat --}}
                 <button
                     type="button"

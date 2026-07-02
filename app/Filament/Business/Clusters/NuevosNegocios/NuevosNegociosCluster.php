@@ -18,7 +18,7 @@ class NuevosNegociosCluster extends Cluster
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
 
     protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 }

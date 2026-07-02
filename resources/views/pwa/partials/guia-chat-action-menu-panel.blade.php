@@ -1,4 +1,4 @@
-<div class="flex max-h-[inherit] flex-col">
+<div class="guia-chat-menu-panel flex max-h-[inherit] max-w-full flex-col overflow-hidden">
     <div class="shrink-0 border-b border-white/10 px-4 pb-3 pt-3 sm:px-5 sm:pt-4">
         <div class="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true"></div>
 
@@ -24,16 +24,16 @@
         </div>
     </div>
 
-    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3">
+    <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3">
         <ul class="space-y-1.5" role="listbox">
             @foreach ($actionMenuOptions as $action)
-                <li wire:key="action-menu-{{ $panelIdPrefix }}-{{ $action['key'] }}">
+                <li wire:key="action-menu-{{ $panelIdPrefix }}-{{ $action['key'] }}" class="max-w-full">
                     <button
                         type="button"
                         x-on:click="closeMenu(); guiaChatSelectAction(@js($action['key']), @js($action['label']))"
                         class="{{ $selectedAction === $action['key']
-                            ? 'group flex w-full items-start gap-3 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-3 text-left transition hover:border-emerald-400/55 hover:bg-emerald-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/50 sm:px-3.5 sm:py-3.5'
-                            : 'group flex w-full items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 sm:px-3.5 sm:py-3.5' }}"
+                            ? 'guia-chat-menu-option group flex w-full max-w-full items-start gap-3 overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-3 text-left transition hover:border-emerald-400/55 hover:bg-emerald-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/50 sm:px-3.5 sm:py-3.5'
+                            : 'guia-chat-menu-option group flex w-full max-w-full items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 sm:px-3.5 sm:py-3.5' }}"
                         role="option"
                         aria-selected="{{ $selectedAction === $action['key'] ? 'true' : 'false' }}"
                     >
@@ -43,16 +43,16 @@
                             </svg>
                         </span>
 
-                        <span class="min-w-0 flex-1">
-                            <span class="flex items-center gap-2">
-                                <span class="block text-sm font-medium leading-snug text-white sm:text-[15px]">{{ $action['label'] }}</span>
+                        <span class="min-w-0 flex-1 overflow-hidden">
+                            <span class="flex min-w-0 items-center gap-2">
+                                <span class="block min-w-0 break-words text-sm font-medium leading-snug text-white sm:text-[15px]">{{ $action['label'] }}</span>
                                 @if ($selectedAction === $action['key'])
                                     <span class="inline-flex items-center rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
                                         Activa
                                     </span>
                                 @endif
                             </span>
-                            <span class="mt-1 block text-xs leading-relaxed text-white/55">{{ $action['description'] }}</span>
+                            <span class="mt-1 block break-words text-xs leading-relaxed text-white/55">{{ $action['description'] }}</span>
                         </span>
 
                         <svg class="mt-2 h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

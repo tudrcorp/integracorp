@@ -167,14 +167,6 @@ final class ServiceMenuOption
 
     public static function draftPlaceholder(?string $mode, ?string $step = null): string
     {
-        return match ($step) {
-            self::FEEDBACK_STEP_REPORTER_NAME => 'Escribe tu nombre y apellido...',
-            default => match ($mode) {
-                self::SERVICE_SUGGESTION => 'Escribe tu sugerencia aquí...',
-                self::GUIA_CHAT_BUG => 'Describe la falla del GUIA-CHAT...',
-                self::INTEGRACORP_BUG => 'Describe la falla del sistema INTEGRACORP...',
-                default => '¿Qué necesitas?...',
-            },
-        };
+        return '...';
     }
 }

@@ -1,4 +1,4 @@
-<div class="flex max-h-[inherit] flex-col">
+<div class="guia-chat-menu-panel flex max-h-[inherit] max-w-full flex-col overflow-hidden">
     <div class="shrink-0 border-b border-white/10 px-4 pb-3 pt-3 sm:px-5 sm:pt-4">
         <div class="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true"></div>
 
@@ -46,14 +46,14 @@
         </div>
     </div>
 
-    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3">
+    <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3">
         <ul x-show="view === 'main'" class="space-y-1.5">
             @foreach ($serviceMenuOptions as $option)
-                <li wire:key="service-menu-{{ $panelIdPrefix }}-{{ $option['key'] }}">
+                <li wire:key="service-menu-{{ $panelIdPrefix }}-{{ $option['key'] }}" class="max-w-full">
                     <button
                         type="button"
                         x-on:click="selectOption(@js($option['key']))"
-                        class="group flex w-full items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 sm:px-3.5 sm:py-3.5"
+                        class="guia-chat-menu-option group flex w-full max-w-full items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 sm:px-3.5 sm:py-3.5"
                     >
                         <span class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br {{ $option['accent'] }} ring-1 ring-white/15">
                             <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -61,8 +61,8 @@
                             </svg>
                         </span>
 
-                        <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-medium leading-snug text-white sm:text-[15px]">
+                        <span class="min-w-0 flex-1 overflow-hidden">
+                            <span class="block min-w-0 break-words text-sm font-medium leading-snug text-white sm:text-[15px]">
                                 @if (($option['highlight_brand'] ?? false) === true)
                                     Reportar fallas del
                                     <span class="bg-gradient-to-r from-emerald-300 via-cyan-300 to-teal-200 bg-clip-text font-bold text-transparent">GUIA-CHAT</span>
@@ -70,7 +70,7 @@
                                     {{ $option['label'] }}
                                 @endif
                             </span>
-                            <span class="mt-1 block text-xs leading-relaxed text-white/55">{{ $option['description'] }}</span>
+                            <span class="mt-1 block break-words text-xs leading-relaxed text-white/55">{{ $option['description'] }}</span>
                         </span>
 
                         <svg class="mt-2 h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

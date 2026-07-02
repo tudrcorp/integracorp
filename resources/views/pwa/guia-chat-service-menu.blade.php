@@ -55,7 +55,10 @@
         openMenu() {
             this.view = 'main';
             this.open = true;
-            this.$nextTick(() => this.updatePanelPosition());
+            this.$nextTick(() => {
+                this.updatePanelPosition();
+                window.dispatchEvent(new CustomEvent('guia-chat-menu-opened'));
+            });
         },
         closeMenu() {
             this.open = false;
@@ -106,7 +109,7 @@
     </button>
 
     <template x-teleport="body">
-        <div x-show="open" x-cloak class="fixed inset-0 z-[210]" role="presentation">
+        <div x-show="open" x-cloak class="guia-chat-menu-overlay fixed inset-0 z-[210]" data-guia-chat-overlay role="presentation">
             <div
                 x-show="open"
                 x-transition:enter="transition ease-out duration-200"
@@ -129,7 +132,7 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 translate-y-0"
                 x-transition:leave-end="opacity-0 translate-y-full"
-                class="absolute inset-x-0 bottom-0 max-h-[min(88dvh,640px)] overflow-hidden rounded-t-[1.35rem] border border-white/15 bg-[#071a3d]/95 shadow-[0_-24px_80px_-20px_rgba(0,0,0,0.75)] backdrop-blur-2xl sm:hidden"
+                class="guia-chat-menu-sheet absolute inset-x-0 bottom-0 max-h-[min(88dvh,640px)] overflow-hidden rounded-t-[1.35rem] border border-white/15 bg-[#071a3d]/95 shadow-[0_-24px_80px_-20px_rgba(0,0,0,0.75)] backdrop-blur-2xl sm:hidden"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="guia-chat-service-menu-title-mobile"
