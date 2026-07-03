@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 
+use App\Enums\PlanGeneratorPopulationUnit;
 use App\Models\Benefit;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
+use App\Support\PlanGenerators\PlanGeneratorImageGallery;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
@@ -18,6 +20,8 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -27,6 +31,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class PlanGeneratorForm
@@ -36,6 +41,8 @@ class PlanGeneratorForm
     private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+
+    private const MONTHLY_TOGGLE_CARD_CLASS = 'rounded-[1rem] border border-slate-200/90 bg-gradient-to-r from-white via-slate-50/90 to-white px-4 py-3.5 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.15)] ring-1 ring-slate-200/50 transition dark:border-white/10 dark:from-slate-900/90 dark:via-slate-950/95 dark:to-slate-900/90 dark:ring-white/10';
 
     public static function configure(Schema $schema): Schema
     {
@@ -129,20 +136,31 @@ class PlanGeneratorForm
                                                             ->required()
                                                             ->maxLength(255)
                                                             ->placeholder('Ej: Eiram Briceño'),
+                                                        ToggleButtons::make('population_unit')
+                                                            ->label('¿Qué representa el total?')
+                                                            ->options(PlanGeneratorPopulationUnit::options())
+                                                            ->default(PlanGeneratorPopulationUnit::Poblacion->value)
+                                                            ->inline()
+                                                            ->grouped()
+                                                            ->live()
+                                                            ->required()
+                                                            ->columnSpan(['default' => 1, 'lg' => 2]),
                                                         TextInput::make('population_summary')
-                                                            ->label('Población')
+                                                            ->label(fn (Get $get): string => 'Total ('.PlanGeneratorPopulationUnit::resolve($get('population_unit'))->label().')')
                                                             ->required()
                                                             ->maxLength(255)
                                                             ->live(onBlur: true)
-                                                            ->placeholder('Ej: 101 personas')
+                                                            ->placeholder('Ej: 1000')
                                                             ->helperText(fn (Get $get): string => PlanGeneratorPopulationValidator::helperText(
                                                                 (string) ($get('population_summary') ?? ''),
                                                                 (array) ($get('rate_rows') ?? []),
+                                                                $get('population_unit'),
                                                             ))
                                                             ->rule(fn (Get $get): \Closure => function (string $attribute, mixed $value, \Closure $fail) use ($get): void {
                                                                 $message = PlanGeneratorPopulationValidator::validationMessage(
                                                                     (string) $value,
                                                                     (array) ($get('rate_rows') ?? []),
+                                                                    $get('population_unit'),
                                                                 );
 
                                                                 if ($message !== null) {
@@ -288,8 +306,19 @@ class PlanGeneratorForm
                                                             ->visibility('public')
                                                             ->imageEditor()
                                                             ->required()
+                                                            ->afterStateUpdated(function (mixed $state): void {
+                                                                PlanGeneratorImageGallery::registerFromUpload($state, Auth::user()?->name);
+                                                            })
                                                             ->helperText('Esta imagen se convertirá en una página completa del PDF.'),
+                                                        View::make('filament.business.plan-generators.quotation-page-gallery-button')
+                                                            ->viewData(fn (Get $get): array => [
+                                                                'pageNumber' => (int) ($get('page_number') ?? 0),
+                                                            ]),
                                                     ])
+                                                    ->columnSpanFull(),
+                                                View::make('filament.business.plan-generators.quotation-gallery-modal')
+                                                    ->visible(fn (Get $get): bool => (int) ($get('quotation_page_count') ?? 0) > 0
+                                                        && filled($get('plan_page_number')))
                                                     ->columnSpanFull(),
                                             ]),
                                     ]),
@@ -370,11 +399,26 @@ class PlanGeneratorForm
                                                     ->default([])
                                                     ->dehydrated()
                                                     ->columnSpanFull(),
+                                                Toggle::make('include_monthly_total')
+                                                    ->label('Incluir cálculo mensual')
+                                                    ->helperText('Activa esta opción para mostrar la fila «Total Mensual» en la tabla de total grupal (tarifa anual ÷ 12).')
+                                                    ->live()
+                                                    ->inline(false)
+                                                    ->onColor('primary')
+                                                    ->offColor('gray')
+                                                    ->onIcon(Heroicon::OutlinedCalendarDays)
+                                                    ->offIcon(Heroicon::OutlinedCalendar)
+                                                    ->extraFieldWrapperAttributes([
+                                                        'class' => self::MONTHLY_TOGGLE_CARD_CLASS,
+                                                    ])
+                                                    ->columnSpanFull(),
                                                 View::make('filament.business.plan-generators.stacked-matrices-editor')
                                                     ->viewData(fn (Get $get): array => [
                                                         'columns' => PlanGeneratorMatrixState::normalizeColumns((array) ($get('columns') ?? [])),
                                                         'rows' => (array) ($get('rows') ?? []),
                                                         'rateRows' => (array) ($get('rate_rows') ?? []),
+                                                        'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($get('population_unit'))->label(),
+                                                        'includeMonthlyTotal' => (bool) $get('include_monthly_total'),
                                                         'benefitOptions' => Benefit::query()
                                                             ->whereNotNull('description')
                                                             ->where('description', '!=', '')

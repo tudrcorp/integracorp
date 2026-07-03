@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\PlanGenerators;
 
+use App\Enums\PlanGeneratorPopulationUnit;
 use Illuminate\Validation\ValidationException;
 
 final class PlanGeneratorPopulationValidator
@@ -38,18 +39,19 @@ final class PlanGeneratorPopulationValidator
     /**
      * @param  array<string, array<string, mixed>>  $rateRows
      */
-    public static function validationMessage(string $populationSummary, array $rateRows): ?string
+    public static function validationMessage(string $populationSummary, array $rateRows, mixed $populationUnit = null): ?string
     {
+        $unit = PlanGeneratorPopulationUnit::resolve($populationUnit);
         $expectedTotal = self::parsePopulationTotal($populationSummary);
 
         if ($expectedTotal === null) {
-            return 'Indique un número de personas válido en Población (ej: 101 personas).';
+            return "Indique un número válido en {$unit->label()} (ej: 101).";
         }
 
         $rateRowsTotal = self::sumRateRowPopulations($rateRows);
 
         if ($expectedTotal !== $rateRowsTotal) {
-            return "La población total ({$expectedTotal}) debe ser igual a la suma de población por rango etario ({$rateRowsTotal}).";
+            return "El total de {$unit->label()} ({$expectedTotal}) debe ser igual a la suma por rango etario ({$rateRowsTotal}).";
         }
 
         return null;
@@ -58,19 +60,20 @@ final class PlanGeneratorPopulationValidator
     /**
      * @param  array<string, array<string, mixed>>  $rateRows
      */
-    public static function helperText(string $populationSummary, array $rateRows): string
+    public static function helperText(string $populationSummary, array $rateRows, mixed $populationUnit = null): string
     {
+        $unit = PlanGeneratorPopulationUnit::resolve($populationUnit);
         $rateRowsTotal = self::sumRateRowPopulations($rateRows);
 
-        return "Suma actual por rangos etarios: {$rateRowsTotal} persona(s). Debe coincidir con el total indicado aquí.";
+        return "Suma total por rangos etarios: {$rateRowsTotal} {$unit->quantityLabel()}. Debe coincidir con el total indicado aquí.";
     }
 
     /**
      * @param  array<string, array<string, mixed>>  $rateRows
      */
-    public static function assertMatchesOrFail(string $populationSummary, array $rateRows): void
+    public static function assertMatchesOrFail(string $populationSummary, array $rateRows, mixed $populationUnit = null): void
     {
-        $message = self::validationMessage($populationSummary, $rateRows);
+        $message = self::validationMessage($populationSummary, $rateRows, $populationUnit);
 
         if ($message === null) {
             return;

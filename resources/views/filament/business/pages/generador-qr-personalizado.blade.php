@@ -430,7 +430,7 @@
                     <div class="block">
                         <div class="field">
                             <label for="qrData">Tu URL o texto</label>
-                            <input id="qrData" type="text" value="https://integracorp.tudrgroup.com/" placeholder="https://tusitio.com">
+                            <input id="qrData" type="text" value="{{ $this->getCompanyAssociateInclusionPdfUrl() }}" placeholder="https://tusitio.com">
                         </div>
                         <div class="inline">
                             <div class="field">
@@ -476,7 +476,7 @@
                         <div class="inline">
                             <div class="field">
                                 <label for="logoSize">Tamano logo</label>
-                                <input id="logoSize" type="range" min="0.1" max="0.5" value="0.28" step="0.01">
+                                <input id="logoSize" type="range" min="0.1" max="0.5" value="0.42" step="0.01">
                             </div>
                             <div class="field">
                                 <label for="logoMargin">Margen logo</label>
@@ -573,6 +573,19 @@
                         Aplicar QR a tarjetas corporativas
                     </button>
 
+                    <div class="field" style="margin-top: 16px;">
+                        <label for="associationPlanInclusion">Asociar QR a tarjeta — nuevos negocios (Inclusión)</label>
+                        <input
+                            id="associationPlanInclusion"
+                            type="text"
+                            value="INCLUSIÓN"
+                            readonly
+                        >
+                    </div>
+                    <button id="downloadAndAssociateInclusionBtn" class="btn-download" type="button">
+                        Aplicar QR a tarjetas de nuevos negocios
+                    </button>
+
                     <p class="badge">
                         Generador local de QR. Si agregas logo o formas muy extremas, valida con dos moviles antes de usarlo en produccion.
                     </p>
@@ -623,11 +636,14 @@
                     associationPlanCorporate: document.getElementById('associationPlanCorporate'),
                     downloadAndAssociateIndividualBtn: document.getElementById('downloadAndAssociateIndividualBtn'),
                     downloadAndAssociateCorporateBtn: document.getElementById('downloadAndAssociateCorporateBtn'),
+                    downloadAndAssociateInclusionBtn: document.getElementById('downloadAndAssociateInclusionBtn'),
                 };
 
                 let logoDataUrl = null;
                 const associateIndividualRoute = @js(route('business.affiliation-tarjeta-qr.associate-plan'));
                 const associateCorporateRoute = @js(route('business.affiliation-corporate-tarjeta-qr.associate-plan'));
+                const associateInclusionRoute = @js(route('business.company-associate-tarjeta-qr.associate-inclusion'));
+                const defaultInclusionLogoUrl = @js($this->getCompanyAssociateInclusionLogoUrl());
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || @js(csrf_token());
 
                 function buildPayload() {
@@ -708,6 +724,24 @@
                         reader.onerror = reject;
                         reader.readAsDataURL(file);
                     });
+                }
+
+                async function loadDefaultInclusionLogo() {
+                    if (!defaultInclusionLogoUrl) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(defaultInclusionLogoUrl);
+
+                        if (!response.ok) {
+                            return;
+                        }
+
+                        logoDataUrl = await readImage(await response.blob());
+                    } catch (error) {
+                        console.warn('No se pudo cargar el logo corporativo predeterminado.', error);
+                    }
                 }
 
                 elements.logoInput.addEventListener('change', async (event) => {
@@ -806,6 +840,27 @@
                     return response.json();
                 }
 
+                async function associateInclusionQr(pngBlob, associateRoute) {
+                    const formData = new FormData();
+                    formData.append('qr_image', pngBlob, 'qr-plan-inclusion.png');
+
+                    const response = await fetch(associateRoute, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                        credentials: 'same-origin',
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('No se pudo asociar el QR de inclusión.');
+                    }
+
+                    return response.json();
+                }
+
                 elements.downloadPngBtn.addEventListener('click', async () => {
                     try {
                         await downloadQr('png');
@@ -865,7 +920,22 @@
                     }
                 });
 
-                void renderQr();
+                elements.downloadAndAssociateInclusionBtn.addEventListener('click', async () => {
+                    try {
+                        const pngBlob = await buildQrBlob('png');
+                        await associateInclusionQr(pngBlob, associateInclusionRoute);
+                        // eslint-disable-next-line no-alert
+                        alert('Listo: el QR fue asociado correctamente al plan INCLUSIÓN para nuevos negocios.');
+                    } catch (error) {
+                        // eslint-disable-next-line no-alert
+                        alert('No se pudo completar la asociación del QR para nuevos negocios. Intenta nuevamente.');
+                        console.error(error);
+                    }
+                });
+
+                loadDefaultInclusionLogo().finally(() => {
+                    void renderQr();
+                });
                 }
 
                 function scheduleBoot() {

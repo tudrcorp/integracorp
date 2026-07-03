@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Companies\Tables;
 
+use App\Filament\Business\Resources\Companies\Actions\CompanyTableActions;
 use App\Models\Company;
 use App\Support\Companies\CompanyResponsibleDays;
 use Filament\Actions\ActionGroup;
@@ -205,6 +206,7 @@ class CompaniesTable
                         ->label('Ver negocio'),
                     EditAction::make()
                         ->label('Editar negocio'),
+                    CompanyTableActions::sendPublicRegistrationLinkAction(),
                 ]),
             ])
             ->toolbarActions([

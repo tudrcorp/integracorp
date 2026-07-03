@@ -6,13 +6,10 @@
 
     $columns = PlanGeneratorMatrixState::normalizeColumns((array) ($columns ?? []));
     $rateRows = (array) ($rateRows ?? []);
+    $includeMonthlyTotal = (bool) ($includeMonthlyTotal ?? false);
     $columnCount = count($columns);
     $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows);
-    $rows = [
-        ['key' => PlanGeneratorGroupTotalCalculator::ROW_ANNUAL, 'label' => 'Tarifa anual', 'bold' => true],
-        ['key' => PlanGeneratorGroupTotalCalculator::ROW_SEMESTRAL, 'label' => 'Tarifa Semestral', 'bold' => false],
-        ['key' => PlanGeneratorGroupTotalCalculator::ROW_TRIMESTRAL, 'label' => 'Tarifa Trimestral', 'bold' => false],
-    ];
+    $rows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal);
 @endphp
 
 <div>
@@ -32,7 +29,6 @@
                         <th class="border border-[#1e40af] px-2 py-2.5 text-left font-bold uppercase tracking-wide">
                             Total Grupal
                         </th>
-                        <th class="border border-[#1e40af] px-2 py-2.5" aria-hidden="true">&nbsp;</th>
                         @foreach ($columns as $column)
                             <th class="border border-[#1e40af] px-2 py-2.5 text-center font-bold uppercase">
                                 {{ $column['header_label'] ?? '—' }}
@@ -46,7 +42,6 @@
                             <td class="border border-slate-200 px-2 py-2.5 align-top font-medium dark:border-white/10">
                                 {{ $row['label'] }}
                             </td>
-                            <td class="border border-slate-200 px-2 py-2.5 dark:border-white/10" aria-hidden="true">&nbsp;</td>
                             @foreach ($columns as $column)
                                 @php
                                     $columnKey = (string) ($column['column_key'] ?? '');
@@ -68,6 +63,6 @@
         @endif
     </div>
     <p class="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-        Cálculo automático: tarifa individual anual × población por rango etario. Semestral = anual ÷ 2. Trimestral = anual ÷ 4.
+        Cálculo automático: tarifa individual anual × población por rango etario. Semestral = anual ÷ 2. Trimestral = anual ÷ 4.@if ($includeMonthlyTotal) Mensual = anual ÷ 12.@endif
     </p>
 </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 
+use App\Enums\PlanGeneratorPopulationUnit;
 use App\Models\PlanGenerator;
 use App\Support\PlanGenerators\PlanGeneratorPreviewBuilder;
 use Filament\Infolists\Components\TextEntry;
@@ -118,7 +119,7 @@ class PlanGeneratorInfolist
                                                             ->icon(Heroicon::OutlinedUser)
                                                             ->placeholder('—'),
                                                         TextEntry::make('population_summary')
-                                                            ->label('Población')
+                                                            ->label(fn (PlanGenerator $record): string => PlanGeneratorPopulationUnit::resolve($record->population_unit)->label())
                                                             ->icon(Heroicon::OutlinedUsers)
                                                             ->badge()
                                                             ->color('info')
@@ -212,6 +213,8 @@ class PlanGeneratorInfolist
                                                         'columns' => PlanGeneratorPreviewBuilder::columns($record),
                                                         'rows' => PlanGeneratorPreviewBuilder::rows($record),
                                                         'rateRows' => PlanGeneratorPreviewBuilder::rateRows($record),
+                                                        'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($record->population_unit)->label(),
+                                                        'includeMonthlyTotal' => (bool) $record->include_monthly_total,
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),

@@ -10,6 +10,12 @@ use RuntimeException;
 
 final class CompanyAssociateCarnetGenerator
 {
+    private const PLAN_LABEL = 'INCLUSIÓN';
+
+    private const COVERAGE_LABEL = 'LOCAL';
+
+    private const PAYMENT_FREQUENCY_LABEL = 'CONTADO';
+
     /**
      * @return array{filename: string, preview_url: string, absolute_path: string}
      */
@@ -61,15 +67,13 @@ final class CompanyAssociateCarnetGenerator
      */
     private static function payloadFor(CompanyAssociate $associate, string $filename): array
     {
-        $companyName = (string) ($associate->company?->name ?? 'NUEVO NEGOCIO');
-
         return [
             'name' => $associate->full_name,
             'ci' => $associate->identity_card,
             'code' => self::associateCode($associate),
-            'plan' => $companyName,
-            'frecuencia' => 'CORPORATIVO',
-            'cobertura' => '',
+            'plan' => self::PLAN_LABEL,
+            'frecuencia' => self::PAYMENT_FREQUENCY_LABEL,
+            'cobertura' => self::COVERAGE_LABEL,
             'desde' => filled($associate->date_init)
                 ? (string) $associate->date_init
                 : ($associate->registered_at?->format('d/m/Y') ?? ''),
@@ -79,6 +83,11 @@ final class CompanyAssociateCarnetGenerator
     }
 
     private static function associateCode(CompanyAssociate $associate): string
+    {
+        return self::buildAssociateCode($associate);
+    }
+
+    public static function buildAssociateCode(CompanyAssociate $associate): string
     {
         return 'NB-'.$associate->company_id.'-'.$associate->getKey();
     }

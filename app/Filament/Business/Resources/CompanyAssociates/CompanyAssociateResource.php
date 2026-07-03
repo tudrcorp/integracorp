@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\CompanyAssociates\Pages\ListCompanyAssociate
 use App\Filament\Business\Resources\CompanyAssociates\Pages\ViewCompanyAssociate;
 use App\Filament\Business\Resources\CompanyAssociates\Schemas\CompanyAssociateInfolist;
 use App\Filament\Business\Resources\CompanyAssociates\Tables\CompanyAssociatesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\CompanyAssociate;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -20,6 +21,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CompanyAssociateResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = CompanyAssociate::class;
 
     protected static ?string $cluster = NuevosNegociosCluster::class;

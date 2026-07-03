@@ -16,6 +16,10 @@
         table-layout: fixed;
     }
 
+    .pg-stacked-matrices .pg-col-lead {
+        width: {{ PlanGeneratorMatrixColumnLayout::LEAD_PERCENT }}%;
+    }
+
     .pg-stacked-matrices .pg-col-rate-age {
         width: {{ PlanGeneratorMatrixColumnLayout::RATE_AGE_PERCENT }}%;
     }

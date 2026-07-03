@@ -8,20 +8,19 @@
     use App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator;
     use App\Support\PlanGenerators\PlanGeneratorMatrixColumnLayout;
     use App\Support\PlanGenerators\PlanGeneratorBrandColor;
+    use App\Enums\PlanGeneratorPopulationUnit;
     use App\Services\PlanGeneratorPdfService;
 
     $brandColor = PlanGeneratorBrandColor::resolve($planGenerator->brand_color ?? null);
+    $populationUnitLabel = PlanGeneratorPopulationUnit::resolve($planGenerator->population_unit ?? null)->label();
     $columnCount = count($columns);
     $leadWidthMm = PlanGeneratorMatrixColumnLayout::leadWidthMm();
     $rateAgeWidthMm = PlanGeneratorMatrixColumnLayout::rateAgeWidthMm();
     $ratePopWidthMm = PlanGeneratorMatrixColumnLayout::ratePopWidthMm();
     $planWidthMm = PlanGeneratorMatrixColumnLayout::planColumnWidthMm(max(1, $columnCount));
     $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows);
-    $groupRows = [
-        ['key' => PlanGeneratorGroupTotalCalculator::ROW_ANNUAL, 'label' => 'Tarifa anual', 'bold' => true],
-        ['key' => PlanGeneratorGroupTotalCalculator::ROW_SEMESTRAL, 'label' => 'Tarifa Semestral', 'bold' => false],
-        ['key' => PlanGeneratorGroupTotalCalculator::ROW_TRIMESTRAL, 'label' => 'Tarifa Trimestral', 'bold' => false],
-    ];
+    $includeMonthlyTotal = (bool) ($planGenerator->include_monthly_total ?? false);
+    $groupRows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal);
 @endphp
 
 <div class="header">
@@ -61,7 +60,7 @@
         <td><span class="proposal-value">{{ $planGenerator->agent_name ?? '—' }}</span></td>
     </tr>
     <tr>
-        <td class="proposal-label">Población:</td>
+        <td class="proposal-label">{{ $populationUnitLabel }}:</td>
         <td><span class="proposal-value">{{ $planGenerator->population_summary ?? '—' }}</span></td>
     </tr>
 </table>
@@ -134,7 +133,7 @@
         <thead>
             <tr>
                 <th style="width: {{ $rateAgeWidthMm }}mm; text-align: left;">Tarifa individual Anual</th>
-                <th style="width: {{ $ratePopWidthMm }}mm;">Población</th>
+                <th style="width: {{ $ratePopWidthMm }}mm;">{{ $populationUnitLabel }}</th>
                 @foreach ($columns as $column)
                     <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
@@ -181,8 +180,7 @@
         ])
         <thead>
             <tr>
-                <th style="width: {{ $rateAgeWidthMm }}mm; text-align: left;">Total Grupal</th>
-                <th style="width: {{ $ratePopWidthMm }}mm;">&nbsp;</th>
+                <th style="width: {{ $leadWidthMm }}mm; text-align: left;">Total Grupal</th>
                 @foreach ($columns as $column)
                     <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
@@ -192,7 +190,6 @@
             @foreach ($groupRows as $groupRow)
                 <tr>
                     <td style="text-align: left;">{{ $groupRow['label'] }}</td>
-                    <td>&nbsp;</td>
                     @foreach ($columns as $column)
                         @php
                             $columnKey = (string) ($column['column_key'] ?? '');

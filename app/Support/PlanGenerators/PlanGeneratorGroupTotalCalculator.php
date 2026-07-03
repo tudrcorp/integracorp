@@ -12,13 +12,16 @@ final class PlanGeneratorGroupTotalCalculator
 
     public const ROW_TRIMESTRAL = 'trimestral';
 
+    public const ROW_MENSUAL = 'mensual';
+
     /**
      * @param  array<int, array<string, mixed>>  $columns
      * @param  array<string, array<string, mixed>>  $rateRows
      * @return array{
      *     annual: array<string, float>,
      *     semestral: array<string, float>,
-     *     trimestral: array<string, float>
+     *     trimestral: array<string, float>,
+     *     mensual: array<string, float>
      * }
      */
     public static function totalsByColumn(array $columns, array $rateRows): array
@@ -32,17 +35,38 @@ final class PlanGeneratorGroupTotalCalculator
 
         $semestralByColumn = [];
         $trimestralByColumn = [];
+        $mensualByColumn = [];
 
         foreach ($annualByColumn as $columnKey => $annualTotal) {
             $semestralByColumn[$columnKey] = $annualTotal / 2;
             $trimestralByColumn[$columnKey] = $annualTotal / 4;
+            $mensualByColumn[$columnKey] = $annualTotal / 12;
         }
 
         return [
             self::ROW_ANNUAL => $annualByColumn,
             self::ROW_SEMESTRAL => $semestralByColumn,
             self::ROW_TRIMESTRAL => $trimestralByColumn,
+            self::ROW_MENSUAL => $mensualByColumn,
         ];
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, bold: bool}>
+     */
+    public static function groupTotalRows(bool $includeMonthlyTotal = false): array
+    {
+        $rows = [
+            ['key' => self::ROW_ANNUAL, 'label' => 'Tarifa anual', 'bold' => true],
+            ['key' => self::ROW_SEMESTRAL, 'label' => 'Tarifa Semestral', 'bold' => false],
+            ['key' => self::ROW_TRIMESTRAL, 'label' => 'Tarifa Trimestral', 'bold' => false],
+        ];
+
+        if ($includeMonthlyTotal) {
+            $rows[] = ['key' => self::ROW_MENSUAL, 'label' => 'Total Mensual', 'bold' => false];
+        }
+
+        return $rows;
     }
 
     /**
