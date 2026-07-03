@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Tables;
 
-use App\Filament\Exports\AffiliateCorporateExporter;
-use App\Support\Exports\CorporateAffiliationsReportExportAction;
-use App\Support\Filament\AffiliationExportIosPresentation;
+use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class AffiliateCorporatesTable
 {
@@ -188,18 +188,6 @@ class AffiliateCorporatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
-            ->headerActions([
-                AffiliationExportIosPresentation::apply(
-                    CorporateAffiliationsReportExportAction::make(
-                        name: 'exportOperationsAffiliateCorporates',
-                        auditEvent: 'AUDIT_OPERATIONS_AFFILIATE_CORPORATES_EXPORT',
-                        auditRoute: 'operations.affiliate-corporates.export-report',
-                        modalHeading: 'Exportar afiliados corporativos',
-                        modalDescription: 'Descargue un reporte con datos de afiliación corporativa, planes y afiliados. Los filtros son opcionales.',
-                        planHelperText: 'Filtra por el plan del afiliado o de la afiliación corporativa asociada.',
-                    )
-                ),
-            ])
             ->recordActions([
                 ViewAction::make()
                     ->icon(Heroicon::OutlinedEye)
@@ -208,11 +196,27 @@ class AffiliateCorporatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    ExportBulkAction::make()
-                        ->exporter(AffiliateCorporateExporter::class)
-                        ->label('Exportar XLS')
-                        ->color('info')
-                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportAffiliateCorporatesCsv')
+                        ->label('Exportar Afiliados')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un afiliado corporativo')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliateCorporateExportCsvController::storeFiltersAndGetToken([
+                                'affiliate_corporate_ids' => $records->pluck('id')->all(),
+                            ], 'operations');
+
+                            return redirect()->route('operations.affiliate-corporates.export-csv', ['token' => $token]);
+                        }),
                 ]),
             ]);
     }

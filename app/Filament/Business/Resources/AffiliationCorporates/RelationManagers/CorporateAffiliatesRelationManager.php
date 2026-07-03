@@ -11,6 +11,8 @@ use App\Models\AgeRange;
 use App\Models\BusinessLine;
 use App\Models\BusinessUnit;
 use App\Models\Plan;
+use App\Support\AffiliateVaucherIlsRemainingDays;
+use App\Support\AffiliationCorporates\CorporateAffiliateVoucherIlsUpdater;
 use App\Support\FilamentDateDisplay;
 use BackedEnum;
 use Carbon\Carbon;
@@ -40,10 +42,13 @@ use Filament\Support\Enums\FontFamily;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -406,6 +411,72 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->suffix(' US$')
                     ->icon(Heroicon::CurrencyDollar)
                     ->sortable(),
+                ColumnGroup::make('Voucher ILS', [
+                    TextColumn::make('vaucherIls')
+                        ->label('Código')
+                        ->icon(Heroicon::Ticket)
+                        ->badge()
+                        ->color('info')
+                        ->placeholder('—')
+                        ->searchable()
+                        ->sortable(),
+                    TextColumn::make('ils_status')
+                        ->label('Estado ILS')
+                        ->badge()
+                        ->state(fn (AffiliateCorporate $record): string => $this->affiliateHasVoucherIls($record) ? 'Cargado' : 'Pendiente')
+                        ->color(fn (AffiliateCorporate $record): string => $this->affiliateHasVoucherIls($record) ? 'success' : 'warning'),
+                    TextColumn::make('dateInit')
+                        ->label('Desde')
+                        ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                        ->placeholder('—')
+                        ->toggleable(),
+                    TextColumn::make('dateEnd')
+                        ->label('Hasta')
+                        ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                        ->placeholder('—')
+                        ->toggleable(),
+                    TextColumn::make('numberDays')
+                        ->label('Días restantes')
+                        ->suffix(' días')
+                        ->badge()
+                        ->color('warning')
+                        ->getStateUsing(function (AffiliateCorporate $record): string {
+                            if ($record->dateEnd === null) {
+                                return '—';
+                            }
+
+                            $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($record->dateEnd);
+
+                            return $days === null ? '—' : (string) $days;
+                        })
+                        ->toggleable(),
+                    TextColumn::make('vigencia_ils')
+                        ->label('Vigencia total')
+                        ->suffix(' días')
+                        ->badge()
+                        ->color('gray')
+                        ->state(fn (AffiliateCorporate $record): string => filled($record->numberDays) ? (string) $record->numberDays : '—')
+                        ->toggleable(isToggledHiddenByDefault: true),
+                    IconColumn::make('has_document_ils')
+                        ->alignment(Alignment::Center)
+                        ->label('Comprobante')
+                        ->getStateUsing(fn (AffiliateCorporate $record): bool => filled($record->document_ils))
+                        ->boolean()
+                        ->trueIcon('heroicon-o-check-circle')
+                        ->falseIcon('heroicon-o-x-circle')
+                        ->trueColor('success')
+                        ->falseColor('danger')
+                        ->url(fn (AffiliateCorporate $record): ?string => filled($record->document_ils)
+                            ? asset('storage/'.$record->document_ils)
+                            : null)
+                        ->openUrlInNewTab()
+                        ->toggleable(),
+                    ImageColumn::make('document_ils')
+                        ->label('Voucher')
+                        ->disk('public')
+                        ->square()
+                        ->toggleable(isToggledHiddenByDefault: true),
+                ]),
                 TextColumn::make('birth_date')
                     ->label('Nacimiento')
                     ->icon(Heroicon::CalendarDays)
@@ -450,47 +521,6 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->label('Emergencia (tel.)')
                     ->copyable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('vaucherIls')
-                    ->label('Voucher ILS')
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('dateInit')
-                    ->label('ILS desde')
-                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('dateEnd')
-                    ->label('ILS hasta')
-                    ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('numberDays')
-                    ->label('Días ILS')
-                    ->suffix(' días')
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('document_ils')
-                    ->alignment(Alignment::Center)
-                    ->label('Doc. ILS')
-                    ->icon(fn (AffiliateCorporate $record): string => $record->document_ils != null
-                        ? 'heroicon-o-check-circle'
-                        : 'heroicon-o-x-circle')
-                    ->color(fn (AffiliateCorporate $record): string => $record->document_ils != null
-                        ? 'success'
-                        : 'danger')
-                    ->url(fn (AffiliateCorporate $record): ?string => $record->document_ils
-                        ? asset('storage/'.$record->document_ils)
-                        : null)
-                    ->openUrlInNewTab()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -502,6 +532,21 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         'EXCLUIDO' => 'Excluido',
                     ])
                     ->native(false),
+                TernaryFilter::make('has_voucher_ils')
+                    ->label('Voucher ILS')
+                    ->placeholder('Todos')
+                    ->trueLabel('Cargado')
+                    ->falseLabel('Pendiente')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->where(function (Builder $query): void {
+                            $query->whereNotNull('vaucherIls')
+                                ->orWhereNotNull('document_ils');
+                        }),
+                        false: fn (Builder $query): Builder => $query->where(function (Builder $query): void {
+                            $query->whereNull('vaucherIls')
+                                ->whereNull('document_ils');
+                        }),
+                    ),
                 SelectFilter::make('business_unit_id')
                     ->label('Unidad de negocio')
                     ->options(fn (): array => BusinessUnit::query()->orderBy('definition')->pluck('definition', 'id')->all())
@@ -639,16 +684,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                             ->format('d/m/Y')
                                             ->displayFormat('d/m/Y')
                                             ->afterStateUpdated(function (Set $set, $state, Get $get): void {
-                                                $init = $get('dateInit');
-                                                if (blank($init) || blank($state)) {
-                                                    return;
-                                                }
-                                                try {
-                                                    $fecha1 = Carbon::createFromFormat('d/m/Y', $init);
-                                                    $fecha2 = Carbon::createFromFormat('d/m/Y', $state);
-                                                    $set('numberDays', abs($fecha2->diffInDays($fecha1)));
-                                                } catch (\Throwable) {
-                                                }
+                                                $days = CorporateAffiliateVoucherIlsUpdater::calculateNumberDays($get('dateInit'), $state);
+                                                $set('numberDays', $days ?? 0);
                                             })
                                             ->required(),
                                         TextInput::make('numberDays')
@@ -661,6 +698,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     Grid::make(1)->schema([
                                         FileUpload::make('document_ils')
                                             ->label('Documento / comprobante ILS')
+                                            ->disk('public')
+                                            ->directory('vauches')
                                             ->required()
                                             ->downloadable()
                                             ->openable(),
@@ -670,17 +709,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->action(function (AffiliateCorporate $record, array $data): void {
 
                             try {
-
-                                $fecha1 = Carbon::createFromFormat('d/m/Y', $data['dateInit']);
-                                $fecha2 = Carbon::createFromFormat('d/m/Y', $data['dateEnd']);
-
-                                $record->update([
-                                    'vaucherIls' => $data['vaucherIls'],
-                                    'dateInit' => $data['dateInit'],
-                                    'dateEnd' => $data['dateEnd'],
-                                    'numberDays' => abs($fecha2->diffInDays($fecha1)),
-                                    'document_ils' => $data['document_ils'],
-                                ]);
+                                CorporateAffiliateVoucherIlsUpdater::save($record, $data);
 
                                 Notification::make()
                                     ->success()
@@ -760,16 +789,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                             ->format('d/m/Y')
                                             ->displayFormat('d/m/Y')
                                             ->afterStateUpdated(function (Set $set, $state, Get $get): void {
-                                                $init = $get('dateInit');
-                                                if (blank($init) || blank($state)) {
-                                                    return;
-                                                }
-                                                try {
-                                                    $fecha1 = Carbon::createFromFormat('d/m/Y', $init);
-                                                    $fecha2 = Carbon::createFromFormat('d/m/Y', $state);
-                                                    $set('numberDays', abs($fecha2->diffInDays($fecha1)));
-                                                } catch (\Throwable) {
-                                                }
+                                                $days = CorporateAffiliateVoucherIlsUpdater::calculateNumberDays($get('dateInit'), $state);
+                                                $set('numberDays', $days ?? 0);
                                             })
                                             ->required(),
                                         TextInput::make('numberDays')
@@ -782,6 +803,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     Grid::make(1)->schema([
                                         FileUpload::make('document_ils')
                                             ->label('Documento / comprobante ILS')
+                                            ->disk('public')
+                                            ->directory('vauches')
                                             ->required()
                                             ->downloadable()
                                             ->openable(),
@@ -791,19 +814,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->action(function (Collection $records, array $data): void {
 
                             try {
-
                                 foreach ($records as $record) {
-
-                                    $fecha1 = Carbon::createFromFormat('d/m/Y', $data['dateInit']);
-                                    $fecha2 = Carbon::createFromFormat('d/m/Y', $data['dateEnd']);
-
-                                    $record->update([
-                                        'vaucherIls' => $data['vaucherIls'],
-                                        'dateInit' => $data['dateInit'],
-                                        'dateEnd' => $data['dateEnd'],
-                                        'numberDays' => abs($fecha2->diffInDays($fecha1)),
-                                        'document_ils' => $data['document_ils'],
-                                    ]);
+                                    CorporateAffiliateVoucherIlsUpdater::save($record, $data);
                                 }
 
                                 Notification::make()
@@ -899,6 +911,11 @@ class CorporateAffiliatesRelationManager extends RelationManager
                 ]),
             ])
             ->poll('5s');
+    }
+
+    private function affiliateHasVoucherIls(AffiliateCorporate $record): bool
+    {
+        return filled($record->vaucherIls) || filled($record->document_ils);
     }
 
     private function affiliateBusinessContextIsSynced(AffiliateCorporate $record): bool

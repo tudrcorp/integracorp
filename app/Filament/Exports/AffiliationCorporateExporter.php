@@ -7,7 +7,6 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
 use Illuminate\Support\Number;
-
 use OpenSpout\Common\Entity\Style\CellAlignment;
 use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
 use OpenSpout\Common\Entity\Style\Color;
@@ -23,90 +22,92 @@ class AffiliationCorporateExporter extends Exporter
             ExportColumn::make('id')
                 ->label('ID'),
             ExportColumn::make('corporate_quote_id')
-            ->label('Cotización Corporativa'),
+                ->label('Cotización Corporativa'),
             ExportColumn::make('owner_code')
-            ->label('Código del Dueño'),
+                ->label('Código del Dueño'),
             ExportColumn::make('code')
-            ->label('Código'),
+                ->label('Código'),
             ExportColumn::make('code_agency')
-            ->label('Código de la Agencia'),
+                ->label('Código de la Agencia'),
             ExportColumn::make('agent_id')
-            ->label('Agente'),
+                ->label('Agente'),
             ExportColumn::make('name_corporate')
-            ->label('Nombre de la Corporación'),
+                ->label('Nombre de la Corporación'),
             ExportColumn::make('rif')
-            ->label('RIF'),
+                ->label('RIF'),
             ExportColumn::make('address')
-            ->label('Dirección'),
+                ->label('Dirección'),
             ExportColumn::make('city.definition')
-            ->label('Ciudad'),
+                ->label('Ciudad'),
             ExportColumn::make('country.name')
-            ->label('País'),
+                ->label('País'),
             ExportColumn::make('region')
-            ->label('Región'),
+                ->label('Región'),
             ExportColumn::make('phone')
-            ->label('Teléfono'),
+                ->label('Teléfono'),
             ExportColumn::make('email')
-            ->label('Correo Electrónico'),
+                ->label('Correo Electrónico'),
             ExportColumn::make('full_name_contact')
-            ->label('Nombre del Contacto'),
+                ->label('Nombre del Contacto'),
             ExportColumn::make('nro_identificacion_contact')
-            ->label('Número de Identificación del Contacto'),
+                ->label('Número de Identificación del Contacto'),
             ExportColumn::make('phone_contact')
-            ->label('Teléfono del Contacto'),
+                ->label('Teléfono del Contacto'),
             ExportColumn::make('email_contact')
-            ->label('Correo Electrónico del Contacto'),
+                ->label('Correo Electrónico del Contacto'),
             ExportColumn::make('date_affiliation')
-            ->label('Fecha de Afiliación'),
+                ->label('Fecha de Afiliación'),
             ExportColumn::make('status')
-            ->label('Estado'),
+                ->label('Estado'),
             ExportColumn::make('document')
-            ->label('Documento'),
+                ->label('Documento'),
             ExportColumn::make('observations')
-            ->label('Observaciones'),
+                ->label('Observaciones'),
             ExportColumn::make('payment_frequency')
-            ->label('Frecuencia de Pago'),
+                ->label('Frecuencia de Pago'),
             ExportColumn::make('fee_anual')
-            ->label('Tarifa Anual'),
+                ->label('Tarifa Anual'),
             ExportColumn::make('total_amount')
-            ->label('Monto Total'),
+                ->label('Monto Total'),
             ExportColumn::make('vaucher_ils')
-            ->label('Vaucher ILS'),
+                ->label('Vaucher ILS'),
             ExportColumn::make('date_payment_initial_ils')
-            ->label('Fecha de Pago Inicial ILS'),
+                ->label('Fecha de Pago Inicial ILS'),
             ExportColumn::make('date_payment_final_ils')
-            ->label('Fecha de Pago Final ILS'),
+                ->label('Fecha de Pago Final ILS'),
             ExportColumn::make('document_ils')
-            ->label('Documento ILS'),
+                ->label('Documento ILS'),
             ExportColumn::make('created_at')
-            ->label('Fecha de Creación'),
+                ->label('Fecha de Creación'),
             ExportColumn::make('updated_at')
-            ->label('Fecha de Actualización'),
+                ->label('Fecha de Actualización'),
             ExportColumn::make('state_id')
-            ->label('Estado'),
+                ->label('Estado'),
             ExportColumn::make('poblation')
-            ->label('Población'),
+                ->label('Población'),
             ExportColumn::make('activated_at')
-            ->label('Fecha de Activación'),
+                ->label('Fecha de Activación'),
             ExportColumn::make('ownerAccountManagers')
-            ->label('Gerentes de Cuenta'),
+                ->label('Gerentes de Cuenta'),
             ExportColumn::make('business_unit_id')
-            ->label('Unidad de Negocio'),
+                ->label('Unidad de Negocio'),
             ExportColumn::make('business_line_id')
-            ->label('Línea de Negocio'),
+                ->label('Línea de Negocio'),
             ExportColumn::make('service_providers')
-            ->label('Proveedores de Servicio'),
+                ->label('Proveedores de Servicio'),
             ExportColumn::make('effective_date')
-            ->label('Fecha de Efectividad'),
+                ->label('Fecha de Efectividad'),
         ];
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your affiliation corporate export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'La exportación de afiliaciones corporativas finalizó: '.Number::format($export->successful_rows).' '
+            .str('fila')->plural($export->successful_rows).' exportada(s).';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '
+                .str('fila')->plural($failedRowsCount).' no se pudieron exportar.';
         }
 
         return $body;
@@ -114,7 +115,7 @@ class AffiliationCorporateExporter extends Exporter
 
     public function getXlsxHeaderCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontBold()
             ->setFontItalic()
             ->setFontSize(11)
@@ -127,7 +128,7 @@ class AffiliationCorporateExporter extends Exporter
 
     public function getXlsxCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontSize(10)
             ->setFontName('Helvetica')
             ->setFontColor(Color::rgb(0, 0, 0))

@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\Affiliates\Tables;
 
-use App\Filament\Exports\AffiliateExporter;
-use App\Support\Exports\IndividualAffiliationsReportExportAction;
-use App\Support\Filament\AffiliationExportIosPresentation;
+use App\Http\Controllers\AffiliateExportCsvController;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class AffiliatesTable
 {
@@ -250,18 +250,6 @@ class AffiliatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
-            ->headerActions([
-                AffiliationExportIosPresentation::apply(
-                    IndividualAffiliationsReportExportAction::make(
-                        name: 'exportOperationsAffiliates',
-                        auditEvent: 'AUDIT_OPERATIONS_AFFILIATES_EXPORT',
-                        auditRoute: 'operations.affiliates.export-report',
-                        modalHeading: 'Exportar afiliados individuales',
-                        modalDescription: 'Descargue un reporte con datos de afiliación y afiliados. Los filtros son opcionales.',
-                        planHelperText: 'Filtra por el plan del afiliado o de la afiliación asociada.',
-                    )
-                ),
-            ])
             ->recordActions([
                 ViewAction::make()
                     ->icon(Heroicon::OutlinedEye)
@@ -270,11 +258,27 @@ class AffiliatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    ExportBulkAction::make()
-                        ->exporter(AffiliateExporter::class)
-                        ->label('Exportar XLS')
-                        ->color('info')
-                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportAffiliatesCsv')
+                        ->label('Exportar Afiliados')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un afiliado')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliateExportCsvController::storeFiltersAndGetToken([
+                                'affiliate_ids' => $records->pluck('id')->all(),
+                            ], 'operations');
+
+                            return redirect()->route('operations.affiliates.export-csv', ['token' => $token]);
+                        }),
                 ]),
             ]);
     }

@@ -2,10 +2,10 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
-use App\Filament\Business\Resources\Affiliations\Actions\IndividualAffiliationsExportAction;
-use App\Filament\Exports\AffiliationExporter;
 use App\Filament\Resources\Affiliations\AffiliationResource;
+use App\Http\Controllers\AffiliateExportCsvController;
 use App\Http\Controllers\AffiliationController;
+use App\Http\Controllers\AffiliationExportCsvController;
 use App\Mail\UploadPayment;
 use App\Models\Affiliation;
 use App\Models\Agency;
@@ -14,7 +14,6 @@ use App\Models\Agent;
 use App\Models\User;
 use App\Services\AffiliationBusinessDocumentsService;
 use App\Support\AffiliationPaymentBcvRateCalculator;
-use App\Support\Filament\AffiliationExportIosPresentation;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -22,7 +21,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -398,11 +396,6 @@ class AffiliationsTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
-            ->headerActions([
-                AffiliationExportIosPresentation::apply(
-                    IndividualAffiliationsExportAction::make(),
-                ),
-            ])
             ->recordActions([
                 ActionGroup::make([
 
@@ -2255,7 +2248,48 @@ class AffiliationsTable
                             }
                         }),
 
-                    ExportBulkAction::make()->exporter(AffiliationExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportAffiliationsCsv')
+                        ->label('Exportar Afiliaciones')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliationExportCsvController::storeFiltersAndGetToken([
+                                'affiliation_ids' => $records->pluck('id')->all(),
+                            ], 'business');
+
+                            return redirect()->route('business.affiliations.export-csv', ['token' => $token]);
+                        }),
+                    BulkAction::make('exportAffiliatesCsv')
+                        ->label('Exportar Afiliados')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliateExportCsvController::storeFiltersAndGetToken([
+                                'affiliation_ids' => $records->pluck('id')->all(),
+                            ], 'business');
+
+                            return redirect()->route('business.affiliates.export-csv', ['token' => $token]);
+                        }),
                 ]),
             ])
             ->recordClasses(fn (Affiliation $record): array => self::rowClassesForAffiliationActivatedToday($record))

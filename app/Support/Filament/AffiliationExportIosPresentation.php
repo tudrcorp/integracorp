@@ -28,11 +28,11 @@ final class AffiliationExportIosPresentation
                 'class' => self::IOS_MODAL_CLASS,
             ])
             ->modalSubmitAction(fn (Action $submitAction): Action => $submitAction
-                ->label('Descargar')
                 ->extraAttributes([
                     'class' => self::IOS_SUCCESS_BTN,
                 ]))
             ->modalCancelAction(fn (Action $cancelAction): Action => $cancelAction
+                ->label('Cancelar')
                 ->extraAttributes([
                     'class' => self::IOS_GRAY_BTN,
                 ]));
