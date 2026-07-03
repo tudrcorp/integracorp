@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
+use App\Filament\Business\Resources\Affiliations\Actions\IndividualAffiliationsExportAction;
 use App\Filament\Exports\AffiliationExporter;
 use App\Filament\Resources\Affiliations\AffiliationResource;
 use App\Http\Controllers\AffiliationController;
@@ -13,6 +14,7 @@ use App\Models\Agent;
 use App\Models\User;
 use App\Services\AffiliationBusinessDocumentsService;
 use App\Support\AffiliationPaymentBcvRateCalculator;
+use App\Support\Filament\AffiliationExportIosPresentation;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -396,6 +398,11 @@ class AffiliationsTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->headerActions([
+                AffiliationExportIosPresentation::apply(
+                    IndividualAffiliationsExportAction::make(),
+                ),
+            ])
             ->recordActions([
                 ActionGroup::make([
 

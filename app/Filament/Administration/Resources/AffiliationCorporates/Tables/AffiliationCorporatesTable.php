@@ -13,6 +13,8 @@ use App\Support\AffiliationCorporateRifLabel;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
 use App\Support\BcvOfficialRate;
+use App\Support\Exports\CorporateAffiliationsReportExportAction;
+use App\Support\Filament\AffiliationExportIosPresentation;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -346,6 +348,18 @@ class AffiliationCorporatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->headerActions([
+                AffiliationExportIosPresentation::apply(
+                    CorporateAffiliationsReportExportAction::make(
+                        name: 'exportAdministrationCorporateAffiliations',
+                        auditEvent: 'AUDIT_ADMINISTRATION_CORPORATE_AFFILIATIONS_EXPORT',
+                        auditRoute: 'administration.affiliation-corporates.export-report',
+                        modalHeading: 'Exportar afiliaciones corporativas',
+                        modalDescription: 'Descargue un reporte con datos de afiliación corporativa, planes y afiliados. Los filtros son opcionales.',
+                        planHelperText: 'Filtra por plan de contrato o plan del afiliado corporativo.',
+                    )
+                ),
+            ])
             ->recordActions([
                 ActionGroup::make([
                     Action::make('upload_info_ils')

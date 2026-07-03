@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 
+use App\Filament\Business\Resources\AffiliationCorporates\Actions\CorporateAffiliationsExportAction;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Exports\AffiliationCorporateExporter;
 use App\Http\Controllers\AffiliationCorporateController;
@@ -9,6 +10,7 @@ use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\Filament\AffiliationExportIosPresentation;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -401,6 +403,11 @@ class AffiliationCorporatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->headerActions([
+                AffiliationExportIosPresentation::apply(
+                    CorporateAffiliationsExportAction::make(),
+                ),
+            ])
             ->recordActions([
                 ActionGroup::make([
                     Action::make('regenerate')

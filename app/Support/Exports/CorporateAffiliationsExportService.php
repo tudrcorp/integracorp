@@ -7,30 +7,117 @@ namespace App\Support\Exports;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
+use App\Support\CsvExportStream;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class CorporateAffiliationsExportService
 {
+    /**
+     * @return array<string, string>
+     */
+    public static function affiliateStatusOptions(): array
+    {
+        return [
+            'ACTIVO' => 'Activo',
+            'INACTIVO' => 'Inactivo',
+            'EXCLUIDO' => 'Excluido',
+        ];
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    public static function affiliationQuery(array $filters = []): Builder
+    {
+        $query = AffiliationCorporate::query()
+            ->with(self::eagerLoads())
+            ->orderBy('id');
+
+        if (filled($filters['plan_id'] ?? null)) {
+            $planId = (int) $filters['plan_id'];
+
+            $query->where(function (Builder $planQuery) use ($planId): void {
+                $planQuery
+                    ->whereHas('affiliationCorporatePlans', fn (Builder $corporatePlanQuery): Builder => $corporatePlanQuery->where('plan_id', $planId))
+                    ->orWhereHas('corporateAffiliates', fn (Builder $affiliateQuery): Builder => $affiliateQuery->where('plan_id', $planId));
+            });
+        }
+
+        if (filled($filters['affiliate_status'] ?? null)) {
+            $status = (string) $filters['affiliate_status'];
+
+            $query->whereHas('corporateAffiliates', fn (Builder $affiliateQuery): Builder => $affiliateQuery->where('status', $status));
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    public function streamCsv(array $filters = []): StreamedResponse
+    {
+        $filename = self::buildReportFilename($filters, 'csv');
+
+        return response()->streamDownload(function () use ($filters): void {
+            $handle = CsvExportStream::openOutput();
+
+            if ($handle === false) {
+                return;
+            }
+
+            fputcsv($handle, self::headers());
+            $this->writeRows($filters, fn (array $row) => fputcsv($handle, $row));
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    public function downloadXlsx(array $filters = []): BinaryFileResponse
+    {
+        $filename = self::buildReportFilename($filters, 'xlsx');
+        $path = tempnam(sys_get_temp_dir(), 'corporate_affiliations_');
+
+        if ($path === false) {
+            abort(500, 'No se pudo preparar el archivo temporal.');
+        }
+
+        $path .= '.xlsx';
+
+        $writer = new Writer;
+        $writer->openToFile($path);
+        $writer->addRow(Row::fromValues(self::headers()));
+        $this->writeRows($filters, fn (array $row) => $writer->addRow(Row::fromValues($row)));
+        $writer->close();
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     /**
      * @throws RuntimeException
      */
     public function create(): ScheduledExportResult
     {
         $startedAt = microtime(true);
-        $affiliationCount = 0;
-        $affiliateCount = 0;
-        $planCount = 0;
-        $rowCount = 0;
-
         $exportConfig = config('scheduled-exports.exports.corporate_affiliations', []);
         $baseDirectory = (string) config('scheduled-exports.directory', 'scheduled-exports');
         $subDirectory = (string) ($exportConfig['directory'] ?? 'corporate-affiliations');
         $directory = trim($baseDirectory.'/'.$subDirectory, '/');
-        $filename = $this->buildFilename((string) ($exportConfig['filename_prefix'] ?? 'integracorp_afiliaciones_corporativas'));
+        $filename = $this->buildScheduledFilename((string) ($exportConfig['filename_prefix'] ?? 'integracorp_afiliaciones_corporativas'));
         $temporaryPath = storage_path('app/'.$directory.'/tmp/'.$filename);
 
         File::ensureDirectoryExists(dirname($temporaryPath));
@@ -39,71 +126,7 @@ final class CorporateAffiliationsExportService
         $writer->openToFile($temporaryPath);
         $writer->addRow(Row::fromValues(self::headers()));
 
-        AffiliationCorporate::query()
-            ->with([
-                'agent:id,name,code_agent',
-                'city:id,definition',
-                'state:id,definition',
-                'country:id,name',
-                'region:id,definition',
-                'affiliationCorporatePlans.plan:id,description',
-                'affiliationCorporatePlans.coverage:id,price',
-                'affiliationCorporatePlans.ageRange:id,range',
-                'corporateAffiliates.plan:id,description',
-                'corporateAffiliates.coverage:id,price',
-            ])
-            ->orderBy('id')
-            ->chunkById(100, function ($affiliations) use (&$affiliationCount, &$affiliateCount, &$planCount, &$rowCount, $writer): void {
-                foreach ($affiliations as $affiliation) {
-                    /** @var AffiliationCorporate $affiliation */
-                    $affiliationCount++;
-                    $affiliates = $affiliation->corporateAffiliates;
-                    $plans = $affiliation->affiliationCorporatePlans;
-
-                    if ($affiliates->isEmpty() && $plans->isEmpty()) {
-                        $writer->addRow(Row::fromValues(self::mapRow($affiliation, null, null)));
-                        $rowCount++;
-
-                        continue;
-                    }
-
-                    if ($affiliates->isEmpty()) {
-                        foreach ($plans as $plan) {
-                            /** @var AfilliationCorporatePlan $plan */
-                            $planCount++;
-                            $writer->addRow(Row::fromValues(self::mapRow($affiliation, $plan, null)));
-                            $rowCount++;
-                        }
-
-                        continue;
-                    }
-
-                    $exportedPlanIds = [];
-
-                    foreach ($affiliates as $affiliate) {
-                        /** @var AffiliateCorporate $affiliate */
-                        $affiliateCount++;
-                        $matchedPlan = $plans->firstWhere('plan_id', $affiliate->plan_id);
-
-                        if ($matchedPlan !== null) {
-                            $exportedPlanIds[$matchedPlan->id] = true;
-                        }
-
-                        $writer->addRow(Row::fromValues(self::mapRow($affiliation, $matchedPlan, $affiliate)));
-                        $rowCount++;
-                    }
-
-                    foreach ($plans as $plan) {
-                        if (isset($exportedPlanIds[$plan->id])) {
-                            continue;
-                        }
-
-                        $planCount++;
-                        $writer->addRow(Row::fromValues(self::mapRow($affiliation, $plan, null)));
-                        $rowCount++;
-                    }
-                }
-            });
+        $counts = $this->writeRows([], fn (array $row) => $writer->addRow(Row::fromValues($row)));
 
         $writer->close();
 
@@ -126,10 +149,10 @@ final class CorporateAffiliationsExportService
             publicRelativePath: $publicRelativePath,
             bytes: $bytes,
             durationSeconds: microtime(true) - $startedAt,
-            affiliationCount: $affiliationCount,
-            affiliateCount: $affiliateCount,
-            rowCount: $rowCount,
-            planCount: $planCount,
+            affiliationCount: $counts['affiliationCount'],
+            affiliateCount: $counts['affiliateCount'],
+            rowCount: $counts['rowCount'],
+            planCount: $counts['planCount'],
         );
     }
 
@@ -237,6 +260,164 @@ final class CorporateAffiliationsExportService
     }
 
     /**
+     * @return array{
+     *     affiliationCount: int,
+     *     affiliateCount: int,
+     *     planCount: int,
+     *     rowCount: int,
+     * }
+     */
+    private function writeRows(array $filters, callable $writeRow): array
+    {
+        $affiliationCount = 0;
+        $affiliateCount = 0;
+        $planCount = 0;
+        $rowCount = 0;
+        $hasFilters = filled($filters['plan_id'] ?? null) || filled($filters['affiliate_status'] ?? null);
+        $affiliateStatusFilter = filled($filters['affiliate_status'] ?? null);
+
+        self::affiliationQuery($filters)->chunkById(100, function ($affiliations) use (&$affiliationCount, &$affiliateCount, &$planCount, &$rowCount, $writeRow, $hasFilters, $affiliateStatusFilter, $filters): void {
+            foreach ($affiliations as $affiliation) {
+                /** @var AffiliationCorporate $affiliation */
+                $affiliationCount++;
+                $affiliates = self::filteredCorporateAffiliates($affiliation, $filters);
+                $plans = self::filteredCorporatePlans($affiliation, $filters);
+
+                if ($affiliates->isEmpty() && $plans->isEmpty()) {
+                    if (! $hasFilters) {
+                        $writeRow(self::mapRow($affiliation, null, null));
+                        $rowCount++;
+                    }
+
+                    continue;
+                }
+
+                if ($affiliates->isEmpty()) {
+                    if ($affiliateStatusFilter) {
+                        continue;
+                    }
+
+                    foreach ($plans as $plan) {
+                        /** @var AfilliationCorporatePlan $plan */
+                        $planCount++;
+                        $writeRow(self::mapRow($affiliation, $plan, null));
+                        $rowCount++;
+                    }
+
+                    continue;
+                }
+
+                $exportedPlanIds = [];
+
+                foreach ($affiliates as $affiliate) {
+                    /** @var AffiliateCorporate $affiliate */
+                    $affiliateCount++;
+                    $matchedPlan = $plans->firstWhere('plan_id', $affiliate->plan_id);
+
+                    if ($matchedPlan !== null) {
+                        $exportedPlanIds[$matchedPlan->id] = true;
+                    }
+
+                    $writeRow(self::mapRow($affiliation, $matchedPlan, $affiliate));
+                    $rowCount++;
+                }
+
+                if ($affiliateStatusFilter) {
+                    continue;
+                }
+
+                foreach ($plans as $plan) {
+                    if (isset($exportedPlanIds[$plan->id])) {
+                        continue;
+                    }
+
+                    $planCount++;
+                    $writeRow(self::mapRow($affiliation, $plan, null));
+                    $rowCount++;
+                }
+            }
+        });
+
+        return [
+            'affiliationCount' => $affiliationCount,
+            'affiliateCount' => $affiliateCount,
+            'planCount' => $planCount,
+            'rowCount' => $rowCount,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function eagerLoads(): array
+    {
+        return [
+            'agent:id,name,code_agent',
+            'city:id,definition',
+            'state:id,definition',
+            'country:id,name',
+            'region:id,definition',
+            'affiliationCorporatePlans.plan:id,description',
+            'affiliationCorporatePlans.coverage:id,price',
+            'affiliationCorporatePlans.ageRange:id,range',
+            'corporateAffiliates.plan:id,description',
+            'corporateAffiliates.coverage:id,price',
+        ];
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     * @return Collection<int, AffiliateCorporate>
+     */
+    private static function filteredCorporateAffiliates(AffiliationCorporate $affiliation, array $filters): Collection
+    {
+        $affiliates = $affiliation->corporateAffiliates;
+
+        if (filled($filters['affiliate_status'] ?? null)) {
+            $affiliates = $affiliates->where('status', (string) $filters['affiliate_status']);
+        }
+
+        if (filled($filters['plan_id'] ?? null)) {
+            $affiliates = $affiliates->where('plan_id', (int) $filters['plan_id']);
+        }
+
+        return $affiliates->values();
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     * @return Collection<int, AfilliationCorporatePlan>
+     */
+    private static function filteredCorporatePlans(AffiliationCorporate $affiliation, array $filters): Collection
+    {
+        $plans = $affiliation->affiliationCorporatePlans;
+
+        if (filled($filters['plan_id'] ?? null)) {
+            $plans = $plans->where('plan_id', (int) $filters['plan_id']);
+        }
+
+        return $plans->values();
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    private static function buildReportFilename(array $filters, string $extension): string
+    {
+        $parts = ['reporte_afiliaciones_corporativas'];
+
+        if (filled($filters['plan_id'] ?? null)) {
+            $parts[] = 'plan_'.(int) $filters['plan_id'];
+        }
+
+        if (filled($filters['affiliate_status'] ?? null)) {
+            $parts[] = strtolower((string) $filters['affiliate_status']);
+        }
+
+        return implode('_', $parts).'_'.now()->format('Y-m-d_His').'.'.$extension;
+    }
+
+    /**
      * @return list<string|int|float|null>
      */
     private static function mapRow(
@@ -338,7 +519,7 @@ final class CorporateAffiliationsExportService
         return null;
     }
 
-    private function buildFilename(string $prefix): string
+    private function buildScheduledFilename(string $prefix): string
     {
         return sprintf('%s_%s.xlsx', $prefix, now()->format('Y-m-d_His'));
     }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Tables;
 
 use App\Filament\Exports\AffiliateCorporateExporter;
+use App\Support\Exports\CorporateAffiliationsReportExportAction;
+use App\Support\Filament\AffiliationExportIosPresentation;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -186,6 +188,18 @@ class AffiliateCorporatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->headerActions([
+                AffiliationExportIosPresentation::apply(
+                    CorporateAffiliationsReportExportAction::make(
+                        name: 'exportOperationsAffiliateCorporates',
+                        auditEvent: 'AUDIT_OPERATIONS_AFFILIATE_CORPORATES_EXPORT',
+                        auditRoute: 'operations.affiliate-corporates.export-report',
+                        modalHeading: 'Exportar afiliados corporativos',
+                        modalDescription: 'Descargue un reporte con datos de afiliación corporativa, planes y afiliados. Los filtros son opcionales.',
+                        planHelperText: 'Filtra por el plan del afiliado o de la afiliación corporativa asociada.',
+                    )
+                ),
+            ])
             ->recordActions([
                 ViewAction::make()
                     ->icon(Heroicon::OutlinedEye)

@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
 use App\Support\BcvOfficialRate;
+use App\Support\Exports\IndividualAffiliationsReportExportAction;
+use App\Support\Filament\AffiliationExportIosPresentation;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -470,6 +472,18 @@ class AffiliationsTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->headerActions([
+                AffiliationExportIosPresentation::apply(
+                    IndividualAffiliationsReportExportAction::make(
+                        name: 'exportAdministrationIndividualAffiliations',
+                        auditEvent: 'AUDIT_ADMINISTRATION_INDIVIDUAL_AFFILIATIONS_EXPORT',
+                        auditRoute: 'administration.affiliations.export-report',
+                        modalHeading: 'Exportar afiliaciones individuales',
+                        modalDescription: 'Descargue un reporte con datos de afiliación y afiliados. Los filtros son opcionales.',
+                        planHelperText: 'Filtra por el plan de la afiliación o del afiliado.',
+                    )
+                ),
+            ])
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
