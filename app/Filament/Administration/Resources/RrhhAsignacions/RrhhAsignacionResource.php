@@ -7,6 +7,7 @@ use App\Filament\Administration\Resources\RrhhAsignacions\Pages\EditRrhhAsignaci
 use App\Filament\Administration\Resources\RrhhAsignacions\Pages\ListRrhhAsignacions;
 use App\Filament\Administration\Resources\RrhhAsignacions\Schemas\RrhhAsignacionForm;
 use App\Filament\Administration\Resources\RrhhAsignacions\Tables\RrhhAsignacionsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\RrhhAsignacion;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class RrhhAsignacionResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = RrhhAsignacion::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'RRHH';

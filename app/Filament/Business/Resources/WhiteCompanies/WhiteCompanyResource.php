@@ -7,6 +7,7 @@ use App\Filament\Business\Resources\WhiteCompanies\Pages\EditWhiteCompany;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\ListWhiteCompanies;
 use App\Filament\Business\Resources\WhiteCompanies\Schemas\WhiteCompanyForm;
 use App\Filament\Business\Resources\WhiteCompanies\Tables\WhiteCompaniesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\WhiteCompany;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class WhiteCompanyResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = WhiteCompany::class;
 
     protected static ?string $navigationLabel = 'Empresas Aliadas';

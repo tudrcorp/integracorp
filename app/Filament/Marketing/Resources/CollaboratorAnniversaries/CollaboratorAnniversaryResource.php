@@ -2,23 +2,22 @@
 
 namespace App\Filament\Marketing\Resources\CollaboratorAnniversaries;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Marketing\Resources\CollaboratorAnniversaries\Pages\CreateCollaboratorAnniversary;
 use App\Filament\Marketing\Resources\CollaboratorAnniversaries\Pages\EditCollaboratorAnniversary;
 use App\Filament\Marketing\Resources\CollaboratorAnniversaries\Pages\ListCollaboratorAnniversaries;
 use App\Filament\Marketing\Resources\CollaboratorAnniversaries\Schemas\CollaboratorAnniversaryForm;
 use App\Filament\Marketing\Resources\CollaboratorAnniversaries\Tables\CollaboratorAnniversariesTable;
 use App\Models\CollaboratorAnniversary;
-use App\Models\Permission;
-use App\Models\UserPermission;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class CollaboratorAnniversaryResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = CollaboratorAnniversary::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'ADMINISTRACION/RRHH';
@@ -61,24 +60,5 @@ class CollaboratorAnniversaryResource extends Resource
             'create' => CreateCollaboratorAnniversary::route('/create'),
             'edit' => EditCollaboratorAnniversary::route('/{record}/edit'),
         ];
-    }
-
-    public static function canAccess(): bool
-    {
-        $module = 'MARKETING';
-        $permission = Permission::where('module', $module)->where('slug', 'colaborador-aniversario')->first();
-
-        // si es superadmin, retornar true
-        if (in_array('SUPERADMIN', Auth::user()->departament)) {
-            return true;
-        }
-
-        if (in_array($module, Auth::user()->departament)) {
-            if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

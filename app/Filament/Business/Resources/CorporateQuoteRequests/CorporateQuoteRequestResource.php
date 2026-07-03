@@ -9,23 +9,25 @@ use App\Filament\Business\Resources\CorporateQuoteRequests\Pages\ViewCorporateQu
 use App\Filament\Business\Resources\CorporateQuoteRequests\Schemas\CorporateQuoteRequestForm;
 use App\Filament\Business\Resources\CorporateQuoteRequests\Schemas\CorporateQuoteRequestInfolist;
 use App\Filament\Business\Resources\CorporateQuoteRequests\Tables\CorporateQuoteRequestsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\CorporateQuoteRequest;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
 class CorporateQuoteRequestResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = CorporateQuoteRequest::class;
 
     protected static ?string $navigationLabel = 'Dress Taylor';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-link';
 
-    protected static string | UnitEnum | null $navigationGroup = 'SOLICITUDES';
+    protected static string|UnitEnum|null $navigationGroup = 'SOLICITUDES';
 
     public static function form(Schema $schema): Schema
     {

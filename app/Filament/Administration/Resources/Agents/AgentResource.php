@@ -9,6 +9,7 @@ use App\Filament\Administration\Resources\Agents\Pages\ViewAgent;
 use App\Filament\Administration\Resources\Agents\Schemas\AgentForm;
 use App\Filament\Administration\Resources\Agents\Schemas\AgentInfolist;
 use App\Filament\Administration\Resources\Agents\Tables\AgentsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Agent;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class AgentResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Agent::class;
 
     protected static ?string $navigationLabel = 'Agentes';

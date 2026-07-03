@@ -2,6 +2,7 @@
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Groups;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Projects\Resources\ProjectManagement\Groups\Pages\CreateGroup;
 use App\Filament\Projects\Resources\ProjectManagement\Groups\Pages\EditGroup;
 use App\Filament\Projects\Resources\ProjectManagement\Groups\Pages\ListGroups;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class GroupResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Group::class;
 
     protected static ?string $navigationLabel = 'Equipos';

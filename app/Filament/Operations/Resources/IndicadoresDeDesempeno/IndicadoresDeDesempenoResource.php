@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\IndicadoresDeDesempeno;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Pages\ListIndicadoresDeDesempeno;
 use App\Models\HelpDesk;
 use BackedEnum;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class IndicadoresDeDesempenoResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = HelpDesk::class;
 
     protected static ?string $navigationLabel = 'Indicadores de desempeño';

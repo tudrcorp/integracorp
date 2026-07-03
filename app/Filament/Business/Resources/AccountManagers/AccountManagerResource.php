@@ -2,31 +2,32 @@
 
 namespace App\Filament\Business\Resources\AccountManagers;
 
-use UnitEnum;
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use App\Models\AccountManager;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
+use App\Filament\Business\Resources\AccountManagers\Pages\CreateAccountManager;
 use App\Filament\Business\Resources\AccountManagers\Pages\EditAccountManager;
 use App\Filament\Business\Resources\AccountManagers\Pages\ListAccountManagers;
-use App\Filament\Business\Resources\AccountManagers\Pages\CreateAccountManager;
+use App\Filament\Business\Resources\AccountManagers\RelationManagers\AgenciesRelationManager;
+use App\Filament\Business\Resources\AccountManagers\RelationManagers\AgentsRelationManager;
 use App\Filament\Business\Resources\AccountManagers\Schemas\AccountManagerForm;
 use App\Filament\Business\Resources\AccountManagers\Tables\AccountManagersTable;
-use App\Filament\Business\Resources\AccountManagers\RelationManagers\AgentsRelationManager;
-use App\Filament\Business\Resources\AccountManagers\RelationManagers\AgenciesRelationManager;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\AccountManager;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class AccountManagerResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = AccountManager::class;
 
     protected static ?string $navigationLabel = 'Account Managers';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-globe-europe-africa';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {
@@ -42,7 +43,7 @@ class AccountManagerResource extends Resource
     {
         return [
             AgenciesRelationManager::class,
-            AgentsRelationManager::class
+            AgentsRelationManager::class,
         ];
     }
 
@@ -53,14 +54,5 @@ class AccountManagerResource extends Resource
             'create' => CreateAccountManager::route('/create'),
             'edit' => EditAccountManager::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
     }
 }

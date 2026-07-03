@@ -2,24 +2,26 @@
 
 namespace App\Filament\Business\Resources\IndividualQuotes;
 
-use UnitEnum;
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use App\Models\IndividualQuote;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use App\Filament\Business\Resources\IndividualQuotes\Pages\EditIndividualQuote;
-use App\Filament\Business\Resources\IndividualQuotes\Pages\ViewIndividualQuote;
-use App\Filament\Business\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
 use App\Filament\Business\Resources\IndividualQuotes\Pages\CreateIndividualQuote;
-use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
-use App\Filament\Business\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
-use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
+use App\Filament\Business\Resources\IndividualQuotes\Pages\EditIndividualQuote;
+use App\Filament\Business\Resources\IndividualQuotes\Pages\ListIndividualQuotes;
+use App\Filament\Business\Resources\IndividualQuotes\Pages\ViewIndividualQuote;
 use App\Filament\Business\Resources\IndividualQuotes\RelationManagers\DetailsQuoteRelationManager;
+use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteForm;
+use App\Filament\Business\Resources\IndividualQuotes\Schemas\IndividualQuoteInfolist;
+use App\Filament\Business\Resources\IndividualQuotes\Tables\IndividualQuotesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\IndividualQuote;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class IndividualQuoteResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = IndividualQuote::class;
 
     protected static ?string $navigationLabel = 'Individuales';
@@ -28,7 +30,7 @@ class IndividualQuoteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-tag';
 
-    protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
+    protected static string|UnitEnum|null $navigationGroup = 'COTIZACIONES';
 
     public static function form(Schema $schema): Schema
     {
@@ -48,7 +50,7 @@ class IndividualQuoteResource extends Resource
     public static function getRelations(): array
     {
         return [
-            DetailsQuoteRelationManager::class
+            DetailsQuoteRelationManager::class,
         ];
     }
 

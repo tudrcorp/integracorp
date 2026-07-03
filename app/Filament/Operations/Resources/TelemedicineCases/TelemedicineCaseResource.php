@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineCases;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\TelemedicineCases\Pages\CreateTelemedicineCase;
 use App\Filament\Operations\Resources\TelemedicineCases\Pages\EditTelemedicineCase;
 use App\Filament\Operations\Resources\TelemedicineCases\Pages\ListTelemedicineCases;
@@ -23,6 +24,8 @@ use UnitEnum;
 
 class TelemedicineCaseResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = TelemedicineCase::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'TELEMEDICINA';

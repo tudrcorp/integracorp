@@ -32,5 +32,31 @@ it('conserva permisos nav cuando no hay equivalente legacy en el modulo', functi
 it('formulario de usuario usa el filtro de permisos asignables', function (): void {
     $php = file_get_contents(__DIR__.'/../../app/Filament/Business/Resources/Users/Schemas/UserForm.php');
 
-    expect($php)->toContain('UserFormPermissionOptions::optionsForModule');
+    expect($php)->toContain('UserFormPermissionOptions::groupedOptionsForModule')
+        ->and($php)->toContain('permissionGroupFieldKey')
+        ->and($php)->toContain('UserPermissionFormUi::groupHeaderHtml');
+});
+
+it('agrupa permisos por grupo de navegacion del recurso filamento', function (): void {
+    $permission = tap(new Permission, fn (Permission $permission) => $permission->forceFill([
+        'id' => 10,
+        'name' => 'Colaboradores',
+        'slug' => 'colaboradores',
+        'module' => 'ADMINISTRACION',
+    ]));
+
+    expect(\App\Support\Filament\PermissionNavigationGroupResolver::groupForPermission($permission))
+        ->toBe('RRHH');
+});
+
+it('agrupa permisos de afiliaciones bajo su menu de navegacion', function (): void {
+    $permission = tap(new Permission, fn (Permission $permission) => $permission->forceFill([
+        'id' => 11,
+        'name' => 'Individuales',
+        'slug' => 'afiliaciones-individuales',
+        'module' => 'ADMINISTRACION',
+    ]));
+
+    expect(\App\Support\Filament\PermissionNavigationGroupResolver::groupForPermission($permission))
+        ->toBe('AFILIACIONES');
 });

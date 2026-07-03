@@ -8,6 +8,7 @@ use App\Filament\Business\Resources\GuiaChatFeedbacks\Pages\ListGuiaChatFeedback
 use App\Filament\Business\Resources\GuiaChatFeedbacks\Pages\ViewGuiaChatFeedback;
 use App\Filament\Business\Resources\GuiaChatFeedbacks\Schemas\GuiaChatFeedbackInfolist;
 use App\Filament\Business\Resources\GuiaChatFeedbacks\Tables\GuiaChatFeedbacksTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\GuiaChatFeedback;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class GuiaChatFeedbackResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = GuiaChatFeedback::class;
 
     protected static ?string $slug = 'guia-chat-feedbacks';

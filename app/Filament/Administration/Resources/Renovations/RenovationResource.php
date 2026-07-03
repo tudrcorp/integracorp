@@ -8,6 +8,7 @@ use App\Filament\Administration\Resources\Renovations\Pages\ListRenovations;
 use App\Filament\Administration\Resources\Renovations\Pages\ViewRenovation;
 use App\Filament\Administration\Resources\Renovations\Schemas\RenovationInfolist;
 use App\Filament\Administration\Resources\Renovations\Tables\RenovationsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Renovation;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -20,6 +21,8 @@ use UnitEnum;
 
 class RenovationResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Renovation::class;
 
     protected static ?string $navigationLabel = 'Renovaciones Individuales';

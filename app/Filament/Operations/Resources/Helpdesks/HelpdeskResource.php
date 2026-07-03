@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\Helpdesks;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Concerns\AuthorizesHelpdeskTicketCreation;
 use App\Filament\Operations\Resources\Helpdesks\Pages\CreateHelpdesk;
 use App\Filament\Operations\Resources\Helpdesks\Pages\EditHelpdesk;
@@ -21,6 +22,7 @@ use UnitEnum;
 
 class HelpdeskResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
     use AuthorizesHelpdeskTicketCreation;
 
     protected static ?string $model = HelpDesk::class;

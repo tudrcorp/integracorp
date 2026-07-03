@@ -2,31 +2,32 @@
 
 namespace App\Filament\Business\Resources\Cities;
 
-use UnitEnum;
-use BackedEnum;
-use App\Models\City;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Business\Resources\Cities\Pages\EditCity;
-use App\Filament\Business\Resources\Cities\Pages\ViewCity;
 use App\Filament\Business\Resources\Cities\Pages\CreateCity;
+use App\Filament\Business\Resources\Cities\Pages\EditCity;
 use App\Filament\Business\Resources\Cities\Pages\ListCities;
+use App\Filament\Business\Resources\Cities\Pages\ViewCity;
 use App\Filament\Business\Resources\Cities\Schemas\CityForm;
-use App\Filament\Business\Resources\Cities\Tables\CitiesTable;
 use App\Filament\Business\Resources\Cities\Schemas\CityInfolist;
+use App\Filament\Business\Resources\Cities\Tables\CitiesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\City;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class CityResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = City::class;
 
     protected static ?string $navigationLabel = 'Ciudades';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-globe-europe-africa';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {
@@ -58,14 +59,5 @@ class CityResource extends Resource
             'view' => ViewCity::route('/{record}'),
             'edit' => EditCity::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
     }
 }

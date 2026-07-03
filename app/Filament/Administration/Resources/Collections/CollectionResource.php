@@ -7,21 +7,23 @@ use App\Filament\Administration\Resources\Collections\Pages\EditCollection;
 use App\Filament\Administration\Resources\Collections\Pages\ListCollections;
 use App\Filament\Administration\Resources\Collections\Schemas\CollectionForm;
 use App\Filament\Administration\Resources\Collections\Tables\CollectionsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Collection;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
 class CollectionResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Collection::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'ADMINISTRACIÓN';
 
     protected static ?string $navigationLabel = 'Gestión de Cobranza';
 

@@ -98,13 +98,17 @@ class UserRoleProfiles
      * @param  list<array{field: string, label: string, icon: Heroicon}>  $roles
      * @return list<Toggle>
      */
-    public static function formTogglesForGroup(array $roles): array
+    public static function formTogglesForGroup(array $roles, string $groupLabel): array
     {
         return collect($roles)
-            ->map(function (array $role): Toggle {
+            ->map(function (array $role) use ($groupLabel): Toggle {
                 return Toggle::make($role['field'])
-                    ->label($role['label'])
-                    ->inline(false);
+                    ->label(UserRoleFormUi::toggleLabelHtml($role))
+                    ->inline(true)
+                    ->onColor('success')
+                    ->extraFieldWrapperAttributes([
+                        'class' => UserRoleFormUi::toggleCardClass($groupLabel, $role['field']),
+                    ]);
             })
             ->all();
     }

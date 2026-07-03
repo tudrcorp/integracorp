@@ -7,6 +7,7 @@ use App\Filament\Business\Resources\Zones\Pages\EditZone;
 use App\Filament\Business\Resources\Zones\Pages\ListZones;
 use App\Filament\Business\Resources\Zones\Schemas\ZoneForm;
 use App\Filament\Business\Resources\Zones\Tables\ZonesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Zone;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,13 +18,15 @@ use UnitEnum;
 
 class ZoneResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Zone::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Folder;
 
     protected static ?string $navigationLabel = 'Gestión de Carpetas';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ZONA DE DESCARGA';
+    protected static string|UnitEnum|null $navigationGroup = 'ZONA DE DESCARGA';
 
     public static function form(Schema $schema): Schema
     {

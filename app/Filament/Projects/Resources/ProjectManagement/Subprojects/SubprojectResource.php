@@ -2,6 +2,7 @@
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Subprojects;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Projects\Resources\ProjectManagement\Subprojects\Pages\CreateSubproject;
 use App\Filament\Projects\Resources\ProjectManagement\Subprojects\Pages\EditSubproject;
 use App\Filament\Projects\Resources\ProjectManagement\Subprojects\Pages\ListSubprojects;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class SubprojectResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Subproject::class;
 
     protected static ?string $navigationLabel = 'Subproyectos';

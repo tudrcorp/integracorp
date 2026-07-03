@@ -6,12 +6,14 @@ namespace App\Filament\Business\Pages;
 
 use App\Filament\Business\Pages\Concerns\InteractsWithCorporateCalendarShell;
 use App\Filament\Business\Pages\Concerns\InteractsWithTdgHybridCalendar;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 class CalendariosTdg extends Page
 {
+    use AuthorizesDepartmentNavigation;
     use InteractsWithCorporateCalendarShell;
     use InteractsWithTdgHybridCalendar {
         InteractsWithTdgHybridCalendar::calendarDayInteractionsEnabled insteadof InteractsWithCorporateCalendarShell;

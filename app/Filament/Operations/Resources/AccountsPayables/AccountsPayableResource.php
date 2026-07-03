@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\AccountsPayables;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\AccountsPayables\Pages\ListAccountsPayables;
 use App\Filament\Operations\Resources\AccountsPayables\Pages\ViewAccountsPayable;
 use App\Filament\Operations\Resources\AccountsPayables\Schemas\AccountsPayableInfolist;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class AccountsPayableResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationQuoteGenerator::class;
 
     protected static ?string $navigationLabel = 'Cuentas por pagar';

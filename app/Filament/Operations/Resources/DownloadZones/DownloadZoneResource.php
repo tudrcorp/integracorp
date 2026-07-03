@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\DownloadZones;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\DownloadZones\Pages\CreateDownloadZone;
 use App\Filament\Operations\Resources\DownloadZones\Pages\EditDownloadZone;
 use App\Filament\Operations\Resources\DownloadZones\Pages\ListDownloadZones;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class DownloadZoneResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = DownloadZone::class;
 
     protected static ?string $navigationLabel = 'Documentos';
